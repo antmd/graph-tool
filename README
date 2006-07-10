@@ -1,0 +1,56 @@
+graph-tool -- a general graph measurement and manipulation thingy
+=================================================================
+
+This is graph-tool, a program which contains general graph
+measurements algorithms, such as degree or properties distributions,
+degree or properties correlations, clustering, graph filtering, graph
+layout, and more, as well as a random graph generation routine. For
+more information and documentation, please take a look at the website
+http://graph-tool.forked.de.
+
+graph-tool is free software, you can redistribute it and/or modify it under
+the terms of the GNU General Public License.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+Availability
+============
+
+The current stable version of graph-tool is always available from the
+project's website: http://graph-tool.forked.de
+
+Installation
+============
+
+graph-tool follows the standard GNU installation procedure.  Please consult
+the INSTALL file in this distribution for more detailed instructions.
+
+Note that recent versions of GCC (4.0 or above) are required for
+compilation, and due to the usage of template metaprogramming
+techniques in the program, relatively large amounts of RAM
+are required during compilation. You have been warned! For this
+reason, pre-compiled binaries are available in the website.
+
+More information about graph-tool
+==================================
+
+The project homepage is http://graph-tool.forked.de. It contains
+documentation, info on mailing lists, a wiki, as well as a
+bug-tracking function. You should be reading it, instead of this. :-)
+
+See the NEWS file for recent changes to the program.
+
+Reporting Bugs
+==============
+
+A list of known bugs can be found in the website:
+https://projects.forked.de/graph-tool/report
+
+If you found a bug in the program which is not included in this list,
+please submit a ticket through the website at
+https://projects.forked.de/graph-tool/newticket
+
+--
+Tiago de Paula Peixoto <tiago@forked.de>

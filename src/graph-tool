@@ -1,0 +1,632 @@
+#! /usr/bin/env python
+# (C) 2006 by Tiago de Paula Peixoto <tiago@forked.de>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Library General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+import sys
+
+sys.path.append(".")
+
+from libgraph_tool import *
+
+from optparse import *
+import string
+import os
+import os.path
+import re
+import struct
+import fcntl
+import termios
+import gzip
+import bz2
+import string
+import time
+import signal
+from time import *
+
+try:
+    import psyco
+except ImportError:
+    pass
+
+prog_info = mod_info()
+version_string = "%s %s\nWritten by %s\n\n%s" % (prog_info.name, prog_info.version, \
+                                               prog_info.author,prog_info.copyright)
+
+def getheightwidth():
+    height, width = struct.unpack("hhhh", fcntl.ioctl(0, termios.TIOCGWINSZ ,"\000"*8))[0:2]
+    return height, width
+
+option_list = list()
+class Opt:
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
+
+def push_option(option, opt_str, value, parser):
+    option_list.append(Opt(opt_str.lstrip("--"), value))
+
+parser = OptionParser(usage="%s [options]" % sys.argv[0], version=version_string, \
+                      formatter=IndentedHelpFormatter(max_help_position=getheightwidth()[1]/2,width=getheightwidth()[1]))
+basic =  parser.add_option_group("Basic options")
+basic.add_option("--load", action="callback", callback=push_option, type="string", metavar="FILE", help="load graph from file")
+basic.add_option("--save", action="callback", callback=push_option, type="string", metavar="FILE", help="save graph to file")
+
+generation =  parser.add_option_group("Graph generation")
+generation.add_option("--correlated-configurational-model", action="callback", type="string", metavar="OPTIONS", callback=push_option, help="generate graph using the configurational model with arbitrary degree correlations. Options are: N, pjk, pjk_ceil, pjk_m, inv_pjk_ceil, corr, corr_ceil, corr_m, inv_corr_ceil, undirected, directed, progress, seed. See documentation for details.")
+
+filtering =  parser.add_option_group("Filtering")
+filtering.add_option("--directed", action="callback", callback=push_option, help="treat graph as directed (default)")
+filtering.add_option("--undirected", action="callback", callback=push_option, help="treat graph as undirected")
+filtering.add_option("--reverse", action="callback", callback=push_option, help="reverse edges")
+filtering.add_option("--vertex-filter", action="callback", callback=push_option, type="string", metavar="FILTER RULE", help="set generic vertex filter")
+filtering.add_option("--vertex-range-filter", action="callback", callback=push_option, type="string", metavar="PROPERTY|RANGE", help="choose vertex property and range to filter")
+filtering.add_option("--reset-vertex-filter", action="callback", callback=push_option, help="remove edge filter")
+filtering.add_option("--edge-filter", action="callback", callback=push_option, type="string", metavar="FILTER RULE", help="set generic edge filter")
+filtering.add_option("--edge-range-filter", action="callback", callback=push_option, type="string", metavar="PROPERTY|RANGE", help="choose edge property and range to filter")
+filtering.add_option("--reset-edge-filter", action="callback", callback=push_option, help="remove edge filter")
+
+modification =  parser.add_option_group("Graph Modification")
+modification.add_option("--remove-vertex-property", action="callback", callback=push_option, type="string", metavar="PROPERTY", help="remove vertex property from graph")
+modification.add_option("--remove-edge-property", action="callback", callback=push_option, type="string", metavar="PROPERTY|RANGE", help="remove edge property from graph")
+modification.add_option("--insert-vertex-index-property", action="callback", callback=push_option, type="string", metavar="PROPERTY", help="insert vertex index as property")
+modification.add_option("--insert-edge-index-property", action="callback", callback=push_option, type="string", metavar="PROPERTY", help="insert edge index as property")
+modification.add_option("--remove-parallel-edges", action="callback", callback=push_option, help="remove parallel edges from graph")
+
+statistics =  parser.add_option_group("Basic Statistics")
+statistics.add_option("--number-of-vertices", action="callback", callback=push_option, type="string", metavar="FILE", help="get the number of vertices")
+statistics.add_option("--number-of-edges", action="callback", callback=push_option, type="string", metavar="FILE", help="get the number of edges")
+statistics.add_option("--degree-histogram", action="callback", callback=push_option, type="string", metavar="DEGREE|FILE", help="get the degree histogram")
+statistics.add_option("--combined-degree-histogram", action="callback", callback=push_option, type="string", metavar="FILE", help="get the combined (in,out)-degree histogram")
+statistics.add_option("--average-distance", action="callback", callback=push_option, type="string", metavar="FILE", help="get the averarge distance")
+statistics.add_option("--average-harmonic-distance", action="callback", callback=push_option, type="string", metavar="FILE", help="get the averarge harmonic distance")
+statistics.add_option("--component-size-histogram", action="callback", callback=push_option, type="string", metavar="FILE", help="get the component size histogram")
+
+correlations =  parser.add_option_group("Correlations")
+correlations.add_option("--degree-correlation-histogram", action="callback", callback=push_option, type="string", metavar="DEGREE1|DEGREE2|FILE", help="get the degree correlation histogram. Scalar properties are also accepted in place of DEGREE")
+correlations.add_option("--average-nearest-neighbours-degree", action="callback", callback=push_option, type="string", metavar="NEIGHBOURS|ORIGIN-DEGREE|DEGREE|FILE", help="get the average nearest neighbours degree")
+correlations.add_option("--edge-degree-correlation-histogram", action="callback", callback=push_option, type="string", metavar="DEGREE1|EDGE-PROP|DEGREE2|FILE", help="get the source degree vs. edge scalar vs. target degree correlation histogram. Scalar properties are also accepted in place of DEGREE-TYPE")
+correlations.add_option("--vertex-scalar-correlation-histogram", action="callback", callback=push_option, type="string", metavar="DEGREE|VERTEX-PROP|FILE", help="get the degree vs. vertex scalar correlation histogram. Scalar properties are also accepted in place of DEGREE")
+correlations.add_option("--assortativity-coefficient", action="callback", callback=push_option, type="string", metavar="NEIGHBOURS|DEGREE|DEGREE|FILE", help="get the assortativity coefficient. Scalar properties are also accepted in place of DEGREE (not yet)")
+
+clustering =  parser.add_option_group("Clustering")
+clustering.add_option("--local-clustering-coefficient", action="callback", callback=push_option, type="string", metavar="FILE", help="get the local clustering coefficient")
+clustering.add_option("--local-clustering-coefficient-histogram", action="callback", callback=push_option, type="string", metavar="DEGREE_TYPE|FILE", help="get the local clustering coefficient histogram")
+clustering.add_option("--set-local-clustering-to-property", action="callback", callback=push_option, type="string", metavar="PROPERTY", help="set the local clustering coefficient to vertex property")
+clustering.add_option("--global-clustering-coefficient", action="callback", callback=push_option, type="string", metavar="FILE", help="get the global clustering coefficient")
+
+layout =  parser.add_option_group("Layout")
+layout.add_option("--compute-spring-block-layout", action="callback", callback=push_option, type="string", metavar="ITERATIONS[|SEED]", help="compute the spring block layout")
+layout.add_option("--compute-gursoy-atun-layout", action="callback", callback=push_option, type="string", metavar="ITERATIONS[|SEED]", help="compute the Gursoy-Atun layout")
+
+layout =  parser.add_option_group("History")
+layout.add_option("--history", action="callback", callback=push_option, type="string", metavar="INIT|CONDITION|STEP", help="compute graph history")
+layout.add_option("--history-rate", type="string", metavar="TIME", default="1h", help="history file refresh rate")
+
+(options, args) = parser.parse_args()
+
+graph = GraphInterface()
+
+def parse_values(value):
+    "this will parse the options with multiple values"
+    p = re.compile(r"([^\|'\"]+|[^\|]+'[^']*'|[^\|]+\"[^\"]*\")(?:\||$)")
+    values = p.findall(value)
+    values = [x.strip() for x in values]
+    return values
+
+def get_suboption(suboption, string):
+    p = re.compile(r"([^,'\"]+|[^,]+'[^']*'|[^,]+\"[^\"]*\")(?:,|$)")
+    opts = p.findall(string)
+    for opt in opts:
+        if opt.split("=",1)[0].strip() == suboption:
+            if "=" in opt:            
+                return opt.split("=",1)[1].strip("\"").strip("'")
+            else:
+                return True
+    return False
+
+def degree(name):
+    "this will retrieve the degree type from string"
+    deg = name
+    if name == "in-degree" or name == "in":
+        deg = Degree.In
+    if name == "out-degree" or name == "out":
+        deg = Degree.Out
+    if name == "total-degree" or name == "total":
+        deg = Degree.Total
+    return deg
+
+def neighbour(name):
+    "this will retrieve the neighbour type from string"
+    nei = None
+    if name == "in-neighbours" or name == "in":
+        nei = Neighbours.In
+    if name == "out-neighbours" or name == "out":
+        nei = Neighbours.Out
+    if name == "all-neighbours" or name == "all":
+        nei = Neighbours.All
+    return nei
+
+class OptionError(Exception):
+    def __init__(self, option, error):
+        self.what = "error parsing option %s: %s" % (option,error)
+    def __str__(self):
+        return self.what
+
+def parse_option(opt, just_file=False):
+    "this will execute an aption, and return either None, or a tuple with the result and the respective file name, if it exists"
+    if opt.name == "load":
+        if just_file:
+            return None
+        graph.ReadFromFile(opt.value)
+    elif opt.name == "save":
+        if just_file:
+            return None
+        graph.WriteToFile(opt.value)
+    elif opt.name == "correlated-configurational-model":
+        seed = int(time())
+        N = 10000
+        m = 4.0
+        pjk = "1.0"
+        pjk_ceil = "pjk(j,k)"
+        m_pjk = "1.0"
+        inv_pjk_ceil = ""
+        corr = "1.0"
+        corr_ceil = "corr(jl,kl,j,k)"
+        m_corr = "1.0"
+        inv_corr_ceil = "inv_pjk_ceil(p,r)"
+        try:
+            if get_suboption("N",opt.value) != False:
+                N = int(get_suboption("N",opt.value))
+            if get_suboption("pjk",opt.value) != False:
+                pjk = get_suboption("pjk",opt.value)
+            if get_suboption("pjk_ceil",opt.value) != False:
+                pjk_ceil = get_suboption("pjk_ceil",opt.value)
+            if get_suboption("pjk_m",opt.value) != False:
+                m_pjk = get_suboption("pjk_m",opt.value)
+            if get_suboption("inv_pjk_ceil",opt.value) != False:
+                inv_pjk_ceil = get_suboption("inv_pjk_ceil",opt.value)
+            if get_suboption("corr",opt.value) != False:
+                corr = get_suboption("corr",opt.value)
+            if get_suboption("corr_ceil",opt.value) != False:
+                corr_ceil = get_suboption("corr_ceil",opt.value)
+            if get_suboption("corr_m",opt.value) != False:
+                corr_m = get_suboption("corr_m",opt.value)
+            if get_suboption("inv_corr_ceil",opt.value) != False:
+                inv_corr_ceil = get_suboption("inv_corr_ceil",opt.value)            
+            undirected = get_suboption("undirected",opt.value)
+            verbose = get_suboption("progress", opt.value)
+            if get_suboption("seed",opt.value) != False:
+                seed = int(get_suboption("seed",opt.value))
+        except ValueError, e:
+            raise OptionError(opt.name, e)
+        variables = dict()
+        exec "from math import *"  in variables;
+        exec "from scipy import *"  in variables;
+        exec "from scipy.special import *"  in variables;
+        exec "from scipy.optimize import *" in variables;
+        exec "from scipy.optimize.minpack import *" in variables;
+        exec "import psyco"  in variables;
+        exec "def inv_poisson(p,m):\n   return round(fsolve(lambda k,l: gammaincc(k,l)-p, m, (m)))" in variables;
+        exec "def inv_exponential(p,m):\n   return round(log(1-p)/log(m/(m+1)))" in variables;
+        exec "def inv_power_law(p,b):\n   return round((1-p)**(-1/(b-1)) - 1)" in variables;
+        exec "def pjk(j,k):\n   return %s" % pjk in variables
+        exec "def pjk_ceil(j,k):\n   return %s" % pjk_ceil in variables
+        exec "m_pjk = %s" % m_pjk in variables
+        m_pjk = float(variables["m_pjk"])
+        exec "def inv_pjk_ceil(p,r):\n   retval = %s; return (int(round(retval[0])),int(round(retval[1])))" % inv_pjk_ceil in variables
+        exec "def corr(jl,kl,j,k):\n   return %s" % corr in variables
+        exec "def corr_ceil(jl,kl,j,k):\n   return %s" % corr_ceil in variables
+        exec "m_corr = %s" % m_corr in variables
+        m_corr = float(variables["m_corr"])
+        exec "def inv_corr_ceil(p,r,j,k):\n   retval = %s; return (int(round(retval[0])),int(round(retval[1])))" % inv_corr_ceil in variables
+        if just_file:
+            return None
+        graph.GenerateCorrelatedConfigurationalModel(N, variables["pjk"], variables["pjk_ceil"], variables["inv_pjk_ceil"], m_pjk, variables["corr"],
+                                                     variables["corr_ceil"], variables["inv_corr_ceil"], m_corr, undirected, seed, verbose)
+    elif opt.name == "number-of-vertices":
+        if just_file:
+            return opt.value
+        return (graph.GetNumberOfVertices(), opt.value)
+    elif opt.name == "number-of-edges":
+        if just_file:
+            return opt.value
+        return (graph.GetNumberOfEdges(), opt.value)
+    elif opt.name == "combined-degree-histogram":
+        if just_file:
+            return opt.value
+        return (graph.GetCombinedDegreeHistogram(), opt.value)
+    elif opt.name == "average-distance":
+        if just_file:
+            return opt.value
+        return (graph.GetAverageDistance(), opt.value)
+    elif opt.name == "average-harmonic-distance":
+        if just_file:
+            return opt.value
+        return (graph.GetAverageHarmonicDistance(), opt.value)
+    elif opt.name == "component-size-histogram":
+        if just_file:
+            return opt.value
+        return (graph.GetComponentSizeHistogram(), opt.value)
+    elif opt.name == "degree-histogram":
+        values = parse_values(opt.value)
+        if len(values) != 2:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        deg = degree(values[0])
+        if just_file:
+            return values[1]
+        return (graph.GetDegreeHistogram(deg), values[1])
+    elif opt.name == "degree-correlation-histogram":
+        values = parse_values(opt.value)
+        if len(values) != 3:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        deg1 = degree(values[0])
+        deg2 = degree(values[1])
+        if just_file:
+            return values[2]
+        return (graph.GetDegreeCorrelationHistogram(deg1,deg2), values[2])
+    elif opt.name == "edge-degree-correlation-histogram":
+        values = parse_values(opt.value)
+        if len(values) != 4:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        deg1 = degree(values[0])
+        deg2 = degree(values[2])
+        if just_file:
+            return values[3]
+        return (graph.GetEdgeDegreeCorrelationHistogram(deg1,values[1],deg2), values[3])
+    elif opt.name == "vertex-scalar-correlation-histogram":
+        values = parse_values(opt.value)
+        if len(values) != 3:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        deg = degree(values[0])
+        if just_file:
+            return values[2]
+        return (graph.GetVertexDegreeScalarCorrelationHistogram(deg,values[1]),values[2])
+    elif opt.name == "average-nearest-neighbours-degree":
+        values = parse_values(opt.value)
+        if len(values) != 4:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        nei = neighbour(values[0])
+        if nei == None:
+            raise OptionError(opt.name, "invalid neighbour type '%s'" % values[0])
+        deg1 = degree(values[1])
+        deg2 = degree(values[2])
+        if just_file:
+            return values[3]
+        return (graph.GetAverageNearestNeighboursDegree(nei,deg1,deg2), values[3])
+    elif opt.name == "assortativity-coefficient":
+        values = parse_values(opt.value)
+        if len(values) != 4:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        nei = neighbour(values[0])
+        if nei == None:
+            raise OptionError(opt.name, "invalid neighbour type '%s'" % values[0])
+        deg1 = degree(values[1])
+        deg2 = degree(values[2])
+        if just_file:
+            return values[3]
+        return (graph.GetAssortativityCoefficient(nei,deg1,deg2), values[3])
+    elif opt.name == "local-clustering-coefficient":
+        hist = graph.GetLocalClusteringHistogram()
+        avg,count = 0.0,0.0
+        for k,v in hist.iteritems():
+            avg += k*v
+            count += v
+        avg /= count
+        if just_file:
+            return opt.value
+        return (avg,opt.value)
+    elif opt.name == "local-clustering-coefficiet-histogram":
+        if just_file:
+            return opt.value
+        return (graph.GetLocalClusteringHistogram(), opt.value)
+    elif opt.name == "global-clustering-coefficient":
+        if just_file:
+            return opt.value
+        return (graph.GetGlobalClustering(), opt.value)
+    elif opt.name == "set-local-clustering-to-property":
+        if just_file:
+            return None
+        graph.SetLocalClusteringToProperty(opt.value)
+    elif opt.name == "compute-spring-block-layout":
+        if just_file:
+            return None
+        values = parse_values(opt.value)
+        if len(values) == 0 or len(values) > 2:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        iterations,seed = 0,0
+        try:
+            iterations = int(values[0])
+            if len(values) > 1:
+                seed = int(values[1])
+            else:
+                seed = int(time())
+        except ValueError:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        graph.ComputeGraphLayoutSpringBlock(iterations,seed)
+    elif opt.name == "compute-gursoy-atun-layout":
+        if just_file:
+            return None
+        values = parse_values(opt.value)
+        if len(values) == 0 or len(values) > 2:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        iterations,seed = 0,0
+        try:
+            iterations = int(values[0])
+            if len(values) > 1:
+                seed = int(values[1])
+            else:
+                seed = int(time())
+        except ValueError:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        graph.ComputeGraphLayoutGursoy(iterations,seed)
+    elif opt.name == "vertex-filter" or opt.name == "edge-filter":
+        if just_file:
+            return None
+        filter_vars = dict()
+        filter_vars["variables"] = filter_vars
+        def populate_vars(dict, variables):
+            for k,v in dict.iteritems():
+                variables[k] = v
+        filter_vars["populate_vars"] = populate_vars
+        try:
+            exec "def filter_function(props):\n    populate_vars(props,variables); return %s\n" % opt.value in filter_vars
+        except:
+            raise OptionError(opt.name, "invalid value '%s': %s" % (opt.value,sys.exc_info()[0]))
+        if opt.name == "vertex-filter":
+            graph.SetGenericVertexFilter(filter_vars["filter_function"])
+        else:
+            graph.SetGenericEdgeFilter(filter_vars["filter_function"])
+    elif opt.name == "vertex-range-filter" or opt.name == "edge-range-filter":
+        if just_file:
+            return None
+        values = parse_values(opt.value)
+        if len(values) != 2:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        if (len(values[1].split()) != 2):
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        filter_range = (0,0)
+        try:
+            vals = values[1].split()
+            filter_range = (float(vals[0]), float(vals[1]))
+        except ValueError:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        if opt.name == "vertex-range-filter":
+            graph.SetVertexFilterProperty(values[0])
+            graph.SetVertexFilterRange(filter_range)
+        if opt.name == "edge-range-filter":
+            graph.SetEdgeFilterProperty(values[0])
+            graph.SetEdgeFilterRange(filter_range)
+    elif opt.name == "reset-vertex-filter":
+        if just_file:
+            return None
+        graph.SetVertexFilterProperty("")
+        graph.SetGenericVertexFilter(None)
+    elif opt.name == "reset-edge-filter":
+        if just_file:
+            return None
+        graph.SetEdgeFilterProperty("")
+        graph.SetGenericEdgeFilter(None)
+    elif opt.name == "directed":
+        if just_file:
+            return None
+        graph.SetDirected(True)
+    elif opt.name == "undirected":
+        if just_file:
+            return None
+        graph.SetDirected(False)
+    elif opt.name == "reverse":
+        if just_file:
+            return None
+        graph.SetReversed(not graph.GetReversed())
+    elif opt.name == "remove-parallel-edges":
+        if just_file:
+            return None
+        graph.RemoveParallelEdges()
+    elif opt.name == "remove-vertex-property":
+        if just_file:
+            return None
+        graph.RemoveVertexProperty(opt.value)
+    elif opt.name == "remove-edge-property":
+        if just_file:
+            return None
+        graph.RemoveEdgeProperty(opt.value)
+    elif opt.name == "insert-edge-index-property":
+        if just_file:
+            return None
+        graph.InsertEdgeIndexProperty(opt.value)
+    elif opt.name == "insert-vertex-index-property":
+        if just_file:
+            return None
+        graph.InsertVertexIndexProperty(opt.value)          
+        
+def open_file(name, mode="w"):
+    if name == "-":
+        return sys.stdout
+    if name.endswith("bz2"):
+        return bz2.BZ2File(name, mode)
+    if name.endswith("gz"):
+        return gzip.GzipFile(name, mode)
+    return file(name, mode)
+
+def write_data(data, file, prefix=""):
+    if prefix != "":
+        prefix = "%s\t" % prefix
+    if data.__class__ == dict:
+        # it is a histogram
+        keys = data.keys()
+        keys.sort()
+        for k in keys:
+            file.write(prefix)
+            if k.__class__ == tuple:
+                # higher dimensional histogram
+                for i in xrange(0,len(k)):
+                    file.write("%s\t" % str(k[i]))                
+            else:
+                file.write("%s\t" % (str(k)))
+            if data[k].__class__ == tuple:
+                for i in xrange(0,len(data[k])):
+                    file.write("%s\t" % str(data[k][i]))
+                file.write("\n")
+            else:
+                file.write("%s\n" % str(data[k]))
+    else:
+        # single value
+        file.write("%s%s\n" % (prefix,str(data)))
+    file.flush()
+
+class HistoryException (Exception):
+    def __init__(self, file=None, old=None, what=None):
+        if what == None:
+            self.what = "error copying contents from file '%s' to file '%s'" % (old,file)
+        else:
+            self.what = what
+    def __str__(self):
+        return self.what
+
+class HistoryFile:
+    def __init__(self, file_name):
+        self.file_name = os.path.expanduser(file_name)
+        self.prefixes = set()
+        self.file = None
+        self.time = time.clock()
+        self.temp = self.file_name + "___temp"
+        if self.file_name.endswith(".bz2"):
+            self.temp = self.file_name.rstrip(".bz2") + "___temp.bz2"
+        if self.file_name.endswith(".gz"):
+            self.temp = self.file_name.rstrip(".gz") + "___temp.gz"
+        match = re.compile("([0-9]+)([d,h,m,s])").match(options.history_rate)
+        if match != None:
+            self.rate = int(match.group(1))
+            modifier = match.group(2)
+            if modifier == "m":
+                self.rate *= 60
+            if modifier == "h":
+                self.rate *= 60
+            if modifier == "d":
+                self.rate *= 24
+        else:
+            raise HistoryException(what="invalid history refresh rate value: %s" % options.history_rate)
+        if os.path.exists(self.file_name) and self.file_name != "-":            
+            # test the integrity of the compressed files
+            try:
+                if self.file_name.endswith(".bz2") or self.file_name.endswith(".gz"):
+                    for line in open_file(self.file_name,"r"):
+                        pass
+            except (IOError, EOFError):
+                if not os.path.exists(self.temp):
+                    old = open_file(self.temp, "w")
+                    old.write("")
+                    old.close()
+                os.rename(self.temp, self.file_name)
+            #upadate prefixes
+            for line in open_file(self.file_name, "r"):
+                prefix = line.split()[0]
+                self.prefixes.add(prefix)
+            self.refresh()
+        else:
+            self.file = open_file(self.file_name, "w")
+
+    def __del__(self):
+        if self.file != None:
+            self.file.close()
+        if self.temp != None:
+            if os.path.exists(self.temp):
+                os.remove(self.temp)
+
+    def refresh(self):
+        try:                                                                        
+            if self.file_name.endswith(".bz2") or  self.file_name.endswith(".gz"):
+                os.rename(self.file_name, self.temp)
+                # copy history from old file to new file
+                self.file = open_file(self.file_name, "w")
+                for line in open_file(self.temp, "r"):
+                    self.file.write(line)
+            else:
+                self.file = open_file(self.file_name, "a")
+        except:
+            os.rename(self.old, self.file_name)
+            raise HistoryException(self.file_name, self.temp)
+    
+            
+    def write(self, data, prefix):
+        write_data(data, self.file, prefix)
+        if time.clock() - self.time > self.rate:
+            self.file.close()
+            self.refresh()
+            self.time = time.clock()
+
+# signal handling
+graph.InitSignalHandling()
+
+# parse each option in order
+try:
+    history_range = None
+    for opt in option_list:
+        if opt.name == "history":
+            # the rest of the commands are to be treated as history template
+            history_range = opt
+            break
+        retval = parse_option(opt)
+        if retval != None:
+            if retval[1] != None:
+                prefix = ""
+                if retval[1] == "-":
+                    prefix = opt.name.replace("-"," ")+": "
+                write_data(retval[0], open_file(retval[1]), prefix)
+                
+    # deal with history
+    if history_range != None:
+        class MyTemplate(string.Template):
+            delimiter = "%"
+        values = parse_values(history_range.value)
+        if len(values) != 3:
+            raise OptionError("history", "invalid value '%s'" % options.history_range)
+        histories = option_list[option_list.index(history_range)+1:]
+        history_files = dict() # open history files
+        variables = dict() # template variables
+        exec values[0] in variables #init
+        exec "___continue = %s" % values[2] in variables # condition
+        count = 0
+        while variables["___continue"]:
+            for opt in histories:
+                new_opt = Opt(opt.name,opt.value)
+                if new_opt.value != None:
+                    t = MyTemplate(new_opt.value)
+                    try:
+                        new_opt.value = t.substitute(variables)
+                    except KeyError:
+                        raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+                file_name = parse_option(new_opt, just_file=True)
+                if file_name != None:
+                    prefix = str(count)
+                    if variables.has_key("prefix"):
+                        prefix = str(variables["prefix"])
+                    if not history_files.has_key(file_name):
+                        history_files[file_name] = HistoryFile(file_name)
+                    if prefix not in history_files[file_name].prefixes:
+                        data = parse_option(new_opt)[0]
+                        history_files[file_name].write(data, prefix)
+                else:
+                    parse_option(new_opt)
+
+            exec values[1] in variables # step
+            exec "___continue = %s" % values[2] in variables # condition
+            count += 1
+            
+except (OptionError, HistoryException), e:
+    print "graph-tool:", e
+except KeyboardInterrupt:
+    pass

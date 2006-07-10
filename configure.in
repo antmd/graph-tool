@@ -1,0 +1,172 @@
+dnl Process this file with autoconf to produce a configure script.
+
+AC_INIT(graph-tool, 0.9devel)
+AC_CONFIG_SRCDIR(src/graph-tool)
+AM_INIT_AUTOMAKE
+AM_PROG_CC_C_O
+AM_CONFIG_HEADER(config.h)
+
+AC_ISC_POSIX
+AC_SUBST(CXXFLAGS,$CXXFLAGS)
+AC_GNU_SOURCE
+AC_PROG_CXX
+AC_LANG_CPLUSPLUS
+AC_PROG_CC_STDC
+AC_HEADER_STDC
+AC_PROG_LIBTOOL
+AC_PROG_INSTALL
+
+dnl Checks for options
+
+dnl Turn debugging on or off
+AC_MSG_CHECKING(whether to enable debug info...)
+   
+AC_ARG_ENABLE([debug], [AC_HELP_STRING([--enable-debug@<:@=full@:>@],
+        [compile debug information [default=yes] ])],
+        [AC_MSG_RESULT(yes)]
+        [AC_DEFINE([DEBUG], 1, [compile debug info])]
+        [CXXFLAGS=" $CXXFLAGS -ggdb3 "],
+        [AC_MSG_RESULT(no)] 
+        )
+
+dnl set template depth and hidden visibility
+
+[CXXFLAGS="$CXXFLAGS -ftemplate-depth-150 -fvisibility=hidden -fvisibility-inlines-hidden "]
+
+AC_MSG_CHECKING(whether to enable function inlining...)
+                                                                                
+AC_ARG_ENABLE([inline], [AC_HELP_STRING([--disable-inline],
+        [disable inline functions [default=no] ])],
+        if test $enableval = no; then
+           [AC_MSG_RESULT(no)]
+           [AC_DEFINE([NO_INLINE], 1, [disable function inlining])]
+           [CXXFLAGS="$CXXFLAGS -fno-inline -fno-default-inline "]
+           NO_INLINE=yes
+        else
+           [AC_MSG_RESULT(yes)]
+        fi
+        ,
+        [AC_MSG_RESULT(yes)]
+        NO_INLINE=no
+        )
+         
+AM_CONDITIONAL(NO_INLINE, test $NO_INLINE = yes)
+
+AC_MSG_CHECKING(whether to enable optimizations...)
+                                                                                
+AC_ARG_ENABLE([optimization], [AC_HELP_STRING([--disable-optimization],
+        [disable optimization [default=yes] ])],
+        [AC_MSG_RESULT(no)]
+        ,
+        [AC_MSG_RESULT(yes)]
+        [CXXFLAGS=" $CXXFLAGS -O99 "]
+        )
+
+AC_MSG_CHECKING(whether to enable extra optimizations...)
+
+AC_ARG_ENABLE([extra-optimizations], [AC_HELP_STRING([--enable-extra-optimizations],
+        [enable extra, possibly dangerous, optimizations [default=no]])],
+        if test $enableval = yes; then
+           [AC_MSG_RESULT(yes)]
+           [AC_DEFINE([EXTRA_OPTIMIZATIONS], 1, [enable extra optimizations])]
+           [CXXFLAGS="$CXXFLAGS -fmodulo-sched -fgcse-sm -fgcse-las "]
+           [CXXFLAGS="$CXXFLAGS -fgcse-after-reload -floop-optimize2 "]
+           [CXXFLAGS="$CXXFLAGS -ftree-loop-linear -ftree-loop-im "]
+           [CXXFLAGS="$CXXFLAGS -ftree-loop-ivcanon -fivopts -ftree-vectorize "]
+           [CXXFLAGS="$CXXFLAGS -ftracer -funroll-loops "]
+           [CXXFLAGS="$CXXFLAGS -fvariable-expansion-in-unroller -fpeel-loops"]
+dnl           [CXXFLAGS="$CXXFLAGS -freorder-blocks-and-partition "]
+           [CXXFLAGS="$CXXFLAGS -fmove-loop-invariants -funswitch-loops "]
+           [CXXFLAGS="$CXXFLAGS -fforce-addr -freschedule-modulo-scheduled-loops "]
+        else
+           [AC_MSG_RESULT(no)]
+        fi
+        ,
+        [AC_MSG_RESULT(no)] )
+
+AC_MSG_CHECKING(whether to link statically...)
+AC_ARG_ENABLE([static-linkage], [AC_HELP_STRING([--enable-static-linkage],
+        [enable static linkage [default=no]])],
+        if test $enableval = yes; then
+           [AC_MSG_RESULT(yes)]
+           STATIC=yes
+        else
+           STATIC=no
+           [AC_MSG_RESULT(no)]
+        fi
+        ,
+        STATIC=no
+        [AC_MSG_RESULT(no)] )
+AM_CONDITIONAL(STATIC, test $STATIC = yes)
+
+dnl Checks for programs.
+
+dnl Checks for libraries.
+
+dnl math library
+AC_CHECK_LIB(m,main)
+
+dnl bzip2 compression library
+AC_CHECK_LIB(bz2,main)
+
+dnl boost
+AX_BOOST([1.33.1])
+dnl AX_BOOST_PYTHON
+
+dnl expat
+AC_CHECK_LIB(expat,main)
+
+AM_PATH_PYTHON([2.4])
+AC_PYTHON_DEVEL(>= '2.4')
+
+dnl Checks for header files.
+AC_CHECK_HEADER([expat.h])
+
+dnl Checks for typedefs, structures, and compiler characteristics.
+dnl Checks for library functions.
+
+dnl Checks for Additional stuffs.
+
+dnl Set PACKAGE SOURCE DIR in config.h.
+packagesrcdir=`cd $srcdir && pwd`
+
+dnl Set PACKAGE PREFIX
+if test "x${prefix}" = "xNONE"; then
+  packageprefix=${ac_default_prefix}
+else
+  packageprefix=${prefix}
+fi
+
+dnl Set PACKAGE DATA & DOC DIR
+packagedatadir=share/${PACKAGE}
+packagedocdir=doc/${PACKAGE}
+
+
+dnl Subst PACKAGE_DATA_DIR.
+NO_PREFIX_PACKAGE_DATA_DIR="${packagedatadir}"
+AC_SUBST(NO_PREFIX_PACKAGE_DATA_DIR)
+PACKAGE_DATA_DIR="${packageprefix}/${packagedatadir}"
+AC_SUBST(PACKAGE_DATA_DIR)
+
+dnl Subst PACKAGE_DOC_DIR.
+NO_PREFIX_PACKAGE_DOC_DIR="${packagedocdir}"
+AC_SUBST(NO_PREFIX_PACKAGE_DOC_DIR)
+PACKAGE_DOC_DIR="${packageprefix}/${packagedocdir}"
+AC_SUBST(PACKAGE_DOC_DIR)
+
+AC_DEFINE_UNQUOTED([PACKAGE_DATA_DIR], "${packageprefix}/${packagedatadir}", [package data dir])
+AC_DEFINE_UNQUOTED([PACKAGE_DOC_DIR], "${packageprefix}/${packagedocdir}", [package doc dir])
+AC_DEFINE_UNQUOTED([PACKAGE_SOURCE_DIR], "${packagesrcdir}", [package source dir])
+
+AC_DEFINE_UNQUOTED([AUTHOR], "Tiago de Paula Peixoto <tpeixoto@if.usp.br>", [program author(s)])
+
+AC_DEFINE_UNQUOTED([COPYRIGHT],
+    "Copyright (C) 2006 Tiago de Paula Peixoto\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+	[copyright info])
+dnl fi
+AC_OUTPUT([
+Makefile
+src/Makefile
+src/graph/Makefile
+])
+
