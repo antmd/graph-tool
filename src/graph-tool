@@ -382,7 +382,7 @@ def parse_option(opt, just_file=False):
                 variables[k] = v
         filter_vars["populate_vars"] = populate_vars
         try:
-            exec "def filter_function(props):\n    populate_vars(props,variables); return %s\n" % opt.value in filter_vars
+            exec "def filter_function(props):\n    populate_vars(props,variables); return not %s\n" % opt.value in filter_vars
         except:
             raise OptionError(opt.name, "invalid value '%s': %s" % (opt.value,sys.exc_info()[0]))
         if opt.name == "vertex-filter":
