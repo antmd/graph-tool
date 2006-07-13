@@ -38,7 +38,7 @@ using namespace graph_tool;
 // return generalized average nearest neighbours degree
 //==============================================================================
 
-template <class EdgeSelector, class DegreeSelectorOrigin, class DegreeSelectorNeighbours>
+template <class DegreeSelectorOrigin, class DegreeSelectorNeighbours>
 struct get_average_nearest_neighbours_degree
 {
     get_average_nearest_neighbours_degree(DegreeSelectorOrigin& origin_deg, DegreeSelectorNeighbours& neighbours_deg)
@@ -54,15 +54,15 @@ struct get_average_nearest_neighbours_degree
 	tie(v_begin,v_end) = vertices(g);
 	for(v = v_begin; v != v_end; ++v)
 	{
-	    typename EdgeSelector::template iterator<Graph>::type e, e_begin, e_end;
-	    tie(e_begin,e_end) = _edges(*v,g);
+	    typename graph_traits<Graph>::out_edge_iterator e, e_begin, e_end;
+	    tie(e_begin,e_end) = out_edges(*v,g);
 	    for(e = e_begin; e != e_end; ++e)
 	    {		
-		if (neighbour_set.find(_edges.target(*e,g)) != neighbour_set.end())
+		if (neighbour_set.find(target(*e,g)) != neighbour_set.end())
 		    continue;
 		else
-		    neighbour_set.insert(_edges.target(*e,g));
-		typename AvgDeg::value_type::second_type::first_type deg = _neighbours_degree(_edges.target(*e,g),g);
+		    neighbour_set.insert(target(*e,g));
+		typename AvgDeg::value_type::second_type::first_type deg = _neighbours_degree(target(*e,g),g);
 		typename AvgDeg::key_type orig_deg = _origin_degree(*v,g);
 		avg_deg[orig_deg].first += deg;
 		avg_deg[orig_deg].second += deg*deg;
@@ -83,61 +83,45 @@ struct get_average_nearest_neighbours_degree
     }
     DegreeSelectorOrigin& _origin_degree;
     DegreeSelectorNeighbours& _neighbours_degree;
-    EdgeSelector _edges;
 };
 
 template <class DegreeSelectors>
 struct choose_average_nearest_neighbours_degree
 {
-    choose_average_nearest_neighbours_degree(const GraphInterface &g, GraphInterface::neighbours_t neigh,
-					     GraphInterface::deg_t origin_deg, GraphInterface::deg_t neighbour_deg, GraphInterface::avg_corr_t &avg_deg)
-	: _g(g), _neigh(neigh), _avg_deg(avg_deg) 
+    choose_average_nearest_neighbours_degree(const GraphInterface &g, GraphInterface::deg_t origin_deg, GraphInterface::deg_t neighbour_deg, GraphInterface::avg_corr_t &avg_deg)
+	: _g(g), _avg_deg(avg_deg) 
     {
 	tie(_origin_deg, _origin_deg_name) = get_degree_type(origin_deg);
 	tie(_neighbour_deg, _neighbour_deg_name) = get_degree_type(neighbour_deg);
     }
 
-    template <class EdgeSelector, class OriginDegreeSelector>
+    template <class OriginDegreeSelector>
     struct choose_neighbour_degree
     {
-	choose_neighbour_degree(choose_average_nearest_neighbours_degree<DegreeSelectors> &parent):_parent(parent) {}
+	choose_neighbour_degree(choose_average_nearest_neighbours_degree<DegreeSelectors>& parent):_parent(parent) {}
 	template <class DegreeSelector>
 	void operator()(DegreeSelector)
 	{
-	    OriginDegreeSelector origin_deg(_parent._origin_deg_name, _parent._g);
-	    DegreeSelector deg(_parent._neighbour_deg_name, _parent._g);
 	    if ( mpl::at<degree_selector_index, DegreeSelector>::type::value == _parent._neighbour_deg)
-		check_filter(_parent._g, bind<void>(get_average_nearest_neighbours_degree<EdgeSelector,
-						                                          OriginDegreeSelector,
-						                                          DegreeSelector>(origin_deg, deg),
-						    _1, var(_parent._avg_deg)), 
+	    {
+		OriginDegreeSelector origin_deg(_parent._origin_deg_name, _parent._g);
+		DegreeSelector deg(_parent._neighbour_deg_name, _parent._g);
+		check_filter(_parent._g, bind<void>(get_average_nearest_neighbours_degree<OriginDegreeSelector,DegreeSelector>(origin_deg, deg),
+						    _1, var(_parent._avg_deg)),
 			     reverse_check(),directed_check()); 
+	    }
 	}
 	choose_average_nearest_neighbours_degree<DegreeSelectors> &_parent;
     };
 
-    template <class EdgeSelector>
-    struct choose_origin_degree
+    template <class DegreeSelector>
+    void operator()(DegreeSelector)
     {
-	choose_origin_degree(choose_average_nearest_neighbours_degree<DegreeSelectors> &parent):_parent(parent) {}
-	template <class DegreeSelector>
-	void operator()(DegreeSelector)
-	{
-	    if ( mpl::at<degree_selector_index, DegreeSelector>::type::value == _parent._origin_deg)
-		mpl::for_each<DegreeSelectors>(choose_neighbour_degree<EdgeSelector,DegreeSelector>(_parent));
-	}
-	choose_average_nearest_neighbours_degree<DegreeSelectors> &_parent;
-    };
-
-    template <class EdgeSelector>
-    void operator()(EdgeSelector)
-    {
-	if (mpl::at<edges_selector_index, EdgeSelector>::type::value == _neigh)
-	    mpl::for_each<DegreeSelectors>(choose_origin_degree<EdgeSelector>(*this));
+	if (mpl::at<degree_selector_index, DegreeSelector>::type::value == _origin_deg)
+	    mpl::for_each<DegreeSelectors>(choose_neighbour_degree<DegreeSelector>(*this));
     }
 
     const GraphInterface &_g;
-    GraphInterface::neighbours_t _neigh;
     GraphInterface::avg_corr_t &_avg_deg;
     GraphInterface::degree_t _origin_deg;
     string _origin_deg_name;
@@ -149,15 +133,14 @@ struct choose_average_nearest_neighbours_degree
 // GetAverageNearestNeighboursDegree(neigh, orign_deg, neighbours_deg)
 //==============================================================================
 GraphInterface::avg_corr_t
-GraphInterface::GetAverageNearestNeighboursDegree(neighbours_t neigh, deg_t origin_deg, deg_t neighbours_deg ) const
+GraphInterface::GetAverageNearestNeighboursDegree(deg_t origin_deg, deg_t neighbours_deg ) const
 {
     GraphInterface::avg_corr_t avg_corr;
 
     try 
     {
 	typedef mpl::vector<in_degreeS,out_degreeS,total_degreeS,scalarS> degrees;
-	typedef mpl::vector<out_edgeS,in_edgeS,any_edgeS> edges;
-	mpl::for_each<edges>(choose_average_nearest_neighbours_degree<degrees>(*this, neigh, origin_deg, neighbours_deg, avg_corr));
+	mpl::for_each<degrees>(choose_average_nearest_neighbours_degree<degrees>(*this, origin_deg, neighbours_deg, avg_corr));
     }
     catch (dynamic_get_failure &e)
     {

@@ -96,10 +96,10 @@ statistics.add_option("--component-size-histogram", action="callback", callback=
 
 correlations =  parser.add_option_group("Correlations")
 correlations.add_option("--degree-correlation-histogram", action="callback", callback=push_option, type="string", metavar="DEGREE1|DEGREE2|FILE", help="get the degree correlation histogram. Scalar properties are also accepted in place of DEGREE")
-correlations.add_option("--average-nearest-neighbours-degree", action="callback", callback=push_option, type="string", metavar="NEIGHBOURS|ORIGIN-DEGREE|DEGREE|FILE", help="get the average nearest neighbours degree")
+correlations.add_option("--average-nearest-neighbours-degree", action="callback", callback=push_option, type="string", metavar="ORIGIN-DEGREE|DEGREE|FILE", help="get the average nearest neighbours degree")
 correlations.add_option("--edge-degree-correlation-histogram", action="callback", callback=push_option, type="string", metavar="DEGREE1|EDGE-PROP|DEGREE2|FILE", help="get the source degree vs. edge scalar vs. target degree correlation histogram. Scalar properties are also accepted in place of DEGREE-TYPE")
 correlations.add_option("--vertex-scalar-correlation-histogram", action="callback", callback=push_option, type="string", metavar="DEGREE|VERTEX-PROP|FILE", help="get the degree vs. vertex scalar correlation histogram. Scalar properties are also accepted in place of DEGREE")
-correlations.add_option("--assortativity-coefficient", action="callback", callback=push_option, type="string", metavar="NEIGHBOURS|DEGREE|DEGREE|FILE", help="get the assortativity coefficient. Scalar properties are also accepted in place of DEGREE (not yet)")
+correlations.add_option("--assortativity-coefficient", action="callback", callback=push_option, type="string", metavar="DEGREE|FILE", help="get the assortativity coefficient. Scalar properties are also accepted in place of DEGREE")
 
 clustering =  parser.add_option_group("Clustering")
 clustering.add_option("--local-clustering-coefficient", action="callback", callback=push_option, type="string", metavar="FILE", help="get the local clustering coefficient")
@@ -147,17 +147,6 @@ def degree(name):
     if name == "total-degree" or name == "total":
         deg = Degree.Total
     return deg
-
-def neighbour(name):
-    "this will retrieve the neighbour type from string"
-    nei = None
-    if name == "in-neighbours" or name == "in":
-        nei = Neighbours.In
-    if name == "out-neighbours" or name == "out":
-        nei = Neighbours.Out
-    if name == "all-neighbours" or name == "all":
-        nei = Neighbours.All
-    return nei
 
 class OptionError(Exception):
     def __init__(self, option, error):
@@ -296,28 +285,21 @@ def parse_option(opt, just_file=False):
         return (graph.GetVertexDegreeScalarCorrelationHistogram(deg,values[1]),values[2])
     elif opt.name == "average-nearest-neighbours-degree":
         values = parse_values(opt.value)
-        if len(values) != 4:
+        if len(values) != 3:
             raise OptionError(opt.name, "invalid value '%s'" % opt.value)
-        nei = neighbour(values[0])
-        if nei == None:
-            raise OptionError(opt.name, "invalid neighbour type '%s'" % values[0])
-        deg1 = degree(values[1])
-        deg2 = degree(values[2])
+        deg1 = degree(values[0])
+        deg2 = degree(values[1])
         if just_file:
-            return values[3]
-        return (graph.GetAverageNearestNeighboursDegree(nei,deg1,deg2), values[3])
+            return values[2]
+        return (graph.GetAverageNearestNeighboursDegree(deg1,deg2), values[2])
     elif opt.name == "assortativity-coefficient":
         values = parse_values(opt.value)
-        if len(values) != 4:
+        if len(values) != 2:
             raise OptionError(opt.name, "invalid value '%s'" % opt.value)
-        nei = neighbour(values[0])
-        if nei == None:
-            raise OptionError(opt.name, "invalid neighbour type '%s'" % values[0])
-        deg1 = degree(values[1])
-        deg2 = degree(values[2])
+        deg = degree(values[0])
         if just_file:
-            return values[3]
-        return (graph.GetAssortativityCoefficient(nei,deg1,deg2), values[3])
+            return values[1]
+        return (graph.GetAssortativityCoefficient(deg), values[1])
     elif opt.name == "local-clustering-coefficient":
         hist = graph.GetLocalClusteringHistogram()
         avg,count = 0.0,0.0

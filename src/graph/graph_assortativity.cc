@@ -34,13 +34,13 @@ using namespace boost::lambda;
 using namespace graph_tool;
 
 //==============================================================================
-// GetAssortativityCoefficient(neigh, deg1, deg2)
+// GetAssortativityCoefficient(type)
 //==============================================================================
 
-template <class EdgeSelector, class DegreeSelector1, class DegreeSelector2>
+template <class DegreeSelector>
 struct get_assortativity_coefficient
 {
-    get_assortativity_coefficient(DegreeSelector1& deg1, DegreeSelector2& deg2): _deg1(deg1), _deg2(deg2) {}
+    get_assortativity_coefficient(DegreeSelector& deg): _deg(deg) {}
 
     template <class Graph>
     void operator()(const Graph &g, double &a) const
@@ -54,15 +54,15 @@ struct get_assortativity_coefficient
 	for(v = v_begin; v != v_end; ++v)
 	{
 	    double k1, k2;
-	    k1 = _deg1(*v,g);
+	    k1 = _deg(*v,g);
 	    n_k[k1]++;
 	    n_vertices++;
 	    
-	    typename EdgeSelector::template iterator<Graph>::type e, e_begin, e_end;
-	    tie(e_begin, e_end) = _edges(*v,g);
+	    typename graph_traits<Graph>::out_edge_iterator e, e_begin, e_end;
+	    tie(e_begin, e_end) = out_edges(*v,g);
 	    for (e = e_begin; e != e_end; ++e)
 	    {
-		k2 = _deg2(_edges.target(*e,g),g);
+		k2 = _deg(target(*e,g),g);
 		if (k1 == k2)
 		    e_kk[k1]++;
 		n_edges++;
@@ -82,80 +82,45 @@ struct get_assortativity_coefficient
 	a = (t1 == 1.0)?1.0:(t1 - t2)/(1.0 - t2);
     }
     
-    EdgeSelector _edges;
-    DegreeSelector1& _deg1;
-    DegreeSelector2& _deg2;
+    DegreeSelector& _deg;
 };
 
-template <class DegreeSelectors>
 struct choose_assortativity_coefficient
 {
-    choose_assortativity_coefficient(const GraphInterface &g, GraphInterface::neighbours_t neigh,
-				     GraphInterface::deg_t deg1, GraphInterface::deg_t deg2, double &a)
-	: _g(g), _neigh(neigh), _a(a) 
+    choose_assortativity_coefficient(const GraphInterface &g, GraphInterface::deg_t deg, double &a)
+	: _g(g), _a(a) 
     {
-	tie(_deg1, _deg_name1) = get_degree_type(deg1);
-	tie(_deg2, _deg_name2) = get_degree_type(deg2);
+	tie(_deg, _deg_name) = get_degree_type(deg);
     }
-
-    template <class NeighbourSelector, class DegreeSelector1>
-    struct choose_degree_two
-    {
-	choose_degree_two(choose_assortativity_coefficient<DegreeSelectors> &parent):_parent(parent) {}
-	template <class DegreeSelector2>
-	void operator()(DegreeSelector2)
+    
+    
+    template <class DegreeSelector>
+    void operator()(DegreeSelector)
+    {	
+	if (mpl::at<degree_selector_index, DegreeSelector>::type::value == _deg)
 	{
-	    if (mpl::at<degree_selector_index, DegreeSelector2>::type::value == _parent._deg2)
-	    {
-		DegreeSelector1 deg1(_parent._deg_name1, _parent._g);
-		DegreeSelector2 deg2(_parent._deg_name2, _parent._g);
-		check_filter(_parent._g, bind<void>(get_assortativity_coefficient<NeighbourSelector,DegreeSelector1,DegreeSelector2>(deg1,deg2), 
-						    _1, var(_parent._a)), 
-			     reverse_check(),directed_check());
-	    }
+	    DegreeSelector deg(_deg_name, _g);
+	    check_filter(_g, bind<void>(get_assortativity_coefficient<DegreeSelector>(deg), _1, var(_a)), 
+			 reverse_check(),directed_check());
 	}
-	choose_assortativity_coefficient<DegreeSelectors> &_parent;
     };
 
-    template <class NeighbourSelector>
-    struct choose_degree_one
-    {
-	choose_degree_one(choose_assortativity_coefficient<DegreeSelectors> &parent):_parent(parent) {}
-	template <class DegreeSelector1>
-	void operator()(DegreeSelector1)
-	{
-	    if (mpl::at<degree_selector_index, DegreeSelector1>::type::value == _parent._deg1)
-		mpl::for_each<DegreeSelectors>(choose_degree_two<NeighbourSelector, DegreeSelector1>(_parent));
-	}
-	choose_assortativity_coefficient<DegreeSelectors> &_parent;
-    };
-
-    template <class NeighbourSelector>
-    void operator()(NeighbourSelector)
-    {
-	if (mpl::at<edges_selector_index, NeighbourSelector>::type::value == _neigh)
-	    mpl::for_each<DegreeSelectors>(choose_degree_one<NeighbourSelector>(*this));
-    }
 
     const GraphInterface &_g;
-    GraphInterface::neighbours_t _neigh;
     double &_a;
-    GraphInterface::degree_t _deg1;
-    string _deg_name1;
-    GraphInterface::degree_t _deg2;
-    string _deg_name2;
+    GraphInterface::degree_t _deg;
+    string _deg_name;
 };
 
 
 double 
-GraphInterface::GetAssortativityCoefficient(GraphInterface::neighbours_t neigh, GraphInterface::deg_t deg1, GraphInterface::deg_t deg2 ) const
+GraphInterface::GetAssortativityCoefficient(GraphInterface::deg_t deg) const
 {
     double a;
     try
     {
-	typedef mpl::vector<out_edgeS, in_edgeS, any_edgeS> neighbours;
 	typedef mpl::vector<in_degreeS, out_degreeS, total_degreeS, scalarS> degrees;
-	mpl::for_each<neighbours>(choose_assortativity_coefficient<degrees>(*this, neigh, deg1, deg2, a));
+	mpl::for_each<degrees>(choose_assortativity_coefficient(*this, deg, a));
     }
     catch (dynamic_get_failure &e)
     {

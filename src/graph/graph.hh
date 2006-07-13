@@ -84,8 +84,8 @@ public:
     hist2d_t   GetDegreeCorrelationHistogram(deg_t degree1, deg_t degree2) const;
     hist3d_t   GetEdgeDegreeCorrelationHistogram(deg_t deg1, std::string scalar, deg_t deg2) const;
     hist2d_t   GetVertexDegreeScalarCorrelationHistogram(deg_t deg, std::string scalar) const;
-    avg_corr_t GetAverageNearestNeighboursDegree(neighbours_t neighbours, deg_t origin_degree, deg_t neighbour_degree) const;
-    double     GetAssortativityCoefficient(neighbours_t neighbours, deg_t deg1, deg_t deg2) const;
+    avg_corr_t GetAverageNearestNeighboursDegree(deg_t origin_degree, deg_t neighbour_degree) const;
+    double     GetAssortativityCoefficient(deg_t deg) const;
 
     //clustering
     hist_t     GetLocalClusteringHistogram() const;
