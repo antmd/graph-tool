@@ -22,7 +22,7 @@
 // find_property_map(dp,name,key_type)
 //==============================================================================
 boost::dynamic_property_map& 
-graph_tool::find_property_map(boost::dynamic_properties& dp, std::string name, const std::type_info& key_type)
+graph_tool::find_property_map(const boost::dynamic_properties& dp, std::string name, const std::type_info& key_type)
 {
     for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)
 	if (iter->first == name && iter->second->key() == key_type)

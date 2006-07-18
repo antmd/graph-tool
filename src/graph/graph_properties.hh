@@ -35,7 +35,7 @@ PropertyMap& get_static_property_map(boost::dynamic_property_map& map)
     return dynamic_cast<boost::detail::dynamic_property_map_adaptor<PropertyMap>&>(map).base();
 }
 
-boost::dynamic_property_map& find_property_map(boost::dynamic_properties& dp, std::string name, const std::type_info& key_type);
+boost::dynamic_property_map& find_property_map(const boost::dynamic_properties& dp, std::string name, const std::type_info& key_type);
 
 struct dynamic_properties_copy: public boost::dynamic_properties
 {

@@ -51,13 +51,6 @@ public:
 	SCALAR
     };
 
-    enum neighbours_t
-    {
-	IN_NEIGHBOURS,
-	OUT_NEIGHBOURS,
-	ALL_NEIGHBOURS
-    };
-
     // histogram types
     typedef std::tr1::unordered_map<double,size_t> hist_t;
     typedef std::tr1::unordered_map<std::pair<double,double>,size_t, boost::hash<std::pair<double,double> > > hist2d_t;
@@ -71,26 +64,25 @@ public:
     typedef boost::function<std::pair<size_t,size_t> (double r1, double r2)> inv_ceil_t;
     typedef boost::function<double (size_t jl, size_t kl, size_t j, size_t k)> corr_t;
     typedef boost::function<std::pair<size_t,size_t>  (double r1, double r2, size_t j, size_t k)> inv_corr_t;
-    void GenerateCorrelatedConfigurationalModel(size_t N, pjk_t p, pjk_t ceil, inv_ceil_t inv_ceil, double ceil_pjk_bound, corr_t corr, corr_t ceil_corr, 
-						inv_corr_t inv_ceil_corr, double ceil_corr_bound, bool undirected_corr, size_t seed, bool verbose);
+    void GenerateCorrelatedConfigurationalModel(size_t N, pjk_t p, pjk_t ceil, inv_ceil_t inv_ceil, double ceil_pjk_bound, corr_t corr, corr_t ceil_corr, inv_corr_t inv_ceil_corr, double ceil_corr_bound, bool undirected_corr, size_t seed, bool verbose);
 
     // basic stats
     size_t GetNumberOfVertices() const;
     size_t GetNumberOfEdges() const;
-    hist_t GetDegreeHistogram(deg_t degree) const;
+    hist_t GetVertexHistogram(deg_t degree) const;
+    hist_t GetEdgeHistogram(std::string property) const;
 
     //correlations
     hist2d_t   GetCombinedDegreeHistogram() const;    
-    hist2d_t   GetDegreeCorrelationHistogram(deg_t degree1, deg_t degree2) const;
-    hist3d_t   GetEdgeDegreeCorrelationHistogram(deg_t deg1, std::string scalar, deg_t deg2) const;
-    hist2d_t   GetVertexDegreeScalarCorrelationHistogram(deg_t deg, std::string scalar) const;
-    avg_corr_t GetAverageNearestNeighboursDegree(deg_t origin_degree, deg_t neighbour_degree) const;
+    hist2d_t   GetVertexCorrelationHistogram(deg_t degree1, deg_t degree2) const;
+    hist3d_t   GetEdgeVertexCorrelationHistogram(deg_t deg1, std::string scalar, deg_t deg2) const;
+    hist2d_t   GetVertexScalarCorrelationHistogram(deg_t deg, std::string scalar) const;
+    avg_corr_t GetAverageNearestNeighboursCorrelation(deg_t origin_degree, deg_t neighbour_degree) const;
     double     GetAssortativityCoefficient(deg_t deg) const;
 
     //clustering
-    hist_t     GetLocalClusteringHistogram() const;
-    void       SetLocalClusteringToProperty(std::string property);
-    double     GetGlobalClustering() const;
+    void   SetLocalClusteringToProperty(std::string property);
+    double GetGlobalClustering() const;
 
     // other
     hist_t GetComponentSizeHistogram() const;

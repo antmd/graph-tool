@@ -35,6 +35,7 @@ import string
 import time
 import signal
 from time import *
+import math
 
 try:
     import psyco
@@ -88,22 +89,24 @@ modification.add_option("--remove-parallel-edges", action="callback", callback=p
 statistics =  parser.add_option_group("Basic Statistics")
 statistics.add_option("--number-of-vertices", action="callback", callback=push_option, type="string", metavar="FILE", help="get the number of vertices")
 statistics.add_option("--number-of-edges", action="callback", callback=push_option, type="string", metavar="FILE", help="get the number of edges")
-statistics.add_option("--degree-histogram", action="callback", callback=push_option, type="string", metavar="DEGREE|FILE", help="get the degree histogram")
+statistics.add_option("--vertex-histogram", action="callback", callback=push_option, type="string", metavar="DEGREE|FILE", help="get the vertex degree/property histogram")
+statistics.add_option("--edge-histogram", action="callback", callback=push_option, type="string", metavar="PROPERTY|FILE", help="get the edge property histogram")
 statistics.add_option("--combined-degree-histogram", action="callback", callback=push_option, type="string", metavar="FILE", help="get the combined (in,out)-degree histogram")
 statistics.add_option("--average-distance", action="callback", callback=push_option, type="string", metavar="FILE", help="get the averarge distance")
 statistics.add_option("--average-harmonic-distance", action="callback", callback=push_option, type="string", metavar="FILE", help="get the averarge harmonic distance")
 statistics.add_option("--component-size-histogram", action="callback", callback=push_option, type="string", metavar="FILE", help="get the component size histogram")
+statistics.add_option("--average-vertex-property", action="callback", callback=push_option, type="string", metavar="PROPERTY|FILE", help="get the average of the vertex property")
+statistics.add_option("--average-edge-property", action="callback", callback=push_option, type="string", metavar="PROPERTY|FILE", help="get the average of the edge property")
+
 
 correlations =  parser.add_option_group("Correlations")
-correlations.add_option("--degree-correlation-histogram", action="callback", callback=push_option, type="string", metavar="DEGREE1|DEGREE2|FILE", help="get the degree correlation histogram. Scalar properties are also accepted in place of DEGREE")
-correlations.add_option("--average-nearest-neighbours-degree", action="callback", callback=push_option, type="string", metavar="ORIGIN-DEGREE|DEGREE|FILE", help="get the average nearest neighbours degree")
-correlations.add_option("--edge-degree-correlation-histogram", action="callback", callback=push_option, type="string", metavar="DEGREE1|EDGE-PROP|DEGREE2|FILE", help="get the source degree vs. edge scalar vs. target degree correlation histogram. Scalar properties are also accepted in place of DEGREE-TYPE")
+correlations.add_option("--vertex-correlation-histogram", action="callback", callback=push_option, type="string", metavar="DEGREE1|DEGREE2|FILE", help="get the degree correlation histogram. Scalar properties are also accepted in place of DEGREE")
+correlations.add_option("--average-nearest-neighbours-correlation", action="callback", callback=push_option, type="string", metavar="ORIGIN-DEGREE|DEGREE|FILE", help="get the average nearest neighbours correlation")
+correlations.add_option("--edge-vertex-correlation-histogram", action="callback", callback=push_option, type="string", metavar="DEGREE1|EDGE-PROP|DEGREE2|FILE", help="get the source degree vs. edge scalar vs. target degree correlation histogram. Scalar properties are also accepted in place of DEGREE-TYPE")
 correlations.add_option("--vertex-scalar-correlation-histogram", action="callback", callback=push_option, type="string", metavar="DEGREE|VERTEX-PROP|FILE", help="get the degree vs. vertex scalar correlation histogram. Scalar properties are also accepted in place of DEGREE")
 correlations.add_option("--assortativity-coefficient", action="callback", callback=push_option, type="string", metavar="DEGREE|FILE", help="get the assortativity coefficient. Scalar properties are also accepted in place of DEGREE")
 
 clustering =  parser.add_option_group("Clustering")
-clustering.add_option("--local-clustering-coefficient", action="callback", callback=push_option, type="string", metavar="FILE", help="get the local clustering coefficient")
-clustering.add_option("--local-clustering-coefficient-histogram", action="callback", callback=push_option, type="string", metavar="DEGREE_TYPE|FILE", help="get the local clustering coefficient histogram")
 clustering.add_option("--set-local-clustering-to-property", action="callback", callback=push_option, type="string", metavar="PROPERTY", help="set the local clustering coefficient to vertex property")
 clustering.add_option("--global-clustering-coefficient", action="callback", callback=push_option, type="string", metavar="FILE", help="get the global clustering coefficient")
 
@@ -249,15 +252,22 @@ def parse_option(opt, just_file=False):
         if just_file:
             return opt.value
         return (graph.GetComponentSizeHistogram(), opt.value)
-    elif opt.name == "degree-histogram":
+    elif opt.name == "vertex-histogram":
         values = parse_values(opt.value)
         if len(values) != 2:
             raise OptionError(opt.name, "invalid value '%s'" % opt.value)
         deg = degree(values[0])
         if just_file:
             return values[1]
-        return (graph.GetDegreeHistogram(deg), values[1])
-    elif opt.name == "degree-correlation-histogram":
+        return (graph.GetVertexHistogram(deg), values[1])
+    elif opt.name == "edge-histogram":
+        values = parse_values(opt.value)
+        if len(values) != 2:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        if just_file:
+            return values[1]
+        return (graph.GetEdgeHistogram(values[0]), values[1])
+    elif opt.name == "vertex-correlation-histogram":
         values = parse_values(opt.value)
         if len(values) != 3:
             raise OptionError(opt.name, "invalid value '%s'" % opt.value)
@@ -265,8 +275,8 @@ def parse_option(opt, just_file=False):
         deg2 = degree(values[1])
         if just_file:
             return values[2]
-        return (graph.GetDegreeCorrelationHistogram(deg1,deg2), values[2])
-    elif opt.name == "edge-degree-correlation-histogram":
+        return (graph.GetVertexCorrelationHistogram(deg1,deg2), values[2])
+    elif opt.name == "edge-vertex-correlation-histogram":
         values = parse_values(opt.value)
         if len(values) != 4:
             raise OptionError(opt.name, "invalid value '%s'" % opt.value)
@@ -274,7 +284,7 @@ def parse_option(opt, just_file=False):
         deg2 = degree(values[2])
         if just_file:
             return values[3]
-        return (graph.GetEdgeDegreeCorrelationHistogram(deg1,values[1],deg2), values[3])
+        return (graph.GetEdgeVertexCorrelationHistogram(deg1,values[1],deg2), values[3])
     elif opt.name == "vertex-scalar-correlation-histogram":
         values = parse_values(opt.value)
         if len(values) != 3:
@@ -283,7 +293,7 @@ def parse_option(opt, just_file=False):
         if just_file:
             return values[2]
         return (graph.GetVertexDegreeScalarCorrelationHistogram(deg,values[1]),values[2])
-    elif opt.name == "average-nearest-neighbours-degree":
+    elif opt.name == "average-nearest-neighbours-correlation":
         values = parse_values(opt.value)
         if len(values) != 3:
             raise OptionError(opt.name, "invalid value '%s'" % opt.value)
@@ -291,7 +301,7 @@ def parse_option(opt, just_file=False):
         deg2 = degree(values[1])
         if just_file:
             return values[2]
-        return (graph.GetAverageNearestNeighboursDegree(deg1,deg2), values[2])
+        return (graph.GetAverageNearestNeighboursCorrelation(deg1,deg2), values[2])
     elif opt.name == "assortativity-coefficient":
         values = parse_values(opt.value)
         if len(values) != 2:
@@ -300,20 +310,26 @@ def parse_option(opt, just_file=False):
         if just_file:
             return values[1]
         return (graph.GetAssortativityCoefficient(deg), values[1])
-    elif opt.name == "local-clustering-coefficient":
-        hist = graph.GetLocalClusteringHistogram()
-        avg,count = 0.0,0.0
+    elif opt.name == "average-vertex-property" or opt.name == "average-edge-property":
+        values = parse_values(opt.value)
+        if len(values) != 2:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        if opt.name == "average-vertex-property":
+            deg = degree(values[0])
+            hist = graph.GetVertexHistogram(deg)
+        else:
+            hist = graph.GetEdgeHistogram(values[0])
+        avg,dev,count = 0.0,0.0,0.0
         for k,v in hist.iteritems():
             avg += k*v
+            dev += k*k*v
             count += v
         avg /= count
+        dev = math.sqrt(dev/count - avg*avg)/math.sqrt(count)
+        ret = "%f\t%f" % (avg, dev)
         if just_file:
-            return opt.value
-        return (avg,opt.value)
-    elif opt.name == "local-clustering-coefficiet-histogram":
-        if just_file:
-            return opt.value
-        return (graph.GetLocalClusteringHistogram(), opt.value)
+            return values[1]
+        return (ret,values[1])
     elif opt.name == "global-clustering-coefficient":
         if just_file:
             return opt.value

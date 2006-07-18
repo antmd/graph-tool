@@ -225,15 +225,15 @@ size_t GraphInterface::GetNumberOfEdges() const
 }
 
 //==============================================================================
-// get_degree_histogram
-// generalized functor to obtain histogram of different types of degrees
+// get_vertex_histogram
+// generalized functor to obtain histogram of different types of "degrees"
 //==============================================================================
 template <class DegreeSelector>
-struct get_degree_histogram
+struct get_vertex_histogram
 {
-    get_degree_histogram(DegreeSelector &deg): _degree(deg) {}
+    get_vertex_histogram(DegreeSelector& deg): _degree(deg) {}
     template <class Graph, class Hist>
-    void operator()(const Graph &g, Hist &hist) const
+    void operator()(const Graph& g, Hist& hist) const
     {
 	typename graph_traits<Graph>::vertex_iterator v, v_begin, v_end;
         tie(v_begin, v_end) = vertices(g);
@@ -243,9 +243,9 @@ struct get_degree_histogram
     DegreeSelector& _degree;
 };
 
-struct choose_degree_histogram
+struct choose_vertex_histogram
 {
-    choose_degree_histogram(const GraphInterface &g, GraphInterface::deg_t deg, GraphInterface::hist_t &hist)
+    choose_vertex_histogram(const GraphInterface& g, GraphInterface::deg_t deg, GraphInterface::hist_t& hist)
 	: _g(g), _hist(hist) 
     {
 	tie(_deg, _deg_name) = get_degree_type(deg);
@@ -256,7 +256,7 @@ struct choose_degree_histogram
 	if (mpl::at<degree_selector_index,DegreeSelector>::type::value == _deg)
 	{
 	    DegreeSelector selector(_deg_name, _g);
-	    check_filter(_g, bind<void>(get_degree_histogram<DegreeSelector>(selector), _1, var(_hist)),reverse_check(),directed_check());
+	    check_filter(_g, bind<void>(get_vertex_histogram<DegreeSelector>(selector), _1, var(_hist)),reverse_check(),directed_check());
 	}
     }
     const GraphInterface &_g;
@@ -266,14 +266,14 @@ struct choose_degree_histogram
 };
 
 //==============================================================================
-// GetDegreeHistogram(deg_type)
+// GetVertexHistogram(deg_type)
 //==============================================================================
-GraphInterface::hist_t GraphInterface::GetDegreeHistogram(GraphInterface::deg_t deg) const
+GraphInterface::hist_t GraphInterface::GetVertexHistogram(GraphInterface::deg_t deg) const
 {
     hist_t hist;
     try 
     {
-	mpl::for_each<mpl::vector<in_degreeS, out_degreeS, total_degreeS, scalarS> >(choose_degree_histogram(*this, deg, hist));
+	mpl::for_each<mpl::vector<in_degreeS, out_degreeS, total_degreeS, scalarS> >(choose_vertex_histogram(*this, deg, hist));
     }
     catch (dynamic_get_failure &e)
     {
@@ -282,6 +282,45 @@ GraphInterface::hist_t GraphInterface::GetDegreeHistogram(GraphInterface::deg_t 
 
     return hist;
 }
+
+//==============================================================================
+// get_edge_histogram
+// generalized functor to obtain histogram of edge properties
+//==============================================================================
+struct get_edge_histogram
+{
+    get_edge_histogram(scalarS& prop): _prop(prop) {}
+    template <class Graph, class Hist>
+    void operator()(const Graph& g, Hist& hist) const
+    {
+	typename graph_traits<Graph>::edge_iterator e, e_begin, e_end;
+        tie(e_begin, e_end) = edges(g);
+        for(e = e_begin; e != e_end; ++e)
+            hist[_prop(*e,g)]++;
+    }
+    scalarS& _prop;
+};
+
+//==============================================================================
+// GetEdgeHistogram(property)
+//==============================================================================
+GraphInterface::hist_t GraphInterface::GetEdgeHistogram(string property) const
+{
+    hist_t hist;
+    try 
+    {
+	scalarS prop(property, *this);
+	check_filter(*this, bind<void>(get_edge_histogram(prop), _1, var(hist)),reverse_check(),directed_check());
+    }
+    catch (dynamic_get_failure &e)
+    {
+	throw GraphException("error getting scalar property: " + string(e.what()));
+    }
+
+
+    return hist;
+}
+
 
 //==============================================================================
 // bfs_distance_sum_visitor

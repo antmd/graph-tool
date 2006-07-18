@@ -90,43 +90,6 @@ pair<int,int> get_triangles(typename graph_traits<Graph>::vertex_descriptor v, c
     return make_pair(triangles/2,(k*(k-1))/2);
 }
 
-//==============================================================================
-// GetClusteringHistogram()
-// retrieves the distribution of local clustering coefficients
-//==============================================================================
-
-struct get_clustering_histogram
-{
-    template <class Graph, class Hist>
-    void operator()(const Graph &g, Hist &hist) const
-    {
-	typename get_undirected_graph<Graph>::type ug(g);
-	typename graph_traits<Graph>::vertex_iterator v, v_begin, v_end;
-	tie(v_begin, v_end) = vertices(g);
-	for(v = v_begin; v != v_end; ++v)
-	{
-	    pair<size_t,size_t> triangles = get_triangles(*v,ug); // get from ug
-	    double clustering = (triangles.second > 0)?double(triangles.first)/triangles.second:0.0;
-	    hist[clustering]++;
-	}
-    }
-
-    template <class Graph>
-    struct get_undirected_graph
-    {
-	typedef typename mpl::if_< is_convertible<typename graph_traits<Graph>::directed_category, directed_tag>,
-				   const UndirectedAdaptor<Graph>,
-				   const Graph& >::type type;
-    };
-};
-
-GraphInterface::hist_t
-GraphInterface::GetLocalClusteringHistogram() const
-{       
-    hist_t hist;
-    check_filter(*this, bind<void>(get_clustering_histogram(), _1, var(hist)), reverse_check(), directed_check()); 
-    return hist;
-}
 
 //==============================================================================
 // GetGlobalClustering()
@@ -204,6 +167,13 @@ void GraphInterface::SetLocalClusteringToProperty(string property)
     clust_map_t clust_map(vertex_to_clust);
 
     check_filter(*this, bind<void>(set_clustering_to_property(), _1, var(clust_map)), reverse_check(), directed_check()); 
+
+    try
+    {
+	find_property_map(_properties, property, typeid(graph_traits<multigraph_t>::vertex_descriptor));
+	RemoveVertexProperty(property);
+    }
+    catch (property_not_found) {}
 
     _properties.property(property, clust_map);
 }

@@ -100,9 +100,9 @@ struct get_correlation_histogram
 //==============================================================================
 
 template <class SecondDegreeSelectors>
-struct choose_degree_correlation_histogram
+struct choose_vertex_correlation_histogram
 {
-    choose_degree_correlation_histogram(const GraphInterface &g, GraphInterface::deg_t deg1, 
+    choose_vertex_correlation_histogram(const GraphInterface &g, GraphInterface::deg_t deg1, 
 					GraphInterface::deg_t deg2, GraphInterface::hist2d_t &hist)
 	: _g(g), _hist(hist) 
     {
@@ -113,7 +113,7 @@ struct choose_degree_correlation_histogram
     template <class DegreeSelector1>
     struct check_second_degree
     {
-	check_second_degree(choose_degree_correlation_histogram<SecondDegreeSelectors> &parent):_parent(parent) {}
+	check_second_degree(choose_vertex_correlation_histogram<SecondDegreeSelectors> &parent):_parent(parent) {}
 	template <class DegreeSelector2>
 	void operator()(DegreeSelector2)
 	{
@@ -125,7 +125,7 @@ struct choose_degree_correlation_histogram
 			     reverse_check(),directed_check());
 	    }
 	}
-	choose_degree_correlation_histogram<SecondDegreeSelectors> _parent;
+	choose_vertex_correlation_histogram<SecondDegreeSelectors> _parent;
     };
 
     template <class DegreeSelector>
@@ -144,13 +144,13 @@ struct choose_degree_correlation_histogram
 };
 
 GraphInterface::hist2d_t 
-GraphInterface::GetDegreeCorrelationHistogram(GraphInterface::deg_t deg1, GraphInterface::deg_t deg2) const
+GraphInterface::GetVertexCorrelationHistogram(GraphInterface::deg_t deg1, GraphInterface::deg_t deg2) const
 {
     hist2d_t hist;
     typedef mpl::vector<in_degreeS, out_degreeS, total_degreeS, scalarS> degree_selectors;
     try 
     {
-	mpl::for_each<degree_selectors>(choose_degree_correlation_histogram<degree_selectors>(*this, deg1, deg2, hist));
+	mpl::for_each<degree_selectors>(choose_vertex_correlation_histogram<degree_selectors>(*this, deg1, deg2, hist));
     }
     catch (dynamic_get_failure &e)
     {
@@ -195,15 +195,15 @@ struct get_edge_correlation_histogram
 };
 
 //==============================================================================
-// GetEdgeDegreeCorrelationHistogram(deg1, scalar, deg2)
+// GetEdgeVertexCorrelationHistogram(deg1, scalar, deg2)
 // retrieves the degree-edge-degree correlation histogram 
 //==============================================================================
 
 template <class SecondDegreeSelectors>
-struct choose_edge_degree_correlation_histogram
+struct choose_edge_vertex_correlation_histogram
 {
-    choose_edge_degree_correlation_histogram(const GraphInterface &g, GraphInterface::deg_t deg1,  scalarS& edge_scalar, 
-					     GraphInterface::deg_t deg2, GraphInterface::hist3d_t &hist)
+    choose_edge_vertex_correlation_histogram(const GraphInterface& g, GraphInterface::deg_t deg1,  scalarS& edge_scalar, 
+					     GraphInterface::deg_t deg2, GraphInterface::hist3d_t& hist)
 	: _g(g), _edge_scalar(edge_scalar), _hist(hist) 
     {
 	tie(_deg1, _deg_name1) = get_degree_type(deg1);
@@ -213,7 +213,7 @@ struct choose_edge_degree_correlation_histogram
     template <class DegreeSelector1>
     struct check_second_degree
     {
-	check_second_degree(choose_edge_degree_correlation_histogram<SecondDegreeSelectors> &parent):_parent(parent) {}
+	check_second_degree(choose_edge_vertex_correlation_histogram<SecondDegreeSelectors> &parent):_parent(parent) {}
 	template <class DegreeSelector2>
 	void operator()(DegreeSelector2)
 	{
@@ -226,7 +226,7 @@ struct choose_edge_degree_correlation_histogram
 			     reverse_check(),directed_check());
 	    }
 	}
-	choose_edge_degree_correlation_histogram<SecondDegreeSelectors> _parent;
+	choose_edge_vertex_correlation_histogram<SecondDegreeSelectors> _parent;
     };
 
     template <class DegreeSelector>
@@ -235,9 +235,9 @@ struct choose_edge_degree_correlation_histogram
 	if (mpl::at<degree_selector_index,DegreeSelector>::type::value == _deg1)
 	    mpl::for_each<SecondDegreeSelectors>(check_second_degree<DegreeSelector>(*this));
     }
-    const GraphInterface &_g;
+    const GraphInterface& _g;
     scalarS& _edge_scalar;
-    GraphInterface::hist3d_t &_hist;
+    GraphInterface::hist3d_t& _hist;
     GraphInterface::degree_t _deg1;
     string _deg_name1;
     GraphInterface::degree_t _deg2;
@@ -245,7 +245,7 @@ struct choose_edge_degree_correlation_histogram
 };
 
 GraphInterface::hist3d_t 
-GraphInterface::GetEdgeDegreeCorrelationHistogram(GraphInterface::deg_t deg1, string edge_scalar, GraphInterface::deg_t deg2 ) const
+GraphInterface::GetEdgeVertexCorrelationHistogram(GraphInterface::deg_t deg1, string edge_scalar, GraphInterface::deg_t deg2) const
 {
     hist3d_t hist;
 
@@ -253,9 +253,9 @@ GraphInterface::GetEdgeDegreeCorrelationHistogram(GraphInterface::deg_t deg1, st
     try
     {
 	typedef mpl::vector<in_degreeS, out_degreeS, total_degreeS, scalarS> degree_selectors;
-	mpl::for_each<degree_selectors>(choose_edge_degree_correlation_histogram<degree_selectors>(*this, deg1, scalar, deg2, hist));
+	mpl::for_each<degree_selectors>(choose_edge_vertex_correlation_histogram<degree_selectors>(*this, deg1, scalar, deg2, hist));
     }
-    catch (dynamic_get_failure &e)
+    catch (dynamic_get_failure& e)
     {
 	throw GraphException("error getting scalar property: " + string(e.what()));
     }
@@ -289,14 +289,14 @@ struct get_vertex_scalar_correlation_histogram
 
 
 //==============================================================================
-// GetVertexDegreeScalarCorrelationHistogram(deg, scalar)
-// retrieves the degree-scalar vertex correlation histogram 
+// GetVertexScalarCorrelationHistogram(deg, scalar)
+// retrieves the vertex-scalar correlation histogram 
 //==============================================================================
 
-struct choose_vertex_degree_scalar_correlation_histogram
+struct choose_vertex_scalar_correlation_histogram
 {
-    choose_vertex_degree_scalar_correlation_histogram(const GraphInterface &g, GraphInterface::deg_t deg, scalarS& scalar, 
-						      GraphInterface::hist2d_t &hist)
+    choose_vertex_scalar_correlation_histogram(const GraphInterface& g, GraphInterface::deg_t deg, scalarS& scalar, 
+					       GraphInterface::hist2d_t& hist)
 	: _g(g), _scalar(scalar), _hist(hist) 
     {
 	tie(_deg, _deg_name) = get_degree_type(deg);
@@ -320,7 +320,7 @@ struct choose_vertex_degree_scalar_correlation_histogram
     string _deg_name;
 };
 
-GraphInterface::hist2d_t GraphInterface::GetVertexDegreeScalarCorrelationHistogram(deg_t deg, string scalar) const
+GraphInterface::hist2d_t GraphInterface::GetVertexScalarCorrelationHistogram(deg_t deg, string scalar) const
 {
     hist2d_t hist;
 
@@ -328,7 +328,7 @@ GraphInterface::hist2d_t GraphInterface::GetVertexDegreeScalarCorrelationHistogr
     try
     {
 	typedef mpl::vector<in_degreeS, out_degreeS, total_degreeS, scalarS> degree_selectors;
-	mpl::for_each<degree_selectors>(choose_vertex_degree_scalar_correlation_histogram(*this, deg, scalar_sel, hist));
+	mpl::for_each<degree_selectors>(choose_vertex_scalar_correlation_histogram(*this, deg, scalar_sel, hist));
     }
     catch (dynamic_get_failure &e)
     {

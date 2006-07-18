@@ -213,13 +213,14 @@ BOOST_PYTHON_MODULE(libgraph_tool)
 	.def("GenerateCorrelatedConfigurationalModel", &GraphInterfaceWrap::GenerateCorrelatedConfigurationalModel)
 	.def("GetNumberOfVertices", &GraphInterfaceWrap::GetNumberOfVertices)
 	.def("GetNumberOfEdges", &GraphInterfaceWrap::GetNumberOfEdges)
-	.def("GetDegreeHistogram", &GraphInterfaceWrap::GetDegreeHistogram)
+	.def("GetVertexHistogram", &GraphInterfaceWrap::GetVertexHistogram)
+	.def("GetEdgeHistogram", &GraphInterfaceWrap::GetEdgeHistogram)
 	.def("GetComponentSizeHistogram", &GraphInterfaceWrap::GetComponentSizeHistogram)
 	.def("GetCombinedDegreeHistogram", &GraphInterfaceWrap::GetCombinedDegreeHistogram)	
-	.def("GetDegreeCorrelationHistogram", &GraphInterfaceWrap::GetDegreeCorrelationHistogram)
-	.def("GetEdgeDegreeCorrelationHistogram", &GraphInterfaceWrap::GetEdgeDegreeCorrelationHistogram)
-	.def("GetVertexDegreeScalarCorrelationHistogram", &GraphInterfaceWrap::GetVertexDegreeScalarCorrelationHistogram)
-	.def("GetAverageNearestNeighboursDegree", &GraphInterfaceWrap::GetAverageNearestNeighboursDegree)
+	.def("GetVertexCorrelationHistogram", &GraphInterfaceWrap::GetVertexCorrelationHistogram)
+	.def("GetEdgeVertexCorrelationHistogram", &GraphInterfaceWrap::GetEdgeVertexCorrelationHistogram)
+	.def("GetVertexScalarCorrelationHistogram", &GraphInterfaceWrap::GetVertexScalarCorrelationHistogram)
+	.def("GetAverageNearestNeighboursCorrelation", &GraphInterfaceWrap::GetAverageNearestNeighboursCorrelation)
 	.def("GetAssortativityCoefficient", &GraphInterfaceWrap::GetAssortativityCoefficient)
 	.def("GetGlobalClustering", &GraphInterfaceWrap::GetGlobalClustering)
 	.def("SetLocalClusteringToProperty", &GraphInterfaceWrap::SetLocalClusteringToProperty)
@@ -256,11 +257,6 @@ BOOST_PYTHON_MODULE(libgraph_tool)
 	.value("In", GraphInterfaceWrap::IN_DEGREE)
 	.value("Out", GraphInterfaceWrap::OUT_DEGREE)
 	.value("Total", GraphInterfaceWrap::TOTAL_DEGREE);
-
-    enum_<GraphInterfaceWrap::neighbours_t>("Neighbours")
-	.value("In", GraphInterfaceWrap::IN_NEIGHBOURS)
-	.value("Out", GraphInterfaceWrap::OUT_NEIGHBOURS)
-	.value("All", GraphInterfaceWrap::ALL_NEIGHBOURS);
 
     variant_from_python<string>();
     variant_from_python<GraphInterfaceWrap::degree_t>();

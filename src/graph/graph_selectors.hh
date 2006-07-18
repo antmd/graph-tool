@@ -104,7 +104,7 @@ struct scalarS
     scalarS(){}
     scalarS(std::string scalar_property, const GraphInterface& g): 
 	_scalar_property(scalar_property), _g(&g) {}
-    typedef boost::mpl::vector<long double,double,float,long,unsigned long,int,unsigned int,short,unsigned short,char,unsigned char,bool,std::string> scalar_types;
+    typedef boost::mpl::vector<double,long double,float,long,unsigned long,int,unsigned int,short,unsigned short,char,unsigned char,bool,std::string> scalar_types;
     template <class Graph, class VertexOrEdge> 
     double operator()(const VertexOrEdge& v, const Graph &g) const 
     {
