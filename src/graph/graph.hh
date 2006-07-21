@@ -82,7 +82,7 @@ public:
 
     //clustering
     void   SetLocalClusteringToProperty(std::string property);
-    double GetGlobalClustering() const;
+    std::pair<double,double> GetGlobalClustering();
 
     // other
     hist_t GetComponentSizeHistogram() const;

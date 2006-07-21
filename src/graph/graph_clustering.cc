@@ -99,7 +99,7 @@ pair<int,int> get_triangles(typename graph_traits<Graph>::vertex_descriptor v, c
 struct get_global_clustering
 {
     template <class Graph>
-    void operator()(const Graph &g, double &c) const
+    void operator()(const Graph &g, double &c, double &c_err) const
     {
 	size_t triangles = 0, n = 0;
 	pair<size_t, size_t> temp;
@@ -111,17 +111,30 @@ struct get_global_clustering
 	    triangles += temp.first; 
 	    n += temp.second;
 	}
-	c = double(triangles)/(3*n);
+	c = double(triangles)/n;
+
+	// "jackknife" variance
+	c_err = 0.0;
+	for(v = v_begin; v != v_end; ++v)
+	{
+	    temp = get_triangles(*v, g);
+	    double cl = double(triangles - temp.first)/(n - temp.second);
+	    c_err = (c - cl)*(c - cl);
+	}
+	c_err = sqrt(c_err);
     }
 };
 
 
-double
-GraphInterface::GetGlobalClustering() const
+pair<double,double>
+GraphInterface::GetGlobalClustering()
 {
-    double c;
-    check_filter(*this, bind<void>(get_global_clustering(), _1, var(c)), reverse_check(), directed_check()); 
-    return c;
+    double c, c_err;
+    bool directed = _directed;
+    _directed = false;
+    check_filter(*this, bind<void>(get_global_clustering(), _1, var(c), var(c_err)), reverse_check(), always_undirected()); 
+    _directed = directed;
+    return make_pair(c,c_err);
 }
 
 //==============================================================================
@@ -166,7 +179,10 @@ void GraphInterface::SetLocalClusteringToProperty(string property)
     typedef associative_property_map<map_t> clust_map_t;
     clust_map_t clust_map(vertex_to_clust);
 
-    check_filter(*this, bind<void>(set_clustering_to_property(), _1, var(clust_map)), reverse_check(), directed_check()); 
+    bool directed = _directed;
+    _directed = false;
+    check_filter(*this, bind<void>(set_clustering_to_property(), _1, var(clust_map)), reverse_check(), always_undirected()); 
+    _directed = directed;
 
     try
     {

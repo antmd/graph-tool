@@ -333,7 +333,9 @@ def parse_option(opt, just_file=False):
     elif opt.name == "global-clustering-coefficient":
         if just_file:
             return opt.value
-        return (graph.GetGlobalClustering(), opt.value)
+        (avg, dev) = graph.GetGlobalClustering()
+        ret = "%f\t%f" % (avg, dev)
+        return (ret, opt.value)
     elif opt.name == "set-local-clustering-to-property":
         if just_file:
             return None
@@ -499,7 +501,7 @@ class HistoryFile:
         self.file_name = os.path.expanduser(file_name)
         self.prefixes = set()
         self.file = None
-        self.time = time.clock()
+        self.time = clock()
         self.temp = self.file_name + "___temp"
         if self.file_name.endswith(".bz2"):
             self.temp = self.file_name.rstrip(".bz2") + "___temp.bz2"
@@ -561,10 +563,10 @@ class HistoryFile:
             
     def write(self, data, prefix):
         write_data(data, self.file, prefix)
-        if time.clock() - self.time > self.rate:
+        if clock() - self.time > self.rate:
             self.file.close()
             self.refresh()
-            self.time = time.clock()
+            self.time = clock()
 
 # signal handling
 graph.InitSignalHandling()
@@ -596,7 +598,7 @@ try:
         history_files = dict() # open history files
         variables = dict() # template variables
         exec values[0] in variables #init
-        exec "___continue = %s" % values[2] in variables # condition
+        exec "___continue = %s" % values[1] in variables # condition
         count = 0
         while variables["___continue"]:
             for opt in histories:
@@ -620,9 +622,10 @@ try:
                 else:
                     parse_option(new_opt)
 
-            exec values[1] in variables # step
-            exec "___continue = %s" % values[2] in variables # condition
+            exec values[2] in variables # step
+            exec "___continue = %s" % values[1] in variables # condition
             count += 1
+        del history_files
             
 except (OptionError, HistoryException), e:
     print "graph-tool:", e
