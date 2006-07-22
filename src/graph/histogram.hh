@@ -153,23 +153,38 @@ void ReadHistogram(Histogram &m, std::string input_file)
 
 //==============================================================================
 // GetHistogramMean()
-// Gets the mean value af a histogram
+// Gets the mean value of a histogram
 //==============================================================================
 template <class Histogram> 
 double GetHistogramMean (const Histogram &m)
 {
     int total = 0;
-    for (typeof(m.begin()) iter = m.begin(); iter != m.end(); iter++)
-        total += iter->second;
-  
-    if (total == 0) 
-        return 0.0;
-  
     double mean = 0;
     for (typeof(m.begin()) iter = m.begin(); iter != m.end(); iter++)
-        mean += double(iter->first * iter->second)/total;
+    {
+        mean += double(iter->first * iter->second);
+	total += iter->second;
+    }
     
-    return mean;
+    return (total > 0)?mean/total:0.0;
 }
+
+//==============================================================================
+// GetHistogramDeviation()
+// Gets the standard deviation of a histogram
+//==============================================================================
+template <class Histogram> 
+double GetHistogramDeviation (const Histogram &m, double avg)
+{  
+    double dev = 0.0;
+    int total = 0;
+    for (typeof(m.begin()) iter = m.begin(); iter != m.end(); iter++)
+    {
+        dev += double( (iter->first - avg) * (iter->first - avg) * iter->second);
+	total += iter->second;
+    }
+    return (total > 1)?sqrt(dev/(total-1)):0.0;
+}
+
 
 #endif //HISTOGRAM_HH

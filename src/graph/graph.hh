@@ -78,7 +78,10 @@ public:
     hist3d_t   GetEdgeVertexCorrelationHistogram(deg_t deg1, std::string scalar, deg_t deg2) const;
     hist2d_t   GetVertexScalarCorrelationHistogram(deg_t deg, std::string scalar) const;
     avg_corr_t GetAverageNearestNeighboursCorrelation(deg_t origin_degree, deg_t neighbour_degree) const;
-    double     GetAssortativityCoefficient(deg_t deg) const;
+
+    // mixing
+    std::pair<double,double> GetAssortativityCoefficient(deg_t deg) const;
+    std::pair<double,double> GetScalarAssortativityCoefficient(deg_t deg) const;
 
     //clustering
     void   SetLocalClusteringToProperty(std::string property);
