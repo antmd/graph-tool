@@ -212,19 +212,26 @@ def parse_option(opt, just_file=False):
         exec "from scipy.optimize import *" in variables;
         exec "from scipy.optimize.minpack import *" in variables;
         exec "import psyco"  in variables;
-        exec "def inv_poisson(p,m):\n   return round(fsolve(lambda k,l: gammaincc(k,l)-p, m, (m)))" in variables;
-        exec "def inv_exponential(p,m):\n   return round(log(1-p)/log(m/(m+1)))" in variables;
+        exec "def inv_poisson(p,m):\n   return round(fsolve(lambda k,l: gammaincc(k,l)-p, m, (m))-0.5+1e-15)" in variables;
+        exec "def inv_exponential(p,m):\n   return round(log(1-p)/log(float(m)/(m+1))-0.5+1e-15)" in variables;
         exec "def inv_power_law(p,b):\n   return round((1-p)**(-1/(b-1)) - 1)" in variables;
+        exec "def step(x):\n   if x >= 0:\n      return 1.0\n   else:\n      return 0.0\n" in variables;
         exec "def pjk(j,k):\n   return %s" % pjk in variables
         exec "def pjk_ceil(j,k):\n   return %s" % pjk_ceil in variables
         exec "m_pjk = %s" % m_pjk in variables
         m_pjk = float(variables["m_pjk"])
-        exec "def inv_pjk_ceil(p,r):\n   retval = %s; return (int(round(retval[0])),int(round(retval[1])))" % inv_pjk_ceil in variables
+        if "file:" in inv_pjk_ceil:
+            exec open(inv_pjk_ceil.replace("file:","").strip()).read() in variables
+        else:
+            exec "def inv_pjk_ceil(p,r):\n   retval = %s; return (int(round(retval[0])),int(round(retval[1])))" % inv_pjk_ceil in variables
         exec "def corr(jl,kl,j,k):\n   return %s" % corr in variables
         exec "def corr_ceil(jl,kl,j,k):\n   return %s" % corr_ceil in variables
         exec "m_corr = %s" % m_corr in variables
         m_corr = float(variables["m_corr"])
-        exec "def inv_corr_ceil(p,r,j,k):\n   retval = %s; return (int(round(retval[0])),int(round(retval[1])))" % inv_corr_ceil in variables
+        if "file:" in inv_corr_ceil:
+            exec open(inv_corr_ceil.replace("file:","").strip()).read() in variables
+        else:
+            exec "def inv_corr_ceil(p,r,j,k):\n   retval = %s; return (int(round(retval[0])),int(round(retval[1])))" % inv_corr_ceil in variables
         if just_file:
             return None
         graph.GenerateCorrelatedConfigurationalModel(N, variables["pjk"], variables["pjk_ceil"], variables["inv_pjk_ceil"], m_pjk, variables["corr"],
