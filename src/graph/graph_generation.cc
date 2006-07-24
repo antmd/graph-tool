@@ -122,15 +122,44 @@ public:
 	base = base_t(_L, vector<vector<pair<size_t,size_t> > >(_L));
 	_cj = pow(max_j+1,1.0/(_L-1)) - 1.0;
 	_ck = pow(max_k+1,1.0/(_L-1)) - 1.0;
-	_avg_deg = avg_deg;	
+	_avg_deg = avg_deg;
+	_nearest_bins = base_t(_L, vector<vector<pair<size_t,size_t> > >(_L));
+	_size = 0;
     }
     
     void insert(const pair<size_t, size_t>& v)
     {
 	size_t j_bin, k_bin;
 	tie(j_bin, k_bin) = get_bin(v.first, v.second);
+	if ((*this)[j_bin][k_bin].empty())
+	    _size++;
 	(*this)[j_bin][k_bin].push_back(v);
+
     }
+
+    void arrange_proximity()
+    {
+	for(size_t j = 0; j < _L; ++j)
+	    for(size_t k = 0; k < _L; ++k)
+	    {
+		_nearest_bins[j][k].clear();
+		if ((*this)[j][k].empty())
+		{
+		    for(size_t w = 1; w < _L; ++w)
+		    {
+			for (size_t i = ((j>w)?j-w:0); i < ((j+w<=_L)?j+w:_L); ++i)
+			    for (size_t l = ((k>w)?k-w:0); l < ((k+w<=_L)?k+w:_L); ++l)
+			    {
+				if (!(*this)[i][l].empty())
+				    _nearest_bins[j][k].push_back(make_pair(i,l));
+			    }
+			if (!_nearest_bins[j][k].empty())
+			    break;
+		    }
+		}
+	    }
+    }
+
 
     void erase(const pair<size_t,size_t>& v)
     {
@@ -144,35 +173,60 @@ public:
 		break;
 	    }
 	}
+	if ((*this)[j_bin][k_bin].empty())
+	{
+	    _size--;
+	    if (_size > _L)
+		arrange_proximity();
+	}
+	
     }
 
-    pair<pair<size_t,size_t>, bool> find_closest(size_t j, size_t k, rng_t& rng)
+    pair<size_t,size_t> find_closest(size_t j, size_t k, rng_t& rng)
     {
 	vector<pair<size_t,size_t> > candidates;
 	size_t j_bin, k_bin;
 	tie(j_bin, k_bin) = get_bin(j, k);
 
-	if (!(*this)[j_bin][k_bin].empty())
-	    candidates.push_back(*(*this)[j_bin][k_bin].begin());
-	else
-	    return make_pair(make_pair(j,k), false);
-
-	search_bin(j_bin, k_bin, j, k, candidates);
-
-	size_t distance = size_t(sqrt(dist(candidates.front(), vertex_t(j,k))));
-
-	for (int x = -1; x < 2; ++x)
-	    for (int y = -1; y < 2; ++y)
+	if ((*this)[j_bin][k_bin].empty())
+	{
+	    if (_size > _L)
 	    {
-		size_t jb,kb;
-		tie(jb,kb) = get_bin(max(int(j+x*distance),0), max(int(k+y*distance),0));
-		if (tie(jb,kb) == tie(j_bin,k_bin))
-		    continue;
-		search_bin(jb, kb, j, k, candidates);
+		if (_nearest_bins[j_bin][k_bin].empty())
+		    arrange_proximity();
+		for(size_t i = 0; i < _nearest_bins[j_bin][k_bin].size(); ++i)
+		{
+		    size_t jb,kb;
+		    tie(jb,kb) = _nearest_bins[j_bin][k_bin][i];
+		    search_bin(jb, kb, j, k, candidates);
+		}
 	    }
+	    else
+	    {
+		for(size_t jb = 0; jb < _L; ++jb)
+		    for(size_t kb = 0; kb < _L; ++kb)
+			search_bin(jb, kb, j, k, candidates);
+	    }
+	}
+	else
+	{	    
+	    search_bin(j_bin, k_bin, j, k, candidates);
 
+	    size_t distance = size_t(sqrt(dist(candidates.front(), vertex_t(j,k))));
+	    
+	    for (int x = -1; x < 2; ++x)
+		for (int y = -1; y < 2; ++y)
+		{ 
+		    size_t jb,kb;
+		    tie(jb,kb) = get_bin(max(int(j+x*distance),0), max(int(k+y*distance),0));
+		    if (tie(jb,kb) == tie(j_bin,k_bin))
+			continue;
+		    search_bin(jb, kb, j, k, candidates);
+		}
+	}
+	
 	uniform_int<size_t> sample(0, candidates.size() - 1);
-	return make_pair(candidates[sample(rng)], true);
+	return candidates[sample(rng)];
     }
 
 private:
@@ -195,6 +249,12 @@ private:
     void search_bin(size_t j_bin, size_t k_bin, size_t j, size_t k, vector<pair<size_t,size_t> >& candidates)
     {
 	for (typeof((*this)[j_bin][k_bin].begin()) iter = (*this)[j_bin][k_bin].begin(); iter != (*this)[j_bin][k_bin].end(); ++iter)
+	{
+	    if (candidates.empty())
+	    {
+		candidates.push_back(*iter);
+		continue;
+	    }
 	    if (dist(vertex_t(*iter), vertex_t(j,k)) < dist(vertex_t(candidates.front()),vertex_t(j,k)))
 	    {
 		candidates.clear();
@@ -204,12 +264,15 @@ private:
 	    {
 		candidates.push_back(*iter);
 	    }
+	}
     }
 
     size_t _L;
     double _cj;
     double _ck;
     size_t _avg_deg;
+    base_t _nearest_bins;
+    size_t _size;
 };
 
 //==============================================================================
@@ -338,84 +401,59 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel(size_t N, pjk_t pjk,
 	inv_ceil_t inv_ceil = lambda::bind(inv_ceil_corr,lambda::_1,lambda::_2,j,k);
 	sample_from_distribution<pjk_t, pjk_t, inv_ceil_t> corr_sample(prob_func, ceil, inv_ceil, ceil_corr_bound, rng);
 	
-	size_t misses = 0;
-	bool accept = false;
-	while(!accept)
+	size_t jl,kl;
+	tie(jl,kl) = corr_sample(); // target (j,k)
+	
+	target_degrees_t::iterator iter = target_degrees.find(make_pair(jl,kl));
+	if (iter != target_degrees.end())
 	{
-	    accept = true;
-	    size_t jl,kl;
-	    tie(jl,kl) = corr_sample(); // target (j,k)
-	    
-	    target_degrees_t::iterator iter = target_degrees.find(make_pair(jl,kl));
-	    if (iter != target_degrees.end())
+	    target = targets.find(*iter)->second; // if an (jl,kl) pair exists, just use that
+	}
+	else
+	{	
+	    pair<size_t, size_t> deg;
+	    if (undirected_corr)
 	    {
-		target = targets.find(*iter)->second; // if an (jl,kl) pair exists, just use that
-	    }
-	    else
-	    {	
-		pair<size_t, size_t> deg;
-		if (undirected_corr)
+		// select the (j,k) pair with the closest total degree (j+k)
+		ordered_degrees_t::iterator upper;
+		upper = ordered_degrees.upper_bound(make_pair(jl,kl));
+		if (upper == ordered_degrees.end())
 		{
-		    // select the (j,k) pair with the closest total degree (j+k)
-		    ordered_degrees_t::iterator upper;
-		    upper = ordered_degrees.upper_bound(make_pair(jl,kl));
-		    if (upper == ordered_degrees.end())
-		    {
-			--upper;
-			deg = *upper;
-		    }
-		    else if (upper == ordered_degrees.begin())
-		    {
-			deg = *upper;
-		    }
-		    else
-		    {
-			ordered_degrees_t::iterator lower = upper;
-			--lower;
-			if (jl + kl - (lower->first + lower->second) < upper->first + upper->second - (jl + kl))
-			    deg = *lower;
-			else if (jl + kl - (lower->first + lower->second) != upper->first + upper->second - (jl + kl))
-			    deg = *upper;
-			else
-			{
-			    // if equal, choose randomly with equal probability
-			    uniform_int<size_t> sample(0, 1);
-			    if (sample(rng))
-				deg = *lower;
-			    else
-				deg = *upper;
-			}
-		    }
-		    target = targets.find(deg)->second;
+		    --upper;
+		    deg = *upper;
+		}
+		else if (upper == ordered_degrees.begin())
+		{
+		    deg = *upper;
 		}
 		else
-		{   
-		    // select the (j,k) which is the closest in the j,k plane.
-		    tie(deg, accept) = degree_matrix.find_closest(jl, kl, rng);
-		    if (!accept)
-			++misses;
+		{
+		    ordered_degrees_t::iterator lower = upper;
+		    --lower;
+		    if (jl + kl - (lower->first + lower->second) < upper->first + upper->second - (jl + kl))
+			deg = *lower;
+		    else if (jl + kl - (lower->first + lower->second) != upper->first + upper->second - (jl + kl))
+			deg = *upper;
 		    else
-			target = targets.find(deg)->second;
-		    if(misses > target_degrees.size())
 		    {
-			// if one close can't be found after some time, just get the closest in the entire graph
-			vector<pair<size_t,size_t> > candidates;
-			candidates.push_back(*target_degrees.begin());
-			for(iter = target_degrees.begin(); iter != target_degrees.end(); ++iter)
-			    if (dist(vertex_t(*iter), vertex_t(make_pair(jl,kl))) < dist(vertex_t(candidates.front()), vertex_t(make_pair(jl,kl))))
-			    {
-				candidates.clear();
-				candidates.push_back(*iter);
-			    }
-			    else if (dist(vertex_t(*iter), vertex_t(make_pair(jl,kl))) == dist(vertex_t(candidates.front()), vertex_t(make_pair(jl,kl))))
-			    {
-				candidates.push_back(*iter);
-			    }
-			uniform_int<size_t> sample(0, candidates.size() - 1);
-			target = targets.find(candidates[sample(rng)])->second;
-			accept = true;
+			// if equal, choose randomly with equal probability
+			uniform_int<size_t> sample(0, 1);
+			if (sample(rng))
+			    deg = *lower;
+			else
+			    deg = *upper;
 		    }
 		}
+		target = targets.find(deg)->second;
+	    }
+	    else
+	    {   
+		// select the (j,k) which is the closest in the j,k plane.
+		deg = degree_matrix.find_closest(jl, kl, rng);
+		target = targets.find(deg)->second;
+//		cerr << "wanted: " << jl << ", " << kl
+//		     << " got: " << deg.first << ", " << deg.second << "\n";
+	       
 	    }	    
 	}
 
@@ -474,7 +512,7 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel(size_t N, pjk_t pjk,
 	    for (size_t j = 0; j < str.str().length(); ++j)
 		cout << "\b";
 	    str.str("");
-	    str << (i+1) << " of " << E << " (" << (i+1)*100/E << "%, misses: " << misses << ")";
+	    str << (i+1) << " of " << E << " (" << (i+1)*100/E << "%)";
 	    cout << str.str() << flush;
 	}
 	
