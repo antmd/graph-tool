@@ -111,73 +111,53 @@ struct total_deg_comp
 // so that the nearest (j,k) to a given target can be found easily.
 //==============================================================================
 
-class degree_matrix_t: public vector<vector<vector<pair<size_t,size_t> > > >
+class degree_matrix_t
 {
-public:
-    typedef vector<vector<vector<pair<size_t,size_t> > > > base_t;
-    degree_matrix_t(size_t N, size_t max_j, size_t max_k, size_t avg_deg)
+public:    
+    degree_matrix_t(size_t N, size_t minj, size_t mink, size_t maxj, size_t maxk)
     {
-	_L = size_t(sqrt(N));
-	base_t &base = *this;
-	base = base_t(_L, vector<vector<pair<size_t,size_t> > >(_L));
-	_cj = pow(max_j+1,1.0/(_L-1)) - 1.0;
-	_ck = pow(max_k+1,1.0/(_L-1)) - 1.0;
-	_avg_deg = avg_deg;
-	_nearest_bins = base_t(_L, vector<vector<pair<size_t,size_t> > >(_L));
-	_size = 0;
+	_L = max(size_t(pow(2,ceil(log2(sqrt(N))))),size_t(2));
+	_minj = minj;
+	_mink = mink;
+	_maxj = max(maxj,_L);
+	_maxk = max(maxk,_L);
+	_bins.resize(_L, vector<vector<pair<size_t,size_t> > >(_L));
+	_high_bins.resize(size_t(log2(_L)));
+	for(size_t i = 0; i < _high_bins.size(); ++i)
+	    _high_bins[i].resize(_L/(1<<(i+1)), vector<size_t>(_L/(1<<(i+1))));
     }
-    
+
     void insert(const pair<size_t, size_t>& v)
     {
 	size_t j_bin, k_bin;
-	tie(j_bin, k_bin) = get_bin(v.first, v.second);
-	if ((*this)[j_bin][k_bin].empty())
-	    _size++;
-	(*this)[j_bin][k_bin].push_back(v);
-
+	tie(j_bin, k_bin) = get_bin(v.first, v.second, 0);
+	_bins[j_bin][k_bin].push_back(v);
+	for (size_t i = 0; i < _high_bins.size(); ++i)
+	{
+	    size_t hj,hk;
+	    tie(hj,hk) = get_bin(j_bin,k_bin, i+1);
+	    _high_bins[i][hj][hk]++;
+	}
     }
-
-    void arrange_proximity()
-    {
-	for(size_t j = 0; j < _L; ++j)
-	    for(size_t k = 0; k < _L; ++k)
-	    {
-		_nearest_bins[j][k].clear();
-		if ((*this)[j][k].empty())
-		{
-		    for(size_t w = 1; w < _L; ++w)
-		    {
-			for (size_t i = ((j>w)?j-w:0); i < ((j+w<=_L)?j+w:_L); ++i)
-			    for (size_t l = ((k>w)?k-w:0); l < ((k+w<=_L)?k+w:_L); ++l)
-			    {
-				if (!(*this)[i][l].empty())
-				    _nearest_bins[j][k].push_back(make_pair(i,l));
-			    }
-			if (!_nearest_bins[j][k].empty())
-			    break;
-		    }
-		}
-	    }
-    }
-
-
+    
     void erase(const pair<size_t,size_t>& v)
     {
 	size_t j_bin, k_bin;
-	tie(j_bin, k_bin) = get_bin(v.first, v.second);
-	for(size_t i = 0; i < (*this)[j_bin][k_bin].size(); ++i)
+	tie(j_bin, k_bin) = get_bin(v.first, v.second, 0);
+	for(size_t i = 0; i < _bins[j_bin][k_bin].size(); ++i)
 	{
-	    if ((*this)[j_bin][k_bin][i] == v)
+	    if (_bins[j_bin][k_bin][i] == v)
 	    {
-		(*this)[j_bin][k_bin].erase((*this)[j_bin][k_bin].begin()+i);
+		_bins[j_bin][k_bin].erase(_bins[j_bin][k_bin].begin()+i);
 		break;
 	    }
 	}
-	if ((*this)[j_bin][k_bin].empty())
+	
+	for (size_t i = 0; i < _high_bins.size(); ++i)
 	{
-	    _size--;
-	    if (_size > _L)
-		arrange_proximity();
+	    size_t hj,hk;
+	    tie(hj,hk) = get_bin(j_bin,k_bin, i+1);
+	    _high_bins[i][hj][hk]--;
 	}
 	
     }
@@ -185,94 +165,88 @@ public:
     pair<size_t,size_t> find_closest(size_t j, size_t k, rng_t& rng)
     {
 	vector<pair<size_t,size_t> > candidates;
-	size_t j_bin, k_bin;
-	tie(j_bin, k_bin) = get_bin(j, k);
 
-	if ((*this)[j_bin][k_bin].empty())
+	size_t level;
+
+	// find the appropriate level on which to operate
+	for (level = _high_bins.size(); level <= 0; --level)
 	{
-	    if (_size > _L)
+	    size_t hj, hk;
+	    tie(hj,hk) = get_bin(j,k,level);
+	    if (get_bin_count(hj,hk,level) == 0)
 	    {
-		if (_nearest_bins[j_bin][k_bin].empty())
-		    arrange_proximity();
-		for(size_t i = 0; i < _nearest_bins[j_bin][k_bin].size(); ++i)
-		{
-		    size_t jb,kb;
-		    tie(jb,kb) = _nearest_bins[j_bin][k_bin][i];
-		    search_bin(jb, kb, j, k, candidates);
-		}
-	    }
-	    else
-	    {
-		for(size_t jb = 0; jb < _L; ++jb)
-		    for(size_t kb = 0; kb < _L; ++kb)
-			search_bin(jb, kb, j, k, candidates);
+		if (level < _high_bins.size())
+		    level++;
+		break;
 	    }
 	}
-	else
-	{	    
-	    search_bin(j_bin, k_bin, j, k, candidates);
 
-	    size_t distance = size_t(sqrt(dist(candidates.front(), vertex_t(j,k))));
-	    
-	    for (int x = -1; x < 2; ++x)
-		for (int y = -1; y < 2; ++y)
-		{ 
-		    size_t jb,kb;
-		    tie(jb,kb) = get_bin(max(int(j+x*distance),0), max(int(k+y*distance),0));
-		    if (tie(jb,kb) == tie(j_bin,k_bin))
-			continue;
-		    search_bin(jb, kb, j, k, candidates);
-		}
-	}
+	size_t j_bin, k_bin;
+	tie(j_bin, k_bin) = get_bin(j, k, level);
+
+	for (size_t hj = ((j_bin>0)?j_bin-1:j_bin); hj < j_bin + 1 && hj <= get_bin(_maxj, _maxk, level).first; ++hj)
+	    for (size_t hk = ((k_bin>0)?k_bin-1:k_bin); hk < k_bin + 1 && hk <= get_bin(_maxj, _maxk, level).second; ++hk)
+		search_bin(hj,hk,j,k,level,candidates);
 	
 	uniform_int<size_t> sample(0, candidates.size() - 1);
 	return candidates[sample(rng)];
     }
 
 private:
-    pair<size_t,size_t> get_bin(size_t j, size_t k) 
-    {
-	// uses logarithmic binning...
-	size_t j_bin, k_bin, lim;
-	lim = size_t(1.5*_avg_deg);
-	if (j < lim)
-	    j_bin = j;
-	else
-	    j_bin = size_t(log(j)/log(_cj+1)) - size_t(log(lim)/log(_cj+1)) + lim;
-	if (k < lim)
-	    k_bin = k;
-	else
-	    k_bin = size_t(log(k)/log(_ck+1)) - size_t(log(lim)/log(_cj+1)) + lim;
-	return make_pair(min(j_bin, _L-1), min(k_bin,_L-1));
-    }
     
-    void search_bin(size_t j_bin, size_t k_bin, size_t j, size_t k, vector<pair<size_t,size_t> >& candidates)
+    pair<size_t,size_t> get_bin(size_t j, size_t k, size_t level) 
     {
-	for (typeof((*this)[j_bin][k_bin].begin()) iter = (*this)[j_bin][k_bin].begin(); iter != (*this)[j_bin][k_bin].end(); ++iter)
-	{
-	    if (candidates.empty())
+	if (level == 0)
+	    return make_pair(((j-_minj)*(_L-1))/_maxj, ((k-_mink)*(_L-1))/_maxk);
+
+	pair<size_t, size_t> bin = get_bin(j,k,0);
+	bin.first /=  1 << level;
+	bin.second /= 1 << level;
+	return bin;
+    }
+
+    size_t get_bin_count(size_t bin_j, size_t bin_k, size_t level)
+    {
+	if (level == 0)
+	    return _bins[bin_j][bin_k].size();
+	else
+	    return _high_bins[level-1][bin_j][bin_k];
+    }
+
+    void search_bin(size_t hj, size_t hk, size_t j, size_t k, size_t level, vector<pair<size_t,size_t> >& candidates)
+    {
+	size_t w = 1 << level;
+	for (size_t j_bin = hj*w; j_bin < (hj+1)*w; ++j_bin)
+	    for (size_t k_bin = hk*w; k_bin < (hk+1)*w; ++k_bin)
 	    {
-		candidates.push_back(*iter);
-		continue;
+		for (size_t i = 0; i < _bins[j_bin][k_bin].size(); ++i)
+		{
+		    pair<size_t, size_t>& v = _bins[j_bin][k_bin][i];
+		    if (candidates.empty())
+		    {
+			candidates.push_back(v);
+			continue;
+		    }
+		    if (dist(vertex_t(v), vertex_t(j,k)) < dist(vertex_t(candidates.front()),vertex_t(j,k)))
+		    {
+			candidates.clear();
+			candidates.push_back(v);
+		    }
+		    else if (dist(vertex_t(v), vertex_t(j,k)) == dist(vertex_t(candidates.front()),vertex_t(j,k)))
+		    {
+			candidates.push_back(v);
+		    }
+		}
 	    }
-	    if (dist(vertex_t(*iter), vertex_t(j,k)) < dist(vertex_t(candidates.front()),vertex_t(j,k)))
-	    {
-		candidates.clear();
-		candidates.push_back(*iter);
-	    }
-	    else if (dist(vertex_t(*iter), vertex_t(j,k)) == dist(vertex_t(candidates.front()),vertex_t(j,k)))
-	    {
-		candidates.push_back(*iter);
-	    }
-	}
     }
 
     size_t _L;
-    double _cj;
-    double _ck;
-    size_t _avg_deg;
-    base_t _nearest_bins;
-    size_t _size;
+    vector<vector<vector<pair<size_t,size_t> > > > _bins;
+    vector<vector<vector<size_t> > > _high_bins;
+    size_t _minj;
+    size_t _mink;
+    size_t _maxj;
+    size_t _maxk;
 };
 
 //==============================================================================
@@ -291,7 +265,7 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel(size_t N, pjk_t pjk,
 
     sample_from_distribution<pjk_t, pjk_t, inv_ceil_t> pjk_sample(pjk, ceil_pjk, inv_ceil_pjk, ceil_pjk_bound, rng);
     vector<vertex_t> vertices(N);
-    size_t sum_j=0, sum_k=0, max_j=0, max_k=0;
+    size_t sum_j=0, sum_k=0, min_j=0, min_k=0, max_j=0, max_k=0;
     if (verbose)
     {
 	cout << "adding vertices: " << flush;
@@ -312,6 +286,8 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel(size_t N, pjk_t pjk,
 	tie(v.in_degree, v.out_degree) = pjk_sample();
 	sum_j += v.in_degree;
 	sum_k += v.out_degree;
+	min_j = min(v.in_degree,min_j);
+	min_k = min(v.out_degree,min_k);
 	max_j = max(v.in_degree,max_j);
 	max_k = max(v.out_degree,max_k); 
     }
@@ -369,7 +345,7 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel(size_t N, pjk_t pjk,
 
     typedef multiset<pair<size_t,size_t>, total_deg_comp> ordered_degrees_t;
     ordered_degrees_t ordered_degrees; // (j,k) pairs ordered by (j+k), i.e, total degree
-    degree_matrix_t degree_matrix(target_degrees.size(), max_j, max_k, E/N); // (j,k) pairs layed out in a 2 dimensional matrix
+    degree_matrix_t degree_matrix(target_degrees.size(), min_j, min_k, max_j, max_k); // (j,k) pairs layed out in a 2 dimensional matrix
     for(typeof(target_degrees.begin()) iter = target_degrees.begin(); iter != target_degrees.end(); ++iter)
 	if (undirected_corr)
 	    ordered_degrees.insert(*iter);

@@ -187,12 +187,12 @@ public:
 	pair<size_t,size_t> operator()(double r1, double r2)
 	{
 	    object retval = _o(r1,r2);
-	    return make_pair(size_t(extract<size_t>(retval[0])), size_t(extract<size_t>(retval[1])));
+	    return make_pair(size_t(max(int(extract<int>(retval[0])),0)), size_t(max(int(extract<int>(retval[1])),0)));
 	}
 	pair<size_t,size_t> operator()(double r1, double r2, size_t j, size_t k)
 	{
 	    object retval = _o(r1,r2,j,k);
-	    return make_pair(size_t(extract<size_t>(retval[0])), size_t(extract<size_t>(retval[1])));
+	    return make_pair(size_t(max(int(extract<int>(retval[0])),0)), size_t(max(int(extract<int>(retval[1])),0)));
 	}
 	object _o;
     };
