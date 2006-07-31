@@ -208,12 +208,7 @@ def parse_option(opt, just_file=False):
         except ValueError, e:
             raise OptionError(opt.name, e)
         variables = dict()
-        exec "from math import *"  in variables;
-        exec "from scipy import *"  in variables;
-        exec "from scipy.special import *"  in variables;
-        exec "from scipy.optimize import *" in variables;
-        exec "from scipy.optimize.minpack import *" in variables;
-        exec "import psyco"  in variables;
+        exec "try:\n   from math import *\n   from scipy import *\n   from scipy.special import *\n   from scipy.optimize import *\n   from scipy.optimize.minpack import *\n   import psyco\nexcept ImportError:\n   pass "  in variables;
         exec "def inv_poisson(p,m):\n   return round(fsolve(lambda k,l: gammaincc(k,l)-p, m, (m))-0.5+1e-15)" in variables;
         exec "def inv_exponential(p,m):\n   return round(log(1-p)/log(float(m)/(m+1))-0.5+1e-15)" in variables;
         exec "def inv_power_law(p,b):\n   return round((1-p)**(-1/(b-1)) - 1)" in variables;
