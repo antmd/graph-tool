@@ -29,6 +29,7 @@ libgraph_tool_la_SOURCES = \
     graph_assortativity.cc\
     graph_clustering.cc\
     graph_generation.cc\
+    graph_distance.cc\
     graph_io.cc\
     graph_bind.cc\
     graphml_io.hh\
