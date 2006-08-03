@@ -5,3 +5,5 @@ AUTOMAKE_OPTIONS = subdir-objects
 SUBDIRS = graph .
 
 bin_SCRIPTS = graph-tool
+
+EXTRA_DIST = $(bin_SCRIPTS)
