@@ -73,10 +73,9 @@ public:
     hist_t GetEdgeHistogram(std::string property) const;
 
     //correlations
-    hist2d_t   GetCombinedDegreeHistogram() const;    
+    hist2d_t   GetCombinedVertexHistogram(deg_t degree1, deg_t degree2) const;    
     hist2d_t   GetVertexCorrelationHistogram(deg_t degree1, deg_t degree2) const;
     hist3d_t   GetEdgeVertexCorrelationHistogram(deg_t deg1, std::string scalar, deg_t deg2) const;
-    hist2d_t   GetVertexScalarCorrelationHistogram(deg_t deg, std::string scalar) const;
     avg_corr_t GetAverageNearestNeighboursCorrelation(deg_t origin_degree, deg_t neighbour_degree) const;
 
     // mixing

@@ -143,20 +143,21 @@ public:
     typedef Key key_type;
     typedef boost::read_write_property_map_tag category;
 
-    DynamicPropertyMapWrap(boost::dynamic_property_map& dmap):_dmap(dmap) {}
-//    DynamicPropertyMapWrap(DynamicPropertyMapWrap& c):_dmap(c._dmap) {}
+    DynamicPropertyMapWrap(boost::dynamic_property_map& dmap):_dmap(&dmap) {}
+    DynamicPropertyMapWrap() {}
+
     Value get(const Key& k) const
     {
-	return get_converted_scalar_value<Value>(_dmap, k);
+	return get_converted_scalar_value<Value>(*_dmap, k);
     }
 
     void put(const Key& k, const Value& val)
     {
-	_dmap.put(k, val);
+	_dmap->put(k, val);
     }
 
 private:
-    boost::dynamic_property_map& _dmap;
+    boost::dynamic_property_map* _dmap;
 };
 
 
@@ -168,7 +169,7 @@ namespace boost {
 using namespace graph_tool;
 
 template <class Value, class Key>
-Value get(DynamicPropertyMapWrap<Value,Key> pmap, typename property_traits<DynamicPropertyMapWrap<Value,Key> >::key_type k)
+Value get(const DynamicPropertyMapWrap<Value,Key>& pmap, typename property_traits<DynamicPropertyMapWrap<Value,Key> >::key_type k)
 {
     return pmap.get(k);
 }

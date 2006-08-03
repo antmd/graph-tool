@@ -28,6 +28,7 @@
 #include <boost/graph/fruchterman_reingold.hpp>
 #include <boost/graph/random_layout.hpp>
 #include <boost/random.hpp>
+#include <boost/python/make_function.hpp>
 
 #include <unistd.h>    /* standard unix functions, like getpid()         */
 #include <sys/types.h> /* various type definitions, like pid_t           */
@@ -71,9 +72,7 @@ GraphInterface::GraphInterface()
  _directed(true),
  _vertex_index(get(vertex_index,_mg)),
  _edge_index(get(edge_index_t(),_mg)),
- _vertex_filter_map(_vertex_index),
  _vertex_range(make_pair(numeric_limits<double>::min(), numeric_limits<double>::max())),
- _edge_filter_map(_edge_index),
  _edge_range(make_pair(numeric_limits<double>::min(), numeric_limits<double>::max()))
 {
 
@@ -90,109 +89,62 @@ GraphInterface::~GraphInterface()
 // SetVertexFilter()
 //==============================================================================
 
+python::object python_range_filter(python::object properties, string filter_property, pair<double,double> range) 
+{
+    bool accept = true;
+    if (python::extract<double>(properties[filter_property]) < range.first || python::extract<double>(properties[filter_property]) > range.second)
+	accept = false;
+    return python::object(accept);
+}
+
 void GraphInterface::SetVertexFilterProperty(string property)
 {
-    if (property == "")
-    {
-	_vertex_filter_property = property;
-	return;
-    }
-
-    try
-    {
-	_vertex_filter_map = get_static_property_map<vertex_filter_map_t>
-	    (find_property_map(_properties, property, typeid(double)));
-	_vertex_filter_property = property;
-	return;
-    }
-    catch (bad_cast) {}
-    catch (property_not_found) {}
-
-
-    typedef graph_traits<multigraph_t>::vertex_descriptor vertex_t;
-
-    bool found = false;
-    for(typeof(_properties.begin()) iter = _properties.begin(); iter != _properties.end(); ++iter)
-	if (iter->first == property && iter->second->key() == typeid(vertex_t))
-	    found = true;
-
-    if (!found)
-	throw GraphException("property " + property + " not found");
-    
-    // copy from (possibly) existent non-double property map
-    try 
-    {
-	graph_traits<multigraph_t>::vertex_iterator v, v_end;
-	for(tie(v, v_end) = vertices(_mg); v != v_end; ++v)
-	    _vertex_filter_map[*v] = lexical_cast<double> (get(property, _properties, *v));
-    }
-    catch (dynamic_get_failure)
-    {
-	throw GraphException("property " + property + " not found"); // not convertible to double
-    }
-
-    // substitute filter property in property list
-    for(typeof(_properties.begin()) iter = _properties.begin(); iter != _properties.end(); ++iter)
-	if (iter->first == property && iter->second->key() == typeid(vertex_t))
-	{
-	    delete iter->second;
-	    iter->second = new boost::detail::dynamic_property_map_adaptor<vertex_filter_map_t>(_vertex_filter_map);
-	    break;
-	}
     _vertex_filter_property = property;
+    
+    if (property != "")
+    {
+	try
+	{
+	    _vertex_filter_map = get_static_property_map<vertex_filter_map_t>(find_property_map(_properties, property, 
+												typeid(graph_traits<multigraph_t>::vertex_descriptor)));
+	}
+	catch (bad_cast)
+	{
+	    // set generic vertex filter instead
+	    function<python::object(python::object)> filter = bind<python::object>(python_range_filter, _1, property, _vertex_range);
+	    SetGenericVertexFilter(python::make_function(filter, python::default_call_policies(), mpl::vector<python::object,python::object>::type()));
+	}
+	catch (property_not_found) 
+	{
+	    throw GraphException("property " + property + " not found");
+	}
+    }
 }
 
 bool GraphInterface::IsVertexFilterActive() const { return _vertex_filter_property != "" || _vertex_python_filter != python::object(); }
 
 void GraphInterface::SetEdgeFilterProperty(string property) 
 {
-    if (property == "")
-    {
-	_edge_filter_property = property;
-	return;
-    }
-
-    try
-    {
-	_edge_filter_map = get_static_property_map<edge_filter_map_t>
-	    (find_property_map(_properties, property, typeid(double)));
-	_edge_filter_property = property;
-	return;
-    }
-    catch (bad_cast) {}
-    catch (property_not_found) {}
-
-    typedef graph_traits<multigraph_t>::edge_descriptor edge_t;
-    
-    bool found = false;
-    for(typeof(_properties.begin()) iter = _properties.begin(); iter != _properties.end(); ++iter)
-	if (iter->first == property && iter->second->key() == typeid(edge_t))
-	    found = true;
-
-    if (!found)
-	throw GraphException("property " + property + " not found");
-    
-    // copy from (possibly) existent non-double property map
-    try 
-    {
-	graph_traits<multigraph_t>::edge_iterator e, e_end;
-	for(tie(e, e_end) = edges(_mg); e != e_end; ++e)
-	    _edge_filter_map[*e] = lexical_cast<double>(get(property, _properties, *e));
-    }
-    catch (dynamic_get_failure)
-    {
-	throw GraphException("property " + property + " not found"); // not conversible to double
-    }
-
-    // substitute filter property in property list
-    for(typeof(_properties.begin()) iter = _properties.begin(); iter != _properties.end(); ++iter)
-	if (iter->first == property && iter->second->key() == typeid(edge_t))
-	{
-	    delete iter->second;
-	    iter->second = new boost::detail::dynamic_property_map_adaptor<edge_filter_map_t>(_edge_filter_map);
-	    break;
-	}
     _edge_filter_property = property;
+    
+    if (property != "")
+    {
+	try
+	{
+	    _edge_filter_map = get_static_property_map<edge_filter_map_t>(find_property_map(_properties, property, 
+											    typeid(graph_traits<multigraph_t>::edge_descriptor)));
+	}
+	catch (bad_cast)
+	{
+	    // set generic edge filter instead
+	    function<python::object(python::object)> filter = bind<python::object>(python_range_filter, _1, property, _edge_range);
+	    SetGenericEdgeFilter(python::make_function(filter, python::default_call_policies(), mpl::vector<python::object,python::object>::type()));
+	}
+	catch (property_not_found) 
+	{
+	    throw GraphException("property " + property + " not found");
+	}
+    }
 }
 
 bool GraphInterface::IsEdgeFilterActive() const {return _edge_filter_property != "" || _edge_python_filter != python::object();}
