@@ -6,4 +6,10 @@ SUBDIRS = graph .
 
 bin_SCRIPTS = graph-tool
 
-EXTRA_DIST = $(bin_SCRIPTS)
+boost_workarounddir = boost-workaround
+boost_workaround_DATA = \
+    boost-workaround/boost/graph/filtered_graph.hpp \
+    boost-workaround/boost/graph/fruchterman_reingold.hpp
+
+
+EXTRA_DIST = $(bin_SCRIPTS) $(boost_workaround_DATA)
