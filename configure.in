@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT(graph-tool, 0.9)
+AC_INIT(graph-tool, 0.9.1devel)
 AC_CONFIG_SRCDIR(src/graph-tool)
 AM_INIT_AUTOMAKE
 AM_PROG_CC_C_O
