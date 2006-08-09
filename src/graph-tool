@@ -100,6 +100,7 @@ statistics.add_option("--average-edge-property", action="callback", callback=pus
 
 
 correlations =  parser.add_option_group("Correlations")
+correlations.add_option("--average-combined-vertex-correlation", action="callback", callback=push_option, type="string", metavar="DEGREE1|DEGREE2|FILE", help="get the average of DEGREE2 in function of DEGREE1. Scalar properties are also accepted as DEGREE1 or DEGREE2")
 correlations.add_option("--vertex-correlation-histogram", action="callback", callback=push_option, type="string", metavar="DEGREE1|DEGREE2|FILE", help="get the degree correlation histogram. Scalar properties are also accepted in place of DEGREE")
 correlations.add_option("--average-nearest-neighbours-correlation", action="callback", callback=push_option, type="string", metavar="ORIGIN-DEGREE|DEGREE|FILE", help="get the average nearest neighbours correlation")
 correlations.add_option("--edge-vertex-correlation-histogram", action="callback", callback=push_option, type="string", metavar="DEGREE1|EDGE-PROP|DEGREE2|FILE", help="get the source degree vs. edge scalar vs. target degree correlation histogram. Scalar properties are also accepted in place of DEGREE-TYPE")
@@ -157,6 +158,107 @@ class OptionError(Exception):
     def __str__(self):
         return self.what
 
+def generate_graph(parameters):
+    "this option will generate a graph with the given parameters"
+    seed = int(time())
+    N = 10000
+    pjk = "1.0"
+    pjk_ceil = "pjk(j,k)"
+    m_pjk = "1.0"
+    inv_pjk_ceil = ""
+    corr = "1.0"
+    corr_ceil = "corr(jl,kl,j,k)"
+    m_corr = "1.0"
+    inv_corr_ceil = "inv_pjk_ceil(p,r)"
+    try:
+        if get_suboption("N",parameters) != False:
+            N = int(get_suboption("N",parameters))
+        if get_suboption("pjk",parameters) != False:
+            pjk = get_suboption("pjk",parameters)
+            corr = "pjk(j,k)"
+        if get_suboption("pjk_ceil",parameters) != False:
+            pjk_ceil = get_suboption("pjk_ceil",parameters)
+        if get_suboption("pjk_m",parameters) != False:
+            m_pjk = get_suboption("pjk_m",parameters)
+            m_corr = m_pjk
+        if get_suboption("inv_pjk_ceil",parameters) != False:
+            inv_pjk_ceil = get_suboption("inv_pjk_ceil",parameters)
+        if get_suboption("corr",parameters) != False:
+            corr = get_suboption("corr",parameters)
+        if get_suboption("corr_ceil",parameters) != False:
+            corr_ceil = get_suboption("corr_ceil",parameters)
+        if get_suboption("corr_m",parameters) != False:
+            corr_m = get_suboption("corr_m",parameters)
+        if get_suboption("inv_corr_ceil",parameters) != False:
+            inv_corr_ceil = get_suboption("inv_corr_ceil",parameters)            
+        undirected = get_suboption("undirected",parameters)
+        verbose = get_suboption("progress", parameters)
+        if get_suboption("seed",parameters) != False:
+            seed = int(get_suboption("seed",parameters))
+    except ValueError, e:
+        raise OptionError(opt.name, e)
+    variables = dict()
+    # default packages to be included
+    exec """
+try:
+    from math import *
+    from scipy import *
+    from scipy.special import *
+    from scipy.optimize import *
+    from scipy.optimize.minpack import *
+    import psyco 
+except ImportError:
+    pass
+"""  in variables
+    # some predefined functions
+    exec """
+def inv_poisson(p,m):
+    return round(fsolve(lambda k,l: gammaincc(k,l)-p, m, (m))-0.5+1e-15)
+""" in variables
+    exec """
+def inv_exponential(p,m):
+    return round(log(1-p)/log(float(m)/(m+1))-0.5+1e-15)
+""" in variables
+    exec """
+def inv_power_law(p,b):
+    return round((1-p)**(-1/(b-1)) - 1)
+""" in variables    
+    exec """
+def step(x):
+    if x >= 0:
+        return 1.0
+    else:
+        return 0.0
+""" in variables
+    # read main funtions
+    exec "def pjk(j,k):\n   return %s\n" % pjk in variables
+    exec "def pjk_ceil(j,k):\n   return %s\n" % pjk_ceil in variables    
+    exec "m_pjk = %s" % m_pjk in variables    
+    m_pjk = float(variables["m_pjk"])
+    if "file:" in inv_pjk_ceil:
+        exec open(inv_pjk_ceil.replace("file:","").strip()).read() in variables
+    else:
+        exec """
+def inv_pjk_ceil(p,r):
+    retval = %s
+    return (int(round(retval[0])),int(round(retval[1])))
+""" % inv_pjk_ceil in variables
+    exec "def corr(jl,kl,j,k):\n   return %s\n" % corr in variables
+    exec "def corr_ceil(jl,kl,j,k):\n   return %s\n" % corr_ceil in variables
+    exec "m_corr = %s" % m_corr in variables
+    m_corr = float(variables["m_corr"])
+    if "file:" in inv_corr_ceil:
+        exec open(inv_corr_ceil.replace("file:","").strip()).read() in variables
+    else:
+        exec """
+def inv_corr_ceil(p,r,j,k):
+    retval = %s
+    return (int(round(retval[0])),int(round(retval[1])))
+""" % inv_corr_ceil in variables
+    graph.GenerateCorrelatedConfigurationalModel(N, variables["pjk"], variables["pjk_ceil"], variables["inv_pjk_ceil"], m_pjk, variables["corr"],
+                                                 variables["corr_ceil"], variables["inv_corr_ceil"], m_corr, undirected, seed, verbose)
+
+
 def parse_option(opt, just_file=False):
     "this will execute an aption, and return either None, or a tuple with the result and the respective file name, if it exists"
     if opt.name == "load":
@@ -168,70 +270,9 @@ def parse_option(opt, just_file=False):
             return None
         graph.WriteToFile(opt.value)
     elif opt.name == "correlated-configurational-model":
-        seed = int(time())
-        N = 10000
-        m = 4.0
-        pjk = "1.0"
-        pjk_ceil = "pjk(j,k)"
-        m_pjk = "1.0"
-        inv_pjk_ceil = ""
-        corr = "1.0"
-        corr_ceil = "corr(jl,kl,j,k)"
-        m_corr = "1.0"
-        inv_corr_ceil = "inv_pjk_ceil(p,r)"
-        try:
-            if get_suboption("N",opt.value) != False:
-                N = int(get_suboption("N",opt.value))
-            if get_suboption("pjk",opt.value) != False:
-                pjk = get_suboption("pjk",opt.value)
-                corr = "pjk(j,k)"
-            if get_suboption("pjk_ceil",opt.value) != False:
-                pjk_ceil = get_suboption("pjk_ceil",opt.value)
-            if get_suboption("pjk_m",opt.value) != False:
-                m_pjk = get_suboption("pjk_m",opt.value)
-                m_corr = m_pjk
-            if get_suboption("inv_pjk_ceil",opt.value) != False:
-                inv_pjk_ceil = get_suboption("inv_pjk_ceil",opt.value)
-            if get_suboption("corr",opt.value) != False:
-                corr = get_suboption("corr",opt.value)
-            if get_suboption("corr_ceil",opt.value) != False:
-                corr_ceil = get_suboption("corr_ceil",opt.value)
-            if get_suboption("corr_m",opt.value) != False:
-                corr_m = get_suboption("corr_m",opt.value)
-            if get_suboption("inv_corr_ceil",opt.value) != False:
-                inv_corr_ceil = get_suboption("inv_corr_ceil",opt.value)            
-            undirected = get_suboption("undirected",opt.value)
-            verbose = get_suboption("progress", opt.value)
-            if get_suboption("seed",opt.value) != False:
-                seed = int(get_suboption("seed",opt.value))
-        except ValueError, e:
-            raise OptionError(opt.name, e)
-        variables = dict()
-        exec "try:\n   from math import *\n   from scipy import *\n   from scipy.special import *\n   from scipy.optimize import *\n   from scipy.optimize.minpack import *\n   import psyco\nexcept ImportError:\n   pass "  in variables;
-        exec "def inv_poisson(p,m):\n   return round(fsolve(lambda k,l: gammaincc(k,l)-p, m, (m))-0.5+1e-15)" in variables;
-        exec "def inv_exponential(p,m):\n   return round(log(1-p)/log(float(m)/(m+1))-0.5+1e-15)" in variables;
-        exec "def inv_power_law(p,b):\n   return round((1-p)**(-1/(b-1)) - 1)" in variables;
-        exec "def step(x):\n   if x >= 0:\n      return 1.0\n   else:\n      return 0.0\n" in variables;
-        exec "def pjk(j,k):\n   return %s" % pjk in variables
-        exec "def pjk_ceil(j,k):\n   return %s" % pjk_ceil in variables
-        exec "m_pjk = %s" % m_pjk in variables
-        m_pjk = float(variables["m_pjk"])
-        if "file:" in inv_pjk_ceil:
-            exec open(inv_pjk_ceil.replace("file:","").strip()).read() in variables
-        else:
-            exec "def inv_pjk_ceil(p,r):\n   retval = %s; return (int(round(retval[0])),int(round(retval[1])))" % inv_pjk_ceil in variables
-        exec "def corr(jl,kl,j,k):\n   return %s" % corr in variables
-        exec "def corr_ceil(jl,kl,j,k):\n   return %s" % corr_ceil in variables
-        exec "m_corr = %s" % m_corr in variables
-        m_corr = float(variables["m_corr"])
-        if "file:" in inv_corr_ceil:
-            exec open(inv_corr_ceil.replace("file:","").strip()).read() in variables
-        else:
-            exec "def inv_corr_ceil(p,r,j,k):\n   retval = %s; return (int(round(retval[0])),int(round(retval[1])))" % inv_corr_ceil in variables
         if just_file:
             return None
-        graph.GenerateCorrelatedConfigurationalModel(N, variables["pjk"], variables["pjk_ceil"], variables["inv_pjk_ceil"], m_pjk, variables["corr"],
-                                                     variables["corr_ceil"], variables["inv_corr_ceil"], m_corr, undirected, seed, verbose)
+        generate_graph(opt.value)
     elif opt.name == "number-of-vertices":
         if just_file:
             return opt.value
@@ -247,6 +288,13 @@ def parse_option(opt, just_file=False):
         if just_file:
             return values[2]
         return (graph.GetCombinedVertexHistogram(degree(values[0]),degree(values[1])), values[2])
+    elif opt.name == "average-combined-vertex-correlation":
+        values = parse_values(opt.value)
+        if len(values) != 3:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        if just_file:
+            return values[2]
+        return (graph.GetAverageCombinedVertexCorrelation(degree(values[0]),degree(values[1])), values[2])
     elif opt.name == "average-distance":
         values = parse_values(opt.value)
         if len(values) > 2 or len(values) < 1:

@@ -34,47 +34,35 @@ using namespace boost::lambda;
 using namespace graph_tool;
 
 //==============================================================================
-// get_correlation_histogram
-// retrieves the generalized vertex-vertex correlation histogram                
+// GetCombinedVertexHistogram()
+// retrieves the distribution of combined (deg1,deg2) degrees
 //==============================================================================
 
 template <class DegreeSelector1, class DegreeSelector2>
-struct get_correlation_histogram
+struct get_combined_degree_histogram
 {
-    get_correlation_histogram(DegreeSelector1& deg1, DegreeSelector2& deg2): _deg1(deg1), _deg2(deg2) {}
+    get_combined_degree_histogram(DegreeSelector1& deg1, DegreeSelector2& deg2): _deg1(deg1), _deg2(deg2) {}
 
     template <class Graph, class Hist>
     void operator()(Graph &g, Hist &hist) const
     {
-	typename graph_traits<Graph>::edge_iterator e, e_begin, e_end;
-        tie(e_begin, e_end) = edges(g);
-	for (e = e_begin; e != e_end; ++e)
-	{
-	    typename Hist::key_type key;
-	    key.first = _deg1(source(*e,g),g);
-	    key.second = _deg2(target(*e,g),g);
-	    hist[key]++;
-	    if(is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::value)
-	    {
-		swap(key.first, key.second);
-		hist[key]++;
-	    }
-	}
+	typedef typename Hist::key_type::first_type first_type;
+	typedef typename Hist::key_type::second_type second_type;
+
+	typename graph_traits<Graph>::vertex_iterator v, v_begin, v_end;
+        tie(v_begin, v_end) = vertices(g);
+	for(v = v_begin; v != v_end; ++v)
+	    hist[make_pair(first_type(_deg1(*v,g)), second_type(_deg2(*v,g)))]++;
     }
     DegreeSelector1& _deg1;
     DegreeSelector2& _deg2;
 };
 
-//==============================================================================
-// GetDegreeCorrelationHistogram(deg1, deg2)
-// retrieves the degree correlation histogram                
-//==============================================================================
-
 template <class SecondDegreeSelectors>
-struct choose_vertex_correlation_histogram
+struct choose_combined_degree_histogram
 {
-    choose_vertex_correlation_histogram(const GraphInterface &g, GraphInterface::deg_t deg1, 
-					GraphInterface::deg_t deg2, GraphInterface::hist2d_t &hist)
+    choose_combined_degree_histogram(const GraphInterface &g, GraphInterface::deg_t deg1, 
+				     GraphInterface::deg_t deg2, GraphInterface::hist2d_t &hist)
 	: _g(g), _hist(hist) 
     {
 	tie(_deg1, _deg_name1) = get_degree_type(deg1);
@@ -84,7 +72,7 @@ struct choose_vertex_correlation_histogram
     template <class DegreeSelector1>
     struct check_second_degree
     {
-	check_second_degree(choose_vertex_correlation_histogram<SecondDegreeSelectors> &parent):_parent(parent) {}
+	check_second_degree(choose_combined_degree_histogram<SecondDegreeSelectors> &parent):_parent(parent) {}
 	template <class DegreeSelector2>
 	void operator()(DegreeSelector2)
 	{
@@ -92,11 +80,11 @@ struct choose_vertex_correlation_histogram
 	    {
 		DegreeSelector1 deg1(_parent._deg_name1, _parent._g);
 		DegreeSelector2 deg2(_parent._deg_name2, _parent._g);
-		check_filter(_parent._g, bind<void>(get_correlation_histogram<DegreeSelector1,DegreeSelector2>(deg1,deg2), _1, var(_parent._hist)), 
+		check_filter(_parent._g, bind<void>(get_combined_degree_histogram<DegreeSelector1,DegreeSelector2>(deg1,deg2), _1, var(_parent._hist)), 
 			     reverse_check(),directed_check());
 	    }
 	}
-	choose_vertex_correlation_histogram<SecondDegreeSelectors> _parent;
+	choose_combined_degree_histogram<SecondDegreeSelectors>& _parent;
     };
 
     template <class DegreeSelector>
@@ -114,14 +102,14 @@ struct choose_vertex_correlation_histogram
     
 };
 
-GraphInterface::hist2d_t 
-GraphInterface::GetVertexCorrelationHistogram(GraphInterface::deg_t deg1, GraphInterface::deg_t deg2) const
+GraphInterface::hist2d_t
+GraphInterface::GetCombinedVertexHistogram(deg_t deg1, deg_t deg2) const
 {
     hist2d_t hist;
     typedef mpl::vector<in_degreeS, out_degreeS, total_degreeS, scalarS> degree_selectors;
     try 
     {
-	mpl::for_each<degree_selectors>(choose_vertex_correlation_histogram<degree_selectors>(*this, deg1, deg2, hist));
+	mpl::for_each<degree_selectors>(choose_combined_degree_histogram<degree_selectors>(*this, deg1, deg2, hist));
     }
     catch (dynamic_get_failure &e)
     {
@@ -130,52 +118,53 @@ GraphInterface::GetVertexCorrelationHistogram(GraphInterface::deg_t deg1, GraphI
     return hist;
 }
 
+
 //==============================================================================
-// get_edge_correlation_histogram
-// retrieves the generalized vertex-edge-vertex correlation histogram                
+// GetAverageCombinedVertexCorrelation()
+// retrieves the average of deg2 in function of deg1
 //==============================================================================
 
 template <class DegreeSelector1, class DegreeSelector2>
-struct get_edge_correlation_histogram
+struct get_average_combined_degree_correlation
 {
-    get_edge_correlation_histogram(DegreeSelector1& deg1, DegreeSelector2& deg2, scalarS& scalar)
-	: _edge_scalar(scalar), _deg1(deg1), _deg2(deg2) {}
+    get_average_combined_degree_correlation(DegreeSelector1& deg1, DegreeSelector2& deg2): _deg1(deg1), _deg2(deg2) {}
 
-    template <class Graph, class Hist>
-    void operator()(Graph &g, Hist &hist) const
+    template <class Graph, class AvgDeg>
+    void operator()(Graph &g, AvgDeg &avg_deg) const
     {
-	typename graph_traits<Graph>::edge_iterator e, e_begin, e_end;
-        tie(e_begin, e_end) = edges(g);
-	for (e = e_begin; e != e_end; ++e)
+	tr1::unordered_map<double,size_t> count;
+
+	typename graph_traits<Graph>::vertex_iterator v, v_begin, v_end;
+        tie(v_begin, v_end) = vertices(g);
+	for(v = v_begin; v != v_end; ++v)
 	{
-	    typename Hist::key_type key;
-	    get<0>(key) = _deg1(source(*e,g),g);
-	    get<1>(key) = _edge_scalar(*e, g);
-	    get<2>(key) = _deg2(target(*e,g),g);
-	    hist[key]++;
-	    if(is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::value)
-	    {
-		swap(get<0>(key), get<2>(key));
-		hist[key]++;
-	    }
+	    typename AvgDeg::key_type d1 = _deg1(*v,g);
+	    typename AvgDeg::value_type::second_type::first_type d2 = _deg2(*v,g);
+	    avg_deg[d1].first += d2;
+	    avg_deg[d1].second += d2*d2;
+	    count[d1]++;
+	}
+
+	for (typeof(avg_deg.begin()) iter = avg_deg.begin(); iter != avg_deg.end(); ++iter)
+	{
+	    size_t N = count[iter->first];
+	    iter->second.first /= N;
+	    if (N > 1)
+		iter->second.second = sqrt((iter->second.second - N*iter->second.first*iter->second.first)/(N*(N-1)));
+	    else
+		iter->second.second = 0.0;
 	}
     }
-    scalarS& _edge_scalar;
     DegreeSelector1& _deg1;
     DegreeSelector2& _deg2;
 };
 
-//==============================================================================
-// GetEdgeVertexCorrelationHistogram(deg1, scalar, deg2)
-// retrieves the degree-edge-degree correlation histogram 
-//==============================================================================
-
 template <class SecondDegreeSelectors>
-struct choose_edge_vertex_correlation_histogram
+struct choose_average_combined_degree_correlation
 {
-    choose_edge_vertex_correlation_histogram(const GraphInterface& g, GraphInterface::deg_t deg1,  scalarS& edge_scalar, 
-					     GraphInterface::deg_t deg2, GraphInterface::hist3d_t& hist)
-	: _g(g), _edge_scalar(edge_scalar), _hist(hist) 
+    choose_average_combined_degree_correlation(const GraphInterface &g, GraphInterface::deg_t deg1, 
+					       GraphInterface::deg_t deg2, GraphInterface::avg_corr_t &avg_corr)
+	: _g(g), _avg_corr(avg_corr) 
     {
 	tie(_deg1, _deg_name1) = get_degree_type(deg1);
 	tie(_deg2, _deg_name2) = get_degree_type(deg2);
@@ -184,7 +173,7 @@ struct choose_edge_vertex_correlation_histogram
     template <class DegreeSelector1>
     struct check_second_degree
     {
-	check_second_degree(choose_edge_vertex_correlation_histogram<SecondDegreeSelectors> &parent):_parent(parent) {}
+	check_second_degree(choose_average_combined_degree_correlation<SecondDegreeSelectors> &parent):_parent(parent) {}
 	template <class DegreeSelector2>
 	void operator()(DegreeSelector2)
 	{
@@ -192,12 +181,12 @@ struct choose_edge_vertex_correlation_histogram
 	    {
 		DegreeSelector1 deg1(_parent._deg_name1, _parent._g);
 		DegreeSelector2 deg2(_parent._deg_name2, _parent._g);
-		check_filter(_parent._g, bind<void>(get_edge_correlation_histogram<DegreeSelector1,DegreeSelector2>(deg1,deg2,_parent._edge_scalar),
-						    _1, var(_parent._hist)), 
+		check_filter(_parent._g, bind<void>(get_average_combined_degree_correlation<DegreeSelector1,DegreeSelector2>(deg1,deg2), 
+						    _1, var(_parent._avg_corr)), 
 			     reverse_check(),directed_check());
 	    }
 	}
-	choose_edge_vertex_correlation_histogram<SecondDegreeSelectors> _parent;
+	choose_average_combined_degree_correlation<SecondDegreeSelectors>& _parent;
     };
 
     template <class DegreeSelector>
@@ -206,32 +195,27 @@ struct choose_edge_vertex_correlation_histogram
 	if (mpl::at<degree_selector_index,DegreeSelector>::type::value == _deg1)
 	    mpl::for_each<SecondDegreeSelectors>(check_second_degree<DegreeSelector>(*this));
     }
-    const GraphInterface& _g;
-    scalarS& _edge_scalar;
-    GraphInterface::hist3d_t& _hist;
+    const GraphInterface &_g;
+    GraphInterface::avg_corr_t &_avg_corr;
     GraphInterface::degree_t _deg1;
     string _deg_name1;
     GraphInterface::degree_t _deg2;
-    string _deg_name2;    
+    string _deg_name2;
+    
 };
 
-GraphInterface::hist3d_t 
-GraphInterface::GetEdgeVertexCorrelationHistogram(GraphInterface::deg_t deg1, string edge_scalar, GraphInterface::deg_t deg2) const
+GraphInterface::avg_corr_t
+GraphInterface::GetAverageCombinedVertexCorrelation(deg_t deg1, deg_t deg2) const
 {
-    hist3d_t hist;
-
-    scalarS scalar(edge_scalar, *this);
-    try
+    avg_corr_t avg_corr;
+    typedef mpl::vector<in_degreeS, out_degreeS, total_degreeS, scalarS> degree_selectors;
+    try 
     {
-	typedef mpl::vector<in_degreeS, out_degreeS, total_degreeS, scalarS> degree_selectors;
-	mpl::for_each<degree_selectors>(choose_edge_vertex_correlation_histogram<degree_selectors>(*this, deg1, scalar, deg2, hist));
+	mpl::for_each<degree_selectors>(choose_average_combined_degree_correlation<degree_selectors>(*this, deg1, deg2, avg_corr));
     }
-    catch (dynamic_get_failure& e)
+    catch (dynamic_get_failure &e)
     {
 	throw GraphException("error getting scalar property: " + string(e.what()));
     }
-    return hist;
+    return avg_corr;
 }
-
-
-
