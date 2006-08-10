@@ -48,7 +48,6 @@ struct get_average_nearest_neighbours_correlation
     void operator()(const Graph& g, AvgDeg& avg_deg) const
     {
 	tr1::unordered_map<double,size_t> count;
-	tr1::unordered_set<typename graph_traits<Graph>::vertex_descriptor> neighbour_set;
 
 	typename graph_traits<Graph>::vertex_iterator v, v_begin, v_end;
 	tie(v_begin,v_end) = vertices(g);
@@ -58,17 +57,12 @@ struct get_average_nearest_neighbours_correlation
 	    tie(e_begin,e_end) = out_edges(*v,g);
 	    for(e = e_begin; e != e_end; ++e)
 	    {		
-		if (neighbour_set.find(target(*e,g)) != neighbour_set.end())
-		    continue;
-		else
-		    neighbour_set.insert(target(*e,g));
 		typename AvgDeg::value_type::second_type::first_type deg = _neighbours_degree(target(*e,g),g);
 		typename AvgDeg::key_type orig_deg = _origin_degree(*v,g);
 		avg_deg[orig_deg].first += deg;
 		avg_deg[orig_deg].second += deg*deg;
 		count[orig_deg]++;
 	    }
-	    neighbour_set.clear();
 	}
 
 	for (typeof(avg_deg.begin()) iter = avg_deg.begin(); iter != avg_deg.end(); ++iter)
