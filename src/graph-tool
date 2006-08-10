@@ -47,7 +47,11 @@ version_string = "%s %s\nWritten by %s\n\n%s" % (prog_info.name, prog_info.versi
                                                prog_info.author,prog_info.copyright)
 
 def getheightwidth():
-    height, width = struct.unpack("hhhh", fcntl.ioctl(0, termios.TIOCGWINSZ ,"\000"*8))[0:2]
+    height, width = 20, 80
+    try:
+        height, width = struct.unpack("hhhh", fcntl.ioctl(0, termios.TIOCGWINSZ ,"\000"*8))[0:2]
+    except IOError:
+        pass
     return height, width
 
 option_list = list()
