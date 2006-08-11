@@ -120,7 +120,7 @@ private:
 //==============================================================================
 // PythonFilter
 //==============================================================================
-template <class Graph, class IndexMap>
+template <class Graph, class IndexMap, class HasBase = mpl::bool_<false> >
 class PythonFilter
 {
 public:
@@ -168,11 +168,19 @@ public:
 	std::string _prefix;
     };
     
+    template <class Vertex>
+    struct put_base_degree: public put_degree<Vertex>
+    {
+	put_base_degree(const Graph& g, Vertex v, python::dict& d, std::string prefix = ""): put_degree<Vertex>(g,v,d,prefix) {}
+
+	template <class Degree>
+	void operator()(Degree degree)
+	{
+	    this->_d[this->_prefix+degree.name()] = degree(this->_v, this->_g.m_g);
+	}
+    };
 
     typedef mpl::vector<in_degreeS,out_degreeS,total_degreeS> degrees;
-
-    typedef mpl::map<mpl::pair<vertex_descriptor, degrees>,
-		     mpl::pair<edge_descriptor, mpl::vector<> > > descriptor_degree_map;
 
     inline void put_edge_info(edge_descriptor e, python::dict& d) const
     {
@@ -196,13 +204,12 @@ public:
     inline void put_edge_info(vertex_descriptor v, python::dict& d) const
     {
     }
-
-
+    
     template <class VertexOrEdge>
     inline bool operator() (VertexOrEdge e) const 
     {
-	BOOST_MPL_ASSERT(( mpl::or_< is_same< VertexOrEdge, vertex_descriptor >,
-	                             is_same< VertexOrEdge, edge_descriptor > > ));
+	BOOST_MPL_ASSERT(( mpl::or_<is_same<VertexOrEdge,vertex_descriptor>,
+                                    is_same<VertexOrEdge,edge_descriptor> > ));
 	python::dict properties;
 	for(typeof(_dp->begin()) iter = _dp->begin(); iter != _dp->end(); ++iter)
 	{
@@ -213,8 +220,11 @@ public:
 	    }
 	}
 
-	typedef typename mpl::at<descriptor_degree_map,VertexOrEdge>::type degrees;
-	mpl::for_each<degrees>(put_degree<VertexOrEdge>(*_g, e, properties));
+	typedef typename mpl::if_<is_same<VertexOrEdge,vertex_descriptor>, degrees, mpl::vector<> >::type vertex_degrees;
+	mpl::for_each<vertex_degrees>(put_degree<VertexOrEdge>(*_g, e, properties));
+
+	typedef typename mpl::if_<HasBase, vertex_degrees, mpl::vector<> >::type base_degrees;
+	mpl::for_each<base_degrees>(put_base_degree<VertexOrEdge>(*_g, e, properties, "orig_"));
 
 	put_edge_info(e, properties);
 	
@@ -303,30 +313,33 @@ void check_python_filter(const Graph& g, const GraphInterface &gi, Action a, boo
     typedef PythonFilter<Graph,GraphInterface::vertex_index_map_t> vertex_filter_t;
     typedef PythonFilter<Graph,GraphInterface::edge_index_map_t> edge_filter_t;
 
-    if (gi._vertex_python_filter != python::object() && gi._edge_python_filter != python::object())
+    if (gi._edge_python_filter != python::object())
     {
-	typedef filtered_graph<Graph, edge_filter_t, vertex_filter_t> fg_t;
-	fg_t fg(g,edge_filter_t(g, gi._edge_index, gi._properties, gi._edge_python_filter), 
-		vertex_filter_t(g, gi._vertex_index, gi._properties, gi._vertex_python_filter));
-	mpl::for_each<DirectedCheck>(check_directed<fg_t,Action,ReverseCheck>(fg, a, gi._reversed, gi._directed, found));
+	typedef filtered_graph<Graph, edge_filter_t, keep_all> efg_t;
+	efg_t efg(g,edge_filter_t(g, gi._edge_index, gi._properties, gi._edge_python_filter), keep_all());
+
+	if (gi._vertex_python_filter != python::object())
+	{
+	    typedef PythonFilter<efg_t,GraphInterface::vertex_index_map_t, mpl::bool_<true> > vertex_filter_t;
+	    typedef filtered_graph<efg_t,keep_all,vertex_filter_t> vefg_t;
+	    vefg_t vefg(efg,keep_all(),vertex_filter_t(efg, gi._vertex_index, gi._properties, gi._vertex_python_filter));
+	    mpl::for_each<DirectedCheck>(check_directed<vefg_t,Action,ReverseCheck>(vefg, a, gi._reversed, gi._directed, found));
+	}
+	else
+	{
+	    mpl::for_each<DirectedCheck>(check_directed<efg_t,Action,ReverseCheck>(efg, a, gi._reversed, gi._directed, found));
+	}
     }
     else if (gi._vertex_python_filter != python::object())
     {
-	typedef filtered_graph<Graph, keep_all, vertex_filter_t> fg_t;
-	fg_t fg(g,keep_all(),vertex_filter_t(g, gi._vertex_index, gi._properties, gi._vertex_python_filter));
-	mpl::for_each<DirectedCheck>(check_directed<fg_t,Action,ReverseCheck>(fg, a, gi._reversed, gi._directed, found));
+	typedef filtered_graph<Graph,keep_all,vertex_filter_t> vfg_t;
+	vfg_t vfg(g,keep_all(),vertex_filter_t(g, gi._vertex_index, gi._properties, gi._vertex_python_filter));
+	mpl::for_each<DirectedCheck>(check_directed<vfg_t,Action,ReverseCheck>(vfg, a, gi._reversed, gi._directed, found));
     } 
-    else if (gi._edge_python_filter != python::object())
-    {
-	typedef filtered_graph<Graph, edge_filter_t, keep_all> fg_t;
-	fg_t fg(g,edge_filter_t(g, gi._edge_index, gi._properties, gi._edge_python_filter), keep_all());
-	mpl::for_each<DirectedCheck>(check_directed<fg_t,Action,ReverseCheck>(fg, a, gi._reversed, gi._directed, found));
-    }
     else
     {
 	mpl::for_each<DirectedCheck>(check_directed<Graph,Action,ReverseCheck>(g, a, gi._reversed, gi._directed, found));
     }
-	
 }
 
 template <class Action, class ReverseCheck, class DirectedCheck> 
