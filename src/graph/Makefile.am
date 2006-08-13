@@ -21,6 +21,7 @@ libgraph_tool_la_SOURCES = \
     graph.hh\
     graph.cc\
     graph_filtering.hh\
+    graph_python_filtering.hh\
     graph_selectors.hh\
     graph_properties.hh\
     graph_properties.cc\

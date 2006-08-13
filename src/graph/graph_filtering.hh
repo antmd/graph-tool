@@ -35,6 +35,7 @@
 
 #include "graph_adaptor.hh"
 #include "graph_selectors.hh"
+#include "graph_python_filtering.hh"
 
 namespace graph_tool
 {
@@ -117,128 +118,6 @@ private:
     std::pair<value_type, value_type> _range;
 };
 
-//==============================================================================
-// PythonFilter
-//==============================================================================
-template <class Graph, class IndexMap, class HasBase = mpl::bool_<false> >
-class PythonFilter
-{
-public:
-    PythonFilter(){}
-    PythonFilter(const Graph& g, IndexMap index_map, const dynamic_properties& dp, python::object filter)
-        : _g(&g), _index_map(index_map), _dp(&dp), _filter(filter) {}
-
-    typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
-    typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
-
-    struct get_value
-    {
-	get_value(const std::string& name, dynamic_property_map& map, any key, python::dict& d)
-	    : _name(name), _map(map), _key(key), _d(d) {}
-	template <class Type>
-	void operator()(Type)
-	{
-	    try 
-	    {
-		_d[_name] = any_cast<Type>(const_cast<dynamic_property_map&>(_map).get(_key));
-	    }
-	    catch (bad_any_cast){}
-	}
-	const std::string& _name;
-	const dynamic_property_map& _map;
-	any _key;
-	python::dict& _d;
-    };
-
-    //FIXME: It would be better to do a specialization for vertex_descriptor, and a general
-    //       dummy put_degree. But GCC doesn't seem to like nested full template specializations
-    template <class Vertex>
-    struct put_degree
-    {
-	put_degree(const Graph& g, Vertex v, python::dict& d, std::string prefix = "")
-	    : _g(g), _v(v), _d(d), _prefix(prefix) {}
-	template <class Degree>
-	void operator()(Degree degree)
-	{
-	    _d[_prefix+degree.name()] = degree(_v, _g);
-	}
-	const Graph& _g;
-	Vertex _v;
-	python::dict& _d;
-	std::string _prefix;
-    };
-    
-    template <class Vertex>
-    struct put_base_degree: public put_degree<Vertex>
-    {
-	put_base_degree(const Graph& g, Vertex v, python::dict& d, std::string prefix = ""): put_degree<Vertex>(g,v,d,prefix) {}
-
-	template <class Degree>
-	void operator()(Degree degree)
-	{
-	    this->_d[this->_prefix+degree.name()] = degree(this->_v, this->_g.m_g);
-	}
-    };
-
-    typedef mpl::vector<in_degreeS,out_degreeS,total_degreeS> degrees;
-
-    inline void put_edge_info(edge_descriptor e, python::dict& d) const
-    {
-	if (source(e,*_g) == target(e,*_g))
-	    d["is_loop"] = true;
-	else
-	    d["is_loop"] = false;
-	for(typeof(_dp->begin()) iter = _dp->begin(); iter != _dp->end(); ++iter)
-	{
-	    if (iter->second->key() == typeid(vertex_descriptor))
-	    {
-		typedef mpl::vector<bool,int,long,size_t,float,double,std::string> value_types;
-		mpl::for_each<value_types>(get_value("source_"+iter->first, *iter->second, source(e, *_g), d));
-		mpl::for_each<value_types>(get_value("target_"+iter->first, *iter->second, target(e, *_g), d));
-	    }
-	}
-	mpl::for_each<degrees>(put_degree<vertex_descriptor>(*_g, source(e,*_g), d, "source_"));
-	mpl::for_each<degrees>(put_degree<vertex_descriptor>(*_g, target(e,*_g), d, "target_"));	
-    }
-
-    inline void put_edge_info(vertex_descriptor v, python::dict& d) const
-    {
-    }
-    
-    template <class VertexOrEdge>
-    inline bool operator() (VertexOrEdge e) const 
-    {
-	BOOST_MPL_ASSERT(( mpl::or_<is_same<VertexOrEdge,vertex_descriptor>,
-                                    is_same<VertexOrEdge,edge_descriptor> > ));
-	python::dict properties;
-	for(typeof(_dp->begin()) iter = _dp->begin(); iter != _dp->end(); ++iter)
-	{
-	    if (iter->second->key() == typeid(VertexOrEdge))
-	    {
-		typedef mpl::vector<bool,int,long,size_t,float,double,std::string> value_types;
-		mpl::for_each<value_types>(get_value(iter->first, *iter->second, e, properties));
-	    }
-	}
-
-	typedef typename mpl::if_<is_same<VertexOrEdge,vertex_descriptor>, degrees, mpl::vector<> >::type vertex_degrees;
-	mpl::for_each<vertex_degrees>(put_degree<VertexOrEdge>(*_g, e, properties));
-
-	typedef typename mpl::if_<HasBase, vertex_degrees, mpl::vector<> >::type base_degrees;
-	mpl::for_each<base_degrees>(put_base_degree<VertexOrEdge>(*_g, e, properties, "orig_"));
-
-	put_edge_info(e, properties);
-	
-	return python::extract<bool>(_filter(properties));
-    }
-
-private:
-    Graph const*  _g;
-    IndexMap _index_map;
-    dynamic_properties const*  _dp;
-    python::object _filter;
-};
-
-
 typedef mpl::vector<mpl::bool_<true>, mpl::bool_<false> > reverse_check;
 typedef mpl::vector<mpl::bool_<false> > never_reversed;
 typedef mpl::vector<mpl::bool_<true> > always_reversed;
@@ -310,19 +189,19 @@ struct check_directed
 template <class Graph, class Action, class ReverseCheck, class DirectedCheck> 
 void check_python_filter(const Graph& g, const GraphInterface &gi, Action a, bool& found, ReverseCheck, DirectedCheck)
 {
-    typedef PythonFilter<Graph,GraphInterface::vertex_index_map_t> vertex_filter_t;
-    typedef PythonFilter<Graph,GraphInterface::edge_index_map_t> edge_filter_t;
+    typedef PythonFilter<Graph,mpl::bool_<true> > vertex_filter_t;
+    typedef PythonFilter<Graph,mpl::bool_<false> > edge_filter_t;
 
     if (gi._edge_python_filter != python::object())
     {
 	typedef filtered_graph<Graph, edge_filter_t, keep_all> efg_t;
-	efg_t efg(g,edge_filter_t(g, gi._edge_index, gi._properties, gi._edge_python_filter), keep_all());
+	efg_t efg(g,edge_filter_t(g, gi._properties, gi._edge_python_filter), keep_all());
 
 	if (gi._vertex_python_filter != python::object())
 	{
-	    typedef PythonFilter<efg_t,GraphInterface::vertex_index_map_t, mpl::bool_<true> > vertex_filter_t;
+	    typedef PythonFilter<efg_t, mpl::bool_<true>, mpl::bool_<true> > vertex_filter_t;
 	    typedef filtered_graph<efg_t,keep_all,vertex_filter_t> vefg_t;
-	    vefg_t vefg(efg,keep_all(),vertex_filter_t(efg, gi._vertex_index, gi._properties, gi._vertex_python_filter));
+	    vefg_t vefg(efg,keep_all(),vertex_filter_t(efg, gi._properties, gi._vertex_python_filter));
 	    mpl::for_each<DirectedCheck>(check_directed<vefg_t,Action,ReverseCheck>(vefg, a, gi._reversed, gi._directed, found));
 	}
 	else
@@ -333,7 +212,7 @@ void check_python_filter(const Graph& g, const GraphInterface &gi, Action a, boo
     else if (gi._vertex_python_filter != python::object())
     {
 	typedef filtered_graph<Graph,keep_all,vertex_filter_t> vfg_t;
-	vfg_t vfg(g,keep_all(),vertex_filter_t(g, gi._vertex_index, gi._properties, gi._vertex_python_filter));
+	vfg_t vfg(g,keep_all(),vertex_filter_t(g, gi._properties, gi._vertex_python_filter));
 	mpl::for_each<DirectedCheck>(check_directed<vfg_t,Action,ReverseCheck>(vfg, a, gi._reversed, gi._directed, found));
     } 
     else
@@ -385,15 +264,30 @@ void check_filter(const GraphInterface &g, Action a, ReverseCheck, DirectedCheck
     
 }
 
-template <class Descriptor, class IndexMap>
-class DescriptorHash: public std::unary_function<Descriptor, std::size_t> 
+template <class IndexMap>
+class DescriptorHash: public std::unary_function<typename IndexMap::key_type, std::size_t> 
 {
 public:
     DescriptorHash() {}
     DescriptorHash(IndexMap index_map): _index_map(index_map) {}
-    std::size_t operator()(Descriptor const& d) const { return boost::hash_value(_index_map[d]); }
+    std::size_t operator()(typename IndexMap::key_type const& d) const { return boost::hash_value(_index_map[d]); }
 private:
     IndexMap _index_map;
+};
+
+template <class IndexMap, class Value>
+class HashedDescriptorMap:
+    public associative_property_map<std::tr1::unordered_map<typename IndexMap::key_type,Value,DescriptorHash<IndexMap> > >
+{
+public:
+    typedef DescriptorHash<IndexMap> hashfc_t;
+    typedef std::tr1::unordered_map<typename IndexMap::key_type,Value,hashfc_t> map_t;
+    typedef associative_property_map<map_t> prop_map_t;
+
+    HashedDescriptorMap(IndexMap index_map): prop_map_t(base_map), base_map(0, hashfc_t(index_map)) {}
+    HashedDescriptorMap(){}
+private:
+    map_t base_map;
 };
 
 } //namespace graph_tool

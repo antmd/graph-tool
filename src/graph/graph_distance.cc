@@ -89,12 +89,8 @@ struct get_average_distance
     template <class Graph, class IndexMap, class WeightMap>
     void operator()(const Graph &g, IndexMap index_map, WeightMap weights, double &dist) const
     {	
-	typedef DescriptorHash<typename graph_traits<Graph>::vertex_descriptor,IndexMap> hashfc_t;
-	typedef tr1::unordered_map<typename graph_traits<Graph>::vertex_descriptor, double, hashfc_t>  map_t;
-	hashfc_t hasher(index_map);
-	map_t vertex_to_dist(0,hasher);
-	typedef associative_property_map<map_t> dist_map_t;
-	dist_map_t dist_map(vertex_to_dist);
+	typedef HashedDescriptorMap<IndexMap,double> dist_map_t;
+	dist_map_t dist_map(index_map);
 
 	double distsum = 0;
 	size_t n = 0;

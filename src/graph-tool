@@ -39,6 +39,7 @@ import math
 
 try:
     import psyco
+    psyco.full()
 except ImportError:
     pass
 
@@ -210,7 +211,8 @@ try:
     from scipy.special import *
     from scipy.optimize import *
     from scipy.optimize.minpack import *
-    import psyco 
+    import psyco
+    psyco.full()
 except ImportError:
     pass
 """  in variables
@@ -453,19 +455,28 @@ def parse_option(opt, just_file=False):
         if just_file:
             return None
         filter_vars = dict()
-        filter_vars["variables"] = filter_vars
-        def populate_vars(dict, variables):
-            for k,v in dict.iteritems():
-                variables[k] = v
-        filter_vars["populate_vars"] = populate_vars
         try:
-            exec "def filter_function(props):\n    populate_vars(props,variables); return not %s\n" % opt.value in filter_vars
+            exec """
+try:
+    from math import *
+    from scipy import *
+    from scipy.special import *
+    from scipy.optimize import *
+    from scipy.optimize.minpack import *
+    import psyco
+    psyco.full()
+except ImportError:
+    pass
+
+def filter_function():
+    return not %s
+""" % opt.value in filter_vars
         except:
             raise OptionError(opt.name, "invalid value '%s': %s" % (opt.value,sys.exc_info()[0]))
         if opt.name == "vertex-filter":
-            graph.SetGenericVertexFilter(filter_vars["filter_function"])
+            graph.SetGenericVertexFilter((filter_vars["filter_function"],filter_vars))
         else:
-            graph.SetGenericEdgeFilter(filter_vars["filter_function"])
+            graph.SetGenericEdgeFilter((filter_vars["filter_function"],filter_vars))
     elif opt.name == "vertex-range-filter" or opt.name == "edge-range-filter":
         if just_file:
             return None

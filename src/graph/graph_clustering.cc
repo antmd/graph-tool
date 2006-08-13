@@ -170,14 +170,8 @@ struct set_clustering_to_property
 
 void GraphInterface::SetLocalClusteringToProperty(string property)
 {
-    // vertex postion map
-    typedef DescriptorHash<graph_traits<multigraph_t>::vertex_descriptor,vertex_index_map_t> hashfc_t;
-    typedef tr1::unordered_map<graph_traits<multigraph_t>::vertex_descriptor,double,hashfc_t> map_t;
-    hashfc_t hasher(_vertex_index);
-    static map_t vertex_to_clust(0, hasher);
-    vertex_to_clust = map_t(0, hasher);
-    typedef associative_property_map<map_t> clust_map_t;
-    clust_map_t clust_map(vertex_to_clust);
+    typedef HashedDescriptorMap<vertex_index_map_t,double> clust_map_t;
+    clust_map_t clust_map(_vertex_index);
 
     bool directed = _directed;
     _directed = false;

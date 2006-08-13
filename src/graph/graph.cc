@@ -301,12 +301,8 @@ struct get_component_size_histogram
     template <class Graph, class IndexMap, class Hist>
     void operator()(const Graph &g, IndexMap index_map, Hist &hist) const
     {   
-	typedef DescriptorHash<typename graph_traits<Graph>::vertex_descriptor,IndexMap> hashfc_t;
-	typedef tr1::unordered_map<typename graph_traits<Graph>::vertex_descriptor, size_t, hashfc_t>  map_t;
-	hashfc_t hasher(index_map);
-	map_t vertex_to_comp(0,hasher);
-	typedef associative_property_map<map_t> comp_map_t;
-	comp_map_t comp_map(vertex_to_comp);
+	typedef HashedDescriptorMap<IndexMap, size_t> comp_map_t;
+	comp_map_t comp_map(index_map);
 
 	_components(g, comp_map);
 
@@ -475,13 +471,8 @@ istream& operator>>(istream &o, pos_t &p ) { char c; o >> p.x >> c >> p.y; retur
 void GraphInterface::ComputeGraphLayoutGursoy(size_t iter, size_t seed)
 {       
     // vertex postion map
-    typedef DescriptorHash<graph_traits<multigraph_t>::vertex_descriptor,vertex_index_map_t> hashfc_t;
-    typedef tr1::unordered_map<graph_traits<multigraph_t>::vertex_descriptor, pos_t, hashfc_t>  map_t;
-    hashfc_t hasher(_vertex_index);
-    static map_t vertex_to_pos(0, hasher);
-    vertex_to_pos = map_t(0, hasher);
-    typedef associative_property_map<map_t> pos_map_t;
-    pos_map_t pos_map(vertex_to_pos);    
+    typedef HashedDescriptorMap<vertex_index_map_t, pos_t> pos_map_t;
+    pos_map_t pos_map(_vertex_index);    
 
     check_filter(*this,bind<void>(compute_gursoy(),_1,iter,seed,var(pos_map),var(_vertex_index)),reverse_check(),directed_check());
 
@@ -515,13 +506,8 @@ struct compute_spring_block
 void GraphInterface::ComputeGraphLayoutSpringBlock(size_t iter, size_t seed)
 {
     // vertex postion map
-    typedef DescriptorHash<graph_traits<multigraph_t>::vertex_descriptor,vertex_index_map_t> hashfc_t;
-    typedef tr1::unordered_map<graph_traits<multigraph_t>::vertex_descriptor, pos_t, hashfc_t>  map_t;
-    hashfc_t hasher(_vertex_index);
-    static map_t vertex_to_pos(0, hasher);
-    vertex_to_pos = map_t(0, hasher);
-    typedef associative_property_map<map_t> pos_map_t;
-    pos_map_t pos_map(vertex_to_pos);    
+    typedef HashedDescriptorMap<vertex_index_map_t,pos_t> pos_map_t;
+    pos_map_t pos_map(_vertex_index);    
 
     check_filter(*this,bind<void>(compute_spring_block(),_1,iter,seed,var(pos_map),var(_vertex_index)),reverse_check(),directed_check()); 
 
