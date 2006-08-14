@@ -106,11 +106,10 @@ public:
 	    template <class Type>
 	    void operator()(Type)
 	    {
-	    try 
-	    {
-		_parent._retval = python::object(any_cast<Type>(const_cast<dynamic_property_map&>(_parent._dmap).get(_parent._e)));
-	    }
-	    catch (bad_any_cast){}
+		any any_val = const_cast<dynamic_property_map&>(_parent._dmap).get(_parent._e);
+		Type* value = any_cast<Type>(&any_val);
+		if (value != 0)
+		    _parent._retval = python::object(*value);
 	    }
 	    
 	    get_value& _parent;
