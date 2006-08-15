@@ -47,49 +47,15 @@
 //           Tiago de Paula Peixoto
 
 #include "expat.h"
-#include <boost/config.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/any.hpp>
-#include <boost/type_traits/is_convertible.hpp>
-#include <boost/graph/graphviz.hpp> // for exceptions
-#include <typeinfo>
-#include <boost/mpl/bool.hpp>
-#include <boost/mpl/vector.hpp>
-#include <boost/mpl/find.hpp>
-#include <boost/mpl/for_each.hpp>
-#include <exception>
-#include <sstream>
+#include "graphml.hpp"
 
-namespace boost 
-{
+using namespace boost;
 
-/////////////////////////////////////////////////////////////////////////////
-// Graph reader exceptions
-/////////////////////////////////////////////////////////////////////////////
-struct parse_error : public graph_exception 
-{
-    parse_error(std::string error) {statement = "parse error: " + error;}	
-    std::string statement;
-    virtual ~parse_error() throw() {}
-    const char* what() const throw() {return statement.c_str();}
-};
-
-
-template<typename MutableGraph>
 class graphml_reader
 {
-    typedef graphml_reader self_type;
-    typedef typename graph_traits<MutableGraph>::vertex_descriptor vertex_descriptor;
-    typedef typename graph_traits<MutableGraph>::edge_descriptor edge_descriptor;
-    typedef typename graph_traits<MutableGraph>::directed_category directed_category;
-    
-    BOOST_STATIC_CONSTANT(bool, 
-			  graph_is_directed = 
-			  (is_convertible<directed_category*, directed_tag*>::value));
-    
 public:
-    graphml_reader(MutableGraph& g, dynamic_properties& dp) 
-	: m_g(g), m_dp(dp), m_active_descriptor_is_vertex(false), m_canonical_vertices(false), m_canonical_edges(false) { }
+    graphml_reader(mutate_graph& g) 
+	: m_g(g), m_active_descriptor_is_vertex(false), m_canonical_vertices(false), m_canonical_edges(false) { }
     
     void run(std::istream& in)
     {
@@ -132,7 +98,7 @@ private:
     on_start_element(void* user_data, const XML_Char *c_name,
 		     const XML_Char **atts)
     {
-	self_type* self = static_cast<self_type*>(user_data);
+	graphml_reader* self = static_cast<graphml_reader*>(user_data);
 
 	std::string name(c_name);
 	if (name == "key") 
@@ -169,6 +135,7 @@ private:
 	    self->m_keys[id] = kind;
 	    self->m_key_name[id] = key_name;
 	    self->m_key_type[id] = key_type;
+	    self->m_active_key = id;
 	} 
 	else if (name == "node") 
 	{
@@ -201,7 +168,7 @@ private:
 		else if (name == "directed") 
 		{
 		    bool edge_is_directed = (value == "directed");
-		    if (edge_is_directed != graph_is_directed) 
+		    if (edge_is_directed != self->m_g.is_directed()) 
 		    {
 			if (edge_is_directed) 
 			    throw directed_graph_error();
@@ -222,11 +189,10 @@ private:
 		std::string name = *atts++;
 		std::string value = *atts++;
 		
-		if (name == "id") self->m_id = value;
-		else if (name == "edgedefault") 
+		if (name == "edgedefault") 
 		{
 		    bool edge_is_directed = (value == "directed");
-		    if (edge_is_directed != graph_is_directed) 
+		    if (edge_is_directed != self->m_g.is_directed()) 
 		    {
 			if (edge_is_directed) 
 			    throw directed_graph_error();
@@ -261,7 +227,7 @@ private:
     static void
     on_end_element(void* user_data, const XML_Char *c_name)
     {
-	self_type* self = static_cast<self_type*>(user_data);
+	graphml_reader* self = static_cast<graphml_reader*>(user_data);
 	std::string name(c_name);
 
 	if (name == "data") 
@@ -269,19 +235,25 @@ private:
 	    self->handle_property(self->m_active_key, self->m_active_descriptor,
 				  self->m_active_descriptor_is_vertex,
 				  self->m_character_data);
+	} 
+	else if (name == "default")
+	{
+	    self->m_key_default[self->m_active_key] = self->m_character_data;
 	}
     }
 
     static void
     on_character_data(void* user_data, const XML_Char* s, int len)
     {
-	self_type* self = static_cast<self_type*>(user_data);
+	graphml_reader* self = static_cast<graphml_reader*>(user_data);
 	self->m_character_data.append(s, len);
     }
 
     void 
     handle_vertex(const std::string& v)
     {
+	bool is_new = false;
+
 	if (m_canonical_vertices)
 	{
 	    size_t id;
@@ -297,16 +269,32 @@ private:
 	    }
 	    
 	    while(id >= m_canonical_vertex.size())
-		m_canonical_vertex.push_back(add_vertex(m_g));
+	    {
+		m_canonical_vertex.push_back(m_g.do_add_vertex());
+		is_new = true;
+	    }
 	}
 	else
 	{
 	    if (m_vertex.find(v) == m_vertex.end())
-		m_vertex[v] = add_vertex(m_g);
+	    {
+		m_vertex[v] = m_g.do_add_vertex();
+		is_new = true;
+	    }
+	}
+
+	if (is_new)
+	{
+	    std::map<std::string, std::string>::iterator iter;
+	    for (iter = m_key_default.begin(); iter != m_key_default.end(); ++iter)
+	    {
+		if (m_keys[iter->first] == node_key)
+		    handle_property(iter->first, v, true, iter->second);
+	    }
 	}
     }
 
-    vertex_descriptor
+    any
     get_vertex_descriptor(const std::string& v)
     {
 	if (m_canonical_vertices)
@@ -327,15 +315,15 @@ private:
 	handle_vertex(u);
 	handle_vertex(v);
 
-	vertex_descriptor source, target;
+	any source, target;
 	source = get_vertex_descriptor(u);
 	target = get_vertex_descriptor(v);
 
-	edge_descriptor edge;
+	any edge;
 	bool added;
-	tie(edge, added) = add_edge(source,target,m_g);
+	tie(edge, added) = m_g.do_add_edge(source, target);
 	if (!added)
-	    throw bad_parallel_edge(u,v);
+	    throw bad_parallel_edge(u, v);
 
 	if (m_canonical_edges)
 	{
@@ -358,72 +346,25 @@ private:
 	{
 	    m_edge[e] = edge;
 	}
-    }
 
-    template <typename Key, typename ValueVector>
-    class put_property
-    {
-    public:
-	put_property(const std::string& name, dynamic_properties& dp, const Key& key, 
-		     const std::string& value, const std::string& value_type, 
-		     char** type_names, bool& type_found)
-	    : m_name(name), m_dp(dp), m_key(key), m_value(value), 
-	      m_value_type(value_type), m_type_names(type_names), 
-	      m_type_found(type_found) {}
-	template <class Value>
-	void operator()(Value)
+	std::map<std::string, std::string>::iterator iter;
+	for (iter = m_key_default.begin(); iter != m_key_default.end(); ++iter)
 	{
-	    if (m_value_type == m_type_names[mpl::find<ValueVector,Value>::type::pos::value])
-	    {
-		put(m_name, m_dp, m_key, lexical_cast<Value>(m_value));
-		m_type_found = true;
-	    }
+	    if (m_keys[iter->first] == edge_key)
+		handle_property(iter->first, e, false, iter->second);
 	}
-    private:
-	const std::string& m_name;
-	dynamic_properties& m_dp;
-	const Key& m_key;
-	const std::string& m_value;
-	const std::string& m_value_type;
-	char** m_type_names;
-	bool& m_type_found;
-    };
+    }
 
     void handle_property(std::string key_id, std::string descriptor, 
 			 bool is_vertex, std::string value)
     {
-	typedef mpl::vector<bool, int, long, float, double, std::string> value_types;
-	char* type_names[] = {"bool", "int", "long", "float", "double", "string"};
-	
-	bool type_found = false;
-	try
-	{
-	    if (is_vertex)
-		mpl::for_each<value_types>
-		    (put_property<vertex_descriptor,value_types>
-		     (m_key_name[key_id], m_dp, 
-		      get_vertex_descriptor(descriptor),
-		      value, m_key_type[key_id], type_names, type_found));
-	    else
-		mpl::for_each<value_types>
-		    (put_property<edge_descriptor,value_types>
-		     (m_key_name[key_id], m_dp, 
-		      get_edge_descriptor(descriptor),
-		      value, m_key_type[key_id], type_names, type_found));
-	}
-	catch (bad_lexical_cast)
-	{
-	    throw parse_error("invalid value \"" + value + "\" for key " + 
-			      m_key_name[key_id]  + " of type " +  
-			      m_key_type[key_id] );
-	}
-	if (!type_found)
-	    throw  parse_error("unrecognized type \"" + m_key_type[key_id] + 
-			       "\" for key " + m_key_name[key_id]);
+	if (is_vertex)
+	    m_g.set_vertex_property(m_key_name[key_id], get_vertex_descriptor(descriptor), value, m_key_type[key_id]);
+	else
+	    m_g.set_edge_property(m_key_name[key_id], get_edge_descriptor(descriptor), value, m_key_type[key_id]);
     }
 
-
-    edge_descriptor
+    any
     get_edge_descriptor(const std::string& e)
     {
 	if (m_canonical_edges)
@@ -438,16 +379,15 @@ private:
 	}
     }
 
-    std::string m_id;
-    MutableGraph& m_g;
-    dynamic_properties& m_dp;
+    mutate_graph& m_g;
     std::map<std::string, key_kind> m_keys;
     std::map<std::string, std::string> m_key_name;
     std::map<std::string, std::string> m_key_type;
-    std::map<std::string, vertex_descriptor> m_vertex;
-    std::vector<vertex_descriptor> m_canonical_vertex;
-    std::map<std::string, edge_descriptor> m_edge;
-    std::vector<edge_descriptor> m_canonical_edge;
+    std::map<std::string, std::string> m_key_default;
+    std::map<std::string, any> m_vertex;
+    std::vector<any> m_canonical_vertex;
+    std::map<std::string, any> m_edge;
+    std::vector<any> m_canonical_edge;
     std::string m_active_descriptor;
     bool m_active_descriptor_is_vertex;
     std::string m_active_key;
@@ -456,118 +396,12 @@ private:
     bool m_canonical_edges;
 };
 
-template<typename MutableGraph>
-void
-read_graphml(std::istream& in, MutableGraph& g, dynamic_properties& dp)
+namespace boost
 {
-    graphml_reader<MutableGraph> reader(g, dp);
+void
+read_graphml(std::istream& in, mutate_graph& g)
+{    
+    graphml_reader reader(g);
     reader.run(in);
 }
-
-template <typename Types>
-class get_type_name
-{
-public:
-    get_type_name(const std::type_info& type, char** type_names, std::string& type_name)
-	: m_type(type), m_type_names(type_names), m_type_name(type_name) {}
-    template <typename Type>
-    void operator()(Type)
-    {
-	if (typeid(Type) == m_type)
-	    m_type_name = m_type_names[mpl::find<Types,Type>::type::pos::value];
-    }
-private:
-    const std::type_info &m_type;
-    char** m_type_names;
-    std::string &m_type_name;
-};
-
-
-template <typename Graph, typename VertexIndexMap>
-void
-write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
-	      const dynamic_properties& dp, bool ordered_vertices=false)
-{
-    typedef typename graph_traits<Graph>::directed_category directed_category;
-    typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
-    typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
-
-    BOOST_STATIC_CONSTANT(bool, 
-			  graph_is_directed = 
-			  (is_convertible<directed_category*, directed_tag*>::value));
-
-    out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-	<< "<graphml xmlns=\"http://graphml.graphdrawing.org/xmlns/graphml\"  xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://graphml.graphdrawing.org/xmlns/graphml http://graphml.graphdrawing.org/xmlns/graphml/graphml-attributes-1.0rc.xsd\">\n";
-
-    typedef mpl::vector<bool, short, unsigned short, int, unsigned int, long, unsigned long, long long, unsigned long long, float, double, long double, std::string> value_types;
-    char* type_names[] = {"bool", "int", "int", "int", "int", "long", "long", "long", "long", "float", "double", "double", "string"};    
-    std::map<std::string, std::string> vertex_key_ids;
-    std::map<std::string, std::string> edge_key_ids;
-    int key_count = 0;
-
-    // Output keys
-    for (dynamic_properties::const_iterator i = dp.begin(); i != dp.end(); ++i) 
-    {
-	std::string key_id = "key" + lexical_cast<std::string>(key_count++);
-	if (i->second->key() == typeid(vertex_descriptor))
-	    vertex_key_ids[i->first] = key_id;
-	else
-	    edge_key_ids[i->first] = key_id;
-	std::string type_name = "string";
-	mpl::for_each<value_types>(get_type_name<value_types>(i->second->value(), type_names, type_name));
-	out << "  <key id=\"" << key_id << "\" for=\"" 
-	    << (i->second->key() == typeid(vertex_descriptor) ? "node" : "edge") << "\""
-	    << " attr.name=\"" << i->first << "\""
-	    << " attr.type=\"" << type_name << "\""
-	    << " />\n";
-    }
-
-    out << "  <graph id=\"G\" edgedefault=\"" 
-	<< (graph_is_directed ? "directed" : "undirected") << "\""
-	<< " parse.nodeids=\"" << (ordered_vertices ? "canonical" : "free") << "\""
-	<< " parse.edgeids=\"canonical\" parse.order=\"nodesfirst\">\n";
-
-    typedef typename graph_traits<Graph>::vertex_iterator vertex_iterator;
-    vertex_iterator v, v_end;
-    for (tie(v, v_end) = vertices(g); v != v_end; ++v)
-    {
-	out << "    <node id=\"n" << get(vertex_index, *v) << "\">\n";
-	// Output data
-	for (dynamic_properties::const_iterator i = dp.begin(); i != dp.end(); ++i)
-	{
-	    if (i->second->key() == typeid(vertex_descriptor)) 
-	    {
-		out << "      <data key=\"" << vertex_key_ids[i->first] << "\">"
-		    << i->second->get_string(*v) << "</data>\n";
-	    }
-	}
-	out << "    </node>\n";
-    }
-
-    typedef typename graph_traits<Graph>::edge_iterator edge_iterator;
-    edge_iterator e, e_end;
-    typename graph_traits<Graph>::edges_size_type edge_count = 0;
-    for (tie(e, e_end) = edges(g); e != e_end; ++e) 
-    {
-	out << "    <edge id=\"e" << edge_count++ << "\" source=\"n"
-	    << get(vertex_index, source(*e, g)) << "\" target=\"n"
-	    << get(vertex_index, target(*e, g)) << "\">\n";
-
-	// Output data
-	for (dynamic_properties::const_iterator i = dp.begin(); i != dp.end(); ++i)
-	{
-	    if (i->second->key() == typeid(edge_descriptor)) 
-	    {
-		out << "      <data key=\"" << edge_key_ids[i->first] << "\">"
-		    << i->second->get_string(*e) << "</data>\n";
-	    }
-	}
-	out << "    </edge>\n";
-    }
-
-    out << "  </graph>\n"
-	<< "</graphml>\n";
-}
-
-
 }

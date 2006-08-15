@@ -84,8 +84,9 @@ public:
     std::pair<double,double> GetScalarAssortativityCoefficient(deg_t deg) const;
 
     //clustering
-    void   SetLocalClusteringToProperty(std::string property);
+    void SetLocalClusteringToProperty(std::string property);
     std::pair<double,double> GetGlobalClustering();
+    void SetExtendedClusteringToProperty(std::string property_prefix, size_t max_depth);
 
     // other
     hist_t GetComponentSizeHistogram() const;

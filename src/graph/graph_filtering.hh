@@ -276,20 +276,50 @@ private:
 };
 
 template <class IndexMap, class Value>
-class HashedDescriptorMap:
-    public associative_property_map<std::tr1::unordered_map<typename IndexMap::key_type,Value,DescriptorHash<IndexMap> > >
+class HashedDescriptorMap    
 {
 public:
     typedef DescriptorHash<IndexMap> hashfc_t;
     typedef std::tr1::unordered_map<typename IndexMap::key_type,Value,hashfc_t> map_t;
     typedef associative_property_map<map_t> prop_map_t;
 
-    HashedDescriptorMap(IndexMap index_map): prop_map_t(base_map), base_map(0, hashfc_t(index_map)) {}
+    typedef typename property_traits<prop_map_t>::value_type value_type;
+    typedef typename property_traits<prop_map_t>::reference reference;
+    typedef typename property_traits<prop_map_t>::key_type key_type;
+    typedef typename property_traits<prop_map_t>::category category;
+
+    HashedDescriptorMap(IndexMap index_map): _base_map(new map_t(0, hashfc_t(index_map))), _prop_map(*_base_map) {}
     HashedDescriptorMap(){}
+    
+    reference operator[](const key_type& k) { return _prop_map[k]; }
+    const reference operator[](const key_type& k) const { return _prop_map[k]; }
+
 private:
-    map_t base_map;
+    shared_ptr<map_t> _base_map;
+    prop_map_t _prop_map;
 };
 
 } //namespace graph_tool
+
+namespace boost
+{
+using namespace graph_tool;
+
+template <class IndexMap, class Value>
+typename HashedDescriptorMap<IndexMap,Value>::value_type
+get(const HashedDescriptorMap<IndexMap,Value>& hmap, const typename HashedDescriptorMap<IndexMap,Value>::key_type& k)
+{
+    return hmap[k];
+}
+
+template <class IndexMap, class Value>
+void
+put(HashedDescriptorMap<IndexMap,Value>& hmap, const typename HashedDescriptorMap<IndexMap,Value>::key_type& k, 
+    const typename HashedDescriptorMap<IndexMap,Value>::value_type& value)
+{
+    hmap[k] = value;
+}
+
+} //boost namespace
 
 #endif

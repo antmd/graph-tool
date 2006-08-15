@@ -115,6 +115,7 @@ correlations.add_option("--scalar-assortativity-coefficient", action="callback",
 clustering =  parser.add_option_group("Clustering")
 clustering.add_option("--set-local-clustering-to-property", action="callback", callback=push_option, type="string", metavar="PROPERTY", help="set the local clustering coefficient to vertex property")
 clustering.add_option("--global-clustering-coefficient", action="callback", callback=push_option, type="string", metavar="FILE", help="get the global clustering coefficient")
+clustering.add_option("--set-extended-clustering-to-property", action="callback", callback=push_option, type="string", metavar="PROPERTY_PREFIX|MAX", help="set the extended clustering coefficients c0 to cMAX to vertex properties PROPERTY_PREFIX0 to  PROPERTY_PREFIXMAX")
 
 layout =  parser.add_option_group("Layout")
 layout.add_option("--compute-spring-block-layout", action="callback", callback=push_option, type="string", metavar="ITERATIONS[|SEED]", help="compute the spring block layout")
@@ -419,6 +420,13 @@ def parse_option(opt, just_file=False):
         if just_file:
             return None
         graph.SetLocalClusteringToProperty(opt.value)
+    elif opt.name == "set-extended-clustering-to-property":
+        if just_file:
+            return None
+        values = parse_values(opt.value)
+        if len(values) == 0 or len(values) > 2:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        graph.SetExtendedClusteringToProperty(values[0],int(values[1])+1)
     elif opt.name == "compute-spring-block-layout":
         if just_file:
             return None

@@ -24,7 +24,7 @@
 #include "histogram.hh"
 #include "graph_filtering.hh"
 #include "graph_properties.hh"
-#include "graphml_io.hh"
+#include "graphml.hpp"
 
 using namespace std;
 using namespace boost;
