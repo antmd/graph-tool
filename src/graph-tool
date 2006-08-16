@@ -97,8 +97,12 @@ statistics.add_option("--number-of-edges", action="callback", callback=push_opti
 statistics.add_option("--vertex-histogram", action="callback", callback=push_option, type="string", metavar="DEGREE|FILE", help="get the vertex degree/property histogram")
 statistics.add_option("--edge-histogram", action="callback", callback=push_option, type="string", metavar="PROPERTY|FILE", help="get the edge property histogram")
 statistics.add_option("--combined-vertex-histogram", action="callback", callback=push_option, type="string", metavar="DEGREE1|DEGREE2|FILE", help="get the combined (DEGREE1,DEGREE2) histogram. Scalar properties are also accepted as DEGREE1 or DEGREE2")
+statistics.add_option("--distance-histogram", action="callback", callback=push_option, type="string", metavar="[WEIGHT|]FILE", help="get the distance histogram")
 statistics.add_option("--average-distance", action="callback", callback=push_option, type="string", metavar="[WEIGHT|]FILE", help="get the averarge distance")
 statistics.add_option("--average-harmonic-distance", action="callback", callback=push_option, type="string", metavar="[WEIGHT|]FILE", help="get the averarge harmonic distance")
+statistics.add_option("--sampled-distance-histogram", action="callback", callback=push_option, type="string", metavar="[WEIGHT|]SAMPLES|SEED|FILE", help="get the sampled distance histogram")
+statistics.add_option("--average-sampled-distance", action="callback", callback=push_option, type="string", metavar="[WEIGHT|]SAMPLES|SEED|FILE", help="get the average sampled distance")
+statistics.add_option("--average-sampled-harmonic-distance", action="callback", callback=push_option, type="string", metavar="[WEIGHT|]SAMPLES|SEED|FILE", help="get the average sampled harmonic distance")
 statistics.add_option("--component-size-histogram", action="callback", callback=push_option, type="string", metavar="FILE", help="get the component size histogram")
 statistics.add_option("--average-vertex-property", action="callback", callback=push_option, type="string", metavar="PROPERTY|FILE", help="get the average of the vertex property")
 statistics.add_option("--average-edge-property", action="callback", callback=push_option, type="string", metavar="PROPERTY|FILE", help="get the average of the edge property")
@@ -157,6 +161,16 @@ def degree(name):
     if name == "total-degree" or name == "total":
         deg = Degree.Total
     return deg
+
+def get_mean(hist):
+    avg,dev,count = 0.0,0.0,0.0
+    for k,v in hist.iteritems():
+        avg += k*v
+        dev += k*k*v
+        count += v
+    avg /= count
+    dev = math.sqrt(dev/count - avg*avg)/math.sqrt(count)
+    return (avg,dev)
 
 class OptionError(Exception):
     def __init__(self, option, error):
@@ -302,6 +316,17 @@ def parse_option(opt, just_file=False):
         if just_file:
             return values[2]
         return (graph.GetAverageCombinedVertexCorrelation(degree(values[0]),degree(values[1])), values[2])
+    elif opt.name == "distance-histogram":
+        values = parse_values(opt.value)
+        if len(values) > 2 or len(values) < 1:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        file_name, weight = values[0],""
+        if len(values) > 1:
+            weight = values[0]
+            file_name = values[1]
+        if just_file:
+            return file_name
+        return (graph.GetDistanceHistogram(weight), file_name)
     elif opt.name == "average-distance":
         values = parse_values(opt.value)
         if len(values) > 2 or len(values) < 1:
@@ -312,7 +337,7 @@ def parse_option(opt, just_file=False):
             file_name = values[1]
         if just_file:
             return file_name
-        return (graph.GetAverageDistance(weight), file_name)
+        return ("%f\t%f" % get_mean(graph.GetDistanceHistogram(weight)), file_name)
     elif opt.name == "average-harmonic-distance":
         values = parse_values(opt.value)
         if len(values) > 2 or len(values) < 1:
@@ -323,7 +348,44 @@ def parse_option(opt, just_file=False):
             file_name = values[1]
         if just_file:
             return file_name
-        return (graph.GetAverageHarmonicDistance(weight), file_name)
+        hist = graph.GetDistanceHistogram(weight)
+        avg, err = hist_mean(dict((1.0/k,v) for k,v in hist.iteritems()))
+        return ("%f\t%f" % (1.0/avg,1.0/err) , file_name)
+    elif opt.name == "sampled-distance-histogram":
+        values = parse_values(opt.value)
+        if len(values) > 4 or len(values) < 3:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        if len(values) == 3:
+            weight, samples, seed, file_name = "", int(values[0]), int(values[1]), values[2]
+        else:
+            weight, samples, seed, file_name = values[0], int(values[1]), int(values[2]), values[3]
+        if just_file:
+            return file_name
+        return (graph.GetSampledDistanceHistogram(weight, samples, seed), file_name)
+    elif opt.name == "average-sampled-distance":
+        values = parse_values(opt.value)
+        if len(values) > 4 or len(values) < 3:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        if len(values) == 3:
+            weight, samples, seed, file_name = "", int(values[0]), int(values[1]), values[2]
+        else:
+            weight, samples, seed, file_name = values[0], int(values[1]), int(values[2]), values[3]
+        if just_file:
+            return file_name
+        return ("%f\t%f" % get_mean(graph.GetSampledDistanceHistogram(weight, samples, seed)), file_name)
+    elif opt.name == "average-sampled-harmonic-distance":
+        values = parse_values(opt.value)
+        if len(values) > 4 or len(values) < 3:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        if len(values) == 3:
+            weight, samples, seed, file_name = "", int(values[0]), int(values[1]), values[2]
+        else:
+            weight, samples, seed, file_name = values[0], int(values[1]), int(values[2]), values[3]
+        if just_file:
+            return file_name
+        hist = graph.GetSampledDistanceHistogram(weight, samples, seed)
+        avg, err = hist_mean(dict((1.0/k,v) for k,v in hist.iteritems()))
+        return ("%f\t%f" % (1.0/avg,1.0/err) , file_name)
     elif opt.name == "component-size-histogram":
         if just_file:
             return opt.value
@@ -398,15 +460,8 @@ def parse_option(opt, just_file=False):
             deg = degree(values[0])
             hist = graph.GetVertexHistogram(deg)
         else:
-            hist = graph.GetEdgeHistogram(values[0])
-        avg,dev,count = 0.0,0.0,0.0
-        for k,v in hist.iteritems():
-            avg += k*v
-            dev += k*k*v
-            count += v
-        avg /= count
-        dev = math.sqrt(dev/count - avg*avg)/math.sqrt(count)
-        ret = "%f\t%f" % (avg, dev)
+            hist = graph.GetEdgeHistogram(values[0])        
+        ret = "%f\t%f" % get_mean(hist)
         if just_file:
             return values[1]
         return (ret,values[1])

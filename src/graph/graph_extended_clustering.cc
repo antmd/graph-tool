@@ -77,55 +77,6 @@ struct bfs_max_depth_watcher
 };
 
 
-// this wraps a container as a property map which is automatically initialized
-// with a given default value
-
-template <class Container>
-class InitializedPropertyMap
-{
-public:
-    typedef typename Container::value_type::second_type value_type;
-    typedef value_type& reference;
-    typedef typename Container::key_type key_type;
-    typedef boost::read_write_property_map_tag category;
-
-    InitializedPropertyMap(Container& base_map, value_type def)
-	: _base_map(&base_map), _default(def) {}
-    InitializedPropertyMap(){}
-
-    reference operator[](const key_type& k)
-    {
-	typename Container::iterator val;
-	val = _base_map->find(k);
-	if (val == _base_map->end())
-	    val = _base_map->insert(make_pair(k, _default)).first;
-	return val->second;
-    }
-
-private:
-    Container* _base_map;
-    value_type _default;
-};
-
-namespace boost
-{
-template <class Container>
-void put(InitializedPropertyMap<Container>& m, const typename InitializedPropertyMap<Container>::key_type& key, 
-	 const typename InitializedPropertyMap<Container>::value_type& value)
-{
-    m[key] = value;
-}
-
-template <class Container>
-typename InitializedPropertyMap<Container>::value_type
-get(InitializedPropertyMap<Container>& m, const typename InitializedPropertyMap<Container>::key_type& key)
-{
-    return m[key];
-}
-
-}
-
-
 struct get_extended_clustering
 {
     template <class Graph, class IndexMap, class ClusteringMap>
@@ -169,6 +120,7 @@ struct get_extended_clustering
 		
 		try
 		{
+		    distance_map[*a] = 0;
 		    bfs_max_depth_watcher<neighbour_set_t,InitializedPropertyMap<dmap_t> > watcher(targets, cmaps.size(), distance_map);
 		    breadth_first_visit(fg, *a, visitor(make_bfs_visitor(make_pair(record_distances(distance_map, boost::on_tree_edge()),watcher))).
 					color_map(color_map));
@@ -179,13 +131,13 @@ struct get_extended_clustering
 		typename graph_traits<Graph>::adjacency_iterator a2;
 		for(a2 = adjacent_vertices(*v, g).first ; a2 != a_end ; ++a2) 
 		{
-		    if (*a2 == *v) // no self-loops
+		    if (*a2 == *v || *a2 == *a) // no self-loops
 			continue;
 		    if (neighbours2.find(*a2) != neighbours2.end()) // avoid parallel edges
 			continue;
 		    neighbours2.insert(*a2);
-		    if (distance_map[*a2] < cmaps.size())
-			cmaps[distance_map[*a2]][*v] += 1.0/(k*(k-1));
+		    if (distance_map[*a2] <= cmaps.size())
+			cmaps[distance_map[*a2]-1][*v] += 1.0/(k*(k-1));
 		}
 	    }
 	}

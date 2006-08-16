@@ -90,8 +90,8 @@ public:
 
     // other
     hist_t GetComponentSizeHistogram() const;
-    double GetAverageDistance(std::string weight) const;
-    double GetAverageHarmonicDistance(std::string weight) const;
+    hist_t GetDistanceHistogram(std::string weight) const;
+    hist_t GetSampledDistanceHistogram(std::string weight, size_t samples, size_t seed) const;
 
     // filtering
     void SetDirected(bool directed) {_directed = directed;}

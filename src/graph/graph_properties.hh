@@ -20,9 +20,13 @@
 #define GRAPH_PROPERTIES_HH
 
 #include <string>
+#include <tr1/unordered_map>
+#include <boost/property_map.hpp>
 #include <boost/dynamic_property_map.hpp>
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/for_each.hpp>
+#include <boost/functional/hash.hpp>
+#include <boost/shared_ptr.hpp>
 
 namespace graph_tool 
 {
@@ -160,27 +164,116 @@ private:
     boost::dynamic_property_map* _dmap;
 };
 
+} // graph_tool namespace
 
-} // namespace graph_tool
-
-
-namespace boost {
-
-using namespace graph_tool;
+namespace boost 
+{
 
 template <class Value, class Key>
-Value get(const DynamicPropertyMapWrap<Value,Key>& pmap, typename property_traits<DynamicPropertyMapWrap<Value,Key> >::key_type k)
+Value get(const graph_tool::DynamicPropertyMapWrap<Value,Key>& pmap, typename property_traits<graph_tool::DynamicPropertyMapWrap<Value,Key> >::key_type k)
 {
     return pmap.get(k);
 }
 
 template <class Value, class Key>
-void put(DynamicPropertyMapWrap<Value,Key> pmap, typename property_traits<DynamicPropertyMapWrap<Value,Key> >::key_type k, 
-	 typename property_traits<DynamicPropertyMapWrap<Value,Key> >::value_type val)
+void put(graph_tool::DynamicPropertyMapWrap<Value,Key> pmap, typename property_traits<graph_tool::DynamicPropertyMapWrap<Value,Key> >::key_type k, 
+	 typename property_traits<graph_tool::DynamicPropertyMapWrap<Value,Key> >::value_type val)
 {
     pmap.put(k,val);
 }
 
-} // namespace boost
+} // boost namespace 
+
+namespace graph_tool
+{
+
+//==============================================================================
+// DescriptorHash
+// property map based on a hashed container
+//==============================================================================
+
+template <class IndexMap>
+class DescriptorHash: public std::unary_function<typename IndexMap::key_type, std::size_t> 
+{
+public:
+    DescriptorHash() {}
+    DescriptorHash(IndexMap index_map): _index_map(index_map) {}
+    std::size_t operator()(typename IndexMap::key_type const& d) const { return boost::hash_value(_index_map[d]); }
+private:
+    IndexMap _index_map;
+};
+
+template <class IndexMap, class Value>
+class HashedDescriptorMap
+    : public boost::put_get_helper<Value&, HashedDescriptorMap<IndexMap,Value> >
+{
+public:
+    typedef DescriptorHash<IndexMap> hashfc_t;
+    typedef std::tr1::unordered_map<typename IndexMap::key_type,Value,hashfc_t> map_t;
+    typedef boost::associative_property_map<map_t> prop_map_t;
+
+    typedef typename boost::property_traits<prop_map_t>::value_type value_type;
+    typedef typename boost::property_traits<prop_map_t>::reference reference;
+    typedef typename boost::property_traits<prop_map_t>::key_type key_type;
+    typedef typename boost::property_traits<prop_map_t>::category category;
+
+    HashedDescriptorMap(IndexMap index_map): _base_map(new map_t(0, hashfc_t(index_map))), _prop_map(*_base_map) {}
+    HashedDescriptorMap(){}
+    
+    reference operator[](const key_type& k) { return _prop_map[k]; }
+    const reference operator[](const key_type& k) const { return _prop_map[k]; }
+
+private:
+    boost::shared_ptr<map_t> _base_map;
+    prop_map_t _prop_map;
+};
+
+
+//==============================================================================
+// InitializedPropertyMap
+// this wraps a container as a property map which is automatically initialized
+// with a given default value
+//==============================================================================
+
+template <class Container>
+class InitializedPropertyMap
+    : public boost::put_get_helper<typename Container::value_type::second_type&, InitializedPropertyMap<Container> >
+{
+public:
+    typedef typename Container::value_type::second_type value_type;
+    typedef value_type& reference;
+    typedef typename Container::key_type key_type;
+    typedef boost::read_write_property_map_tag category;
+
+    InitializedPropertyMap(Container& base_map, value_type def)
+	: _base_map(&base_map), _default(def) {}
+    InitializedPropertyMap(){}
+
+    reference operator[](const key_type& k)
+    {
+	return get(k);
+    }
+
+    const reference operator[](const key_type& k) const
+    {
+	return get(k);
+    }
+
+    const reference get(const key_type& k) const
+    {
+	typename Container::iterator val;
+	val = _base_map->find(k);
+	if (val == _base_map->end())
+	    val = _base_map->insert(make_pair(k, _default)).first;
+	return val->second;
+    }
+
+private:
+    Container* _base_map;
+    value_type _default;
+};
+
+} // graph_tool namespace
+
 
 #endif

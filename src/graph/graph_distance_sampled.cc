@@ -21,7 +21,7 @@
 #include <boost/graph/breadth_first_search.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/lambda/bind.hpp>
-#include <iostream>
+#include <boost/random.hpp>
 
 #include "graph.hh"
 #include "histogram.hh"
@@ -34,37 +34,51 @@ using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
 
+typedef boost::mt19937 rng_t;
+
 //==============================================================================
-// GetDistanceHistogram()
-// retrieves the vertex-vertex distance histogram
+// GetSampledDistanceHistogram()
+// retrieves the histogram of sampled vertex-vertex distances
 //==============================================================================
 struct no_weightS {};
 
-struct get_distance_histogram
+struct get_sampled_distances
 {
 
     template <class Graph, class IndexMap, class WeightMap, class Hist>
-    void operator()(const Graph &g, IndexMap index_map, WeightMap weights, Hist& hist) const
+    void operator()(const Graph &g, IndexMap index_map, WeightMap weights, Hist& hist, size_t samples, size_t seed) const
     {	
-	// select get_vertex_dists based on the existence of weights
+	typedef HashedDescriptorMap<IndexMap,double> dist_map_t;
+	dist_map_t dist_map(index_map);
+
+	// select get_sum_vertex_dists based on the existence of weights
 	typedef typename mpl::if_<is_same<WeightMap, no_weightS>,
                      	          get_dists_bfs,
                                   get_dists_djk>::type get_vertex_dists_t;
-
 	get_vertex_dists_t get_vertex_dists;
-	typename graph_traits<Graph>::vertex_iterator v, v2, v_end;
-	for (tie(v, v_end) = vertices(g); v != v_end; ++v)
-	{
-	    typedef tr1::unordered_map<typename graph_traits<Graph>::vertex_descriptor,double,DescriptorHash<IndexMap> > dmap_t;
-	    dmap_t dmap(0, DescriptorHash<IndexMap>(index_map));
-	    InitializedPropertyMap<dmap_t> dist_map(dmap, numeric_limits<double>::max());
 
-	    dist_map[*v] = 0.0;
-	    get_vertex_dists(g, *v, index_map, dist_map, weights);
-	    for (v2 = vertices(g).first; v2 != v_end; ++v2)
-		if (*v2 != *v && dist_map[*v2] != numeric_limits<double>::max())
-		    hist[dist_map[*v2]]++;
-	}	
+	tr1::unordered_map<size_t, typename graph_traits<Graph>::vertex_descriptor> descriptors;
+
+	typename graph_traits<Graph>::vertex_iterator v, v_end;
+	size_t i = 0;
+	for(tie(v, v_end) = vertices(g); v != v_end; ++v,++i)
+	    descriptors[i] = *v;
+
+	rng_t rng(seed);
+	uniform_int<size_t> sampler(0,descriptors.size()-1);
+
+	for(i=0; i < samples; ++i)
+	{
+	    for(tie(v, v_end) = vertices(g); v != v_end; ++v)
+		dist_map[*v] = numeric_limits<double>::max();
+	    typename graph_traits<Graph>::vertex_descriptor s = descriptors[sampler(rng)];
+	    dist_map[s] = 0.0;
+	    get_vertex_dists(g, s, index_map, dist_map, weights);
+	    for(tie(v, v_end) = vertices(g); v != v_end; ++v,++i)
+		if (*v != s && dist_map[*v] != numeric_limits<double>::max() )
+		    hist[dist_map[*v]]++;
+	}
+	
     }
 
     // weighted version. Use dijkstra_shortest_paths()
@@ -73,7 +87,7 @@ struct get_distance_histogram
 	template <class Graph, class Vertex, class IndexMap, class DistanceMap, class WeightMap>
 	void operator()(const Graph& g, Vertex s, IndexMap index_map, DistanceMap dist_map, WeightMap weights) const
 	{
-	    dijkstra_shortest_paths(g, s, vertex_index_map(index_map).weight_map(weights).distance_map(dist_map));  
+	    dijkstra_shortest_paths(g, s, vertex_index_map(index_map).weight_map(weights).distance_map(dist_map));	    
 	}
     };
 
@@ -82,25 +96,21 @@ struct get_distance_histogram
     {
 	template <class Graph, class Vertex, class IndexMap, class DistanceMap>
 	void operator()(const Graph& g, Vertex s, IndexMap index_map, DistanceMap dist_map, no_weightS) const
-	{
-	    typedef tr1::unordered_map<typename graph_traits<Graph>::vertex_descriptor,default_color_type,DescriptorHash<IndexMap> > cmap_t;
-	    cmap_t cmap(0, DescriptorHash<IndexMap>(index_map));
-	    InitializedPropertyMap<cmap_t> color_map(cmap, color_traits<default_color_type>::white());
-	    	    
-	    breadth_first_visit(g, s, visitor(make_bfs_visitor(record_distances(dist_map, on_tree_edge()))).color_map(color_map)); 
+	{	    
+	    breadth_first_search(g, s, visitor(make_bfs_visitor(record_distances(dist_map, on_tree_edge()))));
 	}
     };
-
     
 };
 
-GraphInterface::hist_t GraphInterface::GetDistanceHistogram(string weight) const
+GraphInterface::hist_t 
+GraphInterface::GetSampledDistanceHistogram(string weight, size_t samples, size_t seed) const
 {
     hist_t hist;
 
     if (weight == "")
     {
-	check_filter(*this, bind<void>(get_distance_histogram(), _1, _vertex_index, no_weightS(), var(hist)),
+	check_filter(*this, bind<void>(get_sampled_distances(), _1, _vertex_index, no_weightS(), var(hist), samples, seed),
 		     reverse_check(), directed_check()); 
     }
     else
@@ -112,13 +122,13 @@ GraphInterface::hist_t GraphInterface::GetDistanceHistogram(string weight) const
 	    {
 		vector_property_map<double, edge_index_map_t> weight_map;
 		weight_map = get_static_property_map<vector_property_map<double, edge_index_map_t> >(weight_prop);
-		check_filter(*this, bind<void>(get_distance_histogram(), _1, _vertex_index, weight_map, var(hist)),
+		check_filter(*this, bind<void>(get_sampled_distances(), _1, _vertex_index, weight_map, var(hist), samples, seed),
 			     reverse_check(), directed_check()); 
 	    }
 	    catch (bad_cast)
 	    {
 		DynamicPropertyMapWrap<double, graph_traits<multigraph_t>::edge_descriptor> weight_map(weight_prop);
-		check_filter(*this, bind<void>(get_distance_histogram(), _1, _vertex_index, weight_map, var(hist)),
+		check_filter(*this, bind<void>(get_sampled_distances(), _1, _vertex_index, weight_map, var(hist), samples, seed),
 			     reverse_check(), directed_check()); 
 	    }
 	}

@@ -33,6 +33,7 @@ libgraph_tool_la_SOURCES = \
     graph_extended_clustering.cc\
     graph_generation.cc\
     graph_distance.cc\
+    graph_distance_sampled.cc\
     graph_io.cc\
     graph_bind.cc\
     graphml.hpp\
