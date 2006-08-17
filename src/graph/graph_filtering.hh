@@ -189,8 +189,8 @@ struct check_directed
 template <class Graph, class Action, class ReverseCheck, class DirectedCheck> 
 void check_python_filter(const Graph& g, const GraphInterface &gi, Action a, bool& found, ReverseCheck, DirectedCheck)
 {
-    typedef PythonFilter<Graph,mpl::bool_<true> > vertex_filter_t;
-    typedef PythonFilter<Graph,mpl::bool_<false> > edge_filter_t;
+    typedef PythonFilter<Graph,typename graph_traits<Graph>::vertex_descriptor> vertex_filter_t;
+    typedef PythonFilter<Graph,typename graph_traits<Graph>::edge_descriptor> edge_filter_t;
 
     if (gi._edge_python_filter != python::object())
     {
@@ -199,7 +199,7 @@ void check_python_filter(const Graph& g, const GraphInterface &gi, Action a, boo
 
 	if (gi._vertex_python_filter != python::object())
 	{
-	    typedef PythonFilter<efg_t, mpl::bool_<true>, mpl::bool_<true> > vertex_filter_t;
+	    typedef PythonFilter<efg_t, typename graph_traits<efg_t>::vertex_descriptor, mpl::bool_<true> > vertex_filter_t;
 	    typedef filtered_graph<efg_t,keep_all,vertex_filter_t> vefg_t;
 	    vefg_t vefg(efg,keep_all(),vertex_filter_t(efg, gi._properties, gi._vertex_python_filter));
 	    mpl::for_each<DirectedCheck>(check_directed<vefg_t,Action,ReverseCheck>(vefg, a, gi._reversed, gi._directed, found));

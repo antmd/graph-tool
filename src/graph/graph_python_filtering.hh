@@ -39,60 +39,57 @@ namespace graph_tool
 using namespace boost;
 
 //==============================================================================
-// PythonFilter
+// populate_python_funcs
 //==============================================================================
-template <class Graph, class VertexFilter, class HasBase = mpl::bool_<false> >
-class PythonFilter
+
+template <class Descriptor, class HasBase = mpl::bool_<false> >
+struct populate_python_funcs
 {
-public:
-    typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
-    typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
-
-    typedef mpl::vector<in_degreeS,out_degreeS,total_degreeS> degrees;
-
-    PythonFilter(){}
-    PythonFilter(const Graph& g, const dynamic_properties& dp, python::object filter)
-        : _g(&g), _filter(filter[0])
+    template<class Graph>
+    void operator()(const Graph& g, Descriptor& u, const dynamic_properties& dp, python::object& variables)
     {
-	python::object variables = filter[1];
+	for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)
+	{
+	    if (iter->second->key() == typeid(Descriptor))
+		variables[iter->first] = python::make_function(get_value<Descriptor>(*iter->second, u), 
+							       python::default_call_policies(), mpl::vector<python::object>::type());
+	}
+	populate_specific(g, u, dp, variables);
+    }
+
+    typedef mpl::vector<in_degreeS, out_degreeS, total_degreeS> degrees;
+
+    template <class Graph>
+    void populate_specific(const Graph& g, typename graph_traits<Graph>::vertex_descriptor& v, const dynamic_properties& dp, python::object& variables)
+    {
+	mpl::for_each<degrees>(put_degree_function<Graph>(g, v, variables));
+
+	typedef typename mpl::if_<HasBase, degrees, mpl::vector<> >::type base_degrees;
+	mpl::for_each<base_degrees>(put_base_degree_function<Graph>(g, v, variables, "orig_"));
+    }
+
+    template <class Graph>
+    void populate_specific(const Graph& g, typename graph_traits<Graph>::edge_descriptor& e, const dynamic_properties& dp, python::object& variables)
+    {
+	typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
+
+	variables["is_loop"] = python::make_function(is_loop<Graph>(g, e), python::default_call_policies(), mpl::vector<python::object>::type()); 
 	
 	for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)
 	{
-	    if (iter->second->key() == typeid(vertex_descriptor) && VertexFilter::value)
-		variables[iter->first] = python::make_function(get_value<vertex_descriptor>(*iter->second, _v), 
-							       python::default_call_policies(), mpl::vector<python::object>::type());
-	    if (iter->second->key() == typeid(edge_descriptor) && !VertexFilter::value)
-		variables[iter->first] = python::make_function(get_value<edge_descriptor>(*iter->second, _e), 
-							       python::default_call_policies(), mpl::vector<python::object>::type());
-	}
-
-	if (VertexFilter::value)
-	{
-	    mpl::for_each<degrees>(put_degree_function(*_g, _v, variables));
-
-	    typedef typename mpl::if_<HasBase, degrees, mpl::vector<> >::type base_degrees;
-	    mpl::for_each<base_degrees>(put_base_degree_function(*_g, _v, variables, "orig_"));
-	}
-	else
-	{
-	    variables["is_loop"] = python::make_function(is_loop(*_g, _e), python::default_call_policies(), mpl::vector<python::object>::type()); 
-	
-	    for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)
+	    if (iter->second->key() == typeid(vertex_descriptor))
 	    {
-		if (iter->second->key() == typeid(vertex_descriptor))
-		{
-		    variables["source_"+iter->first] = python::make_function(get_source_or_target_value<true>(*_g, *iter->second, _e), 
-									     python::default_call_policies(), mpl::vector<python::object>::type());
-		    variables["target_"+iter->first] = python::make_function(get_source_or_target_value<false>(*_g, *iter->second, _e), 
-									     python::default_call_policies(), mpl::vector<python::object>::type());
-
-		}
+		variables["source_"+iter->first] = python::make_function(get_source_or_target_value<Graph,true>(g, *iter->second, e), 
+									 python::default_call_policies(), mpl::vector<python::object>::type());
+		variables["target_"+iter->first] = python::make_function(get_source_or_target_value<Graph,false>(g, *iter->second, e), 
+									 python::default_call_policies(), mpl::vector<python::object>::type());
 	    }
-	    mpl::for_each<degrees>(put_source_or_target_degree_function<true>(*_g, _e, variables, "source_"));
-	    mpl::for_each<degrees>(put_source_or_target_degree_function<false>(*_g, _e, variables, "target_"));
 	}
+	mpl::for_each<degrees>(put_source_or_target_degree_function<Graph,true>(g, e, variables, "source_"));
+	mpl::for_each<degrees>(put_source_or_target_degree_function<Graph,false>(g, e, variables, "target_"));
     }
-    
+
+
     template <class VertexOrEdge>
     struct get_value
     {
@@ -127,9 +124,12 @@ public:
 	python::object _retval;
     };
 
-    template <bool Source>
+    template <class Graph, bool Source>
     struct get_source_or_target_value
     {
+	typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
+	typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
+
 	get_source_or_target_value(const Graph& g, dynamic_property_map& dmap, const edge_descriptor& e)
 	    : _g(g),_dmap(dmap),_e(e){}
 
@@ -151,10 +151,12 @@ public:
 	const edge_descriptor& _e;	
     };
 
-    template <class G, class Degree>
+    template <class Graph, class Degree>
     struct get_degree
     {
-	get_degree(const G& g, const vertex_descriptor& v)
+	typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
+
+	get_degree(const Graph& g, const vertex_descriptor& v)
 	    : _g(g), _v(v) {}
 		
 	python::object operator()()
@@ -162,13 +164,16 @@ public:
 	    return python::object(_degree(_v, _g));
 	}
 
-	const G& _g;
+	const Graph& _g;
 	const vertex_descriptor& _v;
 	Degree _degree;
     };
 
+    template <class Graph>
     struct put_degree_function
     {
+	typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
+
 	put_degree_function(const Graph& g, const vertex_descriptor& v, python::object variables, std::string prefix = "")
 	    : _g(g), _v(v), _variables(variables), _prefix(prefix) {}
 	template <class Degree>
@@ -182,11 +187,14 @@ public:
 	python::object& _variables;
 	std::string _prefix;
     };
-    
-    struct put_base_degree_function: public put_degree_function
+
+    template <class Graph>    
+    struct put_base_degree_function: public put_degree_function<Graph>
     {
+	typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
+
 	put_base_degree_function(const Graph& g, const vertex_descriptor& v, python::object& variables, std::string prefix = "")
-	    : put_degree_function(g, v, variables, prefix) {}
+	    : put_degree_function<Graph>(g, v, variables, prefix) {}
 
 	template <class Degree>
 	void operator()(Degree degree)
@@ -196,9 +204,12 @@ public:
 	}
     };
 
-    template <bool Source>
+    template <class Graph, bool Source>
     struct put_source_or_target_degree_function
     {
+	typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
+	typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
+
 	put_source_or_target_degree_function(const Graph& g, const edge_descriptor& e, python::object& variables, std::string prefix = "")
 	    : _g(g), _e(e), _variables(variables), _prefix(prefix) {}
 	template <class Degree>
@@ -209,7 +220,7 @@ public:
 		v = source(_e, this->_g);
 	    else
 		v = target(_e, this->_g);
-	    put_degree_function(_g, v, _variables, _prefix)(d);
+	    put_degree_function<Graph>(_g, v, _variables, _prefix)(d);
 	}
 
 	const Graph& _g;
@@ -218,8 +229,11 @@ public:
 	std::string _prefix;
     };
 
+    template<class Graph>
     struct is_loop
     {
+	typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
+
 	is_loop(const Graph& g, const edge_descriptor& e): _g(g), _e(e) {}
 	python::object operator()()
 	{
@@ -229,30 +243,45 @@ public:
 	const edge_descriptor& _e;
     };
     
-    inline bool operator() (edge_descriptor e) const
-    {	      
-	_e = e;
-	return python::extract<bool>(_filter());
-    }
 
-    inline bool operator() (vertex_descriptor v) const 
+};
+
+
+//==============================================================================
+// PythonFilter
+//==============================================================================
+template <class Graph, class Descriptor, class HasBase = mpl::bool_<false> >
+class PythonFilter
+{
+public:
+    typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
+    typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
+
+    typedef mpl::vector<in_degreeS,out_degreeS,total_degreeS> degrees;
+
+    PythonFilter(){}
+    PythonFilter(const Graph& g, const dynamic_properties& dp, python::object filter)
+        : _g(&g), _filter(filter[0])
+    {
+	python::object variables = filter[1];
+	populate_python_funcs<Descriptor, HasBase>()(*_g, _u, dp, variables);
+    }
+    
+ 
+    inline bool operator() (Descriptor u) const
     {	      
-	_v = v;
+	_u = u;
 	return python::extract<bool>(_filter());
     }
 
 private:
     Graph const*  _g;
     python::object _filter;
-    static vertex_descriptor _v;
-    static edge_descriptor _e;
+    static Descriptor _u;
 };
 
-template <class Graph, class VertexFilter, class HasBase> 
-typename PythonFilter<Graph,VertexFilter,HasBase>::vertex_descriptor PythonFilter<Graph,VertexFilter,HasBase>::_v;
-
-template <class Graph, class VertexFilter, class HasBase> 
-typename PythonFilter<Graph,VertexFilter,HasBase>::edge_descriptor PythonFilter<Graph,VertexFilter,HasBase>::_e;
+template <class Graph, class Descriptor, class HasBase> 
+Descriptor PythonFilter<Graph,Descriptor,HasBase>::_u;
 
 } //graph_tool namespace
 

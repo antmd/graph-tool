@@ -120,6 +120,8 @@ public:
     void RemoveVertexProperty(std::string property);
     void InsertEdgeIndexProperty(std::string property);
     void InsertVertexIndexProperty(std::string property);
+    void EditVertexProperty(std::string property, boost::python::object op);
+    void EditEdgeProperty(std::string property, boost::python::object op);
     void RemoveParallelEdges();
 
     // layout

@@ -331,50 +331,6 @@ GraphInterface::hist_t GraphInterface::GetComponentSizeHistogram() const
 }
 
 //==============================================================================
-// RemoveVertexProperty(property)
-//==============================================================================
-void GraphInterface::RemoveVertexProperty(string property)
-{
-    dynamic_properties_copy dp;
-    try
-    {
-	dynamic_property_map& prop_map = find_property_map(_properties, property, typeid(graph_traits<multigraph_t>::vertex_descriptor));
-	for (typeof(_properties.begin()) iter = _properties.begin(); iter != _properties.end(); ++iter)
-	{
-	    if (iter->second != &prop_map)
-		dp.insert(iter->first, auto_ptr<dynamic_property_map>(iter->second));
-	}
-    }
-    catch (property_not_found)
-    {
-	throw GraphException("property '" + property + "' not found");
-    }
-    _properties = dp;
-}
-
-//==============================================================================
-// RemoveEdgeProperty(property)
-//==============================================================================
-void GraphInterface::RemoveEdgeProperty(string property)
-{
-    dynamic_properties_copy dp;
-    try
-    {
-	dynamic_property_map& prop_map = find_property_map(_properties, property, typeid(graph_traits<multigraph_t>::edge_descriptor));
-	for (typeof(_properties.begin()) iter = _properties.begin(); iter != _properties.end(); ++iter)
-	{
-	    if (iter->second != &prop_map)
-		dp.insert(iter->first, auto_ptr<dynamic_property_map>(iter->second));
-	}
-    }
-    catch (property_not_found)
-    {
-	throw GraphException("property '" + property + "' not found");
-    }
-    _properties = dp;
-}
-
-//==============================================================================
 // InsertEdgeIndexProperty(property)
 //==============================================================================
 void GraphInterface::InsertEdgeIndexProperty(string property)
