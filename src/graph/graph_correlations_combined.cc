@@ -150,9 +150,14 @@ struct get_average_combined_degree_correlation
 	    size_t N = count[iter->first];
 	    iter->second.first /= N;
 	    if (N > 1)
-		iter->second.second = sqrt((iter->second.second - N*iter->second.first*iter->second.first)/(N*(N-1)));
+	    {
+		double err = (iter->second.second - N*iter->second.first*iter->second.first)/(N*(N-1));
+		iter->second.second = (err<0.0)?0.0:sqrt(err);
+	    }
 	    else
+	    {
 		iter->second.second = 0.0;
+	    }
 	}
     }
     DegreeSelector1& _deg1;

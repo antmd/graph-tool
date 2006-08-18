@@ -121,7 +121,9 @@ struct get_extended_clustering
 		try
 		{
 		    distance_map[*a] = 0;
-		    bfs_max_depth_watcher<neighbour_set_t,InitializedPropertyMap<dmap_t> > watcher(targets, cmaps.size(), distance_map);
+		    neighbour_set_t specific_targets = targets;
+		    specific_targets.erase(*a);
+		    bfs_max_depth_watcher<neighbour_set_t,InitializedPropertyMap<dmap_t> > watcher(specific_targets, cmaps.size(), distance_map);
 		    breadth_first_visit(fg, *a, visitor(make_bfs_visitor(make_pair(record_distances(distance_map, boost::on_tree_edge()),watcher))).
 					color_map(color_map));
 		}
