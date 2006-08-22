@@ -106,6 +106,8 @@ struct get_extended_clustering
 	    // And now we setup and start the BFS bonanza
 	    for(tie(a, a_end) = adjacent_vertices(*v, g); a != a_end; ++a)
 	    {
+		if (*a == *v) // no self-loops
+		    continue;
 		if (neighbours.find(*a) != neighbours.end()) // avoid parallel edges
 		    continue;
 		neighbours.insert(*a);
