@@ -89,10 +89,10 @@ GraphInterface::~GraphInterface()
 // SetVertexFilter()
 //==============================================================================
 
-python::object python_range_filter(python::object properties, string filter_property, pair<double,double> range) 
+python::object python_range_filter(python::object variables, const string& filter_property, pair<double,double> range)
 {
     bool accept = true;
-    if (python::extract<double>(properties[filter_property]) < range.first || python::extract<double>(properties[filter_property]) > range.second)
+    if (python::extract<double>(variables[filter_property]()) < range.first || python::extract<double>(variables[filter_property]()) > range.second)
 	accept = false;
     return python::object(accept);
 }

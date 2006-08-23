@@ -37,11 +37,9 @@ import signal
 from time import *
 import math
 
-try:
-    import psyco
-    psyco.full()
-except ImportError:
-    pass
+#import gc # garbage collector
+#gc.enable()
+#gc.set_debug(gc.DEBUG_LEAK|gc.DEBUG_STATS)
 
 prog_info = mod_info()
 version_string = "%s %s\nWritten by %s\n\n%s" % (prog_info.name, prog_info.version, \
@@ -520,28 +518,12 @@ def parse_option(opt, just_file=False):
         if just_file:
             return None
         filter_vars = dict()
-        try:
-            exec """
-try:
-    from math import *
-    from scipy import *
-    from scipy.special import *
-    from scipy.optimize import *
-    from scipy.optimize.minpack import *
-    import psyco
-    psyco.full()
-except ImportError:
-    pass
-
-def filter_function():
-    return not %s
-""" % opt.value in filter_vars
-        except:
-            raise OptionError(opt.name, "invalid value '%s': %s" % (opt.value,sys.exc_info()[0]))
+        def filter_function():
+            return not (eval(opt.value,filter_vars))
         if opt.name == "vertex-filter":
-            graph.SetGenericVertexFilter((filter_vars["filter_function"],filter_vars))
+            graph.SetGenericVertexFilter((filter_function,filter_vars))
         else:
-            graph.SetGenericEdgeFilter((filter_vars["filter_function"],filter_vars))
+            graph.SetGenericEdgeFilter((filter_function,filter_vars))
     elif opt.name == "vertex-range-filter" or opt.name == "edge-range-filter":
         if just_file:
             return None
@@ -595,28 +577,12 @@ def filter_function():
         if just_file:
             return None
         edit_vars = dict()
-        try:
-            exec """
-try:
-    from math import *
-    from scipy import *
-    from scipy.special import *
-    from scipy.optimize import *
-    from scipy.optimize.minpack import *
-    import psyco
-    psyco.full()
-except ImportError:
-    pass
-
-def edit_function():
-    return %s
-""" % values[1] in edit_vars
-        except:
-            raise OptionError(opt.name, "invalid value '%s': %s" % (opt.value,sys.exc_info()[0]))
+        def edit_function():
+            return (eval(values[1],edit_vars))
         if opt.name == "edit-vertex-property":
-            graph.EditVertexProperty(values[0],(edit_vars["edit_function"],edit_vars))
+            graph.EditVertexProperty(values[0],(edit_function,edit_vars))
         else:
-            graph.EditEdgeProperty(values[0],(edit_vars["edit_function"],edit_vars))
+            graph.EditEdgeProperty(values[0],(edit_function,edit_vars))
     elif opt.name == "remove-vertex-property":
         if just_file:
             return None
@@ -667,7 +633,8 @@ def write_data(data, file, prefix=""):
     else:
         # single value
         file.write("%s%s\n" % (prefix,str(data)))
-    file.flush()
+    if file.__class__ != bz2.BZ2File:
+        file.flush()
 
 class HistoryException (Exception):
     def __init__(self, file=None, old=None, what=None):
@@ -681,7 +648,7 @@ class HistoryException (Exception):
 class HistoryFile:
     def __init__(self, file_name):
         self.file_name = os.path.expanduser(file_name)
-        self.prefixes = set()
+        self.last_prefix = None
         self.file = None
         self.time = clock()
         self.temp = self.file_name + "___temp"
@@ -713,10 +680,9 @@ class HistoryFile:
                     old.write("")
                     old.close()
                 os.rename(self.temp, self.file_name)
-            #upadate prefixes
+            #upadate last_prefix
             for line in open_file(self.file_name, "r"):
-                prefix = line.split()[0]
-                self.prefixes.add(prefix)
+                self.last_prefix = line.split()[0]
             self.refresh()
         else:
             self.file = open_file(self.file_name, "w")
@@ -785,7 +751,10 @@ try:
         while variables["___continue"]:
             for opt in histories:
                 new_opt = Opt(opt.name,opt.value)
+                uses_prefix = True
                 if new_opt.value != None:
+                    if "%prefix" in opt.value:
+                        uses_prefix = False
                     t = MyTemplate(new_opt.value)
                     try:
                         new_opt.value = t.substitute(variables)
@@ -796,14 +765,26 @@ try:
                     prefix = str(count)
                     if variables.has_key("prefix"):
                         prefix = str(variables["prefix"])
-                    if not history_files.has_key(file_name):
-                        history_files[file_name] = HistoryFile(file_name)
-                    if prefix not in history_files[file_name].prefixes:
+                    if not history_files.has_key(opt.name):
+                        history_files[opt.name] = HistoryFile(file_name)
+                    else:
+                        if history_files[opt.name].file_name != os.path.expanduser(file_name):
+                            history_files[opt.name] = HistoryFile(file_name)
+                    try:
+                        if history_files[opt.name].last_prefix != None:
+                            is_new = float(prefix) > float(history_files[opt.name].last_prefix)
+                        else:
+                            is_new = True
+                    except ValueError:
+                        is_new = True
+                    if is_new:
                         data = parse_option(new_opt)[0]
-                        history_files[file_name].write(data, prefix)
+                        if uses_prefix:
+                            history_files[opt.name].write(data, prefix)
+                        else:
+                            history_files[opt.name].write(data, "")
                 else:
                     parse_option(new_opt)
-
             exec values[2] in variables # step
             exec "___continue = %s" % values[1] in variables # condition
             count += 1

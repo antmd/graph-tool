@@ -73,7 +73,7 @@ struct populate_python_funcs
     {
 	typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
 
-	variables["is_loop"] = python::make_function(is_loop<Graph>(g, e), python::default_call_policies(), mpl::vector<python::object>::type()); 
+	variables["is_self"] = python::make_function(is_self<Graph>(g, e), python::default_call_policies(), mpl::vector<python::object>::type()); 
 	
 	for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)
 	{
@@ -230,11 +230,11 @@ struct populate_python_funcs
     };
 
     template<class Graph>
-    struct is_loop
+    struct is_self
     {
 	typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
 
-	is_loop(const Graph& g, const edge_descriptor& e): _g(g), _e(e) {}
+	is_self(const Graph& g, const edge_descriptor& e): _g(g), _e(e) {}
 	python::object operator()()
 	{
 	    return python::object(source(_e, _g) == target(_e, _g));
