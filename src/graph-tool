@@ -126,8 +126,9 @@ layout.add_option("--compute-spring-block-layout", action="callback", callback=p
 layout.add_option("--compute-gursoy-atun-layout", action="callback", callback=push_option, type="string", metavar="ITERATIONS[|SEED]", help="compute the Gursoy-Atun layout")
 
 layout =  parser.add_option_group("History")
-layout.add_option("--history", action="callback", callback=push_option, type="string", metavar="INIT|CONDITION|STEP", help="compute graph history")
-layout.add_option("--history-rate", type="string", metavar="TIME", default="1h", help="history file refresh rate")
+layout.add_option("--for", action="callback", callback=push_option, type="string", metavar="INIT|CONDITION|STEP", help="simplified scripting")
+layout.add_option("--history", action="callback", callback=push_option, type="string", metavar="INIT|CONDITION|STEP", help="simplified scripting (does not overwrite previous results)")
+layout.add_option("--refresh-rate", type="string", metavar="TIME", default="1h", help="for/history files refresh rate")
 
 (options, args) = parser.parse_args()
 
@@ -168,8 +169,11 @@ def get_mean(hist):
         avg += k*v
         dev += k*k*v
         count += v
-    avg /= count
-    dev = math.sqrt(dev/count - avg*avg)/math.sqrt(count)
+    try:
+        avg /= count
+        dev = math.sqrt(dev/count - avg*avg)/math.sqrt(count)
+    except ZeroDivisionError:
+        avg = dev = float("nan") # nans are ok, since graph can be empty
     return (avg,dev)
 
 class OptionError(Exception):
@@ -460,7 +464,7 @@ def parse_option(opt, just_file=False):
             deg = degree(values[0])
             hist = graph.GetVertexHistogram(deg)
         else:
-            hist = graph.GetEdgeHistogram(values[0])        
+            hist = graph.GetEdgeHistogram(values[0])
         ret = "%f\t%f" % get_mean(hist)
         if just_file:
             return values[1]
@@ -646,7 +650,7 @@ class HistoryException (Exception):
         return self.what
 
 class HistoryFile:
-    def __init__(self, file_name):
+    def __init__(self, file_name, overwrite):
         self.file_name = os.path.expanduser(file_name)
         self.last_prefix = None
         self.file = None
@@ -656,7 +660,7 @@ class HistoryFile:
             self.temp = self.file_name.rstrip(".bz2") + "___temp.bz2"
         if self.file_name.endswith(".gz"):
             self.temp = self.file_name.rstrip(".gz") + "___temp.gz"
-        match = re.compile("([0-9]+)([d,h,m,s])").match(options.history_rate)
+        match = re.compile("([0-9]+)([d,h,m,s])").match(options.refresh_rate)
         if match != None:
             self.rate = int(match.group(1))
             modifier = match.group(2)
@@ -667,8 +671,8 @@ class HistoryFile:
             if modifier == "d":
                 self.rate *= 24
         else:
-            raise HistoryException(what="invalid history refresh rate value: %s" % options.history_rate)
-        if os.path.exists(self.file_name) and self.file_name != "-":            
+            raise HistoryException(what="invalid history refresh rate value: %s" % options.represh_rate)
+        if os.path.exists(self.file_name) and self.file_name != "-" and not overwrite:            
             # test the integrity of the compressed files
             try:
                 if self.file_name.endswith(".bz2") or self.file_name.endswith(".gz"):
@@ -722,10 +726,13 @@ graph.InitSignalHandling()
 # parse each option in order
 try:
     history_range = None
+    overwrite_history = False
     for opt in option_list:
-        if opt.name == "history":
+        if opt.name == "for" or opt.name == "history":
             # the rest of the commands are to be treated as history template
             history_range = opt
+            if opt.name == "for":
+                overwrite_history = True
             break
         retval = parse_option(opt)
         if retval != None:
@@ -741,7 +748,7 @@ try:
             delimiter = "%"
         values = parse_values(history_range.value)
         if len(values) != 3:
-            raise OptionError("history", "invalid value '%s'" % options.history_range)
+            raise OptionError("history", "invalid value '%s'" % history_range.value)
         histories = option_list[option_list.index(history_range)+1:]
         history_files = dict() # open history files
         variables = dict() # template variables
@@ -766,10 +773,10 @@ try:
                     if variables.has_key("prefix"):
                         prefix = str(variables["prefix"])
                     if not history_files.has_key(opt.name):
-                        history_files[opt.name] = HistoryFile(file_name)
+                        history_files[opt.name] = HistoryFile(file_name, overwrite_history)
                     else:
                         if history_files[opt.name].file_name != os.path.expanduser(file_name):
-                            history_files[opt.name] = HistoryFile(file_name)
+                            history_files[opt.name] = HistoryFile(file_name, overwrite_history)
                     try:
                         if history_files[opt.name].last_prefix != None:
                             is_new = float(prefix) > float(history_files[opt.name].last_prefix)
@@ -777,7 +784,7 @@ try:
                             is_new = True
                     except ValueError:
                         is_new = True
-                    if is_new:
+                    if is_new or overwrite_history:
                         data = parse_option(new_opt)[0]
                         if uses_prefix:
                             history_files[opt.name].write(data, prefix)
@@ -790,7 +797,7 @@ try:
             count += 1
         del history_files
             
-except (OptionError, HistoryException), e:
+except (OptionError, HistoryException, IOError), e:
     print "graph-tool:", e
 except KeyboardInterrupt:
     pass
