@@ -347,50 +347,6 @@ void GraphInterface::InsertVertexIndexProperty(string property)
 }
 
 //==============================================================================
-// RemoveParallelEdges(property)
-//==============================================================================
-struct remove_parallel_edges
-{
-    template <class Graph>
-    void operator()(Graph &g) const
-    {
-	typename graph_traits<Graph>::edge_iterator e, e_end;
-	for (tie(e, e_end) = edges(g); e != e_end; ++e)
-	{
-	    bool finished = false;
-	    while (!finished)
-	    {
-		finished = true;
-		typename graph_traits<Graph>::out_edge_iterator oe, oe_end;
-		typename graph_traits<Graph>::vertex_descriptor s,t;
-		s = source(*e,g);
-		t = target(*e,g);
-		for (tie(oe,oe_end) = out_edges(s,g); oe != oe_end; ++oe)
-		    if (*oe != *e && target(*oe,g) == t) // is a parallel edge
-		    {
-			remove_edge(*oe, g);
-			finished = false;
-			break;
-		    }
-	    }
-	}
-    }
-};
-
-void GraphInterface::RemoveParallelEdges()
-{
-    if (_directed)
-    {
-	remove_parallel_edges()(_mg);
-    }
-    else
-    {
-	UndirectedAdaptor<multigraph_t> ug(_mg);
-	remove_parallel_edges()(ug);
-    }
-}
-
-//==============================================================================
 // ComputeGraphLayoutGursoy(iter, seed)
 //==============================================================================
 

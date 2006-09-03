@@ -92,6 +92,7 @@ public:
     hist_t GetComponentSizeHistogram() const;
     hist_t GetDistanceHistogram(std::string weight) const;
     hist_t GetSampledDistanceHistogram(std::string weight, size_t samples, size_t seed) const;
+    double GetReciprocity() const;
 
     // filtering
     void SetDirected(bool directed) {_directed = directed;}
@@ -122,7 +123,6 @@ public:
     void InsertVertexIndexProperty(std::string property);
     void EditVertexProperty(std::string property, boost::python::object op);
     void EditEdgeProperty(std::string property, boost::python::object op);
-    void RemoveParallelEdges();
 
     // layout
     void ComputeGraphLayoutGursoy(size_t iter = 0, size_t seed = 4357);

@@ -89,7 +89,6 @@ modification.add_option("--remove-vertex-property", action="callback", callback=
 modification.add_option("--remove-edge-property", action="callback", callback=push_option, type="string", metavar="PROPERTY|RANGE", help="remove edge property from graph")
 modification.add_option("--insert-vertex-index-property", action="callback", callback=push_option, type="string", metavar="PROPERTY", help="insert vertex index as property")
 modification.add_option("--insert-edge-index-property", action="callback", callback=push_option, type="string", metavar="PROPERTY", help="insert edge index as property")
-modification.add_option("--remove-parallel-edges", action="callback", callback=push_option, help="remove parallel edges from graph")
 
 statistics =  parser.add_option_group("Basic Statistics")
 statistics.add_option("--number-of-vertices", action="callback", callback=push_option, type="string", metavar="FILE", help="get the number of vertices")
@@ -106,7 +105,7 @@ statistics.add_option("--average-sampled-harmonic-distance", action="callback", 
 statistics.add_option("--component-size-histogram", action="callback", callback=push_option, type="string", metavar="FILE", help="get the component size histogram")
 statistics.add_option("--average-vertex-property", action="callback", callback=push_option, type="string", metavar="PROPERTY|FILE", help="get the average of the vertex property")
 statistics.add_option("--average-edge-property", action="callback", callback=push_option, type="string", metavar="PROPERTY|FILE", help="get the average of the edge property")
-
+statistics.add_option("--reciprocity", action="callback", callback=push_option, type="string", metavar="FILE", help="get the edge reciprocity")
 
 correlations =  parser.add_option_group("Correlations")
 correlations.add_option("--average-combined-vertex-correlation", action="callback", callback=push_option, type="string", metavar="DEGREE1|DEGREE2|FILE", help="get the average of DEGREE2 in function of DEGREE1. Scalar properties are also accepted as DEGREE1 or DEGREE2")
@@ -409,6 +408,10 @@ def parse_option(opt, just_file=False):
         if just_file:
             return values[1]
         return (graph.GetEdgeHistogram(values[0]), values[1])
+    elif opt.name == "reciprocity":
+        if just_file:
+            return opt.value
+        return (graph.GetReciprocity(), opt.value)
     elif opt.name == "vertex-correlation-histogram":
         values = parse_values(opt.value)
         if len(values) != 3:
@@ -570,10 +573,6 @@ def parse_option(opt, just_file=False):
         if just_file:
             return None
         graph.SetReversed(not graph.GetReversed())
-    elif opt.name == "remove-parallel-edges":
-        if just_file:
-            return None
-        graph.RemoveParallelEdges()
     elif opt.name == "edit-vertex-property" or opt.name == "edit-edge-property":
         values = parse_values(opt.value)
         if len(values) != 2:
@@ -797,7 +796,7 @@ try:
             count += 1
         del history_files
             
-except (OptionError, HistoryException, IOError), e:
-    print "graph-tool:", e
+except (OptionError, HistoryException, IOError, RuntimeError), e:
+    print "graph-tool error:", e
 except KeyboardInterrupt:
     pass

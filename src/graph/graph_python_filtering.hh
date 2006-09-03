@@ -74,6 +74,7 @@ struct populate_python_funcs
 	typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
 
 	variables["is_self"] = python::make_function(is_self<Graph>(g, e), python::default_call_policies(), mpl::vector<python::object>::type()); 
+	variables["n_parallel"] = python::make_function(n_parallel<Graph>(g, e), python::default_call_policies(), mpl::vector<python::object>::type()); 
 	
 	for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)
 	{
@@ -238,6 +239,28 @@ struct populate_python_funcs
 	python::object operator()()
 	{
 	    return python::object(source(_e, _g) == target(_e, _g));
+	}
+	const Graph& _g;
+	const edge_descriptor& _e;
+    };
+
+    template<class Graph>
+    struct n_parallel
+    {
+	typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
+
+	n_parallel(const Graph& g, const edge_descriptor& e): _g(g), _e(e) {}
+	python::object operator()()
+	{
+	    size_t n = 0;
+	    typename graph_traits<Graph>::vertex_descriptor s,t;
+	    s = source(_e, _g);
+	    t = target(_e, _g);
+	    typename graph_traits<Graph>::adjacency_iterator a, a_end;
+	    for(tie(a, a_end) = adjacent_vertices(s, _g); a != a_end; ++a)
+		if (*a == t)
+		    n++;
+	    return python::object(n-1);
 	}
 	const Graph& _g;
 	const edge_descriptor& _e;
