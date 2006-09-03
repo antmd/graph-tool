@@ -163,7 +163,7 @@ void GraphInterface::SetExtendedClusteringToProperty(string property_prefix, siz
 
     for (size_t i = 0; i < cmaps.size(); ++i)
     {
-	string name = property_prefix + lexical_cast<string>(i);
+	string name = property_prefix + lexical_cast<string>(i+1);
 	try
 	{
 	    find_property_map(_properties, name, typeid(graph_traits<multigraph_t>::vertex_descriptor));
