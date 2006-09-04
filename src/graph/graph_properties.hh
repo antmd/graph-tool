@@ -47,6 +47,18 @@ PropertyMap& get_static_property_map(boost::dynamic_property_map& map)
     return dynamic_cast<boost::detail::dynamic_property_map_adaptor<PropertyMap>&>(map).base();
 }
 
+template <class PropertyMap>
+PropertyMap* get_static_property_map(boost::dynamic_property_map* map)
+{
+    boost::detail::dynamic_property_map_adaptor<PropertyMap>* adaptor = 
+	dynamic_cast<boost::detail::dynamic_property_map_adaptor<PropertyMap>*>(map);
+    if (adaptor)
+	return &adaptor->base();
+    else
+	return 0;
+}
+
+
 //==============================================================================
 // find_property_map(dp, name, key_type)
 // gets the dynamic property map inside dp which matches the given name and 
@@ -272,6 +284,34 @@ private:
     Container* _base_map;
     value_type _default;
 };
+
+//==============================================================================
+// ConstantPropertyMap
+// a property map which returns a constant value
+//==============================================================================
+
+template <class Value, class Key>
+class ConstantPropertyMap
+    : public boost::put_get_helper<Value, ConstantPropertyMap<Value,Key> >
+{
+public:
+    typedef Value value_type;
+    typedef value_type& reference;
+    typedef Key key_type;
+    typedef boost::read_write_property_map_tag category;
+
+    ConstantPropertyMap(value_type c): _c(c) {}
+    ConstantPropertyMap(){}
+
+    const value_type& operator[](const key_type& k) const
+    {
+	return _c;
+    }
+
+private:
+    value_type _c;
+};
+
 
 } // graph_tool namespace
 

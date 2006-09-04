@@ -101,21 +101,39 @@ class RangeFilter
 {
 public:
     RangeFilter(){}
-    typedef typename property_traits<FilteredPropertyMap>::value_type value_type;
-    typedef typename property_traits<FilteredPropertyMap>::key_type key_type;
-    RangeFilter(FilteredPropertyMap filtered_property, std::pair<value_type, value_type> range)
+    RangeFilter(FilteredPropertyMap filtered_property, std::pair<double, double> range)
         : _filtered_property(filtered_property), _range(range) {}
+
     template <class VertexOrEdge>
     bool operator() (VertexOrEdge e) const 
     {
-        // ignore if outside allowed range
-        if ( _filtered_property[e] < _range.first || _filtered_property[e] > _range.second)
-            return false;
-        return true;
+	bool retval;
+        map_visitor<VertexOrEdge> visitor(e, _range, retval);
+	apply_visitor(visitor, _filtered_property);
+	return retval;
     }
+
 private:
+    template <class VertexOrEdge>
+    class map_visitor: public static_visitor<void>
+    {
+    public:
+	map_visitor(const VertexOrEdge& descriptor, const std::pair<double, double>& range, bool& retval)
+	    : _descriptor(descriptor), _range(range), _retval(retval) {}
+	template <class MapType>
+	void operator()(MapType& filter_prop)
+	{
+	    // ignore if outside allowed range
+	    _retval = !(double(get(filter_prop, _descriptor)) < _range.first || double(get(filter_prop, _descriptor)) > _range.second);
+	}
+    private:
+	const VertexOrEdge& _descriptor;
+	const std::pair<double, double>& _range;
+	bool& _retval;
+    };
+
     FilteredPropertyMap _filtered_property;
-    std::pair<value_type, value_type> _range;
+    std::pair<double, double> _range;
 };
 
 typedef mpl::vector<mpl::bool_<true>, mpl::bool_<false> > reverse_check;

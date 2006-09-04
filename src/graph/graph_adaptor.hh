@@ -49,9 +49,17 @@ template <class Graph> class UndirectedAdaptor
 public:
     UndirectedAdaptor(const Graph &g):_g(const_cast<Graph &>(g)){}
 
+    typedef typename Graph::vertex_property_type vertex_property_type;
+    typedef typename Graph::edge_property_type edge_property_type;
+    typedef typename Graph::graph_tag graph_tag;
+    typedef typename Graph::graph_type graph_type;
+
     class EdgeDescriptor;
-    typedef typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor vertex_descriptor_t;
     typedef Graph original_graph_t;
+
+    typedef typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor vertex_descriptor;
+    typedef typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor edge_descriptor;
+
     
 #ifndef BOOST_GRAPH_NO_BUNDLED_PROPERTIES
     // Bundled properties support

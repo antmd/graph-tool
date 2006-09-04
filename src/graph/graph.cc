@@ -89,30 +89,28 @@ GraphInterface::~GraphInterface()
 // SetVertexFilter()
 //==============================================================================
 
-python::object python_range_filter(python::object variables, const string& filter_property, pair<double,double> range)
-{
-    bool accept = true;
-    if (python::extract<double>(variables[filter_property]()) < range.first || python::extract<double>(variables[filter_property]()) > range.second)
-	accept = false;
-    return python::object(accept);
-}
-
 void GraphInterface::SetVertexFilterProperty(string property)
 {
     _vertex_filter_property = property;
     
     if (property != "")
     {
-	try
+	try 
 	{
-	    _vertex_filter_map = get_static_property_map<vertex_filter_map_t>(find_property_map(_properties, property, 
-												typeid(graph_traits<multigraph_t>::vertex_descriptor)));
-	}
-	catch (bad_cast)
-	{
-	    // set generic vertex filter instead
-	    function<python::object(python::object)> filter = bind<python::object>(python_range_filter, _1, property, _vertex_range);
-	    SetGenericVertexFilter(python::make_function(filter, python::default_call_policies(), mpl::vector<python::object,python::object>::type()));
+	    dynamic_property_map& pmap = find_property_map(_properties, property, typeid(graph_traits<multigraph_t>::vertex_descriptor));
+
+	    if (get_static_property_map<vector_property_map<double,vertex_index_map_t> >(&pmap))
+		_vertex_filter_map = get_static_property_map<vector_property_map<double,vertex_index_map_t> >(pmap);
+	    else if (get_static_property_map<HashedDescriptorMap<vertex_index_map_t,double> >(&pmap))
+		_vertex_filter_map = get_static_property_map<HashedDescriptorMap<vertex_index_map_t,double> >(pmap);
+	    else if (get_static_property_map<vector_property_map<size_t,vertex_index_map_t> >(&pmap))
+		_vertex_filter_map = get_static_property_map<vector_property_map<size_t,vertex_index_map_t> >(pmap);
+	    else if (get_static_property_map<HashedDescriptorMap<vertex_index_map_t,size_t> >(&pmap))
+		_vertex_filter_map = get_static_property_map<HashedDescriptorMap<vertex_index_map_t,size_t> >(pmap);
+	    else if (get_static_property_map<vertex_index_map_t>(&pmap))
+		_vertex_filter_map = get_static_property_map<vertex_index_map_t>(pmap);
+	    else 
+		_vertex_filter_map = DynamicPropertyMapWrap<double, graph_traits<multigraph_t>::vertex_descriptor>(pmap);
 	}
 	catch (property_not_found) 
 	{
@@ -131,14 +129,20 @@ void GraphInterface::SetEdgeFilterProperty(string property)
     {
 	try
 	{
-	    _edge_filter_map = get_static_property_map<edge_filter_map_t>(find_property_map(_properties, property, 
-											    typeid(graph_traits<multigraph_t>::edge_descriptor)));
-	}
-	catch (bad_cast)
-	{
-	    // set generic edge filter instead
-	    function<python::object(python::object)> filter = bind<python::object>(python_range_filter, _1, property, _edge_range);
-	    SetGenericEdgeFilter(python::make_function(filter, python::default_call_policies(), mpl::vector<python::object,python::object>::type()));
+	    dynamic_property_map& pmap = find_property_map(_properties, property, typeid(graph_traits<multigraph_t>::edge_descriptor));
+	    
+	    if (get_static_property_map<vector_property_map<double,edge_index_map_t> >(&pmap))
+		_edge_filter_map = get_static_property_map<vector_property_map<double,edge_index_map_t> >(pmap);
+	    else if (get_static_property_map<HashedDescriptorMap<edge_index_map_t,double> >(&pmap))
+		_edge_filter_map = get_static_property_map<HashedDescriptorMap<edge_index_map_t,double> >(pmap);
+	    else if (get_static_property_map<vector_property_map<size_t,edge_index_map_t> >(&pmap))
+		_edge_filter_map = get_static_property_map<vector_property_map<size_t,edge_index_map_t> >(pmap);
+	    else if (get_static_property_map<HashedDescriptorMap<edge_index_map_t,size_t> >(&pmap))
+		_edge_filter_map = get_static_property_map<HashedDescriptorMap<edge_index_map_t,size_t> >(pmap);
+	    else if (get_static_property_map<edge_index_map_t>(&pmap))
+		_edge_filter_map = get_static_property_map<edge_index_map_t>(pmap);
+	    else 
+		_edge_filter_map = DynamicPropertyMapWrap<double, graph_traits<multigraph_t>::edge_descriptor>(pmap);
 	}
 	catch (property_not_found) 
 	{

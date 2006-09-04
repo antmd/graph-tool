@@ -35,6 +35,7 @@ libgraph_tool_la_SOURCES = \
     graph_distance.cc\
     graph_distance_sampled.cc\
     graph_reciprocity.cc\
+    graph_minimum_spanning_tree.cc\
     graph_io.cc\
     graph_bind.cc\
     graphml.hpp\
