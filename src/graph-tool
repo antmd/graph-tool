@@ -125,6 +125,10 @@ layout =  parser.add_option_group("Layout")
 layout.add_option("--compute-spring-block-layout", action="callback", callback=push_option, type="string", metavar="ITERATIONS[|SEED]", help="compute the spring block layout")
 layout.add_option("--compute-gursoy-atun-layout", action="callback", callback=push_option, type="string", metavar="ITERATIONS[|SEED]", help="compute the Gursoy-Atun layout")
 
+community =  parser.add_option_group("Community")
+clustering.add_option("--community-structure", action="callback", callback=push_option, type="string", metavar="PROPERTY|CORR_TYPE|GAMMA|N_ITER|SEED[|WEIGHT]", help="calculate the community structure and assign it to PROPERTY. The value of CORR_TYPE can be 'random', 'uncorrelated' or 'correlated'.")
+clustering.add_option("--get-modularity", action="callback", callback=push_option, type="string", metavar="PROPERTY[|WEIGHT]|FILE", help="calculate the modularity, given a community partition specified by PROPERTY")
+
 layout =  parser.add_option_group("History")
 layout.add_option("--for", action="callback", callback=push_option, type="string", metavar="INIT|CONDITION|STEP", help="simplified scripting")
 layout.add_option("--history", action="callback", callback=push_option, type="string", metavar="INIT|CONDITION|STEP", help="simplified scripting (does not overwrite previous results)")
@@ -285,15 +289,27 @@ def inv_corr_ceil(p,r,j,k):
 
 
 def parse_option(opt, just_file=False):
-    "this will execute an aption, and return either None, or a tuple with the result and the respective file name, if it exists"
+    "this will execute an option, and return either None, or a tuple with the result and the respective file name, if it exists"
     if opt.name == "load":
+	values = parse_values(opt.value)
+	if len(values) > 2 or len(values) < 1:
+	    raise OptionError(opt.name, "invalid value '$s'" % opt.value)
         if just_file:
             return None
-        graph.ReadFromFile(opt.value)
+	if len(values) == 1:
+	    graph.ReadFromFile(values[0])
+        else:
+            graph.ReadFromFile(values[0], values[1])
     elif opt.name == "save":
+	values = parse_values(opt.value)
+        if len(values) > 2 or len(values) < 1:
+	    raise OptionError(opt.name, "invalid value '$s'" % opt.value)
         if just_file:
             return None
-        graph.WriteToFile(opt.value)
+	if len(values) == 1:
+	    graph.WriteToFile(values[0])
+        else:
+            graph.WriteToFile(values[0], values[1])
     elif opt.name == "correlated-configurational-model":
         if just_file:
             return None
@@ -501,6 +517,46 @@ def parse_option(opt, just_file=False):
         if len(values) == 0 or len(values) > 2:
             raise OptionError(opt.name, "invalid value '%s'" % opt.value)
         graph.SetExtendedClusteringToProperty(values[0],int(values[1]))
+    elif opt.name == "community-structure":
+        if just_file:
+            return None
+        values = parse_values(opt.value)
+        if len(values) < 5 or len(values) > 6:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        offset = 0;
+        prop = values[0]
+        corr = None
+        if values[1].strip() == "random":
+            corr = CommCorr.ErdosReyni
+        elif values[1].strip() == "uncorrelated":
+            corr = CommCorr.Uncorrelated
+        elif values[1].strip() == "correlated":
+            corr = CommCorr.Correlated
+        else:
+            raise OptionError(opt.name, "invalid correlation type value '%s'" % values[1])
+        try:
+            g = float(values[2])
+            N = int(values[3])
+            seed = int(values[4])
+            if seed == 0:
+                seed = int(time())
+            weights = ""
+            if len(values) == 6:
+                weights = values[5]
+        except ValueError,e:
+            raise OptionError(opt.name, "invalid value '%s': %s" % (opt.value, e))
+        graph.GetCommunityStructure(g, corr, N, seed, weights, prop)
+    elif opt.name == "get-modularity":
+        values = parse_values(opt.value)
+        if len(values) < 2 or len(values) > 3:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        prop, weight, file_name = values[0], "", values[1]
+        if len(values) > 2:
+            weight = values[1]
+            file_name = values[2]
+        if just_file:
+            return file_name
+        return (graph.GetModularity(weight, prop), file_name)
     elif opt.name == "compute-spring-block-layout":
         if just_file:
             return None
@@ -783,14 +839,15 @@ try:
                     prefix = str(count)
                     if variables.has_key("prefix"):
                         prefix = str(variables["prefix"])
-                    if not history_files.has_key(opt.name):
-                        history_files[opt.name] = HistoryFile(file_name, overwrite_history)
+                    hist_key = opt.name + opt.value
+                    if not history_files.has_key(hist_key):
+                        history_files[hist_key] = HistoryFile(file_name, overwrite_history)
                     else:
-                        if history_files[opt.name].file_name != os.path.expanduser(file_name):
-                            history_files[opt.name] = HistoryFile(file_name, overwrite_history)
+                        if history_files[hist_key].file_name != os.path.expanduser(file_name):
+                            history_files[hist_key] = HistoryFile(file_name, overwrite_history)
                     try:
-                        if history_files[opt.name].last_prefix != None:
-                            is_new = float(prefix) > float(history_files[opt.name].last_prefix)
+                        if history_files[hist_key].last_prefix != None:
+                            is_new = float(prefix) > float(history_files[hist_key].last_prefix)
                         else:
                             is_new = True
                     except ValueError:
@@ -798,9 +855,9 @@ try:
                     if is_new or overwrite_history:
                         data = parse_option(new_opt)[0]
                         if uses_prefix:
-                            history_files[opt.name].write(data, prefix)
+                            history_files[hist_key].write(data, prefix)
                         else:
-                            history_files[opt.name].write(data, "")
+                            history_files[hist_key].write(data, "")
                 else:
                     parse_option(new_opt)
             exec values[2] in variables # step

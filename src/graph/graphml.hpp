@@ -245,7 +245,7 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
 			  (is_convertible<directed_category*, directed_tag*>::value));
 
     out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-	<< "<graphml xmlns=\"http://graphml.graphdrawing.org/xmlns/graphml\"  xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://graphml.graphdrawing.org/xmlns/graphml http://graphml.graphdrawing.org/xmlns/graphml/graphml-attributes-1.0rc.xsd\">\n";
+	<< "<graphml xmlns=\"http://graphml.graphdrawing.org/xmlns\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd\">\n";
 
     typedef mpl::vector<bool, short, unsigned short, int, unsigned int, long, unsigned long, long long, unsigned long long, float, double, long double, std::string> value_types;
     char* type_names[] = {"boolean", "int", "int", "int", "int", "long", "long", "long", "long", "float", "double", "double", "string"};    

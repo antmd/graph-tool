@@ -96,6 +96,17 @@ public:
     double GetReciprocity() const;
     void   GetMinimumSpanningTree(std::string weight, std::string property);
 
+    // community structure
+    enum comm_corr_t
+    {
+	ERDOS_REYNI,
+	UNCORRELATED,
+	CORRELATED
+    };
+
+    void   GetCommunityStructure(double gamma, comm_corr_t corr, size_t n_iter, size_t seed, std::string weight, std::string property);
+    double GetModularity(std::string weight, std::string property);
+
     // filtering
     void SetDirected(bool directed) {_directed = directed;}
     bool GetDirected() const {return _directed;}
@@ -131,8 +142,10 @@ public:
     void ComputeGraphLayoutSpringBlock(size_t iter = 0, size_t seed = 4357);
 
     // i/o
-    void WriteToFile(std::string s); 
-    void ReadFromFile(std::string s); 
+    void WriteToFile(std::string s);
+    void WriteToFile(std::string s, std::string format);
+    void ReadFromFile(std::string s);
+    void ReadFromFile(std::string s, std::string format);
 
     // signal handling
     void InitSignalHandling();

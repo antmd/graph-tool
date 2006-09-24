@@ -207,6 +207,13 @@ struct LibInfo
     string GetVersion()   const {return VERSION;}
 };
 
+// overloads
+void  (GraphInterfaceWrap::*ReadFromFile1) (string)          = &GraphInterfaceWrap::ReadFromFile;
+void  (GraphInterfaceWrap::*ReadFromFile2) (string, string)  = &GraphInterfaceWrap::ReadFromFile;
+void  (GraphInterfaceWrap::*WriteToFile1)  (string)          = &GraphInterfaceWrap::WriteToFile;
+void  (GraphInterfaceWrap::*WriteToFile2)  (string, string)  = &GraphInterfaceWrap::WriteToFile;
+
+
 BOOST_PYTHON_MODULE(libgraph_tool)
 {
     class_<GraphInterfaceWrap>("GraphInterface")
@@ -230,6 +237,8 @@ BOOST_PYTHON_MODULE(libgraph_tool)
 	.def("GetSampledDistanceHistogram", &GraphInterfaceWrap::GetSampledDistanceHistogram)
 	.def("GetReciprocity", &GraphInterfaceWrap::GetReciprocity)
 	.def("GetMinimumSpanningTree", &GraphInterfaceWrap::GetMinimumSpanningTree)
+	.def("GetCommunityStructure", &GraphInterfaceWrap::GetCommunityStructure)
+	.def("GetModularity", &GraphInterfaceWrap::GetModularity)
 	.def("SetDirected", &GraphInterfaceWrap::SetDirected)
 	.def("GetDirected", &GraphInterfaceWrap::GetDirected)
 	.def("SetReversed", &GraphInterfaceWrap::SetReversed)
@@ -254,14 +263,21 @@ BOOST_PYTHON_MODULE(libgraph_tool)
 	.def("InsertVertexIndexProperty",  &GraphInterfaceWrap::InsertVertexIndexProperty)
 	.def("ComputeGraphLayoutGursoy", &GraphInterfaceWrap::ComputeGraphLayoutGursoy)
 	.def("ComputeGraphLayoutSpringBlock", &GraphInterfaceWrap::ComputeGraphLayoutSpringBlock)
-	.def("WriteToFile", &GraphInterfaceWrap::WriteToFile)
-	.def("ReadFromFile", &GraphInterfaceWrap::ReadFromFile)
+	.def("WriteToFile", WriteToFile1)
+	.def("WriteToFile", WriteToFile2)
+	.def("ReadFromFile", ReadFromFile1)
+	.def("ReadFromFile", ReadFromFile2)
 	.def("InitSignalHandling", &GraphInterfaceWrap::InitSignalHandling);
 	
     enum_<GraphInterfaceWrap::degree_t>("Degree")
 	.value("In", GraphInterfaceWrap::IN_DEGREE)
 	.value("Out", GraphInterfaceWrap::OUT_DEGREE)
 	.value("Total", GraphInterfaceWrap::TOTAL_DEGREE);
+
+    enum_<GraphInterfaceWrap::comm_corr_t>("CommCorr")
+	.value("ErdosReyni", GraphInterfaceWrap::ERDOS_REYNI)
+	.value("Uncorrelated", GraphInterfaceWrap::UNCORRELATED)
+	.value("Correlated", GraphInterfaceWrap::CORRELATED);
 
     variant_from_python<string>();
     variant_from_python<GraphInterfaceWrap::degree_t>();

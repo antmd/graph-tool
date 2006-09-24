@@ -178,24 +178,44 @@ struct graph_traits<FakeUndirGraph<Graph> >: public graph_traits<UndirectedAdapt
 
 
 //==============================================================================
-// ReadFromFile(file)
+// ReadFromFile(file, format)
 //==============================================================================
+
 
 void GraphInterface::ReadFromFile(string file)
 {
+    bool graphviz = boost::ends_with(file,".dot") || boost::ends_with(file,".dot.gz") || boost::ends_with(file,".dot.bz2");
+    if (graphviz)
+	ReadFromFile(file, "dot");
+    else
+	ReadFromFile(file, "xml");
+}
+
+void GraphInterface::ReadFromFile(string file, string format)
+{
+    bool graphviz = false;
+    if (format == "dot")
+	graphviz = true;
+    else if (format != "xml")
+	throw GraphException("error reading from file '" + file + "': requested invalid format '" + format + "'");
     try
     {
-	std::ifstream file_stream(file.c_str(), std::ios_base::in | std::ios_base::binary);
-	boost::iostreams::filtering_stream<boost::iostreams::input>  stream;
-	file_stream.exceptions(ios_base::badbit | ios_base::failbit);
-	if (boost::ends_with(file,".gz"))
-	    stream.push(boost::iostreams::gzip_decompressor());
-	if (boost::ends_with(file,".bz2"))
-	    stream.push(boost::iostreams::bzip2_decompressor());
-	stream.push(file_stream);
+	boost::iostreams::filtering_stream<boost::iostreams::input> stream;
+	std::ifstream file_stream;
+	if (file == "-")
+	    stream.push(std::cin);
+	else
+	{
+	    file_stream.open(file.c_str(), std::ios_base::in | std::ios_base::binary);
+	    file_stream.exceptions(ios_base::badbit | ios_base::failbit);
+	    if (boost::ends_with(file,".gz"))
+		stream.push(boost::iostreams::gzip_decompressor());
+	    if (boost::ends_with(file,".bz2"))
+		stream.push(boost::iostreams::bzip2_decompressor());
+	    stream.push(file_stream);
+	}
 	stream.exceptions(ios_base::badbit);
 
-	bool graphviz = boost::ends_with(file,"dot") || boost::ends_with(file,"dot.gz") || boost::ends_with(file,"dot.bz2");
 	_properties = dynamic_properties();
 	_mg.clear();
 
@@ -226,7 +246,7 @@ void GraphInterface::ReadFromFile(string file)
 };
 
 //==============================================================================
-// WriteToFile(file)
+// WriteToFile(file, format)
 //==============================================================================
 struct write_to_file
 {
@@ -281,19 +301,39 @@ struct generate_index
 
 void GraphInterface::WriteToFile(string file)
 {
+    bool graphviz = boost::ends_with(file,".dot") || boost::ends_with(file,".dot.gz") || boost::ends_with(file,".dot.bz2");
+    if (graphviz)
+	WriteToFile(file, "dot");
+    else
+	WriteToFile(file, "xml");
+}
+
+void GraphInterface::WriteToFile(string file, string format)
+{
+	bool graphviz = false;
+	if (format == "dot")
+	    graphviz = true;
+	else if (format != "xml")
+	    throw GraphException("error writing to file '" + file + "': requested invalid format '" + format + "'");
+
     try
     {
-	std::ofstream file_stream(file.c_str(), std::ios_base::out | std::ios_base::binary);
 	boost::iostreams::filtering_stream<boost::iostreams::output> stream;
-	file_stream.exceptions(ios_base::badbit | ios_base::failbit);
-	if (boost::ends_with(file,".gz"))
-	    stream.push(boost::iostreams::gzip_compressor());
-	if (boost::ends_with(file,".bz2"))
-	    stream.push(boost::iostreams::bzip2_compressor());
-	stream.push(file_stream);
+	std::ofstream file_stream;
+	if (file == "-")
+	    stream.push(std::cout);
+	else
+	{
+	    file_stream.open(file.c_str(), std::ios_base::out | std::ios_base::binary);
+	    file_stream.exceptions(ios_base::badbit | ios_base::failbit);
+	    if (boost::ends_with(file,".gz"))
+		stream.push(boost::iostreams::gzip_compressor());
+	    if (boost::ends_with(file,".bz2"))
+		stream.push(boost::iostreams::bzip2_compressor());
+	    stream.push(file_stream);
+	}
 	stream.exceptions(ios_base::badbit | ios_base::failbit);
-	
-	bool graphviz =  boost::ends_with(file,"dot") || boost::ends_with(file,"dot.gz") || boost::ends_with(file,"dot.bz2");
+
 	dynamic_properties_copy dp = _properties;
 
 	if (IsVertexFilterActive())
