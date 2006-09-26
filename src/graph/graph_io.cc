@@ -310,12 +310,11 @@ void GraphInterface::WriteToFile(string file)
 
 void GraphInterface::WriteToFile(string file, string format)
 {
-	bool graphviz = false;
-	if (format == "dot")
-	    graphviz = true;
-	else if (format != "xml")
-	    throw GraphException("error writing to file '" + file + "': requested invalid format '" + format + "'");
-
+    bool graphviz = false;
+    if (format == "dot")
+	graphviz = true;
+    else if (format != "xml")
+	throw GraphException("error writing to file '" + file + "': requested invalid format '" + format + "'");
     try
     {
 	boost::iostreams::filtering_stream<boost::iostreams::output> stream;
@@ -381,15 +380,16 @@ void GraphInterface::WriteToFile(string file, string format)
 
 	    if (GetDirected())
 	    {
-		check_filter(*this,bind<void>(write_to_file(),var(stream),_1,_vertex_index,var(dp),graphviz),
-			     reverse_check(),always_directed());
+		check_filter(*this,bind<void>(write_to_file(), var(stream), _1, _vertex_index, var(dp), graphviz),
+			     reverse_check(), always_directed());
 	    }
 	    else
 	    {
-		check_filter(*this,bind<void>(write_to_file_fake_undir(),var(stream),_1,_vertex_index,var(dp),graphviz),
+		check_filter(*this,bind<void>(write_to_file_fake_undir(), var(stream), _1, _vertex_index, var(dp), graphviz),
                              never_reversed(), always_undirected());
 	    }
 	}
+	stream.reset();
     }
     catch (ios_base::failure &e)
     {
