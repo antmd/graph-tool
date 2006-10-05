@@ -126,8 +126,8 @@ layout.add_option("--compute-spring-block-layout", action="callback", callback=p
 layout.add_option("--compute-gursoy-atun-layout", action="callback", callback=push_option, type="string", metavar="ITERATIONS[|SEED]", help="compute the Gursoy-Atun layout")
 
 community =  parser.add_option_group("Community")
-clustering.add_option("--community-structure", action="callback", callback=push_option, type="string", metavar="PROPERTY|CORR_TYPE|GAMMA|N_ITER|SEED[|WEIGHT]", help="calculate the community structure and assign it to PROPERTY. The value of CORR_TYPE can be 'random', 'uncorrelated' or 'correlated'.")
-clustering.add_option("--get-modularity", action="callback", callback=push_option, type="string", metavar="PROPERTY[|WEIGHT]|FILE", help="calculate the modularity, given a community partition specified by PROPERTY")
+community.add_option("--community-structure", action="callback", callback=push_option, type="string", metavar="PROPERTY|CORR_TYPE|GAMMA|N_ITER|SEED[|WEIGHT]", help="calculate the community structure and assign it to PROPERTY. The value of CORR_TYPE can be 'random', 'uncorrelated' or 'correlated'.")
+community.add_option("--get-modularity", action="callback", callback=push_option, type="string", metavar="PROPERTY[|WEIGHT]|FILE", help="calculate the modularity, given a community partition specified by PROPERTY")
 
 layout =  parser.add_option_group("History")
 layout.add_option("--for", action="callback", callback=push_option, type="string", metavar="INIT|CONDITION|STEP", help="simplified scripting")

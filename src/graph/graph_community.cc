@@ -48,6 +48,44 @@ size_t out_degree_no_loops(typename graph_traits<Graph>::vertex_descriptor v, co
     return k;
 }
 
+
+//==============================================================================
+// ManagedUnorderedMap
+//==============================================================================
+template <class Key, class Value>
+class ManagedUnorderedMap: public tr1::unordered_map<Key,Value>
+{
+    typedef tr1::unordered_map<Key,Value> base_t;
+public:
+    void erase(typename base_t::iterator pos)
+    {
+	static_cast<base_t*>(this)->erase(pos);
+	manage();
+    }
+
+    size_t erase(const Key& k)
+    {
+	size_t n = static_cast<base_t*>(this)->erase(k);
+	manage();
+	return n;
+    }
+
+    void manage()
+    {
+	if (this->bucket_count() > 2*this->size())
+	{
+	    base_t* new_map = new base_t;
+	    for (typeof(this->begin()) iter = this->begin(); iter != this->end(); ++iter)
+		(*new_map)[iter->first] = iter->second;
+	    *static_cast<base_t*>(this) = *new_map;
+	    delete new_map;
+	}
+    }
+
+};
+
+
+
 //==============================================================================
 // GetCommunityStructure()
 // computes the community structure through a spin glass system with 
@@ -60,14 +98,14 @@ struct get_communities
     template <class Graph, class WeightMap, class CommunityMap>
     void operator()(Graph& g, WeightMap weights, CommunityMap s, double gamma, size_t n_iter, size_t seed) const
     {
-	rng_t rng(seed);
+	rng_t rng(static_cast<rng_t::result_type>(seed));
 	boost::uniform_real<double> uniform_p(0.0,1.0);
 
-	unordered_map<size_t, size_t> Nk; // degree histogram
-	unordered_map<size_t, size_t> Ns; // spin histogram
-	unordered_map<size_t, unordered_map<size_t, size_t> > kNs; // spin histogram per degree
-	unordered_map<size_t, size_t> Ks; // sum of degrees per spin
-	unordered_map<size_t, map<double, unordered_set<size_t> > > global_term; // global energy term
+	ManagedUnorderedMap<size_t, size_t> Nk; // degree histogram
+	ManagedUnorderedMap<size_t, size_t> Ns; // spin histogram
+	ManagedUnorderedMap<size_t, ManagedUnorderedMap<size_t, size_t> > kNs; // spin histogram per degree
+	ManagedUnorderedMap<size_t, size_t> Ks; // sum of degrees per spin
+	ManagedUnorderedMap<size_t, map<double, unordered_set<size_t> > > global_term; // global energy term
 
 	NNKS<Graph> Nnnks(g); // this will retrieve the expected number of neighbours with given spin, in funcion of degree
 
@@ -104,7 +142,7 @@ struct get_communities
 		double E = -T*log(1-uniform_p(rng)); // sampled target jump energy
 		double local_term = 0;
 		
-		unordered_map<size_t, double> ns; // number of neighbours with spin 's' (weighted)
+		ManagedUnorderedMap<size_t, double> ns; // number of neighbours with spin 's' (weighted)
 		
 		// neighbourhood spins info
 		typename graph_traits<Graph>::out_edge_iterator e,e_end;
@@ -164,12 +202,22 @@ struct get_communities
 		if (global_term[k][old_E].empty())
 		    global_term[k].erase(old_E);
 		Ns[s[*v]]--;
+		if (Ns[s[*v]] == 0)
+		    Ns.erase(s[*v]);
 		kNs[k][s[*v]]--;
+		if (kNs[k][s[*v]] == 0)
+		    kNs[k].erase(s[*v]);
 		Ks[s[*v]] -= k;
+		if (Ks[s[*v]] == 0)
+		    Ks.erase(s[*v]);
+		global_term[k][gamma*Nnnks(k,s[*v],Ns,kNs,Ks)].insert(s[*v]);
+		old_E = gamma*Nnnks(k,a,Ns,kNs,Ks);
+		global_term[k][old_E].erase(a);
+                if (global_term[k][old_E].empty())
+                    global_term[k].erase(old_E);
 		Ns[a]++;
 		kNs[k][a]++;
 		Ks[a] += k;
-		global_term[k][gamma*Nnnks(k,s[*v],Ns,kNs,Ks)].insert(s[*v]);
 		global_term[k][gamma*Nnnks(k,a,Ns,kNs,Ks)].insert(a);
 		
 		// update spin
@@ -197,8 +245,8 @@ public:
 	_p = _avg_k/(N*N);
     }
 
-    double operator()(size_t k, size_t s, unordered_map<size_t,size_t>& Ns, unordered_map<size_t,unordered_map<size_t,size_t> >& kNs,  
-		      unordered_map<size_t, size_t>& Ks) const 
+    double operator()(size_t k, size_t s, ManagedUnorderedMap<size_t,size_t>& Ns, ManagedUnorderedMap<size_t,ManagedUnorderedMap<size_t,size_t> >& kNs,  
+		      ManagedUnorderedMap<size_t, size_t>& Ks) const 
     {
 	return _p*Ns[s];
     }
@@ -219,8 +267,8 @@ public:
 	    _K += out_degree_no_loops(*v,g); 
     }
 
-    double operator()(size_t k, size_t s, unordered_map<size_t,size_t>& Ns, unordered_map<size_t,unordered_map<size_t,size_t> >& kNs,  
-		      unordered_map<size_t, size_t>& Ks) const 
+    double operator()(size_t k, size_t s, ManagedUnorderedMap<size_t,size_t>& Ns, ManagedUnorderedMap<size_t,ManagedUnorderedMap<size_t,size_t> >& kNs,  
+		      ManagedUnorderedMap<size_t, size_t>& Ks) const 
     {
 	return k*Ks[s]/double(_K);
     }
@@ -246,18 +294,18 @@ public:
 	}
     }
 
-    double operator()(size_t k, size_t s, unordered_map<size_t,size_t>& Ns, unordered_map<size_t,unordered_map<size_t,size_t> >& kNs,  
-		      unordered_map<size_t, size_t>& Ks)
+    double operator()(size_t k, size_t s, ManagedUnorderedMap<size_t,size_t>& Ns, ManagedUnorderedMap<size_t,ManagedUnorderedMap<size_t,size_t> >& kNs,  
+		      ManagedUnorderedMap<size_t, size_t>& Ks)
     {
 	double N = 0;
-	unordered_map<size_t, size_t>& nkk = _Nkk[k];
+	ManagedUnorderedMap<size_t, size_t>& nkk = _Nkk[k];
 	for (typeof(nkk.begin()) iter = nkk.begin(); iter != nkk.end(); ++iter)
 	    N += iter->second * kNs[iter->first][s]/double(_Nk[iter->first]);
 	return N;
     }
 private:
-    unordered_map<size_t, size_t> _Nk;
-    unordered_map<size_t, unordered_map<size_t, size_t> > _Nkk;
+    ManagedUnorderedMap<size_t, size_t> _Nk;
+    ManagedUnorderedMap<size_t, ManagedUnorderedMap<size_t, size_t> > _Nkk;
 };
 
 

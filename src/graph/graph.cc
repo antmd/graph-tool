@@ -359,7 +359,7 @@ struct compute_gursoy
     template <class Graph, class PosMap, class IndexMap>
     void operator()(Graph &g, size_t iter, size_t seed, PosMap pos, IndexMap index_map) const
     {
-	mt19937 rng(seed);
+	mt19937 rng(static_cast<mt19937::result_type>(seed));
 	size_t n = HardNumVertices()(g);
 	
 	vector_property_map<square_topology<mt19937>::point_type, IndexMap> position_map(index_map);
@@ -405,7 +405,7 @@ struct compute_spring_block
     void operator()(Graph &g, size_t iter, size_t seed, PosMap pos, IndexMap index_map) const
     {
   
-	mt19937 rng(seed);
+	mt19937 rng(static_cast<mt19937::result_type>(seed));
 	size_t n = HardNumVertices()(g);
 
         if (iter == 0)

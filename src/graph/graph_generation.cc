@@ -259,7 +259,7 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel(size_t N, pjk_t pjk,
 {
     _mg.clear();
     _properties = dynamic_properties();
-    rng_t rng(seed);
+    rng_t rng(static_cast<rng_t::result_type>(seed));
 
     // sample the N (j,k) pairs
 

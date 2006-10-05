@@ -64,7 +64,7 @@ struct get_sampled_distances
 	for(tie(v, v_end) = vertices(g); v != v_end; ++v,++i)
 	    descriptors[i] = *v;
 
-	rng_t rng(seed);
+	rng_t rng(static_cast<rng_t::result_type>(seed));
 	uniform_int<size_t> sampler(0,descriptors.size()-1);
 
 	for(i=0; i < samples; ++i)
