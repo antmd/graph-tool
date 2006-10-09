@@ -85,29 +85,24 @@ public:
 };
 
 
-
 //==============================================================================
 // GetCommunityStructure()
 // computes the community structure through a spin glass system with 
 // simulated annealing
 //==============================================================================
 
-template <template <class G> class NNKS>
+template <template <class G, class CommunityMap> class NNKS>
 struct get_communities
 {
     template <class Graph, class WeightMap, class CommunityMap>
-    void operator()(Graph& g, WeightMap weights, CommunityMap s, double gamma, size_t n_iter, size_t seed) const
+    void operator()(Graph& g, WeightMap weights, CommunityMap s, double gamma, size_t n_iter, double Tmin, double Tmax, size_t seed, bool verbose) const
     {
 	rng_t rng(static_cast<rng_t::result_type>(seed));
 	boost::uniform_real<double> uniform_p(0.0,1.0);
 
 	ManagedUnorderedMap<size_t, size_t> Nk; // degree histogram
 	ManagedUnorderedMap<size_t, size_t> Ns; // spin histogram
-	ManagedUnorderedMap<size_t, ManagedUnorderedMap<size_t, size_t> > kNs; // spin histogram per degree
-	ManagedUnorderedMap<size_t, size_t> Ks; // sum of degrees per spin
 	ManagedUnorderedMap<size_t, map<double, unordered_set<size_t> > > global_term; // global energy term
-
-	NNKS<Graph> Nnnks(g); // this will retrieve the expected number of neighbours with given spin, in funcion of degree
 
 	// init spins from [0,N-1] and global info	
 	size_t index = 0;
@@ -116,32 +111,28 @@ struct get_communities
 	{
 	    s[*v] = index++; 
 	    Ns[s[*v]]++;
-	    size_t k = out_degree_no_loops(*v,g);
-	    Nk[k]++;
-	    kNs[k][s[*v]]++;
-	    Ks[s[*v]] += k;
+	    Nk[out_degree_no_loops(*v,g)]++;
 	}
 
-	for (tie(v,v_end) = vertices(g); v != v_end; ++v)
-	{
-	    size_t k = out_degree_no_loops(*v,g);
-	    global_term[k][gamma*Nnnks(k,s[*v],Ns,kNs,Ks)].insert(s[*v]);
-	}
+	NNKS<Graph,CommunityMap> Nnnks(g, s); // this will retrieve the expected number of neighbours with given spin, in funcion of degree
 
-	// define cooling rate so that temperature starts at "infinity" (numeric_limits::max()) at temp_count == 0
-	// and reaches "zero" (numeric_limits::epsilon()) at temp_count == n_iter - 1
-	double cooling_rate = -(log(numeric_limits<double>::epsilon())-log(numeric_limits<double>::max()))/(n_iter-1);
+	for (typeof(Nk.begin()) iter = Nk.begin(); iter != Nk.end(); ++iter)
+	    for (tie(v,v_end) = vertices(g); v != v_end; ++v)
+		global_term[iter->first][gamma*Nnnks(iter->first,s[*v])].insert(s[*v]);
+
+	// define cooling rate so that temperature starts at Tmax at temp_count == 0
+	// and reaches Tmin at temp_count == n_iter - 1
+	if (Tmin < numeric_limits<double>::epsilon())
+	    Tmin = numeric_limits<double>::epsilon();
+	double cooling_rate = -(log(Tmin)-log(Tmax))/(n_iter-1);
 
 	for (size_t temp_count = 0; temp_count < n_iter; ++temp_count)
 	{
-	    double T = numeric_limits<double>::max()*exp(-cooling_rate*temp_count);
+	    double T = Tmax*exp(-cooling_rate*temp_count);
 	    
             // sample a new spin for every vertex
 	    for (tie(v,v_end) = vertices(g); v != v_end; ++v)
 	    {
-		double E = -T*log(1-uniform_p(rng)); // sampled target jump energy
-		double local_term = 0;
-		
 		ManagedUnorderedMap<size_t, double> ns; // number of neighbours with spin 's' (weighted)
 		
 		// neighbourhood spins info
@@ -155,13 +146,15 @@ struct get_communities
 		    
 		size_t k = out_degree_no_loops(*v,g);
 		
+		double E = -T*log(1-uniform_p(rng)) - (gamma+1)*k; // sampled target jump energy
+
 		// local energy term
-		local_term = ns[s[*v]] + gamma*Nnnks(k,s[*v],Ns,kNs,Ks);
+		double local_term = ns[s[*v]] - gamma*Nnnks(k,s[*v]);
 		
 		// update global info with local info
 		for (typeof(ns.begin()) iter = ns.begin(); iter != ns.end(); ++iter)
 		{
-		    double old_E = gamma*Nnnks(k,iter->first,Ns,kNs,Ks);
+		    double old_E = gamma*Nnnks(k,iter->first);
 		    global_term[k][old_E].erase(iter->first);
 		    if (global_term[k][old_E].empty())
 			global_term[k].erase(old_E);
@@ -189,49 +182,61 @@ struct get_communities
 		//cleanup global info
 		for (typeof(ns.begin()) iter = ns.begin(); iter != ns.end(); ++iter)
 		{
-		    double old_E = gamma*Nnnks(k,iter->first,Ns,kNs,Ks) - ns[iter->first];		    
+		    double old_E = gamma*Nnnks(k,iter->first) - ns[iter->first];
 		    global_term[k][old_E].erase(iter->first);
 		    if (global_term[k][old_E].empty())
 			global_term[k].erase(old_E);
 		    global_term[k][old_E + ns[iter->first]].insert(iter->first);
 		}
-
-		//update global info
-		double old_E = gamma*Nnnks(k,s[*v],Ns,kNs,Ks);
-		global_term[k][old_E].erase(s[*v]);
-		if (global_term[k][old_E].empty())
-		    global_term[k].erase(old_E);
-		Ns[s[*v]]--;
-		if (Ns[s[*v]] == 0)
-		    Ns.erase(s[*v]);
-		kNs[k][s[*v]]--;
-		if (kNs[k][s[*v]] == 0)
-		    kNs[k].erase(s[*v]);
-		Ks[s[*v]] -= k;
-		if (Ks[s[*v]] == 0)
-		    Ks.erase(s[*v]);
-		global_term[k][gamma*Nnnks(k,s[*v],Ns,kNs,Ks)].insert(s[*v]);
-		old_E = gamma*Nnnks(k,a,Ns,kNs,Ks);
-		global_term[k][old_E].erase(a);
-                if (global_term[k][old_E].empty())
-                    global_term[k].erase(old_E);
-		Ns[a]++;
-		kNs[k][a]++;
-		Ks[a] += k;
-		global_term[k][gamma*Nnnks(k,a,Ns,kNs,Ks)].insert(a);
 		
-		// update spin
-		s[*v] = a;
-	    }		
-	}	
+		//update global info
+		if (s[*v] != a)
+		{
+		    double old_E = gamma*Nnnks(k,s[*v]);
+		    global_term[k][old_E].erase(s[*v]);
+		    if (global_term[k][old_E].empty())
+			global_term[k].erase(old_E);
+		    old_E = gamma*Nnnks(k,a);
+		    global_term[k][old_E].erase(a);
+		    if (global_term[k][old_E].empty())
+			global_term[k].erase(old_E);
+		    Nnnks.Update(*v,s[*v],a);
+		    Ns[s[*v]]--;
+		    if (Ns[s[*v]] == 0)
+			Ns.erase(s[*v]);
+		    Ns[a]++;
+		    global_term[k][gamma*Nnnks(k,s[*v])].insert(s[*v]);
+		    global_term[k][gamma*Nnnks(k,a)].insert(a);
+		    
+		    // update spin
+		    s[*v] = a;
+		}
+	    }
+
+	    if (verbose)
+	    {
+		static stringstream str;
+		for (size_t j = 0; j < str.str().length(); ++j)
+		    cout << "\b";
+		str.str("");
+		str << temp_count << " of " << n_iter << " (" << (temp_count+1)*100/n_iter << "%) " << "temperature: " << T << " spins: " << Ns.size() << " energy levels: ";
+		size_t n_energy = 0;
+		for (typeof(global_term.begin()) iter = global_term.begin(); iter != global_term.end(); ++iter)
+		    n_energy += iter->second.size();
+		str << n_energy;
+		cout << str.str() << flush;
+	    }
+	}
+	if (verbose)
+	    cout << endl;
     }
 };
 
-template <class Graph>
+template <class Graph, class CommunityMap>
 class NNKSErdosReyni
 {
 public:
-    NNKSErdosReyni(Graph &g)
+    NNKSErdosReyni(Graph &g, CommunityMap s)
     {
 	size_t N = 0;
 	double _avg_k = 0.0;
@@ -241,71 +246,131 @@ public:
 	    size_t k = out_degree_no_loops(*v,g); 
 	    _avg_k += k;
 	    N++;
+	    _Ns[s[*v]]++;
 	}
 	_p = _avg_k/(N*N);
     }
 
-    double operator()(size_t k, size_t s, ManagedUnorderedMap<size_t,size_t>& Ns, ManagedUnorderedMap<size_t,ManagedUnorderedMap<size_t,size_t> >& kNs,  
-		      ManagedUnorderedMap<size_t, size_t>& Ks) const 
+    void Update(typename graph_traits<Graph>::vertex_descriptor v, size_t old_s, size_t s)
     {
-	return _p*Ns[s];
+	_Ns[old_s]--;
+	if (_Ns[old_s] == 0)
+	    _Ns.erase(old_s);
+	_Ns[s]++;
+    }
+
+    double operator()(size_t k, size_t s) const 
+    {
+	size_t ns = 0;
+	typeof(_Ns.begin()) iter = _Ns.find(s);
+	if (iter != _Ns.end())
+	    ns = iter->second;
+	return _p*ns;
     }
 
 private:
     double _p;
+    ManagedUnorderedMap<size_t,size_t> _Ns;
 };
 
-template <class Graph>
+template <class Graph, class CommunityMap>
 class NNKSUncorr
 {
 public:
-    NNKSUncorr(Graph &g)
-	:_K(0)
+    NNKSUncorr(Graph &g, CommunityMap s): _g(g), _K(0)
     {
 	typename graph_traits<Graph>::vertex_iterator v,v_end;
-	for (tie(v,v_end) = vertices(g); v != v_end; ++v)
-	    _K += out_degree_no_loops(*v,g); 
-    }
-
-    double operator()(size_t k, size_t s, ManagedUnorderedMap<size_t,size_t>& Ns, ManagedUnorderedMap<size_t,ManagedUnorderedMap<size_t,size_t> >& kNs,  
-		      ManagedUnorderedMap<size_t, size_t>& Ks) const 
-    {
-	return k*Ks[s]/double(_K);
-    }
-private:
-    size_t _K;
-};
-
-template <class Graph>
-class NNKSCorr
-{
-public:
-    NNKSCorr(Graph &g)
-    {
-	typename graph_traits<Graph>::vertex_iterator v,v_end;
-	for (tie(v,v_end) = vertices(g); v != v_end; ++v)
+	for (tie(v,v_end) = vertices(_g); v != v_end; ++v)
 	{
-	    size_t k = out_degree_no_loops(*v,g);
-	    _Nk[k]++;
-	    typename graph_traits<Graph>::adjacency_iterator a,a_end;
-	    for (tie(a,a_end) = adjacent_vertices(*v,g); a != a_end; ++a)
-		if (*a != *v)
-		    _Nkk[k][out_degree_no_loops(*a,g)]++;
+	    size_t k = out_degree_no_loops(*v, _g);
+	    _K += k;
+	    _Ks[s[*v]] += k; 
 	}
     }
 
-    double operator()(size_t k, size_t s, ManagedUnorderedMap<size_t,size_t>& Ns, ManagedUnorderedMap<size_t,ManagedUnorderedMap<size_t,size_t> >& kNs,  
-		      ManagedUnorderedMap<size_t, size_t>& Ks)
+    void Update(typename graph_traits<Graph>::vertex_descriptor v, size_t old_s, size_t s)
     {
-	double N = 0;
-	ManagedUnorderedMap<size_t, size_t>& nkk = _Nkk[k];
-	for (typeof(nkk.begin()) iter = nkk.begin(); iter != nkk.end(); ++iter)
-	    N += iter->second * kNs[iter->first][s]/double(_Nk[iter->first]);
-	return N;
+	size_t k = out_degree_no_loops(v, _g);
+	_Ks[old_s] -= k;
+	if (_Ks[old_s] == 0)
+	    _Ks.erase(old_s);
+	_Ks[s] += k; 
+    }
+
+
+    double operator()(size_t k, size_t s) const 
+    {
+	size_t ks = 0;
+	typeof(_Ks.begin()) iter = _Ks.find(s);
+	if (iter != _Ks.end())
+	    ks = iter->second;
+	return k*ks/double(_K);
     }
 private:
+    Graph& _g;
+    size_t _K;
+    ManagedUnorderedMap<size_t, size_t> _Ks;
+};
+
+template <class Graph, class CommunityMap>
+class NNKSCorr
+{
+public:
+    NNKSCorr(Graph &g, CommunityMap s): _g(g)
+    {
+	typename graph_traits<Graph>::vertex_iterator v,v_end;
+	for (tie(v,v_end) = vertices(_g); v != v_end; ++v)
+	{
+	    size_t k = out_degree_no_loops(*v, _g);
+	    _Nk[k]++;
+	    _kNs[k][s[*v]]++;
+	    unordered_set<typename graph_traits<Graph>::vertex_descriptor> neighbours;
+	    neighbours.insert(*v);
+	    typename graph_traits<Graph>::adjacency_iterator a,a_end;
+	    for (tie(a,a_end) = adjacent_vertices(*v, _g); a != a_end; ++a)
+		if (neighbours.find(*a) == neighbours.end())
+		{
+		    _Nkk[k][out_degree_no_loops(*a, _g)]++;
+		    neighbours.insert(*a);
+		}
+	}
+
+	for (typeof(_Nk.begin()) k_iter = _Nk.begin(); k_iter != _Nk.end(); ++k_iter)
+	    for (tie(v,v_end) = vertices(_g); v != v_end; ++v)
+	    {
+		size_t k = out_degree_no_loops(*v, _g);
+		_kNNs[k_iter->first][s[*v]] += _Nkk[k_iter->first][k] * _kNs[k][s[*v]]/double(_Nk[k_iter->first]*_Nk[k]);
+	    }
+    }
+
+    void Update(typename graph_traits<Graph>::vertex_descriptor v, size_t old_s, size_t s)
+    {
+	size_t k = out_degree_no_loops(v, _g);
+	for (typeof(_Nk.begin()) k_iter = _Nk.begin(); k_iter != _Nk.end(); ++k_iter)
+	{
+	    _kNNs[k_iter->first][old_s] -= _Nkk[k_iter->first][k] * _kNs[k][old_s]/double(_Nk[k_iter->first]*_Nk[k]);
+	    if (_kNNs[k_iter->first][old_s] == 0.0)
+		_kNNs[k_iter->first].erase(old_s);
+	    _kNNs[k_iter->first][s] += _Nkk[k_iter->first][k] * _kNs[k][s]/double(_Nk[k_iter->first]*_Nk[k]);
+	}
+	
+    }
+
+    double operator()(size_t k, size_t s)
+    {
+	double knns = 0.0;
+	typeof(_kNNs[k].begin()) iter = _kNNs[k].find(s);
+	if (iter != _kNNs[k].end())
+	    knns = iter->second;
+	return knns;
+    }
+
+private:
+    Graph& _g;
     ManagedUnorderedMap<size_t, size_t> _Nk;
     ManagedUnorderedMap<size_t, ManagedUnorderedMap<size_t, size_t> > _Nkk;
+    ManagedUnorderedMap<size_t, ManagedUnorderedMap<size_t,size_t> > _kNs;
+    ManagedUnorderedMap<size_t, ManagedUnorderedMap<size_t, double> > _kNNs;
 };
 
 
@@ -315,24 +380,24 @@ struct get_communities_selector
     GraphInterface::comm_corr_t _corr;
 
     template <class Graph, class WeightMap, class CommunityMap>
-    void operator()(Graph& g, WeightMap weights, CommunityMap s, double gamma, size_t n_iter, size_t seed) const
+    void operator()(Graph& g, WeightMap weights, CommunityMap s, double gamma, size_t n_iter, double Tmin, double Tmax, size_t seed, bool verbose) const
     {
 	switch (_corr)
 	{
 	case GraphInterface::ERDOS_REYNI:
-	    get_communities<NNKSErdosReyni>()(g, weights, s, gamma, n_iter, seed);
+	    get_communities<NNKSErdosReyni>()(g, weights, s, gamma, n_iter, Tmin, Tmax, seed, verbose);
 	    break;
 	case GraphInterface::UNCORRELATED:
-	    get_communities<NNKSUncorr>()(g, weights, s, gamma, n_iter, seed);
+	    get_communities<NNKSUncorr>()(g, weights, s, gamma, n_iter, Tmin, Tmax, seed, verbose);
 	    break;
 	case GraphInterface::CORRELATED:
-	    get_communities<NNKSCorr>()(g, weights, s, gamma, n_iter, seed);
+	    get_communities<NNKSCorr>()(g, weights, s, gamma, n_iter, Tmin, Tmax, seed, verbose);
 	    break;
 	}
     }
 };
 
-void GraphInterface::GetCommunityStructure(double gamma, comm_corr_t corr, size_t n_iter, size_t seed, string weight, string property)
+void GraphInterface::GetCommunityStructure(double gamma, comm_corr_t corr, size_t n_iter, double Tmin, double Tmax, size_t seed, bool verbose, string weight, string property)
 {
     typedef HashedDescriptorMap<vertex_index_map_t,size_t> comm_map_t;
     comm_map_t comm_map(_vertex_index);
@@ -349,13 +414,13 @@ void GraphInterface::GetCommunityStructure(double gamma, comm_corr_t corr, size_
 	    {
 		vector_property_map<double,edge_index_map_t> weight_map = 
 		    get_static_property_map<vector_property_map<double,edge_index_map_t> >(weight_prop);
-		check_filter(*this, bind<void>(get_communities_selector(corr), _1, var(weight_map), var(comm_map), gamma, n_iter, seed),
+		check_filter(*this, bind<void>(get_communities_selector(corr), _1, var(weight_map), var(comm_map), gamma, n_iter, Tmin, Tmax, seed, verbose),
 			     reverse_check(), always_undirected());
 	    }
 	    else
 	    {
 		DynamicPropertyMapWrap<double,graph_traits<multigraph_t>::edge_descriptor> weight_map(weight_prop);
-		check_filter(*this, bind<void>(get_communities_selector(corr), _1, var(weight_map), var(comm_map), gamma, n_iter, seed),
+		check_filter(*this, bind<void>(get_communities_selector(corr), _1, var(weight_map), var(comm_map), gamma, n_iter, Tmin, Tmax, seed, verbose),
 			     reverse_check(), always_undirected());
 	    }
 	}
@@ -367,7 +432,7 @@ void GraphInterface::GetCommunityStructure(double gamma, comm_corr_t corr, size_
     else
     {
 	ConstantPropertyMap<double,graph_traits<multigraph_t>::edge_descriptor> weight_map(1.0);
-	check_filter(*this, bind<void>(get_communities_selector(corr), _1, var(weight_map), var(comm_map), gamma, n_iter, seed),
+	check_filter(*this, bind<void>(get_communities_selector(corr), _1, var(weight_map), var(comm_map), gamma, n_iter, Tmin, Tmax, seed, verbose),
 		     reverse_check(), always_undirected());
     }
     _directed = directed;

@@ -126,8 +126,8 @@ layout.add_option("--compute-spring-block-layout", action="callback", callback=p
 layout.add_option("--compute-gursoy-atun-layout", action="callback", callback=push_option, type="string", metavar="ITERATIONS[|SEED]", help="compute the Gursoy-Atun layout")
 
 community =  parser.add_option_group("Community")
-community.add_option("--community-structure", action="callback", callback=push_option, type="string", metavar="PROPERTY|CORR_TYPE|GAMMA|N_ITER|SEED[|WEIGHT]", help="calculate the community structure and assign it to PROPERTY. The value of CORR_TYPE can be 'random', 'uncorrelated' or 'correlated'.")
-community.add_option("--get-modularity", action="callback", callback=push_option, type="string", metavar="PROPERTY[|WEIGHT]|FILE", help="calculate the modularity, given a community partition specified by PROPERTY")
+community.add_option("--community-structure", action="callback", callback=push_option, type="string", metavar="PROPERTY|OPTIONS", help="calculate the community structure and assign it to PROPERTY. Options are: g (default: 1.0), N (default: 1000), Tmin (default: 0.0), Tmax (default: 100), corr_type (default: uncorrelated), weight, seed (default: from clock), verbose.  The value of corr_type can be 'random', 'uncorrelated' or 'correlated'.")
+community.add_option("--modularity", action="callback", callback=push_option, type="string", metavar="PROPERTY[|WEIGHT]|FILE", help="calculate the modularity, given a community partition specified by PROPERTY")
 
 layout =  parser.add_option_group("History")
 layout.add_option("--for", action="callback", callback=push_option, type="string", metavar="INIT|CONDITION|STEP", help="simplified scripting")
@@ -521,32 +521,54 @@ def parse_option(opt, just_file=False):
         if just_file:
             return None
         values = parse_values(opt.value)
-        if len(values) < 5 or len(values) > 6:
+        if len(values) < 1 or len(values) > 2:
             raise OptionError(opt.name, "invalid value '%s'" % opt.value)
-        offset = 0;
         prop = values[0]
-        corr = None
-        if values[1].strip() == "random":
-            corr = CommCorr.ErdosReyni
-        elif values[1].strip() == "uncorrelated":
-            corr = CommCorr.Uncorrelated
-        elif values[1].strip() == "correlated":
-            corr = CommCorr.Correlated
+        if len(values) > 1:
+            param = values[1]
         else:
-            raise OptionError(opt.name, "invalid correlation type value '%s'" % values[1])
+            param = ""
         try:
-            g = float(values[2])
-            N = int(values[3])
-            seed = int(values[4])
-            if seed == 0:
-                seed = int(time())
-            weights = ""
-            if len(values) == 6:
-                weights = values[5]
+            if  get_suboption("g", param) != False:
+                g = float( get_suboption("g", param))
+            else:
+                g = 1.0
+            if  get_suboption("N", param) != False:
+                N = int( get_suboption("N", param))
+            else:
+                N = 1000
+            if  get_suboption("Tmin", param) != False:
+                Tmin = float( get_suboption("Tmin", param))
+            else:
+                Tmin = 0.0
+            if  get_suboption("Tmax", param) != False:
+                Tmax = float( get_suboption("Tmax", param))
+            else:
+                Tmax = 100.0
+            if  get_suboption("corr_type", param) != False:
+                if  get_suboption("corr_type", param)  == "random":
+                    correlation = CommCorr.ErdosReyni
+                elif  get_suboption("corr_type", param)  == "uncorrelated":
+                    corr = CommCorr.Uncorrelated
+                elif  get_suboption("corr_type", param)  == "correlated":
+                    corr = CommCorr.Correlated
+                else:
+                    raise OptionError(opt.name, "invalid correlation type value '%s'" %  get_suboption("corr_type", param) )
+            else:
+                corr = CommCorr.Uncorrelated
+            if  get_suboption("seed", param) != False:
+                seed = int( get_suboption("seed", param))
+            else:
+                seed = int(clock())
+            if  get_suboption("weight", param) != False:
+                weight =  get_suboption("weight", param)
+            else:
+                weight = ""
+            verbose =  get_suboption("verbose", param) != False
         except ValueError,e:
             raise OptionError(opt.name, "invalid value '%s': %s" % (opt.value, e))
-        graph.GetCommunityStructure(g, corr, N, seed, weights, prop)
-    elif opt.name == "get-modularity":
+        graph.GetCommunityStructure(g, corr, N, Tmin, Tmax, seed, verbose, weight, prop)
+    elif opt.name == "modularity":
         values = parse_values(opt.value)
         if len(values) < 2 or len(values) > 3:
             raise OptionError(opt.name, "invalid value '%s'" % opt.value)

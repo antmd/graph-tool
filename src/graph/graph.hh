@@ -104,7 +104,7 @@ public:
 	CORRELATED
     };
 
-    void   GetCommunityStructure(double gamma, comm_corr_t corr, size_t n_iter, size_t seed, std::string weight, std::string property);
+    void   GetCommunityStructure(double gamma, comm_corr_t corr, size_t n_iter, double Tmin, double Tmax, size_t seed, bool verbose, std::string weight, std::string property);
     double GetModularity(std::string weight, std::string property);
 
     // filtering
