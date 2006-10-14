@@ -20,6 +20,7 @@
 #include <boost/lambda/bind.hpp>
 #include <boost/random.hpp>
 #include <tr1/unordered_set>
+#include <iomanip>
 
 #include "graph.hh"
 #include "histogram.hh"
@@ -95,30 +96,41 @@ template <template <class G, class CommunityMap> class NNKS>
 struct get_communities
 {
     template <class Graph, class WeightMap, class CommunityMap>
-    void operator()(Graph& g, WeightMap weights, CommunityMap s, double gamma, size_t n_iter, double Tmin, double Tmax, size_t seed, bool verbose) const
+    void operator()(Graph& g, WeightMap weights, CommunityMap s, double gamma, size_t n_iter, pair<double,double> Tinterval, size_t Nspins, size_t seed, bool verbose) const
     {
+	double Tmin = Tinterval.first;
+	double Tmax = Tinterval.second;
+
 	rng_t rng(static_cast<rng_t::result_type>(seed));
 	boost::uniform_real<double> uniform_p(0.0,1.0);
 
-	ManagedUnorderedMap<size_t, size_t> Nk; // degree histogram
+	if (Nspins == 0)
+	    Nspins = HardNumVertices()(g);
+
 	ManagedUnorderedMap<size_t, size_t> Ns; // spin histogram
 	ManagedUnorderedMap<size_t, map<double, unordered_set<size_t> > > global_term; // global energy term
 
-	// init spins from [0,N-1] and global info	
-	size_t index = 0;
+	// init spins from [0,N-1] and global info
+	uniform_int<size_t> sample_spin(0, Nspins-1);
+	unordered_set<size_t> deg_set;
 	typename graph_traits<Graph>::vertex_iterator v,v_end;
 	for (tie(v,v_end) = vertices(g); v != v_end; ++v)
 	{
-	    s[*v] = index++; 
+	    s[*v] = sample_spin(rng);
 	    Ns[s[*v]]++;
-	    Nk[out_degree_no_loops(*v,g)]++;
+	    deg_set.insert(out_degree_no_loops(*v, g));
 	}
 
 	NNKS<Graph,CommunityMap> Nnnks(g, s); // this will retrieve the expected number of neighbours with given spin, in funcion of degree
 
-	for (typeof(Nk.begin()) iter = Nk.begin(); iter != Nk.end(); ++iter)
-	    for (tie(v,v_end) = vertices(g); v != v_end; ++v)
-		global_term[iter->first][gamma*Nnnks(iter->first,s[*v])].insert(s[*v]);
+	// setup global energy terms for all degrees and spins
+	vector<size_t> degs;
+	for (typeof(deg_set.begin()) iter = deg_set.begin(); iter != deg_set.end(); ++iter)
+	    degs.push_back(*iter);
+	for (size_t i = 0; i < degs.size(); ++i)
+	    for (size_t sp = 0; sp < Nspins; ++sp)
+		global_term[degs[i]][gamma*Nnnks(degs[i],sp)].insert(sp);
+
 
 	// define cooling rate so that temperature starts at Tmax at temp_count == 0
 	// and reaches Tmin at temp_count == n_iter - 1
@@ -126,16 +138,48 @@ struct get_communities
 	    Tmin = numeric_limits<double>::epsilon();
 	double cooling_rate = -(log(Tmin)-log(Tmax))/(n_iter-1);
 
+	// start the annealing
 	for (size_t temp_count = 0; temp_count < n_iter; ++temp_count)
 	{
 	    double T = Tmax*exp(-cooling_rate*temp_count);
 	    
+	    bool steepest_descent = false; // flags if temperature is too low
+
+	    // calculate the cumulative probabilities of each spin energy level
+	    unordered_map<size_t, map<long double, pair<double, bool> > > cumm_prob;
+	    unordered_map<size_t, unordered_map<double, long double> > energy_to_prob;
+	    for (size_t i = 0; i < degs.size(); ++i)
+	    {
+		long double prob = 0;
+		for (typeof(global_term[degs[i]].begin()) iter = global_term[degs[i]].begin(); iter != global_term[degs[i]].end(); ++iter)
+		{
+		    long double M = log(numeric_limits<long double>::max()/(Nspins*10));
+		    long double this_prob = exp((long double)(-iter->first - degs[i])/T + M)*iter->second.size();
+		    if (prob + this_prob != prob)
+		    {
+			prob += this_prob;
+			cumm_prob[degs[i]][prob] = make_pair(iter->first, true);
+			energy_to_prob[degs[i]][iter->first] = prob;
+		    }
+		    else
+		    {
+			energy_to_prob[degs[i]][iter->first] = 0;
+		    }
+		}
+		if (prob == 0.0)
+		    steepest_descent = true;
+	    }
+
+	    // list of spins which were updated
+	    vector<pair<typename graph_traits<Graph>::vertex_descriptor,size_t> > spin_update;
+	    spin_update.reserve(HardNumVertices()(g));
+
             // sample a new spin for every vertex
 	    for (tie(v,v_end) = vertices(g); v != v_end; ++v)
 	    {
-		ManagedUnorderedMap<size_t, double> ns; // number of neighbours with spin 's' (weighted)
+		unordered_map<size_t, double> ns; // number of neighbours with spin 's' (weighted)
 		
-		// neighbourhood spins info
+		// neighborhood spins info
 		typename graph_traits<Graph>::out_edge_iterator e,e_end;
 		for (tie(e,e_end) = out_edges(*v,g); e != e_end; ++e)
 		{
@@ -145,72 +189,139 @@ struct get_communities
 		}
 		    
 		size_t k = out_degree_no_loops(*v,g);
-		
-		double E = -T*log(1-uniform_p(rng)) - (gamma+1)*k; // sampled target jump energy
 
-		// local energy term
-		double local_term = ns[s[*v]] - gamma*Nnnks(k,s[*v]);
-		
-		// update global info with local info
+		map<double, unordered_set<size_t> >& global_term_k = global_term[k];
+		map<long double, pair<double, bool> >& cumm_prob_k = cumm_prob[k];
+
+		// update energy levels with local info
+		unordered_set<double> modified_energies;
 		for (typeof(ns.begin()) iter = ns.begin(); iter != ns.end(); ++iter)
 		{
-		    double old_E = gamma*Nnnks(k,iter->first);
-		    global_term[k][old_E].erase(iter->first);
-		    if (global_term[k][old_E].empty())
-			global_term[k].erase(old_E);
-		    global_term[k][old_E - ns[iter->first]].insert(iter->first);
+		    double old_E = gamma*Nnnks(k, iter->first);
+		    double new_E = old_E - ns[iter->first];
+		    global_term_k[old_E].erase(iter->first);
+		    if (global_term_k[old_E].empty())
+			global_term_k.erase(old_E);
+		    global_term_k[new_E].insert(iter->first);
+		    modified_energies.insert(old_E);
+		    modified_energies.insert(new_E);
 		}
-		    
-		// fetch spins with closest energy
-		E -= local_term;
 		
-		typeof(global_term[k].begin()) lower = global_term[k].lower_bound(E);
-		if (lower == global_term[k].end())
-		    lower = global_term[k].begin();
-		typeof(global_term[k].begin()) upper = global_term[k].upper_bound(E);
-		if (upper == global_term[k].end())
-		    --upper;
-		    
-		typeof(global_term[k].begin()) closest = (abs(E - lower->first) < abs(E-upper->first))?lower:upper;
-		    
+		// update probabilities
+		size_t prob_mod_count = 0;
+		for (typeof(modified_energies.begin()) iter = modified_energies.begin(); iter != modified_energies.end(); ++iter)
+		{
+		    if (energy_to_prob[k].find(*iter) != energy_to_prob[k].end())
+			if (energy_to_prob[k][*iter] != 0.0)
+			    cumm_prob_k[energy_to_prob[k][*iter]].second = false;
+		    if (global_term_k.find(*iter) != global_term_k.end())
+		    {
+			long double M = log(numeric_limits<long double>::max()/(Nspins*10));
+			long double prob = exp((long double)(-*iter - k)/T + M)*global_term_k[*iter].size();
+			if (cumm_prob_k.empty() || cumm_prob_k.rbegin()->first + prob != cumm_prob_k.rbegin()->first)
+			{
+			    if (!cumm_prob_k.empty())
+				prob += cumm_prob_k.rbegin()->first;
+			    cumm_prob_k.insert(cumm_prob_k.end(), make_pair(prob, make_pair(*iter, true)));
+			    prob_mod_count++;
+			}
+		    }
+		}
+
+		// choose the new energy
+		double E = numeric_limits<double>::max();
+		if (prob_mod_count == 0 && !modified_energies.empty() || steepest_descent)
+		{
+		    // Temperature too low! The computer precision is not enough to calculate the probabilities correctly.
+		    // Switch to steepest descent mode....
+		    steepest_descent = true;
+		    E = global_term_k.begin()->first;
+		}
+		else
+		{
+		    // sample energy according to its probability
+		    uniform_real<long double> prob_sample(0.0, max(cumm_prob_k.rbegin()->first, numeric_limits<long double>::epsilon()));
+		    bool accept = false;
+		    while (!accept)
+		    {
+			typeof(cumm_prob_k.begin()) upper = cumm_prob_k.upper_bound(prob_sample(rng));
+			if (upper == cumm_prob_k.end())
+			    upper--;
+			E = upper->second.first;
+			accept = upper->second.second;
+		    }
+		}
+
 		//new spin (randomly chosen amongst those with equal energy)
-		uniform_int<size_t> sample_spin(0,closest->second.size()-1);
-		typeof(closest->second.begin()) iter = closest->second.begin();
+		uniform_int<size_t> sample_spin(0,global_term_k[E].size()-1);
+		typeof(global_term_k[E].begin()) iter = global_term_k[E].begin();
 		advance(iter, sample_spin(rng));
 		size_t a = *iter;
+
+		// cleanup modified probabilities
+		for (typeof(modified_energies.begin()) iter = modified_energies.begin(); iter != modified_energies.end(); ++iter)
+		{
+		    if (energy_to_prob[k].find(*iter) != energy_to_prob[k].end())
+			if (energy_to_prob[k][*iter] != 0.0)			
+			    cumm_prob_k[energy_to_prob[k][*iter]].second = true;
+		    if (prob_mod_count > 0)
+		    {
+			cumm_prob_k.erase(cumm_prob_k.rbegin()->first);
+			prob_mod_count--;
+		    }
+		}
 		
-		//cleanup global info
+		// cleanup modified energy levels
 		for (typeof(ns.begin()) iter = ns.begin(); iter != ns.end(); ++iter)
 		{
-		    double old_E = gamma*Nnnks(k,iter->first) - ns[iter->first];
-		    global_term[k][old_E].erase(iter->first);
-		    if (global_term[k][old_E].empty())
-			global_term[k].erase(old_E);
-		    global_term[k][old_E + ns[iter->first]].insert(iter->first);
+		    double new_E = gamma*Nnnks(k, iter->first);
+		    double old_E = new_E - ns[iter->first];
+
+		    global_term_k[old_E].erase(iter->first);
+		    if (global_term_k[old_E].empty())
+			global_term_k.erase(old_E);
+		    global_term_k[new_E].insert(iter->first);
 		}
-		
+
 		//update global info
 		if (s[*v] != a)
+		    spin_update.push_back(make_pair(*v, a));
+	    }
+	    
+	    // flip spins and update Nnnks
+	    for (size_t u = 0; u < spin_update.size(); ++u)
+	    {
+		typename graph_traits<Graph>::vertex_descriptor v = spin_update[u].first;
+		size_t k = out_degree_no_loops(v, g);
+		size_t a = spin_update[u].second;
+		for (size_t i = 0; i < degs.size(); ++i)
 		{
-		    double old_E = gamma*Nnnks(k,s[*v]);
-		    global_term[k][old_E].erase(s[*v]);
-		    if (global_term[k][old_E].empty())
-			global_term[k].erase(old_E);
-		    old_E = gamma*Nnnks(k,a);
-		    global_term[k][old_E].erase(a);
-		    if (global_term[k][old_E].empty())
-			global_term[k].erase(old_E);
-		    Nnnks.Update(*v,s[*v],a);
-		    Ns[s[*v]]--;
-		    if (Ns[s[*v]] == 0)
-			Ns.erase(s[*v]);
-		    Ns[a]++;
-		    global_term[k][gamma*Nnnks(k,s[*v])].insert(s[*v]);
-		    global_term[k][gamma*Nnnks(k,a)].insert(a);
-		    
-		    // update spin
-		    s[*v] = a;
+		    size_t nk = degs[i];
+		    double old_E = gamma*Nnnks(nk,s[v]);
+		    global_term[nk][old_E].erase(s[v]);
+		    if (global_term[nk][old_E].empty())
+			global_term[nk].erase(old_E);
+		    old_E = gamma*Nnnks(nk,a);
+		    global_term[nk][old_E].erase(a);
+		    if (global_term[nk][old_E].empty())
+			global_term[nk].erase(old_E);
 		}
+		    
+		Nnnks.Update(k,s[v],a);
+		Ns[s[v]]--;
+		if (Ns[s[v]] == 0)
+		    Ns.erase(s[v]);
+		Ns[a]++;
+		
+		for (size_t i = 0; i < degs.size(); ++i)
+		{
+		    size_t nk = degs[i];
+		    global_term[nk][gamma*Nnnks(nk,s[v])].insert(s[v]);
+		    global_term[nk][gamma*Nnnks(nk,a)].insert(a);
+		}
+   		    
+		// update spin
+		s[v] = a;
 	    }
 
 	    if (verbose)
@@ -219,11 +330,14 @@ struct get_communities
 		for (size_t j = 0; j < str.str().length(); ++j)
 		    cout << "\b";
 		str.str("");
-		str << temp_count << " of " << n_iter << " (" << (temp_count+1)*100/n_iter << "%) " << "temperature: " << T << " spins: " << Ns.size() << " energy levels: ";
+		str << setw(lexical_cast<string>(n_iter).size()) << temp_count << " of " << n_iter 
+		    << " (" << setw(2) << (temp_count+1)*100/n_iter << "%) " << "temperature: " << setw(14) << setprecision(10) << T << " spins: " << Ns.size() << " energy levels: ";
 		size_t n_energy = 0;
 		for (typeof(global_term.begin()) iter = global_term.begin(); iter != global_term.end(); ++iter)
 		    n_energy += iter->second.size();
-		str << n_energy;
+		str << setw(lexical_cast<string>(Nspins*degs.size()).size()) << n_energy;
+		if (steepest_descent)
+		    str << " (steepest descent)";
 		cout << str.str() << flush;
 	    }
 	}
@@ -251,7 +365,7 @@ public:
 	_p = _avg_k/(N*N);
     }
 
-    void Update(typename graph_traits<Graph>::vertex_descriptor v, size_t old_s, size_t s)
+    void Update(size_t k, size_t old_s, size_t s)
     {
 	_Ns[old_s]--;
 	if (_Ns[old_s] == 0)
@@ -288,9 +402,8 @@ public:
 	}
     }
 
-    void Update(typename graph_traits<Graph>::vertex_descriptor v, size_t old_s, size_t s)
+    void Update(size_t k, size_t old_s, size_t s)
     {
-	size_t k = out_degree_no_loops(v, _g);
 	_Ks[old_s] -= k;
 	if (_Ks[old_s] == 0)
 	    _Ks.erase(old_s);
@@ -306,6 +419,7 @@ public:
 	    ks = iter->second;
 	return k*ks/double(_K);
     }
+
 private:
     Graph& _g;
     size_t _K;
@@ -336,24 +450,30 @@ public:
 	}
 
 	for (typeof(_Nk.begin()) k_iter = _Nk.begin(); k_iter != _Nk.end(); ++k_iter)
+	{
+	    _degs.push_back(k_iter->first);
 	    for (tie(v,v_end) = vertices(_g); v != v_end; ++v)
 	    {
 		size_t k = out_degree_no_loops(*v, _g);
 		_kNNs[k_iter->first][s[*v]] += _Nkk[k_iter->first][k] * _kNs[k][s[*v]]/double(_Nk[k_iter->first]*_Nk[k]);
 	    }
+	}
     }
 
-    void Update(typename graph_traits<Graph>::vertex_descriptor v, size_t old_s, size_t s)
+    void Update(size_t k, size_t old_s, size_t s)
     {
-	size_t k = out_degree_no_loops(v, _g);
-	for (typeof(_Nk.begin()) k_iter = _Nk.begin(); k_iter != _Nk.end(); ++k_iter)
+	for (size_t i = 0; i < _degs.size(); ++i) 
 	{
-	    _kNNs[k_iter->first][old_s] -= _Nkk[k_iter->first][k] * _kNs[k][old_s]/double(_Nk[k_iter->first]*_Nk[k]);
-	    if (_kNNs[k_iter->first][old_s] == 0.0)
-		_kNNs[k_iter->first].erase(old_s);
-	    _kNNs[k_iter->first][s] += _Nkk[k_iter->first][k] * _kNs[k][s]/double(_Nk[k_iter->first]*_Nk[k]);
+	    typeof(_Nkk[k].begin()) iter = _Nkk[k].find(_degs[i]);
+	    if (iter != _Nkk[k].end())
+	    {
+		size_t nkk = iter->second;
+		_kNNs[_degs[i]][old_s] -= nkk * _kNs[k][old_s]/double(_Nk[_degs[i]]*_Nk[k]);
+		if (_kNNs[_degs[i]][old_s] == 0.0)
+		    _kNNs[_degs[i]].erase(old_s);
+		_kNNs[_degs[i]][s] += nkk * _kNs[k][s]/double(_Nk[_degs[i]]*_Nk[k]);
+	    }
 	}
-	
     }
 
     double operator()(size_t k, size_t s)
@@ -367,6 +487,7 @@ public:
 
 private:
     Graph& _g;
+    vector<size_t> _degs;
     ManagedUnorderedMap<size_t, size_t> _Nk;
     ManagedUnorderedMap<size_t, ManagedUnorderedMap<size_t, size_t> > _Nkk;
     ManagedUnorderedMap<size_t, ManagedUnorderedMap<size_t,size_t> > _kNs;
@@ -380,24 +501,24 @@ struct get_communities_selector
     GraphInterface::comm_corr_t _corr;
 
     template <class Graph, class WeightMap, class CommunityMap>
-    void operator()(Graph& g, WeightMap weights, CommunityMap s, double gamma, size_t n_iter, double Tmin, double Tmax, size_t seed, bool verbose) const
+    void operator()(Graph& g, WeightMap weights, CommunityMap s, double gamma, size_t n_iter, pair<double,double> Tinterval, size_t Nspins, size_t seed, bool verbose) const
     {
 	switch (_corr)
 	{
 	case GraphInterface::ERDOS_REYNI:
-	    get_communities<NNKSErdosReyni>()(g, weights, s, gamma, n_iter, Tmin, Tmax, seed, verbose);
+	    get_communities<NNKSErdosReyni>()(g, weights, s, gamma, n_iter, Tinterval, Nspins, seed, verbose);
 	    break;
 	case GraphInterface::UNCORRELATED:
-	    get_communities<NNKSUncorr>()(g, weights, s, gamma, n_iter, Tmin, Tmax, seed, verbose);
+	    get_communities<NNKSUncorr>()(g, weights, s, gamma, n_iter, Tinterval, Nspins, seed, verbose);
 	    break;
 	case GraphInterface::CORRELATED:
-	    get_communities<NNKSCorr>()(g, weights, s, gamma, n_iter, Tmin, Tmax, seed, verbose);
+	    get_communities<NNKSCorr>()(g, weights, s, gamma, n_iter, Tinterval, Nspins, seed, verbose);
 	    break;
 	}
     }
 };
 
-void GraphInterface::GetCommunityStructure(double gamma, comm_corr_t corr, size_t n_iter, double Tmin, double Tmax, size_t seed, bool verbose, string weight, string property)
+void GraphInterface::GetCommunityStructure(double gamma, comm_corr_t corr, size_t n_iter, double Tmin, double Tmax, size_t Nspins, size_t seed, bool verbose, string weight, string property)
 {
     typedef HashedDescriptorMap<vertex_index_map_t,size_t> comm_map_t;
     comm_map_t comm_map(_vertex_index);
@@ -414,13 +535,13 @@ void GraphInterface::GetCommunityStructure(double gamma, comm_corr_t corr, size_
 	    {
 		vector_property_map<double,edge_index_map_t> weight_map = 
 		    get_static_property_map<vector_property_map<double,edge_index_map_t> >(weight_prop);
-		check_filter(*this, bind<void>(get_communities_selector(corr), _1, var(weight_map), var(comm_map), gamma, n_iter, Tmin, Tmax, seed, verbose),
+		check_filter(*this, bind<void>(get_communities_selector(corr), _1, var(weight_map), var(comm_map), gamma, n_iter, make_pair(Tmin, Tmax), Nspins, seed, verbose),
 			     reverse_check(), always_undirected());
 	    }
 	    else
 	    {
 		DynamicPropertyMapWrap<double,graph_traits<multigraph_t>::edge_descriptor> weight_map(weight_prop);
-		check_filter(*this, bind<void>(get_communities_selector(corr), _1, var(weight_map), var(comm_map), gamma, n_iter, Tmin, Tmax, seed, verbose),
+		check_filter(*this, bind<void>(get_communities_selector(corr), _1, var(weight_map), var(comm_map), gamma, n_iter, make_pair(Tmin, Tmax), Nspins, seed, verbose),
 			     reverse_check(), always_undirected());
 	    }
 	}
@@ -432,7 +553,7 @@ void GraphInterface::GetCommunityStructure(double gamma, comm_corr_t corr, size_
     else
     {
 	ConstantPropertyMap<double,graph_traits<multigraph_t>::edge_descriptor> weight_map(1.0);
-	check_filter(*this, bind<void>(get_communities_selector(corr), _1, var(weight_map), var(comm_map), gamma, n_iter, Tmin, Tmax, seed, verbose),
+	check_filter(*this, bind<void>(get_communities_selector(corr), _1, var(weight_map), var(comm_map), gamma, n_iter, make_pair(Tmin, Tmax), Nspins, seed, verbose),
 		     reverse_check(), always_undirected());
     }
     _directed = directed;
@@ -504,13 +625,13 @@ double GraphInterface::GetModularity(string weight, string property)
 	    dynamic_property_map& weight_prop = find_property_map(_properties, weight, typeid(graph_traits<multigraph_t>::edge_descriptor));
 	    DynamicPropertyMapWrap<double,graph_traits<multigraph_t>::edge_descriptor> weight_map(weight_prop);
 	    check_filter(*this, bind<void>(get_modularity(), _1, var(weight_map), var(comm_map), var(modularity)),
-			 reverse_check(), always_undirected());	    
+	    reverse_check(), always_undirected());	    
 	}
 	else
 	{
 	    ConstantPropertyMap<double,graph_traits<multigraph_t>::edge_descriptor> weight_map(1.0);
 	    check_filter(*this, bind<void>(get_modularity(), _1, var(weight_map), var(comm_map), var(modularity)),
-			 reverse_check(), always_undirected());
+	    reverse_check(), always_undirected());
 	}
     }
     catch (property_not_found& e)
