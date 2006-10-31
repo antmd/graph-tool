@@ -410,7 +410,6 @@ public:
 	_Ks[s] += k; 
     }
 
-
     double operator()(size_t k, size_t s) const 
     {
 	size_t ks = 0;
@@ -432,66 +431,112 @@ class NNKSCorr
 public:
     NNKSCorr(Graph &g, CommunityMap s): _g(g)
     {
+	unordered_set<size_t> spins;
+
 	typename graph_traits<Graph>::vertex_iterator v,v_end;
 	for (tie(v,v_end) = vertices(_g); v != v_end; ++v)
 	{
 	    size_t k = out_degree_no_loops(*v, _g);
 	    _Nk[k]++;
-	    _kNs[k][s[*v]]++;
-	    unordered_set<typename graph_traits<Graph>::vertex_descriptor> neighbours;
-	    neighbours.insert(*v);
-	    typename graph_traits<Graph>::adjacency_iterator a,a_end;
-	    for (tie(a,a_end) = adjacent_vertices(*v, _g); a != a_end; ++a)
-		if (neighbours.find(*a) == neighbours.end())
-		{
-		    _Nkk[k][out_degree_no_loops(*a, _g)]++;
-		    neighbours.insert(*a);
-		}
+	    _Nks[k][s[*v]]++;
+	    spins.insert(s[*v]);
+	}
+	
+	size_t E = 0;
+	typename graph_traits<Graph>::edge_iterator e,e_end;
+	for (tie(e,e_end) = edges(_g); e != e_end; ++e)
+	{
+	    typename graph_traits<Graph>::vertex_descriptor s, t;
+	    s = source(*e,g);
+	    t = target(*e,g);
+	    if (s != t)
+	    {
+		size_t k1 = out_degree_no_loops(s, g);
+		size_t k2 = out_degree_no_loops(t, g);
+		_Pkk[k1][k2]++;
+		_Pkk[k2][k1]++;
+		E++;
+	    }
 	}
 
-	for (typeof(_Nk.begin()) k_iter = _Nk.begin(); k_iter != _Nk.end(); ++k_iter)
+	for (typeof(_Pkk.begin()) iter1 = _Pkk.begin(); iter1 != _Pkk.end(); ++iter1)
 	{
-	    _degs.push_back(k_iter->first);
-	    for (tie(v,v_end) = vertices(_g); v != v_end; ++v)
-	    {
-		size_t k = out_degree_no_loops(*v, _g);
-		_kNNs[k_iter->first][s[*v]] += _Nkk[k_iter->first][k] * _kNs[k][s[*v]]/double(_Nk[k_iter->first]*_Nk[k]);
-	    }
+	    double sum = 0;
+	    for (typeof(iter1->second.begin()) iter2 = iter1->second.begin(); iter2 != iter1->second.end(); ++iter2)
+		sum += iter2->second;
+	    for (typeof(iter1->second.begin()) iter2 = iter1->second.begin(); iter2 != iter1->second.end(); ++iter2)
+		iter2->second /= sum;
+	}
+
+	for (typeof(_Nk.begin()) k_iter = _Nk.begin(); k_iter != _Nk.end(); ++k_iter) 
+	{
+	    size_t k1 = k_iter->first;
+	    _degs.push_back(k1);
+	    for (typeof(spins.begin()) s_iter = spins.begin(); s_iter != spins.end(); ++s_iter)
+		for (typeof(_Nk.begin()) k_iter2 = _Nk.begin(); k_iter2 != _Nk.end(); ++k_iter2) 
+		{
+		    size_t k2 = k_iter2->first;
+		    if (_Nks[k2].find(*s_iter) != _Nks[k2].end())
+			_NNks[k1][*s_iter] +=  k1*_Pkk[k1][k2] * _Nks[k2][*s_iter]/double(_Nk[k2]);
+		}
 	}
     }
 
     void Update(size_t k, size_t old_s, size_t s)
     {
+
 	for (size_t i = 0; i < _degs.size(); ++i) 
 	{
-	    typeof(_Nkk[k].begin()) iter = _Nkk[k].find(_degs[i]);
-	    if (iter != _Nkk[k].end())
-	    {
-		size_t nkk = iter->second;
-		_kNNs[_degs[i]][old_s] -= nkk * _kNs[k][old_s]/double(_Nk[_degs[i]]*_Nk[k]);
-		if (_kNNs[_degs[i]][old_s] == 0.0)
-		    _kNNs[_degs[i]].erase(old_s);
-		_kNNs[_degs[i]][s] += nkk * _kNs[k][s]/double(_Nk[_degs[i]]*_Nk[k]);
-	    }
+	    size_t k1 = _degs[i], k2 = k;
+	    if (_Pkk.find(k1) == _Pkk.end())
+		continue;
+	    if (_Pkk.find(k1)->second.find(k2) == _Pkk.find(k1)->second.end())
+		continue;
+	    _NNks[k1][old_s] -=  k1*_Pkk[k1][k2] * _Nks[k2][old_s]/double(_Nk[k2]);
+	    if (_NNks[k1][old_s] == 0.0)
+		_NNks[k1].erase(old_s);
+	    if (_Nks[k2].find(s) != _Nks[k2].end())
+                _NNks[k1][s] -=  k1*_Pkk[k1][k2] * _Nks[k2][s]/double(_Nk[k2]);
+	    if (_NNks[k1][s] == 0.0)
+                _NNks[k1].erase(s);
 	}
+
+	_Nks[k][old_s]--;
+	if (_Nks[k][old_s] == 0)
+	    _Nks[k].erase(old_s);
+	_Nks[k][s]++;
+
+	for (size_t i = 0; i < _degs.size(); ++i) 
+	{
+	    size_t k1 = _degs[i], k2 = k;
+	    if (_Pkk.find(k1) == _Pkk.end())
+		continue;
+	    if (_Pkk.find(k1)->second.find(k2) == _Pkk.find(k1)->second.end())
+		continue;
+	    _NNks[k1][old_s] +=  k1*_Pkk[k1][k2] * _Nks[k2][old_s]/double(_Nk[k2]);
+	    if (_NNks[k1][old_s] == 0.0)
+		_NNks[k1].erase(old_s);
+	    _NNks[k1][s] +=  k1*_Pkk[k1][k2] * _Nks[k2][s]/double(_Nk[k2]);
+	}
+
     }
 
-    double operator()(size_t k, size_t s)
+    double operator()(size_t k, size_t s) const
     {
-	double knns = 0.0;
-	typeof(_kNNs[k].begin()) iter = _kNNs[k].find(s);
-	if (iter != _kNNs[k].end())
-	    knns = iter->second;
-	return knns;
+	const typeof(_NNks[k])& nnks = _NNks.find(k)->second;
+	const typeof(nnks.begin()) iter = nnks.find(s);
+	if (iter != nnks.end())
+	    return iter->second;
+	return 0.0;
     }
 
 private:
     Graph& _g;
     vector<size_t> _degs;
-    ManagedUnorderedMap<size_t, size_t> _Nk;
-    ManagedUnorderedMap<size_t, ManagedUnorderedMap<size_t, size_t> > _Nkk;
-    ManagedUnorderedMap<size_t, ManagedUnorderedMap<size_t,size_t> > _kNs;
-    ManagedUnorderedMap<size_t, ManagedUnorderedMap<size_t, double> > _kNNs;
+    unordered_map<size_t, size_t> _Nk;
+    unordered_map<size_t, unordered_map<size_t,double> > _Pkk;
+    unordered_map<size_t, ManagedUnorderedMap<size_t,size_t> > _Nks;
+    unordered_map<size_t, ManagedUnorderedMap<size_t,double> > _NNks;
 };
 
 
@@ -583,29 +628,25 @@ struct get_modularity
 	size_t E = 0;
 	double W = 0;
 
-	typename graph_traits<Graph>::edge_iterator e,e_end;
+	typename graph_traits<Graph>::edge_iterator e, e_end;
 	for (tie(e,e_end) = edges(g); e != e_end; ++e)
 	    if (target(*e,g) != source(*e,g))
 	    {
 		W += get(weights, *e);
 		E++;
+		if (get(s, target(*e,g)) == get(s, source(*e,g)))
+		    modularity += 2*get(weights, *e);
 	    }
 
-	typename graph_traits<Graph>::vertex_iterator v,v_end;
+	unordered_map<size_t, size_t> Ks;
+
+	typename graph_traits<Graph>::vertex_iterator v, v_end;
 	for (tie(v,v_end) = vertices(g); v != v_end; ++v)
-	{
-	    size_t k = out_degree_no_loops(*v,g);
-	    typename graph_traits<Graph>::out_edge_iterator e,e_end;
-	    for(tie(e, e_end) = out_edges(*v,g); e != e_end; ++e)
-	    {
-		typename graph_traits<Graph>::vertex_descriptor t = target(*e,g);
-		if (t != *v)
-		{
-		    if (get(s, t) == get(s, *v))
-			modularity += get(weights, *e) - k*out_degree_no_loops(t,g)/double(2*E);
-		}
-	    }
-	}
+	    Ks[get(s, *v)] += out_degree_no_loops(*v, g);
+	
+	for (typeof(Ks.begin()) iter = Ks.begin(); iter != Ks.end(); ++iter)
+	    modularity -= (iter->second*iter->second)/double(2*E);
+
 	modularity /= 2*W;
     }
 };

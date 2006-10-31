@@ -341,7 +341,7 @@ void GraphInterface::WriteToFile(string file, string format)
 	    typedef tr1::unordered_map<graph_traits<multigraph_t>::vertex_descriptor, size_t>  map_t;
 	    map_t vertex_to_index;
 	    associative_property_map<map_t> index_map(vertex_to_index);
-	    check_filter(*this,bind<void>(generate_index(),_1,index_map),reverse_check(),always_directed());
+	    check_filter(*this, bind<void>(generate_index(), _1, index_map), reverse_check(), directed_check());
 	    if (graphviz)
 	    {
 		try
@@ -355,12 +355,12 @@ void GraphInterface::WriteToFile(string file, string format)
 	    }
 	    if (GetDirected())
 	    {
-		check_filter(*this,bind<void>(write_to_file(),var(stream),_1,index_map,var(dp),graphviz),
-			     reverse_check(),always_directed());
+		check_filter(*this,bind<void>(write_to_file(),var(stream), _1, index_map, var(dp), graphviz),
+			     reverse_check(), always_directed());
 	    }
 	    else
 	    {
-		check_filter(*this,bind<void>(write_to_file_fake_undir(),var(stream),_1,index_map,var(dp),graphviz),
+		check_filter(*this,bind<void>(write_to_file_fake_undir(), var(stream), _1, index_map, var(dp), graphviz),
                              never_reversed(), always_undirected());
 	    }
 	}

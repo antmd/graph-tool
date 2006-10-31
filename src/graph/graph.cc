@@ -278,60 +278,46 @@ GraphInterface::hist_t GraphInterface::GetEdgeHistogram(string property) const
 }
 
 //==============================================================================
-// GetComponentSizeHistogram()
+// LabelComponents(property)
 //==============================================================================
 
-struct strong_component
+struct label_components
 {
-    template <class Graph, class ComponentMap>
-    void operator()(const Graph &g, ComponentMap comp_map) const
+    template <class Graph, class CompMap>
+    void operator()(const Graph &g, CompMap comp_map) const
+    {   
+	get_components(g, comp_map, typename is_convertible<typename graph_traits<Graph>::directed_category, directed_tag>::type());
+    }
+
+    template <class Graph, class CompMap>
+    void get_components(const Graph& g, CompMap comp_map, boost::true_type is_directed) const
     {
 	strong_components(g, comp_map);
     }
-};
 
-struct connected_component
-{
-    template <class Graph, class ComponentMap>
-    void operator()(const Graph &g, ComponentMap comp_map) const
+    template <class Graph, class CompMap>
+    void get_components(const Graph& g, CompMap comp_map, boost::false_type is_directed) const
     {
 	connected_components(g, comp_map);
     }
+    
 };
 
-template <class ComponentSelector>
-struct get_component_size_histogram
+void GraphInterface::LabelComponents(string prop)
 {
-    template <class Graph, class IndexMap, class Hist>
-    void operator()(const Graph &g, IndexMap index_map, Hist &hist) const
-    {   
-	typedef HashedDescriptorMap<IndexMap, size_t> comp_map_t;
-	comp_map_t comp_map(index_map);
+    typedef HashedDescriptorMap<vertex_index_map_t, size_t> comp_map_t;
+    static comp_map_t comp_map(_vertex_index);
 
-	_components(g, comp_map);
+    check_filter(*this, bind<void>(label_components(), _1, comp_map), reverse_check(), directed_check());
 
-	tr1::unordered_map<size_t, size_t> comp_count;
-	typename graph_traits<Graph>::vertex_iterator v, v_begin, v_end;
-	tie(v_begin, v_end) = vertices(g);
-	for(v = v_begin; v != v_end; ++v)
-	    comp_count[comp_map[*v]]++;
-	for(typeof(comp_count.begin()) iter = comp_count.begin(); iter != comp_count.end(); ++iter)
-	    hist[iter->second]++;
+    try
+    {
+	find_property_map(_properties, prop, typeid(graph_traits<multigraph_t>::vertex_descriptor));
+	RemoveVertexProperty(prop);
     }
-    ComponentSelector _components;
-};
+    catch (property_not_found) {}
 
-GraphInterface::hist_t GraphInterface::GetComponentSizeHistogram() const
-{
-
-    hist_t hist;
-    if (_directed)
-	check_filter(*this, bind<void>(get_component_size_histogram<strong_component>(), _1, _vertex_index, var(hist)),
-		     reverse_check(),always_directed()); 
-    else
-	check_filter(*this, bind<void>(get_component_size_histogram<connected_component>(), _1, _vertex_index, var(hist)),
-		     reverse_check(),always_undirected());
-    return hist;
+    _properties.property(prop, comp_map);
 }
 
 //==============================================================================

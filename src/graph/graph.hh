@@ -90,7 +90,7 @@ public:
     void SetExtendedClusteringToProperty(std::string property_prefix, size_t max_depth);
 
     // other
-    hist_t GetComponentSizeHistogram() const;
+    void   LabelComponents(std::string property);
     hist_t GetDistanceHistogram(std::string weight) const;
     hist_t GetSampledDistanceHistogram(std::string weight, size_t samples, size_t seed) const;
     double GetReciprocity() const;

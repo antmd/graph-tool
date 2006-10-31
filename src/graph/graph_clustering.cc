@@ -171,7 +171,7 @@ struct set_clustering_to_property
 void GraphInterface::SetLocalClusteringToProperty(string property)
 {
     typedef HashedDescriptorMap<vertex_index_map_t,double> clust_map_t;
-    static clust_map_t clust_map(_vertex_index);
+    clust_map_t clust_map(_vertex_index);
 
     bool directed = _directed;
     _directed = false;
