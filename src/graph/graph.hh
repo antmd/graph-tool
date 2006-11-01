@@ -104,7 +104,7 @@ public:
 	CORRELATED
     };
 
-    void   GetCommunityStructure(double gamma, comm_corr_t corr, size_t n_iter, double Tmin, double Tmax, size_t Nseeds, size_t seed, bool verbose, std::string weight, std::string property);
+    void   GetCommunityStructure(double gamma, comm_corr_t corr, size_t n_iter, double Tmin, double Tmax, size_t Nseeds, size_t seed, bool verbose, std::string history_file, std::string weight, std::string property);
     double GetModularity(std::string weight, std::string property);
 
     // filtering
@@ -116,14 +116,14 @@ public:
 
     void SetVertexFilterProperty(std::string property);
     std::string GetVertexFilterProperty() const {return _vertex_filter_property;}
-    void SetVertexFilterRange(std::pair<double, double> allowed_range) {_vertex_range = allowed_range;}
+    void SetVertexFilterRange(std::pair<double,double> allowed_range) {_vertex_range = allowed_range;}
     std::pair<double, double> GetVertexFilterRange() const {return _vertex_range;}
     bool IsVertexFilterActive() const;
 
     void SetEdgeFilterProperty(std::string property);
     std::string GetEdgeFilterProperty() const {return _edge_filter_property;}
-    void SetEdgeFilterRange(std::pair<double, double> allowed_range) {_edge_range = allowed_range;}
-    std::pair<double, double> GetEdgeFilterRange() const {return _edge_range;}
+    void SetEdgeFilterRange(std::pair<double,double> allowed_range) {_edge_range = allowed_range;}
+    std::pair<double,double> GetEdgeFilterRange() const {return _edge_range;}
     bool IsEdgeFilterActive() const;
 
     void SetGenericVertexFilter(boost::python::object filter) {_vertex_python_filter = filter;}

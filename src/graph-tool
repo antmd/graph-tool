@@ -126,7 +126,7 @@ layout.add_option("--compute-spring-block-layout", action="callback", callback=p
 layout.add_option("--compute-gursoy-atun-layout", action="callback", callback=push_option, type="string", metavar="ITERATIONS[|SEED]", help="compute the Gursoy-Atun layout")
 
 community =  parser.add_option_group("Community")
-community.add_option("--community-structure", action="callback", callback=push_option, type="string", metavar="PROPERTY|OPTIONS", help="calculate the community structure and assign it to PROPERTY. Options are: g (default: 1.0), N (default: 1000), Tmin (default: 0.01), Tmax (default: 1.0), spins (default: number of vertices), corr_type (default: uncorrelated), weight, seed (default: from clock), verbose.  The value of corr_type can be 'random', 'uncorrelated' or 'correlated'.")
+community.add_option("--community-structure", action="callback", callback=push_option, type="string", metavar="PROPERTY|OPTIONS", help="calculate the community structure and assign it to PROPERTY. Options are: g (default: 1.0), N (default: 1000), Tmin (default: 0.01), Tmax (default: 1.0), spins (default: number of vertices), corr_type (default: uncorrelated), weight, seed (default: from clock), verbose, history.  The value of corr_type can be 'random', 'uncorrelated' or 'correlated'.")
 community.add_option("--modularity", action="callback", callback=push_option, type="string", metavar="PROPERTY[|WEIGHT]|FILE", help="calculate the modularity, given a community partition specified by PROPERTY")
 
 layout =  parser.add_option_group("History")
@@ -569,9 +569,14 @@ def parse_option(opt, just_file=False):
             else:
                 weight = ""
             verbose =  get_suboption("verbose", param) != False
+            if  get_suboption("history", param) != False:
+                history =  get_suboption("history", param)
+            else:
+                history = ""
+                                                    
         except ValueError,e:
             raise OptionError(opt.name, "invalid value '%s': %s" % (opt.value, e))
-        graph.GetCommunityStructure(g, corr, N, Tmin, Tmax, spins, seed, verbose, weight, prop)
+        graph.GetCommunityStructure(g, corr, N, Tmin, Tmax, spins, seed, verbose, history, weight, prop)
     elif opt.name == "modularity":
         values = parse_values(opt.value)
         if len(values) < 2 or len(values) > 3:
