@@ -209,6 +209,7 @@ private:
 		    self->m_canonical_edges = (value == "canonical");
 		}
 	    }
+	    self->m_active_descriptor = "";
 	} 
 	else if (name == "data") 
 	{
@@ -358,7 +359,9 @@ private:
     void handle_property(std::string key_id, std::string descriptor, 
 			 bool is_vertex, std::string value)
     {
-	if (is_vertex)
+	if (descriptor == "")
+	    m_g.set_graph_property(m_key_name[key_id], value, m_key_type[key_id]);
+	else if (is_vertex)
 	    m_g.set_vertex_property(m_key_name[key_id], get_vertex_descriptor(descriptor), value, m_key_type[key_id]);
 	else
 	    m_g.set_edge_property(m_key_name[key_id], get_edge_descriptor(descriptor), value, m_key_type[key_id]);

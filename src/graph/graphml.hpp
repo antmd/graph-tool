@@ -87,6 +87,9 @@ public:
     virtual std::pair<boost::any,bool> do_add_edge(boost::any source, boost::any target) = 0;
     
     virtual void 
+    set_graph_property(const std::string& name, const std::string& value, const std::string& value_type) = 0;
+
+    virtual void 
     set_vertex_property(const std::string& name, boost::any vertex, const std::string& value, const std::string& value_type) = 0;
     
     virtual void 
@@ -106,7 +109,7 @@ class mutate_graph_impl : public mutate_graph
     bool is_directed() const
     {
 	return is_convertible<typename graph_traits<MutableGraph>::directed_category,
-                                     directed_tag>::value;
+	                      directed_tag>::value;
     }
 
     virtual any do_add_vertex()
@@ -119,6 +122,26 @@ class mutate_graph_impl : public mutate_graph
 	std::pair<edge_descriptor,bool> retval = add_edge(any_cast<vertex_descriptor>(source),
 							  any_cast<vertex_descriptor>(target), m_g);
 	return std::make_pair(any(retval.first), retval.second);
+    }
+
+    virtual void 
+    set_graph_property(const std::string& name, const std::string& value, const std::string& value_type)
+    {
+	bool type_found = false;
+	try
+	{
+	    mpl::for_each<value_types>(put_property<MutableGraph,value_types>
+				       (name, m_dp, m_g, value, value_type, m_type_names, type_found));	    
+	}
+	catch (bad_lexical_cast)
+	{
+	    throw parse_error("invalid value \"" + value + "\" for key " + 
+			      name + " of type " + value_type);
+	}
+	if (!type_found)
+	    throw  parse_error("unrecognized type \"" + value_type + 
+			       "\" for key " + name);
+	    
     }
     
     virtual void 
@@ -249,6 +272,7 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
 
     typedef mpl::vector<bool, short, unsigned short, int, unsigned int, long, unsigned long, long long, unsigned long long, float, double, long double, std::string> value_types;
     char* type_names[] = {"boolean", "int", "int", "int", "int", "long", "long", "long", "long", "float", "double", "double", "string"};    
+    std::map<std::string, std::string> graph_key_ids;
     std::map<std::string, std::string> vertex_key_ids;
     std::map<std::string, std::string> edge_key_ids;
     int key_count = 0;
@@ -257,14 +281,18 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
     for (dynamic_properties::const_iterator i = dp.begin(); i != dp.end(); ++i) 
     {
 	std::string key_id = "key" + lexical_cast<std::string>(key_count++);
-	if (i->second->key() == typeid(vertex_descriptor))
+	if (i->second->key() == typeid(Graph))
 	    vertex_key_ids[i->first] = key_id;
-	else
+	else if (i->second->key() == typeid(vertex_descriptor))
+	    vertex_key_ids[i->first] = key_id;
+	else if (i->second->key() == typeid(edge_descriptor))
 	    edge_key_ids[i->first] = key_id;
+	else
+	    continue;
 	std::string type_name = "string";
 	mpl::for_each<value_types>(get_type_name<value_types>(i->second->value(), type_names, type_name));
 	out << "  <key id=\"" << key_id << "\" for=\"" 
-	    << (i->second->key() == typeid(vertex_descriptor) ? "node" : "edge") << "\""
+	    << (i->second->key() == typeid(Graph) ? "graph" : (i->second->key() == typeid(vertex_descriptor) ? "node" : "edge")) << "\""
 	    << " attr.name=\"" << i->first << "\""
 	    << " attr.type=\"" << type_name << "\""
 	    << " />\n";
@@ -275,6 +303,16 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
 	<< " parse.nodeids=\"" << (ordered_vertices ? "canonical" : "free") << "\""
 	<< " parse.edgeids=\"canonical\" parse.order=\"nodesfirst\">\n";
 
+    // Output graph data
+    for (dynamic_properties::const_iterator i = dp.begin(); i != dp.end(); ++i)
+    {
+	if (i->second->key() == typeid(Graph)) 
+	{
+	    out << "   <data key=\"" << graph_key_ids[i->first] << "\">"
+		<< i->second->get_string(g) << "</data>\n";
+	}
+    }
+    
     typedef typename graph_traits<Graph>::vertex_iterator vertex_iterator;
     vertex_iterator v, v_end;
     for (tie(v, v_end) = vertices(g); v != v_end; ++v)
