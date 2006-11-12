@@ -95,6 +95,7 @@ public:
     hist_t GetSampledDistanceHistogram(std::string weight, size_t samples, size_t seed) const;
     double GetReciprocity() const;
     void   GetMinimumSpanningTree(std::string weight, std::string property);
+    void   GetLineGraph(std::string out_file, std::string format);
 
     // community structure
     enum comm_corr_t
@@ -106,6 +107,7 @@ public:
 
     void   GetCommunityStructure(double gamma, comm_corr_t corr, size_t n_iter, double Tmin, double Tmax, size_t Nseeds, size_t seed, bool verbose, std::string history_file, std::string weight, std::string property);
     double GetModularity(std::string weight, std::string property);
+    void   GetCommunityNetwork(std::string property, std::string out_file, std::string format) const;
 
     // filtering
     void SetDirected(bool directed) {_directed = directed;}

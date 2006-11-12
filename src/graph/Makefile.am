@@ -37,6 +37,8 @@ libgraph_tool_la_SOURCES = \
     graph_reciprocity.cc\
     graph_minimum_spanning_tree.cc\
     graph_community.cc\
+    graph_community_network.cc\
+    graph_line_graph.cc\
     graph_io.cc\
     graph_bind.cc\
     graphml.hpp\

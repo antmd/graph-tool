@@ -35,7 +35,16 @@ import string
 import time
 import signal
 from time import *
-import math
+
+from math import *
+try:
+    from scipy import *
+    from scipy.special import *
+    from scipy.optimize import *
+    from scipy.optimize.minpack import *
+except ImportError:
+    pass
+
 
 #import gc # garbage collector
 #gc.enable()
@@ -107,6 +116,7 @@ statistics.add_option("--average-vertex-property", action="callback", callback=p
 statistics.add_option("--average-edge-property", action="callback", callback=push_option, type="string", metavar="PROPERTY|FILE", help="get the average of the edge property")
 statistics.add_option("--reciprocity", action="callback", callback=push_option, type="string", metavar="FILE", help="get the edge reciprocity")
 statistics.add_option("--minimum-spanning-tree", action="callback", callback=push_option, type="string", metavar="[WEIGHT|]PROPERTY", help="mark the minimum spanning tree edges in PROPERTY")
+statistics.add_option("--line-graph", action="callback", callback=push_option, type="string", metavar="FILE[|FORMAT]", help="mark the minimum spanning tree edges in PROPERTY")
 
 correlations =  parser.add_option_group("Correlations")
 correlations.add_option("--average-combined-vertex-correlation", action="callback", callback=push_option, type="string", metavar="DEGREE1|DEGREE2|FILE", help="get the average of DEGREE2 in function of DEGREE1. Scalar properties are also accepted as DEGREE1 or DEGREE2")
@@ -128,6 +138,7 @@ layout.add_option("--compute-gursoy-atun-layout", action="callback", callback=pu
 community =  parser.add_option_group("Community")
 community.add_option("--community-structure", action="callback", callback=push_option, type="string", metavar="PROPERTY|OPTIONS", help="calculate the community structure and assign it to PROPERTY. Options are: g (default: 1.0), N (default: 1000), Tmin (default: 0.01), Tmax (default: 1.0), spins (default: number of vertices), corr_type (default: uncorrelated), weight, seed (default: from clock), verbose, history.  The value of corr_type can be 'random', 'uncorrelated' or 'correlated'.")
 community.add_option("--modularity", action="callback", callback=push_option, type="string", metavar="PROPERTY[|WEIGHT]|FILE", help="calculate the modularity, given a community partition specified by PROPERTY")
+community.add_option("--community-graph", action="callback", callback=push_option, type="string", metavar="PROPERTY|FILE[|FORMAT]", help="obtain the graph of communities, given a community partition specified by PROPERTY")
 
 layout =  parser.add_option_group("History")
 layout.add_option("--for", action="callback", callback=push_option, type="string", metavar="INIT|CONDITION|STEP", help="simplified scripting")
@@ -225,65 +236,72 @@ def generate_graph(parameters):
             seed = int(get_suboption("seed",parameters))
     except ValueError, e:
         raise OptionError(opt.name, e)
-    variables = dict()
-    # default packages to be included
-    exec """
-try:
-    from math import *
-    from scipy import *
-    from scipy.special import *
-    from scipy.optimize import *
-    from scipy.optimize.minpack import *
-    import psyco
-    psyco.full()
-except ImportError:
-    pass
-"""  in variables
+
     # some predefined functions
-    exec """
-def inv_poisson(p,m):
-    return round(fsolve(lambda k,l: gammaincc(k,l)-p, m, (m))-0.5+1e-15)
-""" in variables
-    exec """
-def inv_exponential(p,m):
-    return round(log(1-p)/log(float(m)/(m+1))-0.5+1e-15)
-""" in variables
-    exec """
-def inv_power_law(p,b):
-    return round((1-p)**(-1/(b-1)) - 1)
-""" in variables    
-    exec """
-def step(x):
-    if x >= 0:
-        return 1.0
-    else:
-        return 0.0
-""" in variables
+    variables = globals()
+    
+    def inv_poisson(p,m):
+        return round(fsolve(lambda k,l: gammaincc(k,l)-p, m, (m))-0.5+1e-15)
+    variables["inv_poisson"] = inv_poisson
+    
+    def inv_exponential(p,m):
+        return round(log(1-p)/log(float(m)/(m+1))-0.5+1e-15)
+    variables["inv_exponential"] = inv_exponential
+    
+    def inv_power_law(p,b):
+        return round((1-p)**(-1/(b-1)) - 1)
+    variables["inv_power_law"] = inv_power_law
+    
+    def step(x):
+        if x >= 0:
+            return 1.0
+        else:
+            return 0.0
+    variables["step"] = step
+
     # read main funtions
-    exec "def pjk(j,k):\n   return %s\n" % pjk in variables
-    exec "def pjk_ceil(j,k):\n   return %s\n" % pjk_ceil in variables    
-    exec "m_pjk = %s" % m_pjk in variables    
-    m_pjk = float(variables["m_pjk"])
+    def pjk_f(j,k):
+        return eval("%s" % pjk, variables, locals())
+    variables["pjk"] = pjk_f
+    
+    def pjk_ceil_f(j,k):
+        return eval("%s" % pjk_ceil, variables, locals())
+    variables["pjk_ceil"] = pjk_ceil_f
+
+    m_pjk = float(m_pjk)
+    variables["m_pjk"] = m_pjk
+    
     if "file:" in inv_pjk_ceil:
         exec open(inv_pjk_ceil.replace("file:","").strip()).read() in variables
     else:
-        exec """
-def inv_pjk_ceil(p,r):
-    retval = %s
-    return (int(round(retval[0])),int(round(retval[1])))
-""" % inv_pjk_ceil in variables
-    exec "def corr(jl,kl,j,k):\n   return %s\n" % corr in variables
-    exec "def corr_ceil(jl,kl,j,k):\n   return %s\n" % corr_ceil in variables
-    exec "m_corr = %s" % m_corr in variables
-    m_corr = float(variables["m_corr"])
+        def inv_pjk_ceil_f(p,r):
+            variables["p"] = p
+            variables["r"] = r
+            retval = eval("%s" % inv_pjk_ceil, variables, locals())
+            del(variables["p"])
+            del(variables["r"])
+            return (int(round(retval[0])), int(round(retval[1])))
+        variables["inv_pjk_ceil"] = inv_pjk_ceil_f
+        
+    def corr_f(jl,kl,j,k):
+        return eval("%s" % corr, variables, locals())
+    variables["corr"] = corr_f
+    
+    def corr_ceil_f(jl,kl,j,k):
+        return eval("%s" % corr_ceil, variables, locals())
+    variables["corr_ceil"] = corr_ceil_f
+    
+    m_corr = float(m_corr)
+    variables["m_corr"] = m_corr
+        
     if "file:" in inv_corr_ceil:
         exec open(inv_corr_ceil.replace("file:","").strip()).read() in variables
     else:
-        exec """
-def inv_corr_ceil(p,r,j,k):
-    retval = %s
-    return (int(round(retval[0])),int(round(retval[1])))
-""" % inv_corr_ceil in variables
+        def inv_corr_ceil_f(p,r,j,k):
+            retval = eval("%s" % inv_corr_ceil, variables, locals())
+            return (int(round(retval[0])), int(round(retval[1])))
+        variables["inv_corr_ceil"] = inv_corr_ceil_f
+
     graph.GenerateCorrelatedConfigurationalModel(N, variables["pjk"], variables["pjk_ceil"], variables["inv_pjk_ceil"], m_pjk, variables["corr"],
                                                  variables["corr_ceil"], variables["inv_corr_ceil"], m_corr, undirected, seed, verbose)
 
@@ -440,6 +458,17 @@ def parse_option(opt, just_file=False):
             weight = values[0]
             prop = values[1]
         graph.GetMinimumSpanningTree(weight,prop)
+    elif opt.name == "line-graph":
+        values = parse_values(opt.value)
+        if len(values) < 1 or len(values) > 2:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        if just_file:
+            return None
+        if len(values) > 1:
+            format = values[1]
+        else:
+            format = ""
+        graph.GetLineGraph(values[0], format)
     elif opt.name == "vertex-correlation-histogram":
         values = parse_values(opt.value)
         if len(values) != 3:
@@ -588,6 +617,18 @@ def parse_option(opt, just_file=False):
         if just_file:
             return file_name
         return (graph.GetModularity(weight, prop), file_name)
+    elif opt.name == "community-graph":
+        values = parse_values(opt.value)
+        if len(values) < 2 or len(values) > 3:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        prop, file_name = values[0], values[1]
+        if len(values) > 2:
+            format = values[2]
+        else:
+            format = ""
+        if just_file:
+            return
+        return (graph.GetCommunityNetwork(prop, file_name, format))
     elif opt.name == "compute-spring-block-layout":
         if just_file:
             return None
@@ -837,8 +878,13 @@ try:
             if retval[1] != None:
                 prefix = ""
                 if retval[1] == "-":
-                    prefix = opt.name.replace("-"," ")+": "
+                    if opt.value.strip() != "-":
+                        print "#",opt.name.replace("-"," "), "("+opt.value.replace("|",", ").replace(", -","")+"):"
+                    else:
+                        print "#",opt.name.replace("-"," ")+":"
                 write_data(retval[0], open_file(retval[1]), prefix)
+                if retval[1] == "-":
+                    print
                 
     # deal with history
     if history_range != None:
