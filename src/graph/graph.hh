@@ -91,6 +91,7 @@ public:
 
     // other
     void   LabelComponents(std::string property);
+    void   LabelParallelEdges(std::string property);
     hist_t GetDistanceHistogram(std::string weight) const;
     hist_t GetSampledDistanceHistogram(std::string weight, size_t samples, size_t seed) const;
     double GetReciprocity() const;

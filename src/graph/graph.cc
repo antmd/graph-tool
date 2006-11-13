@@ -321,6 +321,57 @@ void GraphInterface::LabelComponents(string prop)
 }
 
 //==============================================================================
+// label_parallel_edges
+// label parallel edges in order
+//==============================================================================
+struct label_parallel_edges
+{
+    template <class Graph, class EdgeIndexMap, class ParallelMap>
+    void operator()(const Graph& g, EdgeIndexMap edge_index, ParallelMap parallel) const
+    {
+	typename graph_traits<Graph>::vertex_iterator v, v_end;
+	for (tie(v, v_end) = vertices(g); v != v_end; ++v)
+	{
+	    tr1::unordered_set<typename graph_traits<Graph>::edge_descriptor,DescriptorHash<EdgeIndexMap> > p_edges(0, DescriptorHash<EdgeIndexMap>(edge_index));
+	    typename graph_traits<Graph>::out_edge_iterator e1, e2, e_end;
+	    for (tie(e1, e_end) = out_edges(*v, g); e1 != e_end; ++e1)
+	    {
+		if (p_edges.find(*e1) != p_edges.end())
+		    continue;
+		size_t n = 0;
+		put(parallel, *e1, n);
+		for (tie(e2, e_end) = out_edges(*v, g); e2 != e_end; ++e2)
+		    if (*e2 != *e1 && target(*e1, g) == target(*e2, g))
+		    {
+			put(parallel, *e2, ++n);
+			p_edges.insert(*e2);
+		    }
+	    }
+	}
+    }
+};
+
+//==============================================================================
+// LabelParallelEdges(property)
+//==============================================================================
+void GraphInterface::LabelParallelEdges(string property)
+{
+    try
+    {
+	DynamicPropertyMapWrap<size_t,graph_traits<multigraph_t>::edge_descriptor> parallel_map(find_property_map(_properties, property, typeid(graph_traits<multigraph_t>::edge_descriptor)));
+	check_filter(*this, bind<void>(label_parallel_edges(), _1, _edge_index, parallel_map), reverse_check(), directed_check());
+    }
+    catch (property_not_found) 
+    {
+	typedef HashedDescriptorMap<edge_index_map_t,size_t> parallel_map_t;
+	parallel_map_t parallel_map(_edge_index);
+	check_filter(*this, bind<void>(label_parallel_edges(), _1, _edge_index, parallel_map), reverse_check(), directed_check());
+	_properties.property(property, parallel_map);
+    }
+}
+
+
+//==============================================================================
 // InsertEdgeIndexProperty(property)
 //==============================================================================
 void GraphInterface::InsertEdgeIndexProperty(string property)
