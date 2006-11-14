@@ -46,13 +46,13 @@ struct get_combined_degree_histogram
     template <class Graph, class Hist>
     void operator()(Graph &g, Hist &hist) const
     {
-	typedef typename Hist::key_type::first_type first_type;
-	typedef typename Hist::key_type::second_type second_type;
+        typedef typename Hist::key_type::first_type first_type;
+        typedef typename Hist::key_type::second_type second_type;
 
-	typename graph_traits<Graph>::vertex_iterator v, v_begin, v_end;
+        typename graph_traits<Graph>::vertex_iterator v, v_begin, v_end;
         tie(v_begin, v_end) = vertices(g);
-	for(v = v_begin; v != v_end; ++v)
-	    hist[make_pair(first_type(_deg1(*v,g)), second_type(_deg2(*v,g)))]++;
+        for(v = v_begin; v != v_end; ++v)
+            hist[make_pair(first_type(_deg1(*v,g)), second_type(_deg2(*v,g)))]++;
     }
     DegreeSelector1& _deg1;
     DegreeSelector2& _deg2;
@@ -62,36 +62,36 @@ template <class SecondDegreeSelectors>
 struct choose_combined_degree_histogram
 {
     choose_combined_degree_histogram(const GraphInterface &g, GraphInterface::deg_t deg1, 
-				     GraphInterface::deg_t deg2, GraphInterface::hist2d_t &hist)
-	: _g(g), _hist(hist) 
+        			     GraphInterface::deg_t deg2, GraphInterface::hist2d_t &hist)
+        : _g(g), _hist(hist) 
     {
-	tie(_deg1, _deg_name1) = get_degree_type(deg1);
-	tie(_deg2, _deg_name2) = get_degree_type(deg2);
+        tie(_deg1, _deg_name1) = get_degree_type(deg1);
+        tie(_deg2, _deg_name2) = get_degree_type(deg2);
     }
 
     template <class DegreeSelector1>
     struct check_second_degree
     {
-	check_second_degree(choose_combined_degree_histogram<SecondDegreeSelectors> &parent):_parent(parent) {}
-	template <class DegreeSelector2>
-	void operator()(DegreeSelector2)
-	{
-	    if (mpl::at<degree_selector_index,DegreeSelector2>::type::value == _parent._deg2)
-	    {
-		DegreeSelector1 deg1(_parent._deg_name1, _parent._g);
-		DegreeSelector2 deg2(_parent._deg_name2, _parent._g);
-		check_filter(_parent._g, bind<void>(get_combined_degree_histogram<DegreeSelector1,DegreeSelector2>(deg1,deg2), _1, var(_parent._hist)), 
-			     reverse_check(),directed_check());
-	    }
-	}
-	choose_combined_degree_histogram<SecondDegreeSelectors>& _parent;
+        check_second_degree(choose_combined_degree_histogram<SecondDegreeSelectors> &parent):_parent(parent) {}
+        template <class DegreeSelector2>
+        void operator()(DegreeSelector2)
+        {
+            if (mpl::at<degree_selector_index,DegreeSelector2>::type::value == _parent._deg2)
+            {
+        	DegreeSelector1 deg1(_parent._deg_name1, _parent._g);
+        	DegreeSelector2 deg2(_parent._deg_name2, _parent._g);
+        	check_filter(_parent._g, bind<void>(get_combined_degree_histogram<DegreeSelector1,DegreeSelector2>(deg1,deg2), _1, var(_parent._hist)), 
+        		     reverse_check(),directed_check());
+            }
+        }
+        choose_combined_degree_histogram<SecondDegreeSelectors>& _parent;
     };
 
     template <class DegreeSelector>
     void operator()(DegreeSelector)
     {
-	if (mpl::at<degree_selector_index,DegreeSelector>::type::value == _deg1)
-	    mpl::for_each<SecondDegreeSelectors>(check_second_degree<DegreeSelector>(*this));
+        if (mpl::at<degree_selector_index,DegreeSelector>::type::value == _deg1)
+            mpl::for_each<SecondDegreeSelectors>(check_second_degree<DegreeSelector>(*this));
     }
     const GraphInterface &_g;
     GraphInterface::hist2d_t &_hist;
@@ -109,11 +109,11 @@ GraphInterface::GetCombinedVertexHistogram(deg_t deg1, deg_t deg2) const
     typedef mpl::vector<in_degreeS, out_degreeS, total_degreeS, scalarS> degree_selectors;
     try 
     {
-	mpl::for_each<degree_selectors>(choose_combined_degree_histogram<degree_selectors>(*this, deg1, deg2, hist));
+        mpl::for_each<degree_selectors>(choose_combined_degree_histogram<degree_selectors>(*this, deg1, deg2, hist));
     }
     catch (dynamic_get_failure &e)
     {
-	throw GraphException("error getting scalar property: " + string(e.what()));
+        throw GraphException("error getting scalar property: " + string(e.what()));
     }
     return hist;
 }
@@ -132,33 +132,33 @@ struct get_average_combined_degree_correlation
     template <class Graph, class AvgDeg>
     void operator()(Graph &g, AvgDeg &avg_deg) const
     {
-	tr1::unordered_map<double,size_t> count;
+        tr1::unordered_map<double,size_t> count;
 
-	typename graph_traits<Graph>::vertex_iterator v, v_begin, v_end;
+        typename graph_traits<Graph>::vertex_iterator v, v_begin, v_end;
         tie(v_begin, v_end) = vertices(g);
-	for(v = v_begin; v != v_end; ++v)
-	{
-	    typename AvgDeg::key_type d1 = _deg1(*v,g);
-	    typename AvgDeg::value_type::second_type::first_type d2 = _deg2(*v,g);
-	    avg_deg[d1].first += d2;
-	    avg_deg[d1].second += d2*d2;
-	    count[d1]++;
-	}
+        for(v = v_begin; v != v_end; ++v)
+        {
+            typename AvgDeg::key_type d1 = _deg1(*v,g);
+            typename AvgDeg::value_type::second_type::first_type d2 = _deg2(*v,g);
+            avg_deg[d1].first += d2;
+            avg_deg[d1].second += d2*d2;
+            count[d1]++;
+        }
 
-	for (typeof(avg_deg.begin()) iter = avg_deg.begin(); iter != avg_deg.end(); ++iter)
-	{
-	    size_t N = count[iter->first];
-	    iter->second.first /= N;
-	    if (N > 1)
-	    {
-		double err = (iter->second.second - N*iter->second.first*iter->second.first)/(N*(N-1));
-		iter->second.second = (err<0.0)?0.0:sqrt(err);
-	    }
-	    else
-	    {
-		iter->second.second = 0.0;
-	    }
-	}
+        for (typeof(avg_deg.begin()) iter = avg_deg.begin(); iter != avg_deg.end(); ++iter)
+        {
+            size_t N = count[iter->first];
+            iter->second.first /= N;
+            if (N > 1)
+            {
+        	double err = (iter->second.second - N*iter->second.first*iter->second.first)/(N*(N-1));
+        	iter->second.second = (err<0.0)?0.0:sqrt(err);
+            }
+            else
+            {
+        	iter->second.second = 0.0;
+            }
+        }
     }
     DegreeSelector1& _deg1;
     DegreeSelector2& _deg2;
@@ -168,37 +168,37 @@ template <class SecondDegreeSelectors>
 struct choose_average_combined_degree_correlation
 {
     choose_average_combined_degree_correlation(const GraphInterface &g, GraphInterface::deg_t deg1, 
-					       GraphInterface::deg_t deg2, GraphInterface::avg_corr_t &avg_corr)
-	: _g(g), _avg_corr(avg_corr) 
+        				       GraphInterface::deg_t deg2, GraphInterface::avg_corr_t &avg_corr)
+        : _g(g), _avg_corr(avg_corr) 
     {
-	tie(_deg1, _deg_name1) = get_degree_type(deg1);
-	tie(_deg2, _deg_name2) = get_degree_type(deg2);
+        tie(_deg1, _deg_name1) = get_degree_type(deg1);
+        tie(_deg2, _deg_name2) = get_degree_type(deg2);
     }
 
     template <class DegreeSelector1>
     struct check_second_degree
     {
-	check_second_degree(choose_average_combined_degree_correlation<SecondDegreeSelectors> &parent):_parent(parent) {}
-	template <class DegreeSelector2>
-	void operator()(DegreeSelector2)
-	{
-	    if (mpl::at<degree_selector_index,DegreeSelector2>::type::value == _parent._deg2)
-	    {
-		DegreeSelector1 deg1(_parent._deg_name1, _parent._g);
-		DegreeSelector2 deg2(_parent._deg_name2, _parent._g);
-		check_filter(_parent._g, bind<void>(get_average_combined_degree_correlation<DegreeSelector1,DegreeSelector2>(deg1,deg2), 
-						    _1, var(_parent._avg_corr)), 
-			     reverse_check(),directed_check());
-	    }
-	}
-	choose_average_combined_degree_correlation<SecondDegreeSelectors>& _parent;
+        check_second_degree(choose_average_combined_degree_correlation<SecondDegreeSelectors> &parent):_parent(parent) {}
+        template <class DegreeSelector2>
+        void operator()(DegreeSelector2)
+        {
+            if (mpl::at<degree_selector_index,DegreeSelector2>::type::value == _parent._deg2)
+            {
+        	DegreeSelector1 deg1(_parent._deg_name1, _parent._g);
+        	DegreeSelector2 deg2(_parent._deg_name2, _parent._g);
+        	check_filter(_parent._g, bind<void>(get_average_combined_degree_correlation<DegreeSelector1,DegreeSelector2>(deg1,deg2), 
+        					    _1, var(_parent._avg_corr)), 
+        		     reverse_check(),directed_check());
+            }
+        }
+        choose_average_combined_degree_correlation<SecondDegreeSelectors>& _parent;
     };
 
     template <class DegreeSelector>
     void operator()(DegreeSelector)
     {
-	if (mpl::at<degree_selector_index,DegreeSelector>::type::value == _deg1)
-	    mpl::for_each<SecondDegreeSelectors>(check_second_degree<DegreeSelector>(*this));
+        if (mpl::at<degree_selector_index,DegreeSelector>::type::value == _deg1)
+            mpl::for_each<SecondDegreeSelectors>(check_second_degree<DegreeSelector>(*this));
     }
     const GraphInterface &_g;
     GraphInterface::avg_corr_t &_avg_corr;
@@ -216,11 +216,11 @@ GraphInterface::GetAverageCombinedVertexCorrelation(deg_t deg1, deg_t deg2) cons
     typedef mpl::vector<in_degreeS, out_degreeS, total_degreeS, scalarS> degree_selectors;
     try 
     {
-	mpl::for_each<degree_selectors>(choose_average_combined_degree_correlation<degree_selectors>(*this, deg1, deg2, avg_corr));
+        mpl::for_each<degree_selectors>(choose_average_combined_degree_correlation<degree_selectors>(*this, deg1, deg2, avg_corr));
     }
     catch (dynamic_get_failure &e)
     {
-	throw GraphException("error getting scalar property: " + string(e.what()));
+        throw GraphException("error getting scalar property: " + string(e.what()));
     }
     return avg_corr;
 }

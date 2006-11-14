@@ -111,10 +111,10 @@ private:
 template <typename Graph> 
 class UndirectedAdaptorEdgeIterator
     : public iterator<std::bidirectional_iterator_tag,
-		      typename UndirectedAdaptor<Graph>::EdgeDescriptor,
-		      std::ptrdiff_t,
-		      typename UndirectedAdaptor<Graph>::EdgeDescriptor*, 
-		      typename UndirectedAdaptor<Graph>::EdgeDescriptor>  //not a reference!
+        	      typename UndirectedAdaptor<Graph>::EdgeDescriptor,
+        	      std::ptrdiff_t,
+        	      typename UndirectedAdaptor<Graph>::EdgeDescriptor*, 
+        	      typename UndirectedAdaptor<Graph>::EdgeDescriptor>  //not a reference!
 {
 public:
     UndirectedAdaptorEdgeIterator() {}
@@ -174,19 +174,19 @@ private:
 template <typename Graph> 
 class UndirectedAdaptorOutEdgeIterator 
     : public iterator<std::bidirectional_iterator_tag,
-		      typename UndirectedAdaptor<Graph>::EdgeDescriptor,
-		      std::ptrdiff_t,
-		      typename UndirectedAdaptor<Graph>::EdgeDescriptor*, 
-		      typename UndirectedAdaptor<Graph>::EdgeDescriptor> //not a reference 
+        	      typename UndirectedAdaptor<Graph>::EdgeDescriptor,
+        	      std::ptrdiff_t,
+        	      typename UndirectedAdaptor<Graph>::EdgeDescriptor*, 
+        	      typename UndirectedAdaptor<Graph>::EdgeDescriptor> //not a reference 
 {
 public:
     UndirectedAdaptorOutEdgeIterator() {};
     UndirectedAdaptorOutEdgeIterator(typename graph_traits<Graph>::out_edge_iterator out_iter, 
-				     typename graph_traits<Graph>::in_edge_iterator in_iter, 
-				     const std::pair<typename graph_traits<Graph>::out_edge_iterator, 
-				     typename graph_traits<Graph>::out_edge_iterator> out_range,  
-				     const std::pair<typename graph_traits<Graph>::in_edge_iterator, 
-				     typename graph_traits<Graph>::in_edge_iterator> in_range)
+        			     typename graph_traits<Graph>::in_edge_iterator in_iter, 
+        			     const std::pair<typename graph_traits<Graph>::out_edge_iterator, 
+        			     typename graph_traits<Graph>::out_edge_iterator> out_range,  
+        			     const std::pair<typename graph_traits<Graph>::in_edge_iterator, 
+        			     typename graph_traits<Graph>::in_edge_iterator> in_range)
     :_out_range(out_range), _in_range(in_range), _out_iter(out_iter), _in_iter(in_iter) {};                  
 
     typename UndirectedAdaptor<Graph>::EdgeDescriptor operator*() const
@@ -280,10 +280,10 @@ public:
 template <typename Graph> 
 class UndirectedAdaptorAdjacencyIterator 
     : public iterator<std::bidirectional_iterator_tag,
-		      typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor,
-		      std::ptrdiff_t,
-		      typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor*,
-		      typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor> //not a reference
+        	      typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor,
+        	      std::ptrdiff_t,
+        	      typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor*,
+        	      typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor> //not a reference
 {
 public:
     UndirectedAdaptorAdjacencyIterator(){};
@@ -570,7 +570,7 @@ void remove_vertex(typename graph_traits< UndirectedAdaptor<Graph> >::vertex_des
 template <class Graph>
 std::pair<typename graph_traits< UndirectedAdaptor<Graph> >::edge_descriptor,bool>
 add_edge(typename graph_traits< UndirectedAdaptor<Graph> >::vertex_descriptor u,
-	 typename graph_traits< UndirectedAdaptor<Graph> >::vertex_descriptor v, UndirectedAdaptor<Graph>& g)
+         typename graph_traits< UndirectedAdaptor<Graph> >::vertex_descriptor v, UndirectedAdaptor<Graph>& g)
 {
     std::pair<typename graph_traits<Graph>::edge_descriptor, bool> retval = add_edge(u,v,g.OriginalGraph());
     return std::make_pair(typename graph_traits< UndirectedAdaptor<Graph> >::edge_descriptor(retval.first,false),retval.second);
@@ -582,7 +582,7 @@ add_edge(typename graph_traits< UndirectedAdaptor<Graph> >::vertex_descriptor u,
 template <class Graph, class EdgeProperties>
 std::pair<typename graph_traits< UndirectedAdaptor<Graph> >::edge_descriptor,bool>
 add_edge(typename graph_traits< UndirectedAdaptor<Graph> >::vertex_descriptor u, 
-	 typename graph_traits< UndirectedAdaptor<Graph> >::vertex_descriptor v, const EdgeProperties& ep, UndirectedAdaptor<Graph>& g)
+         typename graph_traits< UndirectedAdaptor<Graph> >::vertex_descriptor v, const EdgeProperties& ep, UndirectedAdaptor<Graph>& g)
 {
     std::pair<typename graph_traits<Graph>::edge_descriptor, bool> retval = add_edge(u,v,ep,g.OriginalGraph());
     return std::make_pair(typename graph_traits< UndirectedAdaptor<Graph> >::edge_descriptor(retval.first,false),retval.second);   

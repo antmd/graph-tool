@@ -57,27 +57,27 @@ namespace std
     template <class T1, class T2>
     std::istream & operator>>(std::istream &i, std::pair<T1,T2> &p)
     {
-	i >> p.first >> p.second;
-	return i;
+        i >> p.first >> p.second;
+        return i;
     }
     
     template <class T>
     std::ostream & operator<<(std::ostream &o, const std::vector<T> &v)
     {
-	for(size_t i = 0; i < v.size(); ++i)
-	{
-	    o << v[i];
-	    if (i != v.size() - 1)
-		o << " \t";
-	}
+        for(size_t i = 0; i < v.size(); ++i)
+        {
+            o << v[i];
+            if (i != v.size() - 1)
+        	o << " \t";
+        }
         return o;
     }
 
     template <class T>
     std::istream & operator>>(std::istream &s, std::vector<T> &v)
     {
-	for(size_t i = 0; i < v.size(); ++i)
-	    s >> v[i];
+        for(size_t i = 0; i < v.size(); ++i)
+            s >> v[i];
         return s;
     }
 
@@ -93,14 +93,14 @@ void PrintHistogram (const Histogram &m, std::ostream &stream)
 {
     std::vector<typename Histogram::key_type> keys;
     for (typeof(m.begin()) iter = m.begin(); iter != m.end(); iter++)
-	keys.push_back(iter->first);
+        keys.push_back(iter->first);
     sort(keys.begin(), keys.end());
     stream.precision(20);
     stream.setf(std::ios_base::scientific);
     for (size_t i = 0; i < keys.size(); ++i)
     {
-	typename Histogram::const_iterator val = m.find(keys[i]);
-	stream << *val << std::endl;
+        typename Histogram::const_iterator val = m.find(keys[i]);
+        stream << *val << std::endl;
     }
 }
 
@@ -113,9 +113,9 @@ void PrintHistogram (const Histogram &m, std::string output_file)
     file.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     boost::iostreams::filtering_stream<boost::iostreams::output> stream;
     if (boost::ends_with(output_file,".gz"))
-	stream.push(boost::iostreams::gzip_compressor());
+        stream.push(boost::iostreams::gzip_compressor());
     if (boost::ends_with(output_file,".bz2"))
-	stream.push(boost::iostreams::bzip2_compressor());
+        stream.push(boost::iostreams::bzip2_compressor());
     stream.push(file);
     stream.exceptions(std::ios_base::badbit);
     PrintHistogram(m, stream);
@@ -128,10 +128,10 @@ void ReadHistogram(Histogram &m, std::istream &stream)
 
     while (stream && !stream.eof())
     {
-	stream >> key;
-	if (stream.eof() || !stream)
-	    continue;
-	stream >> m[key];
+        stream >> key;
+        if (stream.eof() || !stream)
+            continue;
+        stream >> m[key];
     }
 }
 
@@ -163,7 +163,7 @@ double GetHistogramMean (const Histogram &m)
     for (typeof(m.begin()) iter = m.begin(); iter != m.end(); iter++)
     {
         mean += double(iter->first * iter->second);
-	total += iter->second;
+        total += iter->second;
     }
     
     return (total > 0)?mean/total:0.0;
@@ -181,7 +181,7 @@ double GetHistogramDeviation (const Histogram &m, double avg)
     for (typeof(m.begin()) iter = m.begin(); iter != m.end(); iter++)
     {
         dev += double( (iter->first - avg) * (iter->first - avg) * iter->second);
-	total += iter->second;
+        total += iter->second;
     }
     return (total > 1)?sqrt(dev/(total-1)):0.0;
 }

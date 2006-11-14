@@ -47,58 +47,58 @@ struct get_sampled_distances
 
     template <class Graph, class IndexMap, class WeightMap, class Hist>
     void operator()(const Graph &g, IndexMap index_map, WeightMap weights, Hist& hist, size_t samples, size_t seed) const
-    {	
-	typedef HashedDescriptorMap<IndexMap,double> dist_map_t;
-	dist_map_t dist_map(index_map);
+    {        
+        typedef HashedDescriptorMap<IndexMap,double> dist_map_t;
+        dist_map_t dist_map(index_map);
 
-	// select get_sum_vertex_dists based on the existence of weights
-	typedef typename mpl::if_<is_same<WeightMap, no_weightS>,
-                     	          get_dists_bfs,
+        // select get_sum_vertex_dists based on the existence of weights
+        typedef typename mpl::if_<is_same<WeightMap, no_weightS>,
+                                       get_dists_bfs,
                                   get_dists_djk>::type get_vertex_dists_t;
-	get_vertex_dists_t get_vertex_dists;
+        get_vertex_dists_t get_vertex_dists;
 
-	tr1::unordered_map<size_t, typename graph_traits<Graph>::vertex_descriptor> descriptors;
+        tr1::unordered_map<size_t, typename graph_traits<Graph>::vertex_descriptor> descriptors;
 
-	typename graph_traits<Graph>::vertex_iterator v, v_end;
-	size_t i = 0;
-	for(tie(v, v_end) = vertices(g); v != v_end; ++v,++i)
-	    descriptors[i] = *v;
+        typename graph_traits<Graph>::vertex_iterator v, v_end;
+        size_t i = 0;
+        for(tie(v, v_end) = vertices(g); v != v_end; ++v,++i)
+            descriptors[i] = *v;
 
-	rng_t rng(static_cast<rng_t::result_type>(seed));
-	uniform_int<size_t> sampler(0,descriptors.size()-1);
+        rng_t rng(static_cast<rng_t::result_type>(seed));
+        uniform_int<size_t> sampler(0,descriptors.size()-1);
 
-	for(i=0; i < samples; ++i)
-	{
-	    for(tie(v, v_end) = vertices(g); v != v_end; ++v)
-		dist_map[*v] = numeric_limits<double>::max();
-	    typename graph_traits<Graph>::vertex_descriptor s = descriptors[sampler(rng)];
-	    dist_map[s] = 0.0;
-	    get_vertex_dists(g, s, index_map, dist_map, weights);
-	    for(tie(v, v_end) = vertices(g); v != v_end; ++v,++i)
-		if (*v != s && dist_map[*v] != numeric_limits<double>::max() )
-		    hist[dist_map[*v]]++;
-	}
-	
+        for(i=0; i < samples; ++i)
+        {
+            for(tie(v, v_end) = vertices(g); v != v_end; ++v)
+        	dist_map[*v] = numeric_limits<double>::max();
+            typename graph_traits<Graph>::vertex_descriptor s = descriptors[sampler(rng)];
+            dist_map[s] = 0.0;
+            get_vertex_dists(g, s, index_map, dist_map, weights);
+            for(tie(v, v_end) = vertices(g); v != v_end; ++v,++i)
+        	if (*v != s && dist_map[*v] != numeric_limits<double>::max() )
+        	    hist[dist_map[*v]]++;
+        }
+        
     }
 
     // weighted version. Use dijkstra_shortest_paths()
     struct get_dists_djk
     {
-	template <class Graph, class Vertex, class IndexMap, class DistanceMap, class WeightMap>
-	void operator()(const Graph& g, Vertex s, IndexMap index_map, DistanceMap dist_map, WeightMap weights) const
-	{
-	    dijkstra_shortest_paths(g, s, vertex_index_map(index_map).weight_map(weights).distance_map(dist_map));	    
-	}
+        template <class Graph, class Vertex, class IndexMap, class DistanceMap, class WeightMap>
+        void operator()(const Graph& g, Vertex s, IndexMap index_map, DistanceMap dist_map, WeightMap weights) const
+        {
+            dijkstra_shortest_paths(g, s, vertex_index_map(index_map).weight_map(weights).distance_map(dist_map));	    
+        }
     };
 
     // unweighted version. Use BFS.
     struct get_dists_bfs
     {
-	template <class Graph, class Vertex, class IndexMap, class DistanceMap>
-	void operator()(const Graph& g, Vertex s, IndexMap index_map, DistanceMap dist_map, no_weightS) const
-	{	    
-	    breadth_first_search(g, s, visitor(make_bfs_visitor(record_distances(dist_map, on_tree_edge()))));
-	}
+        template <class Graph, class Vertex, class IndexMap, class DistanceMap>
+        void operator()(const Graph& g, Vertex s, IndexMap index_map, DistanceMap dist_map, no_weightS) const
+        {	    
+            breadth_first_search(g, s, visitor(make_bfs_visitor(record_distances(dist_map, on_tree_edge()))));
+        }
     };
     
 };
@@ -110,32 +110,32 @@ GraphInterface::GetSampledDistanceHistogram(string weight, size_t samples, size_
 
     if (weight == "")
     {
-	check_filter(*this, bind<void>(get_sampled_distances(), _1, _vertex_index, no_weightS(), var(hist), samples, seed),
-		     reverse_check(), directed_check()); 
+        check_filter(*this, bind<void>(get_sampled_distances(), _1, _vertex_index, no_weightS(), var(hist), samples, seed),
+        	     reverse_check(), directed_check()); 
     }
     else
     {
-	try 
-	{
-	    dynamic_property_map& weight_prop = find_property_map(_properties, weight, typeid(graph_traits<multigraph_t>::edge_descriptor));
-	    try 
-	    {
-		vector_property_map<double, edge_index_map_t> weight_map;
-		weight_map = get_static_property_map<vector_property_map<double, edge_index_map_t> >(weight_prop);
-		check_filter(*this, bind<void>(get_sampled_distances(), _1, _vertex_index, weight_map, var(hist), samples, seed),
-			     reverse_check(), directed_check()); 
-	    }
-	    catch (bad_cast)
-	    {
-		DynamicPropertyMapWrap<double, graph_traits<multigraph_t>::edge_descriptor> weight_map(weight_prop);
-		check_filter(*this, bind<void>(get_sampled_distances(), _1, _vertex_index, weight_map, var(hist), samples, seed),
-			     reverse_check(), directed_check()); 
-	    }
-	}
-	catch (property_not_found& e)
-	{
-	    throw GraphException("error getting scalar property: " + string(e.what()));
-	}
+        try 
+        {
+            dynamic_property_map& weight_prop = find_property_map(_properties, weight, typeid(graph_traits<multigraph_t>::edge_descriptor));
+            try 
+            {
+        	vector_property_map<double, edge_index_map_t> weight_map;
+        	weight_map = get_static_property_map<vector_property_map<double, edge_index_map_t> >(weight_prop);
+        	check_filter(*this, bind<void>(get_sampled_distances(), _1, _vertex_index, weight_map, var(hist), samples, seed),
+        		     reverse_check(), directed_check()); 
+            }
+            catch (bad_cast)
+            {
+        	DynamicPropertyMapWrap<double, graph_traits<multigraph_t>::edge_descriptor> weight_map(weight_prop);
+        	check_filter(*this, bind<void>(get_sampled_distances(), _1, _vertex_index, weight_map, var(hist), samples, seed),
+        		     reverse_check(), directed_check()); 
+            }
+        }
+        catch (property_not_found& e)
+        {
+            throw GraphException("error getting scalar property: " + string(e.what()));
+        }
     }
     return hist;
 }

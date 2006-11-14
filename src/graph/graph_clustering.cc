@@ -49,42 +49,42 @@ pair<int,int> get_triangles(typename graph_traits<Graph>::vertex_descriptor v, c
     tie(n1_begin, n1_end) = adjacent_vertices(v, g);
     for (n1 = n1_begin; n1 != n1_end; ++n1)
     {
-	if (*n1 == v) // no self-loops
-	    continue;
-	if (neighbour_set1.find(*n1) != neighbour_set1.end())
-	    continue;
-	else
-	    neighbour_set1.insert(*n1);
+        if (*n1 == v) // no self-loops
+            continue;
+        if (neighbour_set1.find(*n1) != neighbour_set1.end())
+            continue;
+        else
+            neighbour_set1.insert(*n1);
         
-	typename graph_traits<Graph>::adjacency_iterator n2_begin, n2_end, n2;
-	tie(n2_begin, n2_end) = adjacent_vertices(*n1, g);
-	for (n2 = n2_begin; n2 != n2_end; ++n2)
-	{
-	    if (*n2 == *n1) // no self-loops
-		continue;
-	    if (neighbour_set2.find(*n2) != neighbour_set2.end())
-		continue;
-	    else
-		neighbour_set2.insert(*n2);
+        typename graph_traits<Graph>::adjacency_iterator n2_begin, n2_end, n2;
+        tie(n2_begin, n2_end) = adjacent_vertices(*n1, g);
+        for (n2 = n2_begin; n2 != n2_end; ++n2)
+        {
+            if (*n2 == *n1) // no self-loops
+        	continue;
+            if (neighbour_set2.find(*n2) != neighbour_set2.end())
+        	continue;
+            else
+        	neighbour_set2.insert(*n2);
             
-	    typename graph_traits<Graph>::adjacency_iterator n3_begin, n3_end, n3;
-	    tie(n3_begin, n3_end) = adjacent_vertices(*n2, g);
-	    for (n3 = n3_begin; n3 != n3_end; ++n3)
-	    {
-		if (*n3 == *n2) // no self-loops
-		    continue;
-		if (neighbour_set3.find(*n3) != neighbour_set3.end())
-		    continue;
-		else
-		    neighbour_set3.insert(*n3);
+            typename graph_traits<Graph>::adjacency_iterator n3_begin, n3_end, n3;
+            tie(n3_begin, n3_end) = adjacent_vertices(*n2, g);
+            for (n3 = n3_begin; n3 != n3_end; ++n3)
+            {
+        	if (*n3 == *n2) // no self-loops
+        	    continue;
+        	if (neighbour_set3.find(*n3) != neighbour_set3.end())
+        	    continue;
+        	else
+        	    neighbour_set3.insert(*n3);
                         
-		if (*n3 == v) //found a triangle
-		    triangles++; 
-	    }
-	    neighbour_set3.clear();
-	}
-	neighbour_set2.clear();
-	k++;
+        	if (*n3 == v) //found a triangle
+        	    triangles++; 
+            }
+            neighbour_set3.clear();
+        }
+        neighbour_set2.clear();
+        k++;
     }
     neighbour_set1.clear();
     return make_pair(triangles/2,(k*(k-1))/2);
@@ -101,27 +101,27 @@ struct get_global_clustering
     template <class Graph>
     void operator()(const Graph &g, double &c, double &c_err) const
     {
-	size_t triangles = 0, n = 0;
-	pair<size_t, size_t> temp;
-	typename graph_traits<Graph>::vertex_iterator v, v_begin, v_end;
-	tie(v_begin, v_end) = vertices(g);
-	for(v = v_begin; v != v_end; ++v)
-	{
-	    temp = get_triangles(*v, g);
-	    triangles += temp.first; 
-	    n += temp.second;
-	}
-	c = double(triangles)/n;
+        size_t triangles = 0, n = 0;
+        pair<size_t, size_t> temp;
+        typename graph_traits<Graph>::vertex_iterator v, v_begin, v_end;
+        tie(v_begin, v_end) = vertices(g);
+        for(v = v_begin; v != v_end; ++v)
+        {
+            temp = get_triangles(*v, g);
+            triangles += temp.first; 
+            n += temp.second;
+        }
+        c = double(triangles)/n;
 
-	// "jackknife" variance
-	c_err = 0.0;
-	for(v = v_begin; v != v_end; ++v)
-	{
-	    temp = get_triangles(*v, g);
-	    double cl = double(triangles - temp.first)/(n - temp.second);
-	    c_err = (c - cl)*(c - cl);
-	}
-	c_err = sqrt(c_err);
+        // "jackknife" variance
+        c_err = 0.0;
+        for(v = v_begin; v != v_end; ++v)
+        {
+            temp = get_triangles(*v, g);
+            double cl = double(triangles - temp.first)/(n - temp.second);
+            c_err = (c - cl)*(c - cl);
+        }
+        c_err = sqrt(c_err);
     }
 };
 
@@ -147,23 +147,23 @@ struct set_clustering_to_property
     template <class Graph, class ClustMap>
     void operator()(const Graph& g, ClustMap& clust_map) const
     {
-	typename get_undirected_graph<Graph>::type ug(g);
-	typename graph_traits<Graph>::vertex_iterator v, v_begin, v_end;
-	tie(v_begin, v_end) = vertices(g);
-	for(v = v_begin; v != v_end; ++v)
-	{
-	    pair<size_t,size_t> triangles = get_triangles(*v,ug); // get from ug
-	    double clustering = (triangles.second > 0)?double(triangles.first)/triangles.second:0.0;
-	    clust_map[*v] = clustering;
-	}
+        typename get_undirected_graph<Graph>::type ug(g);
+        typename graph_traits<Graph>::vertex_iterator v, v_begin, v_end;
+        tie(v_begin, v_end) = vertices(g);
+        for(v = v_begin; v != v_end; ++v)
+        {
+            pair<size_t,size_t> triangles = get_triangles(*v,ug); // get from ug
+            double clustering = (triangles.second > 0)?double(triangles.first)/triangles.second:0.0;
+            clust_map[*v] = clustering;
+        }
     }
 
     template <class Graph>
     struct get_undirected_graph
     {
-	typedef typename mpl::if_< is_convertible<typename graph_traits<Graph>::directed_category, directed_tag>,
-				   const UndirectedAdaptor<Graph>,
-				   const Graph& >::type type;
+        typedef typename mpl::if_< is_convertible<typename graph_traits<Graph>::directed_category, directed_tag>,
+        			   const UndirectedAdaptor<Graph>,
+        			   const Graph& >::type type;
     };
 };
 
@@ -180,8 +180,8 @@ void GraphInterface::SetLocalClusteringToProperty(string property)
 
     try
     {
-	find_property_map(_properties, property, typeid(graph_traits<multigraph_t>::vertex_descriptor));
-	RemoveVertexProperty(property);
+        find_property_map(_properties, property, typeid(graph_traits<multigraph_t>::vertex_descriptor));
+        RemoveVertexProperty(property);
     }
     catch (property_not_found) {}
 

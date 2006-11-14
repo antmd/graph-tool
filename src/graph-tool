@@ -311,23 +311,23 @@ def generate_graph(parameters):
 def parse_option(opt, just_file=False):
     "this will execute an option, and return either None, or a tuple with the result and the respective file name, if it exists"
     if opt.name == "load":
-	values = parse_values(opt.value)
-	if len(values) > 2 or len(values) < 1:
-	    raise OptionError(opt.name, "invalid value '$s'" % opt.value)
+        values = parse_values(opt.value)
+        if len(values) > 2 or len(values) < 1:
+            raise OptionError(opt.name, "invalid value '$s'" % opt.value)
         if just_file:
             return None
-	if len(values) == 1:
-	    graph.ReadFromFile(values[0])
+        if len(values) == 1:
+            graph.ReadFromFile(values[0])
         else:
             graph.ReadFromFile(values[0], values[1])
     elif opt.name == "save":
-	values = parse_values(opt.value)
+        values = parse_values(opt.value)
         if len(values) > 2 or len(values) < 1:
-	    raise OptionError(opt.name, "invalid value '$s'" % opt.value)
+            raise OptionError(opt.name, "invalid value '$s'" % opt.value)
         if just_file:
             return None
-	if len(values) == 1:
-	    graph.WriteToFile(values[0])
+        if len(values) == 1:
+            graph.WriteToFile(values[0])
         else:
             graph.WriteToFile(values[0], values[1])
     elif opt.name == "correlated-configurational-model":

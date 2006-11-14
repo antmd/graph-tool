@@ -40,21 +40,21 @@ struct total_degreeS
     template <class Graph, class Vertex> 
     size_t operator()(const Vertex& v, const Graph &g) const 
     {
-	using namespace boost;
-	typedef typename is_convertible<typename graph_traits<Graph>::directed_category, directed_tag>::type is_directed;
-	return get_total_degree(v,g,is_directed());
+        using namespace boost;
+        typedef typename is_convertible<typename graph_traits<Graph>::directed_category, directed_tag>::type is_directed;
+        return get_total_degree(v,g,is_directed());
     } 
 
     template <class Graph, class Vertex>
     size_t get_total_degree(const Vertex& v, const Graph &g, boost::true_type) const 
     {
-	return in_degree(v,g)+out_degree(v,g);
+        return in_degree(v,g)+out_degree(v,g);
     }
 
     template <class Graph, class Vertex>
     size_t get_total_degree(const Vertex& v, const Graph &g, boost::false_type) const 
     {
-	return out_degree(v,g);
+        return out_degree(v,g);
     }
 
     std::string name() {return "total_degree";}
@@ -67,21 +67,21 @@ struct in_degreeS
     template <class Graph, class Vertex> 
     size_t operator()(const Vertex& v, const Graph &g) const 
     {
-	using namespace boost;
-	typedef typename is_convertible<typename graph_traits<Graph>::directed_category, directed_tag>::type is_directed;
-	return get_in_degree(v,g,is_directed());
+        using namespace boost;
+        typedef typename is_convertible<typename graph_traits<Graph>::directed_category, directed_tag>::type is_directed;
+        return get_in_degree(v,g,is_directed());
     } 
 
     template <class Graph, class Vertex>
     size_t get_in_degree(const Vertex& v, const Graph &g, boost::true_type) const 
     {
-	return in_degree(v,g);
+        return in_degree(v,g);
     }
 
     template <class Graph, class Vertex>
     size_t get_in_degree(const Vertex& v, const Graph &g, boost::false_type) const 
     {
-	return in_degree(v,g.OriginalGraph());
+        return in_degree(v,g.OriginalGraph());
     }
 
     std::string name() {return "in_degree";}
@@ -94,7 +94,7 @@ struct out_degreeS
     template <class Graph, class Vertex> 
     size_t operator()(const Vertex& v, const Graph &g) const 
     {
-	return out_degree(v,g);
+        return out_degree(v,g);
     } 
     std::string name() {return "out_degree";}
 };
@@ -103,41 +103,41 @@ struct scalarS
 {
     scalarS(){}
     scalarS(std::string scalar_property, const GraphInterface& g): 
-	_scalar_property(scalar_property), _g(&g) {}
+        _scalar_property(scalar_property), _g(&g) {}
     typedef boost::mpl::vector<double,long double,float,long,unsigned long,int,unsigned int,short,unsigned short,char,unsigned char,bool,std::string> scalar_types;
     template <class Graph, class VertexOrEdge> 
     double operator()(const VertexOrEdge& v, const Graph &g) const 
     {
-	try 
-	{
-	    return boost::get(_scalar_property, _g->_properties, v, boost::type<double>());
-	}
-	catch (boost::bad_any_cast)
-	{
-	    using namespace boost::mpl;
-	    return get_value<next<begin<scalar_types>::type>::type>(v);
-	}
+        try 
+        {
+            return boost::get(_scalar_property, _g->_properties, v, boost::type<double>());
+        }
+        catch (boost::bad_any_cast)
+        {
+            using namespace boost::mpl;
+            return get_value<next<begin<scalar_types>::type>::type>(v);
+        }
     } 
 
     template <class ValueIter, class VertexOrEdge> 
     double get_value(const VertexOrEdge& v, ValueIter = ValueIter()) const 
     {
-	using namespace boost;
-	using namespace boost::mpl;
-	try 
-	{
-	    return lexical_cast<double>(get(_scalar_property, _g->_properties, v, type<typename deref<ValueIter>::type>()));
-	}
-	catch (bad_any_cast)
-	{
-	    return get_value(v, typename boost::mpl::next<ValueIter>::type());
-	}	
+        using namespace boost;
+        using namespace boost::mpl;
+        try 
+        {
+            return lexical_cast<double>(get(_scalar_property, _g->_properties, v, type<typename deref<ValueIter>::type>()));
+        }
+        catch (bad_any_cast)
+        {
+            return get_value(v, typename boost::mpl::next<ValueIter>::type());
+        }	
     }
 
     template <class VertexOrEdge> 
     double get_value(const VertexOrEdge& v, boost::mpl::end<scalar_types>::type) const 
     {
-	throw boost::dynamic_get_failure(_scalar_property);
+        throw boost::dynamic_get_failure(_scalar_property);
     }
 
     std::string name() {return _scalar_property;}
@@ -147,9 +147,9 @@ struct scalarS
 
 
 typedef boost::mpl::map< boost::mpl::pair<in_degreeS, boost::mpl::int_<GraphInterface::IN_DEGREE> >,
-			 boost::mpl::pair<out_degreeS, boost::mpl::int_<GraphInterface::OUT_DEGREE> >,
-			 boost::mpl::pair<total_degreeS, boost::mpl::int_<GraphInterface::TOTAL_DEGREE> >,
-			 boost::mpl::pair<scalarS, boost::mpl::int_<GraphInterface::SCALAR> > > degree_selector_index;
+        		 boost::mpl::pair<out_degreeS, boost::mpl::int_<GraphInterface::OUT_DEGREE> >,
+        		 boost::mpl::pair<total_degreeS, boost::mpl::int_<GraphInterface::TOTAL_DEGREE> >,
+        		 boost::mpl::pair<scalarS, boost::mpl::int_<GraphInterface::SCALAR> > > degree_selector_index;
 
 
 } //namespace graph_tool

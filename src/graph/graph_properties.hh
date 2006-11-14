@@ -51,11 +51,11 @@ template <class PropertyMap>
 PropertyMap* get_static_property_map(boost::dynamic_property_map* map)
 {
     boost::detail::dynamic_property_map_adaptor<PropertyMap>* adaptor = 
-	dynamic_cast<boost::detail::dynamic_property_map_adaptor<PropertyMap>*>(map);
+        dynamic_cast<boost::detail::dynamic_property_map_adaptor<PropertyMap>*>(map);
     if (adaptor)
-	return &adaptor->base();
+        return &adaptor->base();
     else
-	return 0;
+        return 0;
 }
 
 
@@ -78,11 +78,11 @@ struct dynamic_properties_copy: public boost::dynamic_properties
     dynamic_properties_copy() {}
     dynamic_properties_copy(boost::dynamic_properties& dp): boost::dynamic_properties(dp) {}
     dynamic_properties_copy(const boost::function<std::auto_ptr<boost::dynamic_property_map>(const std::string&, const boost::any&, const boost::any&)>& fn)
-	: boost::dynamic_properties(fn) {}
+        : boost::dynamic_properties(fn) {}
     ~dynamic_properties_copy()
-    {	
-	for (typeof(this->begin()) iter = this->begin(); iter != this->end(); ++iter)
-	    iter->second = 0; // will be deleted when original dp deconstructs
+    {        
+        for (typeof(this->begin()) iter = this->begin(); iter != this->end(); ++iter)
+            iter->second = 0; // will be deleted when original dp deconstructs
     }
 };
 
@@ -100,22 +100,22 @@ template <class ConvertedType, class Key>
 ConvertedType get_converted_scalar_value(boost::dynamic_property_map& dmap, const Key& key)
 {
     typedef typename boost::mpl::vector<long double, double, float, unsigned long long, long long, 
-	                                unsigned long, long, unsigned int, int, unsigned short, short, 
+                                        unsigned long, long, unsigned int, int, unsigned short, short, 
                                         unsigned char, char, std::string>::type scalar_types;
     ConvertedType target;
     const boost::any& source = dmap.get(key);
     bool success;
     if (dmap.value() == typeid(ConvertedType))
     {
-	target = boost::any_cast<ConvertedType>(dmap.get(key));
-	success = true;
+        target = boost::any_cast<ConvertedType>(dmap.get(key));
+        success = true;
     }
     else
     {
-	boost::mpl::for_each<scalar_types>(AttemptAnyConversion<ConvertedType>(target, source, success));
+        boost::mpl::for_each<scalar_types>(AttemptAnyConversion<ConvertedType>(target, source, success));
     }
     if (!success)
-	throw boost::bad_lexical_cast();
+        throw boost::bad_lexical_cast();
     return target;
 }
 
@@ -123,21 +123,21 @@ template <class T>
 struct AttemptAnyConversion
 {
     AttemptAnyConversion(T& value, const boost::any& source, bool& success)
-	:_value(value), _source(source), _success(success) 
+        :_value(value), _source(source), _success(success) 
     { 
-	_success = false;
+        _success = false;
     }
 
     template <class Source>
     void operator()(Source)
     {
-	try
-	{
-	    _value = boost::lexical_cast<T>(boost::any_cast<Source>(_source));
-	    _success = true;
-	}
-	catch (boost::bad_any_cast){}
-	catch (boost::bad_lexical_cast){}
+        try
+        {
+            _value = boost::lexical_cast<T>(boost::any_cast<Source>(_source));
+            _success = true;
+        }
+        catch (boost::bad_any_cast){}
+        catch (boost::bad_lexical_cast){}
     }
 
     T& _value;
@@ -164,12 +164,12 @@ public:
 
     Value get(const Key& k) const
     {
-	return get_converted_scalar_value<Value>(*_dmap, k);
+        return get_converted_scalar_value<Value>(*_dmap, k);
     }
 
     void put(const Key& k, const Value& val)
     {
-	_dmap->put(k, val);
+        _dmap->put(k, val);
     }
 
 private:
@@ -189,7 +189,7 @@ Value get(const graph_tool::DynamicPropertyMapWrap<Value,Key>& pmap, typename pr
 
 template <class Value, class Key>
 void put(graph_tool::DynamicPropertyMapWrap<Value,Key> pmap, typename property_traits<graph_tool::DynamicPropertyMapWrap<Value,Key> >::key_type k, 
-	 typename property_traits<graph_tool::DynamicPropertyMapWrap<Value,Key> >::value_type val)
+         typename property_traits<graph_tool::DynamicPropertyMapWrap<Value,Key> >::value_type val)
 {
     pmap.put(k,val);
 }
@@ -258,26 +258,26 @@ public:
     typedef boost::read_write_property_map_tag category;
 
     InitializedPropertyMap(Container& base_map, value_type def)
-	: _base_map(&base_map), _default(def) {}
+        : _base_map(&base_map), _default(def) {}
     InitializedPropertyMap(){}
 
     reference operator[](const key_type& k)
     {
-	return get(k);
+        return get(k);
     }
 
     const reference operator[](const key_type& k) const
     {
-	return get(k);
+        return get(k);
     }
 
     const reference get(const key_type& k) const
     {
-	typename Container::iterator val;
-	val = _base_map->find(k);
-	if (val == _base_map->end())
-	    val = _base_map->insert(make_pair(k, _default)).first;
-	return val->second;
+        typename Container::iterator val;
+        val = _base_map->find(k);
+        if (val == _base_map->end())
+            val = _base_map->insert(make_pair(k, _default)).first;
+        return val->second;
     }
 
 private:
@@ -305,7 +305,7 @@ public:
 
     const value_type& operator[](const key_type& k) const
     {
-	return _c;
+        return _c;
     }
 
 private:
