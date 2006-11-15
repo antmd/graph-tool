@@ -250,7 +250,7 @@ void check_filter(const GraphInterface &g, Action a, ReverseCheck, DirectedCheck
     if (g._edge_python_filter == python::object() && g._vertex_python_filter == python::object())
     {
         if (g._vertex_filter_property != "" && g._edge_filter_property != "")
-        {	
+        {        
             typedef filtered_graph<GraphInterface::multigraph_t, edge_filter_t, vertex_filter_t> fg_t;
             fg_t fg(g._mg, edge_filter_t(g._edge_filter_map, g._edge_range), vertex_filter_t(g._vertex_filter_map, g._vertex_range));
             mpl::for_each<DirectedCheck>(check_directed<fg_t,Action,ReverseCheck>(fg, a, g._reversed, g._directed, found));

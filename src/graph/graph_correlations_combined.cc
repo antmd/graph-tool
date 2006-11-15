@@ -62,7 +62,7 @@ template <class SecondDegreeSelectors>
 struct choose_combined_degree_histogram
 {
     choose_combined_degree_histogram(const GraphInterface &g, GraphInterface::deg_t deg1, 
-        			     GraphInterface::deg_t deg2, GraphInterface::hist2d_t &hist)
+                                     GraphInterface::deg_t deg2, GraphInterface::hist2d_t &hist)
         : _g(g), _hist(hist) 
     {
         tie(_deg1, _deg_name1) = get_degree_type(deg1);
@@ -78,10 +78,10 @@ struct choose_combined_degree_histogram
         {
             if (mpl::at<degree_selector_index,DegreeSelector2>::type::value == _parent._deg2)
             {
-        	DegreeSelector1 deg1(_parent._deg_name1, _parent._g);
-        	DegreeSelector2 deg2(_parent._deg_name2, _parent._g);
-        	check_filter(_parent._g, bind<void>(get_combined_degree_histogram<DegreeSelector1,DegreeSelector2>(deg1,deg2), _1, var(_parent._hist)), 
-        		     reverse_check(),directed_check());
+                DegreeSelector1 deg1(_parent._deg_name1, _parent._g);
+                DegreeSelector2 deg2(_parent._deg_name2, _parent._g);
+                check_filter(_parent._g, bind<void>(get_combined_degree_histogram<DegreeSelector1,DegreeSelector2>(deg1,deg2), _1, var(_parent._hist)), 
+                             reverse_check(),directed_check());
             }
         }
         choose_combined_degree_histogram<SecondDegreeSelectors>& _parent;
@@ -151,12 +151,12 @@ struct get_average_combined_degree_correlation
             iter->second.first /= N;
             if (N > 1)
             {
-        	double err = (iter->second.second - N*iter->second.first*iter->second.first)/(N*(N-1));
-        	iter->second.second = (err<0.0)?0.0:sqrt(err);
+                double err = (iter->second.second - N*iter->second.first*iter->second.first)/(N*(N-1));
+                iter->second.second = (err<0.0)?0.0:sqrt(err);
             }
             else
             {
-        	iter->second.second = 0.0;
+                iter->second.second = 0.0;
             }
         }
     }
@@ -168,7 +168,7 @@ template <class SecondDegreeSelectors>
 struct choose_average_combined_degree_correlation
 {
     choose_average_combined_degree_correlation(const GraphInterface &g, GraphInterface::deg_t deg1, 
-        				       GraphInterface::deg_t deg2, GraphInterface::avg_corr_t &avg_corr)
+                                               GraphInterface::deg_t deg2, GraphInterface::avg_corr_t &avg_corr)
         : _g(g), _avg_corr(avg_corr) 
     {
         tie(_deg1, _deg_name1) = get_degree_type(deg1);
@@ -184,11 +184,11 @@ struct choose_average_combined_degree_correlation
         {
             if (mpl::at<degree_selector_index,DegreeSelector2>::type::value == _parent._deg2)
             {
-        	DegreeSelector1 deg1(_parent._deg_name1, _parent._g);
-        	DegreeSelector2 deg2(_parent._deg_name2, _parent._g);
-        	check_filter(_parent._g, bind<void>(get_average_combined_degree_correlation<DegreeSelector1,DegreeSelector2>(deg1,deg2), 
-        					    _1, var(_parent._avg_corr)), 
-        		     reverse_check(),directed_check());
+                DegreeSelector1 deg1(_parent._deg_name1, _parent._g);
+                DegreeSelector2 deg2(_parent._deg_name2, _parent._g);
+                check_filter(_parent._g, bind<void>(get_average_combined_degree_correlation<DegreeSelector1,DegreeSelector2>(deg1,deg2), 
+                                                    _1, var(_parent._avg_corr)), 
+                             reverse_check(),directed_check());
             }
         }
         choose_average_combined_degree_correlation<SecondDegreeSelectors>& _parent;

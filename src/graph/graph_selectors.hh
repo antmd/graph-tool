@@ -131,7 +131,7 @@ struct scalarS
         catch (bad_any_cast)
         {
             return get_value(v, typename boost::mpl::next<ValueIter>::type());
-        }	
+        }        
     }
 
     template <class VertexOrEdge> 
@@ -147,9 +147,9 @@ struct scalarS
 
 
 typedef boost::mpl::map< boost::mpl::pair<in_degreeS, boost::mpl::int_<GraphInterface::IN_DEGREE> >,
-        		 boost::mpl::pair<out_degreeS, boost::mpl::int_<GraphInterface::OUT_DEGREE> >,
-        		 boost::mpl::pair<total_degreeS, boost::mpl::int_<GraphInterface::TOTAL_DEGREE> >,
-        		 boost::mpl::pair<scalarS, boost::mpl::int_<GraphInterface::SCALAR> > > degree_selector_index;
+                         boost::mpl::pair<out_degreeS, boost::mpl::int_<GraphInterface::OUT_DEGREE> >,
+                         boost::mpl::pair<total_degreeS, boost::mpl::int_<GraphInterface::TOTAL_DEGREE> >,
+                         boost::mpl::pair<scalarS, boost::mpl::int_<GraphInterface::SCALAR> > > degree_selector_index;
 
 
 } //namespace graph_tool

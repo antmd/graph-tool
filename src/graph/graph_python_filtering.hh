@@ -51,8 +51,8 @@ struct populate_python_funcs
         for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)
         {
             if (iter->second->key() == typeid(Descriptor))
-        	variables[iter->first] = python::make_function(get_value<Descriptor>(*iter->second, u), 
-        						       python::default_call_policies(), mpl::vector<python::object>::type());
+                variables[iter->first] = python::make_function(get_value<Descriptor>(*iter->second, u), 
+                                                               python::default_call_policies(), mpl::vector<python::object>::type());
         }
         populate_specific(g, u, dp, variables);
     }
@@ -80,10 +80,10 @@ struct populate_python_funcs
         {
             if (iter->second->key() == typeid(vertex_descriptor))
             {
-        	variables["source_"+iter->first] = python::make_function(get_source_or_target_value<Graph,true>(g, *iter->second, e), 
-        								 python::default_call_policies(), mpl::vector<python::object>::type());
-        	variables["target_"+iter->first] = python::make_function(get_source_or_target_value<Graph,false>(g, *iter->second, e), 
-        								 python::default_call_policies(), mpl::vector<python::object>::type());
+                variables["source_"+iter->first] = python::make_function(get_source_or_target_value<Graph,true>(g, *iter->second, e), 
+                                                                         python::default_call_policies(), mpl::vector<python::object>::type());
+                variables["target_"+iter->first] = python::make_function(get_source_or_target_value<Graph,false>(g, *iter->second, e), 
+                                                                         python::default_call_policies(), mpl::vector<python::object>::type());
             }
         }
         mpl::for_each<degrees>(put_source_or_target_degree_function<Graph,true>(g, e, variables, "source_"));
@@ -104,10 +104,10 @@ struct populate_python_funcs
             template <class Type>
             void operator()(Type)
             {
-        	any any_val = const_cast<dynamic_property_map&>(_parent._dmap).get(_parent._e);
-        	Type* value = any_cast<Type>(&any_val);
-        	if (value != 0)
-        	    _parent._retval = python::object(*value);
+                any any_val = const_cast<dynamic_property_map&>(_parent._dmap).get(_parent._e);
+                Type* value = any_cast<Type>(&any_val);
+                if (value != 0)
+                    _parent._retval = python::object(*value);
             }
             
             get_value& _parent;
@@ -139,17 +139,17 @@ struct populate_python_funcs
             vertex_descriptor _s;
 
             if (Source)
-        	_s = source(_e, _g);
+                _s = source(_e, _g);
             else
-        	_s = target(_e, _g);
+                _s = target(_e, _g);
 
             get_value<vertex_descriptor> get_value(_dmap, _s);
             return get_value();
         }
 
-        const Graph& _g;	
+        const Graph& _g;        
         const dynamic_property_map& _dmap;
-        const edge_descriptor& _e;	
+        const edge_descriptor& _e;        
     };
 
     template <class Graph, class Degree>
@@ -159,7 +159,7 @@ struct populate_python_funcs
 
         get_degree(const Graph& g, const vertex_descriptor& v)
             : _g(g), _v(v) {}
-        	
+                
         python::object operator()()
         {
             return python::object(_degree(_v, _g));
@@ -181,7 +181,7 @@ struct populate_python_funcs
         void operator()(Degree degree)
         {
             _variables[_prefix+degree.name()] =  python::make_function(get_degree<Graph,Degree>(_g, _v),
-        							       python::default_call_policies(), mpl::vector<python::object>::type());
+                                                                       python::default_call_policies(), mpl::vector<python::object>::type());
         }
         const Graph& _g;
         const vertex_descriptor& _v;
@@ -201,7 +201,7 @@ struct populate_python_funcs
         void operator()(Degree degree)
         {
             this->_variables[this->_prefix+degree.name()] = python::make_function(get_degree<typename Graph::graph_type,Degree>(this->_g.m_g, this->_v),
-        									  python::default_call_policies(), mpl::vector<python::object>::type());
+                                                                                  python::default_call_policies(), mpl::vector<python::object>::type());
         }
     };
 
@@ -216,11 +216,11 @@ struct populate_python_funcs
         template <class Degree>
         void operator()(Degree d)
         {
-            vertex_descriptor v;	    
+            vertex_descriptor v;            
             if (Source)
-        	v = source(_e, this->_g);
+                v = source(_e, this->_g);
             else
-        	v = target(_e, this->_g);
+                v = target(_e, this->_g);
             put_degree_function<Graph>(_g, v, _variables, _prefix)(d);
         }
 
@@ -258,8 +258,8 @@ struct populate_python_funcs
             t = target(_e, _g);
             typename graph_traits<Graph>::adjacency_iterator a, a_end;
             for(tie(a, a_end) = adjacent_vertices(s, _g); a != a_end; ++a)
-        	if (*a == t)
-        	    n++;
+                if (*a == t)
+                    n++;
             return python::object(n-1);
         }
         const Graph& _g;

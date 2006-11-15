@@ -100,17 +100,17 @@ void GraphInterface::SetVertexFilterProperty(string property)
             dynamic_property_map& pmap = find_property_map(_properties, property, typeid(graph_traits<multigraph_t>::vertex_descriptor));
 
             if (get_static_property_map<vector_property_map<double,vertex_index_map_t> >(&pmap))
-        	_vertex_filter_map = get_static_property_map<vector_property_map<double,vertex_index_map_t> >(pmap);
+                _vertex_filter_map = get_static_property_map<vector_property_map<double,vertex_index_map_t> >(pmap);
             else if (get_static_property_map<HashedDescriptorMap<vertex_index_map_t,double> >(&pmap))
-        	_vertex_filter_map = get_static_property_map<HashedDescriptorMap<vertex_index_map_t,double> >(pmap);
+                _vertex_filter_map = get_static_property_map<HashedDescriptorMap<vertex_index_map_t,double> >(pmap);
             else if (get_static_property_map<vector_property_map<size_t,vertex_index_map_t> >(&pmap))
-        	_vertex_filter_map = get_static_property_map<vector_property_map<size_t,vertex_index_map_t> >(pmap);
+                _vertex_filter_map = get_static_property_map<vector_property_map<size_t,vertex_index_map_t> >(pmap);
             else if (get_static_property_map<HashedDescriptorMap<vertex_index_map_t,size_t> >(&pmap))
-        	_vertex_filter_map = get_static_property_map<HashedDescriptorMap<vertex_index_map_t,size_t> >(pmap);
+                _vertex_filter_map = get_static_property_map<HashedDescriptorMap<vertex_index_map_t,size_t> >(pmap);
             else if (get_static_property_map<vertex_index_map_t>(&pmap))
-        	_vertex_filter_map = get_static_property_map<vertex_index_map_t>(pmap);
+                _vertex_filter_map = get_static_property_map<vertex_index_map_t>(pmap);
             else 
-        	_vertex_filter_map = DynamicPropertyMapWrap<double, graph_traits<multigraph_t>::vertex_descriptor>(pmap);
+                _vertex_filter_map = DynamicPropertyMapWrap<double, graph_traits<multigraph_t>::vertex_descriptor>(pmap);
         }
         catch (property_not_found) 
         {
@@ -132,17 +132,17 @@ void GraphInterface::SetEdgeFilterProperty(string property)
             dynamic_property_map& pmap = find_property_map(_properties, property, typeid(graph_traits<multigraph_t>::edge_descriptor));
             
             if (get_static_property_map<vector_property_map<double,edge_index_map_t> >(&pmap))
-        	_edge_filter_map = get_static_property_map<vector_property_map<double,edge_index_map_t> >(pmap);
+                _edge_filter_map = get_static_property_map<vector_property_map<double,edge_index_map_t> >(pmap);
             else if (get_static_property_map<HashedDescriptorMap<edge_index_map_t,double> >(&pmap))
-        	_edge_filter_map = get_static_property_map<HashedDescriptorMap<edge_index_map_t,double> >(pmap);
+                _edge_filter_map = get_static_property_map<HashedDescriptorMap<edge_index_map_t,double> >(pmap);
             else if (get_static_property_map<vector_property_map<size_t,edge_index_map_t> >(&pmap))
-        	_edge_filter_map = get_static_property_map<vector_property_map<size_t,edge_index_map_t> >(pmap);
+                _edge_filter_map = get_static_property_map<vector_property_map<size_t,edge_index_map_t> >(pmap);
             else if (get_static_property_map<HashedDescriptorMap<edge_index_map_t,size_t> >(&pmap))
-        	_edge_filter_map = get_static_property_map<HashedDescriptorMap<edge_index_map_t,size_t> >(pmap);
+                _edge_filter_map = get_static_property_map<HashedDescriptorMap<edge_index_map_t,size_t> >(pmap);
             else if (get_static_property_map<edge_index_map_t>(&pmap))
-        	_edge_filter_map = get_static_property_map<edge_index_map_t>(pmap);
+                _edge_filter_map = get_static_property_map<edge_index_map_t>(pmap);
             else 
-        	_edge_filter_map = DynamicPropertyMapWrap<double, graph_traits<multigraph_t>::edge_descriptor>(pmap);
+                _edge_filter_map = DynamicPropertyMapWrap<double, graph_traits<multigraph_t>::edge_descriptor>(pmap);
         }
         catch (property_not_found) 
         {
@@ -336,16 +336,16 @@ struct label_parallel_edges
             typename graph_traits<Graph>::out_edge_iterator e1, e2, e_end;
             for (tie(e1, e_end) = out_edges(*v, g); e1 != e_end; ++e1)
             {
-        	if (p_edges.find(*e1) != p_edges.end())
-        	    continue;
-        	size_t n = 0;
-        	put(parallel, *e1, n);
-        	for (tie(e2, e_end) = out_edges(*v, g); e2 != e_end; ++e2)
-        	    if (*e2 != *e1 && target(*e1, g) == target(*e2, g))
-        	    {
-        		put(parallel, *e2, ++n);
-        		p_edges.insert(*e2);
-        	    }
+                if (p_edges.find(*e1) != p_edges.end())
+                    continue;
+                size_t n = 0;
+                put(parallel, *e1, n);
+                for (tie(e2, e_end) = out_edges(*v, g); e2 != e_end; ++e2)
+                    if (*e2 != *e1 && target(*e1, g) == target(*e2, g))
+                    {
+                        put(parallel, *e2, ++n);
+                        p_edges.insert(*e2);
+                    }
             }
         }
     }
@@ -404,9 +404,9 @@ struct compute_gursoy
             iter = n;
         square_topology<mt19937> topology(rng, n);
         gursoy_atun_layout(g, topology, position_map, iterations(iter).
-        		   diameter_range(make_pair(sqrt(double(n)), 1.0)).
-        		   learning_constant_range(make_pair(0.8, 0.2)).
-        		   vertex_index_map(index_map));
+                           diameter_range(make_pair(sqrt(double(n)), 1.0)).
+                           learning_constant_range(make_pair(0.8, 0.2)).
+                           vertex_index_map(index_map));
         typename graph_traits<Graph>::vertex_iterator v, v_begin, v_end;
         tie(v_begin, v_end) = vertices(g);
         for(v = v_begin; v != v_end; ++v)

@@ -59,15 +59,15 @@ struct get_assortativity_coefficient
             a[k1]++;
             b[k2]++;
             if (k1 == k2)
-        	e_kk++;
+                e_kk++;
             n_edges++;
             if(is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::value)
             {
-        	a[k2]++;
-        	a[k1]++;
-        	if (k1 == k2)
-        	    e_kk++;
-        	n_edges++;
+                a[k2]++;
+                a[k1]++;
+                if (k1 == k2)
+                    e_kk++;
+                n_edges++;
             }
         }
         
@@ -75,7 +75,7 @@ struct get_assortativity_coefficient
         
         for (typeof(a.begin()) iter = a.begin(); iter != a.end(); ++iter)
             if (b.find(iter->second) != b.end())
-        	t2 += double(iter->second * b[iter->first]);
+                t2 += double(iter->second * b[iter->first]);
         t2 /= n_edges*n_edges;
         
         r = (t1 - t2)/(1.0 - t2);
@@ -89,11 +89,11 @@ struct get_assortativity_coefficient
             k2 = _deg(target(*e,g),g);
             int one = 1;
             if(is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::value)
-        	one = 2; // nice! :-)
+                one = 2; // nice! :-)
             double tl2 = (t2*(n_edges*n_edges) - b[k1] - a[k2])/((n_edges-one)*(n_edges-one));
             double tl1 = t1*n_edges;
             if (k1==k2)
-        	tl1 -= one;
+                tl1 -= one;
             tl1 /= n_edges - one;
             double rl = (tl1 - tl2)/(1.0 - tl2);
             r_err += (r-rl)*(r-rl);
@@ -120,7 +120,7 @@ struct choose_assortativity_coefficient
         {
             DegreeSelector deg(_deg_name, _g);
             check_filter(_g, bind<void>(get_assortativity_coefficient<DegreeSelector>(deg), _1, var(_a), var(_a_err)), 
-        		 reverse_check(),directed_check());
+                         reverse_check(),directed_check());
         }
     };
 
@@ -180,10 +180,10 @@ struct get_scalar_assortativity_coefficient
             n_edges++;
             if(is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::value)
             {
-        	a[k2]++;
-        	b[k1]++;
-        	e_xy += k1*k2;
-        	n_edges++;
+                a[k2]++;
+                b[k1]++;
+                e_xy += k1*k2;
+                n_edges++;
             }
         }
         
@@ -210,16 +210,16 @@ struct get_scalar_assortativity_coefficient
             k2 = _deg(target(*e,g),g);
             int one = 1;
             if(is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::value)
-        	one = 2;
+                one = 2;
             double t1l = (e_xy - k1*k2)/(n_edges-one);
             double avg_al = (avg_a*n_edges - k1)/(n_edges-one), avg_bl = (avg_b*n_edges - k2)/(n_edges-one);
             double sal = sa - 2*diff_a*(avg_al-avg_a) + (avg_al-avg_a)*(avg_al-avg_a);
             double sbl = sb - 2*diff_b*(avg_bl-avg_b) + (avg_bl-avg_b)*(avg_bl-avg_b);
             double rl;
             if (sal*sbl > 0)
-        	rl = (t1l - avg_al*avg_bl)/(sal*sbl);
+                rl = (t1l - avg_al*avg_bl)/(sal*sbl);
             else
-        	rl = (t1l - avg_al*avg_bl);
+                rl = (t1l - avg_al*avg_bl);
             r_err += (r-rl)*(r-rl);
         }
         r_err = sqrt(r_err);
@@ -244,7 +244,7 @@ struct choose_scalar_assortativity_coefficient
         {
             DegreeSelector deg(_deg_name, _g);
             check_filter(_g, bind<void>(get_scalar_assortativity_coefficient<DegreeSelector>(deg), _1, var(_a), var(_a_err)), 
-        		 reverse_check(),directed_check());
+                         reverse_check(),directed_check());
         }
     };
 

@@ -84,7 +84,7 @@ struct get_extended_clustering
     {        
         typename graph_traits<Graph>::vertex_iterator v, v_end;
         for (tie(v,v_end) = vertices(g); v != v_end; ++v) 
-        {	    
+        {            
             // We must disconsider paths through the original vertex
             typedef single_vertex_filter<typename graph_traits<Graph>::vertex_descriptor> filter_t;
             typedef filtered_graph<Graph, keep_all, filter_t> fg_t;
@@ -99,50 +99,50 @@ struct get_extended_clustering
             // collect the targets
             typename graph_traits<Graph>::adjacency_iterator a, a_end;
             for(tie(a, a_end) = adjacent_vertices(*v, g); a != a_end; ++a)
-        	if (*a != *v) // no self-loops
-        	    targets.insert(*a);
+                if (*a != *v) // no self-loops
+                    targets.insert(*a);
             size_t k = targets.size();
 
             // And now we setup and start the BFS bonanza
             for(tie(a, a_end) = adjacent_vertices(*v, g); a != a_end; ++a)
             {
-        	if (*a == *v) // no self-loops
-        	    continue;
-        	if (neighbours.find(*a) != neighbours.end()) // avoid parallel edges
-        	    continue;
-        	neighbours.insert(*a);
+                if (*a == *v) // no self-loops
+                    continue;
+                if (neighbours.find(*a) != neighbours.end()) // avoid parallel edges
+                    continue;
+                neighbours.insert(*a);
 
-        	typedef tr1::unordered_map<typename graph_traits<Graph>::vertex_descriptor,size_t,DescriptorHash<IndexMap> > dmap_t;
-        	dmap_t dmap(0, DescriptorHash<IndexMap>(vertex_index));
-        	InitializedPropertyMap<dmap_t> distance_map(dmap, numeric_limits<size_t>::max());
+                typedef tr1::unordered_map<typename graph_traits<Graph>::vertex_descriptor,size_t,DescriptorHash<IndexMap> > dmap_t;
+                dmap_t dmap(0, DescriptorHash<IndexMap>(vertex_index));
+                InitializedPropertyMap<dmap_t> distance_map(dmap, numeric_limits<size_t>::max());
 
-        	typedef tr1::unordered_map<typename graph_traits<Graph>::vertex_descriptor,default_color_type,DescriptorHash<IndexMap> > cmap_t;
-        	cmap_t cmap(0, DescriptorHash<IndexMap>(vertex_index));
-        	InitializedPropertyMap<cmap_t> color_map(cmap, color_traits<default_color_type>::white());
-        	
-        	try
-        	{
-        	    distance_map[*a] = 0;
-        	    neighbour_set_t specific_targets = targets;
-        	    specific_targets.erase(*a);
-        	    bfs_max_depth_watcher<neighbour_set_t,InitializedPropertyMap<dmap_t> > watcher(specific_targets, cmaps.size(), distance_map);
-        	    breadth_first_visit(fg, *a, visitor(make_bfs_visitor(make_pair(record_distances(distance_map, boost::on_tree_edge()),watcher))).
-        				color_map(color_map));
-        	}
-        	catch(bfs_stop_exception) {}
+                typedef tr1::unordered_map<typename graph_traits<Graph>::vertex_descriptor,default_color_type,DescriptorHash<IndexMap> > cmap_t;
+                cmap_t cmap(0, DescriptorHash<IndexMap>(vertex_index));
+                InitializedPropertyMap<cmap_t> color_map(cmap, color_traits<default_color_type>::white());
+                
+                try
+                {
+                    distance_map[*a] = 0;
+                    neighbour_set_t specific_targets = targets;
+                    specific_targets.erase(*a);
+                    bfs_max_depth_watcher<neighbour_set_t,InitializedPropertyMap<dmap_t> > watcher(specific_targets, cmaps.size(), distance_map);
+                    breadth_first_visit(fg, *a, visitor(make_bfs_visitor(make_pair(record_distances(distance_map, boost::on_tree_edge()),watcher))).
+                                        color_map(color_map));
+                }
+                catch(bfs_stop_exception) {}
 
-        	neighbours2.clear();
-        	typename graph_traits<Graph>::adjacency_iterator a2;
-        	for(a2 = adjacent_vertices(*v, g).first ; a2 != a_end ; ++a2) 
-        	{
-        	    if (*a2 == *v || *a2 == *a) // no self-loops
-        		continue;
-        	    if (neighbours2.find(*a2) != neighbours2.end()) // avoid parallel edges
-        		continue;
-        	    neighbours2.insert(*a2);
-        	    if (distance_map[*a2] <= cmaps.size())
-        		cmaps[distance_map[*a2]-1][*v] += 1.0/(k*(k-1));
-        	}
+                neighbours2.clear();
+                typename graph_traits<Graph>::adjacency_iterator a2;
+                for(a2 = adjacent_vertices(*v, g).first ; a2 != a_end ; ++a2) 
+                {
+                    if (*a2 == *v || *a2 == *a) // no self-loops
+                        continue;
+                    if (neighbours2.find(*a2) != neighbours2.end()) // avoid parallel edges
+                        continue;
+                    neighbours2.insert(*a2);
+                    if (distance_map[*a2] <= cmaps.size())
+                        cmaps[distance_map[*a2]-1][*v] += 1.0/(k*(k-1));
+                }
             }
         }
     }

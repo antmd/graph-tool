@@ -163,14 +163,14 @@ class GraphInterfaceWrap: public GraphInterface
 {
 public:
     void GenerateCorrelatedConfigurationalModel(size_t N, object pjk, object ceil_pjk, object inv_ceil_pjk, double ceil_pjk_bound,
-        					object corr, object ceil_corr, object inv_ceil_corr, double ceil_corr_bound, bool undirected_corr, 
-        					size_t seed, bool verbose) 
+                                                object corr, object ceil_corr, object inv_ceil_corr, double ceil_corr_bound, bool undirected_corr, 
+                                                size_t seed, bool verbose) 
     {
         GraphInterface& base = *this;
         base.GenerateCorrelatedConfigurationalModel(N, pjk_t(python_function(pjk)), pjk_t(python_function(ceil_pjk)), 
-        					    inv_ceil_t(python_function(inv_ceil_pjk)),
-        					    ceil_pjk_bound, corr_t(python_function(corr)), corr_t(python_function(ceil_corr)), 
-        					    inv_corr_t(python_function(inv_ceil_corr)), ceil_corr_bound, undirected_corr, seed, verbose);
+                                                    inv_ceil_t(python_function(inv_ceil_pjk)),
+                                                    ceil_pjk_bound, corr_t(python_function(corr)), corr_t(python_function(ceil_corr)), 
+                                                    inv_corr_t(python_function(inv_ceil_corr)), ceil_corr_bound, undirected_corr, seed, verbose);
     }
 
     struct python_function

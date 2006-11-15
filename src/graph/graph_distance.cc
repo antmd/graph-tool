@@ -62,9 +62,9 @@ struct get_distance_histogram
             dist_map[*v] = 0.0;
             get_vertex_dists(g, *v, index_map, dist_map, weights);
             for (v2 = vertices(g).first; v2 != v_end; ++v2)
-        	if (*v2 != *v && dist_map[*v2] != numeric_limits<double>::max())
-        	    hist[dist_map[*v2]]++;
-        }	
+                if (*v2 != *v && dist_map[*v2] != numeric_limits<double>::max())
+                    hist[dist_map[*v2]]++;
+        }        
     }
 
     // weighted version. Use dijkstra_shortest_paths()
@@ -86,7 +86,7 @@ struct get_distance_histogram
             typedef tr1::unordered_map<typename graph_traits<Graph>::vertex_descriptor,default_color_type,DescriptorHash<IndexMap> > cmap_t;
             cmap_t cmap(0, DescriptorHash<IndexMap>(index_map));
             InitializedPropertyMap<cmap_t> color_map(cmap, color_traits<default_color_type>::white());
-            	    
+                        
             breadth_first_visit(g, s, visitor(make_bfs_visitor(record_distances(dist_map, on_tree_edge()))).color_map(color_map)); 
         }
     };
@@ -101,7 +101,7 @@ GraphInterface::hist_t GraphInterface::GetDistanceHistogram(string weight) const
     if (weight == "")
     {
         check_filter(*this, bind<void>(get_distance_histogram(), _1, _vertex_index, no_weightS(), var(hist)),
-        	     reverse_check(), directed_check()); 
+                     reverse_check(), directed_check()); 
     }
     else
     {
@@ -110,16 +110,16 @@ GraphInterface::hist_t GraphInterface::GetDistanceHistogram(string weight) const
             dynamic_property_map& weight_prop = find_property_map(_properties, weight, typeid(graph_traits<multigraph_t>::edge_descriptor));
             try 
             {
-        	vector_property_map<double, edge_index_map_t> weight_map;
-        	weight_map = get_static_property_map<vector_property_map<double, edge_index_map_t> >(weight_prop);
-        	check_filter(*this, bind<void>(get_distance_histogram(), _1, _vertex_index, weight_map, var(hist)),
-        		     reverse_check(), directed_check()); 
+                vector_property_map<double, edge_index_map_t> weight_map;
+                weight_map = get_static_property_map<vector_property_map<double, edge_index_map_t> >(weight_prop);
+                check_filter(*this, bind<void>(get_distance_histogram(), _1, _vertex_index, weight_map, var(hist)),
+                             reverse_check(), directed_check()); 
             }
             catch (bad_cast)
             {
-        	DynamicPropertyMapWrap<double, graph_traits<multigraph_t>::edge_descriptor> weight_map(weight_prop);
-        	check_filter(*this, bind<void>(get_distance_histogram(), _1, _vertex_index, weight_map, var(hist)),
-        		     reverse_check(), directed_check()); 
+                DynamicPropertyMapWrap<double, graph_traits<multigraph_t>::edge_descriptor> weight_map(weight_prop);
+                check_filter(*this, bind<void>(get_distance_histogram(), _1, _vertex_index, weight_map, var(hist)),
+                             reverse_check(), directed_check()); 
             }
         }
         catch (property_not_found& e)

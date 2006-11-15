@@ -61,25 +61,25 @@ pair<int,int> get_triangles(typename graph_traits<Graph>::vertex_descriptor v, c
         for (n2 = n2_begin; n2 != n2_end; ++n2)
         {
             if (*n2 == *n1) // no self-loops
-        	continue;
+                continue;
             if (neighbour_set2.find(*n2) != neighbour_set2.end())
-        	continue;
+                continue;
             else
-        	neighbour_set2.insert(*n2);
+                neighbour_set2.insert(*n2);
             
             typename graph_traits<Graph>::adjacency_iterator n3_begin, n3_end, n3;
             tie(n3_begin, n3_end) = adjacent_vertices(*n2, g);
             for (n3 = n3_begin; n3 != n3_end; ++n3)
             {
-        	if (*n3 == *n2) // no self-loops
-        	    continue;
-        	if (neighbour_set3.find(*n3) != neighbour_set3.end())
-        	    continue;
-        	else
-        	    neighbour_set3.insert(*n3);
+                if (*n3 == *n2) // no self-loops
+                    continue;
+                if (neighbour_set3.find(*n3) != neighbour_set3.end())
+                    continue;
+                else
+                    neighbour_set3.insert(*n3);
                         
-        	if (*n3 == v) //found a triangle
-        	    triangles++; 
+                if (*n3 == v) //found a triangle
+                    triangles++; 
             }
             neighbour_set3.clear();
         }
@@ -162,8 +162,8 @@ struct set_clustering_to_property
     struct get_undirected_graph
     {
         typedef typename mpl::if_< is_convertible<typename graph_traits<Graph>::directed_category, directed_tag>,
-        			   const UndirectedAdaptor<Graph>,
-        			   const Graph& >::type type;
+                                   const UndirectedAdaptor<Graph>,
+                                   const Graph& >::type type;
     };
 };
 

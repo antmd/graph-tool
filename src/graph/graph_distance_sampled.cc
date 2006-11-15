@@ -70,13 +70,13 @@ struct get_sampled_distances
         for(i=0; i < samples; ++i)
         {
             for(tie(v, v_end) = vertices(g); v != v_end; ++v)
-        	dist_map[*v] = numeric_limits<double>::max();
+                dist_map[*v] = numeric_limits<double>::max();
             typename graph_traits<Graph>::vertex_descriptor s = descriptors[sampler(rng)];
             dist_map[s] = 0.0;
             get_vertex_dists(g, s, index_map, dist_map, weights);
             for(tie(v, v_end) = vertices(g); v != v_end; ++v,++i)
-        	if (*v != s && dist_map[*v] != numeric_limits<double>::max() )
-        	    hist[dist_map[*v]]++;
+                if (*v != s && dist_map[*v] != numeric_limits<double>::max() )
+                    hist[dist_map[*v]]++;
         }
         
     }
@@ -87,7 +87,7 @@ struct get_sampled_distances
         template <class Graph, class Vertex, class IndexMap, class DistanceMap, class WeightMap>
         void operator()(const Graph& g, Vertex s, IndexMap index_map, DistanceMap dist_map, WeightMap weights) const
         {
-            dijkstra_shortest_paths(g, s, vertex_index_map(index_map).weight_map(weights).distance_map(dist_map));	    
+            dijkstra_shortest_paths(g, s, vertex_index_map(index_map).weight_map(weights).distance_map(dist_map));            
         }
     };
 
@@ -96,7 +96,7 @@ struct get_sampled_distances
     {
         template <class Graph, class Vertex, class IndexMap, class DistanceMap>
         void operator()(const Graph& g, Vertex s, IndexMap index_map, DistanceMap dist_map, no_weightS) const
-        {	    
+        {            
             breadth_first_search(g, s, visitor(make_bfs_visitor(record_distances(dist_map, on_tree_edge()))));
         }
     };
@@ -111,7 +111,7 @@ GraphInterface::GetSampledDistanceHistogram(string weight, size_t samples, size_
     if (weight == "")
     {
         check_filter(*this, bind<void>(get_sampled_distances(), _1, _vertex_index, no_weightS(), var(hist), samples, seed),
-        	     reverse_check(), directed_check()); 
+                     reverse_check(), directed_check()); 
     }
     else
     {
@@ -120,16 +120,16 @@ GraphInterface::GetSampledDistanceHistogram(string weight, size_t samples, size_
             dynamic_property_map& weight_prop = find_property_map(_properties, weight, typeid(graph_traits<multigraph_t>::edge_descriptor));
             try 
             {
-        	vector_property_map<double, edge_index_map_t> weight_map;
-        	weight_map = get_static_property_map<vector_property_map<double, edge_index_map_t> >(weight_prop);
-        	check_filter(*this, bind<void>(get_sampled_distances(), _1, _vertex_index, weight_map, var(hist), samples, seed),
-        		     reverse_check(), directed_check()); 
+                vector_property_map<double, edge_index_map_t> weight_map;
+                weight_map = get_static_property_map<vector_property_map<double, edge_index_map_t> >(weight_prop);
+                check_filter(*this, bind<void>(get_sampled_distances(), _1, _vertex_index, weight_map, var(hist), samples, seed),
+                             reverse_check(), directed_check()); 
             }
             catch (bad_cast)
             {
-        	DynamicPropertyMapWrap<double, graph_traits<multigraph_t>::edge_descriptor> weight_map(weight_prop);
-        	check_filter(*this, bind<void>(get_sampled_distances(), _1, _vertex_index, weight_map, var(hist), samples, seed),
-        		     reverse_check(), directed_check()); 
+                DynamicPropertyMapWrap<double, graph_traits<multigraph_t>::edge_descriptor> weight_map(weight_prop);
+                check_filter(*this, bind<void>(get_sampled_distances(), _1, _vertex_index, weight_map, var(hist), samples, seed),
+                             reverse_check(), directed_check()); 
             }
         }
         catch (property_not_found& e)

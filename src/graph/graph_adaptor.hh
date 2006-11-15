@@ -111,10 +111,10 @@ private:
 template <typename Graph> 
 class UndirectedAdaptorEdgeIterator
     : public iterator<std::bidirectional_iterator_tag,
-        	      typename UndirectedAdaptor<Graph>::EdgeDescriptor,
-        	      std::ptrdiff_t,
-        	      typename UndirectedAdaptor<Graph>::EdgeDescriptor*, 
-        	      typename UndirectedAdaptor<Graph>::EdgeDescriptor>  //not a reference!
+                      typename UndirectedAdaptor<Graph>::EdgeDescriptor,
+                      std::ptrdiff_t,
+                      typename UndirectedAdaptor<Graph>::EdgeDescriptor*, 
+                      typename UndirectedAdaptor<Graph>::EdgeDescriptor>  //not a reference!
 {
 public:
     UndirectedAdaptorEdgeIterator() {}
@@ -174,19 +174,19 @@ private:
 template <typename Graph> 
 class UndirectedAdaptorOutEdgeIterator 
     : public iterator<std::bidirectional_iterator_tag,
-        	      typename UndirectedAdaptor<Graph>::EdgeDescriptor,
-        	      std::ptrdiff_t,
-        	      typename UndirectedAdaptor<Graph>::EdgeDescriptor*, 
-        	      typename UndirectedAdaptor<Graph>::EdgeDescriptor> //not a reference 
+                      typename UndirectedAdaptor<Graph>::EdgeDescriptor,
+                      std::ptrdiff_t,
+                      typename UndirectedAdaptor<Graph>::EdgeDescriptor*, 
+                      typename UndirectedAdaptor<Graph>::EdgeDescriptor> //not a reference 
 {
 public:
     UndirectedAdaptorOutEdgeIterator() {};
     UndirectedAdaptorOutEdgeIterator(typename graph_traits<Graph>::out_edge_iterator out_iter, 
-        			     typename graph_traits<Graph>::in_edge_iterator in_iter, 
-        			     const std::pair<typename graph_traits<Graph>::out_edge_iterator, 
-        			     typename graph_traits<Graph>::out_edge_iterator> out_range,  
-        			     const std::pair<typename graph_traits<Graph>::in_edge_iterator, 
-        			     typename graph_traits<Graph>::in_edge_iterator> in_range)
+                                     typename graph_traits<Graph>::in_edge_iterator in_iter, 
+                                     const std::pair<typename graph_traits<Graph>::out_edge_iterator, 
+                                     typename graph_traits<Graph>::out_edge_iterator> out_range,  
+                                     const std::pair<typename graph_traits<Graph>::in_edge_iterator, 
+                                     typename graph_traits<Graph>::in_edge_iterator> in_range)
     :_out_range(out_range), _in_range(in_range), _out_iter(out_iter), _in_iter(in_iter) {};                  
 
     typename UndirectedAdaptor<Graph>::EdgeDescriptor operator*() const
@@ -280,10 +280,10 @@ public:
 template <typename Graph> 
 class UndirectedAdaptorAdjacencyIterator 
     : public iterator<std::bidirectional_iterator_tag,
-        	      typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor,
-        	      std::ptrdiff_t,
-        	      typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor*,
-        	      typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor> //not a reference
+                      typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor,
+                      std::ptrdiff_t,
+                      typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor*,
+                      typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor> //not a reference
 {
 public:
     UndirectedAdaptorAdjacencyIterator(){};

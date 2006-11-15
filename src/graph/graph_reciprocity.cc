@@ -48,13 +48,13 @@ struct get_reciprocity
             size_t o = 0;
             typename graph_traits<Graph>::adjacency_iterator a, a_end;
             for (tie(a,a_end) = adjacent_vertices(s, g); a != a_end; ++a)
-        	if (*a == t)
-        	    o++;
+                if (*a == t)
+                    o++;
 
             size_t i = 0;
             for (tie(a, a_end) = adjacent_vertices(t, g); a != a_end; ++a)
-        	if (*a == s)
-        	    i++;
+                if (*a == s)
+                    i++;
 
             Lbd += min(i/double(o),1.0);
             L++;

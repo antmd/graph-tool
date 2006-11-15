@@ -108,27 +108,27 @@ struct get_community_network
             iostreams::filtering_stream<iostreams::output> stream;
             ofstream file_stream;
             if (file == "-")
-        	stream.push(cout);
+                stream.push(cout);
             else
             {
-        	file_stream.open(file.c_str(), ios_base::out | ios_base::binary);
-        	file_stream.exceptions(ios_base::badbit | ios_base::failbit);
-        	if (ends_with(file,".gz"))
-        	    stream.push(iostreams::gzip_compressor());
-        	if (ends_with(file,".bz2"))
-        	    stream.push(iostreams::bzip2_compressor());
-        	stream.push(file_stream);
+                file_stream.open(file.c_str(), ios_base::out | ios_base::binary);
+                file_stream.exceptions(ios_base::badbit | ios_base::failbit);
+                if (ends_with(file,".gz"))
+                    stream.push(iostreams::gzip_compressor());
+                if (ends_with(file,".bz2"))
+                    stream.push(iostreams::bzip2_compressor());
+                stream.push(file_stream);
             }
             stream.exceptions(ios_base::badbit | ios_base::failbit);
             
             if (graphviz)
             {
-        	dp.property("vertex_id", comm_vertex_index);
-        	write_graphviz(stream, comm_graph, dp, string("vertex_id"));
+                dp.property("vertex_id", comm_vertex_index);
+                write_graphviz(stream, comm_graph, dp, string("vertex_id"));
             }
             else
             {
-        	write_graphml(stream, comm_graph, comm_vertex_index, dp, true);
+                write_graphml(stream, comm_graph, comm_vertex_index, dp, true);
             }
             stream.reset();
         }
@@ -184,7 +184,7 @@ void GraphInterface::GetCommunityNetwork(string property, string out_file, strin
         dynamic_properties_copy edge_properties;
         for (typeof(_properties.begin()) iter = _properties.begin(); iter != _properties.end(); ++iter)
             if (iter->second->key() == typeid(graph_traits<multigraph_t>::edge_descriptor))
-        	edge_properties.insert(iter->first, auto_ptr<dynamic_property_map>(iter->second));
+                edge_properties.insert(iter->first, auto_ptr<dynamic_property_map>(iter->second));
 
         check_filter(*this, bind<void>(get_community_network(), _1, var(comm_map), property, var(edge_properties), out_file, format), reverse_check(), directed_check());
     }

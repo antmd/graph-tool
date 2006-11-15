@@ -56,8 +56,8 @@ struct get_correlation_histogram
             hist[key]++;
             if(is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::value)
             {
-        	swap(key.first, key.second);
-        	hist[key]++;
+                swap(key.first, key.second);
+                hist[key]++;
             }
         }
     }
@@ -74,7 +74,7 @@ template <class SecondDegreeSelectors>
 struct choose_vertex_correlation_histogram
 {
     choose_vertex_correlation_histogram(const GraphInterface &g, GraphInterface::deg_t deg1, 
-        				GraphInterface::deg_t deg2, GraphInterface::hist2d_t &hist)
+                                        GraphInterface::deg_t deg2, GraphInterface::hist2d_t &hist)
         : _g(g), _hist(hist) 
     {
         tie(_deg1, _deg_name1) = get_degree_type(deg1);
@@ -90,10 +90,10 @@ struct choose_vertex_correlation_histogram
         {
             if (mpl::at<degree_selector_index,DegreeSelector2>::type::value == _parent._deg2)
             {
-        	DegreeSelector1 deg1(_parent._deg_name1, _parent._g);
-        	DegreeSelector2 deg2(_parent._deg_name2, _parent._g);
-        	check_filter(_parent._g, bind<void>(get_correlation_histogram<DegreeSelector1,DegreeSelector2>(deg1,deg2), _1, var(_parent._hist)), 
-        		     reverse_check(),directed_check());
+                DegreeSelector1 deg1(_parent._deg_name1, _parent._g);
+                DegreeSelector2 deg2(_parent._deg_name2, _parent._g);
+                check_filter(_parent._g, bind<void>(get_correlation_histogram<DegreeSelector1,DegreeSelector2>(deg1,deg2), _1, var(_parent._hist)), 
+                             reverse_check(),directed_check());
             }
         }
         choose_vertex_correlation_histogram<SecondDegreeSelectors> _parent;
@@ -155,8 +155,8 @@ struct get_edge_correlation_histogram
             hist[key]++;
             if(is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::value)
             {
-        	swap(get<0>(key), get<2>(key));
-        	hist[key]++;
+                swap(get<0>(key), get<2>(key));
+                hist[key]++;
             }
         }
     }
@@ -174,7 +174,7 @@ template <class SecondDegreeSelectors>
 struct choose_edge_vertex_correlation_histogram
 {
     choose_edge_vertex_correlation_histogram(const GraphInterface& g, GraphInterface::deg_t deg1,  scalarS& edge_scalar, 
-        				     GraphInterface::deg_t deg2, GraphInterface::hist3d_t& hist)
+                                             GraphInterface::deg_t deg2, GraphInterface::hist3d_t& hist)
         : _g(g), _edge_scalar(edge_scalar), _hist(hist) 
     {
         tie(_deg1, _deg_name1) = get_degree_type(deg1);
@@ -190,11 +190,11 @@ struct choose_edge_vertex_correlation_histogram
         {
             if (mpl::at<degree_selector_index,DegreeSelector2>::type::value == _parent._deg2)
             {
-        	DegreeSelector1 deg1(_parent._deg_name1, _parent._g);
-        	DegreeSelector2 deg2(_parent._deg_name2, _parent._g);
-        	check_filter(_parent._g, bind<void>(get_edge_correlation_histogram<DegreeSelector1,DegreeSelector2>(deg1,deg2,_parent._edge_scalar),
-        					    _1, var(_parent._hist)), 
-        		     reverse_check(),directed_check());
+                DegreeSelector1 deg1(_parent._deg_name1, _parent._g);
+                DegreeSelector2 deg2(_parent._deg_name2, _parent._g);
+                check_filter(_parent._g, bind<void>(get_edge_correlation_histogram<DegreeSelector1,DegreeSelector2>(deg1,deg2,_parent._edge_scalar),
+                                                    _1, var(_parent._hist)), 
+                             reverse_check(),directed_check());
             }
         }
         choose_edge_vertex_correlation_histogram<SecondDegreeSelectors> _parent;

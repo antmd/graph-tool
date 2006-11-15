@@ -120,7 +120,7 @@ class mutate_graph_impl : public mutate_graph
     virtual std::pair<any,bool> do_add_edge(any source, any target)
     {
         std::pair<edge_descriptor,bool> retval = add_edge(any_cast<vertex_descriptor>(source),
-        						  any_cast<vertex_descriptor>(target), m_g);
+                                                          any_cast<vertex_descriptor>(target), m_g);
         return std::make_pair(any(retval.first), retval.second);
     }
 
@@ -131,16 +131,16 @@ class mutate_graph_impl : public mutate_graph
         try
         {
             mpl::for_each<value_types>(put_property<MutableGraph,value_types>
-        			       (name, m_dp, m_g, value, value_type, m_type_names, type_found));	    
+                                       (name, m_dp, m_g, value, value_type, m_type_names, type_found));            
         }
         catch (bad_lexical_cast)
         {
             throw parse_error("invalid value \"" + value + "\" for key " + 
-        		      name + " of type " + value_type);
+                              name + " of type " + value_type);
         }
         if (!type_found)
             throw  parse_error("unrecognized type \"" + value_type + 
-        		       "\" for key " + name);
+                               "\" for key " + name);
             
     }
     
@@ -151,17 +151,17 @@ class mutate_graph_impl : public mutate_graph
         try
         {
             mpl::for_each<value_types>(put_property<vertex_descriptor,value_types>
-        			       (name, m_dp, any_cast<vertex_descriptor>(vertex),
-        				value, value_type, m_type_names, type_found));	    
+                                       (name, m_dp, any_cast<vertex_descriptor>(vertex),
+                                        value, value_type, m_type_names, type_found));            
         }
         catch (bad_lexical_cast)
         {
             throw parse_error("invalid value \"" + value + "\" for key " + 
-        		      name + " of type " + value_type);
+                              name + " of type " + value_type);
         }
         if (!type_found)
             throw  parse_error("unrecognized type \"" + value_type + 
-        		       "\" for key " + name);
+                               "\" for key " + name);
             
     }
     
@@ -172,17 +172,17 @@ class mutate_graph_impl : public mutate_graph
         try
         {
             mpl::for_each<value_types>(put_property<edge_descriptor,value_types>
-        			       (name, m_dp, any_cast<edge_descriptor>(edge),
-        				value, value_type, m_type_names, type_found));	    
+                                       (name, m_dp, any_cast<edge_descriptor>(edge),
+                                        value, value_type, m_type_names, type_found));            
         }
         catch (bad_lexical_cast)
         {
             throw parse_error("invalid value \"" + value + "\" for key " + 
-        		      name + " of type " + value_type);
+                              name + " of type " + value_type);
         }
         if (!type_found)
             throw  parse_error("unrecognized type \"" + value_type + 
-        		       "\" for key " + name);
+                               "\" for key " + name);
     }
 
     template <typename Key, typename ValueVector>
@@ -190,8 +190,8 @@ class mutate_graph_impl : public mutate_graph
     {
     public:
         put_property(const std::string& name, dynamic_properties& dp, const Key& key, 
-        	     const std::string& value, const std::string& value_type, 
-        	     char** type_names, bool& type_found)
+                     const std::string& value, const std::string& value_type, 
+                     char** type_names, bool& type_found)
             : m_name(name), m_dp(dp), m_key(key), m_value(value), 
               m_value_type(value_type), m_type_names(type_names), 
               m_type_found(type_found) {}
@@ -200,8 +200,8 @@ class mutate_graph_impl : public mutate_graph
         {
             if (m_value_type == m_type_names[mpl::find<ValueVector,Value>::type::pos::value])
             {
-        	put(m_name, m_dp, m_key, lexical_cast<Value>(m_value));
-        	m_type_found = true;
+                put(m_name, m_dp, m_key, lexical_cast<Value>(m_value));
+                m_type_found = true;
             }
         }
     private:
@@ -264,8 +264,8 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
 
     BOOST_STATIC_CONSTANT(bool, 
-        		  graph_is_directed = 
-        		  (is_convertible<directed_category*, directed_tag*>::value));
+                          graph_is_directed = 
+                          (is_convertible<directed_category*, directed_tag*>::value));
 
     out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
         << "<graphml xmlns=\"http://graphml.graphdrawing.org/xmlns\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd\">\n";
@@ -309,7 +309,7 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
         if (i->second->key() == typeid(Graph)) 
         {
             out << "   <data key=\"" << graph_key_ids[i->first] << "\">"
-        	<< i->second->get_string(g) << "</data>\n";
+                << i->second->get_string(g) << "</data>\n";
         }
     }
     
@@ -323,8 +323,8 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
         {
             if (i->second->key() == typeid(vertex_descriptor)) 
             {
-        	out << "      <data key=\"" << vertex_key_ids[i->first] << "\">"
-        	    << i->second->get_string(*v) << "</data>\n";
+                out << "      <data key=\"" << vertex_key_ids[i->first] << "\">"
+                    << i->second->get_string(*v) << "</data>\n";
             }
         }
         out << "    </node>\n";
@@ -344,8 +344,8 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
         {
             if (i->second->key() == typeid(edge_descriptor)) 
             {
-        	out << "      <data key=\"" << edge_key_ids[i->first] << "\">"
-        	    << i->second->get_string(*e) << "</data>\n";
+                out << "      <data key=\"" << edge_key_ids[i->first] << "\">"
+                    << i->second->get_string(*e) << "</data>\n";
             }
         }
         out << "    </edge>\n";

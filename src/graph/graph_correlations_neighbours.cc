@@ -56,12 +56,12 @@ struct get_average_nearest_neighbours_correlation
             typename graph_traits<Graph>::out_edge_iterator e, e_begin, e_end;
             tie(e_begin,e_end) = out_edges(*v,g);
             for(e = e_begin; e != e_end; ++e)
-            {		
-        	typename AvgDeg::value_type::second_type::first_type deg = _neighbours_degree(target(*e,g),g);
-        	typename AvgDeg::key_type orig_deg = _origin_degree(*v,g);
-        	avg_deg[orig_deg].first += deg;
-        	avg_deg[orig_deg].second += deg*deg;
-        	count[orig_deg]++;
+            {                
+                typename AvgDeg::value_type::second_type::first_type deg = _neighbours_degree(target(*e,g),g);
+                typename AvgDeg::key_type orig_deg = _origin_degree(*v,g);
+                avg_deg[orig_deg].first += deg;
+                avg_deg[orig_deg].second += deg*deg;
+                count[orig_deg]++;
             }
         }
 
@@ -70,9 +70,9 @@ struct get_average_nearest_neighbours_correlation
             size_t N = count[iter->first];
             iter->second.first /= N;
             if (N > 1)
-        	iter->second.second = sqrt((iter->second.second - N*iter->second.first*iter->second.first)/(N*(N-1)));
+                iter->second.second = sqrt((iter->second.second - N*iter->second.first*iter->second.first)/(N*(N-1)));
             else
-        	iter->second.second = 0.0;
+                iter->second.second = 0.0;
         }
     }
     DegreeSelectorOrigin& _origin_degree;
@@ -98,11 +98,11 @@ struct choose_average_nearest_neighbours_correlation
         {
             if ( mpl::at<degree_selector_index, DegreeSelector>::type::value == _parent._neighbour_deg)
             {
-        	OriginDegreeSelector origin_deg(_parent._origin_deg_name, _parent._g);
-        	DegreeSelector deg(_parent._neighbour_deg_name, _parent._g);
-        	check_filter(_parent._g, bind<void>(get_average_nearest_neighbours_correlation<OriginDegreeSelector,DegreeSelector>(origin_deg, deg),
-        					    _1, var(_parent._avg_deg)),
-        		     reverse_check(),directed_check()); 
+                OriginDegreeSelector origin_deg(_parent._origin_deg_name, _parent._g);
+                DegreeSelector deg(_parent._neighbour_deg_name, _parent._g);
+                check_filter(_parent._g, bind<void>(get_average_nearest_neighbours_correlation<OriginDegreeSelector,DegreeSelector>(origin_deg, deg),
+                                                    _1, var(_parent._avg_deg)),
+                             reverse_check(),directed_check()); 
             }
         }
         choose_average_nearest_neighbours_correlation<DegreeSelectors> &_parent;

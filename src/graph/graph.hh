@@ -190,11 +190,11 @@ private:
     // vertex filter
     std::string _vertex_filter_property;
     typedef boost::variant<boost::vector_property_map<double, vertex_index_map_t>,
-        		   HashedDescriptorMap<vertex_index_map_t,double>,
-        		   boost::vector_property_map<size_t, vertex_index_map_t>,
-        		   HashedDescriptorMap<vertex_index_map_t, size_t>,
-        		   vertex_index_map_t,
-        		   DynamicPropertyMapWrap<double, boost::graph_traits<multigraph_t>::vertex_descriptor> > vertex_filter_map_t;
+                           HashedDescriptorMap<vertex_index_map_t,double>,
+                           boost::vector_property_map<size_t, vertex_index_map_t>,
+                           HashedDescriptorMap<vertex_index_map_t, size_t>,
+                           vertex_index_map_t,
+                           DynamicPropertyMapWrap<double, boost::graph_traits<multigraph_t>::vertex_descriptor> > vertex_filter_map_t;
     vertex_filter_map_t _vertex_filter_map;
     std::pair<double,double> _vertex_range;
     boost::python::object _vertex_python_filter;
@@ -202,11 +202,11 @@ private:
     // edge filter
     std::string _edge_filter_property;
     typedef boost::variant<boost::vector_property_map<double, edge_index_map_t>,
-        		   HashedDescriptorMap<edge_index_map_t, double>, 			   
-        		   boost::vector_property_map<size_t, edge_index_map_t>,
-        		   HashedDescriptorMap<edge_index_map_t, size_t>,
-        		   edge_index_map_t,
-        		   DynamicPropertyMapWrap<double, boost::graph_traits<multigraph_t>::edge_descriptor> > edge_filter_map_t;
+                           HashedDescriptorMap<edge_index_map_t, double>,                            
+                           boost::vector_property_map<size_t, edge_index_map_t>,
+                           HashedDescriptorMap<edge_index_map_t, size_t>,
+                           edge_index_map_t,
+                           DynamicPropertyMapWrap<double, boost::graph_traits<multigraph_t>::edge_descriptor> > edge_filter_map_t;
     edge_filter_map_t _edge_filter_map;
     std::pair<double,double> _edge_range;
     boost::python::object _edge_python_filter;

@@ -68,7 +68,7 @@ namespace std
         {
             o << v[i];
             if (i != v.size() - 1)
-        	o << " \t";
+                o << " \t";
         }
         return o;
     }

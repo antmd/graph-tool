@@ -86,23 +86,23 @@ struct get_line_graph
         {
             typename graph_traits<Graph>::out_edge_iterator e1, e2, e_end;
             for (tie(e1, e_end) = out_edges(*v, g); e1 != e_end; ++e1)
-        	for (tie(e2, e_end) = out_edges(*v, g); e2 != e_end; ++e2)
-        	    if (*e1 != *e2) 
-        	    {
-        		typename graph_traits<line_graph_t>::edge_descriptor new_edge;
-        		new_edge = add_edge(edge_to_vertex_map[*e1], edge_to_vertex_map[*e2], line_graph).first;
-        		line_edge_index[new_edge] = e_index++;
-        		vertex_map[new_edge] = *v;
-        	    }
+                for (tie(e2, e_end) = out_edges(*v, g); e2 != e_end; ++e2)
+                    if (*e1 != *e2) 
+                    {
+                        typename graph_traits<line_graph_t>::edge_descriptor new_edge;
+                        new_edge = add_edge(edge_to_vertex_map[*e1], edge_to_vertex_map[*e2], line_graph).first;
+                        line_edge_index[new_edge] = e_index++;
+                        vertex_map[new_edge] = *v;
+                    }
         }
 
         dynamic_properties dp;
         for (typeof(properties.begin()) iter = properties.begin(); iter != properties.end(); ++iter)
         {
             if (iter->second->key() == typeid(typename graph_traits<Graph>::vertex_descriptor))
-        	dp.insert(iter->first, auto_ptr<dynamic_property_map>(new dynamic_property_map_wrap<vertex_map_t>(vertex_map, *iter->second)));		
+                dp.insert(iter->first, auto_ptr<dynamic_property_map>(new dynamic_property_map_wrap<vertex_map_t>(vertex_map, *iter->second)));                
             else
-        	dp.insert(iter->first, auto_ptr<dynamic_property_map>(new dynamic_property_map_wrap<edge_map_t>(edge_map, *iter->second)));
+                dp.insert(iter->first, auto_ptr<dynamic_property_map>(new dynamic_property_map_wrap<edge_map_t>(edge_map, *iter->second)));
         }
 
         bool graphviz = false;
@@ -117,27 +117,27 @@ struct get_line_graph
             iostreams::filtering_stream<iostreams::output> stream;
             ofstream file_stream;
             if (file == "-")
-        	stream.push(cout);
+                stream.push(cout);
             else
             {
-        	file_stream.open(file.c_str(), ios_base::out | ios_base::binary);
-        	file_stream.exceptions(ios_base::badbit | ios_base::failbit);
-        	if (ends_with(file,".gz"))
-        	    stream.push(iostreams::gzip_compressor());
-        	if (ends_with(file,".bz2"))
-        	    stream.push(iostreams::bzip2_compressor());
-        	stream.push(file_stream);
+                file_stream.open(file.c_str(), ios_base::out | ios_base::binary);
+                file_stream.exceptions(ios_base::badbit | ios_base::failbit);
+                if (ends_with(file,".gz"))
+                    stream.push(iostreams::gzip_compressor());
+                if (ends_with(file,".bz2"))
+                    stream.push(iostreams::bzip2_compressor());
+                stream.push(file_stream);
             }
             stream.exceptions(ios_base::badbit | ios_base::failbit);
             
             if (graphviz)
             {
-        	dp.property("vertex_id", line_vertex_index);
-        	write_graphviz(stream, line_graph, dp, string("vertex_id"));
+                dp.property("vertex_id", line_vertex_index);
+                write_graphviz(stream, line_graph, dp, string("vertex_id"));
             }
             else
             {
-        	write_graphml(stream, line_graph, line_vertex_index, dp, true);
+                write_graphml(stream, line_graph, line_vertex_index, dp, true);
             }
             stream.reset();
         }

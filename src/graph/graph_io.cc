@@ -209,9 +209,9 @@ void GraphInterface::ReadFromFile(string file, string format)
             file_stream.open(file.c_str(), std::ios_base::in | std::ios_base::binary);
             file_stream.exceptions(ios_base::badbit | ios_base::failbit);
             if (boost::ends_with(file,".gz"))
-        	stream.push(boost::iostreams::gzip_decompressor());
+                stream.push(boost::iostreams::gzip_decompressor());
             if (boost::ends_with(file,".bz2"))
-        	stream.push(boost::iostreams::bzip2_decompressor());
+                stream.push(boost::iostreams::bzip2_decompressor());
             stream.push(file_stream);
         }
         stream.exceptions(ios_base::badbit);
@@ -224,17 +224,17 @@ void GraphInterface::ReadFromFile(string file, string format)
         if (_directed)
         {
             if (graphviz)
-        	read_graphviz(stream, wg, dp, "vertex_name");
+                read_graphviz(stream, wg, dp, "vertex_name");
             else
-        	read_graphml(stream, wg, dp);
+                read_graphml(stream, wg, dp);
         }
         else
         {
             FakeUndirGraph<GraphEdgeIndexWrap<multigraph_t,edge_index_map_t> > ug(wg);
             if (graphviz)
-        	read_graphviz(stream, ug, dp, "vertex_name");
+                read_graphviz(stream, ug, dp, "vertex_name");
             else
-        	read_graphml(stream, ug, dp);
+                read_graphml(stream, ug, dp);
         }
         _properties = dp;
     }
@@ -258,12 +258,12 @@ struct write_to_file
             string name;
             try
             {
-        	find_property_map(dp, "vertex_name", typeid(typename graph_traits<Graph>::vertex_descriptor));
-        	name = "vertex_name";
+                find_property_map(dp, "vertex_name", typeid(typename graph_traits<Graph>::vertex_descriptor));
+                name = "vertex_name";
             }
             catch (property_not_found)
             {
-        	name = "vertex_id";
+                name = "vertex_id";
             }
             write_graphviz(stream, g, dp, name);
         }
@@ -326,9 +326,9 @@ void GraphInterface::WriteToFile(string file, string format)
             file_stream.open(file.c_str(), std::ios_base::out | std::ios_base::binary);
             file_stream.exceptions(ios_base::badbit | ios_base::failbit);
             if (boost::ends_with(file,".gz"))
-        	stream.push(boost::iostreams::gzip_compressor());
+                stream.push(boost::iostreams::gzip_compressor());
             if (boost::ends_with(file,".bz2"))
-        	stream.push(boost::iostreams::bzip2_compressor());
+                stream.push(boost::iostreams::bzip2_compressor());
             stream.push(file_stream);
         }
         stream.exceptions(ios_base::badbit | ios_base::failbit);
@@ -344,23 +344,23 @@ void GraphInterface::WriteToFile(string file, string format)
             check_filter(*this, bind<void>(generate_index(), _1, index_map), reverse_check(), directed_check());
             if (graphviz)
             {
-        	try
-        	{
-        	    find_property_map(dp, "vertex_name", typeid(graph_traits<multigraph_t>::vertex_descriptor));
-        	}
-        	catch (property_not_found)
-        	{
-        	    dp.property("vertex_id", index_map);
-        	}
+                try
+                {
+                    find_property_map(dp, "vertex_name", typeid(graph_traits<multigraph_t>::vertex_descriptor));
+                }
+                catch (property_not_found)
+                {
+                    dp.property("vertex_id", index_map);
+                }
             }
             if (GetDirected())
             {
-        	check_filter(*this,bind<void>(write_to_file(),var(stream), _1, index_map, var(dp), graphviz),
-        		     reverse_check(), always_directed());
+                check_filter(*this,bind<void>(write_to_file(),var(stream), _1, index_map, var(dp), graphviz),
+                             reverse_check(), always_directed());
             }
             else
             {
-        	check_filter(*this,bind<void>(write_to_file_fake_undir(), var(stream), _1, index_map, var(dp), graphviz),
+                check_filter(*this,bind<void>(write_to_file_fake_undir(), var(stream), _1, index_map, var(dp), graphviz),
                              never_reversed(), always_undirected());
             }
         }
@@ -368,24 +368,24 @@ void GraphInterface::WriteToFile(string file, string format)
         {
             if (graphviz)
             {
-        	try
-        	{
-        	    find_property_map(dp, "vertex_name", typeid(graph_traits<multigraph_t>::vertex_descriptor));
-        	}
-        	catch (property_not_found)
-        	{
-        	    dp.property("vertex_id", _vertex_index);
-        	}
+                try
+                {
+                    find_property_map(dp, "vertex_name", typeid(graph_traits<multigraph_t>::vertex_descriptor));
+                }
+                catch (property_not_found)
+                {
+                    dp.property("vertex_id", _vertex_index);
+                }
             }
 
             if (GetDirected())
             {
-        	check_filter(*this,bind<void>(write_to_file(), var(stream), _1, _vertex_index, var(dp), graphviz),
-        		     reverse_check(), always_directed());
+                check_filter(*this,bind<void>(write_to_file(), var(stream), _1, _vertex_index, var(dp), graphviz),
+                             reverse_check(), always_directed());
             }
             else
             {
-        	check_filter(*this,bind<void>(write_to_file_fake_undir(), var(stream), _1, _vertex_index, var(dp), graphviz),
+                check_filter(*this,bind<void>(write_to_file_fake_undir(), var(stream), _1, _vertex_index, var(dp), graphviz),
                              never_reversed(), always_undirected());
             }
         }

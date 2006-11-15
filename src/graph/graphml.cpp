@@ -96,7 +96,7 @@ private:
 
     static void 
     on_start_element(void* user_data, const XML_Char *c_name,
-        	     const XML_Char **atts)
+                     const XML_Char **atts)
     {
         graphml_reader* self = static_cast<graphml_reader*>(user_data);
 
@@ -110,26 +110,26 @@ private:
 
             while (*atts) 
             {
-        	std::string name = *atts++;
-        	std::string value = *atts++;
+                std::string name = *atts++;
+                std::string value = *atts++;
 
-        	if (name == "id") id = value;
-        	else if (name == "attr.name") key_name = value;
-        	else if (name == "attr.type") key_type = value;
-        	else if (name == "for") 
-        	{
-        	    if (value == "graph") kind = graph_key;
-        	    else if (value == "node") kind = node_key;
-        	    else if (value == "edge") kind = edge_key;
-        	    else if (value == "hyperedge") kind = hyperedge_key;
-        	    else if (value == "port") kind = port_key;
-        	    else if (value == "endpoint") kind = endpoint_key;
-        	    else if (value == "all") kind = all_key;
-        	    else 
-        	    {
-        		throw parse_error("unrecognized key kind '" + value + "'");
-        	    }
-        	}
+                if (name == "id") id = value;
+                else if (name == "attr.name") key_name = value;
+                else if (name == "attr.type") key_type = value;
+                else if (name == "for") 
+                {
+                    if (value == "graph") kind = graph_key;
+                    else if (value == "node") kind = node_key;
+                    else if (value == "edge") kind = edge_key;
+                    else if (value == "hyperedge") kind = hyperedge_key;
+                    else if (value == "port") kind = port_key;
+                    else if (value == "endpoint") kind = endpoint_key;
+                    else if (value == "all") kind = all_key;
+                    else 
+                    {
+                        throw parse_error("unrecognized key kind '" + value + "'");
+                    }
+                }
             }
 
             self->m_keys[id] = kind;
@@ -143,10 +143,10 @@ private:
 
             while (*atts) 
             {
-        	std::string name = *atts++;
-        	std::string value = *atts++;
-        	
-        	if (name == "id") id = value;
+                std::string name = *atts++;
+                std::string value = *atts++;
+                
+                if (name == "id") id = value;
             }
 
             self->handle_vertex(id);
@@ -159,23 +159,23 @@ private:
             std::string source, target;
             while (*atts) 
             {
-        	std::string name = *atts++;
-        	std::string value = *atts++;
+                std::string name = *atts++;
+                std::string value = *atts++;
 
-        	if (name == "id") id = value;
-        	else if (name == "source") source = value;
-        	else if (name == "target") target = value;
-        	else if (name == "directed") 
-        	{
-        	    bool edge_is_directed = (value == "directed");
-        	    if (edge_is_directed != self->m_g.is_directed()) 
-        	    {
-        		if (edge_is_directed) 
-        		    throw directed_graph_error();
-        		else
-        		    throw undirected_graph_error();
-        	    }
-        	}
+                if (name == "id") id = value;
+                else if (name == "source") source = value;
+                else if (name == "target") target = value;
+                else if (name == "directed") 
+                {
+                    bool edge_is_directed = (value == "directed");
+                    if (edge_is_directed != self->m_g.is_directed()) 
+                    {
+                        if (edge_is_directed) 
+                            throw directed_graph_error();
+                        else
+                            throw undirected_graph_error();
+                    }
+                }
             }
 
             self->handle_edge(id, source, target);
@@ -186,28 +186,28 @@ private:
         {
             while (*atts) 
             {
-        	std::string name = *atts++;
-        	std::string value = *atts++;
-        	
-        	if (name == "edgedefault") 
-        	{
-        	    bool edge_is_directed = (value == "directed");
-        	    if (edge_is_directed != self->m_g.is_directed()) 
-        	    {
-        		if (edge_is_directed) 
-        		    throw directed_graph_error();
-        		else
-        		    throw undirected_graph_error();
-        	    }
-        	}
-        	else if (name == "parse.nodeids")
-        	{
-        	    self->m_canonical_vertices = (value == "canonical");
-        	}
-        	else if (name == "parse.edgeids")
-        	{
-        	    self->m_canonical_edges = (value == "canonical");
-        	}
+                std::string name = *atts++;
+                std::string value = *atts++;
+                
+                if (name == "edgedefault") 
+                {
+                    bool edge_is_directed = (value == "directed");
+                    if (edge_is_directed != self->m_g.is_directed()) 
+                    {
+                        if (edge_is_directed) 
+                            throw directed_graph_error();
+                        else
+                            throw undirected_graph_error();
+                    }
+                }
+                else if (name == "parse.nodeids")
+                {
+                    self->m_canonical_vertices = (value == "canonical");
+                }
+                else if (name == "parse.edgeids")
+                {
+                    self->m_canonical_edges = (value == "canonical");
+                }
             }
             self->m_active_descriptor = "";
         } 
@@ -215,10 +215,10 @@ private:
         {
             while (*atts) 
             {
-        	std::string name = *atts++;
-        	std::string value = *atts++;
+                std::string name = *atts++;
+                std::string value = *atts++;
 
-        	if (name == "key") self->m_active_key = value;
+                if (name == "key") self->m_active_key = value;
             }
         }
 
@@ -232,10 +232,10 @@ private:
         std::string name(c_name);
 
         if (name == "data") 
-        {	    
+        {            
             self->handle_property(self->m_active_key, self->m_active_descriptor,
-        			  self->m_active_descriptor_is_vertex,
-        			  self->m_character_data);
+                                  self->m_active_descriptor_is_vertex,
+                                  self->m_character_data);
         } 
         else if (name == "default")
         {
@@ -262,25 +262,25 @@ private:
             //strip leading "n" from name
             try 
             {
-        	id = lexical_cast<size_t>(std::string(v,1));
+                id = lexical_cast<size_t>(std::string(v,1));
             }
             catch (bad_lexical_cast)
             {
-        	throw parse_error("invalid vertex: " + v);
+                throw parse_error("invalid vertex: " + v);
             }
             
             while(id >= m_canonical_vertex.size())
             {
-        	m_canonical_vertex.push_back(m_g.do_add_vertex());
-        	is_new = true;
+                m_canonical_vertex.push_back(m_g.do_add_vertex());
+                is_new = true;
             }
         }
         else
         {
             if (m_vertex.find(v) == m_vertex.end())
             {
-        	m_vertex[v] = m_g.do_add_vertex();
-        	is_new = true;
+                m_vertex[v] = m_g.do_add_vertex();
+                is_new = true;
             }
         }
 
@@ -289,8 +289,8 @@ private:
             std::map<std::string, std::string>::iterator iter;
             for (iter = m_key_default.begin(); iter != m_key_default.end(); ++iter)
             {
-        	if (m_keys[iter->first] == node_key)
-        	    handle_property(iter->first, v, true, iter->second);
+                if (m_keys[iter->first] == node_key)
+                    handle_property(iter->first, v, true, iter->second);
             }
         }
     }
@@ -305,7 +305,7 @@ private:
             return m_canonical_vertex[id];
         }
         else
-        {	    
+        {            
             return m_vertex[v];
         }
     }
@@ -333,14 +333,14 @@ private:
             //strip leading "e" from name
             try
             {
-        	id = lexical_cast<size_t>(std::string(e,1));
+                id = lexical_cast<size_t>(std::string(e,1));
             }
             catch (bad_lexical_cast)
             {
-        	throw parse_error("invalid edge: " + e);
+                throw parse_error("invalid edge: " + e);
             }
             if (id != m_canonical_edge.size())
-        	throw parse_error("the following edge is not in order: " + e);
+                throw parse_error("the following edge is not in order: " + e);
             m_canonical_edge.push_back(edge);
         }
         else
@@ -352,12 +352,12 @@ private:
         for (iter = m_key_default.begin(); iter != m_key_default.end(); ++iter)
         {
             if (m_keys[iter->first] == edge_key)
-        	handle_property(iter->first, e, false, iter->second);
+                handle_property(iter->first, e, false, iter->second);
         }
     }
 
     void handle_property(std::string key_id, std::string descriptor, 
-        		 bool is_vertex, std::string value)
+                         bool is_vertex, std::string value)
     {
         if (descriptor == "")
             m_g.set_graph_property(m_key_name[key_id], value, m_key_type[key_id]);

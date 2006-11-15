@@ -148,8 +148,8 @@ public:
         {
             if (_bins[j_bin][k_bin][i] == v)
             {
-        	_bins[j_bin][k_bin].erase(_bins[j_bin][k_bin].begin()+i);
-        	break;
+                _bins[j_bin][k_bin].erase(_bins[j_bin][k_bin].begin()+i);
+                break;
             }
         }
         
@@ -175,9 +175,9 @@ public:
             tie(hj,hk) = get_bin(j,k,level);
             if (get_bin_count(hj,hk,level) == 0)
             {
-        	if (level < _high_bins.size())
-        	    level++;
-        	break;
+                if (level < _high_bins.size())
+                    level++;
+                break;
             }
         }
 
@@ -186,7 +186,7 @@ public:
 
         for (size_t hj = ((j_bin>0)?j_bin-1:j_bin); hj < j_bin + 1 && hj <= get_bin(_maxj, _maxk, level).first; ++hj)
             for (size_t hk = ((k_bin>0)?k_bin-1:k_bin); hk < k_bin + 1 && hk <= get_bin(_maxj, _maxk, level).second; ++hk)
-        	search_bin(hj,hk,j,k,level,candidates);
+                search_bin(hj,hk,j,k,level,candidates);
         
         uniform_int<size_t> sample(0, candidates.size() - 1);
         return candidates[sample(rng)];
@@ -219,24 +219,24 @@ private:
         for (size_t j_bin = hj*w; j_bin < (hj+1)*w; ++j_bin)
             for (size_t k_bin = hk*w; k_bin < (hk+1)*w; ++k_bin)
             {
-        	for (size_t i = 0; i < _bins[j_bin][k_bin].size(); ++i)
-        	{
-        	    pair<size_t, size_t>& v = _bins[j_bin][k_bin][i];
-        	    if (candidates.empty())
-        	    {
-        		candidates.push_back(v);
-        		continue;
-        	    }
-        	    if (dist(vertex_t(v), vertex_t(j,k)) < dist(vertex_t(candidates.front()),vertex_t(j,k)))
-        	    {
-        		candidates.clear();
-        		candidates.push_back(v);
-        	    }
-        	    else if (dist(vertex_t(v), vertex_t(j,k)) == dist(vertex_t(candidates.front()),vertex_t(j,k)))
-        	    {
-        		candidates.push_back(v);
-        	    }
-        	}
+                for (size_t i = 0; i < _bins[j_bin][k_bin].size(); ++i)
+                {
+                    pair<size_t, size_t>& v = _bins[j_bin][k_bin][i];
+                    if (candidates.empty())
+                    {
+                        candidates.push_back(v);
+                        continue;
+                    }
+                    if (dist(vertex_t(v), vertex_t(j,k)) < dist(vertex_t(candidates.front()),vertex_t(j,k)))
+                    {
+                        candidates.clear();
+                        candidates.push_back(v);
+                    }
+                    else if (dist(vertex_t(v), vertex_t(j,k)) == dist(vertex_t(candidates.front()),vertex_t(j,k)))
+                    {
+                        candidates.push_back(v);
+                    }
+                }
             }
     }
 
@@ -254,8 +254,8 @@ private:
 // generates a directed graph with given pjk and degree correlation
 //==============================================================================
 void GraphInterface::GenerateCorrelatedConfigurationalModel(size_t N, pjk_t pjk, pjk_t ceil_pjk, inv_ceil_t inv_ceil_pjk, double ceil_pjk_bound,
-        						    corr_t corr, corr_t ceil_corr, inv_corr_t inv_ceil_corr, double ceil_corr_bound, 
-        						    bool undirected_corr, size_t seed, bool verbose)
+                                                            corr_t corr, corr_t ceil_corr, inv_corr_t inv_ceil_corr, double ceil_corr_bound, 
+                                                            bool undirected_corr, size_t seed, bool verbose)
 {
     _mg.clear();
     _properties = dynamic_properties();
@@ -276,7 +276,7 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel(size_t N, pjk_t pjk,
         {
             static stringstream str;
             for (size_t j = 0; j < str.str().length(); ++j)
-        	cout << "\b";
+                cout << "\b";
             str.str("");
             str << i+1 << " of " << N << " (" << (i+1)*100/N << "%)";
             cout << str.str() << flush;
@@ -311,11 +311,11 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel(size_t N, pjk_t pjk,
         {
             static stringstream str;
             for (size_t j = 0; j < str.str().length(); ++j)
-        	cout << "\b";
+                cout << "\b";
             for (size_t j = 0; j < str.str().length(); ++j)
-        	cout << " ";
+                cout << " ";
             for (size_t j = 0; j < str.str().length(); ++j)
-        	cout << "\b";
+                cout << "\b";
             str.str("");
             str << min(sum_j-sum_k, sum_k-sum_j);
             cout << str.str() << flush;
@@ -386,51 +386,51 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel(size_t N, pjk_t pjk,
             target = targets.find(*iter)->second; // if an (jl,kl) pair exists, just use that
         }
         else
-        {	
+        {        
             pair<size_t, size_t> deg;
             if (undirected_corr)
             {
-        	// select the (j,k) pair with the closest total degree (j+k)
-        	ordered_degrees_t::iterator upper;
-        	upper = ordered_degrees.upper_bound(make_pair(jl,kl));
-        	if (upper == ordered_degrees.end())
-        	{
-        	    --upper;
-        	    deg = *upper;
-        	}
-        	else if (upper == ordered_degrees.begin())
-        	{
-        	    deg = *upper;
-        	}
-        	else
-        	{
-        	    ordered_degrees_t::iterator lower = upper;
-        	    --lower;
-        	    if (jl + kl - (lower->first + lower->second) < upper->first + upper->second - (jl + kl))
-        		deg = *lower;
-        	    else if (jl + kl - (lower->first + lower->second) != upper->first + upper->second - (jl + kl))
-        		deg = *upper;
-        	    else
-        	    {
-        		// if equal, choose randomly with equal probability
-        		uniform_int<size_t> sample(0, 1);
-        		if (sample(rng))
-        		    deg = *lower;
-        		else
-        		    deg = *upper;
-        	    }
-        	}
-        	target = targets.find(deg)->second;
+                // select the (j,k) pair with the closest total degree (j+k)
+                ordered_degrees_t::iterator upper;
+                upper = ordered_degrees.upper_bound(make_pair(jl,kl));
+                if (upper == ordered_degrees.end())
+                {
+                    --upper;
+                    deg = *upper;
+                }
+                else if (upper == ordered_degrees.begin())
+                {
+                    deg = *upper;
+                }
+                else
+                {
+                    ordered_degrees_t::iterator lower = upper;
+                    --lower;
+                    if (jl + kl - (lower->first + lower->second) < upper->first + upper->second - (jl + kl))
+                        deg = *lower;
+                    else if (jl + kl - (lower->first + lower->second) != upper->first + upper->second - (jl + kl))
+                        deg = *upper;
+                    else
+                    {
+                        // if equal, choose randomly with equal probability
+                        uniform_int<size_t> sample(0, 1);
+                        if (sample(rng))
+                            deg = *lower;
+                        else
+                            deg = *upper;
+                    }
+                }
+                target = targets.find(deg)->second;
             }
             else
             {   
-        	// select the (j,k) which is the closest in the j,k plane.
-        	deg = degree_matrix.find_closest(jl, kl, rng);
-        	target = targets.find(deg)->second;
-//        	cerr << "wanted: " << jl << ", " << kl
-//        	     << " got: " << deg.first << ", " << deg.second << "\n";
+                // select the (j,k) which is the closest in the j,k plane.
+                deg = degree_matrix.find_closest(jl, kl, rng);
+                target = targets.find(deg)->second;
+//                cerr << "wanted: " << jl << ", " << kl
+//                     << " got: " << deg.first << ", " << deg.second << "\n";
                
-            }	    
+            }            
         }
 
         //add edge
@@ -443,50 +443,50 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel(size_t N, pjk_t pjk,
         {
             targets_t::iterator iter,end;
             for(tie(iter,end) = targets.equal_range(make_pair(target.in_degree, target.out_degree)); iter != end; ++iter)
-        	if (iter->second == target)
-        	{
-        	    targets.erase(iter);
-        	    break;
-        	}
+                if (iter->second == target)
+                {
+                    targets.erase(iter);
+                    break;
+                }
 
             // if there are no more targets with (jl,kl), remove pair from target_degrees, etc.
             if (targets.find(make_pair(target.in_degree, target.out_degree)) == targets.end())
             {
-        	target_degrees.erase(target_degrees.find(make_pair(target.in_degree, target.out_degree)));
-        	if (target_degrees.bucket_count() > 2*target_degrees.size())
-        	{
-        	    target_degrees_t temp;
-        	    for(target_degrees_t::iterator iter = target_degrees.begin(); iter != target_degrees.end(); ++iter)
-        		temp.insert(*iter);
-        	    target_degrees = temp;
-        	}
-        	if (undirected_corr)
-        	{
-        	    for(ordered_degrees_t::iterator iter = ordered_degrees.find(make_pair(target.in_degree, target.out_degree)); 
-        		iter != ordered_degrees.end(); ++iter)
-        		if (*iter == make_pair(target.in_degree, target.out_degree))
-        		{
-        		    ordered_degrees.erase(iter);
-        		    break;
-        		}
-        	}
-        	else
-        	{
-        	    degree_matrix.erase(make_pair(target.in_degree, target.out_degree));
-        	}
+                target_degrees.erase(target_degrees.find(make_pair(target.in_degree, target.out_degree)));
+                if (target_degrees.bucket_count() > 2*target_degrees.size())
+                {
+                    target_degrees_t temp;
+                    for(target_degrees_t::iterator iter = target_degrees.begin(); iter != target_degrees.end(); ++iter)
+                        temp.insert(*iter);
+                    target_degrees = temp;
+                }
+                if (undirected_corr)
+                {
+                    for(ordered_degrees_t::iterator iter = ordered_degrees.find(make_pair(target.in_degree, target.out_degree)); 
+                        iter != ordered_degrees.end(); ++iter)
+                        if (*iter == make_pair(target.in_degree, target.out_degree))
+                        {
+                            ordered_degrees.erase(iter);
+                            break;
+                        }
+                }
+                else
+                {
+                    degree_matrix.erase(make_pair(target.in_degree, target.out_degree));
+                }
             }
             
         }
 
         if (verbose)
         {
-            static stringstream str;	    
+            static stringstream str;            
             for (size_t j = 0; j < str.str().length(); ++j)
-        	cout << "\b";
+                cout << "\b";
             for (size_t j = 0; j < str.str().length(); ++j)
-        	cout << " ";
+                cout << " ";
             for (size_t j = 0; j < str.str().length(); ++j)
-        	cout << "\b";
+                cout << "\b";
             str.str("");
             str << (i+1) << " of " << E << " (" << (i+1)*100/E << "%)";
             cout << str.str() << flush;
