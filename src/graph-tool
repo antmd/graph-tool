@@ -22,7 +22,6 @@ sys.path.append(".")
 from libgraph_tool import *
 
 from optparse import *
-import string
 import os
 import os.path
 import re
@@ -108,9 +107,9 @@ statistics.add_option("--combined-vertex-histogram", action="callback", callback
 statistics.add_option("--distance-histogram", action="callback", callback=push_option, type="string", metavar="[WEIGHT|]FILE", help="get the distance histogram")
 statistics.add_option("--average-distance", action="callback", callback=push_option, type="string", metavar="[WEIGHT|]FILE", help="get the averarge distance")
 statistics.add_option("--average-harmonic-distance", action="callback", callback=push_option, type="string", metavar="[WEIGHT|]FILE", help="get the averarge harmonic distance")
-statistics.add_option("--sampled-distance-histogram", action="callback", callback=push_option, type="string", metavar="[WEIGHT|]SAMPLES|SEED|FILE", help="get the sampled distance histogram")
-statistics.add_option("--average-sampled-distance", action="callback", callback=push_option, type="string", metavar="[WEIGHT|]SAMPLES|SEED|FILE", help="get the average sampled distance")
-statistics.add_option("--average-sampled-harmonic-distance", action="callback", callback=push_option, type="string", metavar="[WEIGHT|]SAMPLES|SEED|FILE", help="get the average sampled harmonic distance")
+statistics.add_option("--sampled-distance-histogram", action="callback", callback=push_option, type="string", metavar="OPTIONS|FILE", help="get the sampled distance histogram. Options are samples, weight (optional), seed (default: from clock)")
+statistics.add_option("--average-sampled-distance", action="callback", callback=push_option, type="string", metavar="OPTIONS|FILE", help="get the average sampled distance. Options are samples, weight (optional), seed (default: from clock)")
+statistics.add_option("--average-sampled-harmonic-distance", action="callback", callback=push_option, type="string", metavar="OPTIONS|FILE", help="get the average sampled harmonic distance. Options are samples, weight (optional), seed (default: from clock)")
 statistics.add_option("--label-components", action="callback", callback=push_option, type="string", metavar="PROPERTY", help="label components to PROPERTY")
 statistics.add_option("--label-parallel-edges", action="callback", callback=push_option, type="string", metavar="PROPERTY", help="label parallel edges to PROPERTY")
 statistics.add_option("--average-vertex-property", action="callback", callback=push_option, type="string", metavar="PROPERTY|FILE", help="get the average of the vertex property")
@@ -393,39 +392,63 @@ def parse_option(opt, just_file=False):
         return ("%f\t%f" % (1.0/avg,err/(avg**2)) , file_name)
     elif opt.name == "sampled-distance-histogram":
         values = parse_values(opt.value)
-        if len(values) > 4 or len(values) < 3:
+        if len(values) != 2:
             raise OptionError(opt.name, "invalid value '%s'" % opt.value)
-        if len(values) == 3:
-            weight, samples, seed, file_name = "", int(values[0]), int(values[1]), values[2]
+        if get_suboption("weight", values[0]) != False:
+            weight = get_suboption("weight", values[0])
         else:
-            weight, samples, seed, file_name = values[0], int(values[1]), int(values[2]), values[3]
+            weight = ""
+        if get_suboption("samples", values[0]) != False:
+            samples = int(get_suboption("samples", values[0]))
+        else:
+            raise OptionError(opt.name, "you must provide the number of samples")
+        if get_suboption("seed", values[0]) != False:
+            seed = int(get_suboption("seed", values[0]))
+        else:
+            seed = int(time())
         if just_file:
-            return file_name
-        return (graph.GetSampledDistanceHistogram(weight, samples, seed), file_name)
+            return values[1]
+        return (graph.GetSampledDistanceHistogram(weight, samples, seed), values[1])
     elif opt.name == "average-sampled-distance":
         values = parse_values(opt.value)
-        if len(values) > 4 or len(values) < 3:
+        if len(values) != 2:
             raise OptionError(opt.name, "invalid value '%s'" % opt.value)
-        if len(values) == 3:
-            weight, samples, seed, file_name = "", int(values[0]), int(values[1]), values[2]
+        if get_suboption("weight", values[0]) != False:
+            weight = get_suboption("weight", values[0])
         else:
-            weight, samples, seed, file_name = values[0], int(values[1]), int(values[2]), values[3]
+            weight = ""
+        if get_suboption("samples", values[0]) != False:
+            samples = int(get_suboption("samples", values[0]))
+        else:
+            raise OptionError(opt.name, "you must provide the number of samples")
+        if get_suboption("seed", values[0]) != False:
+            seed = int(get_suboption("seed", values[0]))
+        else:
+            seed = int(time())
         if just_file:
-            return file_name
-        return ("%f\t%f" % get_mean(graph.GetSampledDistanceHistogram(weight, samples, seed)), file_name)
+            return values[1]
+        return ("%f\t%f" % get_mean(graph.GetSampledDistanceHistogram(weight, samples, seed)), values[1])
     elif opt.name == "average-sampled-harmonic-distance":
         values = parse_values(opt.value)
-        if len(values) > 4 or len(values) < 3:
+        if len(values) != 2:
             raise OptionError(opt.name, "invalid value '%s'" % opt.value)
-        if len(values) == 3:
-            weight, samples, seed, file_name = "", int(values[0]), int(values[1]), values[2]
+        if get_suboption("weight", values[0]) != False:
+            weight = get_suboption("weight", values[0])
         else:
-            weight, samples, seed, file_name = values[0], int(values[1]), int(values[2]), values[3]
+            weight = ""
+        if get_suboption("samples", values[0]) != False:
+            samples = int(get_suboption("samples", values[0]))
+        else:
+            raise OptionError(opt.name, "you must provide the number of samples")
+        if get_suboption("seed", values[0]) != False:
+            seed = int(get_suboption("seed", values[0]))
+        else:
+            seed = int(time())
         if just_file:
-            return file_name
+            return values[1]
         hist = graph.GetSampledDistanceHistogram(weight, samples, seed)
         avg, err = get_mean(dict((1.0/k,v) for k,v in hist.iteritems()))
-        return ("%f\t%f" % (1.0/avg,1.0/err) , file_name)
+        return ("%f\t%f" % (1.0/avg,1.0/err) , values[1])
     elif opt.name == "label-components":
         if just_file:
             return

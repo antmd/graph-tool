@@ -60,9 +60,12 @@ struct get_sampled_distances
         tr1::unordered_map<size_t, typename graph_traits<Graph>::vertex_descriptor> descriptors;
 
         typename graph_traits<Graph>::vertex_iterator v, v_end;
-        size_t i = 0;
+        size_t i = 0, N = 0;
         for(tie(v, v_end) = vertices(g); v != v_end; ++v,++i)
+        {
             descriptors[i] = *v;
+            N++;
+        }
 
         rng_t rng(static_cast<rng_t::result_type>(seed));
         uniform_int<size_t> sampler(0,descriptors.size()-1);
@@ -71,12 +74,17 @@ struct get_sampled_distances
         {
             for(tie(v, v_end) = vertices(g); v != v_end; ++v)
                 dist_map[*v] = numeric_limits<double>::max();
-            typename graph_traits<Graph>::vertex_descriptor s = descriptors[sampler(rng)];
+            typename graph_traits<Graph>::vertex_descriptor s = descriptors[sampler(rng)], t;
+            do
+            {
+                t = descriptors[sampler(rng)];
+            }
+            while (t == s && N != 1);
+
             dist_map[s] = 0.0;
             get_vertex_dists(g, s, index_map, dist_map, weights);
-            for(tie(v, v_end) = vertices(g); v != v_end; ++v,++i)
-                if (*v != s && dist_map[*v] != numeric_limits<double>::max() )
-                    hist[dist_map[*v]]++;
+            if (dist_map[t] != numeric_limits<double>::max() && dist_map[t] != 0.0)
+                hist[dist_map[t]]++;
         }
         
     }
