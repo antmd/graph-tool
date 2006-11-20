@@ -781,9 +781,11 @@ def open_file(name, mode="w"):
         return gzip.GzipFile(name, mode)
     return file(name, mode)
 
-def write_data(data, file, prefix=""):
-    if prefix != "":
+def write_data(data, file, prefix=None):
+    if prefix != None:
         prefix = "%s\t" % prefix
+    else:
+        prefix = ""
     if data.__class__ == dict:
         # it is a histogram
         keys = data.keys()
@@ -905,7 +907,7 @@ try:
         retval = parse_option(opt)
         if retval != None:
             if retval[1] != None:
-                prefix = ""
+                prefix = None
                 if retval[1] == "-":
                     if opt.value.strip() != "-":
                         print "#",opt.name.replace("-"," "), "("+opt.value.replace("|",", ").replace(", -","")+"):"
@@ -917,7 +919,8 @@ try:
                 
     # deal with history
     if history_range != None:
-        class MyTemplate(string.Template):
+        from string import Template
+        class MyTemplate(Template):
             delimiter = "%"
         values = parse_values(history_range.value)
         if len(values) != 3:
