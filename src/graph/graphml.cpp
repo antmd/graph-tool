@@ -46,6 +46,8 @@
 //           Andrew Lumsdaine
 //           Tiago de Paula Peixoto
 
+#include <boost/variant.hpp>
+#include <boost/algorithm/string/replace.hpp>
 #include "expat.h"
 #include "graphml.hpp"
 
@@ -55,12 +57,12 @@ class graphml_reader
 {
 public:
     graphml_reader(mutate_graph& g) 
-        : m_g(g), m_active_descriptor_is_vertex(false), m_canonical_vertices(false), m_canonical_edges(false) { }
+        : m_g(g), m_canonical_vertices(false) { }
     
     void run(std::istream& in)
     {
         const int buffer_size = 4096;
-        XML_Parser parser = XML_ParserCreate(0);
+        XML_Parser parser = XML_ParserCreateNS(0,'|');
         XML_SetElementHandler(parser, &on_start_element, &on_end_element);
         XML_SetCharacterDataHandler(parser, &on_character_data);
         XML_SetUserData(parser, this);
@@ -101,6 +103,8 @@ private:
         graphml_reader* self = static_cast<graphml_reader*>(user_data);
 
         std::string name(c_name);
+        replace_first(name, "http://graphml.graphdrawing.org/xmlns|", "");
+
         if (name == "key") 
         {
             std::string id;
@@ -151,7 +155,6 @@ private:
 
             self->handle_vertex(id);
             self->m_active_descriptor = id;
-            self->m_active_descriptor_is_vertex = true;
         } 
         else if (name == "edge") 
         {
@@ -178,9 +181,8 @@ private:
                 }
             }
 
-            self->handle_edge(id, source, target);
-            self->m_active_descriptor = id;
-            self->m_active_descriptor_is_vertex = false;
+            self->m_active_descriptor = self->m_edge.size();
+            self->handle_edge(source, target);
         } 
         else if (name == "graph") 
         {
@@ -204,10 +206,6 @@ private:
                 {
                     self->m_canonical_vertices = (value == "canonical");
                 }
-                else if (name == "parse.edgeids")
-                {
-                    self->m_canonical_edges = (value == "canonical");
-                }
             }
             self->m_active_descriptor = "";
         } 
@@ -229,12 +227,13 @@ private:
     on_end_element(void* user_data, const XML_Char *c_name)
     {
         graphml_reader* self = static_cast<graphml_reader*>(user_data);
+
         std::string name(c_name);
+        replace_first(name, "http://graphml.graphdrawing.org/xmlns|", "");
 
         if (name == "data") 
         {            
             self->handle_property(self->m_active_key, self->m_active_descriptor,
-                                  self->m_active_descriptor_is_vertex,
                                   self->m_character_data);
         } 
         else if (name == "default")
@@ -290,7 +289,7 @@ private:
             for (iter = m_key_default.begin(); iter != m_key_default.end(); ++iter)
             {
                 if (m_keys[iter->first] == node_key)
-                    handle_property(iter->first, v, true, iter->second);
+                    handle_property(iter->first, v, iter->second);
             }
         }
     }
@@ -311,7 +310,7 @@ private:
     }
 
     void 
-    handle_edge(const std::string& e, const std::string& u, const std::string& v)
+    handle_edge(const std::string& u, const std::string& v)
     {
         handle_vertex(u);
         handle_vertex(v);
@@ -326,60 +325,36 @@ private:
         if (!added)
             throw bad_parallel_edge(u, v);
 
-        if (m_canonical_edges)
-        {
-            size_t id;
-
-            //strip leading "e" from name
-            try
-            {
-                id = lexical_cast<size_t>(std::string(e,1));
-            }
-            catch (bad_lexical_cast)
-            {
-                throw parse_error("invalid edge: " + e);
-            }
-            if (id != m_canonical_edge.size())
-                throw parse_error("the following edge is not in order: " + e);
-            m_canonical_edge.push_back(edge);
-        }
-        else
-        {
-            m_edge[e] = edge;
-        }
-
+        size_t e = m_edge.size();
+        m_edge.push_back(edge);
+        
         std::map<std::string, std::string>::iterator iter;
         for (iter = m_key_default.begin(); iter != m_key_default.end(); ++iter)
         {
             if (m_keys[iter->first] == edge_key)
-                handle_property(iter->first, e, false, iter->second);
+                handle_property(iter->first, e, iter->second);
         }
     }
 
-    void handle_property(std::string key_id, std::string descriptor, 
-                         bool is_vertex, std::string value)
+    void handle_property(const std::string& key_id, const variant<std::string,size_t>& descriptor, const std::string& value)
     {
-        if (descriptor == "")
-            m_g.set_graph_property(m_key_name[key_id], value, m_key_type[key_id]);
-        else if (is_vertex)
-            m_g.set_vertex_property(m_key_name[key_id], get_vertex_descriptor(descriptor), value, m_key_type[key_id]);
+        if (get<std::string>(&descriptor))
+        {
+            if (get<std::string>(descriptor) == "")
+                m_g.set_graph_property(m_key_name[key_id], value, m_key_type[key_id]);
+            else
+                m_g.set_vertex_property(m_key_name[key_id], get_vertex_descriptor(get<std::string>(descriptor)), value, m_key_type[key_id]);
+        }
         else
-            m_g.set_edge_property(m_key_name[key_id], get_edge_descriptor(descriptor), value, m_key_type[key_id]);
+        {
+            m_g.set_edge_property(m_key_name[key_id], get_edge_descriptor(get<size_t>(descriptor)), value, m_key_type[key_id]);
+        }
     }
 
     any
-    get_edge_descriptor(const std::string& e)
+    get_edge_descriptor(size_t e)
     {
-        if (m_canonical_edges)
-        {
-            //strip leading "e" from name
-            size_t id = lexical_cast<size_t>(std::string(e,1));
-            return m_canonical_edge[id];
-        }
-        else
-        {
-            return m_edge[e];
-        }
+        return m_edge[e];
     }
 
     mutate_graph& m_g;
@@ -389,10 +364,8 @@ private:
     std::map<std::string, std::string> m_key_default;
     std::map<std::string, any> m_vertex;
     std::vector<any> m_canonical_vertex;
-    std::map<std::string, any> m_edge;
-    std::vector<any> m_canonical_edge;
-    std::string m_active_descriptor;
-    bool m_active_descriptor_is_vertex;
+    std::vector<any> m_edge;
+    variant<std::string, size_t> m_active_descriptor;
     std::string m_active_key;
     std::string m_character_data;
     bool m_canonical_vertices;
