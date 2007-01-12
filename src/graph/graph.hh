@@ -54,8 +54,8 @@ public:
 
     // histogram types
     typedef std::tr1::unordered_map<double,size_t> hist_t;
-    typedef std::tr1::unordered_map<std::pair<double,double>,size_t, boost::hash<std::pair<double,double> > > hist2d_t;
-    typedef std::tr1::unordered_map<boost::tuple<double,double,double>,size_t, boost::hash<boost::tuple<double,double,double> > > hist3d_t;
+    typedef std::tr1::unordered_map<std::pair<double,double>,double, boost::hash<std::pair<double,double> > > hist2d_t;
+    typedef std::tr1::unordered_map<boost::tuple<double,double,double>,double_t, boost::hash<boost::tuple<double,double,double> > > hist3d_t;
     typedef std::tr1::unordered_map<double,std::pair<double,double> > avg_corr_t;
 
     typedef boost::variant<degree_t,std::string> deg_t;
@@ -76,9 +76,9 @@ public:
     //correlations
     hist2d_t   GetCombinedVertexHistogram(deg_t degree1, deg_t degree2) const;    
     avg_corr_t GetAverageCombinedVertexCorrelation(deg_t degree1, deg_t degree2) const;
-    hist2d_t   GetVertexCorrelationHistogram(deg_t degree1, deg_t degree2) const;
+    hist2d_t   GetVertexCorrelationHistogram(deg_t degree1, deg_t degree2, std::string weight) const;
     hist3d_t   GetEdgeVertexCorrelationHistogram(deg_t deg1, std::string scalar, deg_t deg2) const;
-    avg_corr_t GetAverageNearestNeighboursCorrelation(deg_t origin_degree, deg_t neighbour_degree) const;
+    avg_corr_t GetAverageNearestNeighboursCorrelation(deg_t origin_degree, deg_t neighbour_degree, std::string weight) const;
 
     // mixing
     std::pair<double,double> GetAssortativityCoefficient(deg_t deg) const;

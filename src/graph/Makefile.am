@@ -26,6 +26,7 @@ libgraph_tool_la_SOURCES = \
     graph_properties.hh\
     graph_properties.cc\
     graph_correlations.cc\
+    graph_edge_correlations.cc\
     graph_correlations_combined.cc\
     graph_correlations_neighbours.cc\
     graph_assortativity.cc\
