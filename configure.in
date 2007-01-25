@@ -99,6 +99,21 @@ AC_ARG_ENABLE([static-linkage], [AC_HELP_STRING([--enable-static-linkage],
         [AC_MSG_RESULT(no)] )
 AM_CONDITIONAL(STATIC, test $STATIC = yes)
 
+AC_MSG_CHECKING(whether to enable graph filtering...)
+                                                                                AC_ARG_ENABLE([filtering], [AC_HELP_STRING([--disable-filtering],
+        [disable graph filtering (range and python only) [default=no] ])],
+        if test $enableval = no; then
+           [AC_MSG_RESULT(no)]
+           [AC_DEFINE([NO_FILTERING], 1, [disable graph filtering])]
+           NO_FILTERING=yes
+        else
+           [AC_MSG_RESULT(yes)]
+        fi
+        ,
+        [AC_MSG_RESULT(yes)]
+        NO_FILTERING=no
+        )
+         
 dnl Checks for programs.
 
 dnl Checks for libraries.

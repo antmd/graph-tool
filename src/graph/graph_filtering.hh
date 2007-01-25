@@ -242,11 +242,13 @@ void check_python_filter(const Graph& g, const GraphInterface &gi, Action a, boo
 template <class Action, class ReverseCheck, class DirectedCheck> 
 void check_filter(const GraphInterface &g, Action a, ReverseCheck, DirectedCheck)
 {
+    bool found = false;
+
+#ifndef NO_FILTERING
+
     typedef RangeFilter<GraphInterface::vertex_filter_map_t> vertex_filter_t;
     typedef RangeFilter<GraphInterface::edge_filter_map_t> edge_filter_t;
     
-    bool found = false;
-
     if (g._edge_python_filter == python::object() && g._vertex_python_filter == python::object())
     {
         if (g._vertex_filter_property != "" && g._edge_filter_property != "")
@@ -277,9 +279,14 @@ void check_filter(const GraphInterface &g, Action a, ReverseCheck, DirectedCheck
         check_python_filter(g._mg, g, a, found, ReverseCheck(), DirectedCheck());
     }
 
+#else 
+
+    mpl::for_each<DirectedCheck>(check_directed<GraphInterface::multigraph_t,Action,ReverseCheck>(g._mg, a, g._reversed, g._directed, found));
+
+#endif
+
     if (!found)
         throw GraphException("graph filtering error: filter not found");
-    
 }
 
 } //graph_tool namespace 

@@ -91,6 +91,7 @@ GraphInterface::~GraphInterface()
 
 void GraphInterface::SetVertexFilterProperty(string property)
 {
+#ifndef NO_FILTERING
     _vertex_filter_property = property;
     
     if (property != "")
@@ -117,12 +118,16 @@ void GraphInterface::SetVertexFilterProperty(string property)
             throw GraphException("property " + property + " not found");
         }
     }
+#else
+    throw GraphException("support for graph filtering was not enabled during compilation.");
+#endif
 }
 
 bool GraphInterface::IsVertexFilterActive() const { return _vertex_filter_property != "" || _vertex_python_filter != python::object(); }
 
 void GraphInterface::SetEdgeFilterProperty(string property) 
 {
+#ifndef NO_FILTERING
     _edge_filter_property = property;
     
     if (property != "")
@@ -149,9 +154,41 @@ void GraphInterface::SetEdgeFilterProperty(string property)
             throw GraphException("property " + property + " not found");
         }
     }
+
+#else
+    throw GraphException("support for graph filtering was not enabled during compilation.");
+#endif
 }
 
 bool GraphInterface::IsEdgeFilterActive() const {return _edge_filter_property != "" || _edge_python_filter != python::object();}
+
+void GraphInterface::SetVertexFilterRange(std::pair<double,double> allowed_range)
+{
+#ifndef NO_FILTERING
+    _vertex_range = allowed_range;
+#else
+    throw GraphException("support for graph filtering was not enabled during compilation.");
+#endif
+}
+
+
+void GraphInterface::SetGenericVertexFilter(boost::python::object filter) 
+{
+#ifndef NO_FILTERING
+    _vertex_python_filter = filter;
+#else
+    throw GraphException("support for graph filtering was not enabled during compilation.");
+#endif    
+}
+
+void GraphInterface::SetGenericEdgeFilter(boost::python::object filter) 
+{ 
+#ifndef NO_FILTERING
+    _edge_python_filter = filter;
+#else
+    throw GraphException("support for graph filtering was not enabled during compilation.");
+#endif    
+}
 
 
 //==============================================================================

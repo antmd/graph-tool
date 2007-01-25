@@ -119,7 +119,7 @@ public:
 
     void SetVertexFilterProperty(std::string property);
     std::string GetVertexFilterProperty() const {return _vertex_filter_property;}
-    void SetVertexFilterRange(std::pair<double,double> allowed_range) {_vertex_range = allowed_range;}
+    void SetVertexFilterRange(std::pair<double,double> allowed_range);
     std::pair<double, double> GetVertexFilterRange() const {return _vertex_range;}
     bool IsVertexFilterActive() const;
 
@@ -129,8 +129,8 @@ public:
     std::pair<double,double> GetEdgeFilterRange() const {return _edge_range;}
     bool IsEdgeFilterActive() const;
 
-    void SetGenericVertexFilter(boost::python::object filter) {_vertex_python_filter = filter;}
-    void SetGenericEdgeFilter(boost::python::object filter) {_edge_python_filter = filter;}
+    void SetGenericVertexFilter(boost::python::object filter);
+    void SetGenericEdgeFilter(boost::python::object filter);
 
     // modification
     void RemoveEdgeProperty(std::string property);
