@@ -145,6 +145,12 @@ layout.add_option("--for", action="callback", callback=push_option, type="string
 layout.add_option("--history", action="callback", callback=push_option, type="string", metavar="INIT|CONDITION|STEP", help="simplified scripting (does not overwrite previous results)")
 layout.add_option("--refresh-rate", type="string", metavar="TIME", default="1h", help="for/history files refresh rate")
 
+try:
+    import optcomplete
+    optcomplete.autocomplete(parser)
+except ImportError:
+    pass
+
 (options, args) = parser.parse_args()
 
 graph = GraphInterface()
