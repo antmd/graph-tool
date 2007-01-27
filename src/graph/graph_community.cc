@@ -369,6 +369,16 @@ struct get_communities
 
         if (verbose.first)
             cout << endl;
+
+        // rename spins, starting from zero
+        unordered_map<size_t,size_t> spins;
+        for (tie(v,v_end) = vertices(g); v != v_end; ++v)
+        {
+            if (spins.find(s[*v]) == spins.end())
+                spins[s[*v]] = spins.size() - 1;
+            s[*v] = spins[s[*v]];
+        }        
+        
     }
 };
 
