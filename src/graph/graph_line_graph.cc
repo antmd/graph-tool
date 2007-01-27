@@ -86,7 +86,7 @@ struct get_line_graph
         {
             typename graph_traits<Graph>::out_edge_iterator e1, e2, e_end;
             for (tie(e1, e_end) = out_edges(*v, g); e1 != e_end; ++e1)
-                for (tie(e2, e_end) = out_edges(*v, g); e2 != e_end; ++e2)
+                for (e2 = e1; e2 != e_end; ++e2)
                     if (*e1 != *e2) 
                     {
                         typename graph_traits<line_graph_t>::edge_descriptor new_edge;
