@@ -244,13 +244,14 @@ void check_filter(const GraphInterface &g, Action a, ReverseCheck, DirectedCheck
 {
     bool found = false;
 
-#ifndef NO_FILTERING
-
     typedef RangeFilter<GraphInterface::vertex_filter_map_t> vertex_filter_t;
     typedef RangeFilter<GraphInterface::edge_filter_map_t> edge_filter_t;
-    
+
+#ifndef NO_PYTHON_FILTERING
     if (g._edge_python_filter == python::object() && g._vertex_python_filter == python::object())
     {
+#endif
+#ifndef NO_RANGE_FILTERING        
         if (g._vertex_filter_property != "" && g._edge_filter_property != "")
         {        
             typedef filtered_graph<GraphInterface::multigraph_t, edge_filter_t, vertex_filter_t> fg_t;
@@ -273,16 +274,19 @@ void check_filter(const GraphInterface &g, Action a, ReverseCheck, DirectedCheck
         {
             mpl::for_each<DirectedCheck>(check_directed<GraphInterface::multigraph_t,Action,ReverseCheck>(g._mg, a, g._reversed, g._directed, found));
         }
+#else
+        mpl::for_each<DirectedCheck>(check_directed<GraphInterface::multigraph_t,Action,ReverseCheck>(g._mg, a, g._reversed, g._directed, found));
+#endif
+#ifndef NO_PYTHON_FILTERING
     }
     else
     {
         check_python_filter(g._mg, g, a, found, ReverseCheck(), DirectedCheck());
     }
-
-#else 
-
+#else
+#ifdef NO_RANGE_FILTERING
     mpl::for_each<DirectedCheck>(check_directed<GraphInterface::multigraph_t,Action,ReverseCheck>(g._mg, a, g._reversed, g._directed, found));
-
+#endif
 #endif
 
     if (!found)

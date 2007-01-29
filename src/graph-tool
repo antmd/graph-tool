@@ -767,8 +767,12 @@ def parse_option(opt, just_file=False):
         if just_file:
             return None
         edit_vars = dict()
-        def edit_function():
-            return (eval(values[1],edit_vars))
+        if "file:" in values[1]:
+            exec open(values[1].replace("file:","").strip()).read() in edit_vars
+            edit_function = edit_vars["edit_function"]
+        else:
+            def edit_function():
+                return (eval(values[1],edit_vars))
         if opt.name == "edit-vertex-property":
             graph.EditVertexProperty(values[0],(edit_function,edit_vars))
         else:

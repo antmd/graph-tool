@@ -66,6 +66,17 @@ struct populate_python_funcs
 
         typedef typename mpl::if_<HasBase, degrees, mpl::vector<> >::type base_degrees;
         mpl::for_each<base_degrees>(put_base_degree_function<Graph>(g, v, variables, "orig_"));
+
+        for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)
+        {
+            if (iter->second->key() != typeid(typename graph_traits<Graph>::vertex_descriptor)) // FIXME: graph properties?x
+            {
+                variables["in_"+iter->first] = python::make_function(get_in_or_out_values<Graph,true>(g, *iter->second, v), 
+                                                                     python::default_call_policies(), mpl::vector<python::object>::type());
+                variables["out_"+iter->first] = python::make_function(get_in_or_out_values<Graph,false>(g, *iter->second, v), 
+                                                                      python::default_call_policies(), mpl::vector<python::object>::type());
+            }
+        }
     }
 
     template <class Graph>
@@ -124,6 +135,62 @@ struct populate_python_funcs
         const VertexOrEdge& _e;
         python::object _retval;
     };
+
+    template <class Graph, bool In>
+    struct get_in_or_out_values
+    {
+        typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
+        typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
+
+        get_in_or_out_values(const Graph& g, dynamic_property_map& dmap, const vertex_descriptor& v)
+            : _g(g),_dmap(dmap),_v(v){}
+
+        python::object operator()()
+        {
+            if (In)
+                return get_in_props(_g, _v, typename is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::type());
+            else
+                return get_out_props();
+        }
+
+        python::object get_out_props()
+        {
+            python::list props;
+            typename graph_traits<Graph>::out_edge_iterator e,e_end;
+            for (tie(e, e_end) = out_edges(_v, _g); e != e_end; ++e)
+            {
+                get_value<typename graph_traits<Graph>::edge_descriptor> value(_dmap, *e);
+                props.append(value());
+            }
+            return props;
+        }
+
+        template<class G>
+        python::object get_in_props(const G& g, typename graph_traits<G>::vertex_descriptor v, true_type)
+        {
+            python::list props;
+            typename graph_traits<G>::in_edge_iterator e,e_end;
+            for (tie(e, e_end) = in_edges(v, g); e != e_end; ++e)
+            {
+                get_value<typename graph_traits<Graph>::edge_descriptor> value(_dmap, *e);
+                props.append(value());
+            }
+            return props;
+        }
+        
+        
+        template<class G>
+        python::object get_in_props(const G& g, typename graph_traits<G>::vertex_descriptor v, false_type)
+        {
+            python::list props;
+            return props;
+        }
+
+        const Graph& _g;        
+        const dynamic_property_map& _dmap;
+        const vertex_descriptor& _v;        
+    };
+
 
     template <class Graph, bool Source>
     struct get_source_or_target_value
