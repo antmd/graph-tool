@@ -21,6 +21,7 @@
 #include "graph.hh"
 #include "histogram.hh"
 #include "graph_filtering.hh"
+#include "graph_python_filtering.hh"
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
 

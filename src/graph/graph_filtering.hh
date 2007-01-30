@@ -35,7 +35,10 @@
 
 #include "graph_adaptor.hh"
 #include "graph_selectors.hh"
+
+#ifndef NO_PYTHON_FILTERING
 #include "graph_python_filtering.hh"
+#endif
 
 namespace graph_tool
 {
@@ -204,6 +207,7 @@ struct check_directed
     bool& _found;
 };
 
+#ifndef NO_PYTHON_FILTERING
 template <class Graph, class Action, class ReverseCheck, class DirectedCheck> 
 void check_python_filter(const Graph& g, const GraphInterface &gi, Action a, bool& found, ReverseCheck, DirectedCheck)
 {
@@ -238,6 +242,7 @@ void check_python_filter(const Graph& g, const GraphInterface &gi, Action a, boo
         mpl::for_each<DirectedCheck>(check_directed<Graph,Action,ReverseCheck>(g, a, gi._reversed, gi._directed, found));
     }
 }
+#endif
 
 template <class Action, class ReverseCheck, class DirectedCheck> 
 void check_filter(const GraphInterface &g, Action a, ReverseCheck, DirectedCheck)
