@@ -157,7 +157,7 @@ graph = GraphInterface()
 
 def parse_values(value):
     "this will parse the options with multiple values"
-    p = re.compile(r"([^\|'\"]+|[^\|]+'[^']*'|[^\|]+\"[^\"]*\")(?:\||$)")
+    p = re.compile(r"([^\|'\"]+|[^\|]+'[^']*'[^\|'\"]+|[^\|]+\"[^\"]*\")(?:\||$)")
     values = p.findall(value)
     values = [x.strip() for x in values]
     return values
