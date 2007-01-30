@@ -768,7 +768,12 @@ def parse_option(opt, just_file=False):
             return None
         edit_vars = dict()
         if "file:" in values[1]:
-            exec open(values[1].replace("file:","").strip()).read() in edit_vars
+            expressions = values[1].split("file:")
+            if len(expressions) > 1:
+                exec expressions[0] in edit_vars
+                exec open(expressions[1].strip()).read() in edit_vars
+            else:
+                exec open(expressions[0].strip()).read() in edit_vars            
             edit_function = edit_vars["edit_function"]
         else:
             def edit_function():

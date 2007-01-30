@@ -119,7 +119,8 @@ void GraphInterface::SetVertexFilterProperty(string property)
         }
     }
 #else
-    throw GraphException("support for graph range filtering was not enabled during compilation.");
+    if (property != "")
+        throw GraphException("support for graph range filtering was not enabled during compilation.");
 #endif
 }
 
@@ -156,7 +157,8 @@ void GraphInterface::SetEdgeFilterProperty(string property)
     }
 
 #else
-    throw GraphException("support for graph range filtering was not enabled during compilation.");
+    if (property != "")
+        throw GraphException("support for graph range filtering was not enabled during compilation.");
 #endif
 }
 
@@ -177,7 +179,8 @@ void GraphInterface::SetGenericVertexFilter(boost::python::object filter)
 #ifndef NO_PYTHON_FILTERING
     _vertex_python_filter = filter;
 #else
-    throw GraphException("support for graph python filtering was not enabled during compilation.");
+    if (filter != python::object())
+        throw GraphException("support for graph python filtering was not enabled during compilation.");
 #endif    
 }
 
@@ -186,7 +189,8 @@ void GraphInterface::SetGenericEdgeFilter(boost::python::object filter)
 #ifndef NO_PYTHON_FILTERING
     _edge_python_filter = filter;
 #else
-    throw GraphException("support for graph python filtering was not enabled during compilation.");
+    if (filter != python::object())
+        throw GraphException("support for graph python filtering was not enabled during compilation.");
 #endif    
 }
 
