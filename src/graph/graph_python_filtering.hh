@@ -35,6 +35,9 @@
 #include <boost/python/long.hpp>
 #include <boost/python/extract.hpp>
 #include <boost/python/make_function.hpp>
+#include <boost/python/self.hpp>
+#include <boost/python/operators.hpp>
+#include <boost/functional/hash.hpp>
 
 namespace graph_tool
 {
@@ -94,6 +97,8 @@ public:
             _python_class.def("get_property", &PythonVertex::GetProperty);
             _python_class.def("out_edges", &PythonVertex::GetOutEdges);
             _python_class.def("in_edges", &PythonVertex::GetInEdges);
+            _python_class.def(python::self == python::self);
+            _python_class.def("__hash__", &PythonVertex::GetHash);
             first_time = false;
         }
     }
@@ -203,11 +208,45 @@ public:
 
     python::object GetInEdges()
     {
-        base_t base = python::extract<base_t>(_base);
-        const Graph& g = get<0>(base);
-        const vertex_descriptor& v = get<1>(base);
-        const dynamic_properties& dp = get<2>(base);
-        return get_in_edges(g, v, dp, typename is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::type());
+        if (_base != python::object())
+        {
+            base_t base = python::extract<base_t>(_base);
+            const Graph& g = get<0>(base);
+            const vertex_descriptor& v = get<1>(base);
+            const dynamic_properties& dp = get<2>(base);
+            return get_in_edges(g, v, dp, typename is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::type());
+        }
+        else
+        {
+            return python::object();
+        }
+    }
+
+    python::object GetHash()
+    {
+        if (_base != python::object())
+        {            
+            base_t base = python::extract<base_t>(_base);
+            return python::object(hash<vertex_descriptor>()(get<1>(base)));
+        }
+        else
+        {
+            return python::object(0);
+        }
+    }
+
+    bool operator==(const PythonVertex& other)
+    {
+        if (_base != python::object() && other._base != python::object())
+        {            
+            const base_t o_base = python::extract<base_t>(other._base);
+            base_t base = python::extract<base_t>(_base);
+            return python::object(get<1>(base) == get<1>(o_base));
+        }
+        else
+        {
+            return false;
+        }
     }
 
     python::class_<PythonVertex> GetPythonClass() { return _python_class; }
@@ -257,6 +296,8 @@ public:
             _python_class.def("target", &PythonEdge::GetTarget);
             _python_class.def("get_property", &PythonEdge::GetProperty);
             _python_class.def("n_parallel", &PythonEdge::GetNParallel);
+            _python_class.def(python::self == python::self);
+            _python_class.def("__hash__", &PythonEdge::GetHash);
             first_time = false;
         }
     }
@@ -365,6 +406,38 @@ public:
             return python::object();
         }
     };
+
+    python::object GetHash()
+    {
+        if (_base != python::object())
+        {            
+            base_t base = python::extract<base_t>(_base);
+            const Graph& g = get<0>(base);
+            const edge_descriptor& e = get<1>(base);
+            vertex_descriptor s,t;
+            s = source(e, g);
+            t = target(e, g);
+            return python::object(hash<std::pair<vertex_descriptor,vertex_descriptor> >()(make_pair(s,t)));
+        }
+        else
+        {
+            return python::object(0);
+        }
+    }
+
+    bool operator==(const PythonEdge& other)
+    {
+        if (_base != python::object() && other._base != python::object())
+        {            
+            const base_t o_base = python::extract<base_t>(other._base);
+            base_t base = python::extract<base_t>(_base);
+            return python::object(get<1>(base) == get<1>(o_base));
+        }
+        else
+        {
+            return false;
+        }
+    }
 
     python::class_<PythonEdge> GetPythonClass() { return _python_class; }
         
