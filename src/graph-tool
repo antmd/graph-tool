@@ -974,7 +974,10 @@ try:
                 if file_name != None:
                     prefix = str(count)
                     if variables.has_key("prefix"):
-                        prefix = str(variables["prefix"])
+                        if variables["prefix"] == None:
+                            prefix = None
+                        else:
+                            prefix = str(variables["prefix"])
                     hist_key = opt.name + opt.value
                     if not history_files.has_key(hist_key):
                         history_files[hist_key] = HistoryFile(file_name, overwrite_history)
