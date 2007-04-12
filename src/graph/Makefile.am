@@ -42,7 +42,6 @@ libgraph_tool_la_SOURCES = \
     graph_line_graph.cc\
     graph_io.cc\
     graph_bind.cc\
-    graphml.hpp\
     graphml.cpp\
     histogram.hh\
     read_graphviz_spirit.cpp

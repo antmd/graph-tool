@@ -28,7 +28,7 @@
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
 #include <boost/graph/graphviz.hpp>
-#include "graphml.hpp"
+#include <boost/graph/graphml.hpp>
 
 using namespace std;
 using namespace boost;
