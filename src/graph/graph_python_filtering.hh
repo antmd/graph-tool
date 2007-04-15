@@ -214,7 +214,7 @@ public:
             const Graph& g = get<0>(base);
             const vertex_descriptor& v = get<1>(base);
             const dynamic_properties& dp = get<2>(base);
-            return get_in_edges(g, v, dp, typename is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::type());
+            return get_in_edges(g, v, dp, typename is_convertible<typename graph_traits<Graph>::directed_category, directed_tag>::type());
         }
         else
         {

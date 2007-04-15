@@ -257,22 +257,6 @@ protected:
 };
 
 //==============================================================================
-// UndirectedAdaptorInEdgeIterator
-// this will iterate through both in_edges and out_edges of the underlying graph
-//==============================================================================  
-template <typename Graph> 
-class UndirectedAdaptorInEdgeIterator 
-    : public UndirectedAdaptorOutEdgeIterator<Graph>
-{
-public:
-    typename UndirectedAdaptor<Graph>::EdgeDescriptor operator*() const
-    {
-        typename UndirectedAdaptor<Graph>::EdgeDescriptor edge = UndirectedAdaptorOutEdgeIterator<Graph>::operator*();
-        return (typename UndirectedAdaptor<Graph>::EdgeDescriptor (edge.OriginalEdge(),!edge.IsInverted()));
-    } 
-};
-
-//==============================================================================
 // UndirectedAdaptorAdjacencyIterator
 // just keeps an internal reference to out_edge_iterator and calls target() when
 // referenced
@@ -359,7 +343,7 @@ struct graph_traits< UndirectedAdaptor<Graph> > {
 
     typedef UndirectedAdaptorAdjacencyIterator<Graph> adjacency_iterator;
     typedef UndirectedAdaptorOutEdgeIterator<Graph> out_edge_iterator;
-    typedef UndirectedAdaptorOutEdgeIterator<Graph> in_edge_iterator;
+    typedef typename graph_traits<Graph>::in_edge_iterator in_edge_iterator;
     typedef typename graph_traits<Graph>::vertex_iterator vertex_iterator;
     typedef UndirectedAdaptorEdgeIterator<Graph> edge_iterator;
     
