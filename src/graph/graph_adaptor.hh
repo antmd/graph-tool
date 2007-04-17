@@ -444,16 +444,6 @@ out_edges(typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor u,
 }
 
 //==============================================================================
-// in_edges(u,g)
-//==============================================================================
-template <class Graph>
-inline std::pair<typename graph_traits< UndirectedAdaptor<Graph> >::in_edge_iterator, typename graph_traits< UndirectedAdaptor<Graph> >::in_edge_iterator > 
-in_edges(typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor u, const UndirectedAdaptor<Graph>& g)
-{
-    return out_edges(u,g);
-}
-
-//==============================================================================
 // adjacent_vertices(u,g)
 //==============================================================================
 template <class Graph>
