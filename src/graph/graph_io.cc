@@ -84,7 +84,15 @@ struct create_dynamic_map
         }
         catch (bad_any_cast)
         {
-            mpl::for_each<value_types>(check_value_type<EdgeIndexMap>(_edge_map, any_cast<edge_t>(key), value, map));
+            try 
+            {
+                mpl::for_each<value_types>(check_value_type<EdgeIndexMap>(_edge_map, any_cast<edge_t>(key), value, map));
+            }
+            catch (bad_any_cast)
+            {
+                ConstantPropertyMap<size_t,graph_property_tag> graph_index(0);
+                mpl::for_each<value_types>(check_value_type<ConstantPropertyMap<size_t,graph_property_tag> >(graph_index, any_cast<graph_property_tag>(key), value, map));
+            }
         }
         return auto_ptr<dynamic_property_map>(map);
     }
@@ -236,6 +244,7 @@ void GraphInterface::ReadFromFile(string file, string format)
             else
                 read_graphml(stream, ug, dp);
         }
+
         _properties = dp;
     }
     catch (ios_base::failure &e)

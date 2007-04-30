@@ -298,7 +298,7 @@ public:
     typedef Value value_type;
     typedef value_type& reference;
     typedef Key key_type;
-    typedef boost::read_write_property_map_tag category;
+    typedef boost::readable_property_map_tag category;
 
     ConstantPropertyMap(value_type c): _c(c) {}
     ConstantPropertyMap(){}

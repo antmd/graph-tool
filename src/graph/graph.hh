@@ -137,8 +137,9 @@ public:
     void RemoveVertexProperty(std::string property);
     void InsertEdgeIndexProperty(std::string property);
     void InsertVertexIndexProperty(std::string property);
-    void EditVertexProperty(std::string property, boost::python::object op);
-    void EditEdgeProperty(std::string property, boost::python::object op);
+    void EditVertexProperty(std::string property, std::string type, boost::python::object op);
+    void EditEdgeProperty(std::string property, std::string type, boost::python::object op);
+    void ListProperties() const;
 
     // layout
     void ComputeGraphLayoutGursoy(size_t iter = 0, size_t seed = 4357);

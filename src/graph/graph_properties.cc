@@ -25,6 +25,10 @@
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
 
+#include <boost/mpl/for_each.hpp>
+#include <iostream>
+#include <iomanip>
+
 using namespace std;
 using namespace boost;
 using namespace boost::lambda;
@@ -137,52 +141,134 @@ struct edit_property
             put(prop_map, e, val);
         }
     }
-    
-
 };
+
+//==============================================================================
+// update_property_map()
+//==============================================================================
+
+template <class ValueTypes, class Descriptor, class IndexMap>
+class update_property_map
+{
+public:
+    update_property_map(GraphInterface& gi, dynamic_properties& dp, IndexMap index_map, string property, string type, char* types[], python::object op)
+        : _gi(gi), _dp(dp), _index_map(index_map), _property(property), _type(type), _types(types), _op(op) {}
+
+    template <class ValueType>
+    void operator()(ValueType)
+    {
+        if (_type == _types[mpl::find<ValueTypes,ValueType>::type::pos::value])
+        {
+            try
+            {
+                dynamic_property_map& dpmap = find_property_map(_dp, _property, typeid(Descriptor));
+                typedef DynamicPropertyMapWrap<ValueType,Descriptor> prop_map_t;
+                prop_map_t prop_map(dpmap);
+                check_filter(_gi, bind<void>(edit_property<Descriptor>(), _1, var(_dp), prop_map, var(_op)),
+                             reverse_check(), directed_check());
+            }
+            catch (property_not_found)
+            {
+                typedef vector_property_map<ValueType, IndexMap> prop_map_t;
+                prop_map_t prop_map(_index_map);
+                check_filter(_gi, bind<void>(edit_property<Descriptor>(), _1, var(_dp), prop_map, var(_op)),
+                             reverse_check(), directed_check());
+                _dp.property(_property, prop_map);
+            }    
+
+        }
+    }
+
+private:
+    GraphInterface& _gi;
+    dynamic_properties& _dp;
+    IndexMap _index_map;
+    string _property;
+    string _type;
+    char** _types;
+    python::object _op;
+};
+
 
 //==============================================================================
 // EditVertexProperty()
 //==============================================================================
 
-void GraphInterface::EditVertexProperty(string property, python::object op)
+void GraphInterface::EditVertexProperty(string property, string type, python::object op)
 {
+    typedef mpl::vector<bool, int, long, float, double, std::string> value_types;
+    char* type_names[] = {"boolean", "int", "long", "float", "double", "string"};
+
+    bool valid = false;
+    for(int i = 0; i < mpl::size<value_types>::type::value; ++i)
+        if (type == type_names[i])
+            valid = true;
+    if (!valid)
+        throw GraphException("invalid type: " + type);
+
     typedef graph_traits<multigraph_t>::vertex_descriptor vertex_descriptor;
-    try
-    {
-        dynamic_property_map& dpmap = find_property_map(_properties, property, typeid(graph_traits<multigraph_t>::vertex_descriptor));
-        typedef DynamicPropertyMapWrap<double,vertex_descriptor> prop_map_t;
-        prop_map_t prop_map(dpmap);
-        check_filter(*this, bind<void>(edit_property<vertex_descriptor>(), _1, var(_properties), prop_map, var(op)),
-                     reverse_check(), directed_check());
-    }
-    catch (property_not_found)
-    {
-        typedef vector_property_map<double, vertex_index_map_t> prop_map_t;
-        prop_map_t prop_map(_vertex_index);
-        check_filter(*this, bind<void>(edit_property<vertex_descriptor>(), _1, var(_properties), prop_map, var(op)),
-                     reverse_check(), directed_check());
-        _properties.property(property, prop_map);
-    }    
+    mpl::for_each<value_types>(update_property_map<value_types,vertex_descriptor,vertex_index_map_t>(*this, _properties, _vertex_index, property, type, type_names, op));
 }
 
-void GraphInterface::EditEdgeProperty(string property, python::object op)
+//==============================================================================
+// EditEdgeProperty()
+//==============================================================================
+
+void GraphInterface::EditEdgeProperty(string property, string type, python::object op)
 {
+    typedef mpl::vector<bool, int, long, float, double, std::string> value_types;
+    char* type_names[] = {"boolean", "int", "long", "float", "double", "string"};
+
+    bool valid = false;
+    for(int i = 0; i < mpl::size<value_types>::type::value; ++i)
+        if (type == type_names[i])
+            valid = true;
+    if (!valid)
+        throw GraphException("invalid type: " + type);
+
     typedef graph_traits<multigraph_t>::edge_descriptor edge_descriptor;
-    try
+    mpl::for_each<value_types>(update_property_map<value_types,edge_descriptor,edge_index_map_t>(*this, _properties, _edge_index, property, type, type_names, op));
+}
+
+//==============================================================================
+// ListProperties()
+//==============================================================================
+
+template <class ValueTypes>
+class print_name
+{
+public:
+    print_name(const type_info& type, char* types[]): _type(type), _types(types) {}
+
+    template <class ValueType>
+    void operator()(ValueType)
     {
-        dynamic_property_map& dpmap = find_property_map(_properties, property, typeid(graph_traits<multigraph_t>::edge_descriptor));
-        typedef DynamicPropertyMapWrap<double,edge_descriptor> prop_map_t;
-        prop_map_t prop_map(dpmap);
-        check_filter(*this, bind<void>(edit_property<edge_descriptor>(), _1, var(_properties), prop_map, var(op)),
-                     reverse_check(), directed_check());
+        if (_type == typeid(ValueType))
+            cout << _types[mpl::find<ValueTypes,ValueType>::type::pos::value];
     }
-    catch (property_not_found)
+private:
+    const type_info& _type;
+    char** _types;
+};
+
+void GraphInterface::ListProperties() const
+{
+    typedef mpl::vector<bool, int, long, float, double, std::string> value_types;
+    char* type_names[] = {"boolean", "int", "long", "float", "double", "string"};
+
+    for (typeof(_properties.begin()) p = _properties.begin(); p != _properties.end(); ++p)
     {
-        typedef vector_property_map<double, edge_index_map_t> prop_map_t;
-        prop_map_t prop_map(_edge_index);
-        check_filter(*this, bind<void>(edit_property<edge_descriptor>(), _1, var(_properties), prop_map, var(op)),
-                     reverse_check(), directed_check());
-        _properties.property(property, prop_map);
+        cout << setw(15) << left << p->first << " " << setw(8) << left;
+        if (p->second->key() == typeid(graph_traits<multigraph_t>::vertex_descriptor))
+            cout << "(vertex)";
+        else 
+            if (p->second->key() == typeid(graph_traits<multigraph_t>::edge_descriptor))
+                cout << "(edge)";
+            else
+                cout << "(graph)";
+        cout << "  type: ";
+        mpl::for_each<value_types>(print_name<value_types>(p->second->value(), type_names));
+        cout << endl;
     }
 }
+
