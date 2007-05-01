@@ -278,7 +278,7 @@ def generate_graph(parameters):
     variables["m_pjk"] = m_pjk
 
     if "file:" in inv_pjk_ceil:
-        exec open(inv_pjk_ceil.replace("file:","").strip()).read() in variables
+        exec open(os.path.expanduser(inv_pjk_ceil.replace("file:","").strip())).read() in variables
     else:
         def inv_pjk_ceil_f(p,r):
             variables["p"] = p
@@ -301,7 +301,7 @@ def generate_graph(parameters):
     variables["m_corr"] = m_corr
         
     if "file:" in inv_corr_ceil:
-        exec open(inv_corr_ceil.replace("file:","").strip()).read() in variables
+        exec open(os.path.expanduser(inv_corr_ceil.replace("file:","").strip())).read() in variables
     else:
         def inv_corr_ceil_f(p,r,j,k):
             retval = eval("%s" % inv_corr_ceil, variables, locals())
@@ -776,9 +776,9 @@ def parse_option(opt, just_file=False):
             expressions = expr.split("file:")
             if len(expressions) > 1:
                 exec expressions[0] in edit_vars
-                exec open(expressions[1].strip()).read() in edit_vars
+                exec open(os.path.expanduser(expressions[1].strip())).read() in edit_vars
             else:
-                exec open(expressions[0].strip()).read() in edit_vars    
+                exec open(os.path.expanduser(expressions[0].strip())).read() in edit_vars    
             edit_function = edit_vars["edit_function"]
         else:
             def edit_function():
