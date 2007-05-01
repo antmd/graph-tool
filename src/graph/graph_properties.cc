@@ -34,6 +34,9 @@ using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
 
+typedef mpl::vector<bool, int, long, float, double, std::string> value_types;
+char* type_names[] = {"boolean", "int", "long", "float", "double", "string"};
+
 
 //==============================================================================
 // find_property_map(dp,name,key_type)
@@ -93,13 +96,36 @@ void GraphInterface::RemoveEdgeProperty(string property)
 }
 
 //==============================================================================
+// RemoveGraphProperty(property)
+//==============================================================================
+void GraphInterface::RemoveGraphProperty(string property)
+{
+    dynamic_properties_copy dp;
+    try
+    {
+        dynamic_property_map& prop_map = find_property_map(_properties, property, typeid(graph_property_tag));
+        for (typeof(_properties.begin()) iter = _properties.begin(); iter != _properties.end(); ++iter)
+        {
+            if (iter->second != &prop_map)
+                dp.insert(iter->first, auto_ptr<dynamic_property_map>(iter->second));
+        }
+    }
+    catch (property_not_found)
+    {
+        throw GraphException("property '" + property + "' not found");
+    }
+    _properties = dp;
+}
+
+
+//==============================================================================
 // edit_property
 //==============================================================================
 template <class Descriptor>
 struct edit_property
 {
-    template <class Graph, class PropertyMap>
-    void operator()(const Graph& g, const dynamic_properties& dp, PropertyMap prop_map, python::object& op) const
+    template <class Graph>
+    void operator()(const Graph& g, const dynamic_properties& dp, dynamic_property_map* prop_map, python::object& op) const
     {
         typedef mpl::vector<in_degreeS,out_degreeS,total_degreeS> degrees;
 
@@ -108,51 +134,85 @@ struct edit_property
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
         typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
 
-        typedef typename mpl::if_<is_same<Descriptor,vertex_descriptor>,vertex_descriptor,edge_descriptor>::type descriptor_t;
+        typedef typename mpl::if_< is_same<Descriptor,vertex_descriptor>,
+                                   vertex_descriptor, 
+                                   typename mpl::if_<is_same<Descriptor,graph_property_tag>,
+                                                     graph_property_tag, 
+                                                     edge_descriptor>::type >::type descriptor_t;
         descriptor_t u;
         
         populate_python_funcs<descriptor_t>()(g, u, dp, variables);
 
-        put_properties(g, u, prop_map, operation);
+        put_properties(g, u, *prop_map, operation);
     }
     
-    template<class Graph, class PropertyMap>
+    template<class Graph>
     void put_properties(const Graph& g, typename graph_traits<Graph>::vertex_descriptor& v, 
-                        PropertyMap prop_map, python::object& operation) const
+                        dynamic_property_map& prop_map, python::object& operation) const
     {
         typename graph_traits<Graph>::vertex_iterator vi,v_end;
         for (tie(vi, v_end) = vertices(g); vi != v_end; ++vi)
         {
             v = *vi;
-            typename property_traits<PropertyMap>::value_type val = python::extract<typename property_traits<PropertyMap>::value_type>(operation());
-            put(prop_map, v, val);
+            python::object val = operation();
+            prop_map.put(*vi, val);
         }
     }
 
-    template<class Graph, class PropertyMap>
+    template<class Graph>
     void put_properties(const Graph& g, typename graph_traits<Graph>::edge_descriptor& e, 
-                        PropertyMap prop_map, python::object& operation) const
+                        dynamic_property_map& prop_map, python::object& operation) const
     {
         typename graph_traits<Graph>::edge_iterator ei,e_end;
         for (tie(ei, e_end) = edges(g); ei != e_end; ++ei)
         {
             e = *ei;
-            typename property_traits<PropertyMap>::value_type val = python::extract<typename property_traits<PropertyMap>::value_type>(operation());
-            put(prop_map, e, val);
+            python::object val = operation();
+            prop_map.put(*ei, val);
         }
     }
+
+    template<class Graph>
+    void put_properties(const Graph& g, graph_property_tag, 
+                        dynamic_property_map& prop_map, python::object& operation) const
+    {
+        python::object val = operation();
+        prop_map.put(graph_property_tag(), val);
+    }
+
 };
 
 //==============================================================================
-// update_property_map()
+// get_property_map()
 //==============================================================================
 
 template <class ValueTypes, class Descriptor, class IndexMap>
-class update_property_map
+class get_property_map
 {
 public:
-    update_property_map(GraphInterface& gi, dynamic_properties& dp, IndexMap index_map, string property, string type, char* types[], python::object op)
-        : _gi(gi), _dp(dp), _index_map(index_map), _property(property), _type(type), _types(types), _op(op) {}
+    get_property_map(GraphInterface& gi, dynamic_properties& dp, IndexMap index_map, string property, string type, char* types[], python::object op, dynamic_property_map*& pmap)
+        : _gi(gi), _dp(dp), _index_map(index_map), _property(property), _type(type), _types(types), _op(op), _pmap(pmap) {}
+    
+    template <class ValueType>
+    class python_dynamic_property_map: public dynamic_property_map
+    {
+    public:
+        python_dynamic_property_map(dynamic_property_map& dmap): _dmap(dmap) {}
+
+        virtual void put(const any& key, const any& val) 
+        {
+            const python::object& o = any_cast<python::object>(val);
+            ValueType value = python::extract<ValueType>(o); 
+            _dmap.put(key, value); 
+        }
+
+        virtual any get(const any& key) { return _dmap.get(key); }
+        virtual string get_string(const any& key) { return _dmap.get_string(key); }
+        virtual const std::type_info& key() const { return _dmap.key(); } 
+        virtual const std::type_info& value() const { return _dmap.value(); }
+    private:
+        dynamic_property_map& _dmap;
+    };
 
     template <class ValueType>
     void operator()(ValueType)
@@ -161,21 +221,19 @@ public:
         {
             try
             {
-                dynamic_property_map& dpmap = find_property_map(_dp, _property, typeid(Descriptor));
-                typedef DynamicPropertyMapWrap<ValueType,Descriptor> prop_map_t;
-                prop_map_t prop_map(dpmap);
-                check_filter(_gi, bind<void>(edit_property<Descriptor>(), _1, var(_dp), prop_map, var(_op)),
-                             reverse_check(), directed_check());
+                dynamic_property_map& pmap = find_property_map(_dp, _property, typeid(Descriptor));
+                if (pmap.value() != typeid(ValueType))
+                    throw GraphException("property \""+ _property + "\" already exists with a type other than " + _type + 
+                                         ". Remove it first, or use the same type when editing.");
+                _pmap = new python_dynamic_property_map<ValueType>(pmap);
             }
             catch (property_not_found)
             {
                 typedef vector_property_map<ValueType, IndexMap> prop_map_t;
                 prop_map_t prop_map(_index_map);
-                check_filter(_gi, bind<void>(edit_property<Descriptor>(), _1, var(_dp), prop_map, var(_op)),
-                             reverse_check(), directed_check());
                 _dp.property(_property, prop_map);
-            }    
-
+                _pmap = new python_dynamic_property_map<ValueType>(find_property_map(_dp, _property, typeid(typename IndexMap::key_type)));
+            }
         }
     }
 
@@ -187,6 +245,7 @@ private:
     string _type;
     char** _types;
     python::object _op;
+    dynamic_property_map*& _pmap;
 };
 
 
@@ -196,9 +255,6 @@ private:
 
 void GraphInterface::EditVertexProperty(string property, string type, python::object op)
 {
-    typedef mpl::vector<bool, int, long, float, double, std::string> value_types;
-    char* type_names[] = {"boolean", "int", "long", "float", "double", "string"};
-
     bool valid = false;
     for(int i = 0; i < mpl::size<value_types>::type::value; ++i)
         if (type == type_names[i])
@@ -206,8 +262,12 @@ void GraphInterface::EditVertexProperty(string property, string type, python::ob
     if (!valid)
         throw GraphException("invalid type: " + type);
 
+    dynamic_property_map* pmap;
     typedef graph_traits<multigraph_t>::vertex_descriptor vertex_descriptor;
-    mpl::for_each<value_types>(update_property_map<value_types,vertex_descriptor,vertex_index_map_t>(*this, _properties, _vertex_index, property, type, type_names, op));
+    mpl::for_each<value_types>(get_property_map<value_types,vertex_descriptor,vertex_index_map_t>(*this, _properties, _vertex_index, property, type, type_names, op, pmap));
+    check_filter(*this, lambda::bind<void>(edit_property<vertex_descriptor>(), lambda::_1, var(_properties), var(pmap), var(op)),
+                 reverse_check(), directed_check());
+    delete pmap;
 }
 
 //==============================================================================
@@ -216,9 +276,6 @@ void GraphInterface::EditVertexProperty(string property, string type, python::ob
 
 void GraphInterface::EditEdgeProperty(string property, string type, python::object op)
 {
-    typedef mpl::vector<bool, int, long, float, double, std::string> value_types;
-    char* type_names[] = {"boolean", "int", "long", "float", "double", "string"};
-
     bool valid = false;
     for(int i = 0; i < mpl::size<value_types>::type::value; ++i)
         if (type == type_names[i])
@@ -226,9 +283,35 @@ void GraphInterface::EditEdgeProperty(string property, string type, python::obje
     if (!valid)
         throw GraphException("invalid type: " + type);
 
+    dynamic_property_map* pmap;
     typedef graph_traits<multigraph_t>::edge_descriptor edge_descriptor;
-    mpl::for_each<value_types>(update_property_map<value_types,edge_descriptor,edge_index_map_t>(*this, _properties, _edge_index, property, type, type_names, op));
+    mpl::for_each<value_types>(get_property_map<value_types,edge_descriptor,edge_index_map_t>(*this, _properties, _edge_index, property, type, type_names, op, pmap));
+    check_filter(*this, lambda::bind<void>(edit_property<edge_descriptor>(), lambda::_1, var(_properties), var(pmap), var(op)),
+                 reverse_check(), directed_check());
+    delete pmap;
 }
+
+//==============================================================================
+// EditGraphProperty()
+//==============================================================================
+
+void GraphInterface::EditGraphProperty(string property, string type, python::object op)
+{
+    bool valid = false;
+    for(int i = 0; i < mpl::size<value_types>::type::value; ++i)
+        if (type == type_names[i])
+            valid = true;
+    if (!valid)
+        throw GraphException("invalid type: " + type);
+
+    dynamic_property_map* pmap;
+    ConstantPropertyMap<size_t,graph_property_tag> graph_index(0);
+    mpl::for_each<value_types>(get_property_map<value_types,graph_property_tag,ConstantPropertyMap<size_t,graph_property_tag> >(*this, _properties, graph_index, property, type, type_names, op, pmap));
+    check_filter(*this, lambda::bind<void>(edit_property<graph_property_tag>(), lambda::_1, var(_properties), var(pmap), var(op)),
+                 reverse_check(), directed_check());
+    delete pmap;
+}
+
 
 //==============================================================================
 // ListProperties()
@@ -253,9 +336,6 @@ private:
 
 void GraphInterface::ListProperties() const
 {
-    typedef mpl::vector<bool, int, long, float, double, std::string> value_types;
-    char* type_names[] = {"boolean", "int", "long", "float", "double", "string"};
-
     for (typeof(_properties.begin()) p = _properties.begin(); p != _properties.end(); ++p)
     {
         cout << setw(15) << left << p->first << " " << setw(8) << left;

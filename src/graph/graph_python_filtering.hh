@@ -37,7 +37,10 @@
 #include <boost/python/make_function.hpp>
 #include <boost/python/self.hpp>
 #include <boost/python/operators.hpp>
+#include <boost/python/iterator.hpp>
 #include <boost/functional/hash.hpp>
+#include <boost/iterator/transform_iterator.hpp>
+#include <boost/functional.hpp>
 
 namespace graph_tool
 {
@@ -69,8 +72,7 @@ private:
             Type* value = any_cast<Type>(&any_val);
             if (value != 0)
                 _parent._retval = python::object(*value);
-        }
-        
+        }        
         get_python_property_value& _parent;
     };
     
@@ -79,8 +81,69 @@ private:
     python::object _retval;
 };
 
+template <class VertexOrEdge>
+class put_python_property_value
+{
+public:
+    put_python_property_value(dynamic_property_map& dmap, const VertexOrEdge& e, python::object val)
+        : _dmap(dmap), _e(e), _val(val) {}
+        
+    void operator()()
+    {
+        typedef mpl::vector<bool,int,long,size_t,float,double,std::string> value_types;
+        mpl::for_each<value_types>(try_conversion(*this));
+    }
+
+private:
+    struct try_conversion
+    {
+        try_conversion(put_python_property_value& parent): _parent(parent) {}
+        
+        template <class Type>
+        void operator()(Type)
+        {
+            if (typeid(Type) == _parent._dmap.value())
+            {
+                Type val = python::extract<Type>(_parent._val);
+                _parent._dmap.put(_parent._e, val);
+            }
+        }
+        
+        put_python_property_value& _parent;
+    };
+    
+    dynamic_property_map& _dmap;
+    const VertexOrEdge& _e;
+    python::object _val;
+};
+
+
 template <class Graph>
 class PythonEdge;
+
+//==============================================================================
+// PythonVertex
+//==============================================================================
+
+template <class Graph, class IsDirected> 
+struct in_edge_iterator
+{
+    BOOST_MPL_ASSERT((is_same<IsDirected, boost::true_type>));
+    BOOST_MPL_ASSERT((is_convertible<typename graph_traits<Graph>::directed_category, boost::directed_tag>));
+    typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
+    typedef typename graph_traits<Graph>::in_edge_iterator type;
+    static std::pair<type,type> in_edges(vertex_descriptor v, const Graph& g) { return boost::in_edges(v,g); }
+};
+
+template <class Graph>
+struct in_edge_iterator<Graph, boost::false_type>
+{
+    BOOST_MPL_ASSERT((is_convertible<typename graph_traits<Graph>::directed_category, boost::undirected_tag>));
+    typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
+    typedef typename graph_traits<Graph>::out_edge_iterator type;
+    static std::pair<type,type> in_edges(vertex_descriptor v, const Graph& g) { return make_pair(type(), type()); }
+};
+
 
 template <class Graph>
 class PythonVertex
@@ -95,8 +158,9 @@ public:
             _python_class.def("in_degree", &PythonVertex::GetInDegree);
             _python_class.def("out_degree", &PythonVertex::GetOutDegree);
             _python_class.def("get_property", &PythonVertex::GetProperty);
-            _python_class.def("out_edges", &PythonVertex::GetOutEdges);
-            _python_class.def("in_edges", &PythonVertex::GetInEdges);
+            _python_class.def("put_property", &PythonVertex::PutProperty);
+            _python_class.def("out_edges", python::range(&PythonVertex::OutEdgesBegin, &PythonVertex::OutEdgesEnd));
+            _python_class.def("in_edges", python::range(&PythonVertex::InEdgesBegin, &PythonVertex::InEdgesEnd));
             _python_class.def(python::self == python::self);
             _python_class.def("__hash__", &PythonVertex::GetHash);
             first_time = false;
@@ -171,55 +235,101 @@ public:
                 if (iter->second->key() == typeid(vertex_descriptor))
                     return get_python_property_value<vertex_descriptor>(*iter->second, v)();
             }
-            return python::object();
         }
-        else
-        {
-            return python::object();
-        }
+        return python::object();
     }
 
-    python::object GetOutEdges()
+    void PutProperty(std::string prop, python::object val)
     {
         if (_base != python::object())
         {
-            python::list out_edge_list;
             base_t base = python::extract<base_t>(_base);
-            const Graph& g = get<0>(base);
-            const vertex_descriptor& v = get<1>(base);
             const dynamic_properties& dp = get<2>(base);
-            python::object edge_class = PythonEdge<Graph>().GetPythonClass();
-            typename graph_traits<Graph>::out_edge_iterator e, e_end;
-            for (tie(e, e_end) = out_edges(v, g); e != e_end; ++e)
+            const vertex_descriptor& v = get<1>(base);
+            for(typeof(dp.begin()) iter = dp.lower_bound(prop); iter != dp.end(); ++iter)
             {
-                edge_descriptor* new_edge = new edge_descriptor;
-                *new_edge = *e;
-                typename PythonEdge<Graph>::base_t edge_base(g, *new_edge, dp, true);
-                python::object edge = (edge_class)(python::object(edge_base));
-                out_edge_list.append(edge);
+                if (iter->second->key() == typeid(vertex_descriptor))
+                    put_python_property_value<vertex_descriptor>(*iter->second, v, val)();
             }
-            return out_edge_list;
-        }
-        else
-        {
-            return python::object();
         }
     }
 
-    python::object GetInEdges()
+
+    struct descriptor_wrap
+    {
+        descriptor_wrap(const Graph &g, const dynamic_properties& dp): _g(g), _dp(dp) {}
+    
+        python::object operator()(edge_descriptor e)
+        {
+            edge_descriptor *new_e = new edge_descriptor;
+            *new_e = e;
+            typename PythonEdge<Graph>::base_t edge_base(_g, *new_e, _dp, true);
+            python::object edge = (PythonEdge<Graph>().GetPythonClass())(python::object(edge_base));
+            return edge;
+        }
+
+        const Graph& _g;
+        const dynamic_properties& _dp;
+    };
+
+    typedef typename graph_traits<Graph>::out_edge_iterator out_edge_iterator;
+    typedef function<python::object (edge_descriptor)> edge_wrap_function;
+    typedef transform_iterator<edge_wrap_function, out_edge_iterator> wrapped_out_edge_iterator;
+
+    wrapped_out_edge_iterator OutEdgesBegin()
     {
         if (_base != python::object())
         {
             base_t base = python::extract<base_t>(_base);
             const Graph& g = get<0>(base);
-            const vertex_descriptor& v = get<1>(base);
-            const dynamic_properties& dp = get<2>(base);
-            return get_in_edges(g, v, dp, typename is_convertible<typename graph_traits<Graph>::directed_category, directed_tag>::type());
+            vertex_descriptor v = get<1>(base);
+            const dynamic_properties& dp(get<2>(base));
+            return wrapped_out_edge_iterator(out_edges(v,g).first, edge_wrap_function(descriptor_wrap(g,dp)));
         }
-        else
+        return wrapped_out_edge_iterator();
+    }
+
+    wrapped_out_edge_iterator OutEdgesEnd()
+    {
+        if (_base != python::object())
         {
-            return python::object();
+            base_t base = python::extract<base_t>(_base);
+            const Graph& g = get<0>(base);
+            vertex_descriptor v = get<1>(base);
+            const dynamic_properties& dp(get<2>(base));
+            return wrapped_out_edge_iterator(out_edges(v,g).second, edge_wrap_function(descriptor_wrap(g,dp)));
         }
+        return wrapped_out_edge_iterator();
+    }
+
+    typedef typename is_convertible<typename graph_traits<Graph>::directed_category,boost::directed_tag>::type is_directed;
+    typedef typename in_edge_iterator<Graph,is_directed>::type in_edge_iterator_type;
+    typedef transform_iterator<edge_wrap_function, in_edge_iterator_type> wrapped_in_edge_iterator;
+
+    wrapped_in_edge_iterator InEdgesBegin()
+    {
+        if (_base != python::object())
+        {
+            base_t base = python::extract<base_t>(_base);
+            const Graph& g = get<0>(base);
+            vertex_descriptor v = get<1>(base);
+            const dynamic_properties& dp(get<2>(base));
+            return wrapped_in_edge_iterator(in_edge_iterator<Graph,is_directed>::in_edges(v,g).first, edge_wrap_function(descriptor_wrap(g,dp)));
+        }
+        return wrapped_in_edge_iterator();
+    }
+
+    wrapped_in_edge_iterator InEdgesEnd()
+    {
+        if (_base != python::object())
+        {
+            base_t base = python::extract<base_t>(_base);
+            const Graph& g = get<0>(base);
+            vertex_descriptor v = get<1>(base);
+            const dynamic_properties& dp(get<2>(base));
+            return wrapped_in_edge_iterator(in_edge_iterator<Graph,is_directed>::in_edges(v,g).second, edge_wrap_function(descriptor_wrap(g,dp)));
+        }
+        return wrapped_in_edge_iterator();
     }
 
     python::object GetHash()
@@ -252,35 +362,15 @@ public:
     python::class_<PythonVertex> GetPythonClass() { return _python_class; }
         
 private:
-    template<class G>
-    python::object get_in_edges(const G& g, const typename graph_traits<G>::vertex_descriptor& v, const dynamic_properties& dp, true_type)
-    {
-        python::list in_edge_list;
-        typename graph_traits<Graph>::in_edge_iterator e, e_end;
-        for (tie(e, e_end) = in_edges(v, g); e != e_end; ++e)
-        {
-            edge_descriptor* new_edge = new edge_descriptor;
-            *new_edge = *e;
-            typename PythonEdge<Graph>::base_t edge_base(g, *new_edge, dp, true);
-            python::object edge = (PythonEdge<Graph>().GetPythonClass())(python::object(edge_base));
-            in_edge_list.append(edge);
-        }
-        return in_edge_list;
-    }
-        
-    template<class G>
-    python::object get_in_edges(const G& g, const typename graph_traits<G>::vertex_descriptor& v, const dynamic_properties& dp, false_type)
-    {
-        python::list props;
-        return props;
-    }
-
     python::object _base;
     static python::class_<PythonVertex> _python_class;
 };
 
 template <class Graph> python::class_<PythonVertex<Graph> > PythonVertex<Graph>::_python_class =  python::class_<PythonVertex<Graph> >("Vertex", python::no_init);
 
+//==============================================================================
+// PythonEdge
+//==============================================================================
 
 template <class Graph>
 class PythonEdge
@@ -373,7 +463,7 @@ public:
             const edge_descriptor& e = get<1>(base);
             for(typeof(dp.begin()) iter = dp.lower_bound(prop); iter != dp.end(); ++iter)
             {
-                if (iter->second->key() != typeid(vertex_descriptor)) // FIXME: graph properties?
+                if (iter->second->key() != typeid(vertex_descriptor) && iter->second->key() != typeid(graph_property_tag))
                     return get_python_property_value<edge_descriptor>(*iter->second, e)();
             }
             return python::object();
@@ -381,6 +471,21 @@ public:
         else
         {
             return python::object();
+        }
+    }
+
+    void PutProperty(std::string prop, python::object val)
+    {
+        if (_base != python::object())
+        {
+            base_t base = python::extract<base_t>(_base);
+            const dynamic_properties& dp = get<2>(base);
+            const edge_descriptor& e = get<1>(base);
+            for(typeof(dp.begin()) iter = dp.lower_bound(prop); iter != dp.end(); ++iter)
+            {
+                if (iter->second->key() != typeid(vertex_descriptor) && iter->second->key() != typeid(graph_property_tag))
+                    put_python_property_value<vertex_descriptor>(*iter->second, e, val)();
+            }
         }
     }
 
@@ -450,6 +555,246 @@ private:
 template <class Graph> python::class_<PythonEdge<Graph> > PythonEdge<Graph>::_python_class =  python::class_<PythonEdge<Graph> >("Edge", python::no_init);
 
 //==============================================================================
+// PythonGraph
+//==============================================================================
+
+template <class Graph>
+class PythonGraph
+{
+public:
+    PythonGraph(python::object base): _base(base)
+    {
+        static bool first_time = true;
+        if (first_time)
+        {
+            _python_class.def(python::init<python::object>());
+            _python_class.def("num_vertices", &PythonGraph::GetNumVertices);
+            _python_class.def("num_edges", &PythonGraph::GetNumEdges);
+            _python_class.def("get_vertex", &PythonGraph::GetVertex);
+            _python_class.def("get_edge", &PythonGraph::GetEdge);
+            _python_class.def("get_property", &PythonGraph::GetProperty);
+            _python_class.def("vertices", python::range(&PythonGraph::VertexBegin, &PythonGraph::VertexEnd));
+            _python_class.def("edges", python::range(&PythonGraph::EdgeBegin, &PythonGraph::EdgeEnd));
+            first_time = false;
+        }
+    }
+    PythonGraph(): _base(python::object()) { *this = PythonGraph(_base); }
+
+    PythonGraph(const PythonGraph& g)
+    {
+        _base = g._base;
+    }
+
+    ~PythonGraph()
+    {
+    }
+
+    typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
+    typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
+    typedef tuple<const Graph&, const edge_descriptor&, const dynamic_properties&, bool> base_t;
+
+    python::object GetNumVertices()
+    {
+        if (_base != python::object())
+        {
+            base_t base = python::extract<base_t>(_base);
+            const Graph& g = get<0>(base);
+
+            return python::object(HardNumVertices()(g));
+        }
+        else
+        {
+            return python::object();
+        }
+    }
+
+    python::object GetNumEdges()
+    {
+        if (_base != python::object())
+        {
+            base_t base = python::extract<base_t>(_base);
+            const Graph& g = get<0>(base);
+
+            return python::object(HardNumEdges()(g));
+        }
+        else
+        {
+            return python::object();
+        }
+    }
+
+    python::object GetVertex(size_t v_index)
+    {
+        if (_base != python::object())
+        {
+            base_t base = python::extract<base_t>(_base);
+            const Graph& g = get<0>(base);
+            
+            size_t count = 0;
+            typename graph_traits<Graph>::vertex_iterator v, v_end;
+            for (tie(v,v_end) = vertices(g); v != v_end; ++v)
+            {
+                if (count == v_index)
+                {
+                    vertex_descriptor *new_v = new vertex_descriptor;
+                    *new_v = *v;
+                    typename PythonVertex<Graph>::base_t vertex_base(g, *new_v, get<2>(base), true);
+                    python::object vertex = (PythonVertex<Graph>().GetPythonClass())(python::object(vertex_base));
+                    return vertex;
+                }
+                count++;
+            }
+        }
+        return python::object();
+    }
+
+    python::object GetEdge(size_t e_index)
+    {
+        if (_base != python::object())
+        {
+            base_t base = python::extract<base_t>(_base);
+            const Graph& g = get<0>(base);
+            
+            size_t count = 0;
+            typename graph_traits<Graph>::edge_iterator e, e_end;
+            for (tie(e,e_end) = edges(g); e != e_end; ++e)
+            {
+                if (count == e_index)
+                {
+                    edge_descriptor *new_e = new edge_descriptor;
+                    *new_e = *e;
+                    typename PythonEdge<Graph>::base_t edge_base(g, *new_e, get<2>(base), true);
+                    python::object edge = (PythonEdge<Graph>().GetPythonClass())(python::object(edge_base));
+                    return edge;
+                }
+                count++;
+            }
+        }
+        return python::object();
+    }
+
+    python::object GetProperty(std::string prop)
+    {
+        if (_base != python::object())
+        {
+            base_t base = python::extract<base_t>(_base);
+            const dynamic_properties& dp = get<2>(base);
+            for(typeof(dp.begin()) iter = dp.lower_bound(prop); iter != dp.end(); ++iter)
+            {
+                if (iter->second->key() == typeid(graph_property_tag))
+                    return get_python_property_value<graph_property_tag>(*iter->second, graph_property_tag())();
+            }
+        }
+        return python::object();
+    }
+
+    void PutProperty(std::string prop, python::object val)
+    {
+        if (_base != python::object())
+        {
+            base_t base = python::extract<base_t>(_base);
+            const dynamic_properties& dp = get<2>(base);
+            for(typeof(dp.begin()) iter = dp.lower_bound(prop); iter != dp.end(); ++iter)
+            {
+                if (iter->second->key() == typeid(graph_property_tag))
+                    put_python_property_value<vertex_descriptor>(*iter->second, graph_property_tag(), val)();
+            }
+        }
+    }
+
+    struct descriptor_wrap
+    {
+        descriptor_wrap(const Graph &g, const dynamic_properties& dp): _g(g), _dp(dp) {}
+        python::object operator()(vertex_descriptor v)
+        {
+            vertex_descriptor *new_v = new vertex_descriptor;
+            *new_v = v;
+            typename PythonVertex<Graph>::base_t vertex_base(_g, *new_v, _dp, true);
+            python::object vertex = (PythonVertex<Graph>().GetPythonClass())(python::object(vertex_base));
+            return vertex;
+        }
+
+        python::object operator()(edge_descriptor e)
+        {
+            edge_descriptor *new_e = new edge_descriptor;
+            *new_e = e;
+            typename PythonEdge<Graph>::base_t edge_base(_g, *new_e, _dp, true);
+            python::object edge = (PythonEdge<Graph>().GetPythonClass())(python::object(edge_base));
+            return edge;
+        }
+
+        const Graph& _g;
+        const dynamic_properties& _dp;
+    };
+
+    typedef typename graph_traits<Graph>::vertex_iterator vertex_iterator;
+    typedef function<python::object (vertex_descriptor)> vertex_wrap_function;
+    typedef transform_iterator<vertex_wrap_function, vertex_iterator> wrapped_vertex_iterator;
+
+    wrapped_vertex_iterator VertexBegin()
+    {
+        if (_base != python::object())
+        {
+            base_t base = python::extract<base_t>(_base);
+            const Graph& g = get<0>(base);
+            const dynamic_properties& dp(get<2>(base));
+            return wrapped_vertex_iterator(vertices(g).first, vertex_wrap_function(descriptor_wrap(g,dp)));
+        }
+        return wrapped_vertex_iterator();
+    }
+
+    wrapped_vertex_iterator VertexEnd()
+    {
+        if (_base != python::object())
+        {
+            base_t base = python::extract<base_t>(_base);
+            const Graph& g = get<0>(base);
+            const dynamic_properties& dp(get<2>(base));
+            return wrapped_vertex_iterator(vertices(g).second, vertex_wrap_function(descriptor_wrap(g,dp)));
+        }
+        return wrapped_vertex_iterator();
+    }
+
+    typedef typename graph_traits<Graph>::edge_iterator edge_iterator;
+    typedef function<python::object (edge_descriptor)> edge_wrap_function;
+    typedef transform_iterator<edge_wrap_function, edge_iterator> wrapped_edge_iterator;
+
+    wrapped_edge_iterator EdgeBegin()
+    {
+        if (_base != python::object())
+        {
+            base_t base = python::extract<base_t>(_base);
+            const Graph& g = get<0>(base);
+            const dynamic_properties& dp(get<2>(base));
+            return wrapped_edge_iterator(edges(g).first, edge_wrap_function(descriptor_wrap(g,dp)));
+        }
+        return wrapped_edge_iterator();
+    }
+
+    wrapped_edge_iterator EdgeEnd()
+    {
+        if (_base != python::object())
+        {
+            base_t base = python::extract<base_t>(_base);
+            const Graph& g = get<0>(base);
+            const dynamic_properties& dp(get<2>(base));
+            return wrapped_edge_iterator(edges(g).second, edge_wrap_function(descriptor_wrap(g,dp)));
+        }
+        return wrapped_edge_iterator();
+    }
+    
+    python::class_<PythonGraph> GetPythonClass() { return _python_class; }
+        
+private:
+
+    python::object _base;
+    static python::class_<PythonGraph> _python_class;
+};
+
+template <class Graph> python::class_<PythonGraph<Graph> > PythonGraph<Graph>::_python_class =  python::class_<PythonGraph<Graph> >("Graph", python::no_init);
+
+
+//==============================================================================
 // populate_python_funcs
 //==============================================================================
 
@@ -478,6 +823,7 @@ public:
 
         variables["Vertex"] = PythonVertex<Graph>().GetPythonClass();
         variables["Edge"] = PythonEdge<Graph>().GetPythonClass();
+        variables["Graph"] = PythonGraph<Graph>().GetPythonClass();
         populate_specific(g, u, dp, variables);
     }
 
@@ -540,6 +886,9 @@ private:
         typename PythonVertex<Graph>::base_t vertex_base(g, v, dp, false);
         python::object vertex = (PythonVertex<Graph>().GetPythonClass())(python::object(vertex_base));                
         variables["v"] = vertex;
+        typename PythonGraph<Graph>::base_t graph_base(g, typename graph_traits<Graph>::edge_descriptor(), dp, false);
+        python::object graph = (PythonGraph<Graph>().GetPythonClass())(python::object(graph_base));                
+        variables["g"] = graph;
         populate_base(g, v, dp, variables, HasBase());
     }
 
@@ -561,6 +910,9 @@ private:
         typename PythonVertex<typename Graph::graph_type>::base_t vertex_base(g.m_g, v, dp, false);
         python::object vertex = (PythonVertex<typename Graph::graph_type>().GetPythonClass())(python::object(vertex_base));
         variables["base_v"] = vertex;
+        typename PythonGraph<typename Graph::graph_type>::base_t graph_base(g.m_g, typename graph_traits<typename Graph::graph_type>::edge_descriptor(), dp, false);
+        python::object graph = (PythonGraph<typename Graph::graph_type>().GetPythonClass())(python::object(graph_base));
+        variables["base_g"] = graph;
     }
 
     template <class Graph>
@@ -574,7 +926,19 @@ private:
         typename PythonEdge<Graph>::base_t edge_base(g, e, dp, false);
         python::object edge = (PythonEdge<Graph>().GetPythonClass())(python::object(edge_base));                
         variables["e"] = edge;
+        typename PythonGraph<Graph>::base_t graph_base(g, typename graph_traits<Graph>::edge_descriptor(), dp, false);
+        python::object graph = (PythonGraph<Graph>().GetPythonClass())(python::object(graph_base));                
+        variables["g"] = graph;
     }
+
+    template <class Graph>
+    void populate_specific(const Graph& g, graph_property_tag, const dynamic_properties& dp, python::object& variables)
+    {
+        typename PythonGraph<Graph>::base_t graph_base(g, typename graph_traits<Graph>::edge_descriptor(), dp, false);
+        python::object graph = (PythonGraph<Graph>().GetPythonClass())(python::object(graph_base));                
+        variables["g"] = graph;
+    }
+
 };
 
 

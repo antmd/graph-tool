@@ -133,12 +133,14 @@ public:
     void SetGenericEdgeFilter(boost::python::object filter);
 
     // modification
-    void RemoveEdgeProperty(std::string property);
     void RemoveVertexProperty(std::string property);
+    void RemoveEdgeProperty(std::string property);
+    void RemoveGraphProperty(std::string property);
     void InsertEdgeIndexProperty(std::string property);
     void InsertVertexIndexProperty(std::string property);
     void EditVertexProperty(std::string property, std::string type, boost::python::object op);
     void EditEdgeProperty(std::string property, std::string type, boost::python::object op);
+    void EditGraphProperty(std::string property, std::string type, boost::python::object op);
     void ListProperties() const;
 
     // layout
