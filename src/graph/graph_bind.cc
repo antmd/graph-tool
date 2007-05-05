@@ -204,7 +204,7 @@ struct LibInfo
     string GetName()      const {return PACKAGE_NAME;}
     string GetAuthor()    const {return AUTHOR;}
     string GetCopyright() const {return COPYRIGHT;}
-    string GetVersion()   const {return VERSION;}
+    string GetVersion()   const {return VERSION " (r" SVN_REVISION ")";}
 };
 
 // overloads
