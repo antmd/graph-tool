@@ -59,7 +59,7 @@ struct get_line_graph
         typedef typename property_map<line_graph_t, vertex_index_t>::type line_vertex_index_map_t;
         line_vertex_index_map_t line_vertex_index(get(vertex_index, line_graph));
 
-        typedef HashedDescriptorMap<line_vertex_index_map_t, typename graph_traits<Graph>::edge_descriptor> edge_map_t;
+        typedef HashedDescriptorMap<line_vertex_index_map_t, typename graph_traits<typename Graph::original_graph_t>::edge_descriptor> edge_map_t;
         edge_map_t edge_map(line_vertex_index);
 
         typedef HashedDescriptorMap<EdgeIndexMap, typename graph_traits<line_graph_t>::vertex_descriptor> edge_to_vertex_map_t;
@@ -99,10 +99,17 @@ struct get_line_graph
         dynamic_properties dp;
         for (typeof(properties.begin()) iter = properties.begin(); iter != properties.end(); ++iter)
         {
-            if (iter->second->key() == typeid(typename graph_traits<Graph>::vertex_descriptor))
-                dp.insert(iter->first, auto_ptr<dynamic_property_map>(new dynamic_property_map_wrap<vertex_map_t>(vertex_map, *iter->second)));                
+            if (iter->second->key() != typeid(graph_property_tag))
+            {
+                if (iter->second->key() == typeid(typename graph_traits<Graph>::vertex_descriptor))
+                    dp.insert(iter->first, auto_ptr<dynamic_property_map>(new dynamic_property_map_wrap<vertex_map_t>(vertex_map, *iter->second)));
+                else 
+                    dp.insert(iter->first, auto_ptr<dynamic_property_map>(new dynamic_property_map_wrap<edge_map_t>(edge_map, *iter->second)));
+            }
             else
-                dp.insert(iter->first, auto_ptr<dynamic_property_map>(new dynamic_property_map_wrap<edge_map_t>(edge_map, *iter->second)));
+            {
+                dp.insert(iter->first, auto_ptr<dynamic_property_map>(iter->second));
+            }
         }
 
         bool graphviz = false;
@@ -145,6 +152,10 @@ struct get_line_graph
         {
             throw GraphException("error writing to file '" + file + "':" + e.what());
         }
+
+        for (typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)
+            if (iter->second->key() == typeid(graph_property_tag))
+                iter->second = 0;
     }
 
     template <class DescriptorMap>
@@ -152,14 +163,16 @@ struct get_line_graph
     {
     public:
         dynamic_property_map_wrap(DescriptorMap& edge_map, dynamic_property_map& dm): _descriptor_map(edge_map), _dm(dm) {}
-        any get(const any& key)
+        any get(const any& key)       
         {
-            return _dm.get(_descriptor_map[any_cast<typename property_traits<DescriptorMap>::key_type>(key)]);
+            typename property_traits<DescriptorMap>::key_type k = any_cast<typename property_traits<DescriptorMap>::key_type>(key);
+            return _dm.get(_descriptor_map[k]);
         }
 
         string get_string(const any& key)
         {
-            return _dm.get_string(any_cast<typename property_traits<DescriptorMap>::key_type>(key));
+            typename property_traits<DescriptorMap>::key_type k = any_cast<typename property_traits<DescriptorMap>::key_type>(key);
+            return _dm.get_string(_descriptor_map[k]);
         }
 
         void put(const any& key, const any& value)
