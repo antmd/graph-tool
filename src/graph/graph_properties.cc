@@ -167,8 +167,9 @@ struct edit_property
         for (tie(ei, e_end) = edges(g); ei != e_end; ++ei)
         {
             e = *ei;
+            Descriptor& ec = e;
             python::object val = operation();
-            prop_map.put(*ei, val);
+            prop_map.put(ec, val);
         }
     }
 
