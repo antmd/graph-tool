@@ -34,8 +34,8 @@ using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
 
-typedef mpl::vector<bool, int, long, float, double, std::string> value_types;
-char* type_names[] = {"boolean", "int", "long", "float", "double", "string"};
+typedef mpl::vector<bool, int, long, size_t, float, double, std::string> value_types;
+char* type_names[] = {"boolean", "int", "long", "long", "float", "double", "string"};
 
 
 //==============================================================================

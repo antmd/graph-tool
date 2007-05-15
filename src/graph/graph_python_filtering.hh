@@ -385,6 +385,7 @@ public:
             _python_class.def("source", &PythonEdge::GetSource);
             _python_class.def("target", &PythonEdge::GetTarget);
             _python_class.def("get_property", &PythonEdge::GetProperty);
+            _python_class.def("put_property", &PythonEdge::PutProperty);
             _python_class.def("n_parallel", &PythonEdge::GetNParallel);
             _python_class.def(python::self == python::self);
             _python_class.def("__hash__", &PythonEdge::GetHash);
@@ -464,7 +465,7 @@ public:
             for(typeof(dp.begin()) iter = dp.lower_bound(prop); iter != dp.end(); ++iter)
             {
                 if (iter->second->key() != typeid(vertex_descriptor) && iter->second->key() != typeid(graph_property_tag))
-                    return get_python_property_value<edge_descriptor>(*iter->second, e)();
+                    return do_get_property(*iter->second, e, typename is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::type());
             }
             return python::object();
         }
@@ -474,7 +475,19 @@ public:
         }
     }
 
-    void PutProperty(std::string prop, python::object val)
+    python::object do_get_property(const dynamic_property_map& dmap, const edge_descriptor& e, false_type)
+    {
+        return get_python_property_value<edge_descriptor>(dmap, e)();
+    }
+
+    python::object do_get_property(const dynamic_property_map& dmap, const edge_descriptor& e, true_type)
+    {
+        typedef typename edge_descriptor::original_edge_t original_edge_t;
+        return get_python_property_value<original_edge_t>(dmap, original_edge_t(e))();
+    }
+
+
+    void PutProperty(const std::string& prop, const python::object& val)
     {
         if (_base != python::object())
         {
@@ -484,9 +497,21 @@ public:
             for(typeof(dp.begin()) iter = dp.lower_bound(prop); iter != dp.end(); ++iter)
             {
                 if (iter->second->key() != typeid(vertex_descriptor) && iter->second->key() != typeid(graph_property_tag))
-                    put_python_property_value<vertex_descriptor>(*iter->second, e, val)();
+                    do_put_property(*iter->second, e, val, typename is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::type());
             }
         }
+    }
+
+    void do_put_property(dynamic_property_map& dmap, const edge_descriptor& e, python::object val, false_type)
+    {
+        put_python_property_value<edge_descriptor>(dmap, e, val)();
+    }
+
+    void do_put_property(dynamic_property_map& dmap, const edge_descriptor& e, python::object val, true_type)
+    {
+        typedef typename edge_descriptor::original_edge_t original_edge_t;
+        const original_edge_t& oe = e;
+        put_python_property_value<original_edge_t>(dmap, oe, val)();
     }
 
     python::object GetNParallel()
