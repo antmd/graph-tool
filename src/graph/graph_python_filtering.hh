@@ -162,6 +162,7 @@ public:
             _python_class.def("out_edges", python::range(&PythonVertex::OutEdgesBegin, &PythonVertex::OutEdgesEnd));
             _python_class.def("in_edges", python::range(&PythonVertex::InEdgesBegin, &PythonVertex::InEdgesEnd));
             _python_class.def(python::self == python::self);
+            _python_class.def(python::self != python::self);
             _python_class.def("__hash__", &PythonVertex::GetHash);
             first_time = false;
         }
@@ -354,9 +355,14 @@ public:
             return python::object(get<1>(base) == get<1>(o_base));
         }
         else
-        {
+        {            
             return false;
         }
+    }
+
+    bool operator!=(const PythonVertex& other)
+    {
+        return !(*this == other);
     }
 
     python::class_<PythonVertex> GetPythonClass() { return _python_class; }
@@ -388,6 +394,7 @@ public:
             _python_class.def("put_property", &PythonEdge::PutProperty);
             _python_class.def("n_parallel", &PythonEdge::GetNParallel);
             _python_class.def(python::self == python::self);
+            _python_class.def(python::self != python::self);
             _python_class.def("__hash__", &PythonEdge::GetHash);
             first_time = false;
         }
@@ -567,6 +574,11 @@ public:
         {
             return false;
         }
+    }
+
+    bool operator!=(const PythonEdge& other)
+    {
+        return !(*this == other);
     }
 
     python::class_<PythonEdge> GetPythonClass() { return _python_class; }
