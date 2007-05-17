@@ -13,6 +13,7 @@ AC_PROG_CXX
 AC_LANG_CPLUSPLUS
 AC_PROG_CC_STDC
 AC_HEADER_STDC
+AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
 AC_PROG_INSTALL
 
@@ -61,43 +62,6 @@ AC_ARG_ENABLE([optimization], [AC_HELP_STRING([--disable-optimization],
         [AC_MSG_RESULT(yes)]
         [CXXFLAGS=" $CXXFLAGS -O99 "]
         )
-
-AC_MSG_CHECKING(whether to enable extra optimizations...)
-
-AC_ARG_ENABLE([extra-optimizations], [AC_HELP_STRING([--enable-extra-optimizations],
-        [enable extra, possibly dangerous, optimizations [default=no]])],
-        if test $enableval = yes; then
-           [AC_MSG_RESULT(yes)]
-           [AC_DEFINE([EXTRA_OPTIMIZATIONS], 1, [enable extra optimizations])]
-           [CXXFLAGS="$CXXFLAGS -fmodulo-sched -fgcse-sm -fgcse-las "]
-           [CXXFLAGS="$CXXFLAGS -fgcse-after-reload -floop-optimize2 "]
-           [CXXFLAGS="$CXXFLAGS -ftree-loop-linear -ftree-loop-im "]
-           [CXXFLAGS="$CXXFLAGS -ftree-loop-ivcanon -fivopts -ftree-vectorize "]
-           [CXXFLAGS="$CXXFLAGS -ftracer -funroll-loops "]
-           [CXXFLAGS="$CXXFLAGS -fvariable-expansion-in-unroller -fpeel-loops"]
-dnl           [CXXFLAGS="$CXXFLAGS -freorder-blocks-and-partition "]
-           [CXXFLAGS="$CXXFLAGS -fmove-loop-invariants -funswitch-loops "]
-           [CXXFLAGS="$CXXFLAGS -fforce-addr -freschedule-modulo-scheduled-loops "]
-        else
-           [AC_MSG_RESULT(no)]
-        fi
-        ,
-        [AC_MSG_RESULT(no)] )
-
-AC_MSG_CHECKING(whether to link statically...)
-AC_ARG_ENABLE([static-linkage], [AC_HELP_STRING([--enable-static-linkage],
-        [enable static linkage [default=no]])],
-        if test $enableval = yes; then
-           [AC_MSG_RESULT(yes)]
-           STATIC=yes
-        else
-           STATIC=no
-           [AC_MSG_RESULT(no)]
-        fi
-        ,
-        STATIC=no
-        [AC_MSG_RESULT(no)] )
-AM_CONDITIONAL(STATIC, test $STATIC = yes)
 
 AC_MSG_CHECKING(whether to enable graph python filtering...)
 AC_ARG_ENABLE([python-filtering], [AC_HELP_STRING([--enable-python-filtering],
