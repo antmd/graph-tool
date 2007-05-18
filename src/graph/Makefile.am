@@ -49,6 +49,7 @@ libgraph_tool_la_SOURCES = \
 libgraph_tool_la_LIBADD = \
     $(PYTHON_LDFLAGS) \
     $(BOOST_LDFLAGS) \
+    $(OPENMP_LDFLAGS) \
     -lboost_python \
     -lboost_iostreams \
     -lexpat

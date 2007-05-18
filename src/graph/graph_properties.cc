@@ -35,7 +35,7 @@ using namespace boost::lambda;
 using namespace graph_tool;
 
 typedef mpl::vector<bool, int, long, size_t, float, double, std::string> value_types;
-char* type_names[] = {"boolean", "int", "long", "long", "float", "double", "string"};
+const char* type_names[] = {"boolean", "int", "long", "long", "float", "double", "string"};
 
 
 //==============================================================================
@@ -191,7 +191,7 @@ template <class ValueTypes, class Descriptor, class IndexMap>
 class get_property_map
 {
 public:
-    get_property_map(GraphInterface& gi, dynamic_properties& dp, IndexMap index_map, string property, string type, char* types[], python::object op, dynamic_property_map*& pmap)
+    get_property_map(GraphInterface& gi, dynamic_properties& dp, IndexMap index_map, string property, string type, const char* types[], python::object op, dynamic_property_map*& pmap)
         : _gi(gi), _dp(dp), _index_map(index_map), _property(property), _type(type), _types(types), _op(op), _pmap(pmap) {}
     
     template <class ValueType>
@@ -244,7 +244,7 @@ private:
     IndexMap _index_map;
     string _property;
     string _type;
-    char** _types;
+    const char** _types;
     python::object _op;
     dynamic_property_map*& _pmap;
 };
@@ -322,7 +322,7 @@ template <class ValueTypes>
 class print_name
 {
 public:
-    print_name(const type_info& type, char* types[]): _type(type), _types(types) {}
+    print_name(const type_info& type, const char* types[]): _type(type), _types(types) {}
 
     template <class ValueType>
     void operator()(ValueType)
@@ -332,7 +332,7 @@ public:
     }
 private:
     const type_info& _type;
-    char** _types;
+    const char** _types;
 };
 
 void GraphInterface::ListProperties() const

@@ -52,18 +52,26 @@ struct get_distance_histogram
                                   get_dists_djk>::type get_vertex_dists_t;
 
         get_vertex_dists_t get_vertex_dists;
-        typename graph_traits<Graph>::vertex_iterator v, v2, v_end;
-        for (tie(v, v_end) = vertices(g); v != v_end; ++v)
+        int i, N = num_vertices(g);
+
+        #pragma omp parallel for default(shared) private(i) 
+        for (i = 0; i < N; ++i)
         {
+            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
             typedef tr1::unordered_map<typename graph_traits<Graph>::vertex_descriptor,double,DescriptorHash<IndexMap> > dmap_t;
             dmap_t dmap(0, DescriptorHash<IndexMap>(index_map));
             InitializedPropertyMap<dmap_t> dist_map(dmap, numeric_limits<double>::max());
 
-            dist_map[*v] = 0.0;
-            get_vertex_dists(g, *v, index_map, dist_map, weights);
-            for (v2 = vertices(g).first; v2 != v_end; ++v2)
-                if (*v2 != *v && dist_map[*v2] != numeric_limits<double>::max())
-                    hist[dist_map[*v2]]++;
+            dist_map[v] = 0.0;
+            get_vertex_dists(g, v, index_map, dist_map, weights);
+
+            typename graph_traits<Graph>::vertex_iterator v2, v_end;
+            for (tie(v2, v_end) = vertices(g); v2 != v_end; ++v2)
+                if (*v2 != v && dist_map[*v2] != numeric_limits<double>::max())
+                    #pragma omp atomic
+                    hist[dist_map[*v2]]++;            
         }        
     }
 

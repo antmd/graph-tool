@@ -155,7 +155,7 @@ class mutate_graph_impl : public mutate_graph
     public:
         put_property(const std::string& name, dynamic_properties& dp, const Key& key, 
                      const std::string& value, const std::string& value_type, 
-                     char** type_names, bool& type_found)
+                     const char** type_names, bool& type_found)
             : m_name(name), m_dp(dp), m_key(key), m_value(value), 
               m_value_type(value_type), m_type_names(type_names), 
               m_type_found(type_found) {}
@@ -174,7 +174,7 @@ class mutate_graph_impl : public mutate_graph
         const Key& m_key;
         const std::string& m_value;
         const std::string& m_value_type;
-        char** m_type_names;
+        const  char** m_type_names;
         bool& m_type_found;
     };    
     
@@ -182,11 +182,11 @@ protected:
     MutableGraph& m_g;
     dynamic_properties& m_dp;
     typedef mpl::vector<bool, int, long, float, double, std::string> value_types;
-    static char* m_type_names[]; 
+    static const char* m_type_names[]; 
 };
 
 template<typename MutableGraph>
-char* mutate_graph_impl<MutableGraph>::m_type_names[] = {"boolean", "int", "long", "float", "double", "string"};
+const char* mutate_graph_impl<MutableGraph>::m_type_names[] = {"boolean", "int", "long", "float", "double", "string"};
 
 void
 read_graphml(std::istream& in, mutate_graph& g);
@@ -203,7 +203,7 @@ template <typename Types>
 class get_type_name
 {
 public:
-    get_type_name(const std::type_info& type, char** type_names, std::string& type_name)
+    get_type_name(const std::type_info& type, const char** type_names, std::string& type_name)
         : m_type(type), m_type_names(type_names), m_type_name(type_name) {}
     template <typename Type>
     void operator()(Type)
@@ -213,7 +213,7 @@ public:
     }
 private:
     const std::type_info &m_type;
-    char** m_type_names;
+    const char** m_type_names;
     std::string &m_type_name;
 };
 
@@ -235,7 +235,7 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
         << "<graphml xmlns=\"http://graphml.graphdrawing.org/xmlns\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd\">\n";
 
     typedef mpl::vector<bool, short, unsigned short, int, unsigned int, long, unsigned long, long long, unsigned long long, float, double, long double, std::string> value_types;
-    char* type_names[] = {"boolean", "int", "int", "int", "int", "long", "long", "long", "long", "float", "double", "double", "string"};    
+    const char* type_names[] = {"boolean", "int", "int", "int", "int", "long", "long", "long", "long", "float", "double", "double", "string"};    
     std::map<std::string, std::string> graph_key_ids;
     std::map<std::string, std::string> vertex_key_ids;
     std::map<std::string, std::string> edge_key_ids;

@@ -41,7 +41,7 @@ using namespace graph_tool;
 template <class Graph>
 pair<int,int> get_triangles(typename graph_traits<Graph>::vertex_descriptor v, const Graph &g)
 {
-    static tr1::unordered_set<typename graph_traits<Graph>::vertex_descriptor> neighbour_set1, neighbour_set2, neighbour_set3;
+    tr1::unordered_set<typename graph_traits<Graph>::vertex_descriptor> neighbour_set1, neighbour_set2, neighbour_set3;
     
     size_t triangles = 0, k = 0;
     
@@ -103,23 +103,41 @@ struct get_global_clustering
     {
         size_t triangles = 0, n = 0;
         pair<size_t, size_t> temp;
-        typename graph_traits<Graph>::vertex_iterator v, v_begin, v_end;
-        tie(v_begin, v_end) = vertices(g);
-        for(v = v_begin; v != v_end; ++v)
+
+        int i, N = num_vertices(g);
+
+        #pragma omp parallel for default(shared) private(i,temp) schedule(dynamic) 
+        for (i = 0; i < N; ++i)
         {
-            temp = get_triangles(*v, g);
-            triangles += temp.first; 
-            n += temp.second;
+            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+
+            temp = get_triangles(v, g);
+
+            #pragma omp critical
+            {
+                triangles += temp.first; 
+                n += temp.second;
+            }
         }
         c = double(triangles)/n;
 
         // "jackknife" variance
         c_err = 0.0;
-        for(v = v_begin; v != v_end; ++v)
+        
+        #pragma omp parallel for default(shared) private(i,temp) schedule(dynamic) 
+        for (i = 0; i < N; ++i)
         {
-            temp = get_triangles(*v, g);
+            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+
+            temp = get_triangles(v, g);
             double cl = double(triangles - temp.first)/(n - temp.second);
-            c_err = (c - cl)*(c - cl);
+
+            #pragma omp atomic
+            c_err += (c - cl)*(c - cl);            
         }
         c_err = sqrt(c_err);
     }
@@ -148,13 +166,22 @@ struct set_clustering_to_property
     void operator()(const Graph& g, ClustMap& clust_map) const
     {
         typename get_undirected_graph<Graph>::type ug(g);
-        typename graph_traits<Graph>::vertex_iterator v, v_begin, v_end;
-        tie(v_begin, v_end) = vertices(g);
-        for(v = v_begin; v != v_end; ++v)
+        int i, N = num_vertices(g);
+
+        #pragma omp parallel for default(shared) private(i) schedule(dynamic) 
+        for (i = 0; i < N; ++i)
         {
-            pair<size_t,size_t> triangles = get_triangles(*v,ug); // get from ug
+            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+
+            pair<size_t,size_t> triangles = get_triangles(v,ug); // get from ug
             double clustering = (triangles.second > 0)?double(triangles.first)/triangles.second:0.0;
-            clust_map[*v] = clustering;
+
+            #pragma omp critical
+            {
+                clust_map[v] = clustering;
+            }
         }
     }
 

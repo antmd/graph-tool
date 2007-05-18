@@ -96,6 +96,32 @@ struct SoftNumEdges
     size_t operator()(const Graph &g) const { return num_edges(g); }
 };
 
+
+//==============================================================================
+// vertex(i, filtered_graph<G>)
+//==============================================================================
+template <class Graph, class EdgePredicate, class VertexPredicate> 
+typename graph_traits<filtered_graph<Graph,EdgePredicate,VertexPredicate> >::vertex_descriptor
+vertex(size_t i, const filtered_graph<Graph,EdgePredicate,VertexPredicate>& g)
+{
+    typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g.m_g);
+    if (g.m_vertex_pred(v))
+        return v;
+    else
+        return graph_traits<Graph>::null_vertex();
+}
+
+//==============================================================================
+// vertex(i, reverse_graph<G>)
+//==============================================================================
+template <class Graph> 
+typename graph_traits<reverse_graph<Graph> >::vertex_descriptor
+vertex(size_t i, const reverse_graph<Graph>& g)
+{
+    return vertex(i, g.m_g);
+}
+
+
 //==============================================================================
 // RangeFilter
 //==============================================================================

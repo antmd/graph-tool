@@ -48,9 +48,6 @@ struct get_sampled_distances
     template <class Graph, class IndexMap, class WeightMap, class Hist>
     void operator()(const Graph &g, IndexMap index_map, WeightMap weights, Hist& hist, size_t samples, size_t seed) const
     {        
-        typedef HashedDescriptorMap<IndexMap,double> dist_map_t;
-        dist_map_t dist_map(index_map);
-
         // select get_sum_vertex_dists based on the existence of weights
         typedef typename mpl::if_<is_same<WeightMap, no_weightS>,
                                        get_dists_bfs,
@@ -60,7 +57,7 @@ struct get_sampled_distances
         tr1::unordered_map<size_t, typename graph_traits<Graph>::vertex_descriptor> descriptors;
 
         typename graph_traits<Graph>::vertex_iterator v, v_end;
-        size_t i = 0, N = 0;
+        int i = 0, N = 0;
         for(tie(v, v_end) = vertices(g); v != v_end; ++v,++i)
         {
             descriptors[i] = *v;
@@ -70,21 +67,33 @@ struct get_sampled_distances
         rng_t rng(static_cast<rng_t::result_type>(seed));
         uniform_int<size_t> sampler(0,descriptors.size()-1);
 
-        for(i=0; i < samples; ++i)
+        #pragma omp parallel for default(shared) private(i,v,v_end) 
+        for(i=0; i < int(samples); ++i)
         {
+            typedef HashedDescriptorMap<IndexMap,double> dist_map_t;
+            dist_map_t dist_map(index_map);
+
             for(tie(v, v_end) = vertices(g); v != v_end; ++v)
                 dist_map[*v] = numeric_limits<double>::max();
-            typename graph_traits<Graph>::vertex_descriptor s = descriptors[sampler(rng)], t;
-            do
+            typename graph_traits<Graph>::vertex_descriptor s,t;
+
+            #pragma omp critical
             {
-                t = descriptors[sampler(rng)];
+                s = descriptors[sampler(rng)];
+                do
+                {
+                    t = descriptors[sampler(rng)];
+                }
+                while (t == s && N != 1);
             }
-            while (t == s && N != 1);
 
             dist_map[s] = 0.0;
             get_vertex_dists(g, s, index_map, dist_map, weights);
             if (dist_map[t] != numeric_limits<double>::max() && dist_map[t] != 0.0)
+            {
+                #pragma omp atomic
                 hist[dist_map[t]]++;
+            }
         }
         
     }

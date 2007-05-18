@@ -82,13 +82,20 @@ struct get_extended_clustering
     template <class Graph, class IndexMap, class ClusteringMap>
     void operator()(Graph& g, IndexMap vertex_index, vector<ClusteringMap>& cmaps) const
     {        
-        typename graph_traits<Graph>::vertex_iterator v, v_end;
-        for (tie(v,v_end) = vertices(g); v != v_end; ++v) 
-        {            
+
+        int i, N = num_vertices(g);
+
+        #pragma omp parallel for default(shared) private(i) schedule(dynamic) 
+        for (i = 0; i < N; ++i)
+        {
+            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+        
             // We must disconsider paths through the original vertex
             typedef single_vertex_filter<typename graph_traits<Graph>::vertex_descriptor> filter_t;
             typedef filtered_graph<Graph, keep_all, filter_t> fg_t;
-            fg_t fg(g, keep_all(), filter_t(*v));
+            fg_t fg(g, keep_all(), filter_t(v));
 
             typedef DescriptorHash<IndexMap> hasher_t;
             typedef tr1::unordered_set<typename graph_traits<Graph>::vertex_descriptor,hasher_t> neighbour_set_t;
@@ -98,15 +105,15 @@ struct get_extended_clustering
             
             // collect the targets
             typename graph_traits<Graph>::adjacency_iterator a, a_end;
-            for(tie(a, a_end) = adjacent_vertices(*v, g); a != a_end; ++a)
-                if (*a != *v) // no self-loops
+            for(tie(a, a_end) = adjacent_vertices(v, g); a != a_end; ++a)
+                if (*a != v) // no self-loops
                     targets.insert(*a);
             size_t k = targets.size();
 
             // And now we setup and start the BFS bonanza
-            for(tie(a, a_end) = adjacent_vertices(*v, g); a != a_end; ++a)
+            for(tie(a, a_end) = adjacent_vertices(v, g); a != a_end; ++a)
             {
-                if (*a == *v) // no self-loops
+                if (*a == v) // no self-loops
                     continue;
                 if (neighbours.find(*a) != neighbours.end()) // avoid parallel edges
                     continue;
@@ -133,15 +140,15 @@ struct get_extended_clustering
 
                 neighbours2.clear();
                 typename graph_traits<Graph>::adjacency_iterator a2;
-                for(a2 = adjacent_vertices(*v, g).first ; a2 != a_end ; ++a2) 
+                for(a2 = adjacent_vertices(v, g).first ; a2 != a_end ; ++a2) 
                 {
-                    if (*a2 == *v || *a2 == *a) // no self-loops
+                    if (*a2 == v || *a2 == *a) // no self-loops
                         continue;
                     if (neighbours2.find(*a2) != neighbours2.end()) // avoid parallel edges
                         continue;
                     neighbours2.insert(*a2);
                     if (distance_map[*a2] <= cmaps.size())
-                        cmaps[distance_map[*a2]-1][*v] += 1.0/(k*(k-1));
+                        cmaps[distance_map[*a2]-1][v] += 1.0/(k*(k-1));
                 }
             }
         }
