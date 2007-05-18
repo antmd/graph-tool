@@ -70,8 +70,11 @@ struct get_distance_histogram
             typename graph_traits<Graph>::vertex_iterator v2, v_end;
             for (tie(v2, v_end) = vertices(g); v2 != v_end; ++v2)
                 if (*v2 != v && dist_map[*v2] != numeric_limits<double>::max())
+                {
+                    double dist = dist_map[*v2];
                     #pragma omp atomic
-                    hist[dist_map[*v2]]++;            
+                    hist[dist]++;
+                }
         }        
     }
 

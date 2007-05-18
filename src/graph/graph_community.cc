@@ -51,42 +51,6 @@ size_t out_degree_no_loops(typename graph_traits<Graph>::vertex_descriptor v, co
 
 
 //==============================================================================
-// ManagedUnorderedMap
-//==============================================================================
-template <class Key, class Value>
-class ManagedUnorderedMap: public tr1::unordered_map<Key,Value>
-{
-    typedef tr1::unordered_map<Key,Value> base_t;
-public:
-    void erase(typename base_t::iterator pos)
-    {
-        static_cast<base_t*>(this)->erase(pos);
-        manage();
-    }
-
-    size_t erase(const Key& k)
-    {
-        size_t n = static_cast<base_t*>(this)->erase(k);
-        manage();
-        return n;
-    }
-
-    void manage()
-    {
-        if (this->bucket_count() > 2*this->size())
-        {
-            base_t* new_map = new base_t;
-            for (typeof(this->begin()) iter = this->begin(); iter != this->end(); ++iter)
-                (*new_map)[iter->first] = iter->second;
-            *static_cast<base_t*>(this) = *new_map;
-            delete new_map;
-        }
-    }
-
-};
-
-
-//==============================================================================
 // GetCommunityStructure()
 // computes the community structure through a spin glass system with 
 // simulated annealing
@@ -98,7 +62,8 @@ struct get_communities
     template <class Graph, class WeightMap, class CommunityMap>
     void operator()(Graph& g, WeightMap weights, CommunityMap s, double gamma, size_t n_iter, pair<double,double> Tinterval, pair<size_t,bool> Nspins, size_t seed, pair<bool,string> verbose) const
     {
-
+        size_t N = HardNumVertices()(g);
+                    
         stringstream out_str;
         ofstream out_file;
         if (verbose.second != "")
@@ -118,8 +83,8 @@ struct get_communities
         if (Nspins.first == 0)
             Nspins.first = HardNumVertices()(g);
 
-        ManagedUnorderedMap<size_t, size_t> Ns; // spin histogram
-        ManagedUnorderedMap<size_t, map<double, unordered_set<size_t> > > global_term; // global energy term
+        unordered_map<size_t, size_t> Ns; // spin histogram
+        unordered_map<size_t, map<double, unordered_set<size_t> > > global_term; // global energy term
 
         // init spins from [0,N-1] and global info
         uniform_int<size_t> sample_spin(0, Nspins.first-1);
@@ -160,13 +125,23 @@ struct get_communities
             // calculate the cumulative probabilities of each spin energy level
             unordered_map<size_t, map<long double, pair<double, bool> > > cumm_prob;
             unordered_map<size_t, unordered_map<double, long double> > energy_to_prob;
-            for (size_t i = 0; i < degs.size(); ++i)
+            int i, NK = degs.size();
+#ifdef USING_OPENMP
+            for (i = 0; i < NK; ++i)
+            {
+                cumm_prob[degs[i]];
+                energy_to_prob[degs[i]];
+            }
+#endif //USING_OPENMP
+            #pragma omp parallel for default(shared) private(i) schedule(dynamic) 
+            for (i = 0; i < NK; ++i)
             {
                 long double prob = 0;
                 for (typeof(global_term[degs[i]].begin()) iter = global_term[degs[i]].begin(); iter != global_term[degs[i]].end(); ++iter)
                 {
                     long double M = log(numeric_limits<long double>::max()/(Nspins.first*10));
                     long double this_prob = exp((long double)(-iter->first - degs[i])/T + M)*iter->second.size();
+
                     if (prob + this_prob != prob)
                     {
                         prob += this_prob;
@@ -179,28 +154,39 @@ struct get_communities
                     }
                 }
                 if (prob == 0.0)
-                    steepest_descent = true;
+                {
+                    #pragma omp critical
+                    {
+                        steepest_descent = true;
+                    }
+                }
             }
 
             // list of spins which were updated
             vector<pair<typename graph_traits<Graph>::vertex_descriptor,size_t> > spin_update;
-            spin_update.reserve(HardNumVertices()(g));
+            spin_update.reserve(N);
 
             // sample a new spin for every vertex
-            for (tie(v,v_end) = vertices(g); v != v_end; ++v)
+            int NV = num_vertices(g);
+            #pragma omp parallel for default(shared) private(i) firstprivate(global_term, cumm_prob) schedule(dynamic) 
+            for (i = 0; i < NV; ++i)
             {
+                typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+                if (v == graph_traits<Graph>::null_vertex())
+                    continue;
+
                 unordered_map<size_t, double> ns; // number of neighbours with spin 's' (weighted)
                 
                 // neighborhood spins info
                 typename graph_traits<Graph>::out_edge_iterator e,e_end;
-                for (tie(e,e_end) = out_edges(*v,g); e != e_end; ++e)
+                for (tie(e,e_end) = out_edges(v,g); e != e_end; ++e)
                 {
                     typename graph_traits<Graph>::vertex_descriptor t = target(*e,g);
-                    if (t != *v)
+                    if (t != v)
                         ns[s[t]] += get(weights, *e);
                 }
                     
-                size_t k = out_degree_no_loops(*v,g);
+                size_t k = out_degree_no_loops(v,g);
 
                 map<double,unordered_set<size_t> >& global_term_k = global_term[k];
                 map<long double,pair<double,bool> >& cumm_prob_k = cumm_prob[k];
@@ -228,7 +214,7 @@ struct get_communities
                             cumm_prob_k[energy_to_prob[k][*iter]].second = false;
                     if (global_term_k.find(*iter) != global_term_k.end())
                     {
-                        long double M = log(numeric_limits<long double>::max()/(Nspins.first*10));
+                        long double M = log(numeric_limits<long double>::max()/(Nspins.first*10));                        
                         long double prob = exp((long double)(-*iter - k)/T + M)*global_term_k[*iter].size();
                         if (cumm_prob_k.empty() || cumm_prob_k.rbegin()->first + prob != cumm_prob_k.rbegin()->first)
                         {
@@ -256,7 +242,13 @@ struct get_communities
                     bool accept = false;
                     while (!accept)
                     {
-                        typeof(cumm_prob_k.begin()) upper = cumm_prob_k.upper_bound(prob_sample(rng));
+                        typeof(cumm_prob_k.begin()) upper;
+
+                        #pragma omp critical
+                        {
+                            upper = cumm_prob_k.upper_bound(prob_sample(rng));
+                        }
+
                         if (upper == cumm_prob_k.end())
                             upper--;
                         E = upper->second.first;
@@ -267,7 +259,13 @@ struct get_communities
                 //new spin (randomly chosen amongst those with equal energy)
                 uniform_int<size_t> sample_spin(0,global_term_k[E].size()-1);
                 typeof(global_term_k[E].begin()) iter = global_term_k[E].begin();
-                advance(iter, sample_spin(rng));
+
+                size_t spin_n;
+                #pragma omp critical
+                {
+                    spin_n = sample_spin(rng);
+                }
+                advance(iter, spin_n);
                 size_t a = *iter;
 
                 // cleanup modified probabilities
@@ -288,16 +286,20 @@ struct get_communities
                 {
                     double new_E = gamma*Nnnks(k, iter->first);
                     double old_E = new_E - ns[iter->first];
-
                     global_term_k[old_E].erase(iter->first);
                     if (global_term_k[old_E].empty())
                         global_term_k.erase(old_E);
                     global_term_k[new_E].insert(iter->first);
                 }
-
+                
                 //update global info
-                if (s[*v] != a)
-                    spin_update.push_back(make_pair(*v, a));
+                if (s[v] != a)
+                {
+                    #pragma omp critical
+                    {
+                        spin_update.push_back(make_pair(v, a));
+                    }
+                }
             }
             
             // flip spins and update Nnnks
@@ -306,30 +308,40 @@ struct get_communities
                 typename graph_traits<Graph>::vertex_descriptor v = spin_update[u].first;
                 size_t k = out_degree_no_loops(v, g);
                 size_t a = spin_update[u].second;
-                for (size_t i = 0; i < degs.size(); ++i)
+                
+                int i, NK = degs.size();
+                #pragma omp parallel for default(shared) private(i) schedule(dynamic) 
+                for (i = 0; i < NK; ++i)
                 {
                     size_t nk = degs[i];
                     double old_E = gamma*Nnnks(nk,s[v]);
-                    global_term[nk][old_E].erase(s[v]);
-                    if (global_term[nk][old_E].empty())
-                        global_term[nk].erase(old_E);
-                    old_E = gamma*Nnnks(nk,a);
-                    global_term[nk][old_E].erase(a);
-                    if (global_term[nk][old_E].empty())
-                        global_term[nk].erase(old_E);
+                    double new_E = gamma*Nnnks(nk,a);
+                    map<double,unordered_set<size_t> >& global_term_k = global_term[nk];
+                    unordered_set<size_t>& global_term_k_old_E = global_term_k[old_E];
+                    unordered_set<size_t>& global_term_k_new_E = global_term_k[new_E];
+                    global_term_k_old_E.erase(s[v]);
+                    if (global_term_k_old_E.empty())
+                        global_term_k.erase(old_E);
+                    global_term_k_new_E.erase(a);
+                    if (global_term_k_new_E.empty())
+                        global_term_k.erase(new_E);
                 }
-                    
+                
                 Nnnks.Update(k,s[v],a);
                 Ns[s[v]]--;
                 if (Ns[s[v]] == 0)
                     Ns.erase(s[v]);
                 Ns[a]++;
-                
-                for (size_t i = 0; i < degs.size(); ++i)
+
+                #pragma omp parallel for default(shared) private(i) schedule(dynamic) 
+                for (i = 0; i < NK; ++i)
                 {
                     size_t nk = degs[i];
-                    global_term[nk][gamma*Nnnks(nk,s[v])].insert(s[v]);
-                    global_term[nk][gamma*Nnnks(nk,a)].insert(a);
+                    map<double,unordered_set<size_t> >& global_term_k = global_term[nk];
+                    double old_E = gamma*Nnnks(nk,s[v]);
+                    double new_E = gamma*Nnnks(nk,a);
+                    global_term_k[old_E].insert(s[v]);
+                    global_term_k[new_E].insert(a);
                 }
                        
                 // update spin
@@ -346,7 +358,7 @@ struct get_communities
                 size_t n_energy = 0;
                 for (typeof(global_term.begin()) iter = global_term.begin(); iter != global_term.end(); ++iter)
                     n_energy += iter->second.size();
-                out_str << setw(lexical_cast<string>(Nspins.first*degs.size()).size()) << n_energy;
+                out_str << setw(lexical_cast<string>(Nspins.first*degs.size()).size()) << n_energy << "  ";
                 if (steepest_descent)
                     out_str << " (steepest descent)";
                 cout << out_str.str() << flush;
@@ -367,8 +379,24 @@ struct get_communities
             }
         }
 
+
+        // get final energy
+        double E = 0.0;
+        unordered_map<size_t,vector<typename graph_traits<Graph>::vertex_descriptor> > spin_groups;
+        for (tie(v,v_end) = vertices(g); v != v_end; ++v)
+        {
+            typename graph_traits<Graph>::out_edge_iterator e, e_end;
+            for (tie(e,e_end) = out_edges(*v,g); e != e_end; ++e)
+            {
+                typename graph_traits<Graph>::vertex_descriptor t = target(*e,g);
+                if (s[t] == s[*v])
+                    E -= get(weights, *e);
+            }
+            E += gamma*Nnnks(out_degree_no_loops(*v,g), s[*v]);
+        }
+                        
         if (verbose.first)
-            cout << endl;
+            cout << " total energy: " << scientific << setprecision(20) << E << endl;
 
         // rename spins, starting from zero
         unordered_map<size_t,size_t> spins;
@@ -377,7 +405,7 @@ struct get_communities
             if (spins.find(s[*v]) == spins.end())
                 spins[s[*v]] = spins.size() - 1;
             s[*v] = spins[s[*v]];
-        }        
+        }
         
     }
 };
@@ -420,7 +448,7 @@ public:
 
 private:
     double _p;
-    ManagedUnorderedMap<size_t,size_t> _Ns;
+    unordered_map<size_t,size_t> _Ns;
 };
 
 template <class Graph, class CommunityMap>
@@ -458,7 +486,7 @@ public:
 private:
     Graph& _g;
     size_t _K;
-    ManagedUnorderedMap<size_t,size_t> _Ks;
+    unordered_map<size_t,size_t> _Ks;
 };
 
 template <class Graph, class CommunityMap>
@@ -520,20 +548,26 @@ public:
 
     void Update(size_t k, size_t old_s, size_t s)
     {
-        for (size_t i = 0; i < _degs.size(); ++i) 
+        int i, NK = _degs.size();
+        #pragma omp parallel for default(shared) private(i) schedule(dynamic) 
+        for (i = 0; i < NK; ++i)
         {
             size_t k1 = _degs[i], k2 = k;
             if (_Pkk.find(k1) == _Pkk.end())
                 continue;
             if (_Pkk.find(k1)->second.find(k2) == _Pkk.find(k1)->second.end())
                 continue;
-            _NNks[k1][old_s] -=  k1*_Pkk[k1][k2] * _Nks[k2][old_s]/double(_Nk[k2]);
-            if (_NNks[k1][old_s] == 0.0)
-                _NNks[k1].erase(old_s);
-            if (_Nks[k2].find(s) != _Nks[k2].end())
-                _NNks[k1][s] -=  k1*_Pkk[k1][k2] * _Nks[k2][s]/double(_Nk[k2]);
-            if (_NNks[k1][s] == 0.0)
-                _NNks[k1].erase(s);
+            unordered_map<size_t,double>& NNks_k1 = _NNks[k1];
+            double Pk1k2 = _Pkk[k1][k2];
+            unordered_map<size_t,size_t>& Nksk2 = _Nks[k2];
+            double Nk2 = _Nk[k2];
+            NNks_k1[old_s] -=  k1*Pk1k2 * Nksk2[old_s]/Nk2;
+            if (NNks_k1[old_s] == 0.0)
+                NNks_k1.erase(old_s);
+            if (Nksk2.find(s) != Nksk2.end())
+                NNks_k1[s] -=  k1*Pk1k2 * Nksk2[s]/Nk2;
+            if (NNks_k1[s] == 0.0)
+                NNks_k1.erase(s);
         }
 
         _Nks[k][old_s]--;
@@ -541,17 +575,22 @@ public:
             _Nks[k].erase(old_s);
         _Nks[k][s]++;
 
-        for (size_t i = 0; i < _degs.size(); ++i) 
+        #pragma omp parallel for default(shared) private(i) schedule(dynamic) 
+        for (i = 0; i < NK; ++i)
         {
             size_t k1 = _degs[i], k2 = k;
             if (_Pkk.find(k1) == _Pkk.end())
                 continue;
             if (_Pkk.find(k1)->second.find(k2) == _Pkk.find(k1)->second.end())
                 continue;
-            _NNks[k1][old_s] +=  k1*_Pkk[k1][k2] * _Nks[k2][old_s]/double(_Nk[k2]);
-            if (_NNks[k1][old_s] == 0.0)
-                _NNks[k1].erase(old_s);
-            _NNks[k1][s] +=  k1*_Pkk[k1][k2] * _Nks[k2][s]/double(_Nk[k2]);
+            unordered_map<size_t,double>& NNks_k1 = _NNks[k1];
+            double Pk1k2 = _Pkk[k1][k2];
+            unordered_map<size_t,size_t>& Nksk2 = _Nks[k2];
+            double Nk2 = _Nk[k2];
+            NNks_k1[old_s] +=  k1*Pk1k2 * Nksk2[old_s]/Nk2;
+            if (NNks_k1[old_s] == 0.0)
+                NNks_k1.erase(old_s);
+            NNks_k1[s] +=  k1*Pk1k2 * Nksk2[s]/Nk2;
         }
 
     }
@@ -570,8 +609,8 @@ private:
     vector<size_t> _degs;
     unordered_map<size_t,size_t> _Nk;
     unordered_map<size_t,unordered_map<size_t,double> > _Pkk;
-    unordered_map<size_t,ManagedUnorderedMap<size_t,size_t> > _Nks;
-    unordered_map<size_t,ManagedUnorderedMap<size_t,double> > _NNks;
+    unordered_map<size_t,unordered_map<size_t,size_t> > _Nks;
+    unordered_map<size_t,unordered_map<size_t,double> > _NNks;
 };
 
 
