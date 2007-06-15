@@ -27,6 +27,7 @@
 #include "graph_filtering.hh"
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
+#include "shared_map.hh"
 
 using namespace std;
 using namespace boost;
@@ -42,35 +43,39 @@ struct get_assortativity_coefficient
 {
     get_assortativity_coefficient(DegreeSelector& deg): _deg(deg) {}
 
+
     template <class Graph>
     void operator()(const Graph& g, double& r, double& r_err) const
     {
         size_t n_edges = 0;
         int e_kk = 0;
         tr1::unordered_map<double,int> a, b;
-        
-        typename graph_traits<Graph>::edge_iterator e, e_begin, e_end;
-        tie(e_begin,e_end) = edges(g);
-        for (e = e_begin; e != e_end; ++e)
+        SharedMap<tr1::unordered_map<double,int> > sa(a), sb(b);
+
+        int i, N = num_vertices(g);
+        #pragma omp parallel for default(shared) private(i) firstprivate(sa,sb) schedule(dynamic) reduction(+:e_kk, n_edges)
+        for (i = 0; i < N; ++i)
         {
-            double k1, k2;
-            k1 = _deg(source(*e,g),g);
-            k2 = _deg(target(*e,g),g);
-            a[k1]++;
-            b[k2]++;
-            if (k1 == k2)
-                e_kk++;
-            n_edges++;
-            if(is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::value)
+            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+
+            double k1 = _deg(v, g);
+            typename graph_traits<Graph>::out_edge_iterator e, e_end;
+            for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
             {
-                a[k2]++;
-                a[k1]++;
+                double k2 = _deg(target(*e, g), g);
+                sa[k1]++;
+                sb[k2]++;
                 if (k1 == k2)
                     e_kk++;
                 n_edges++;
             }
         }
-        
+
+        sa.Gather();
+        sb.Gather();
+
         double t1=double(e_kk)/n_edges, t2=0.0;
         
         for (typeof(a.begin()) iter = a.begin(); iter != a.end(); ++iter)
@@ -81,24 +86,29 @@ struct get_assortativity_coefficient
         r = (t1 - t2)/(1.0 - t2);
 
         // "jackknife" variance
-        r_err = 0.0;
-        for (e = e_begin; e != e_end; ++e)
+        double err = 0.0;
+        #pragma omp parallel for default(shared) private(i) schedule(dynamic) reduction(+:err)
+        for (i = 0; i < N; ++i)
         {
-            double k1, k2;
-            k1 = _deg(source(*e,g),g);
-            k2 = _deg(target(*e,g),g);
-            int one = 1;
-            if(is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::value)
-                one = 2; // nice! :-)
-            double tl2 = (t2*(n_edges*n_edges) - b[k1] - a[k2])/((n_edges-one)*(n_edges-one));
-            double tl1 = t1*n_edges;
-            if (k1==k2)
-                tl1 -= one;
-            tl1 /= n_edges - one;
-            double rl = (tl1 - tl2)/(1.0 - tl2);
-            r_err += (r-rl)*(r-rl);
+            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+
+            double k1 = _deg(v, g);
+            typename graph_traits<Graph>::out_edge_iterator e, e_end;
+            for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
+            {
+                double k2 = _deg(target(*e,g),g);                
+                double tl2 = (t2*(n_edges*n_edges) - b[k1] - a[k2])/((n_edges-1)*(n_edges-1));
+                double tl1 = t1*n_edges;
+                if (k1 == k2)
+                    tl1 -= 1;
+                tl1 /= n_edges - 1;
+                double rl = (tl1 - tl2)/(1.0 - tl2);
+                err += (r-rl)*(r-rl);
+            }
         }
-        r_err = sqrt(r_err);
+        r_err = sqrt(err);
     }
     
     DegreeSelector& _deg;
@@ -166,33 +176,38 @@ struct get_scalar_assortativity_coefficient
         size_t n_edges = 0;
         double e_xy = 0.0;
         tr1::unordered_map<double,int> a, b;
-        
-        typename graph_traits<Graph>::edge_iterator e, e_begin, e_end;
-        tie(e_begin,e_end) = edges(g);
-        for (e = e_begin; e != e_end; ++e)
+        SharedMap<tr1::unordered_map<double,int> > sa(a), sb(b);
+
+        int i, N = num_vertices(g);
+        #pragma omp parallel for default(shared) private(i) firstprivate(sa,sb) schedule(dynamic) reduction(+:e_xy, n_edges)
+        for (i = 0; i < N; ++i)
         {
-            double k1, k2;
-            k1 = _deg(source(*e,g),g);
-            k2 = _deg(target(*e,g),g);
-            a[k1]++;
-            b[k2]++;
-            e_xy += k1*k2;
-            n_edges++;
-            if(is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::value)
+            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+
+            double k1 = _deg(v, g);
+            typename graph_traits<Graph>::out_edge_iterator e, e_end;
+            for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
             {
-                a[k2]++;
-                b[k1]++;
+                double k2 = _deg(target(*e,g),g);
+                sa[k1]++;
+                sb[k2]++;
                 e_xy += k1*k2;
                 n_edges++;
             }
         }
-        
+
+        sa.Gather();
+        sb.Gather();
+
+         
         double t1 = e_xy/n_edges;
         double avg_a = GetHistogramMean(a), avg_b = GetHistogramMean(b);
-        double sa = GetHistogramDeviation(a,avg_a), sb = GetHistogramDeviation(b,avg_b);
+        double da = GetHistogramDeviation(a,avg_a), db = GetHistogramDeviation(b,avg_b);
         
-        if (sa*sb > 0)
-            r = (t1 - avg_a*avg_b)/(sa*sb);
+        if (da*db > 0)
+            r = (t1 - avg_a*avg_b)/(da*db);
         else
             r = (t1 - avg_a*avg_b);
 
@@ -203,26 +218,33 @@ struct get_scalar_assortativity_coefficient
             diff_a += (iter->first - avg_a)*iter->second;
         for (typeof(b.begin()) iter = b.begin(); iter != b.end(); ++iter)
             diff_b += (iter->first - avg_b)*iter->second;
-        for (e = e_begin; e != e_end; ++e)
+        
+        double err = 0.0;
+        #pragma omp parallel for default(shared) private(i) schedule(dynamic) reduction(+:err)
+        for (i = 0; i < N; ++i)
         {
-            double k1, k2;
-            k1 = _deg(source(*e,g),g);
-            k2 = _deg(target(*e,g),g);
-            int one = 1;
-            if(is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::value)
-                one = 2;
-            double t1l = (e_xy - k1*k2)/(n_edges-one);
-            double avg_al = (avg_a*n_edges - k1)/(n_edges-one), avg_bl = (avg_b*n_edges - k2)/(n_edges-one);
-            double sal = sa - 2*diff_a*(avg_al-avg_a) + (avg_al-avg_a)*(avg_al-avg_a);
-            double sbl = sb - 2*diff_b*(avg_bl-avg_b) + (avg_bl-avg_b)*(avg_bl-avg_b);
-            double rl;
-            if (sal*sbl > 0)
-                rl = (t1l - avg_al*avg_bl)/(sal*sbl);
-            else
-                rl = (t1l - avg_al*avg_bl);
-            r_err += (r-rl)*(r-rl);
+            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+
+            double k1 = _deg(v, g);
+            typename graph_traits<Graph>::out_edge_iterator e, e_end;
+            for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
+            {
+                double k2 = _deg(target(*e, g), g);                
+                double t1l = (e_xy - k1*k2)/(n_edges-1);
+                double avg_al = (avg_a*n_edges - k1)/(n_edges-1), avg_bl = (avg_b*n_edges - k2)/(n_edges-1);
+                double dal = da - 2*diff_a*(avg_al-avg_a) + (avg_al-avg_a)*(avg_al-avg_a);
+                double dbl = db - 2*diff_b*(avg_bl-avg_b) + (avg_bl-avg_b)*(avg_bl-avg_b);
+                double rl;
+                if (dal*dbl > 0)
+                    rl = (t1l - avg_al*avg_bl)/(dal*dbl);
+                else
+                    rl = (t1l - avg_al*avg_bl);
+                err += (r-rl)*(r-rl);
+            }
         }
-        r_err = sqrt(r_err);
+        r_err = sqrt(err);
     }
     
     DegreeSelector& _deg;

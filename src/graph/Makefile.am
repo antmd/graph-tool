@@ -44,6 +44,7 @@ libgraph_tool_la_SOURCES = \
     graph_bind.cc\
     graphml.cpp\
     histogram.hh\
+    shared_map.hh\
     read_graphviz_spirit.cpp
 
 libgraph_tool_la_LIBADD = \

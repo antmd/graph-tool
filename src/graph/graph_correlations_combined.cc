@@ -27,6 +27,7 @@
 #include "graph_filtering.hh"
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
+#include "shared_map.hh"
 
 using namespace std;
 using namespace boost;
@@ -46,13 +47,23 @@ struct get_combined_degree_histogram
     template <class Graph, class Hist>
     void operator()(Graph &g, Hist &hist) const
     {
+        SharedMap<Hist> s_hist(hist);
+
         typedef typename Hist::key_type::first_type first_type;
         typedef typename Hist::key_type::second_type second_type;
 
-        typename graph_traits<Graph>::vertex_iterator v, v_begin, v_end;
-        tie(v_begin, v_end) = vertices(g);
-        for(v = v_begin; v != v_end; ++v)
-            hist[make_pair(first_type(_deg1(*v,g)), second_type(_deg2(*v,g)))]++;
+        int i, N = num_vertices(g);
+        #pragma omp parallel for default(shared) private(i) firstprivate(s_hist) schedule(dynamic)
+        for (i = 0; i < N; ++i)
+        {
+            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+
+            s_hist[make_pair(first_type(_deg1(v,g)), second_type(_deg2(v,g)))]++;
+        }
+
+        s_hist.Gather();
     }
     DegreeSelector1& _deg1;
     DegreeSelector2& _deg2;

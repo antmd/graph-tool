@@ -27,11 +27,18 @@
 #include "graph_filtering.hh"
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
+#include "shared_map.hh"
 
 using namespace std;
 using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
+
+void operator+=(pair<double, double>&a, const pair<double, double>&b)
+{
+    a.first += b.first;
+    a.second += b.second;
+}
 
 //==============================================================================
 // average_nearest_neighbours_correlation
@@ -48,22 +55,32 @@ struct get_average_nearest_neighbours_correlation
     void operator()(const Graph& g, WeightMap weight, AvgDeg& avg_deg) const
     {
         tr1::unordered_map<double,double> count;
+        SharedMap<tr1::unordered_map<double,double> > s_count(count);
+        SharedMap<AvgDeg> s_avg_deg(avg_deg);
 
-        typename graph_traits<Graph>::vertex_iterator v, v_begin, v_end;
-        tie(v_begin,v_end) = vertices(g);
-        for(v = v_begin; v != v_end; ++v)
+        int i, N = num_vertices(g);
+        #pragma omp parallel for default(shared) private(i) firstprivate(s_count, s_avg_deg) schedule(dynamic)
+        for (i = 0; i < N; ++i)
         {
+            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+
+            typename AvgDeg::key_type orig_deg = _origin_degree(v,g);
+
             typename graph_traits<Graph>::out_edge_iterator e, e_begin, e_end;
-            tie(e_begin,e_end) = out_edges(*v,g);
+            tie(e_begin,e_end) = out_edges(v,g);
             for(e = e_begin; e != e_end; ++e)
-            {                
+            {
                 typename AvgDeg::value_type::second_type::first_type deg = _neighbours_degree(target(*e,g),g);
-                typename AvgDeg::key_type orig_deg = _origin_degree(*v,g);
-                avg_deg[orig_deg].first += deg*get(weight, *e);
-                avg_deg[orig_deg].second += deg*deg;
-                count[orig_deg] += get(weight,*e);
+                s_avg_deg[orig_deg].first += deg*get(weight, *e);
+                s_avg_deg[orig_deg].second += deg*deg;
+                s_count[orig_deg] += get(weight,*e);
             }
         }
+
+        s_count.Gather();
+        s_avg_deg.Gather();
 
         for (typeof(avg_deg.begin()) iter = avg_deg.begin(); iter != avg_deg.end(); ++iter)
         {

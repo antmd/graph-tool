@@ -39,6 +39,7 @@
 #include "graph_filtering.hh"
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
+#include "shared_map.hh"
 
 using namespace std;
 using namespace boost;
@@ -232,10 +233,17 @@ struct get_vertex_histogram
     template <class Graph, class Hist>
     void operator()(const Graph& g, Hist& hist) const
     {
-        typename graph_traits<Graph>::vertex_iterator v, v_begin, v_end;
-        tie(v_begin, v_end) = vertices(g);
-        for(v = v_begin; v != v_end; ++v)
-            hist[_degree(*v,g)]++;
+        SharedMap<Hist> s_hist(hist);
+        int i, N = num_vertices(g);
+        #pragma omp parallel for default(shared) private(i) firstprivate(s_hist) schedule(dynamic)
+        for (i = 0; i < N; ++i)
+        {
+            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;            
+            s_hist[_degree(v,g)]++;
+        }
+        s_hist.Gather();
     }
     DegreeSelector& _degree;
 };
@@ -290,10 +298,25 @@ struct get_edge_histogram
     template <class Graph, class Hist>
     void operator()(const Graph& g, Hist& hist) const
     {
-        typename graph_traits<Graph>::edge_iterator e, e_begin, e_end;
-        tie(e_begin, e_end) = edges(g);
-        for(e = e_begin; e != e_end; ++e)
-            hist[_prop(*e,g)]++;
+        SharedMap<Hist> s_hist(hist);
+
+        int i, N = num_vertices(g);
+        #pragma omp parallel for default(shared) private(i) firstprivate(s_hist) schedule(dynamic)
+        for (i = 0; i < N; ++i)
+        {
+            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+
+            typename graph_traits<Graph>::out_edge_iterator e, e_begin, e_end;
+            tie(e_begin,e_end) = out_edges(v,g);
+            for(e = e_begin; e != e_end; ++e)
+                if(is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::value)
+                    s_hist[_prop(*e,g)] += 0.5;
+                else
+                    s_hist[_prop(*e,g)]++;
+        }
+        s_hist.Gather();
     }
     scalarS& _prop;
 };
@@ -370,18 +393,23 @@ struct label_parallel_edges
     template <class Graph, class EdgeIndexMap, class ParallelMap>
     void operator()(const Graph& g, EdgeIndexMap edge_index, ParallelMap parallel) const
     {
-        typename graph_traits<Graph>::vertex_iterator v, v_end;
-        for (tie(v, v_end) = vertices(g); v != v_end; ++v)
+        int i, N = num_vertices(g);
+        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
+        for (i = 0; i < N; ++i)
         {
+            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+
             tr1::unordered_set<typename graph_traits<Graph>::edge_descriptor,DescriptorHash<EdgeIndexMap> > p_edges(0, DescriptorHash<EdgeIndexMap>(edge_index));
             typename graph_traits<Graph>::out_edge_iterator e1, e2, e_end;
-            for (tie(e1, e_end) = out_edges(*v, g); e1 != e_end; ++e1)
+            for (tie(e1, e_end) = out_edges(v, g); e1 != e_end; ++e1)
             {
                 if (p_edges.find(*e1) != p_edges.end())
                     continue;
                 size_t n = 0;
                 put(parallel, *e1, n);
-                for (tie(e2, e_end) = out_edges(*v, g); e2 != e_end; ++e2)
+                for (tie(e2, e_end) = out_edges(v, g); e2 != e_end; ++e2)
                     if (*e2 != *e1 && target(*e1, g) == target(*e2, g))
                     {
                         put(parallel, *e2, ++n);

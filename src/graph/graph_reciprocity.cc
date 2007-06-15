@@ -38,26 +38,42 @@ struct get_reciprocity
         size_t L = 0;
         double Lbd = 0.0;
 
-        typename graph_traits<Graph>::edge_iterator e,e_end;
-        for (tie(e,e_end) = edges(g); e != e_end; ++e)
+        int i, NV = num_vertices(g);
+        #pragma omp parallel for default(shared) private(i) reduce(+:L,Ldb) schedule(dynamic)
+        for (i = 0; i < NV; ++i)
         {
-            typename graph_traits<Graph>::vertex_descriptor s,t;
-            s = source(*e,g);
-            t = target(*e,g);
+            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
 
-            size_t o = 0;
-            typename graph_traits<Graph>::adjacency_iterator a, a_end;
-            for (tie(a,a_end) = adjacent_vertices(s, g); a != a_end; ++a)
-                if (*a == t)
-                    o++;
+            typename graph_traits<Graph>::out_edge_iterator e, e_begin, e_end;
+            tie(e_begin,e_end) = out_edges(v,g);
+            for(e = e_begin; e != e_end; ++e)
+            {
+                typename graph_traits<Graph>::vertex_descriptor s,t;
+                s = v;
+                t = target(*e,g);
 
-            size_t i = 0;
-            for (tie(a, a_end) = adjacent_vertices(t, g); a != a_end; ++a)
-                if (*a == s)
-                    i++;
+                size_t o = 0;
+                typename graph_traits<Graph>::adjacency_iterator a, a_end;
+                for (tie(a,a_end) = adjacent_vertices(s, g); a != a_end; ++a)
+                    if (*a == t)
+                        o++;
 
-            Lbd += min(i/double(o),1.0);
-            L++;
+                size_t j = 0;
+                for (tie(a, a_end) = adjacent_vertices(t, g); a != a_end; ++a)
+                    if (*a == s)
+                        j++;
+
+                Lbd += min(j/double(o),1.0);
+                L++;
+            }
+        }
+
+        if(is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::value)
+        {
+            L /= 2;
+            Lbd /= 2;
         }
 
         size_t N = HardNumVertices()(g);

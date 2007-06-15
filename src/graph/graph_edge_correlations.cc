@@ -27,6 +27,7 @@
 #include "graph_filtering.hh"
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
+#include "shared_map.hh"
 
 using namespace std;
 using namespace boost;
@@ -47,21 +48,29 @@ struct get_edge_correlation_histogram
     template <class Graph, class Hist>
     void operator()(Graph &g, Hist &hist) const
     {
-        typename graph_traits<Graph>::edge_iterator e, e_begin, e_end;
-        tie(e_begin, e_end) = edges(g);
-        for (e = e_begin; e != e_end; ++e)
+        SharedMap<Hist> s_hist(hist);
+
+        int i, N = num_vertices(g);
+        #pragma omp parallel for default(shared) private(i) firstprivate(s_hist) schedule(dynamic)
+        for (i = 0; i < N; ++i)
         {
+            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+
             typename Hist::key_type key;
-            get<0>(key) = _deg1(source(*e,g),g);
-            get<1>(key) = _edge_scalar(*e, g);
-            get<2>(key) = _deg2(target(*e,g),g);
-            hist[key]++;
-            if(is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::value)
+            get<0>(key) = _deg1(v,g);
+
+            typename graph_traits<Graph>::out_edge_iterator e, e_begin, e_end;
+            tie(e_begin,e_end) = out_edges(v,g);
+            for(e = e_begin; e != e_end; ++e)
             {
-                swap(get<0>(key), get<2>(key));
-                hist[key]++;
+                get<1>(key) = _edge_scalar(*e, g);
+                get<2>(key) = _deg2(target(*e,g),g);
+                s_hist[key]++;
             }
         }
+        s_hist.Gather();
     }
     scalarS& _edge_scalar;
     DegreeSelector1& _deg1;
