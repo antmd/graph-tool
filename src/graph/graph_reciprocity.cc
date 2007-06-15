@@ -39,7 +39,7 @@ struct get_reciprocity
         double Lbd = 0.0;
 
         int i, NV = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) reduce(+:L,Ldb) schedule(dynamic)
+        #pragma omp parallel for default(shared) private(i) reduction(+:L,Lbd) schedule(dynamic)
         for (i = 0; i < NV; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
