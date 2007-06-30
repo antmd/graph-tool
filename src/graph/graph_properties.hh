@@ -31,6 +31,16 @@
 namespace graph_tool 
 {
 
+// global property types
+typedef boost::mpl::vector<bool, int, long, size_t, float, double, std::string> value_types;
+extern const char* type_names[];
+
+// scalar types
+typedef boost::mpl::vector<bool, int, long, size_t, float, double> scalar_types;
+extern const char* scalar_names[];
+
+
+
 //==============================================================================
 // Property Map Utility Functions
 //==============================================================================

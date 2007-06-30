@@ -55,7 +55,7 @@ struct get_kruskal_min_span_tree
 
 void GraphInterface::GetMinimumSpanningTree(string weight, string property)
 {
-    typedef HashedDescriptorMap<edge_index_map_t,size_t> tree_map_t;
+    typedef vector_property_map<size_t, edge_index_map_t> tree_map_t;
     tree_map_t tree_map(_edge_index);
 
     bool directed = _directed;

@@ -357,6 +357,9 @@ struct graph_traits< UndirectedAdaptor<Graph> > {
     static vertex_descriptor null_vertex() {return graph_traits<Graph>::null_vertex();}
 };
 
+template <class Graph>
+struct graph_traits< const UndirectedAdaptor<Graph> >: public graph_traits< UndirectedAdaptor<Graph> > {};
+
 //==============================================================================
 // Nonmember functions
 // these provide manipulation to the graph

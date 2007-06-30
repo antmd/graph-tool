@@ -651,7 +651,7 @@ struct copy_spins
 
 void GraphInterface::GetCommunityStructure(double gamma, comm_corr_t corr, size_t n_iter, double Tmin, double Tmax, size_t Nspins, size_t seed, bool verbose, string history_file, string weight, string property)
 {
-    typedef HashedDescriptorMap<vertex_index_map_t,size_t> comm_map_t;
+    typedef vector_property_map<size_t,vertex_index_map_t> comm_map_t;
     comm_map_t comm_map(_vertex_index);
 
     bool new_spins = true;

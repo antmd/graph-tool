@@ -66,8 +66,6 @@ struct check_value_type
 // generate the corresponding property map, depending on the value type
 //==============================================================================
 
-typedef mpl::vector<bool, int, long, float, double, string> value_types;
-
 template <class VertexIndexMap, class EdgeIndexMap>
 struct create_dynamic_map
 {

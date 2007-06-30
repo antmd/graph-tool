@@ -34,9 +34,14 @@ using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
 
-typedef mpl::vector<bool, int, long, size_t, float, double, std::string> value_types;
+namespace graph_tool
+{
+// global property types
 const char* type_names[] = {"boolean", "int", "long", "long", "float", "double", "string"};
 
+// scalar types
+const char* scalar_names[] = {"boolean", "int", "long", "long", "float", "double"};
+}
 
 //==============================================================================
 // find_property_map(dp,name,key_type)

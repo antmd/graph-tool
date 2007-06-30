@@ -158,7 +158,7 @@ struct get_extended_clustering
 
 void GraphInterface::SetExtendedClusteringToProperty(string property_prefix, size_t max_depth)
 {
-    typedef HashedDescriptorMap<vertex_index_map_t,double> cmap_t;
+    typedef vector_property_map<double, vertex_index_map_t> cmap_t;
     vector<cmap_t> cmaps(max_depth);
     for (size_t i = 0; i < cmaps.size(); ++i)
         cmaps[i] = cmap_t(_vertex_index);
