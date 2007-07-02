@@ -98,7 +98,8 @@ public:
     void   GetMinimumSpanningTree(std::string weight, std::string property);
     void   GetLineGraph(std::string out_file, std::string format);
     void   GetBetweenness(std::string weight, std::string edge_betweenness, std::string vertex_betweenness);
-
+    double GetCentralPointDominance(std::string vertex_betweenness);
+    
     // community structure
     enum comm_corr_t
     {
