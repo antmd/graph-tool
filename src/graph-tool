@@ -523,7 +523,7 @@ def parse_option(opt, just_file=False):
             weight = values[2]
         else:
             weight = ""
-        graph.GetBetweenness(weight, vertex_centrality, edge_centrality)
+        graph.GetBetweenness(weight, edge_centrality, vertex_centrality)
     elif opt.name == "central-point-dominance":
         values = parse_values(opt.value)
         if len(values) != 2:
