@@ -128,7 +128,7 @@ struct choose_assortativity_coefficient
     {        
         if (mpl::at<degree_selector_index, DegreeSelector>::type::value == _deg)
         {
-            DegreeSelector deg(_deg_name, _g);
+            DegreeSelector deg(_deg_name, _g, true);
             check_filter(_g, bind<void>(get_assortativity_coefficient<DegreeSelector>(deg), _1, var(_a), var(_a_err)), 
                          reverse_check(),directed_check());
         }
@@ -264,7 +264,7 @@ struct choose_scalar_assortativity_coefficient
     {        
         if (mpl::at<degree_selector_index, DegreeSelector>::type::value == _deg)
         {
-            DegreeSelector deg(_deg_name, _g);
+            DegreeSelector deg(_deg_name, _g, true);
             check_filter(_g, bind<void>(get_scalar_assortativity_coefficient<DegreeSelector>(deg), _1, var(_a), var(_a_err)), 
                          reverse_check(),directed_check());
         }

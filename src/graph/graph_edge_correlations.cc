@@ -102,8 +102,8 @@ struct choose_edge_vertex_correlation_histogram
         {
             if (mpl::at<degree_selector_index,DegreeSelector2>::type::value == _parent._deg2)
             {
-                DegreeSelector1 deg1(_parent._deg_name1, _parent._g);
-                DegreeSelector2 deg2(_parent._deg_name2, _parent._g);
+                DegreeSelector1 deg1(_parent._deg_name1, _parent._g, true);
+                DegreeSelector2 deg2(_parent._deg_name2, _parent._g, true);
                 check_filter(_parent._g, bind<void>(get_edge_correlation_histogram<DegreeSelector1,DegreeSelector2>(deg1,deg2,_parent._edge_scalar),
                                                     _1, var(_parent._hist)), 
                              reverse_check(),directed_check());
@@ -132,7 +132,7 @@ GraphInterface::GetEdgeVertexCorrelationHistogram(GraphInterface::deg_t deg1, st
 {
     hist3d_t hist;
 
-    scalarS scalar(edge_scalar, *this);
+    scalarS scalar(edge_scalar, *this, false);
     try
     {
         typedef mpl::vector<in_degreeS, out_degreeS, total_degreeS, scalarS> degree_selectors;

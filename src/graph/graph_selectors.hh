@@ -36,7 +36,7 @@ namespace graph_tool
 struct total_degreeS 
 { 
     total_degreeS() {}
-    total_degreeS(std::string scalar_property, const GraphInterface& g) {}
+    total_degreeS(std::string scalar_property, const GraphInterface& g, bool vertex = true) {}
     template <class Graph, class Vertex> 
     size_t operator()(const Vertex& v, const Graph &g) const 
     {
@@ -63,7 +63,7 @@ struct total_degreeS
 struct in_degreeS 
 { 
     in_degreeS() {}
-    in_degreeS(std::string scalar_property, const GraphInterface& g) {}
+    in_degreeS(std::string scalar_property, const GraphInterface& g, bool vertex = true) {}
     template <class Graph, class Vertex> 
     size_t operator()(const Vertex& v, const Graph &g) const 
     {
@@ -90,7 +90,7 @@ struct in_degreeS
 struct out_degreeS 
 { 
     out_degreeS() {}
-    out_degreeS(std::string scalar_property, const GraphInterface& g) {}
+    out_degreeS(std::string scalar_property, const GraphInterface& g, bool vertex = true) {}
     template <class Graph, class Vertex> 
     size_t operator()(const Vertex& v, const Graph &g) const 
     {
@@ -102,46 +102,64 @@ struct out_degreeS
 struct scalarS
 {
     scalarS(){}
-    scalarS(std::string scalar_property, const GraphInterface& g): 
-        _scalar_property(scalar_property), _g(&g) {}
-    typedef boost::mpl::vector<double,long double,float,long,unsigned long,int,unsigned int,short,unsigned short,char,unsigned char,bool,std::string> scalar_types;
-    template <class Graph, class VertexOrEdge> 
-    double operator()(const VertexOrEdge& v, const Graph &g) const 
-    {
-        try 
-        {
-            return boost::get(_scalar_property, _g->_properties, v, boost::type<double>());
-        }
-        catch (boost::bad_any_cast)
-        {
-            using namespace boost::mpl;
-            return get_value<next<begin<scalar_types>::type>::type>(v);
-        }
-    } 
+    scalarS(std::string scalar_property, const GraphInterface& g, bool is_vertex_prop): 
+        _name(scalar_property), _g(&g) 
+    {  
+        if (is_vertex_prop)
+            _scalar_property = &find_property_map(g._properties, _name, typeid(boost::graph_traits<GraphInterface::multigraph_t>::vertex_descriptor));
+        else
+            _scalar_property = &find_property_map(g._properties, _name, typeid(boost::graph_traits<GraphInterface::multigraph_t>::edge_descriptor));        
+    }
 
-    template <class ValueIter, class VertexOrEdge> 
-    double get_value(const VertexOrEdge& v, ValueIter = ValueIter()) const 
+    typedef boost::mpl::vector<double,int,long double,float,long,unsigned long,unsigned int,short,unsigned short,char,unsigned char,bool,std::string> scalar_types;
+    template <class Graph> 
+    double operator()(const typename boost::graph_traits<Graph>::vertex_descriptor& v, const Graph &g) const 
     {
         using namespace boost;
-        using namespace boost::mpl;
-        try 
-        {
-            return lexical_cast<double>(get(_scalar_property, _g->_properties, v, type<typename deref<ValueIter>::type>()));
-        }
-        catch (bad_any_cast)
-        {
-            return get_value(v, typename boost::mpl::next<ValueIter>::type());
-        }        
-    }
 
-    template <class VertexOrEdge> 
-    double get_value(const VertexOrEdge& v, boost::mpl::end<scalar_types>::type) const 
+        any value = _scalar_property->get(v);
+        double *val = any_cast<double>(&value);
+        if (val != 0)
+            return *val;
+        else
+            return get_value<mpl::next<mpl::begin<scalar_types>::type>::type>(value);
+        
+    } 
+
+    template <class Graph> 
+    double operator()(const typename boost::graph_traits<Graph>::edge_descriptor& e, const Graph &g) const 
     {
-        throw boost::dynamic_get_failure(_scalar_property);
+        using namespace boost;
+
+        graph_traits<GraphInterface::multigraph_t>::edge_descriptor edge =  e;
+        any value = _scalar_property->get(edge);
+        double *val = any_cast<double>(&value);
+        if (val != 0)
+            return *val;
+        else
+            return get_value<mpl::next<mpl::begin<scalar_types>::type>::type>(value);
     }
 
-    std::string name() {return _scalar_property;}
-    std::string _scalar_property;
+    template <class ValueIter> 
+    double get_value(const boost::any& value , ValueIter = ValueIter()) const 
+    {
+        using namespace boost;       
+        typedef typename mpl::deref<ValueIter>::type val_type;            
+        const val_type *val = any_cast<val_type>(&value);
+        if (val != 0)
+            return lexical_cast<double>(*val);
+        else
+            return get_value(value, typename mpl::next<ValueIter>::type());
+    }
+
+    double get_value(const boost::any& value, boost::mpl::end<scalar_types>::type) const 
+    {
+        throw boost::dynamic_get_failure(_name);
+    }
+
+    std::string name() {return _name;}
+    std::string _name;
+    boost::dynamic_property_map* _scalar_property;
     GraphInterface const* _g;
 };
 

@@ -260,7 +260,7 @@ struct choose_vertex_histogram
     {
         if (mpl::at<degree_selector_index,DegreeSelector>::type::value == _deg)
         {
-            DegreeSelector selector(_deg_name, _g);
+            DegreeSelector selector(_deg_name, _g, true);
             check_filter(_g, bind<void>(get_vertex_histogram<DegreeSelector>(selector), _1, var(_hist)),reverse_check(),directed_check());
         }
     }
@@ -329,7 +329,7 @@ GraphInterface::hist_t GraphInterface::GetEdgeHistogram(string property) const
     hist_t hist;
     try 
     {
-        scalarS prop(property, *this);
+        scalarS prop(property, *this, false);
         check_filter(*this, bind<void>(get_edge_histogram(prop), _1, var(hist)),reverse_check(),directed_check());
     }
     catch (dynamic_get_failure &e)

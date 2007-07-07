@@ -97,8 +97,8 @@ struct choose_vertex_correlation_histogram
         {
             if (mpl::at<degree_selector_index,DegreeSelector2>::type::value == _parent._deg2)
             {
-                DegreeSelector1 deg1(_parent._deg_name1, _parent._g);
-                DegreeSelector2 deg2(_parent._deg_name2, _parent._g);
+                DegreeSelector1 deg1(_parent._deg_name1, _parent._g, true);
+                DegreeSelector2 deg2(_parent._deg_name2, _parent._g, true);
                 check_filter(_parent._g, bind<void>(get_correlation_histogram<DegreeSelector1,DegreeSelector2>(deg1,deg2), _1, var(_parent._weight), var(_parent._hist)), 
                              reverse_check(),directed_check());
             }

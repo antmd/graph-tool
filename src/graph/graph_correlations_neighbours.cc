@@ -115,8 +115,8 @@ struct choose_average_nearest_neighbours_correlation
         {
             if ( mpl::at<degree_selector_index, DegreeSelector>::type::value == _parent._neighbour_deg)
             {
-                OriginDegreeSelector origin_deg(_parent._origin_deg_name, _parent._g);
-                DegreeSelector deg(_parent._neighbour_deg_name, _parent._g);
+                OriginDegreeSelector origin_deg(_parent._origin_deg_name, _parent._g, true);
+                DegreeSelector deg(_parent._neighbour_deg_name, _parent._g, true);
                 check_filter(_parent._g, bind<void>(get_average_nearest_neighbours_correlation<OriginDegreeSelector,DegreeSelector>(origin_deg, deg),
                                                     _1, var(_parent._weight), var(_parent._avg_deg)),
                              reverse_check(),directed_check()); 
