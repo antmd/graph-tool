@@ -161,7 +161,7 @@ void GraphInterface::SetExtendedClusteringToProperty(string property_prefix, siz
     typedef vector_property_map<double, vertex_index_map_t> cmap_t;
     vector<cmap_t> cmaps(max_depth);
     for (size_t i = 0; i < cmaps.size(); ++i)
-        cmaps[i] = cmap_t(_vertex_index);
+        cmaps[i] = cmap_t(num_vertices(_mg), _vertex_index);
 
     bool directed = _directed;
     _directed = false;

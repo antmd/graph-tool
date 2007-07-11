@@ -198,7 +198,7 @@ struct set_clustering_to_property
 void GraphInterface::SetLocalClusteringToProperty(string property)
 {
     typedef vector_property_map<double,vertex_index_map_t> clust_map_t;
-    clust_map_t clust_map(_vertex_index);
+    clust_map_t clust_map(num_vertices(_mg), _vertex_index);
 
     bool directed = _directed;
     _directed = false;

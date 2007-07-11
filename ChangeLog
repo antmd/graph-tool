@@ -1,3 +1,9 @@
+2007-07-27  Tiago de Paula Peixoto  <tiago@forked.de>
+
+	* src/graph/graph_extended_clustering.cc (GraphInterface::SetExtendedClusteringToProperty): init vector_property_map size, so that access becomes thread safe.
+
+	* src/graph/graph_clustering.cc (GraphInterface::SetLocalClusteringToProperty): init vector_property_map size, so that access becomes thread safe.
+
 2007-07-22  Tiago de Paula Peixoto  <tiago@forked.de>
 
 	* ChangeLog: updated ChangeLog file with svn history
