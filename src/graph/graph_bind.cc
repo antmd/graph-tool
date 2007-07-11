@@ -244,6 +244,7 @@ BOOST_PYTHON_MODULE(libgraph_tool)
         .def("GetCommunityStructure", &GraphInterfaceWrap::GetCommunityStructure)
         .def("GetCommunityNetwork", &GraphInterfaceWrap::GetCommunityNetwork)
         .def("GetModularity", &GraphInterfaceWrap::GetModularity)
+        .def("RandomRewire", &GraphInterfaceWrap::RandomRewire)
         .def("SetDirected", &GraphInterfaceWrap::SetDirected)
         .def("GetDirected", &GraphInterfaceWrap::GetDirected)
         .def("SetReversed", &GraphInterfaceWrap::SetReversed)
@@ -286,6 +287,10 @@ BOOST_PYTHON_MODULE(libgraph_tool)
         .value("ErdosReyni", GraphInterfaceWrap::ERDOS_REYNI)
         .value("Uncorrelated", GraphInterfaceWrap::UNCORRELATED)
         .value("Correlated", GraphInterfaceWrap::CORRELATED);
+
+    enum_<GraphInterfaceWrap::rewire_strat_t>("RewireStrat")
+        .value("Uncorrelated", GraphInterfaceWrap::UNCORRELATED_STRAT)
+        .value("Correlated", GraphInterfaceWrap::CORRELATED_STRAT);
 
     variant_from_python<string>();
     variant_from_python<GraphInterfaceWrap::degree_t>();

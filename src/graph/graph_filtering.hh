@@ -67,6 +67,30 @@ vertex(size_t i, const reverse_graph<Graph>& g)
     return vertex(i, g.m_g);
 }
 
+
+//==============================================================================
+// add_edge(u, v, filtered_graph<G>)
+//==============================================================================
+template <class Graph, class EdgePredicate, class VertexPredicate> 
+std::pair<typename graph_traits<filtered_graph<Graph,EdgePredicate,VertexPredicate> >::edge_descriptor, bool>
+add_edge(typename graph_traits<filtered_graph<Graph,EdgePredicate,VertexPredicate> >::vertex_descriptor u, 
+         typename graph_traits<filtered_graph<Graph,EdgePredicate,VertexPredicate> >::vertex_descriptor v,
+         filtered_graph<Graph,EdgePredicate,VertexPredicate>& g)
+{
+    return add_edge(u,v, const_cast<Graph&>(g.m_g));
+}
+
+//==============================================================================
+//remove_edge(e, filtered_graph<G>)
+//==============================================================================
+template <class Graph, class EdgePredicate, class VertexPredicate> 
+void remove_edge(typename graph_traits<filtered_graph<Graph,EdgePredicate,VertexPredicate> >::edge_descriptor e, 
+                 filtered_graph<Graph,EdgePredicate,VertexPredicate>& g)
+{
+    return remove_edge(e,const_cast<Graph&>(g.m_g));
+}
+
+
 } // namespace boost
 
 

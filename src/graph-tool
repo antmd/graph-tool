@@ -93,6 +93,8 @@ modification.add_option("--remove-graph-property", action="callback", callback=p
 modification.add_option("--insert-vertex-index-property", action="callback", callback=push_option, type="string", metavar="PROPERTY", help="insert vertex index as property")
 modification.add_option("--insert-edge-index-property", action="callback", callback=push_option, type="string", metavar="PROPERTY", help="insert edge index as property")
 modification.add_option("--list-properties", action="callback", callback=push_option, help="list all properties")
+modification.add_option("--random-rewire", action="callback", callback=push_option, type="string", metavar="OPTIONS", help="randomly rewire edges. Options are: correlated, uncorrelated, no-self-loops, no-parallel-edges")
+
 
 statistics =  parser.add_option_group("Basic Statistics")
 statistics.add_option("--number-of-vertices", action="callback", callback=push_option, type="string", metavar="FILE", help="get the number of vertices")
@@ -691,6 +693,30 @@ def parse_option(opt, just_file=False):
         if just_file:
             return file_name
         return (graph.GetModularity(weight, prop), file_name)
+    elif opt.name == "random-rewire":
+        values = parse_values(opt.value)
+        if len(values) == 0:
+            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
+        strat = RewireStrat.Uncorrelated
+        if get_suboption("correlated", values[0]) != False:
+            strat = RewireStrat.Correlated
+        if get_suboption("uncorrelated", values[0]) != False:
+            strat = RewireStrat.Uncorrelated
+        if get_suboption("no-self-loops", values[0]) != False:
+            self_loops = False
+        else:
+            self_loops = True
+        if get_suboption("no-parallel-edges", values[0]) != False:
+            parallel = False
+        else:
+            parallel = True
+        if get_suboption("seed", values[0]) != False:
+            seed = int(get_suboption("seed", values[0]))
+        else:
+            seed = seed = int(time())
+        if just_file:
+            return
+        graph.RandomRewire(strat, self_loops, parallel, seed)
     elif opt.name == "community-graph":
         values = parse_values(opt.value)
         if len(values) < 2 or len(values) > 3:

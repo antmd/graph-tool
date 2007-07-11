@@ -21,10 +21,6 @@
 #include <boost/lambda/lambda.hpp>
 #include <boost/lambda/bind.hpp>
 #include <boost/random.hpp>
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/member.hpp>
-#include <boost/multi_index/mem_fun.hpp>
 #include <iomanip>
 #include <map>
 
@@ -34,7 +30,6 @@
 using namespace std;
 using namespace boost;
 using namespace boost::lambda;
-using namespace multi_index;
 using namespace graph_tool;
 
 typedef boost::mt19937 rng_t;

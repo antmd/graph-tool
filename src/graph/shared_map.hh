@@ -57,5 +57,41 @@ private:
     Map* _sum;
 };
 
+//==============================================================================
+// SharedContainer This will encapsulate a generic container, such as
+// a vector or list, and atomically concatenate it to a given resulting
+// container (which is shared among all copies) after it is destructed, or
+// when the Gather() member function is called. 
+//==============================================================================
+
+template <class Container>
+class SharedContainer: public Container
+{
+public:
+    SharedContainer(Container &cont): _sum(&cont) {}
+    ~SharedContainer()
+    {
+        Gather();
+    }
+
+    void Gather()
+    {
+        if (_sum != 0)
+        {
+            for (typeof(this->begin()) iter = this->begin(); iter != this->end(); ++iter)
+            {
+                #pragma omp critical
+                {
+                    _sum->push_back(*iter);
+                }
+            }
+            _sum = 0;
+        }
+    }
+private:
+    Container* _sum;
+};
+
+
 
 #endif //SHARED_MAP_HH
