@@ -47,7 +47,10 @@ libgraph_tool_la_SOURCES = \
     graphml.cpp\
     histogram.hh\
     shared_map.hh\
-    read_graphviz_spirit.cpp
+    read_graphviz_spirit.cpp\
+    ../boost-workaround/boost/graph/filtered_graph.hpp\
+    ../boost-workaround/boost/graph/fruchterman_reingold.hpp\
+    ../boost-workaround/boost/graph/graphml.hpp
 
 libgraph_tool_la_LIBADD = \
     $(PYTHON_LDFLAGS) \

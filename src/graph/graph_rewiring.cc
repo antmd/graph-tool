@@ -79,8 +79,6 @@ struct get_in_edges
     }
 };
 
-
-
 template <class Graph>
 bool is_adjacent(typename graph_traits<Graph>::vertex_descriptor u, typename graph_traits<Graph>::vertex_descriptor v, Graph& g )
 {
@@ -227,7 +225,6 @@ struct graph_rewire
     }
 };
 
-
 template <class Graph>
 class RandomRewireStrategy
 {
@@ -268,7 +265,6 @@ public:
             {
                 v = vertex_sample(_rng);
             }
-
             vertex = _vertices.upper_bound(v)->second;
         }
         while ( (!self_loops && (vertex == source(e, _g)) ) ||
@@ -382,7 +378,7 @@ private:
 //==============================================================================
 // RandomRewire
 //==============================================================================
-void GraphInterface::RandomRewire(rewire_strat_t strat, bool self_loops, bool parallel_edges,  size_t seed)
+void GraphInterface::RandomRewire(rewire_strat_t strat, bool self_loops, bool parallel_edges, size_t seed)
 {
     bool reversed = GetReversed();
     SetReversed(false);
