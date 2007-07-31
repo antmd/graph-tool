@@ -17,11 +17,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
 
+__author__="Tiago de Paula Peixoto <tiago@forked.de>"
+__copyright__="Copyright 2007 Tiago de Paula Peixoto"
+__license__="GPL version 3 or above"
+__URL__="http://graph-tool.forked.de"
+
 import sys
 
 sys.path.append(".")
 
 from libgraph_tool import *
+__version__= mod_info().version
 
 from optparse import *
 import os
@@ -35,6 +41,7 @@ import bz2
 import string
 import time
 import signal
+import traceback
 from time import *
 from math import *
 
@@ -830,9 +837,10 @@ def parse_option(opt, just_file=False):
             expressions = expr.split("file:")
             if len(expressions) > 1:
                 exec expressions[0] in edit_vars
-                exec open(os.path.expanduser(expressions[1].strip())).read() in edit_vars
+                exp_file = expressions[1]
             else:
-                exec open(os.path.expanduser(expressions[0].strip())).read() in edit_vars    
+                exp_file = expressions[0]            
+            exec open(os.path.expanduser(exp_file.strip())).read() in edit_vars
             edit_function = edit_vars["edit_function"]
         else:
             def edit_function():
@@ -1074,6 +1082,12 @@ try:
         del history_files
             
 except (OptionError, HistoryException, IOError, RuntimeError), e:
-    print "graph-tool error:", e
+    print >> sys.stderr, "graph-tool error:", e
+    sys.exit(1)
 except KeyboardInterrupt:
-    pass
+    print >> sys.stderr, "graph-tool error: Keyboard interrupt."
+    sys.exit(1)
+except:
+    (file_name, line, function, text) = traceback.extract_tb(sys.exc_info()[2])[-1]
+    print >> sys.stderr, "graph-tool unknown error: ", sys.exc_info()[1], "[traceback: File %s, line %d, in %s (text: %s)]" % (file_name, line, function, str(text))
+    sys.exit(1)

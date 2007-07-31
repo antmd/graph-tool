@@ -205,6 +205,7 @@ struct LibInfo
     string GetAuthor()    const {return AUTHOR;}
     string GetCopyright() const {return COPYRIGHT;}
     string GetVersion()   const {return VERSION " (r" SVN_REVISION ")";}
+    string GetLicense()   const {return "GPL version 3 or above";}
 };
 
 // overloads
@@ -307,5 +308,6 @@ BOOST_PYTHON_MODULE(libgraph_tool)
         .add_property("name", &LibInfo::GetName)
         .add_property("author", &LibInfo::GetAuthor)
         .add_property("copyright", &LibInfo::GetCopyright)
-        .add_property("version", &LibInfo::GetVersion);
+        .add_property("version", &LibInfo::GetVersion)
+        .add_property("license", &LibInfo::GetLicense);
 }

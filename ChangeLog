@@ -1,3 +1,11 @@
+2007-07-30  Tiago de Paula Peixoto  <tiago@forked.de>
+
+	* src/graph-tool: added better error handling (output to stderr, cleaner information, return error status)  
+
+	* src/graph/graph_bind.cc: added license info
+
+	* src/graph-tool: added python metadata
+
 2007-07-29  Tiago de Paula Peixoto  <tiago@forked.de>
 
 	* src/graph/Makefile.am: added 'boost_workaround' files
