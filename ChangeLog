@@ -1,3 +1,7 @@
+2007-07-31  Tiago de Paula Peixoto  <tiago@forked.de>
+
+	* configure.in: clearer configure help
+
 2007-07-30  Tiago de Paula Peixoto  <tiago@forked.de>
 
 	* src/graph-tool: added better error handling (output to stderr, cleaner information, return error status)  
