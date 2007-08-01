@@ -37,10 +37,10 @@ using namespace graph_tool;
 namespace graph_tool
 {
 // global property types
-const char* type_names[] = {"boolean", "int", "long", "long", "float", "double", "string"};
+const char* type_names[] = {"boolean", "int", "long", "size_t", "float", "double", "string"};
 
 // scalar types
-const char* scalar_names[] = {"boolean", "int", "long", "long", "float", "double"};
+const char* scalar_names[] = {"boolean", "int", "long", "size_t", "float", "double"};
 }
 
 //==============================================================================

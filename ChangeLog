@@ -1,5 +1,9 @@
 2007-08-01  Tiago de Paula Peixoto  <tiago@forked.de>
 
+	* src/graph/graph.cc (GraphInterface::LabelParallelEdges): use long instead of size_t for parallel edges property.
+
+	* src/graph/graph_properties.cc: call size_t by "size_t" not "long", since those are not the same type. This removes a bug where it is impossible to create/edit properties with type long.
+
 	* src/graph/graph.cc (GraphInterface::LabelParallelEdges): use vector_property_map instead of HashedDescriptorMap.
 
 2007-07-31  Tiago de Paula Peixoto  <tiago@forked.de>
