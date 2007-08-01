@@ -432,7 +432,7 @@ void GraphInterface::LabelParallelEdges(string property)
     }
     catch (property_not_found) 
     {
-        typedef HashedDescriptorMap<edge_index_map_t,size_t> parallel_map_t;
+        typedef vector_property_map<size_t,edge_index_map_t> parallel_map_t;
         parallel_map_t parallel_map(_edge_index);
         check_filter(*this, bind<void>(label_parallel_edges(), _1, _edge_index, parallel_map), reverse_check(), directed_check());
         _properties.property(property, parallel_map);

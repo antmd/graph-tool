@@ -1,3 +1,7 @@
+2007-08-01  Tiago de Paula Peixoto  <tiago@forked.de>
+
+	* src/graph/graph.cc (GraphInterface::LabelParallelEdges): use vector_property_map instead of HashedDescriptorMap.
+
 2007-07-31  Tiago de Paula Peixoto  <tiago@forked.de>
 
 	* configure.in: clearer configure help
