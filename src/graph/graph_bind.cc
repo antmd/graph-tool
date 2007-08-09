@@ -158,6 +158,46 @@ struct hist_to_dict
     }
 };
 
+struct pos_t_to_tuple
+{
+    static PyObject* convert(const pos_t& p)
+    {
+        boost::python::tuple t = boost::python::make_tuple(p.x,p.y);
+        return incref(t.ptr());
+    }
+};
+
+struct pos_t_from_tuple
+{
+    pos_t_from_tuple()
+    {
+        converter::registry::push_back(&convertible, &construct,  boost::python::type_id<pos_t>());
+    }
+
+    static void* convertible(PyObject* obj_ptr)
+    {
+        handle<> x(borrowed(obj_ptr));
+        object o(x);
+        extract<double> first(o[0]);
+        extract<double> second(o[1]);
+        if (!first.check() || !second.check()) 
+            return 0;
+        return obj_ptr;
+    }
+
+    static void construct(PyObject* obj_ptr, converter::rvalue_from_python_stage1_data* data)
+    {          
+        handle<> x(borrowed(obj_ptr));
+        object o(x);
+        pos_t value;
+        value.x = extract<double>(o[0]);
+        value.y = extract<double>(o[1]);
+        void* storage = ( (boost::python::converter::rvalue_from_python_storage<pos_t>*) data)->storage.bytes;
+        new (storage) pos_t(value);
+        data->convertible = storage;
+    }
+};
+
 
 class GraphInterfaceWrap: public GraphInterface
 {
@@ -299,6 +339,8 @@ BOOST_PYTHON_MODULE(libgraph_tool)
     pair_from_tuple<double,double>();
     to_python_converter<boost::tuple<double,double,double>, tuple_to_tuple<double,double,double> >();
     tuple_from_tuple<double,double,double>();
+    to_python_converter<pos_t, pos_t_to_tuple>();
+    pos_t_from_tuple();
     to_python_converter<GraphInterfaceWrap::hist_t, hist_to_dict<GraphInterfaceWrap::hist_t> >();
     to_python_converter<GraphInterfaceWrap::hist2d_t, hist_to_dict<GraphInterfaceWrap::hist2d_t> >();
     to_python_converter<GraphInterfaceWrap::hist3d_t, hist_to_dict<GraphInterfaceWrap::hist3d_t> >();

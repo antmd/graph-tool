@@ -1,4 +1,32 @@
+2007-08-08  Tiago de Paula Peixoto  <tiago@forked.de>
+
+	* src/graph-tool: change layout and community graph options.
+
+	* src/boost-workaround/boost/graph/kamada_kawai_spring_layout.hpp: annotated code with openmp constructs.
+
+	* src/graph/graph_adaptor.hh: graph_type should be a typedef to the original graph.
+
+	* src/graph/graph_properties.hh, src/graph/graph_properties.cc: added pos_t type.
+
+	* src/boost-workaround/boost/graph/fruchterman_reingold.hpp: annotated code with openmp constructs.
+
+	* src/graph/graph_layout.cc: new file with graph layout routines.
+
+	* src/graph/graph.cc: removed graph layout routines.
+
+2007-08-06  Tiago de Paula Peixoto  <tiago@forked.de>
+
+	* src/graph/graph_community_network.cc (struct get_community_network): fixed inversion of directedness test.
+
+2007-08-05  Tiago de Paula Peixoto  <tiago@forked.de>
+
+	* src/graph/graph.cc (GraphInterface::LabelComponents): use vector_property_map instead of HashedDescriptor. Don't use a static map!
+
 2007-08-01  Tiago de Paula Peixoto  <tiago@forked.de>
+
+	* src/graph/graph_adaptor.hh: fixed edge descriptor equality comparison, which must rely on underlying edge, regardless of whether it's inverted or not. 
+
+	* src/graph/graph_rewiring.cc: fixed possible infinite loop in correlated rewiring without self-loops and parallel edges.
 
 	* src/graph/graph.cc (GraphInterface::LabelParallelEdges): use long instead of size_t for parallel edges property.
 

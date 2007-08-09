@@ -24,9 +24,6 @@
 #include <boost/graph/breadth_first_search.hpp>
 #include <boost/graph/strong_components.hpp>
 #include <boost/graph/connected_components.hpp>
-#include <boost/graph/gursoy_atun_layout.hpp>
-#include <boost/graph/fruchterman_reingold.hpp>
-#include <boost/graph/random_layout.hpp>
 #include <boost/random.hpp>
 #include <boost/python/make_function.hpp>
 
@@ -369,8 +366,8 @@ struct label_components
 
 void GraphInterface::LabelComponents(string prop)
 {
-    typedef HashedDescriptorMap<vertex_index_map_t, size_t> comp_map_t;
-    static comp_map_t comp_map(_vertex_index);
+    typedef vector_property_map<size_t, vertex_index_map_t> comp_map_t;
+    comp_map_t comp_map(_vertex_index);
 
     check_filter(*this, bind<void>(label_components(), _1, comp_map), reverse_check(), directed_check());
 
@@ -454,86 +451,6 @@ void GraphInterface::InsertEdgeIndexProperty(string property)
 void GraphInterface::InsertVertexIndexProperty(string property)
 {
     _properties.property(property, _vertex_index);
-}
-
-//==============================================================================
-// ComputeGraphLayoutGursoy(iter, seed)
-//==============================================================================
-
-struct compute_gursoy
-{
-    template <class Graph, class PosMap, class IndexMap>
-    void operator()(Graph &g, size_t iter, size_t seed, PosMap pos, IndexMap index_map) const
-    {
-        mt19937 rng(static_cast<mt19937::result_type>(seed));
-        size_t n = HardNumVertices()(g);
-        
-        vector_property_map<square_topology<mt19937>::point_type, IndexMap> position_map(index_map);
-        if (iter == 0)
-            iter = n;
-        square_topology<mt19937> topology(rng, n);
-        gursoy_atun_layout(g, topology, position_map, iterations(iter).
-                           diameter_range(make_pair(sqrt(double(n)), 1.0)).
-                           learning_constant_range(make_pair(0.8, 0.2)).
-                           vertex_index_map(index_map));
-        typename graph_traits<Graph>::vertex_iterator v, v_begin, v_end;
-        tie(v_begin, v_end) = vertices(g);
-        for(v = v_begin; v != v_end; ++v)
-        {
-            pos[*v].x = position_map[*v][0];
-            pos[*v].y = position_map[*v][1];
-        }
-    }
-};
-
-typedef struct { double x; double y; } pos_t;
-ostream& operator<<(ostream &o, const pos_t &p ) { o << p.x << "," << p.y; return o;}
-istream& operator>>(istream &o, pos_t &p ) { char c; o >> p.x >> c >> p.y; return o;}
-
-void GraphInterface::ComputeGraphLayoutGursoy(size_t iter, size_t seed)
-{       
-    // vertex postion map
-    typedef HashedDescriptorMap<vertex_index_map_t, pos_t> pos_map_t;
-    pos_map_t pos_map(_vertex_index);    
-
-    check_filter(*this,bind<void>(compute_gursoy(),_1,iter,seed,var(pos_map),var(_vertex_index)),reverse_check(),directed_check());
-
-    _properties.property("pos", pos_map);
-}
-
-//==============================================================================
-// ComputeGraphLayoutSpringBlock(iter,seed)
-//==============================================================================
-struct compute_spring_block
-{
-
-    template <class Graph, class PosMap, class IndexMap>
-    void operator()(Graph &g, size_t iter, size_t seed, PosMap pos, IndexMap index_map) const
-    {
-  
-        mt19937 rng(static_cast<mt19937::result_type>(seed));
-        size_t n = HardNumVertices()(g);
-
-        if (iter == 0)
-            iter = 100;
-        double radius = n*iter;
-        random_graph_layout(g, pos, -radius/2, radius/2, -radius/2, radius/2, rng);
-        fruchterman_reingold_force_directed_layout(g, pos, radius, radius, 
-                                                   cooling(linear_cooling<double>(iter)).
-                                                   vertex_index_map(index_map));
-    }
-    
-};
-
-void GraphInterface::ComputeGraphLayoutSpringBlock(size_t iter, size_t seed)
-{
-    // vertex postion map
-    typedef HashedDescriptorMap<vertex_index_map_t,pos_t> pos_map_t;
-    pos_map_t pos_map(_vertex_index);    
-
-    check_filter(*this,bind<void>(compute_spring_block(),_1,iter,seed,var(pos_map),var(_vertex_index)),reverse_check(),directed_check()); 
-
-    _properties.property("pos", pos_map);
 }
 
 //==============================================================================

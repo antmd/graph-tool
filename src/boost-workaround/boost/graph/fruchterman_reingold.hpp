@@ -1,7 +1,7 @@
 // Copyright 2004 The Trustees of Indiana University.
 
-// Use, modification and distribution is subject to the Boost Software
-// License, Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+// Distributed under the Boost Software License, Version 1.0.
+// (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
 
 //  Authors: Douglas Gregor
@@ -73,12 +73,20 @@ struct all_force_pairs
   void operator()(const Graph& g, ApplyForce apply_force)
   {
     typedef typename graph_traits<Graph>::vertex_iterator vertex_iterator;
-    vertex_iterator v, end;
-    for (tie(v, end) = vertices(g); v != end; ++v) {
-      vertex_iterator u = v;
-      for (++u; u != end; ++u) {
-        apply_force(*u, *v);
-        apply_force(*v, *u);
+    int i, N = num_vertices(g);
+    #pragma omp parallel for default(shared) private(i) schedule(dynamic) 
+    for (i = 0; i < N; ++i)
+    {
+      typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+      if (v == graph_traits<Graph>::null_vertex())
+          continue;
+      for (int j = i+1; j < N; ++j)
+      {
+        typename graph_traits<Graph>::vertex_descriptor u = vertex(j, g);
+        if (u == graph_traits<Graph>::null_vertex())
+            continue;
+        apply_force(u, v);
+        apply_force(v, u);
       }
     }
   }
@@ -109,18 +117,31 @@ struct grid_force_pairs
     std::size_t columns = std::size_t(width / two_k + Dim(1));
     std::size_t rows = std::size_t(height / two_k + Dim(1));
     buckets_t buckets(rows * columns);
-    vertex_iterator v, v_end;
-    for (tie(v, v_end) = vertices(g); v != v_end; ++v) {
-      std::size_t column = std::size_t((position[*v].x + width  / 2) / two_k);
-      std::size_t row    = std::size_t((position[*v].y + height / 2) / two_k);
+
+    int i, N = num_vertices(g);
+    #pragma omp parallel for default(shared) private(i) schedule(dynamic) 
+    for (i = 0; i < N; ++i)
+    {
+      typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+      if (v == graph_traits<Graph>::null_vertex())
+          continue;
+      std::size_t column = std::size_t((position[v].x + width  / 2) / two_k);
+      std::size_t row    = std::size_t((position[v].y + height / 2) / two_k);
 
       if (column >= columns) column = columns - 1;
       if (row >= rows) row = rows - 1;
-      buckets[row * columns + column].push_back(*v);
+      #pragma omp critical
+      {
+        buckets[row * columns + column].push_back(v);
+      }
     }
 
-    for (std::size_t row = 0; row < rows; ++row)
-      for (std::size_t column = 0; column < columns; ++column) {
+    N = rows * columns;
+    #pragma omp parallel for default(shared) private(i) schedule(dynamic) 
+    for (i = 0; i < N; ++i)
+    {
+        std::size_t row = i / rows;
+        std::size_t column = i % rows;
         bucket_t& bucket = buckets[row * columns + column];
         typedef typename bucket_t::iterator bucket_iterator;
         for (bucket_iterator u = bucket.begin(); u != bucket.end(); ++u) {
@@ -223,8 +244,14 @@ namespace detail {
         Dim delta_y = position[v].y - position[u].y;
         Dim dist = sqrt(delta_x * delta_x + delta_y * delta_y);
         Dim fr = repulsive_force(u, v, k, dist, g);
-        displacement[v].x += delta_x / dist * fr;
-        displacement[v].y += delta_y / dist * fr;
+        Dim dx = delta_x / dist * fr;
+        Dim dy = delta_y / dist * fr;
+        Dim& x = displacement[v].x;
+        Dim& y = displacement[v].y;
+        #pragma omp atomic
+        x += dx;
+        #pragma omp atomic
+        y += dy;
       }
     }
 
@@ -256,6 +283,7 @@ fruchterman_reingold_force_directed_layout
   typedef typename graph_traits<Graph>::vertex_iterator   vertex_iterator;
   typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
   typedef typename graph_traits<Graph>::edge_iterator     edge_iterator;
+  typedef typename graph_traits<Graph>::edge_descriptor   edge_descriptor;
 
 #ifndef BOOST_NO_STDC_NAMESPACE
   using std::sqrt;
@@ -269,25 +297,39 @@ fruchterman_reingold_force_directed_layout
                          RepulsiveForce, Dim, Graph>
     apply_force(position, displacement, repulsive_force, k, g);
 
+  std::vector<edge_descriptor> edge_list;
+  edge_list.reserve(num_edges(g));
+  edge_iterator e, e_end;
+  for (tie(e, e_end) = edges(g); e != e_end; ++e) 
+    edge_list.push_back(*e);
+
   Dim temp = cool();
   if (temp) do {
     // Calculate repulsive forces
-    vertex_iterator v, v_end;
-    for (tie(v, v_end) = vertices(g); v != v_end; ++v) {
-      displacement[*v].x = 0;
-      displacement[*v].y = 0;
+    int i, N = num_vertices(g);
+    #pragma omp parallel for default(shared) private(i) schedule(dynamic) 
+    for (i = 0; i < N; ++i)
+    {
+      typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+      if (v == graph_traits<Graph>::null_vertex())
+          continue;
+      displacement[v].x = 0;
+      displacement[v].y = 0;
     }
     force_pairs(g, apply_force);
 
     // Calculate attractive forces
-    edge_iterator e, e_end;
-    for (tie(e, e_end) = edges(g); e != e_end; ++e) {
-      vertex_descriptor v = source(*e, g);
-      vertex_descriptor u = target(*e, g);
+    N = edge_list.size();
+    #pragma omp parallel for default(shared) private(i) schedule(dynamic) 
+    for (i = 0; i < N; ++i)
+    {
+      edge_descriptor e = edge_list[i];
+      vertex_descriptor v = source(e, g);
+      vertex_descriptor u = target(e, g);
       Dim delta_x = position[v].x - position[u].x;
       Dim delta_y = position[v].y - position[u].y;
       Dim dist = sqrt(delta_x * delta_x + delta_y * delta_y);
-      Dim fa = attractive_force(*e, k, dist, g);
+      Dim fa = attractive_force(e, k, dist, g);
 
       displacement[v].x -= delta_x / dist * fa;
       displacement[v].y -= delta_y / dist * fa;
@@ -296,25 +338,32 @@ fruchterman_reingold_force_directed_layout
     }
 
     // Update positions
-    for (tie(v, v_end) = vertices(g); v != v_end; ++v) {
+    N = num_vertices(g);
+    #pragma omp parallel for default(shared) private(i) schedule(dynamic) 
+    for (i = 0; i < N; ++i)
+    {
+      typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+      if (v == graph_traits<Graph>::null_vertex())
+          continue;
+
       BOOST_USING_STD_MIN();
       BOOST_USING_STD_MAX();
-      Dim disp_size = sqrt(displacement[*v].x * displacement[*v].x
-                           + displacement[*v].y * displacement[*v].y);
-      position[*v].x += displacement[*v].x / disp_size 
+      Dim disp_size = sqrt(displacement[v].x * displacement[v].x
+                           + displacement[v].y * displacement[v].y);
+      position[v].x += displacement[v].x / disp_size 
                      * min BOOST_PREVENT_MACRO_SUBSTITUTION (disp_size, temp);
-      position[*v].y += displacement[*v].y / disp_size 
+      position[v].y += displacement[v].y / disp_size 
                      * min BOOST_PREVENT_MACRO_SUBSTITUTION (disp_size, temp);
-      position[*v].x = min BOOST_PREVENT_MACRO_SUBSTITUTION 
+      position[v].x = min BOOST_PREVENT_MACRO_SUBSTITUTION 
                          (width / 2, 
                           max BOOST_PREVENT_MACRO_SUBSTITUTION(-width / 2, 
-                                                               position[*v].x));
-      position[*v].y = min BOOST_PREVENT_MACRO_SUBSTITUTION
+                                                               position[v].x));
+      position[v].y = min BOOST_PREVENT_MACRO_SUBSTITUTION
                          (height / 2, 
                           max BOOST_PREVENT_MACRO_SUBSTITUTION(-height / 2, 
-                                                               position[*v].y));
+                                                               position[v].y));
     }
-  } while ((temp = cool()));
+   } while ( (temp = cool()) );
 }
 
 namespace detail {
@@ -362,7 +411,7 @@ namespace detail {
         error_property_not_found,
         const bgl_named_params<Param, Tag, Rest>& params)
     {
-      std::vector<simple_point<double> > displacements(num_vertices(g));
+      std::vector<simple_point<Dim> > displacements(num_vertices(g));
       fruchterman_reingold_force_directed_layout
         (g, position, width, height, attractive_force, repulsive_force,
          force_pairs, cool,
@@ -370,7 +419,7 @@ namespace detail {
          (displacements.begin(),
           choose_const_pmap(get_param(params, vertex_index), g,
                             vertex_index),
-          simple_point<double>()));
+          simple_point<Dim>()));
     }
   };
 
@@ -398,7 +447,7 @@ fruchterman_reingold_force_directed_layout
      choose_param(get_param(params, force_pairs_t()),
                   make_grid_force_pairs(width, height, position, g)),
      choose_param(get_param(params, cooling_t()),
-                  linear_cooling<double>(100)),
+                  linear_cooling<Dim>(100)),
      get_param(params, vertex_displacement_t()),
      params);
 }

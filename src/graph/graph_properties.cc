@@ -36,8 +36,11 @@ using namespace graph_tool;
 
 namespace graph_tool
 {
+std::ostream& operator<<(std::ostream &o, const pos_t &p ) { o << p.x << "," << p.y; return o;}
+std::istream& operator>>(std::istream &o, pos_t &p ) { char c; o >> p.x >> c >> p.y; return o;}
+
 // global property types
-const char* type_names[] = {"boolean", "int", "long", "size_t", "float", "double", "string"};
+const char* type_names[] = {"boolean", "int", "long", "size_t", "float", "double", "string", "pos_t"};
 
 // scalar types
 const char* scalar_names[] = {"boolean", "int", "long", "size_t", "float", "double"};

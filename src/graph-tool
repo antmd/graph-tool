@@ -140,18 +140,18 @@ clustering.add_option("--global-clustering-coefficient", action="callback", call
 clustering.add_option("--extended-clustering-coefficient", action="callback", callback=push_option, type="string", metavar="PREFIX|MAX", help="set the extended clustering coefficients c1 to cMAX to vertex properties PREFIX1 to PREFIXMAX")
 
 layout =  parser.add_option_group("Layout")
-layout.add_option("--compute-spring-block-layout", action="callback", callback=push_option, type="string", metavar="ITERATIONS[|SEED]", help="compute the spring block layout")
-layout.add_option("--compute-gursoy-atun-layout", action="callback", callback=push_option, type="string", metavar="ITERATIONS[|SEED]", help="compute the Gursoy-Atun layout")
+layout.add_option("--spring-block-layout", action="callback", callback=push_option, type="string", metavar="POS-PROPERTY|TYPE|ITERATIONS[|WEIGHT[|SEED]]", help="compute the spring block layout. TYPE can be 'kw', for Kamada-Kawai, 'fg-grid' for Fruchterman-Reingold with a grid, and 'fg-all-pairs' for Fruchterman-Reingold with all pairs. The positions will be stored in POS-PROPERTY.")
+layout.add_option("--gursoy-atun-layout", action="callback", callback=push_option, type="string", metavar="POS-PROPERTY|TOPOLOGY|ITERATIONS[|WEIGHT[|SEED]]", help="compute the Gursoy-Atun layout. TOPOLOGY can be 'square', 'circle', or 'heart'. The positions will be stored in POS-PROPERTY.")
 
 community =  parser.add_option_group("Community")
 community.add_option("--community-structure", action="callback", callback=push_option, type="string", metavar="PROPERTY|OPTIONS", help="calculate the community structure and assign it to PROPERTY. Options are: g (default: 1.0), N (default: 1000), Tmin (default: 0.01), Tmax (default: 1.0), spins (default: number of vertices), corr_type (default: uncorrelated), weight, seed (default: from clock), verbose, history.  The value of corr_type can be 'random', 'uncorrelated' or 'correlated'.")
 community.add_option("--modularity", action="callback", callback=push_option, type="string", metavar="PROPERTY[|WEIGHT]|FILE", help="calculate the modularity, given a community partition specified by PROPERTY")
-community.add_option("--community-graph", action="callback", callback=push_option, type="string", metavar="PROPERTY|FILE[|FORMAT]", help="obtain the graph of communities, given a community partition specified by PROPERTY")
+community.add_option("--community-graph", action="callback", callback=push_option, type="string", metavar="PROPERTY|SIZE-PROPERTY|FILE[|FORMAT]", help="obtain the graph of communities, given a community partition specified by PROPERTY. The resulting graph will have a vertex property named SIZE-PROPERTY, which will contain the size of the corresponding communities.")
 
-layout =  parser.add_option_group("History")
-layout.add_option("--for", action="callback", callback=push_option, type="string", metavar="INIT|CONDITION|STEP", help="simplified scripting")
-layout.add_option("--history", action="callback", callback=push_option, type="string", metavar="INIT|CONDITION|STEP", help="simplified scripting (does not overwrite previous results)")
-layout.add_option("--refresh-rate", type="string", metavar="TIME", default="1h", help="for/history files refresh rate")
+history =  parser.add_option_group("History")
+history.add_option("--for", action="callback", callback=push_option, type="string", metavar="INIT|CONDITION|STEP", help="simplified scripting")
+history.add_option("--history", action="callback", callback=push_option, type="string", metavar="INIT|CONDITION|STEP", help="simplified scripting (does not overwrite previous results)")
+history.add_option("--refresh-rate", type="string", metavar="TIME", default="1h", help="for/history files refresh rate")
 
 try:
     import optcomplete
@@ -720,54 +720,60 @@ def parse_option(opt, just_file=False):
         if get_suboption("seed", values[0]) != False:
             seed = int(get_suboption("seed", values[0]))
         else:
-            seed = seed = int(time())
+            seed = int(time())
         if just_file:
             return
         graph.RandomRewire(strat, self_loops, parallel, seed)
     elif opt.name == "community-graph":
         values = parse_values(opt.value)
-        if len(values) < 2 or len(values) > 3:
+        if len(values) < 3 or len(values) > 4:
             raise OptionError(opt.name, "invalid value '%s'" % opt.value)
-        prop, file_name = values[0], values[1]
-        if len(values) > 2:
-            format = values[2]
+        prop, size_prop, file_name = values[0], values[1], values[2]
+        if len(values) > 3:
+            format = values[3]
         else:
             format = ""
         if just_file:
             return
-        return (graph.GetCommunityNetwork(prop, file_name, format))
-    elif opt.name == "compute-spring-block-layout":
+        return (graph.GetCommunityNetwork(prop, size_prop, file_name, format))
+    elif opt.name == "spring-block-layout":
         if just_file:
             return None
         values = parse_values(opt.value)
-        if len(values) == 0 or len(values) > 2:
+        if len(values) < 3 or len(values) > 5:
             raise OptionError(opt.name, "invalid value '%s'" % opt.value)
-        iterations,seed = 0,0
-        try:
-            iterations = int(values[0])
-            if len(values) > 1:
-                seed = int(values[1])
-            else:
-                seed = int(time())
-        except ValueError:
-            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
-        graph.ComputeGraphLayoutSpringBlock(iterations,seed)
-    elif opt.name == "compute-gursoy-atun-layout":
+        (prop, type, iter) = values[0:3] 
+        if len(values) > 3:
+            weight = values[3]
+        else:
+            weight = ""
+        if len(values) > 4:
+            try:
+                seed = int(values[4])
+            except ValueError:
+                raise OptionError(opt.name, "invalid seed value '%s'" % values[4])
+        else:
+            seed = int(time())
+        graph.ComputeGraphLayoutSpringBlock(prop, weight, type, int(iter), seed)
+    elif opt.name == "gursoy-atun-layout":
         if just_file:
             return None
         values = parse_values(opt.value)
-        if len(values) == 0 or len(values) > 2:
+        if len(values) < 3 or len(values) > 5:
             raise OptionError(opt.name, "invalid value '%s'" % opt.value)
-        iterations,seed = 0,0
-        try:
-            iterations = int(values[0])
-            if len(values) > 1:
-                seed = int(values[1])
-            else:
-                seed = int(time())
-        except ValueError:
-            raise OptionError(opt.name, "invalid value '%s'" % opt.value)
-        graph.ComputeGraphLayoutGursoy(iterations,seed)
+        (prop, top, iter) = values[0:3]
+        if len(values) > 3:
+            weight = values[3]
+        else:
+            weight = ""
+        if len(values) > 4:
+            try:
+                seed = int(values[4])
+            except ValueError:
+                raise OptionError(opt.name, "invalid seed value '%s'" % values[4])
+        else:
+            seed = int(time())
+        graph.ComputeGraphLayoutGursoy(prop, weight, top, int(iter), seed)
     elif opt.name == "vertex-filter" or opt.name == "edge-filter":
         if just_file:
             return None

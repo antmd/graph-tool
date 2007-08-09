@@ -110,7 +110,7 @@ public:
 
     void   GetCommunityStructure(double gamma, comm_corr_t corr, size_t n_iter, double Tmin, double Tmax, size_t Nseeds, size_t seed, bool verbose, std::string history_file, std::string weight, std::string property);
     double GetModularity(std::string weight, std::string property);
-    void   GetCommunityNetwork(std::string property, std::string out_file, std::string format) const;
+    void   GetCommunityNetwork(std::string property, std::string size_property, std::string out_file, std::string format) const;
 
     // graph random rewiring (shuffling)
     enum rewire_strat_t
@@ -155,8 +155,8 @@ public:
     void ListProperties() const;
 
     // layout
-    void ComputeGraphLayoutGursoy(size_t iter = 0, size_t seed = 4357);
-    void ComputeGraphLayoutSpringBlock(size_t iter = 0, size_t seed = 4357);
+    void ComputeGraphLayoutGursoy(std::string prop, std::string weight, std::string topology, size_t iter = 0, size_t seed = 4357);
+    void ComputeGraphLayoutSpringBlock(std::string prop, std::string weight, std::string type, size_t iter = 0, size_t seed = 4357);
 
     // i/o
     void WriteToFile(std::string s);

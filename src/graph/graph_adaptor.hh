@@ -52,7 +52,7 @@ public:
     typedef typename Graph::vertex_property_type vertex_property_type;
     typedef typename Graph::edge_property_type edge_property_type;
     typedef typename Graph::graph_tag graph_tag;
-    typedef typename Graph::graph_type graph_type;
+    typedef Graph graph_type;
 
     class EdgeDescriptor;
     typedef Graph original_graph_t;
@@ -100,7 +100,9 @@ public:
     EdgeDescriptor(const original_edge_t &e,  bool inverted): original_edge_t(e), _inverted(inverted) {}
     
     bool IsInverted() const {return _inverted;}
-        
+
+    bool operator==(const EdgeDescriptor& e) const { return original_edge_t(e) == original_edge_t(*this); }
+
 private:
     bool _inverted;
 };

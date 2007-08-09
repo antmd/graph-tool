@@ -30,9 +30,12 @@
 
 namespace graph_tool 
 {
+typedef struct { double x; double y; } pos_t;
+std::ostream& operator<<(std::ostream &o, const pos_t &p );
+std::istream& operator>>(std::istream &o, pos_t &p );
 
 // global property types
-typedef boost::mpl::vector<bool, int, long, size_t, float, double, std::string> value_types;
+typedef boost::mpl::vector<bool, int, long, size_t, float, double, std::string, pos_t> value_types;
 extern const char* type_names[];
 
 // scalar types

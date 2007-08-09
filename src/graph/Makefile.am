@@ -42,6 +42,7 @@ libgraph_tool_la_SOURCES = \
     graph_line_graph.cc\
     graph_betweenness.cc\
     graph_rewiring.cc\
+    graph_layout.cc\
     graph_io.cc\
     graph_bind.cc\
     graphml.cpp\
