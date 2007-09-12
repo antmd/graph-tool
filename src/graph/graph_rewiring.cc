@@ -25,7 +25,6 @@
 
 #include "graph.hh"
 #include "graph_filtering.hh"
-
 #include "shared_map.hh"
 
 using namespace std;
@@ -91,16 +90,62 @@ bool is_adjacent(typename graph_traits<Graph>::vertex_descriptor u, typename gra
     return false;
 }
 
+template <class EdgeIterator>
+typename iterator_traits<EdgeIterator>::value_type sample_edge(const EdgeIterator& e_begin, const EdgeIterator& e_end, rng_t& rng)
+{
+    vector<typename iterator_traits<EdgeIterator>::value_type> candidates;
+    EdgeIterator e;
+    for (e = e_begin; e != e_end; ++e)
+        candidates.push_back(*e);
+
+    uniform_int<size_t> edge_sample(0, candidates.size() - 1);
+    size_t edge = edge_sample(rng);
+    return candidates[edge];
+}
+
+template <class Graph, class EdgeIndexMap>
+pair<typename graph_traits<Graph>::edge_descriptor,typename graph_traits<Graph>::edge_descriptor>
+swap_edge_target(const typename graph_traits<Graph>::edge_descriptor& e1, const typename graph_traits<Graph>::edge_descriptor& e2, EdgeIndexMap edge_index, Graph& g)
+{
+    if (e1 == e2)
+        return make_pair(e1, e2);
+    typename graph_traits<Graph>::edge_descriptor ne1, ne2;
+    ne1 = add_edge(source(e1, g), target(e2, g), g).first;
+    edge_index[ne1] = edge_index[e1];
+    ne2 = add_edge(source(e2, g), target(e1, g), g).first;
+    edge_index[ne2] = edge_index[e2];
+    remove_edge(e1, g);
+    remove_edge(e2, g);
+    return make_pair(ne1, ne2);
+}
+
+template <class Graph, class EdgeIndexMap>
+pair<typename graph_traits<Graph>::edge_descriptor,typename graph_traits<Graph>::edge_descriptor>
+swap_edge_source(const typename graph_traits<Graph>::edge_descriptor& e1, const typename graph_traits<Graph>::edge_descriptor& e2, EdgeIndexMap edge_index, Graph& g)
+{
+    if (e1 == e2)
+        return make_pair(e1, e2);
+    typename graph_traits<Graph>::edge_descriptor ne1, ne2;
+    ne1 = add_edge(source(e2, g), target(e1, g), g).first;
+    edge_index[ne1] = edge_index[e1];
+    ne2 = add_edge(source(e1 , g), target(e2, g), g).first;
+    edge_index[ne2] = edge_index[e2];
+    remove_edge(e1, g);
+    remove_edge(e2, g);
+    return make_pair(ne1, ne2);
+}
+
+
 template <template <class Graph> class RewireStrategy>
 struct graph_rewire
 {
     template <class Graph, class EdgeIndexMap>
-    void operator()(const Graph& g, EdgeIndexMap edge_index, size_t seed, bool self_loops, bool parallel_edges) const
+    void operator()(const Graph& og, EdgeIndexMap edge_index, size_t seed, bool self_loops, bool parallel_edges) const
     {
+        Graph& g = const_cast<Graph&>(og);
+
         rng_t rng(static_cast<rng_t::result_type>(seed));
 
-        RewireStrategy<Graph> rewire(g, rng);
-       
         if (!self_loops)
         {
             // check the existence of self-loops
@@ -121,7 +166,7 @@ struct graph_rewire
 
         if (!parallel_edges)
         {
-            // check the existence of parallel edges 
+            // check the existence of parallel edges
             bool has_parallel_edges = false;
             int i, N = num_vertices(g);
             #pragma omp parallel for default(shared) private(i) schedule(dynamic)
@@ -146,6 +191,8 @@ struct graph_rewire
                 throw GraphException("Parallel edge detected. Can't rewire graph without parallel edges if it already contains parallel edges!");
         }
 
+        RewireStrategy<Graph> rewire(g, rng);
+
         vector<typename graph_traits<Graph>::edge_descriptor> edges(num_edges(g));
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i) schedule(dynamic)
@@ -159,67 +206,49 @@ struct graph_rewire
                 edges[edge_index[*e]] = *e;
         }
 
-        vector<pair<size_t, size_t> > swap_list;
-        swap_list.reserve(num_edges(g));
-
-        // for each vertex, rewire the targets of its out edges
-        N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
-        for (i = 0; i < N; ++i)
+        // for each edge simultaneously rewire its source and target
+        for (i = 0; i < int(edges.size()); ++i)
         {
-            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
-            if (v == graph_traits<Graph>::null_vertex())
-                continue;
-            
-            tr1::unordered_set<typename graph_traits<Graph>::vertex_descriptor> target_set;
+            typename graph_traits<Graph>::edge_descriptor e = edges[i];
+            typename graph_traits<Graph>::vertex_descriptor s,t;
 
-            //rewire out edges
-            typename graph_traits<Graph>::out_edge_iterator e, e_end;
-            for (tie(e, e_end) = out_edges(v, g); e != e_end; ++e)
-            {              
-                typename graph_traits<Graph>::edge_descriptor swap_partner;
+            tie(s, t) = rewire(e, self_loops);
+            cout << source(e,g) << "->" << s << ",\t " << target(e,g) << "->" << t << endl;
 
-                //rewire edge
-                swap_partner = rewire(*e, target_set, self_loops, parallel_edges);
+            typename graph_traits<Graph>::edge_descriptor se = e, te = e;
 
-                if (swap_partner == *e)
-                    continue;
-
-                target_set.insert(target(swap_partner, g));
-                #pragma omp critical
+            if (t != target(e, g))
+            {
+                typename get_in_edges<Graph>::iterator ie_begin, ie_end;
+                tie(ie_begin, ie_end) = get_in_edges<Graph>()(t, g);
+                if (ie_begin != ie_end)
+                    te = sample_edge(ie_begin, ie_end, rng);
+                if (te != e)
                 {
-                    swap_list.push_back(make_pair(edge_index[*e], edge_index[swap_partner]));
+                    assert(t == target(te,g));
+                    cout << "(" << source(e,g) << "," << target(e,g) << ") -> (" << source(te,g) << "," << target(te,g) << ")"<< endl;
+                    tie(e,te) = swap_edge_target(e, te, edge_index, g);
+                    edges[edge_index[e]] = e;
+                    edges[edge_index[te]] = te;
                 }
             }
-        }
-        
-        // do the actual graph modification
-        N = swap_list.size();
-        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
-        for (i = 0; i < N; ++i)
-        {
-            size_t e1, e2;
-            tie(e1, e2) = swap_list[i];
 
-            typename graph_traits<Graph>::vertex_descriptor s1, s2, new_target1, new_target2;
-            typename graph_traits<Graph>::edge_descriptor  new_edge1, new_edge2 ;            
-            
-            s1 = source(edges[e1], g);
-            new_target1 = target(edges[e2], g);
-            s2 = source(edges[e2], g);
-            new_target2 = target(edges[e1], g);
-
-            #pragma omp critical
+            if (s != source(e, g))
             {
-                new_edge1 = add_edge(s1, new_target1, const_cast<Graph&>(g)).first;
-                edge_index[new_edge1] = e1;
-                new_edge2 = add_edge(s2, new_target2, const_cast<Graph&>(g)).first;
-                edge_index[new_edge2] = e2;
-
-                remove_edge(edges[e1], const_cast<Graph&>(g));
-                edges[e1] = new_edge1;                    
-                remove_edge(edges[e2], const_cast<Graph&>(g));
-                edges[e2] = new_edge2;
+                typename graph_traits<Graph>::out_edge_iterator oe, oe_begin, oe_end;
+                tie(oe_begin, oe_end) = out_edges(s, g);
+                for (oe = oe_begin; oe != oe_end; ++oe)
+                    assert(s == source(*oe,g));
+                if (oe_begin != oe_end)
+                    se = sample_edge(oe_begin, oe_end, rng);
+                if (se != e)
+                {
+                    assert(s == source(se,g));
+                    cout << "(" << source(e,g) << "," << target(e,g) << ") -> (" << source(se,g) << "," << target(se,g) << ")"<< endl;
+                    tie(e, se) = swap_edge_source(e, se, edge_index, g);
+                    edges[edge_index[e]] = e;
+                    edges[edge_index[se]] = se;
+                }
             }
         }
     }
@@ -232,7 +261,6 @@ public:
     RandomRewireStrategy (const Graph& g, rng_t& rng): _g(g), _rng(rng)
     {
         int i, N = num_vertices(_g);
-        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, _g);
@@ -241,53 +269,28 @@ public:
             size_t k = get_in_degree()(v, _g);
             if (k == 0)
                 continue;
-            #pragma omp critical
-            {
-                if (!_vertices.empty())
-                    _vertices[_vertices.rbegin()->first + k] = v;
-                else
-                    _vertices[k] = v;
-            }
+            if (!_vertices.empty())
+                _vertices[_vertices.rbegin()->first + k] = v;
+            else
+                _vertices[k] = v;
         }
     }
-    
-    typename graph_traits<Graph>::edge_descriptor operator()(const typename graph_traits<Graph>::edge_descriptor& e, 
-                                                             tr1::unordered_set<typename graph_traits<Graph>::vertex_descriptor>& target_set,
-                                                             bool self_loops, bool parallel_edges)
+
+    pair<typename graph_traits<Graph>::vertex_descriptor, typename graph_traits<Graph>::vertex_descriptor>
+    operator()(const typename graph_traits<Graph>::edge_descriptor& e, bool self_loops)
     {
         uniform_int<size_t> vertex_sample(0, _vertices.rbegin()->first-1);
-        size_t v;
-        typename graph_traits<Graph>::vertex_descriptor vertex;
-        
+        size_t v1,v2;
+        typename graph_traits<Graph>::vertex_descriptor s,t;
         do
         {
-            #pragma omp critical
-            {
-                v = vertex_sample(_rng);
-            }
-            vertex = _vertices.upper_bound(v)->second;
+            v1 = vertex_sample(_rng);
+            v2 = vertex_sample(_rng);
+            s = _vertices.upper_bound(v1)->second;
+            t = _vertices.upper_bound(v2)->second;
         }
-        while ( (!self_loops && (vertex == source(e, _g)) ) ||
-                (!parallel_edges && (target_set.find(vertex) != target_set.end())));
-
-        vector<typename graph_traits<Graph>::edge_descriptor> candidates;
-        typename get_in_edges<Graph>::iterator w, w_end;
-        for (tie(w, w_end) = get_in_edges<Graph>()(vertex, _g); w != w_end; ++w)
-        {
-            if (parallel_edges || !is_adjacent(source(*w, _g), vertex, _g))
-                candidates.push_back(*w);
-        }
-
-        if (candidates.empty())
-            return e;
-
-        uniform_int<size_t> edge_sample(0, candidates.size() - 1);
-        size_t edge;
-        #pragma omp critical
-        {
-           edge = edge_sample(_rng);
-        }
-        return candidates[edge];
+        while (!self_loops && (s == t));
+        return make_pair(s, t);
     }
 
 private:
@@ -301,12 +304,11 @@ template <class Graph>
 class CorrelatedRewireStrategy
 {
 public:
-    CorrelatedRewireStrategy (const Graph& g, rng_t& rng): _g(g), _rng(rng), _deg_sum(0)
+    CorrelatedRewireStrategy (const Graph& g, rng_t& rng): _g(g), _rng(rng)
     {
         int i, N = num_vertices(_g);
-        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
         for (i = 0; i < N; ++i)
-        {            
+        {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, _g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
@@ -314,65 +316,59 @@ public:
             size_t j = get_in_degree()(v, _g);
             size_t k = out_degree(v, _g);
 
-            #pragma omp critical
+            if (j > 0)
             {
-                typename deg_vertices_t::value_type::second_type& vertices = _deg_vertices[make_pair(j,k)];
-                if (!vertices.empty())
-                    vertices[vertices.rbegin()->first + j] = v;
+                typename deg_vertices_t::value_type::second_type& target_vertices = _deg_target_vertices[make_pair(j,k)];
+                if (!target_vertices.empty())
+                    target_vertices[target_vertices.rbegin()->first + j] = v;
                 else
-                    vertices[j] = v;
+                    target_vertices[j] = v;
+            }
+            
+            if (k > 0)
+            {
+                typename deg_vertices_t::value_type::second_type& source_vertices = _deg_source_vertices[make_pair(j,k)];
+                if (!source_vertices.empty())
+                    source_vertices[source_vertices.rbegin()->first + k] = v;
+                else
+                    source_vertices[k] = v;
             }
         }
     }
 
-    typename graph_traits<Graph>::edge_descriptor operator()(const typename graph_traits<Graph>::edge_descriptor& e, 
-                                                             tr1::unordered_set<typename graph_traits<Graph>::vertex_descriptor>& target_set,
-                                                             bool self_loops, bool parallel_edges)
+    pair<typename graph_traits<Graph>::vertex_descriptor, typename graph_traits<Graph>::vertex_descriptor>
+    operator()(const typename graph_traits<Graph>::edge_descriptor& e, bool self_loops)
     {
-        typename graph_traits<Graph>::vertex_descriptor t = target(e, _g); 
-        typename deg_vertices_t::value_type::second_type& vertices = _deg_vertices[make_pair(get_in_degree()(t, _g), out_degree(t, _g))];
+        typename deg_vertices_t::value_type::second_type& source_vertices = _deg_source_vertices[make_pair(get_in_degree()(source(e, _g), _g), out_degree(source(e, _g), _g))];
+        typename deg_vertices_t::value_type::second_type& target_vertices = _deg_target_vertices[make_pair(get_in_degree()(target(e, _g), _g), out_degree(target(e, _g), _g))];
 
-        uniform_int<size_t> vertex_sample(0, vertices.rbegin()->first - 1);
-        size_t v;
-        typename graph_traits<Graph>::vertex_descriptor vertex;
-        
+        //sample the new target
+        uniform_int<size_t> source_sample(0, source_vertices.rbegin()->first - 1);
+        uniform_int<size_t> target_sample(0, target_vertices.rbegin()->first - 1);
+
+        size_t v1,v2;
+        typename graph_traits<Graph>::vertex_descriptor s,t;
         do
         {
             #pragma omp critical
             {
-                v = vertex_sample(_rng);
+                v1 = source_sample(_rng);
+                v2 = target_sample(_rng);
             }
-            vertex = vertices.upper_bound(v)->second;
+            s = source_vertices.upper_bound(v1)->second;
+            t = target_vertices.upper_bound(v2)->second;
         }
-        while ( (!self_loops && (vertex == source(e, _g)) ) ||
-                (!parallel_edges && (target_set.find(vertex) != target_set.end())));
+        while ( !self_loops && (s == t) );
 
-        vector<typename graph_traits<Graph>::edge_descriptor> candidates;
-        typename get_in_edges<Graph>::iterator w, w_end;
-        for (tie(w, w_end) = get_in_edges<Graph>()(vertex, _g); w != w_end; ++w)
-        {
-            if (parallel_edges || !is_adjacent(source(*w, _g), vertex, _g))
-                candidates.push_back(*w);
-        }
-
-        if (candidates.empty())
-            return e;
-
-        uniform_int<size_t> edge_sample(0, candidates.size() - 1);
-        size_t edge;
-        #pragma omp critical
-        {
-            edge = edge_sample(_rng);
-        }
-        return candidates[edge];
+        return make_pair(s, t);
     }
 
 private:
     const Graph& _g;
     rng_t& _rng;
     typedef tr1::unordered_map<pair<size_t, size_t>, map<size_t, typename graph_traits<Graph>::vertex_descriptor>, hash<pair<size_t, size_t> > > deg_vertices_t;
-    deg_vertices_t _deg_vertices;
-    size_t _deg_sum;
+    deg_vertices_t _deg_source_vertices;
+    deg_vertices_t _deg_target_vertices;
 };
 
 //==============================================================================
