@@ -139,7 +139,7 @@ clustering.add_option("--local-clustering-coefficient", action="callback", callb
 clustering.add_option("--global-clustering-coefficient", action="callback", callback=push_option, type="string", metavar="FILE", help="get the global clustering coefficient")
 clustering.add_option("--extended-clustering-coefficient", action="callback", callback=push_option, type="string", metavar="PREFIX|MAX", help="set the extended clustering coefficients c1 to cMAX to vertex properties PREFIX1 to PREFIXMAX")
 
-layout =  parser.add_option_group("Layout")
+layout = parser.add_option_group("Layout")
 layout.add_option("--spring-block-layout", action="callback", callback=push_option, type="string", metavar="POS-PROPERTY|TYPE|ITERATIONS[|WEIGHT[|SEED]]", help="compute the spring block layout. TYPE can be 'kw', for Kamada-Kawai, 'fg-grid' for Fruchterman-Reingold with a grid, and 'fg-all-pairs' for Fruchterman-Reingold with all pairs. The positions will be stored in POS-PROPERTY.")
 layout.add_option("--gursoy-atun-layout", action="callback", callback=push_option, type="string", metavar="POS-PROPERTY|TOPOLOGY|ITERATIONS[|WEIGHT[|SEED]]", help="compute the Gursoy-Atun layout. TOPOLOGY can be 'square', 'circle', or 'heart'. The positions will be stored in POS-PROPERTY.")
 
@@ -839,6 +839,7 @@ def parse_option(opt, just_file=False):
             val_type = values[1].strip()
             expr = values[2]
         edit_vars = dict()
+        exec "from math import *\n" in edit_vars
         if "file:" in expr:
             expressions = expr.split("file:")
             if len(expressions) > 1:
@@ -1093,6 +1094,12 @@ except (OptionError, HistoryException, IOError, RuntimeError), e:
 except KeyboardInterrupt:
     print >> sys.stderr, "graph-tool error: Keyboard interrupt."
     sys.exit(1)
+except MemoryError, e:
+    error = str(e)
+    if error != "":
+        print >> sys.stderr, "graph-tool error: out of memory. (text:", error, ")"
+    else:
+        print >> sys.stderr, "graph-tool error: out of memory."
 except:
     (file_name, line, function, text) = traceback.extract_tb(sys.exc_info()[2])[-1]
     print >> sys.stderr, "graph-tool unknown error: ", sys.exc_info()[1], "[traceback: File %s, line %d, in %s (text: %s)]" % (file_name, line, function, str(text))
