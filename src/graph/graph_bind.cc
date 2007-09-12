@@ -244,7 +244,7 @@ struct LibInfo
     string GetName()      const {return PACKAGE_NAME;}
     string GetAuthor()    const {return AUTHOR;}
     string GetCopyright() const {return COPYRIGHT;}
-    string GetVersion()   const {return VERSION " (r" SVN_REVISION ")";}
+    string GetVersion()   const {return VERSION " (commit " GIT_COMMIT ")";}
     string GetLicense()   const {return "GPL version 3 or above";}
 };
 
