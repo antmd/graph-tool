@@ -70,8 +70,14 @@ GraphInterface::GraphInterface()
  _directed(true),
  _vertex_index(get(vertex_index,_mg)),
  _edge_index(get(edge_index_t(),_mg)),
+ _vertex_filter_map(_vertex_index),
  _vertex_range(make_pair(numeric_limits<double>::min(), numeric_limits<double>::max())),
- _edge_range(make_pair(numeric_limits<double>::min(), numeric_limits<double>::max()))
+ _vertex_range_include(make_pair(false, false)),
+ _vertex_range_invert(false),
+ _edge_filter_map(_edge_index),
+ _edge_range(make_pair(numeric_limits<double>::min(), numeric_limits<double>::max())),
+ _edge_range_include(make_pair(false, false)),
+ _edge_range_invert(false)
 {
 
 }
@@ -116,13 +122,20 @@ void GraphInterface::SetVertexFilterProperty(string property)
             throw GraphException("property " + property + " not found");
         }
     }
+    else
+    {
+        _vertex_filter_map = _vertex_index;
+        _vertex_range = make_pair(numeric_limits<double>::min(), numeric_limits<double>::max());
+        _vertex_range_include = make_pair(false, false);
+        _vertex_range_invert = false;
+    }
 #else
     if (property != "")
         throw GraphException("support for graph range filtering was not enabled during compilation.");
 #endif
 }
 
-bool GraphInterface::IsVertexFilterActive() const { return _vertex_filter_property != "" || _vertex_python_filter != python::object(); }
+bool GraphInterface::IsVertexFilterActive() const { return _vertex_filter_property != ""; }
 
 void GraphInterface::SetEdgeFilterProperty(string property) 
 {
@@ -153,45 +166,42 @@ void GraphInterface::SetEdgeFilterProperty(string property)
             throw GraphException("property " + property + " not found");
         }
     }
-
+    else
+    {
+        _edge_filter_map = _edge_index;
+        _edge_range = make_pair(numeric_limits<double>::min(), numeric_limits<double>::max());
+        _edge_range_include = make_pair(false, false);
+        _edge_range_invert = false;
+    }
 #else
     if (property != "")
         throw GraphException("support for graph range filtering was not enabled during compilation.");
 #endif
 }
 
-bool GraphInterface::IsEdgeFilterActive() const {return _edge_filter_property != "" || _edge_python_filter != python::object();}
+bool GraphInterface::IsEdgeFilterActive() const {return _edge_filter_property != "";}
 
-void GraphInterface::SetVertexFilterRange(std::pair<double,double> allowed_range)
+void GraphInterface::SetVertexFilterRange(std::pair<double,double> allowed_range, std::pair<bool,bool> include, bool invert)
 {
 #ifndef NO_RANGE_FILTERING
     _vertex_range = allowed_range;
+    _vertex_range_include = include;
+    _vertex_range_invert = invert;
 #else
     throw GraphException("support for graph range filtering was not enabled during compilation.");
 #endif
 }
 
-
-void GraphInterface::SetGenericVertexFilter(boost::python::object filter) 
+void GraphInterface::SetEdgeFilterRange(std::pair<double,double> allowed_range, std::pair<bool,bool> include, bool invert)
 {
-#ifndef NO_PYTHON_FILTERING
-    _vertex_python_filter = filter;
+#ifndef NO_RANGE_FILTERING
+    _edge_range = allowed_range;
+    _edge_range_include = include;
+    _edge_range_invert = invert;
 #else
-    if (filter != python::object())
-        throw GraphException("support for graph python filtering was not enabled during compilation.");
-#endif    
+    throw GraphException("support for graph range filtering was not enabled during compilation.");
+#endif
 }
-
-void GraphInterface::SetGenericEdgeFilter(boost::python::object filter) 
-{ 
-#ifndef NO_PYTHON_FILTERING
-    _edge_python_filter = filter;
-#else
-    if (filter != python::object())
-        throw GraphException("support for graph python filtering was not enabled during compilation.");
-#endif    
-}
-
 
 //==============================================================================
 // GetNumberOfVertices()

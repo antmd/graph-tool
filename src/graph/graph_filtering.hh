@@ -36,10 +36,6 @@
 #include "graph_adaptor.hh"
 #include "graph_selectors.hh"
 
-#ifndef NO_PYTHON_FILTERING
-#include "graph_python_filtering.hh"
-#endif
-
 // some additional functions...
 namespace boost
 {
@@ -158,14 +154,15 @@ class RangeFilter
 {
 public:
     RangeFilter(){}
-    RangeFilter(FilteredPropertyMap filtered_property, std::pair<double, double> range)
-        : _filtered_property(filtered_property), _range(range) {}
+    RangeFilter(FilteredPropertyMap filtered_property, std::pair<double, double> range, 
+                std::pair<bool, bool> include, bool invert)
+        : _filtered_property(filtered_property), _range(range), _include(include), _invert(invert) {}
 
     template <class VertexOrEdge>
     bool operator() (VertexOrEdge e) const 
     {
         bool retval;
-        map_visitor<VertexOrEdge> visitor(e, _range, retval);
+        map_visitor<VertexOrEdge> visitor(e, _range, _include, _invert, retval);
         apply_visitor(visitor, _filtered_property);
         return retval;
     }
@@ -175,22 +172,39 @@ private:
     class map_visitor: public static_visitor<void>
     {
     public:
-        map_visitor(const VertexOrEdge& descriptor, const std::pair<double, double>& range, bool& retval)
-            : _descriptor(descriptor), _range(range), _retval(retval) {}
+        map_visitor(const VertexOrEdge& descriptor, const std::pair<double, double>& range, 
+                    const std::pair<bool, bool>& include, bool invert, bool& retval)
+            : _descriptor(descriptor), _range(range), _include(include), _invert(invert), _retval(retval) {}
         template <class MapType>
         void operator()(MapType& filter_prop)
         {
             // ignore if outside allowed range
-            _retval = !(double(get(filter_prop, _descriptor)) < _range.first || double(get(filter_prop, _descriptor)) > _range.second);
+            bool lower;
+            if (_include.first)
+                lower = double(get(filter_prop, _descriptor)) <= _range.first;
+            else
+                lower = double(get(filter_prop, _descriptor)) < _range.first;
+            bool upper;
+            if (_include.second)
+                upper = double(get(filter_prop, _descriptor)) >= _range.second;
+            else
+                upper = double(get(filter_prop, _descriptor)) > _range.second;            
+            _retval = !(lower || upper);
+            if (_invert)
+                _retval = !_retval;
         }
     private:
         const VertexOrEdge& _descriptor;
         const std::pair<double, double>& _range;
+        const std::pair<bool, bool>& _include;
+        bool _invert;
         bool& _retval;
     };
 
     FilteredPropertyMap _filtered_property;
     std::pair<double, double> _range;
+    std::pair<bool, bool> _include;
+    bool _invert;
 };
 
 typedef mpl::vector<mpl::bool_<true>, mpl::bool_<false> > reverse_check;
@@ -261,43 +275,6 @@ struct check_directed
     bool& _found;
 };
 
-#ifndef NO_PYTHON_FILTERING
-template <class Graph, class Action, class ReverseCheck, class DirectedCheck> 
-void check_python_filter(const Graph& g, const GraphInterface &gi, Action a, bool& found, ReverseCheck, DirectedCheck)
-{
-    typedef PythonFilter<Graph,typename graph_traits<Graph>::vertex_descriptor> vertex_filter_t;
-    typedef PythonFilter<Graph,typename graph_traits<Graph>::edge_descriptor> edge_filter_t;
-
-    if (gi._edge_python_filter != python::object())
-    {
-        typedef filtered_graph<Graph, edge_filter_t, keep_all> efg_t;
-        efg_t efg(g,edge_filter_t(g, gi._properties, gi._edge_python_filter), keep_all());
-
-        if (gi._vertex_python_filter != python::object())
-        {
-            typedef PythonFilter<efg_t, typename graph_traits<efg_t>::vertex_descriptor, mpl::bool_<true> > vertex_filter_t;
-            typedef filtered_graph<efg_t,keep_all,vertex_filter_t> vefg_t;
-            vefg_t vefg(efg,keep_all(),vertex_filter_t(efg, gi._properties, gi._vertex_python_filter));
-            mpl::for_each<DirectedCheck>(check_directed<vefg_t,Action,ReverseCheck>(vefg, a, gi._reversed, gi._directed, found));
-        }
-        else
-        {
-            mpl::for_each<DirectedCheck>(check_directed<efg_t,Action,ReverseCheck>(efg, a, gi._reversed, gi._directed, found));
-        }
-    }
-    else if (gi._vertex_python_filter != python::object())
-    {
-        typedef filtered_graph<Graph,keep_all,vertex_filter_t> vfg_t;
-        vfg_t vfg(g,keep_all(),vertex_filter_t(g, gi._properties, gi._vertex_python_filter));
-        mpl::for_each<DirectedCheck>(check_directed<vfg_t,Action,ReverseCheck>(vfg, a, gi._reversed, gi._directed, found));
-    } 
-    else
-    {
-        mpl::for_each<DirectedCheck>(check_directed<Graph,Action,ReverseCheck>(g, a, gi._reversed, gi._directed, found));
-    }
-}
-#endif
-
 template <class Action, class ReverseCheck, class DirectedCheck> 
 void check_filter(const GraphInterface &g, Action a, ReverseCheck, DirectedCheck)
 {
@@ -306,27 +283,12 @@ void check_filter(const GraphInterface &g, Action a, ReverseCheck, DirectedCheck
     typedef RangeFilter<GraphInterface::vertex_filter_map_t> vertex_filter_t;
     typedef RangeFilter<GraphInterface::edge_filter_map_t> edge_filter_t;
 
-#ifndef NO_PYTHON_FILTERING
-    if (g._edge_python_filter == python::object() && g._vertex_python_filter == python::object())
-    {
-#endif
 #ifndef NO_RANGE_FILTERING        
-        if (g._vertex_filter_property != "" && g._edge_filter_property != "")
+        if (g._vertex_filter_property != "" || g._edge_filter_property != "")
         {        
             typedef filtered_graph<GraphInterface::multigraph_t, edge_filter_t, vertex_filter_t> fg_t;
-            fg_t fg(g._mg, edge_filter_t(g._edge_filter_map, g._edge_range), vertex_filter_t(g._vertex_filter_map, g._vertex_range));
-            mpl::for_each<DirectedCheck>(check_directed<fg_t,Action,ReverseCheck>(fg, a, g._reversed, g._directed, found));
-        }
-        else if (g._vertex_filter_property != "")
-        {
-            typedef filtered_graph<GraphInterface::multigraph_t, keep_all, vertex_filter_t> fg_t;
-            fg_t fg(g._mg, keep_all(), vertex_filter_t(g._vertex_filter_map, g._vertex_range));
-            mpl::for_each<DirectedCheck>(check_directed<fg_t,Action,ReverseCheck>(fg, a, g._reversed, g._directed, found));
-        } 
-        else if (g._edge_filter_property != "")
-        {
-            typedef filtered_graph<GraphInterface::multigraph_t, edge_filter_t, keep_all> fg_t;
-            fg_t fg(g._mg, edge_filter_t(g._edge_filter_map, g._edge_range), keep_all());
+            fg_t fg(g._mg, edge_filter_t(g._edge_filter_map, g._edge_range, g._edge_range_include, g._edge_range_invert),
+                    vertex_filter_t(g._vertex_filter_map, g._vertex_range, g._vertex_range_include, g._vertex_range_invert));
             mpl::for_each<DirectedCheck>(check_directed<fg_t,Action,ReverseCheck>(fg, a, g._reversed, g._directed, found));
         }
         else
@@ -336,22 +298,10 @@ void check_filter(const GraphInterface &g, Action a, ReverseCheck, DirectedCheck
 #else
         mpl::for_each<DirectedCheck>(check_directed<GraphInterface::multigraph_t,Action,ReverseCheck>(g._mg, a, g._reversed, g._directed, found));
 #endif
-#ifndef NO_PYTHON_FILTERING
-    }
-    else
-    {
-        check_python_filter(g._mg, g, a, found, ReverseCheck(), DirectedCheck());
-    }
-#else
-#ifdef NO_RANGE_FILTERING
-    mpl::for_each<DirectedCheck>(check_directed<GraphInterface::multigraph_t,Action,ReverseCheck>(g._mg, a, g._reversed, g._directed, found));
-#endif
-#endif
-
     if (!found)
         throw GraphException("graph filtering error: filter not found");
 }
 
 } //graph_tool namespace 
 
-#endif
+#endif // FILTERING_HH
