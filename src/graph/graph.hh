@@ -129,19 +129,12 @@ public:
     bool GetReversed() const {return _reversed;}
 
     void SetVertexFilterProperty(std::string property);
-    std::string GetVertexFilterProperty() const {return _vertex_filter_property;}
-    void SetVertexFilterRange(std::pair<double,double> allowed_range);
-    std::pair<double, double> GetVertexFilterRange() const {return _vertex_range;}
+    void SetVertexFilterRange(std::pair<double,double> allowed_range, std::pair<bool,bool> include, bool invert);
     bool IsVertexFilterActive() const;
 
     void SetEdgeFilterProperty(std::string property);
-    std::string GetEdgeFilterProperty() const {return _edge_filter_property;}
-    void SetEdgeFilterRange(std::pair<double,double> allowed_range) {_edge_range = allowed_range;}
-    std::pair<double,double> GetEdgeFilterRange() const {return _edge_range;}
+    void SetEdgeFilterRange(std::pair<double,double> allowed_range, std::pair<bool,bool> include, bool invert);
     bool IsEdgeFilterActive() const;
-
-    void SetGenericVertexFilter(boost::python::object filter);
-    void SetGenericEdgeFilter(boost::python::object filter);
 
     // modification
     void RemoveVertexProperty(std::string property);
@@ -211,7 +204,8 @@ private:
                            DynamicPropertyMapWrap<double, boost::graph_traits<multigraph_t>::vertex_descriptor> > vertex_filter_map_t;
     vertex_filter_map_t _vertex_filter_map;
     std::pair<double,double> _vertex_range;
-    boost::python::object _vertex_python_filter;
+    std::pair<bool,bool> _vertex_range_include;
+    bool _vertex_range_invert;
 
     // edge filter
     std::string _edge_filter_property;
@@ -223,7 +217,8 @@ private:
                            DynamicPropertyMapWrap<double, boost::graph_traits<multigraph_t>::edge_descriptor> > edge_filter_map_t;
     edge_filter_map_t _edge_filter_map;
     std::pair<double,double> _edge_range;
-    boost::python::object _edge_python_filter;
+    std::pair<bool,bool> _edge_range_include;
+    bool _edge_range_invert;
 
 };
 

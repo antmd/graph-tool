@@ -167,7 +167,7 @@ struct compute_spring_block
                                                        cooling(linear_cooling<double>(iter)).
                                                        vertex_index_map(index_map).force_pairs(all_force_pairs()));
         }
-        else if (type == "kk")
+        else if (type == "kw")
         {
             bool retval;
             retval = compute_kamada_kawai(g, iter, n, pos, weight, typename is_convertible<typename graph_traits<Graph>::directed_category,undirected_tag>::type());

@@ -244,7 +244,7 @@ struct LibInfo
     string GetName()      const {return PACKAGE_NAME;}
     string GetAuthor()    const {return AUTHOR;}
     string GetCopyright() const {return COPYRIGHT;}
-    string GetVersion()   const {return VERSION " (commit " GIT_COMMIT ")";}
+    string GetVersion()   const {return VERSION " (commit " GIT_COMMIT ", " GIT_COMMIT_DATE ")";}
     string GetLicense()   const {return "GPL version 3 or above";}
 };
 
@@ -291,17 +291,10 @@ BOOST_PYTHON_MODULE(libgraph_tool)
         .def("SetReversed", &GraphInterfaceWrap::SetReversed)
         .def("GetReversed", &GraphInterfaceWrap::GetReversed)
         .def("SetVertexFilterProperty", &GraphInterfaceWrap::SetVertexFilterProperty)
-        .def("GetVertexFilterProperty", &GraphInterfaceWrap::GetVertexFilterProperty)
-        .def("SetVertexFilterRange", &GraphInterfaceWrap::SetVertexFilterRange)
-        .def("GetVertexFilterRange", &GraphInterfaceWrap::GetVertexFilterRange)
         .def("IsVertexFilterActive", &GraphInterfaceWrap::IsVertexFilterActive)
-        .def("SetGenericVertexFilter",  &GraphInterfaceWrap::SetGenericVertexFilter)
         .def("SetEdgeFilterProperty", &GraphInterfaceWrap::SetEdgeFilterProperty)
-        .def("GetEdgeFilterProperty", &GraphInterfaceWrap::GetEdgeFilterProperty)
         .def("SetEdgeFilterRange", &GraphInterfaceWrap::SetEdgeFilterRange)
-        .def("GetEdgeFilterRange", &GraphInterfaceWrap::GetEdgeFilterRange)
         .def("IsEdgeFilterActive", &GraphInterfaceWrap::IsEdgeFilterActive)
-        .def("SetGenericEdgeFilter",  &GraphInterfaceWrap::SetGenericEdgeFilter)
         .def("EditEdgeProperty",  &GraphInterfaceWrap::EditEdgeProperty)
         .def("EditVertexProperty",  &GraphInterfaceWrap::EditVertexProperty)
         .def("EditGraphProperty",  &GraphInterfaceWrap::EditGraphProperty)
@@ -341,6 +334,7 @@ BOOST_PYTHON_MODULE(libgraph_tool)
     tuple_from_tuple<double,double,double>();
     to_python_converter<pos_t, pos_t_to_tuple>();
     pos_t_from_tuple();
+    pair_from_tuple<bool,bool>();
     to_python_converter<GraphInterfaceWrap::hist_t, hist_to_dict<GraphInterfaceWrap::hist_t> >();
     to_python_converter<GraphInterfaceWrap::hist2d_t, hist_to_dict<GraphInterfaceWrap::hist2d_t> >();
     to_python_converter<GraphInterfaceWrap::hist3d_t, hist_to_dict<GraphInterfaceWrap::hist3d_t> >();

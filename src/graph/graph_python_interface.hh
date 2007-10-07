@@ -978,43 +978,6 @@ private:
 
 };
 
-
-//==============================================================================
-// PythonFilter
-//==============================================================================
-template <class Graph, class Descriptor, class HasBase = mpl::bool_<false> >
-class PythonFilter
-{
-public:
-    typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
-    typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
-
-    typedef mpl::vector<in_degreeS,out_degreeS,total_degreeS> degrees;
-
-    PythonFilter(){}
-    PythonFilter(const Graph& g, const dynamic_properties& dp, python::object filter)
-        : _g(&g), _filter(filter[0])
-    {
-        python::object variables = filter[1];
-        populate_python_funcs<Descriptor, HasBase>()(*_g, _u, dp, variables);
-    }
-    
- 
-    inline bool operator() (Descriptor u) const
-    {              
-        _u = u;
-        return python::extract<bool>(_filter());
-    }
-
-private:
-    Graph const*  _g;
-    python::object _filter;
-    static Descriptor _u;
-};
-
-template <class Graph, class Descriptor, class HasBase> 
-Descriptor PythonFilter<Graph,Descriptor,HasBase>::_u;
-
 } //graph_tool namespace
 
 #endif

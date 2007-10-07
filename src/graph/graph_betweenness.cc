@@ -69,7 +69,8 @@ struct get_weighted_betweenness
 {
     get_weighted_betweenness(Graph& g, VertexIndexMap vertex_index, EdgeIndexMap edge_index, string& weight, dynamic_properties& dp,  
                              EdgeBetweenness edge_betweenness, VertexBetweenness vertex_betweenness, bool& found)
-        :_g(g), _vertex_index(vertex_index), _edge_index(edge_index), _weight(weight), _dp(dp), _edge_betweenness(edge_betweenness), _vertex_betweenness(vertex_betweenness), _found(found) {}
+        :_g(g), _vertex_index(vertex_index), _edge_index(edge_index), _weight(weight), _dp(dp), _edge_betweenness(edge_betweenness),
+         _vertex_betweenness(vertex_betweenness), _found(found) {}
 
     template <class WeightType>
     void operator()(WeightType)
@@ -79,7 +80,8 @@ struct get_weighted_betweenness
             typedef vector_property_map<WeightType, EdgeIndexMap> weight_map_t;
             weight_map_t weight_map(_edge_index);
             weight_map = get_static_property_map<weight_map_t>(find_property_map(_dp, _weight, typeid(graph_traits<typename GraphInterface::multigraph_t>::edge_descriptor)));
-            brandes_betweenness_centrality(_g, vertex_index_map(_vertex_index).weight_map(weight_map).edge_centrality_map(_edge_betweenness).centrality_map(_vertex_betweenness));
+            brandes_betweenness_centrality(_g, vertex_index_map(_vertex_index).weight_map(weight_map).
+                                           edge_centrality_map(_edge_betweenness).centrality_map(_vertex_betweenness));
             normalize_betweenness(_g, _vertex_betweenness, _edge_betweenness);
             _found = true;
         }
@@ -116,49 +118,19 @@ void GraphInterface::GetBetweenness(string weight, string edge_betweenness, stri
     typedef vector_property_map<double, edge_index_map_t> edge_betweenness_map_t;
     edge_betweenness_map_t edge_betweenness_map(_edge_index);
 
-    if (vertex_betweenness != "" && edge_betweenness != "")
+    if (weight != "")
     {
-        if (weight != "")
-        {
-            bool found = false;
-            check_filter(*this, bind<void>(choose_weight_map(), _1, var(_vertex_index), var(_edge_index), var(weight), var(_properties), var(edge_betweenness_map), var(vertex_betweenness_map), var(found)), reverse_check(), directed_check());
-            if (!found)
-                throw GraphException("error getting scalar property: " + weight);
-        }
-        else
-        {
-            check_filter(*this, bind<void>(get_betweenness(), _1, var(_vertex_index),  var(edge_betweenness_map), var(vertex_betweenness_map)), reverse_check(), directed_check());
-        }        
-    }
-    else if (vertex_betweenness != "")
-    {
-        if (weight != "")
-        {
-            bool found = false;
-            check_filter(*this, bind<void>(choose_weight_map(), _1, var(_vertex_index), var(_edge_index), var(weight), var(_properties), var(edge_betweenness_map), dummy_property_map(), var(found)), reverse_check(), directed_check());
-            if (!found)
-                throw GraphException("error getting scalar property: " + weight);
-        }
-        else
-        {
-            check_filter(*this, bind<void>(get_betweenness(), _1, var(_vertex_index), var(edge_betweenness_map), dummy_property_map()), reverse_check(), directed_check());
-        }
+        bool found = false;
+        check_filter(*this, bind<void>(choose_weight_map(), _1, var(_vertex_index), var(_edge_index), var(weight), var(_properties), 
+                                       var(edge_betweenness_map), var(vertex_betweenness_map), var(found)), reverse_check(), directed_check());
+        if (!found)
+            throw GraphException("error getting scalar property: " + weight);
     }
     else
     {
-        if (weight != "")
-        {
-            bool found = false;
-            check_filter(*this, bind<void>(choose_weight_map(), _1, var(_vertex_index), var(_edge_index), var(weight), var(_properties), dummy_property_map(), var(vertex_betweenness_map), var(found)), reverse_check(), directed_check());
-            if (!found)
-                throw GraphException("error getting scalar property: " + weight);
-        }
-        else
-        {
-            check_filter(*this, bind<void>(get_betweenness(), _1, var(_vertex_index), dummy_property_map(), var(vertex_betweenness_map)), reverse_check(), directed_check());
-        }        
-
-    }
+        check_filter(*this, bind<void>(get_betweenness(), _1, var(_vertex_index),  var(edge_betweenness_map), var(vertex_betweenness_map)), 
+                     reverse_check(), directed_check());
+    }        
 
     if (vertex_betweenness != "")
     {
@@ -206,6 +178,8 @@ double GraphInterface::GetCentralPointDominance(string vertex_betweenness)
         
         bool reversed = this->GetReversed();
         bool directed = this->GetDirected();
+        this->SetReversed(false);
+        this->SetDirected(true);
         check_filter(*this, bind<void>(get_central_point_dominance(), _1, var(betweenness), var(c)), never_reversed(), always_directed());
         this->SetReversed(reversed);
         this->SetDirected(directed);

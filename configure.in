@@ -74,22 +74,6 @@ AC_ARG_ENABLE([visibility], [AC_HELP_STRING([--disable-visibility],
         )
 
 
-AC_MSG_CHECKING(whether to enable graph python filtering...)
-AC_ARG_ENABLE([python-filtering], [AC_HELP_STRING([--enable-python-filtering],
-        [enable python graph filtering [default=disabled] ])],
-        if test $enableval = no; then
-           [AC_MSG_RESULT(no)]
-           [AC_DEFINE([NO_PYTHON_FILTERING], 1, [disable graph filtering])]
-           NO_PYTHON_FILTERING=yes
-        else
-           [AC_MSG_RESULT(yes)]
-        fi
-        ,
-        [AC_MSG_RESULT(no)]
-        [AC_DEFINE([NO_PYTHON_FILTERING], 1, [disable graph filtering])]
-        NO_PYTHON_FILTERING=yes
-        )
-
 AC_MSG_CHECKING(whether to enable graph range filtering...)
 AC_ARG_ENABLE([range-filtering], [AC_HELP_STRING([--disable-range-filtering],
         [disable range filtering [default=enabled] ])],
@@ -190,9 +174,9 @@ AC_DEFINE_UNQUOTED([COPYRIGHT],
     "Copyright (C) 2007 Tiago de Paula Peixoto\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
 	[copyright info])
 
-AC_DEFINE([GIT_COMMIT], "esyscmd(git show | head -n 1 | sed 's/commit //' | tr -d '\n')", [git commit hash])
+AC_DEFINE([GIT_COMMIT], "esyscmd(git show | head -n 1 | sed 's/commit //' |  grep -o -e '.\{8\}' | head -n 1 |tr -d '\n')", [git HEAD commit hash])
+AC_DEFINE([GIT_COMMIT_DATE], "esyscmd(git log -1 | head -n 3 | grep 'Date:' | sed s/'Date:   '// | tr -d '\n')", [git HEAD commit date])
 
-dnl fi
 AC_OUTPUT([
 Makefile
 src/Makefile
