@@ -184,6 +184,15 @@ bool GraphInterface::IsEdgeFilterActive() const {return _edge_filter_property !=
 void GraphInterface::SetVertexFilterRange(std::pair<double,double> allowed_range, std::pair<bool,bool> include, bool invert)
 {
 #ifndef NO_RANGE_FILTERING
+    if (isinf(allowed_range.first) == 1)
+        allowed_range.first = numeric_limits<double>::max();
+    else if (isinf(allowed_range.first) == -1)
+        allowed_range.first = numeric_limits<double>::min();
+    if (isinf(allowed_range.second) == 1)
+        allowed_range.second = numeric_limits<double>::max();
+    else if (isinf(allowed_range.second) == -1)
+        allowed_range.second = numeric_limits<double>::min();
+
     _vertex_range = allowed_range;
     _vertex_range_include = include;
     _vertex_range_invert = invert;
@@ -195,6 +204,15 @@ void GraphInterface::SetVertexFilterRange(std::pair<double,double> allowed_range
 void GraphInterface::SetEdgeFilterRange(std::pair<double,double> allowed_range, std::pair<bool,bool> include, bool invert)
 {
 #ifndef NO_RANGE_FILTERING
+    if (isinf(allowed_range.first) == 1)
+        allowed_range.first = numeric_limits<double>::max();
+    else if (isinf(allowed_range.first) == -1)
+        allowed_range.first = numeric_limits<double>::min();
+    if (isinf(allowed_range.second) == 1)
+        allowed_range.second = numeric_limits<double>::max();
+    else if (isinf(allowed_range.second) == -1)
+        allowed_range.second = numeric_limits<double>::min();
+
     _edge_range = allowed_range;
     _edge_range_include = include;
     _edge_range_invert = invert;

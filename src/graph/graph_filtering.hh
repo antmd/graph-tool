@@ -179,16 +179,17 @@ private:
         void operator()(MapType& filter_prop)
         {
             // ignore if outside allowed range
+            double val = double(get(filter_prop, _descriptor));
             bool lower;
             if (_include.first)
-                lower = double(get(filter_prop, _descriptor)) <= _range.first;
+                lower = val < _range.first;
             else
-                lower = double(get(filter_prop, _descriptor)) < _range.first;
+                lower = val <= _range.first;
             bool upper;
             if (_include.second)
-                upper = double(get(filter_prop, _descriptor)) >= _range.second;
+                upper = val > _range.second;
             else
-                upper = double(get(filter_prop, _descriptor)) > _range.second;            
+                upper = val >= _range.second;            
             _retval = !(lower || upper);
             if (_invert)
                 _retval = !_retval;
