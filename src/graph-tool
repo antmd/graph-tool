@@ -357,6 +357,8 @@ def parse_options(arguments = sys.argv[1:]):
                         parsed_mvars[mvar] = int(value)
                     except ValueError:
                         raise OptionError(self, "invalid value for '%s': %s (expected an int)" % (mvar, value))
+                elif "FILE" in mvar:
+                    parsed_mvars[mvar] = os.path.expanduser(value)
                 elif mvar == "OPTIONS":
                     subopts = {}
                     groups = {}
@@ -714,16 +716,16 @@ def print_result(retval, file=sys.stdout, prefix=""):
         keys.sort()
         for k in keys:
             if k.__class__ == tuple or k.__class__ == list:
-                print >> file, "%s%s" % (prefix," \t".join("%.20g" % x for x in k)),
+                print >> file, "%s%s" % (prefix," \t".join(["%.20g" % x for x in k])),
             else:
                 print >> file, "%s%.20g" % (prefix, k),
             if retval[k].__class__ == tuple or retval[k].__class__ == list:
-                print >> file, " \t", " \t".join("%.20g" % x for x in retval[k])
+                print >> file, " \t", " \t".join(["%.20g" % x for x in retval[k]])
             else:
                 print >> file, " \t%.20g" % retval[k]
     else:
         if retval.__class__ == list or retval.__class__ == tuple:
-            print >> file, "%s%s" % (prefix," \t".join("%.20g" % x for x in retval))
+            print >> file, "%s%s" % (prefix," \t".join(["%.20g" % x for x in retval]))
         else:
             print >> file, "%s%.20g" % (prefix, retval)
     if hasattr(file,'flush'):
