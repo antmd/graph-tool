@@ -729,7 +729,7 @@ def print_result(retval, file=sys.stdout, prefix=""):
     if hasattr(file,'flush'):
         file.flush()
 
-class RunError():
+class RunError:
     """ Error raised during option run"""
     def __init__(self, option, value, error):
         self.option = option
