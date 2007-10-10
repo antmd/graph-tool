@@ -116,9 +116,9 @@ def parse_options(arguments = sys.argv[1:]):
                      ["edit-vertex-property", "PROPERTY[|TYPE]|EXPRESSION", "edit the selected vertex property", {"TYPE":"double"},
                        "graph.EditVertexProperty($PROPERTY, $TYPE, edit_function_wrap('vertex',$EXPRESSION))"],
                      ["edit-edge-property", "PROPERTY[|TYPE]|EXPRESSION", "edit the selected edge property",   {"TYPE":"double"},
-                      "graph.EditEdgeProperty($PROPERTY, $TYPE, $EXPRESSION)"],
+                      "graph.EditEdgeProperty($PROPERTY, $TYPE, edit_function_wrap('edge',$EXPRESSION))"],
                      ["edit-graph-property", "PROPERTY[|TYPE]|EXPRESSION", "edit the selected graph property",  {"TYPE":"double"},
-                      "graph.EditGraphProperty($PROPERTY, $TYPE, $EXPRESSION)"],
+                      "graph.EditGraphProperty($PROPERTY, $TYPE, edit_function_wrap('graph',$EXPRESSION))"],
                      ["remove-vertex-property", "PROPERTY", "remove the selected vertex property", {}, "graph.RemoveVertexProperty($PROPERTY)"],
                      ["remove-edge-property", "PROPERTY", "remove the selected edge property",   {}, "graph.RemoveEdgeProperty($PROPERTY)"],
                      ["remove-graph-property", "PROPERTY", "remove the selected graph property",  {}, "graph.RemoveGraphProperty($PROPERTY)"],
@@ -699,14 +699,19 @@ def edit_function_wrap(type, exp):
     func = exp[0]
     if type == "vertex":
         desc = "v"
-    else:
+    elif type == "edge":
         desc = "e"
+    else:
+        desc = "g"
     nargs = len(inspect.getargspec(func)[0])
     if inspect.getargspec(func)[3] != None:
         nargs -= len(inspect.getargspec(func)[3])
     if nargs > 0:
         vars['__edit_func'] = func
-        func = eval("lambda: __edit_func(%s, g)" % desc, vars, vars)
+        if desc != "g":
+            func = eval("lambda: __edit_func(%s, g)" % desc, vars, vars)
+        else:
+            func = eval("lambda: __edit_func(%s)" % desc, vars, vars)
     return (func,vars)
 
 def print_result(retval, file=sys.stdout, prefix=""):
