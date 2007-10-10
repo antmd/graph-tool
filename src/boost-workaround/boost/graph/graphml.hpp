@@ -99,12 +99,12 @@ class mutate_graph_impl : public mutate_graph
         }
         catch (bad_lexical_cast)
         {
-            throw parse_error("invalid value \"" + value + "\" for key " + 
-                              name + " of type " + value_type);
+            throw parse_error("invalid value \"" + value + "\" for key \"" + 
+                              name + "\" of type \"" + value_type + "\"");
         }
         if (!type_found)
             throw  parse_error("unrecognized type \"" + value_type + 
-                               "\" for key " + name);
+                               "\" for key " + name + "\"");
             
     }
     
