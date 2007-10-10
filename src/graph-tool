@@ -922,7 +922,11 @@ else:
                                      ["%s='%s'" % (k,str(v)) for k,v in kwargs.iteritems() \
                                       if (opt.suboptions[k].group_name == None or v == True) and v.__class__ == str ]))
         arg = "|".join(arg)
-        return run(["--%s=%s" % (opt.name, arg)], return_first = True)
+        if arg != "":
+            cmd = "--%s=%s" % (opt.name, arg)
+        else:
+            cmd = "--%s" % opt.name
+        return run([cmd], return_first = True)
 
     def populate_module():
         """This will populate the module with the command line options as functions"""
