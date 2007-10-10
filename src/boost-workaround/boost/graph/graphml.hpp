@@ -181,7 +181,7 @@ class mutate_graph_impl : public mutate_graph
 protected:
     MutableGraph& m_g;
     dynamic_properties& m_dp;
-    typedef mpl::vector<bool, int, long, float, double, std::string> value_types;
+    typedef mpl::vector<bool, int, long long, float, double, std::string> value_types;
     static const char* m_type_names[]; 
 };
 
