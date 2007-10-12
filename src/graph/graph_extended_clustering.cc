@@ -35,7 +35,8 @@ using namespace boost::lambda;
 using namespace graph_tool;
 
 
-// filters out a single vertex
+// graph filter to remove a single vertex
+
 template <class Vertex>
 struct single_vertex_filter 
 {
@@ -76,6 +77,41 @@ struct bfs_max_depth_watcher
     DistanceMap _distance;
 };
 
+// abstract target collecting so algorithm works for bidirectional and undirected
+
+template<class Graph, class Vertex, class Targets, class DirectedCategory>
+void collect_targets (Vertex v, Graph& g, Targets* t, DirectedCategory)
+{
+    typename graph_traits<Graph>::in_edge_iterator ei, ei_end;
+    typename graph_traits<Graph>::vertex_descriptor u;
+    for(tie(ei, ei_end) = in_edges(v, g); ei != ei_end; ++ei)
+    {
+        u = source(*ei, g);
+        if (u == v) // no self-loops
+            continue;
+        if (t->find(u) != t->end()) // avoid parallel edges
+            continue;
+        t->insert(u);
+    }
+}
+
+template<class Graph, class Vertex, class Targets>
+void collect_targets (Vertex v, Graph& g, Targets* t, undirected_tag)
+{
+    typename graph_traits<Graph>::out_edge_iterator ei, ei_end;
+    typename graph_traits<Graph>::vertex_descriptor u;
+    for(tie(ei, ei_end) = out_edges(v, g); ei != ei_end; ++ei)
+    {
+        u = target(*ei, g);
+        if (u == v) // no self-loops
+            continue;
+        if (t->find(u) != t->end()) // avoid parallel edges
+            continue;
+        t->insert(u);
+    }
+}
+
+// get_extended_clustering
 
 struct get_extended_clustering
 {
@@ -100,17 +136,13 @@ struct get_extended_clustering
             typedef DescriptorHash<IndexMap> hasher_t;
             typedef tr1::unordered_set<typename graph_traits<Graph>::vertex_descriptor,hasher_t> neighbour_set_t;
             neighbour_set_t neighbours(0, hasher_t(vertex_index));
-            neighbour_set_t neighbours2(0, hasher_t(vertex_index));
             neighbour_set_t targets(0, hasher_t(vertex_index));
-            
-            // collect the targets
-            typename graph_traits<Graph>::adjacency_iterator a, a_end;
-            for(tie(a, a_end) = adjacent_vertices(v, g); a != a_end; ++a)
-                if (*a != v) // no self-loops
-                    targets.insert(*a);
-            size_t k = targets.size();
+            typename neighbour_set_t::iterator ni, ti;
 
-            // And now we setup and start the BFS bonanza
+            // collect targets, neighbours and calculate normalization factor
+            collect_targets (v, g, &targets, typename graph_traits<Graph>::directed_category());
+            size_t k_in = targets.size(), k_out, k_inter=0, z;
+            typename graph_traits<Graph>::adjacency_iterator a, a_end;
             for(tie(a, a_end) = adjacent_vertices(v, g); a != a_end; ++a)
             {
                 if (*a == v) // no self-loops
@@ -118,7 +150,15 @@ struct get_extended_clustering
                 if (neighbours.find(*a) != neighbours.end()) // avoid parallel edges
                     continue;
                 neighbours.insert(*a);
+                if (targets.find(*a) != targets.end())
+                    ++k_inter;
+            }
+            k_out = neighbours.size();
+            z = (k_in*k_out) - k_inter;
 
+            // And now we setup and start the BFS bonanza
+            for(ni = neighbours.begin(); ni != neighbours.end(); ++ni)
+            {
                 typedef tr1::unordered_map<typename graph_traits<Graph>::vertex_descriptor,size_t,DescriptorHash<IndexMap> > dmap_t;
                 dmap_t dmap(0, DescriptorHash<IndexMap>(vertex_index));
                 InitializedPropertyMap<dmap_t> distance_map(dmap, numeric_limits<size_t>::max());
@@ -129,26 +169,21 @@ struct get_extended_clustering
                 
                 try
                 {
-                    distance_map[*a] = 0;
+                    distance_map[*ni] = 0;
                     neighbour_set_t specific_targets = targets;
-                    specific_targets.erase(*a);
+                    specific_targets.erase(*ni);
                     bfs_max_depth_watcher<neighbour_set_t,InitializedPropertyMap<dmap_t> > watcher(specific_targets, cmaps.size(), distance_map);
-                    breadth_first_visit(fg, *a, visitor(make_bfs_visitor(make_pair(record_distances(distance_map, boost::on_tree_edge()),watcher))).
+                    breadth_first_visit(fg, *ni, visitor(make_bfs_visitor(make_pair(record_distances(distance_map, boost::on_tree_edge()),watcher))).
                                         color_map(color_map));
                 }
                 catch(bfs_stop_exception) {}
 
-                neighbours2.clear();
-                typename graph_traits<Graph>::adjacency_iterator a2;
-                for(a2 = adjacent_vertices(v, g).first ; a2 != a_end ; ++a2) 
+                for(ti = targets.begin(); ti != targets.end(); ++ti)
                 {
-                    if (*a2 == v || *a2 == *a) // no self-loops
+                    if (*ti == *ni) // no self-loops
                         continue;
-                    if (neighbours2.find(*a2) != neighbours2.end()) // avoid parallel edges
-                        continue;
-                    neighbours2.insert(*a2);
-                    if (distance_map[*a2] <= cmaps.size())
-                        cmaps[distance_map[*a2]-1][v] += 1.0/(k*(k-1));
+                    if (distance_map[*ti] <= cmaps.size())
+                        cmaps[distance_map[*ti]-1][v] += 1.0/z;
                 }
             }
         }
@@ -163,10 +198,7 @@ void GraphInterface::SetExtendedClusteringToProperty(string property_prefix, siz
     for (size_t i = 0; i < cmaps.size(); ++i)
         cmaps[i] = cmap_t(num_vertices(_mg), _vertex_index);
 
-    bool directed = _directed;
-    _directed = false;
-    check_filter(*this, bind<void>(get_extended_clustering(), _1, _vertex_index, var(cmaps)), reverse_check(), always_undirected()); 
-    _directed = directed;
+    check_filter(*this, bind<void>(get_extended_clustering(), _1, _vertex_index, var(cmaps)), reverse_check(), directed_check());
 
     for (size_t i = 0; i < cmaps.size(); ++i)
     {
