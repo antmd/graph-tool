@@ -124,7 +124,12 @@ def parse_options(arguments = sys.argv[1:]):
                      ["remove-graph-property", "PROPERTY", "remove the selected graph property",  {}, "graph.RemoveGraphProperty($PROPERTY)"],
                      ["insert-vertex-index-property", "PROPERTY", "insert vertex index as property", {}, "graph.InsertVertexIndexProperty($PROPERTY)"],
                      ["insert-edge-index-property", "PROPERTY", "insert edge index as property",   {}, "graph.InsertEdgeIndexProperty($PROPERTY"],
-                     ["list-properties", None, "list all properties", {}, "graph.ListProperties()"]]
+                     ["list-properties", None, "list all properties", {}, "graph.ListProperties()"],
+                     ["purge-vertices", None, "Remove all vertices of the graph which are currently being filtered out, and return to the unfiltered state",
+                      {}, ["graph.PurgeVertices()", "graph.SetVertexFilterProperty('')" ]],
+                     ["purge-edges", None, "Remove all edges of the graph which are currently being filtered out, and return to the unfiltered state",
+                      {}, ["graph.PurgeEdges()", "graph.SetEdgeFilterProperty('')" ]]
+                     ]
 
     option_groups.append(modification)
 
