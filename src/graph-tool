@@ -158,7 +158,7 @@ def parse_options(arguments = sys.argv[1:]):
                    ["average-sampled-harmonic-distance",  "[OPTIONS[|FILE]]", "get the average sampled harmonic distance. Options are $OPTIONS_LIST",
                     {"FILE":"-", "OPTIONS":[ ("samples",("int",1000)), ("weight",("str","")), ("seed",("int",int(time.time())))] },
                     ["hist = graph.GetSampledDistanceHistogram($weight,$samples,$seed)",
-                     "avg, err = get_mean(dict((1.0/k,v) for k,v in hist.iteritems()))",
+                     "avg, err = get_mean(dict([(1.0/k,v) for k,v in hist.iteritems()]))",
                      "(1.0/avg, err/(avg**2))"]],
                    ["label-components",  "PROPERTY", "label components to PROPERTY", {}, "graph.LabelComponents($PROPERTY)"],
                    ["label-parallel-edges",  "PROPERTY", "label parallel edges to PROPERTY", {}, "graph.LabelParallelEdges($PROPERTY)"],
@@ -413,7 +413,7 @@ def parse_options(arguments = sys.argv[1:]):
                                 if opt.type == "bool":
                                     value = eval(value)
                                 else:
-                                    value = eval("%s('%s')" % (opt.type, value))
+                                    value = eval("%s('%s')" % (opt.type, self.unquote(value)))
                         except ValueError:
                             raise OptionError(self, "invalid value for '%s': %s (expected %s)" % (opt.name, value, opt.type))
                         subopts[opt.name] = value
