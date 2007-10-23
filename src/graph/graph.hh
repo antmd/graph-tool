@@ -113,6 +113,15 @@ public:
     double GetModularity(std::string weight, std::string property);
     void   GetCommunityNetwork(std::string property, std::string size_property, std::string out_file, std::string format) const;
 
+    // graph random rewiring (shuffling)
+    enum rewire_strat_t
+    {
+        UNCORRELATED_STRAT,
+        CORRELATED_STRAT
+    };
+
+    void RandomRewire(rewire_strat_t strat, bool self_loops, bool parallel_edges,  size_t seed);
+
     // filtering
     void SetDirected(bool directed) {_directed = directed;}
     bool GetDirected() const {return _directed;}
