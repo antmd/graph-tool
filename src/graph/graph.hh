@@ -1,3 +1,4 @@
+
 // graph-tool -- a general graph modification and manipulation thingy
 //
 // Copyright (C) 2007  Tiago de Paula Peixoto <tiago@forked.de>
@@ -41,7 +42,7 @@ namespace graph_tool
 class GraphInterface
 {
 public:
-    GraphInterface(); 
+    GraphInterface();
     ~GraphInterface();
 
     enum degree_t
@@ -74,7 +75,7 @@ public:
     hist_t GetEdgeHistogram(std::string property) const;
 
     //correlations
-    hist2d_t   GetCombinedVertexHistogram(deg_t degree1, deg_t degree2) const;    
+    hist2d_t   GetCombinedVertexHistogram(deg_t degree1, deg_t degree2) const;
     avg_corr_t GetAverageCombinedVertexCorrelation(deg_t degree1, deg_t degree2) const;
     hist2d_t   GetVertexCorrelationHistogram(deg_t degree1, deg_t degree2, std::string weight) const;
     hist3d_t   GetEdgeVertexCorrelationHistogram(deg_t deg1, std::string scalar, deg_t deg2) const;
@@ -99,7 +100,7 @@ public:
     void   GetLineGraph(std::string out_file, std::string format);
     void   GetBetweenness(std::string weight, std::string edge_betweenness, std::string vertex_betweenness);
     double GetCentralPointDominance(std::string vertex_betweenness);
-    
+
     // community structure
     enum comm_corr_t
     {
@@ -137,6 +138,8 @@ public:
     void EditEdgeProperty(std::string property, std::string type, boost::python::object op);
     void EditGraphProperty(std::string property, std::string type, boost::python::object op);
     void ListProperties() const;
+    void PurgeVertices();
+    void PurgeEdges();
 
     // layout
     void ComputeGraphLayoutGursoy(std::string prop, std::string weight, std::string topology, size_t iter = 0, size_t seed = 4357);
@@ -162,9 +165,9 @@ public:
                                    EdgeProperty >  multigraph_t;
 
 private:
-    template <class Action, class ReverseCheck, class DirectedCheck> 
+    template <class Action, class ReverseCheck, class DirectedCheck>
     friend void check_filter(const GraphInterface &g, Action a, ReverseCheck, DirectedCheck);
-    template <class Graph, class Action, class ReverseCheck, class DirectedCheck> 
+    template <class Graph, class Action, class ReverseCheck, class DirectedCheck>
     friend void check_python_filter(const Graph& g, const GraphInterface &gi, Action a, bool& found, ReverseCheck, DirectedCheck);
 
     friend class scalarS;
@@ -201,7 +204,7 @@ private:
     // edge filter
     std::string _edge_filter_property;
     typedef boost::variant<boost::vector_property_map<double, edge_index_map_t>,
-                           HashedDescriptorMap<edge_index_map_t, double>,                            
+                           HashedDescriptorMap<edge_index_map_t, double>,
                            boost::vector_property_map<size_t, edge_index_map_t>,
                            HashedDescriptorMap<edge_index_map_t, size_t>,
                            edge_index_map_t,
@@ -210,7 +213,7 @@ private:
     std::pair<double,double> _edge_range;
     std::pair<bool,bool> _edge_range_include;
     bool _edge_range_invert;
-    
+
 };
 
 std::pair<GraphInterface::degree_t,std::string> get_degree_type(GraphInterface::deg_t degree);

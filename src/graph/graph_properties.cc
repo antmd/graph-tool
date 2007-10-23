@@ -327,37 +327,59 @@ void GraphInterface::EditGraphProperty(string property, string type, python::obj
 //==============================================================================
 
 template <class ValueTypes>
-class print_name
+class get_type_name
 {
 public:
-    print_name(const type_info& type, const char* types[]): _type(type), _types(types) {}
+    get_type_name(const type_info& type, const char* types[], string& name)
+        : _type(type), _types(types), _name(name) {}
 
     template <class ValueType>
     void operator()(ValueType)
     {
         if (_type == typeid(ValueType))
-            cout << _types[mpl::find<ValueTypes,ValueType>::type::pos::value];
+            _name = _types[mpl::find<ValueTypes,ValueType>::type::pos::value];
     }
 private:
     const type_info& _type;
     const char** _types;
+    string& _name;
 };
 
 void GraphInterface::ListProperties() const
 {
+    list<tuple<string,string,string> > graph_properties, vertex_properties, edge_properties;
+    
     for (typeof(_properties.begin()) p = _properties.begin(); p != _properties.end(); ++p)
     {
-        cout << setw(15) << left << p->first << " " << setw(8) << left;
+        tuple<string,string,string> prop;
+        get<0>(prop) = p->first;
+        mpl::for_each<value_types>(get_type_name<value_types>(p->second->value(), type_names, get<2>(prop)));
         if (p->second->key() == typeid(graph_traits<multigraph_t>::vertex_descriptor))
-            cout << "(vertex)";
+        {
+            get<1>(prop) = "(vertex)";
+            vertex_properties.push_back(prop);
+        }
         else 
             if (p->second->key() == typeid(graph_traits<multigraph_t>::edge_descriptor))
-                cout << "(edge)";
+            {
+                get<1>(prop) = "(edge)";
+                edge_properties.push_back(prop);
+            }
             else
-                cout << "(graph)";
-        cout << "  type: ";
-        mpl::for_each<value_types>(print_name<value_types>(p->second->value(), type_names));
-        cout << endl;
+            {  
+                get<1>(prop) = "(graph)";
+                graph_properties.push_back(prop);
+            }
+    }
+
+    list<tuple<string,string,string> > props;
+    props.insert(props.end(), graph_properties.begin(), graph_properties.end());
+    props.insert(props.end(), vertex_properties.begin(), vertex_properties.end());
+    props.insert(props.end(), edge_properties.begin(), edge_properties.end());
+    for (typeof(props.begin()) iter = props.begin(); iter != props.end(); ++iter)
+    {
+        cout << setw(15) << left << get<0>(*iter) << " " << setw(8) << left << get<1>(*iter)
+             << "  type: " << get<2>(*iter) << endl;
     }
 }
 

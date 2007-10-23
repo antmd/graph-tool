@@ -116,15 +116,20 @@ def parse_options(arguments = sys.argv[1:]):
                      ["edit-vertex-property", "PROPERTY[|TYPE]|EXPRESSION", "edit the selected vertex property", {"TYPE":"double"},
                        "graph.EditVertexProperty($PROPERTY, $TYPE, edit_function_wrap('vertex',$EXPRESSION))"],
                      ["edit-edge-property", "PROPERTY[|TYPE]|EXPRESSION", "edit the selected edge property",   {"TYPE":"double"},
-                      "graph.EditEdgeProperty($PROPERTY, $TYPE, $EXPRESSION)"],
+                      "graph.EditEdgeProperty($PROPERTY, $TYPE, edit_function_wrap('edge',$EXPRESSION))"],
                      ["edit-graph-property", "PROPERTY[|TYPE]|EXPRESSION", "edit the selected graph property",  {"TYPE":"double"},
-                      "graph.EditGraphProperty($PROPERTY, $TYPE, $EXPRESSION)"],
+                      "graph.EditGraphProperty($PROPERTY, $TYPE, edit_function_wrap('graph',$EXPRESSION))"],
                      ["remove-vertex-property", "PROPERTY", "remove the selected vertex property", {}, "graph.RemoveVertexProperty($PROPERTY)"],
                      ["remove-edge-property", "PROPERTY", "remove the selected edge property",   {}, "graph.RemoveEdgeProperty($PROPERTY)"],
                      ["remove-graph-property", "PROPERTY", "remove the selected graph property",  {}, "graph.RemoveGraphProperty($PROPERTY)"],
                      ["insert-vertex-index-property", "PROPERTY", "insert vertex index as property", {}, "graph.InsertVertexIndexProperty($PROPERTY)"],
                      ["insert-edge-index-property", "PROPERTY", "insert edge index as property",   {}, "graph.InsertEdgeIndexProperty($PROPERTY"],
-                     ["list-properties", None, "list all properties", {}, "graph.ListProperties()"]]
+                     ["list-properties", None, "list all properties", {}, "graph.ListProperties()"],
+                     ["purge-vertices", None, "Remove all vertices of the graph which are currently being filtered out, and return to the unfiltered state",
+                      {}, ["graph.PurgeVertices()", "graph.SetVertexFilterProperty('')" ]],
+                     ["purge-edges", None, "Remove all edges of the graph which are currently being filtered out, and return to the unfiltered state",
+                      {}, ["graph.PurgeEdges()", "graph.SetEdgeFilterProperty('')" ]]
+                     ]
 
     option_groups.append(modification)
 
@@ -357,6 +362,8 @@ def parse_options(arguments = sys.argv[1:]):
                         parsed_mvars[mvar] = int(value)
                     except ValueError:
                         raise OptionError(self, "invalid value for '%s': %s (expected an int)" % (mvar, value))
+                elif "FILE" in mvar:
+                    parsed_mvars[mvar] = os.path.expanduser(value)
                 elif mvar == "OPTIONS":
                     subopts = {}
                     groups = {}
@@ -697,14 +704,19 @@ def edit_function_wrap(type, exp):
     func = exp[0]
     if type == "vertex":
         desc = "v"
-    else:
+    elif type == "edge":
         desc = "e"
+    else:
+        desc = "g"
     nargs = len(inspect.getargspec(func)[0])
     if inspect.getargspec(func)[3] != None:
         nargs -= len(inspect.getargspec(func)[3])
     if nargs > 0:
         vars['__edit_func'] = func
-        func = eval("lambda: __edit_func(%s, g)" % desc, vars, vars)
+        if desc != "g":
+            func = eval("lambda: __edit_func(%s, g)" % desc, vars, vars)
+        else:
+            func = eval("lambda: __edit_func(%s)" % desc, vars, vars)
     return (func,vars)
 
 def print_result(retval, file=sys.stdout, prefix=""):
@@ -714,16 +726,16 @@ def print_result(retval, file=sys.stdout, prefix=""):
         keys.sort()
         for k in keys:
             if k.__class__ == tuple or k.__class__ == list:
-                print >> file, "%s%s" % (prefix," \t".join("%.20g" % x for x in k)),
+                print >> file, "%s%s" % (prefix," \t".join(["%.20g" % x for x in k])),
             else:
                 print >> file, "%s%.20g" % (prefix, k),
             if retval[k].__class__ == tuple or retval[k].__class__ == list:
-                print >> file, " \t", " \t".join("%.20g" % x for x in retval[k])
+                print >> file, " \t", " \t".join(["%.20g" % x for x in retval[k]])
             else:
                 print >> file, " \t%.20g" % retval[k]
     else:
         if retval.__class__ == list or retval.__class__ == tuple:
-            print >> file, "%s%s" % (prefix," \t".join("%.20g" % x for x in retval))
+            print >> file, "%s%s" % (prefix," \t".join(["%.20g" % x for x in retval]))
         else:
             print >> file, "%s%.20g" % (prefix, retval)
     if hasattr(file,'flush'):
@@ -920,7 +932,11 @@ else:
                                      ["%s='%s'" % (k,str(v)) for k,v in kwargs.iteritems() \
                                       if (opt.suboptions[k].group_name == None or v == True) and v.__class__ == str ]))
         arg = "|".join(arg)
-        return run(["--%s=%s" % (opt.name, arg)], return_first = True)
+        if arg != "":
+            cmd = "--%s=%s" % (opt.name, arg)
+        else:
+            cmd = "--%s" % opt.name
+        return run([cmd], return_first = True)
 
     def populate_module():
         """This will populate the module with the command line options as functions"""
