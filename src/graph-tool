@@ -128,7 +128,7 @@ def parse_options(arguments = sys.argv[1:]):
                      ["purge-vertices", None, "Remove all vertices of the graph which are currently being filtered out, and return to the unfiltered state",
                       {}, ["graph.PurgeVertices()", "graph.SetVertexFilterProperty('')" ]],
                      ["purge-edges", None, "Remove all edges of the graph which are currently being filtered out, and return to the unfiltered state",
-                      {}, ["graph.PurgeEdges()", "graph.SetEdgeFilterProperty('')" ]]
+                      {}, ["graph.PurgeEdges()", "graph.SetEdgeFilterProperty('')" ]],
                      ["random-rewire", "OPTIONS", "randomly rewire edges. Options are: $OPTIONS_LIST",
                       {"OPTIONS":[("correlated",("string[1]",False)),("uncorrelated",("string[1]",True)),
                                   ("self_loops",("string",False)),("parallel_edges",("string",False)),
