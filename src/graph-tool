@@ -123,7 +123,7 @@ def parse_options(arguments = sys.argv[1:]):
                      ["remove-edge-property", "PROPERTY", "remove the selected edge property",   {}, "graph.RemoveEdgeProperty($PROPERTY)"],
                      ["remove-graph-property", "PROPERTY", "remove the selected graph property",  {}, "graph.RemoveGraphProperty($PROPERTY)"],
                      ["insert-vertex-index-property", "PROPERTY", "insert vertex index as property", {}, "graph.InsertVertexIndexProperty($PROPERTY)"],
-                     ["insert-edge-index-property", "PROPERTY", "insert edge index as property",   {}, "graph.InsertEdgeIndexProperty($PROPERTY"],
+                     ["insert-edge-index-property", "PROPERTY", "insert edge index as property",   {}, "graph.InsertEdgeIndexProperty($PROPERTY)"],
                      ["list-properties", None, "list all properties", {}, "graph.ListProperties()"],
                      ["purge-vertices", None, "Remove all vertices of the graph which are currently being filtered out, and return to the unfiltered state",
                       {}, ["graph.PurgeVertices()", "graph.SetVertexFilterProperty('')" ]],
