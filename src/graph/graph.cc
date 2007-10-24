@@ -71,12 +71,12 @@ GraphInterface::GraphInterface()
  _vertex_index(get(vertex_index,_mg)),
  _edge_index(get(edge_index_t(),_mg)),
  _vertex_filter_map(_vertex_index),
- _vertex_range(make_pair(numeric_limits<double>::min(), numeric_limits<double>::max())),
- _vertex_range_include(make_pair(false, false)),
+ _vertex_range(make_pair(0.0, numeric_limits<double>::max())),
+ _vertex_range_include(make_pair(true, true)),
  _vertex_range_invert(false),
  _edge_filter_map(_edge_index),
- _edge_range(make_pair(numeric_limits<double>::min(), numeric_limits<double>::max())),
- _edge_range_include(make_pair(false, false)),
+ _edge_range(make_pair(0.0, numeric_limits<double>::max())),
+ _edge_range_include(make_pair(true, true)),
  _edge_range_invert(false)
 {
 
@@ -125,8 +125,8 @@ void GraphInterface::SetVertexFilterProperty(string property)
     else
     {
         _vertex_filter_map = _vertex_index;
-        _vertex_range = make_pair(numeric_limits<double>::min(), numeric_limits<double>::max());
-        _vertex_range_include = make_pair(false, false);
+        _vertex_range = make_pair(0.0, numeric_limits<double>::max());
+        _vertex_range_include = make_pair(true, true);
         _vertex_range_invert = false;
     }
 #else
@@ -169,8 +169,8 @@ void GraphInterface::SetEdgeFilterProperty(string property)
     else
     {
         _edge_filter_map = _edge_index;
-        _edge_range = make_pair(numeric_limits<double>::min(), numeric_limits<double>::max());
-        _edge_range_include = make_pair(false, false);
+        _edge_range = make_pair(0.0, numeric_limits<double>::max());
+        _edge_range_include = make_pair(true, true);
         _edge_range_invert = false;
     }
 #else
