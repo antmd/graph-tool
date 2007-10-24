@@ -187,11 +187,11 @@ void GraphInterface::SetVertexFilterRange(std::pair<double,double> allowed_range
     if (isinf(allowed_range.first) == 1)
         allowed_range.first = numeric_limits<double>::max();
     else if (isinf(allowed_range.first) == -1)
-        allowed_range.first = numeric_limits<double>::min();
+        allowed_range.first = -numeric_limits<double>::max();
     if (isinf(allowed_range.second) == 1)
         allowed_range.second = numeric_limits<double>::max();
     else if (isinf(allowed_range.second) == -1)
-        allowed_range.second = numeric_limits<double>::min();
+        allowed_range.second = -numeric_limits<double>::max();
 
     _vertex_range = allowed_range;
     _vertex_range_include = include;
@@ -207,11 +207,11 @@ void GraphInterface::SetEdgeFilterRange(std::pair<double,double> allowed_range, 
     if (isinf(allowed_range.first) == 1)
         allowed_range.first = numeric_limits<double>::max();
     else if (isinf(allowed_range.first) == -1)
-        allowed_range.first = numeric_limits<double>::min();
+        allowed_range.first = -numeric_limits<double>::max();
     if (isinf(allowed_range.second) == 1)
         allowed_range.second = numeric_limits<double>::max();
     else if (isinf(allowed_range.second) == -1)
-        allowed_range.second = numeric_limits<double>::min();
+        allowed_range.second = -numeric_limits<double>::max();
 
     _edge_range = allowed_range;
     _edge_range_include = include;
