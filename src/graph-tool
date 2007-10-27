@@ -130,8 +130,8 @@ def parse_options(arguments = sys.argv[1:]):
                      ["purge-edges", None, "Remove all edges of the graph which are currently being filtered out, and return to the unfiltered state",
                       {}, ["graph.PurgeEdges()", "graph.SetEdgeFilterProperty('')" ]],
                      ["random-rewire", "OPTIONS", "randomly rewire edges. Options are: $OPTIONS_LIST",
-                      {"OPTIONS":[("correlated",("string[1]",False)),("uncorrelated",("string[1]",True)),
-                                  ("self_loops",("string",False)),("parallel_edges",("string",False)),
+                      {"OPTIONS":[("correlated",("str[1]",False)),("uncorrelated",("str[1]",True)),
+                                  ("self_loops",("bool",False)),("parallel_edges",("bool",False)),
                                   ("seed",("int",int(time.time())))]},
                       [ "strat = {'correlated':RewireStrat.Correlated, 'uncorrelated':RewireStrat.Uncorrelated}",
                         "graph.RandomRewire(strat[$correlated], $self_loops, $parallel_edges, $seed)"]]
