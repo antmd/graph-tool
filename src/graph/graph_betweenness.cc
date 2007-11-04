@@ -13,8 +13,8 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+// along with this program. If not, see <http://www.gnu.org/licenses/>.
+
 
 #include <boost/lambda/lambda.hpp>
 #include <boost/lambda/bind.hpp>
@@ -36,7 +36,8 @@ using namespace boost::lambda;
 using namespace graph_tool;
 
 template <class Graph, class VertexBetweenness, class EdgeBetweenness>
-void normalize_betweenness(const Graph& g, VertexBetweenness vertex_betweenness, EdgeBetweenness edge_betweenness)
+void normalize_betweenness(const Graph& g, VertexBetweenness vertex_betweenness,
+                           EdgeBetweenness edge_betweenness)
 {
     size_t n = HardNumVertices()(g);
     double factor = 2.0/(n*n - 3*n + 2);
@@ -56,20 +57,30 @@ void normalize_betweenness(const Graph& g, VertexBetweenness vertex_betweenness,
 
 struct get_betweenness
 {    
-    template <class Graph, class VertexIndexMap, class EdgeBetweenness, class VertexBetweenness>
-    void operator()(Graph& g, VertexIndexMap index_map, EdgeBetweenness edge_betweenness, VertexBetweenness vertex_betweenness) const
+    template <class Graph, class VertexIndexMap, class EdgeBetweenness, 
+              class VertexBetweenness>
+    void operator()(Graph& g, VertexIndexMap index_map, 
+                    EdgeBetweenness edge_betweenness, 
+                    VertexBetweenness vertex_betweenness) const
     {        
-        brandes_betweenness_centrality(g, vertex_index_map(index_map).edge_centrality_map(edge_betweenness).centrality_map(vertex_betweenness));
+        brandes_betweenness_centrality(g, vertex_index_map(index_map).
+                                       edge_centrality_map(edge_betweenness).
+                                       centrality_map(vertex_betweenness));
         normalize_betweenness(g, vertex_betweenness, edge_betweenness);
     }
 };
 
-template <class Graph, class VertexIndexMap,  class EdgeIndexMap, class EdgeBetweenness, class VertexBetweenness>
+template <class Graph, class VertexIndexMap,  class EdgeIndexMap, 
+          class EdgeBetweenness, class VertexBetweenness>
 struct get_weighted_betweenness
 {
-    get_weighted_betweenness(Graph& g, VertexIndexMap vertex_index, EdgeIndexMap edge_index, string& weight, dynamic_properties& dp,  
-                             EdgeBetweenness edge_betweenness, VertexBetweenness vertex_betweenness, bool& found)
-        :_g(g), _vertex_index(vertex_index), _edge_index(edge_index), _weight(weight), _dp(dp), _edge_betweenness(edge_betweenness),
+    get_weighted_betweenness(Graph& g, VertexIndexMap vertex_index, 
+                             EdgeIndexMap edge_index, string& weight, 
+                             dynamic_properties& dp,  
+                             EdgeBetweenness edge_betweenness, 
+                             VertexBetweenness vertex_betweenness, bool& found)
+        :_g(g), _vertex_index(vertex_index), _edge_index(edge_index),
+         _weight(weight), _dp(dp), _edge_betweenness(edge_betweenness),
          _vertex_betweenness(vertex_betweenness), _found(found) {}
 
     template <class WeightType>
@@ -79,9 +90,13 @@ struct get_weighted_betweenness
         {
             typedef vector_property_map<WeightType, EdgeIndexMap> weight_map_t;
             weight_map_t weight_map(_edge_index);
-            weight_map = get_static_property_map<weight_map_t>(find_property_map(_dp, _weight, typeid(graph_traits<typename GraphInterface::multigraph_t>::edge_descriptor)));
-            brandes_betweenness_centrality(_g, vertex_index_map(_vertex_index).weight_map(weight_map).
-                                           edge_centrality_map(_edge_betweenness).centrality_map(_vertex_betweenness));
+            weight_map = get_static_property_map<weight_map_t>
+                (find_property_map(_dp, _weight, 
+                                   typeid(GraphInterface::edge_t)));
+            brandes_betweenness_centrality
+                (_g, vertex_index_map(_vertex_index).weight_map(weight_map).
+                 edge_centrality_map(_edge_betweenness).
+                 centrality_map(_vertex_betweenness));
             normalize_betweenness(_g, _vertex_betweenness, _edge_betweenness);
             _found = true;
         }
@@ -101,34 +116,55 @@ struct get_weighted_betweenness
 
 struct choose_weight_map
 {
-    template <class Graph, class VertexIndexMap,  class EdgeIndexMap, class EdgeBetweenness, class VertexBetweenness>
-    void operator()(Graph& g, VertexIndexMap vertex_index, EdgeIndexMap edge_index, string& weight, dynamic_properties& dp,  
-                      EdgeBetweenness edge_betweenness, VertexBetweenness vertex_betweenness, bool& found) const
+    template <class Graph, class VertexIndexMap,  class EdgeIndexMap, 
+              class EdgeBetweenness, class VertexBetweenness>
+    void operator()(Graph& g, VertexIndexMap vertex_index, 
+                    EdgeIndexMap edge_index, string& weight, 
+                    dynamic_properties& dp,  
+                    EdgeBetweenness edge_betweenness, 
+                    VertexBetweenness vertex_betweenness, bool& found) const
     {
-        mpl::for_each<scalar_types>(get_weighted_betweenness<Graph,VertexIndexMap,EdgeIndexMap,EdgeBetweenness,VertexBetweenness>
-                                    (g, vertex_index, edge_index, weight, dp, edge_betweenness, vertex_betweenness, found));
+        mpl::for_each<scalar_types>
+            (get_weighted_betweenness<Graph,
+                                      VertexIndexMap,
+                                      EdgeIndexMap,
+                                      EdgeBetweenness,
+                                      VertexBetweenness>
+             (g, vertex_index, edge_index, weight, dp, edge_betweenness, 
+              vertex_betweenness, found));
     }
 };
 
-void GraphInterface::GetBetweenness(string weight, string edge_betweenness, string vertex_betweenness)
+void GraphInterface::GetBetweenness(string weight, string edge_betweenness, 
+                                    string vertex_betweenness)
 {
-    typedef vector_property_map<double, vertex_index_map_t> vertex_betweenness_map_t;
+    typedef vector_property_map<double, vertex_index_map_t> 
+        vertex_betweenness_map_t;
     vertex_betweenness_map_t vertex_betweenness_map(_vertex_index);
 
-    typedef vector_property_map<double, edge_index_map_t> edge_betweenness_map_t;
+    typedef vector_property_map<double, edge_index_map_t> 
+        edge_betweenness_map_t;
     edge_betweenness_map_t edge_betweenness_map(_edge_index);
 
     if (weight != "")
     {
         bool found = false;
-        check_filter(*this, bind<void>(choose_weight_map(), _1, var(_vertex_index), var(_edge_index), var(weight), var(_properties), 
-                                       var(edge_betweenness_map), var(vertex_betweenness_map), var(found)), reverse_check(), directed_check());
+        check_filter(*this, bind<void>(choose_weight_map(), _1, 
+                                       var(_vertex_index), var(_edge_index), 
+                                       var(weight), var(_properties), 
+                                       var(edge_betweenness_map), 
+                                       var(vertex_betweenness_map),
+                                       var(found)), 
+                     reverse_check(), directed_check());
         if (!found)
             throw GraphException("error getting scalar property: " + weight);
     }
     else
     {
-        check_filter(*this, bind<void>(get_betweenness(), _1, var(_vertex_index),  var(edge_betweenness_map), var(vertex_betweenness_map)), 
+        check_filter(*this, bind<void>(get_betweenness(), _1, 
+                                       var(_vertex_index),
+                                       var(edge_betweenness_map), 
+                                       var(vertex_betweenness_map)), 
                      reverse_check(), directed_check());
     }        
 
@@ -136,7 +172,8 @@ void GraphInterface::GetBetweenness(string weight, string edge_betweenness, stri
     {
         try
         {
-            find_property_map(_properties, vertex_betweenness, typeid(graph_traits<multigraph_t>::vertex_descriptor));
+            find_property_map(_properties, vertex_betweenness, 
+                              typeid(vertex_t));
             RemoveVertexProperty(vertex_betweenness);
         }
         catch (property_not_found) {}
@@ -148,7 +185,8 @@ void GraphInterface::GetBetweenness(string weight, string edge_betweenness, stri
     {
         try
         {
-            find_property_map(_properties, edge_betweenness, typeid(graph_traits<multigraph_t>::edge_descriptor));
+            find_property_map(_properties, edge_betweenness, 
+                              typeid(edge_t));
             RemoveEdgeProperty(edge_betweenness);
         }
         catch (property_not_found) {}
@@ -161,7 +199,8 @@ void GraphInterface::GetBetweenness(string weight, string edge_betweenness, stri
 struct get_central_point_dominance
 {    
     template <class Graph, class VertexBetweenness>
-    void operator()(Graph& g, VertexBetweenness vertex_betweenness, double& c) const
+    void operator()(Graph& g, VertexBetweenness vertex_betweenness, double& c) 
+        const
     {        
         c = central_point_dominance(g, vertex_betweenness);
     }
@@ -172,21 +211,26 @@ double GraphInterface::GetCentralPointDominance(string vertex_betweenness)
 {
     try
     {
-        typedef DynamicPropertyMapWrap<double, graph_traits<multigraph_t>::vertex_descriptor> betweenness_map_t;
-        betweenness_map_t betweenness(find_property_map(_properties, vertex_betweenness, typeid(graph_traits<multigraph_t>::vertex_descriptor)));
+        typedef DynamicPropertyMapWrap<double,vertex_t> betweenness_map_t;
+        betweenness_map_t betweenness(find_property_map(_properties, 
+                                                        vertex_betweenness, 
+                                                        typeid(vertex_t)));
         double c = 0.0;
         
         bool reversed = this->GetReversed();
         bool directed = this->GetDirected();
         this->SetReversed(false);
         this->SetDirected(true);
-        check_filter(*this, bind<void>(get_central_point_dominance(), _1, var(betweenness), var(c)), never_reversed(), always_directed());
+        check_filter(*this, bind<void>(get_central_point_dominance(), _1, 
+                                       var(betweenness), var(c)), 
+                     never_reversed(), always_directed());
         this->SetReversed(reversed);
         this->SetDirected(directed);
         return c;
     }
     catch (property_not_found) 
     {
-        throw GraphException("vertex property " + vertex_betweenness + " not found");
+        throw GraphException("vertex property " + vertex_betweenness 
+                             + " not found");
     }
 }

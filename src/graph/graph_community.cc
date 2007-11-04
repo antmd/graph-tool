@@ -13,8 +13,8 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+// along with this program. If not, see <http://www.gnu.org/licenses/>.
+
 
 #include <boost/lambda/lambda.hpp>
 #include <boost/lambda/bind.hpp>
@@ -39,7 +39,8 @@ using std::tr1::unordered_set;
 typedef boost::mt19937 rng_t;
 
 template <class Graph>
-size_t out_degree_no_loops(typename graph_traits<Graph>::vertex_descriptor v, const Graph &g)
+size_t out_degree_no_loops(typename graph_traits<Graph>::vertex_descriptor v,
+                           const Graph &g)
 {
     size_t k = 0;
     typename graph_traits<Graph>::adjacency_iterator a,a_end;
@@ -50,18 +51,22 @@ size_t out_degree_no_loops(typename graph_traits<Graph>::vertex_descriptor v, co
 }
 
 
-//==============================================================================
-// GetCommunityStructure()
 // computes the community structure through a spin glass system with 
 // simulated annealing
-//==============================================================================
 
 template <template <class G, class CommunityMap> class NNKS>
 struct get_communities
 {
     template <class Graph, class WeightMap, class CommunityMap>
-    void operator()(Graph& g, WeightMap weights, CommunityMap s, double gamma, size_t n_iter, pair<double,double> Tinterval, pair<size_t,bool> Nspins, size_t seed, pair<bool,string> verbose) const
+    void operator()(Graph& g, WeightMap weights, CommunityMap s, double gamma, 
+                    size_t n_iter, pair<double,double> Tinterval, 
+                    pair<size_t,bool> Nspins, size_t seed, 
+                    pair<bool,string> verbose) const
     {
+
+        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
+        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
+
         size_t N = HardNumVertices()(g);
                     
         stringstream out_str;
@@ -70,8 +75,10 @@ struct get_communities
         {
             out_file.open(verbose.second.c_str());
             if (!out_file.is_open())
-                throw GraphException("error opening file " + verbose.second + " for writing");
-            out_file.exceptions (ifstream::eofbit | ifstream::failbit | ifstream::badbit);
+                throw GraphException("error opening file " + verbose.second + 
+                                     " for writing");
+            out_file.exceptions (ifstream::eofbit | ifstream::failbit | 
+                                 ifstream::badbit);
         }
 
         double Tmin = Tinterval.first;
@@ -84,7 +91,8 @@ struct get_communities
             Nspins.first = HardNumVertices()(g);
 
         unordered_map<size_t, size_t> Ns; // spin histogram
-        unordered_map<size_t, map<double, unordered_set<size_t> > > global_term; // global energy term
+        // global energy term
+        unordered_map<size_t, map<double, unordered_set<size_t> > > global_term;
 
         // init spins from [0,N-1] and global info
         uniform_int<size_t> sample_spin(0, Nspins.first-1);
@@ -98,19 +106,22 @@ struct get_communities
             deg_set.insert(out_degree_no_loops(*v, g));
         }
 
-        NNKS<Graph,CommunityMap> Nnnks(g, s); // this will retrieve the expected number of neighbours with given spin, in funcion of degree
+        NNKS<Graph,CommunityMap> Nnnks(g, s); // this will retrieve the expected
+                                              // number of neighbours with given
+                                              // spin, in funcion of degree
 
         // setup global energy terms for all degrees and spins
         vector<size_t> degs;
-        for (typeof(deg_set.begin()) iter = deg_set.begin(); iter != deg_set.end(); ++iter)
+        for (typeof(deg_set.begin()) iter = deg_set.begin(); 
+             iter != deg_set.end(); ++iter)
             degs.push_back(*iter);
         for (size_t i = 0; i < degs.size(); ++i)
             for (size_t sp = 0; sp < Nspins.first; ++sp)
                 global_term[degs[i]][gamma*Nnnks(degs[i],sp)].insert(sp);
 
 
-        // define cooling rate so that temperature starts at Tmax at temp_count == 0
-        // and reaches Tmin at temp_count == n_iter - 1
+        // define cooling rate so that temperature starts at Tmax at temp_count
+        // == 0 and reaches Tmin at temp_count == n_iter - 1
         if (Tmin < numeric_limits<double>::epsilon())
             Tmin = numeric_limits<double>::epsilon();
         double cooling_rate = -(log(Tmin)-log(Tmax))/(n_iter-1);
@@ -123,8 +134,10 @@ struct get_communities
             bool steepest_descent = false; // flags if temperature is too low
 
             // calculate the cumulative probabilities of each spin energy level
-            unordered_map<size_t, map<long double, pair<double, bool> > > cumm_prob;
-            unordered_map<size_t, unordered_map<double, long double> > energy_to_prob;
+            unordered_map<size_t, map<long double, pair<double, bool> > > 
+                cumm_prob;
+            unordered_map<size_t, unordered_map<double, long double> > 
+                energy_to_prob;
             int i, NK = degs.size();
 #ifdef USING_OPENMP
             for (i = 0; i < NK; ++i)
@@ -133,14 +146,20 @@ struct get_communities
                 energy_to_prob[degs[i]];
             }
 #endif //USING_OPENMP
-            #pragma omp parallel for default(shared) private(i) schedule(dynamic) 
+            #pragma omp parallel for default(shared) private(i)\
+                schedule(dynamic) 
             for (i = 0; i < NK; ++i)
             {
                 long double prob = 0;
-                for (typeof(global_term[degs[i]].begin()) iter = global_term[degs[i]].begin(); iter != global_term[degs[i]].end(); ++iter)
+                for (typeof(global_term[degs[i]].begin()) iter =
+                         global_term[degs[i]].begin(); 
+                     iter != global_term[degs[i]].end(); ++iter)
                 {
-                    long double M = log(numeric_limits<long double>::max()/(Nspins.first*10));
-                    long double this_prob = exp((long double)(-iter->first - degs[i])/T + M)*iter->second.size();
+                    long double M = log(numeric_limits<long double>::max()/
+                                        (Nspins.first*10));
+                    long double this_prob = 
+                        exp((long double)(-iter->first - degs[i])/T + M)*
+                        iter->second.size();
 
                     if (prob + this_prob != prob)
                     {
@@ -163,7 +182,7 @@ struct get_communities
             }
 
             // list of spins which were updated
-            vector<pair<typename graph_traits<Graph>::vertex_descriptor,size_t> > spin_update;
+            vector<pair<vertex_t,size_t> > spin_update;
             spin_update.reserve(N);
 
             // sample a new spin for every vertex
@@ -171,7 +190,7 @@ struct get_communities
             #pragma omp parallel for default(shared) private(i) firstprivate(global_term, cumm_prob) schedule(dynamic) 
             for (i = 0; i < NV; ++i)
             {
-                typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+                vertex_t v = vertex(i, g);
                 if (v == graph_traits<Graph>::null_vertex())
                     continue;
 
@@ -181,7 +200,7 @@ struct get_communities
                 typename graph_traits<Graph>::out_edge_iterator e,e_end;
                 for (tie(e,e_end) = out_edges(v,g); e != e_end; ++e)
                 {
-                    typename graph_traits<Graph>::vertex_descriptor t = target(*e,g);
+                    vertex_t t = target(*e,g);
                     if (t != v)
                         ns[s[t]] += get(weights, *e);
                 }
@@ -305,7 +324,7 @@ struct get_communities
             // flip spins and update Nnnks
             for (size_t u = 0; u < spin_update.size(); ++u)
             {
-                typename graph_traits<Graph>::vertex_descriptor v = spin_update[u].first;
+                vertex_t v = spin_update[u].first;
                 size_t k = out_degree_no_loops(v, g);
                 size_t a = spin_update[u].second;
                 
@@ -382,13 +401,13 @@ struct get_communities
 
         // get final energy
         double E = 0.0;
-        unordered_map<size_t,vector<typename graph_traits<Graph>::vertex_descriptor> > spin_groups;
+        unordered_map<size_t,vector<vertex_t> > spin_groups;
         for (tie(v,v_end) = vertices(g); v != v_end; ++v)
         {
             typename graph_traits<Graph>::out_edge_iterator e, e_end;
             for (tie(e,e_end) = out_edges(*v,g); e != e_end; ++e)
             {
-                typename graph_traits<Graph>::vertex_descriptor t = target(*e,g);
+                vertex_t t = target(*e,g);
                 if (s[t] == s[*v])
                     E -= get(weights, *e);
             }
@@ -511,6 +530,7 @@ public:
         for (tie(e,e_end) = edges(_g); e != e_end; ++e)
         {
             typename graph_traits<Graph>::vertex_descriptor s, t;
+
             s = source(*e,g);
             t = target(*e,g);
             if (s != t)
@@ -523,25 +543,32 @@ public:
             }
         }
 
-        for (typeof(_Pkk.begin()) iter1 = _Pkk.begin(); iter1 != _Pkk.end(); ++iter1)
+        for (typeof(_Pkk.begin()) iter1 = _Pkk.begin(); iter1 != _Pkk.end(); 
+             ++iter1)
         {
             double sum = 0;
-            for (typeof(iter1->second.begin()) iter2 = iter1->second.begin(); iter2 != iter1->second.end(); ++iter2)
+            for (typeof(iter1->second.begin()) iter2 = iter1->second.begin(); 
+                 iter2 != iter1->second.end(); ++iter2)
                 sum += iter2->second;
-            for (typeof(iter1->second.begin()) iter2 = iter1->second.begin(); iter2 != iter1->second.end(); ++iter2)
+            for (typeof(iter1->second.begin()) iter2 = iter1->second.begin(); 
+                 iter2 != iter1->second.end(); ++iter2)
                 iter2->second /= sum;
         }
 
-        for (typeof(_Nk.begin()) k_iter = _Nk.begin(); k_iter != _Nk.end(); ++k_iter) 
+        for (typeof(_Nk.begin()) k_iter = _Nk.begin(); k_iter != _Nk.end(); 
+             ++k_iter) 
         {
             size_t k1 = k_iter->first;
             _degs.push_back(k1);
-            for (typeof(spins.begin()) s_iter = spins.begin(); s_iter != spins.end(); ++s_iter)
-                for (typeof(_Nk.begin()) k_iter2 = _Nk.begin(); k_iter2 != _Nk.end(); ++k_iter2) 
+            for (typeof(spins.begin()) s_iter = spins.begin(); 
+                 s_iter != spins.end(); ++s_iter)
+                for (typeof(_Nk.begin()) k_iter2 = _Nk.begin(); 
+                     k_iter2 != _Nk.end(); ++k_iter2) 
                 {
                     size_t k2 = k_iter2->first;
                     if (_Nks[k2].find(*s_iter) != _Nks[k2].end())
-                        _NNks[k1][*s_iter] +=  k1*_Pkk[k1][k2] * _Nks[k2][*s_iter]/double(_Nk[k2]);
+                        _NNks[k1][*s_iter] +=  
+                            k1*_Pkk[k1][k2] * _Nks[k2][*s_iter]/double(_Nk[k2]);
                 }
         }
     }
@@ -620,18 +647,24 @@ struct get_communities_selector
     GraphInterface::comm_corr_t _corr;
 
     template <class Graph, class WeightMap, class CommunityMap>
-    void operator()(Graph& g, WeightMap weights, CommunityMap s, double gamma, size_t n_iter, pair<double,double> Tinterval, pair<size_t,bool> Nspins, size_t seed, pair<bool,string> verbose) const
+    void operator()(Graph& g, WeightMap weights, CommunityMap s, double gamma,
+                    size_t n_iter, pair<double,double> Tinterval, 
+                    pair<size_t,bool> Nspins, size_t seed, 
+                    pair<bool,string> verbose) const
     {
         switch (_corr)
         {
         case GraphInterface::ERDOS_REYNI:
-            get_communities<NNKSErdosReyni>()(g, weights, s, gamma, n_iter, Tinterval, Nspins, seed, verbose);
+            get_communities<NNKSErdosReyni>()(g, weights, s, gamma, n_iter,
+                                              Tinterval, Nspins, seed, verbose);
             break;
         case GraphInterface::UNCORRELATED:
-            get_communities<NNKSUncorr>()(g, weights, s, gamma, n_iter, Tinterval, Nspins, seed, verbose);
+            get_communities<NNKSUncorr>()(g, weights, s, gamma, n_iter, 
+                                          Tinterval, Nspins, seed, verbose);
             break;
         case GraphInterface::CORRELATED:
-            get_communities<NNKSCorr>()(g, weights, s, gamma, n_iter, Tinterval, Nspins, seed, verbose);
+            get_communities<NNKSCorr>()(g, weights, s, gamma, n_iter, 
+                                        Tinterval, Nspins, seed, verbose);
             break;
         }
     }
@@ -640,7 +673,8 @@ struct get_communities_selector
 struct copy_spins
 {
     template <class Graph, class CommunityMapOld, class CommunityMapNew >
-    void operator()(Graph& g, CommunityMapOld old_s, CommunityMapNew new_s) const
+    void operator()(Graph& g, CommunityMapOld old_s, CommunityMapNew new_s) 
+        const
     {
         typename graph_traits<Graph>::vertex_iterator v, v_end;
         for (tie(v, v_end) = vertices(g); v != v_end; ++v)
@@ -649,7 +683,12 @@ struct copy_spins
 };
 
 
-void GraphInterface::GetCommunityStructure(double gamma, comm_corr_t corr, size_t n_iter, double Tmin, double Tmax, size_t Nspins, size_t seed, bool verbose, string history_file, string weight, string property)
+void GraphInterface::GetCommunityStructure(double gamma, comm_corr_t corr, 
+                                           size_t n_iter, double Tmin, 
+                                           double Tmax, size_t Nspins, 
+                                           size_t seed, bool verbose, 
+                                           string history_file, string weight, 
+                                           string property)
 {
     typedef vector_property_map<size_t,vertex_index_map_t> comm_map_t;
     comm_map_t comm_map(_vertex_index);
@@ -657,8 +696,11 @@ void GraphInterface::GetCommunityStructure(double gamma, comm_corr_t corr, size_
     bool new_spins = true;
     try
     {
-        DynamicPropertyMapWrap<size_t,graph_traits<multigraph_t>::vertex_descriptor> old_s(find_property_map(_properties, property, typeid(graph_traits<multigraph_t>::vertex_descriptor)));
-        check_filter(*this, bind<void>(copy_spins(), _1, var(old_s), var(comm_map)), reverse_check(), always_undirected());
+        DynamicPropertyMapWrap<size_t,vertex_t> 
+            old_s(find_property_map(_properties, property, typeid(vertex_t)));
+        check_filter(*this, bind<void>(copy_spins(), _1, var(old_s), 
+                                       var(comm_map)),
+                     reverse_check(), always_undirected());
         RemoveVertexProperty(property);
         new_spins = false;
     }
@@ -671,33 +713,53 @@ void GraphInterface::GetCommunityStructure(double gamma, comm_corr_t corr, size_
     {
         try 
         {
-            dynamic_property_map& weight_prop = find_property_map(_properties, weight, typeid(graph_traits<multigraph_t>::edge_descriptor));
-            if (get_static_property_map<vector_property_map<double,edge_index_map_t> >(&weight_prop))
+            dynamic_property_map& weight_prop = 
+                find_property_map(_properties, weight, typeid(edge_t));
+            if (get_static_property_map
+                    <vector_property_map<double, 
+                                         edge_index_map_t> >(&weight_prop))
             {
                 vector_property_map<double,edge_index_map_t> weight_map = 
-                    get_static_property_map<vector_property_map<double,edge_index_map_t> >(weight_prop);
-                check_filter(*this, bind<void>(get_communities_selector(corr), _1, var(weight_map), var(comm_map), gamma, n_iter, make_pair(Tmin, Tmax), 
-                                               make_pair(Nspins, new_spins), seed, make_pair(verbose, history_file)),
+                    get_static_property_map
+                        <vector_property_map<double,edge_index_map_t> >
+                    (weight_prop);
+                check_filter(*this, bind<void>(get_communities_selector(corr),
+                                               _1, var(weight_map), 
+                                               var(comm_map), 
+                                               gamma, n_iter, 
+                                               make_pair(Tmin, Tmax), 
+                                               make_pair(Nspins, new_spins), 
+                                               seed, 
+                                               make_pair(verbose,history_file)),
                              reverse_check(), always_undirected());
             }
             else
             {
-                DynamicPropertyMapWrap<double,graph_traits<multigraph_t>::edge_descriptor> weight_map(weight_prop);
-                check_filter(*this, bind<void>(get_communities_selector(corr), _1, var(weight_map), var(comm_map), gamma, n_iter, make_pair(Tmin, Tmax), 
-                                               make_pair(Nspins, new_spins), seed, make_pair(verbose, history_file)),
+                DynamicPropertyMapWrap<double,edge_t> weight_map(weight_prop);
+                check_filter(*this, bind<void>(get_communities_selector(corr),
+                                               _1, var(weight_map), 
+                                               var(comm_map), gamma, n_iter, 
+                                               make_pair(Tmin, Tmax), 
+                                               make_pair(Nspins, new_spins), 
+                                               seed, 
+                                               make_pair(verbose,history_file)),
                              reverse_check(), always_undirected());
             }
         }
         catch (property_not_found& e)
         {
-            throw GraphException("error getting scalar property: " + string(e.what()));
+            throw GraphException("error getting scalar property: " +
+                                 string(e.what()));
         }
     }
     else
     {
-        ConstantPropertyMap<double,graph_traits<multigraph_t>::edge_descriptor> weight_map(1.0);
-        check_filter(*this, bind<void>(get_communities_selector(corr), _1, var(weight_map), var(comm_map), gamma, n_iter, make_pair(Tmin, Tmax), 
-                                       make_pair(Nspins, new_spins), seed, make_pair(verbose, history_file)),
+        ConstantPropertyMap<double,edge_t> weight_map(1.0);
+        check_filter(*this, bind<void>(get_communities_selector(corr), _1, 
+                                       var(weight_map), var(comm_map), gamma, 
+                                       n_iter, make_pair(Tmin, Tmax), 
+                                       make_pair(Nspins, new_spins), seed, 
+                                       make_pair(verbose, history_file)),
                      reverse_check(), always_undirected());
     }
     _directed = directed;
@@ -705,15 +767,12 @@ void GraphInterface::GetCommunityStructure(double gamma, comm_corr_t corr, size_
     _properties.property(property, comm_map);
 }
 
-//==============================================================================
-// GetModularity()
 // get Newman's modularity of a given community partition
-//==============================================================================
-
 struct get_modularity
 {
     template <class Graph, class WeightMap, class CommunityMap>
-    void operator()(Graph& g, WeightMap weights, CommunityMap s, double& modularity) const
+    void operator()(Graph& g, WeightMap weights, CommunityMap s, 
+                    double& modularity) const
     {
         modularity = 0.0;
         
@@ -751,25 +810,33 @@ double GraphInterface::GetModularity(string weight, string property)
     _directed = false;
     try
     {
-        dynamic_property_map& comm_prop = find_property_map(_properties, property, typeid(graph_traits<multigraph_t>::vertex_descriptor));
-        DynamicPropertyMapWrap<size_t,graph_traits<multigraph_t>::vertex_descriptor> comm_map(comm_prop);
+        dynamic_property_map& comm_prop = find_property_map(_properties, 
+                                                            property, 
+                                                            typeid(vertex_t));
+        DynamicPropertyMapWrap<size_t,vertex_t> comm_map(comm_prop);
         if(weight != "")
         {
-            dynamic_property_map& weight_prop = find_property_map(_properties, weight, typeid(graph_traits<multigraph_t>::edge_descriptor));
-            DynamicPropertyMapWrap<double,graph_traits<multigraph_t>::edge_descriptor> weight_map(weight_prop);
-            check_filter(*this, bind<void>(get_modularity(), _1, var(weight_map), var(comm_map), var(modularity)),
+            dynamic_property_map& weight_prop = 
+                find_property_map(_properties, weight, typeid(edge_t));
+            DynamicPropertyMapWrap<double,edge_t> weight_map(weight_prop);
+            check_filter(*this, bind<void>(get_modularity(), _1, 
+                                           var(weight_map), var(comm_map), 
+                                           var(modularity)),
             reverse_check(), always_undirected());            
         }
         else
         {
-            ConstantPropertyMap<double,graph_traits<multigraph_t>::edge_descriptor> weight_map(1.0);
-            check_filter(*this, bind<void>(get_modularity(), _1, var(weight_map), var(comm_map), var(modularity)),
+            ConstantPropertyMap<double,edge_t> weight_map(1.0);
+            check_filter(*this, bind<void>(get_modularity(), _1, 
+                                           var(weight_map), var(comm_map), 
+                                           var(modularity)),
             reverse_check(), always_undirected());
         }
     }
     catch (property_not_found& e)
     {
-        throw GraphException("error getting scalar property: " + string(e.what()));
+        throw GraphException("error getting scalar property: " + 
+                             string(e.what()));
     }
     _directed = directed;
 

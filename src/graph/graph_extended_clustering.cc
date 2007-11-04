@@ -13,8 +13,7 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 // based on code written by Alexandre Hannud Abdo <abdo@member.fsf.org>
 
@@ -57,11 +56,13 @@ struct bfs_max_depth_watcher
 {
     typedef on_tree_edge event_filter;
 
-    bfs_max_depth_watcher(TargetSet& targets, size_t max_depth, DistanceMap distance)
+    bfs_max_depth_watcher(TargetSet& targets, size_t max_depth, 
+                          DistanceMap distance)
         : _targets(targets), _max_depth(max_depth), _distance(distance) {}
     
     template <class Graph>
-    void operator()(typename graph_traits<Graph>::edge_descriptor e, const Graph& g) 
+    void operator()(typename graph_traits<Graph>::edge_descriptor e, 
+                    const Graph& g) 
     {
         typename graph_traits<Graph>::vertex_descriptor v = target(e,g);
         if (get(_distance, v) > _max_depth)
@@ -116,25 +117,27 @@ void collect_targets (Vertex v, Graph& g, Targets* t, undirected_tag)
 struct get_extended_clustering
 {
     template <class Graph, class IndexMap, class ClusteringMap>
-    void operator()(Graph& g, IndexMap vertex_index, vector<ClusteringMap>& cmaps) const
-    {        
+    void operator()(Graph& g, IndexMap vertex_index, 
+                    vector<ClusteringMap>& cmaps) const
+    {       
+        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
         int i, N = num_vertices(g);
 
         #pragma omp parallel for default(shared) private(i) schedule(dynamic) 
         for (i = 0; i < N; ++i)
         {
-            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            vertex_t v = vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
         
             // We must disconsider paths through the original vertex
-            typedef single_vertex_filter<typename graph_traits<Graph>::vertex_descriptor> filter_t;
+            typedef single_vertex_filter<vertex_t> filter_t;
             typedef filtered_graph<Graph, keep_all, filter_t> fg_t;
             fg_t fg(g, keep_all(), filter_t(v));
 
             typedef DescriptorHash<IndexMap> hasher_t;
-            typedef tr1::unordered_set<typename graph_traits<Graph>::vertex_descriptor,hasher_t> neighbour_set_t;
+            typedef tr1::unordered_set<vertex_t,hasher_t> neighbour_set_t;
             neighbour_set_t neighbours(0, hasher_t(vertex_index));
             neighbour_set_t targets(0, hasher_t(vertex_index));
             typename neighbour_set_t::iterator ni, ti;
@@ -147,8 +150,9 @@ struct get_extended_clustering
             {
                 if (*a == v) // no self-loops
                     continue;
-                if (neighbours.find(*a) != neighbours.end()) // avoid parallel edges
-                    continue;
+                if (neighbours.find(*a) != neighbours.end()) // avoid parallel
+                    continue;                                // edges
+
                 neighbours.insert(*a);
                 if (targets.find(*a) != targets.end())
                     ++k_inter;
@@ -159,21 +163,33 @@ struct get_extended_clustering
             // And now we setup and start the BFS bonanza
             for(ni = neighbours.begin(); ni != neighbours.end(); ++ni)
             {
-                typedef tr1::unordered_map<typename graph_traits<Graph>::vertex_descriptor,size_t,DescriptorHash<IndexMap> > dmap_t;
+                typedef tr1::unordered_map<vertex_t,size_t,
+                                           DescriptorHash<IndexMap> > dmap_t;
                 dmap_t dmap(0, DescriptorHash<IndexMap>(vertex_index));
-                InitializedPropertyMap<dmap_t> distance_map(dmap, numeric_limits<size_t>::max());
+                InitializedPropertyMap<dmap_t> 
+                    distance_map(dmap, numeric_limits<size_t>::max());
 
-                typedef tr1::unordered_map<typename graph_traits<Graph>::vertex_descriptor,default_color_type,DescriptorHash<IndexMap> > cmap_t;
+                typedef tr1::unordered_map<vertex_t,default_color_type,
+                                           DescriptorHash<IndexMap> > cmap_t;
                 cmap_t cmap(0, DescriptorHash<IndexMap>(vertex_index));
-                InitializedPropertyMap<cmap_t> color_map(cmap, color_traits<default_color_type>::white());
+                InitializedPropertyMap<cmap_t> 
+                    color_map(cmap, color_traits<default_color_type>::white());
                 
                 try
                 {
                     distance_map[*ni] = 0;
                     neighbour_set_t specific_targets = targets;
                     specific_targets.erase(*ni);
-                    bfs_max_depth_watcher<neighbour_set_t,InitializedPropertyMap<dmap_t> > watcher(specific_targets, cmaps.size(), distance_map);
-                    breadth_first_visit(fg, *ni, visitor(make_bfs_visitor(make_pair(record_distances(distance_map, boost::on_tree_edge()),watcher))).
+                    bfs_max_depth_watcher<neighbour_set_t,
+                                          InitializedPropertyMap<dmap_t> > 
+                        watcher(specific_targets, cmaps.size(), distance_map);
+                    breadth_first_visit(fg, *ni, 
+                                        visitor
+                                        (make_bfs_visitor
+                                         (make_pair(record_distances
+                                                    (distance_map, 
+                                                     boost::on_tree_edge()),
+                                                    watcher))).
                                         color_map(color_map));
                 }
                 catch(bfs_stop_exception) {}
@@ -191,21 +207,24 @@ struct get_extended_clustering
 };
 
 
-void GraphInterface::SetExtendedClusteringToProperty(string property_prefix, size_t max_depth)
+void GraphInterface::SetExtendedClusteringToProperty(string property_prefix,
+                                                     size_t max_depth)
 {
     typedef vector_property_map<double, vertex_index_map_t> cmap_t;
     vector<cmap_t> cmaps(max_depth);
     for (size_t i = 0; i < cmaps.size(); ++i)
         cmaps[i] = cmap_t(num_vertices(_mg), _vertex_index);
 
-    check_filter(*this, bind<void>(get_extended_clustering(), _1, _vertex_index, var(cmaps)), reverse_check(), directed_check());
+    check_filter(*this, bind<void>(get_extended_clustering(), _1, _vertex_index,
+                                   var(cmaps)),
+                 reverse_check(), directed_check());
 
     for (size_t i = 0; i < cmaps.size(); ++i)
     {
         string name = property_prefix + lexical_cast<string>(i+1);
         try
         {
-            find_property_map(_properties, name, typeid(graph_traits<multigraph_t>::vertex_descriptor));
+            find_property_map(_properties, name, typeid(vertex_t));
             RemoveVertexProperty(name);
         }
         catch (property_not_found) {}

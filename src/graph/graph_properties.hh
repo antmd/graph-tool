@@ -13,8 +13,7 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef GRAPH_PROPERTIES_HH
 #define GRAPH_PROPERTIES_HH
@@ -28,93 +27,88 @@
 #include <boost/functional/hash.hpp>
 #include <boost/shared_ptr.hpp>
 
-namespace graph_tool 
+// this file provides general function for manipulating graph properties
+
+namespace graph_tool
 {
 typedef struct { double x; double y; } pos_t;
 std::ostream& operator<<(std::ostream &o, const pos_t &p );
 std::istream& operator>>(std::istream &o, pos_t &p );
 
-// global property types
-typedef boost::mpl::vector<bool, int, long long, size_t, float, double, std::string, pos_t> value_types;
+// global property types. only these types are allowed in property maps
+typedef boost::mpl::vector<bool, int, long long, size_t, float, double,
+                           std::string, pos_t> value_types;
 extern const char* type_names[];
 
-// scalar types
-typedef boost::mpl::vector<bool, int, long long, size_t, float, double> scalar_types;
+// scalar types. types contained in value_types which are scalar
+typedef boost::mpl::vector<bool, int, long long, size_t, float, double>
+    scalar_types;
 extern const char* scalar_names[];
 
 
-
-//==============================================================================
-// Property Map Utility Functions
-//==============================================================================
-
-//==============================================================================
-// get_static_property_map(map)
-// gets the "static" property map behind the dynamic property map, or throws
-// bad_cast if it doesn't match
-//==============================================================================
-
+// this function gets the "static" property map behind the dynamic property map,
+// or throws bad_cast if it doesn't match the correct type
 template <class PropertyMap>
 PropertyMap& get_static_property_map(boost::dynamic_property_map& map)
 {
-    return dynamic_cast<boost::detail::dynamic_property_map_adaptor<PropertyMap>&>(map).base();
+    return dynamic_cast
+        <boost::detail::dynamic_property_map_adaptor<PropertyMap>&>(map).base();
 }
 
+// same as above, but returns a pointer and does not throw an exception, and
+// returns 0 in case of failure
 template <class PropertyMap>
 PropertyMap* get_static_property_map(boost::dynamic_property_map* map)
 {
-    boost::detail::dynamic_property_map_adaptor<PropertyMap>* adaptor = 
-        dynamic_cast<boost::detail::dynamic_property_map_adaptor<PropertyMap>*>(map);
+    boost::detail::dynamic_property_map_adaptor<PropertyMap>* adaptor =
+        dynamic_cast
+        <boost::detail::dynamic_property_map_adaptor<PropertyMap>*>(map);
     if (adaptor)
         return &adaptor->base();
     else
         return 0;
 }
 
+// this function gets the dynamic property map inside dp which matches the given
+// name and key type
+boost::dynamic_property_map&
+find_property_map(const boost::dynamic_properties& dp, std::string name,
+                  const std::type_info& key_type);
 
-//==============================================================================
-// find_property_map(dp, name, key_type)
-// gets the dynamic property map inside dp which matches the given name and 
-// key type
-//==============================================================================
-
-boost::dynamic_property_map& find_property_map(const boost::dynamic_properties& dp, std::string name, const std::type_info& key_type);
-
-//==============================================================================
-// dynamic_properties_copy
-// contains a copy of a property map, which does not delete its members when it
-// deconstructs
-//==============================================================================
-
+// this class contains a copy of a dynamic_properties, which does not delete its
+// members when it deconstructs
 struct dynamic_properties_copy: public boost::dynamic_properties
 {
     dynamic_properties_copy() {}
-    dynamic_properties_copy(boost::dynamic_properties& dp): boost::dynamic_properties(dp) {}
-    dynamic_properties_copy(const boost::function<std::auto_ptr<boost::dynamic_property_map>(const std::string&, const boost::any&, const boost::any&)>& fn)
-        : boost::dynamic_properties(fn) {}
+    dynamic_properties_copy(boost::dynamic_properties& dp)
+        : boost::dynamic_properties(dp) {}
+    dynamic_properties_copy
+        (const boost::function<std::auto_ptr<boost::dynamic_property_map>
+         (const std::string&, const boost::any&, const boost::any&)>& fn)
+            : boost::dynamic_properties(fn) {}
     ~dynamic_properties_copy()
-    {        
-        for (typeof(this->begin()) iter = this->begin(); iter != this->end(); ++iter)
+    {
+        for (typeof(this->begin()) iter = this->begin(); iter != this->end();
+             ++iter)
             iter->second = 0; // will be deleted when original dp deconstructs
     }
 };
 
-//==============================================================================
-// template<ConvertedType,Key>
-// get_converted_scalar_value(map, key)
-// gets the value in the map corresponding to key, converted to ConvertedType,
-// or throws bad_lexical_cast. 
-//==============================================================================
+// this function gets the value in the map corresponding to the given key,
+// converted to ConvertedType, or throws bad_lexical_cast.
 
 template <class T>
 struct AttemptAnyConversion; // forward declaration
 
 template <class ConvertedType, class Key>
-ConvertedType get_converted_scalar_value(boost::dynamic_property_map& dmap, const Key& key)
+ConvertedType get_converted_scalar_value(boost::dynamic_property_map& dmap,
+                                         const Key& key)
 {
-    typedef typename boost::mpl::vector<long double, double, float, unsigned long long, long long, 
-                                        unsigned long, long, unsigned int, int, unsigned short, short, 
-                                        unsigned char, char, std::string>::type scalar_types;
+    typedef typename boost::mpl::vector<long double, double, float,
+                                        unsigned long long, long long,
+                                        unsigned long, long, unsigned int, int,
+                                        unsigned short, short, unsigned char,
+                                        char, std::string>::type scalar_types;
     ConvertedType target;
     const boost::any& source = dmap.get(key);
     bool success;
@@ -125,7 +119,8 @@ ConvertedType get_converted_scalar_value(boost::dynamic_property_map& dmap, cons
     }
     else
     {
-        boost::mpl::for_each<scalar_types>(AttemptAnyConversion<ConvertedType>(target, source, success));
+        boost::mpl::for_each<scalar_types>
+            (AttemptAnyConversion<ConvertedType>(target, source, success));
     }
     if (!success)
         throw boost::bad_lexical_cast();
@@ -136,8 +131,8 @@ template <class T>
 struct AttemptAnyConversion
 {
     AttemptAnyConversion(T& value, const boost::any& source, bool& success)
-        :_value(value), _source(source), _success(success) 
-    { 
+        :_value(value), _source(source), _success(success)
+    {
         _success = false;
     }
 
@@ -158,11 +153,8 @@ struct AttemptAnyConversion
     bool& _success;
 };
 
-//==============================================================================
-// DynamicPropertyMapWrap
-// wraps a dynamic_property_map, so it can be used as a regular property map
-//==============================================================================
-
+// the following class wraps a dynamic_property_map, so it can be used as a
+// regular property map
 template <class Value, class Key>
 class DynamicPropertyMapWrap
 {
@@ -191,50 +183,59 @@ private:
 
 } // graph_tool namespace
 
-namespace boost 
+namespace boost
 {
 
 template <class Value, class Key>
-Value get(const graph_tool::DynamicPropertyMapWrap<Value,Key>& pmap, typename property_traits<graph_tool::DynamicPropertyMapWrap<Value,Key> >::key_type k)
+Value get(const graph_tool::DynamicPropertyMapWrap<Value,Key>& pmap,
+          typename property_traits
+          <graph_tool::DynamicPropertyMapWrap<Value,Key> >::key_type k)
 {
     return pmap.get(k);
 }
 
 template <class Value, class Key>
-void put(graph_tool::DynamicPropertyMapWrap<Value,Key> pmap, typename property_traits<graph_tool::DynamicPropertyMapWrap<Value,Key> >::key_type k, 
-         typename property_traits<graph_tool::DynamicPropertyMapWrap<Value,Key> >::value_type val)
+void put(graph_tool::DynamicPropertyMapWrap<Value,Key> pmap,
+         typename property_traits
+         <graph_tool::DynamicPropertyMapWrap<Value,Key> >::key_type k,
+         typename property_traits
+         <graph_tool::DynamicPropertyMapWrap<Value,Key> >::value_type val)
 {
     pmap.put(k,val);
 }
 
-} // boost namespace 
+} // boost namespace
 
 namespace graph_tool
 {
 
-//==============================================================================
-// DescriptorHash
-// property map based on a hashed container
-//==============================================================================
-
+// the following is hash functor which, will hash a vertex or edge descriptor
+// based on its index
 template <class IndexMap>
-class DescriptorHash: public std::unary_function<typename IndexMap::key_type, std::size_t> 
+class DescriptorHash
+    : public std::unary_function<typename IndexMap::key_type, std::size_t>
 {
 public:
     DescriptorHash() {}
     DescriptorHash(IndexMap index_map): _index_map(index_map) {}
-    std::size_t operator()(typename IndexMap::key_type const& d) const { return boost::hash_value(_index_map[d]); }
+    std::size_t operator()(typename IndexMap::key_type const& d) const
+    {
+        return boost::hash_value(_index_map[d]);
+    }
 private:
     IndexMap _index_map;
 };
 
+// the following is a property map based on a hashed container, which uses the
+// above hash function for vertex or edge descriptors
 template <class IndexMap, class Value>
 class HashedDescriptorMap
     : public boost::put_get_helper<Value&, HashedDescriptorMap<IndexMap,Value> >
 {
 public:
     typedef DescriptorHash<IndexMap> hashfc_t;
-    typedef std::tr1::unordered_map<typename IndexMap::key_type,Value,hashfc_t> map_t;
+    typedef std::tr1::unordered_map<typename IndexMap::key_type,Value,hashfc_t>
+        map_t;
     typedef boost::associative_property_map<map_t> prop_map_t;
 
     typedef typename boost::property_traits<prop_map_t>::value_type value_type;
@@ -242,9 +243,10 @@ public:
     typedef typename boost::property_traits<prop_map_t>::key_type key_type;
     typedef typename boost::property_traits<prop_map_t>::category category;
 
-    HashedDescriptorMap(IndexMap index_map): _base_map(new map_t(0, hashfc_t(index_map))), _prop_map(*_base_map) {}
+    HashedDescriptorMap(IndexMap index_map)
+        : _base_map(new map_t(0, hashfc_t(index_map))), _prop_map(*_base_map) {}
     HashedDescriptorMap(){}
-    
+
     reference operator[](const key_type& k) { return _prop_map[k]; }
     const reference operator[](const key_type& k) const { return _prop_map[k]; }
 
@@ -254,15 +256,12 @@ private:
 };
 
 
-//==============================================================================
-// InitializedPropertyMap
 // this wraps a container as a property map which is automatically initialized
 // with a given default value
-//==============================================================================
-
 template <class Container>
 class InitializedPropertyMap
-    : public boost::put_get_helper<typename Container::value_type::second_type&, InitializedPropertyMap<Container> >
+    : public boost::put_get_helper<typename Container::value_type::second_type&,
+                                   InitializedPropertyMap<Container> >
 {
 public:
     typedef typename Container::value_type::second_type value_type;
@@ -298,11 +297,7 @@ private:
     value_type _default;
 };
 
-//==============================================================================
-// ConstantPropertyMap
-// a property map which returns a constant value
-//==============================================================================
-
+// the following is a property map which always returns a constant value
 template <class Value, class Key>
 class ConstantPropertyMap
     : public boost::put_get_helper<Value, ConstantPropertyMap<Value,Key> >

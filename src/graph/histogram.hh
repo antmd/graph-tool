@@ -13,8 +13,7 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef HISTOGRAM_HH
 #define HISTOGRAM_HH
@@ -109,7 +108,8 @@ void PrintHistogram (const Histogram &m, std::string output_file)
 {
     
     boost::trim(output_file);
-    std::ofstream file(output_file.c_str(), std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
+    std::ofstream file(output_file.c_str(), std::ios_base::out | 
+                       std::ios_base::trunc | std::ios_base::binary);
     file.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     boost::iostreams::filtering_stream<boost::iostreams::output> stream;
     if (boost::ends_with(output_file,".gz"))
@@ -139,7 +139,8 @@ template <class Histogram>
 void ReadHistogram(Histogram &m, std::string input_file)
 {
     boost::trim(input_file);
-    std::ifstream file(input_file.c_str(), std::ios_base::in | std::ios_base::binary);
+    std::ifstream file(input_file.c_str(), std::ios_base::in | 
+                       std::ios_base::binary);
     file.exceptions(std::ios_base::badbit | std::ios_base::failbit );
     boost::iostreams::filtering_stream<boost::iostreams::input> stream;
     if (boost::ends_with(input_file,".gz"))
@@ -180,11 +181,11 @@ double GetHistogramDeviation (const Histogram &m, double avg)
     int total = 0;
     for (typeof(m.begin()) iter = m.begin(); iter != m.end(); iter++)
     {
-        dev += double( (iter->first - avg) * (iter->first - avg) * iter->second);
+        dev += double( (iter->first - avg) *
+                       (iter->first - avg) * iter->second);
         total += iter->second;
     }
     return (total > 1)?sqrt(dev/(total-1)):0.0;
 }
-
 
 #endif //HISTOGRAM_HH

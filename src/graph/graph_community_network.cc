@@ -13,8 +13,8 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+// along with this program. If not, see <http://www.gnu.org/licenses/>.
+
 
 #include <boost/lambda/lambda.hpp>
 #include <boost/lambda/bind.hpp>
@@ -35,17 +35,21 @@ using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
 
-//==============================================================================
-// GetCommunityNetwork()
 // retrieves the network of communities given a community structure
-//==============================================================================
 
 struct get_community_network
 {
     template <class Graph, class CommunityMap>
-    void operator()(const Graph& g, CommunityMap s, string property, string size_property, dynamic_properties& edge_properties, string file, string format) const
+    void operator()(const Graph& g, CommunityMap s, string property,
+                    string size_property, dynamic_properties& edge_properties,
+                    string file, string format) const
     {
-        tr1::unordered_map<typename boost::property_traits<CommunityMap>::value_type, size_t> comms;
+        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
+        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
+
+        tr1::unordered_map
+            <typename boost::property_traits<CommunityMap>::value_type, size_t>
+            comms;
 
         typename graph_traits<Graph>::vertex_iterator v, v_end;
         for (tie(v, v_end) = vertices(g); v != v_end; ++v)
@@ -53,23 +57,37 @@ struct get_community_network
 
         typedef boost::property<edge_index_t, size_t> EdgeProperty;
 
+        typedef typename graph_traits<Graph>::directed_category
+            directed_category;
+        typedef typename mpl::if_<typename is_convertible<directed_category,
+                                                          directed_tag>::type,
+                                  bidirectionalS,
+                                  undirectedS>::type directed_selector;
+
         typedef adjacency_list <vecS, // edges
                                 vecS, // vertices
-                                typename mpl::if_<typename is_convertible<typename graph_traits<Graph>::directed_category, directed_tag>::type,
-                                                  bidirectionalS,
-                                                  undirectedS>::type,
+                                directed_selector,
                                 no_property,
-                                EdgeProperty > comm_graph_t; 
+                                EdgeProperty > comm_graph_t;
 
         comm_graph_t comm_graph;
 
-        typedef typename property_map<comm_graph_t, vertex_index_t>::type comm_vertex_index_map_t;
-        comm_vertex_index_map_t comm_vertex_index(get(vertex_index, comm_graph));
+        typedef typename property_map<comm_graph_t, vertex_index_t>::type
+            comm_vertex_index_map_t;
+        comm_vertex_index_map_t
+            comm_vertex_index(get(vertex_index, comm_graph));
 
-        vector_property_map<typename property_traits<CommunityMap>::value_type, comm_vertex_index_map_t> comm_map(comm_vertex_index);
-        vector_property_map<size_t, comm_vertex_index_map_t> comm_size_map(comm_vertex_index);
-        tr1::unordered_map<typename property_traits<CommunityMap>::value_type, typename graph_traits<comm_graph_t>::vertex_descriptor> comm_vertex_map;
-        for (typeof(comms.begin()) iter = comms.begin(); iter != comms.end(); ++iter)
+        vector_property_map<typename property_traits<CommunityMap>::value_type,
+                            comm_vertex_index_map_t>
+            comm_map(comm_vertex_index);
+        vector_property_map<size_t, comm_vertex_index_map_t>
+            comm_size_map(comm_vertex_index);
+        tr1::unordered_map
+            <typename property_traits<CommunityMap>::value_type,
+            typename graph_traits<comm_graph_t>::vertex_descriptor>
+            comm_vertex_map;
+        for (typeof(comms.begin()) iter = comms.begin(); iter != comms.end();
+             ++iter)
         {
             comm_vertex_map[iter->first] = add_vertex(comm_graph);
             comm_map[comm_vertex_map[iter->first]] = iter->first;
@@ -82,10 +100,11 @@ struct get_community_network
         if (size_property != "")
             dp.property(size_property, comm_size_map);
 
-        typedef typename property_map<comm_graph_t,edge_index_t>::type comm_edge_index_map_t;
+        typedef typename property_map<comm_graph_t,edge_index_t>::type
+            comm_edge_index_map_t;
         comm_edge_index_map_t comm_edge_index(get(edge_index_t(), comm_graph));
 
-        typedef HashedDescriptorMap<comm_edge_index_map_t, typename graph_traits<Graph>::edge_descriptor> edge_map_t;
+        typedef HashedDescriptorMap<comm_edge_index_map_t, edge_t> edge_map_t;
         edge_map_t edge_map(comm_edge_index);
 
         size_t e_index = 0;
@@ -93,21 +112,30 @@ struct get_community_network
         for (tie(e, e_end) = edges(g); e != e_end; ++e)
         {
             typename graph_traits<comm_graph_t>::edge_descriptor edge;
-            edge  = add_edge(comm_vertex_map[get(s,source(*e, g))], comm_vertex_map[get(s,target(*e, g))], comm_graph).first;
+            edge  = add_edge(comm_vertex_map[get(s,source(*e, g))],
+                             comm_vertex_map[get(s,target(*e, g))],
+                             comm_graph).first;
             edge_map[edge] = *e;
             comm_edge_index[edge] = e_index++;
         }
 
-        for (typeof(edge_properties.begin()) iter = edge_properties.begin(); iter != edge_properties.end(); ++iter)
-            dp.insert(iter->first, auto_ptr<dynamic_property_map>(new dynamic_property_map_wrap<edge_map_t>(edge_map, *iter->second)));
+        for (typeof(edge_properties.begin()) iter = edge_properties.begin();
+             iter != edge_properties.end(); ++iter)
+            dp.insert(iter->first,
+                      auto_ptr<dynamic_property_map>
+                          (new dynamic_property_map_wrap<edge_map_t>
+                           (edge_map, *iter->second)));
 
         bool graphviz = false;
         if (format == "")
-            graphviz = ends_with(file,".dot") || ends_with(file,".dot.gz") || ends_with(file,".dot.bz2");
+            graphviz = ends_with(file,".dot") || ends_with(file,".dot.gz") ||
+                ends_with(file,".dot.bz2");
         else if (format == "dot")
             graphviz = true;
         else if (format != "xml")
-            throw GraphException("error writing to file '" + file + "': requested invalid format '" + format + "'");
+            throw GraphException("error writing to file '" + file +
+                                 "': requested invalid format '" +
+                                 format + "'");
         try
         {
             iostreams::filtering_stream<iostreams::output> stream;
@@ -116,7 +144,8 @@ struct get_community_network
                 stream.push(cout);
             else
             {
-                file_stream.open(file.c_str(), ios_base::out | ios_base::binary);
+                file_stream.open(file.c_str(), ios_base::out |
+                                 ios_base::binary);
                 file_stream.exceptions(ios_base::badbit | ios_base::failbit);
                 if (ends_with(file,".gz"))
                     stream.push(iostreams::gzip_compressor());
@@ -125,7 +154,7 @@ struct get_community_network
                 stream.push(file_stream);
             }
             stream.exceptions(ios_base::badbit | ios_base::failbit);
-            
+
             if (graphviz)
             {
                 dp.property("vertex_id", comm_vertex_index);
@@ -139,7 +168,8 @@ struct get_community_network
         }
         catch (ios_base::failure &e)
         {
-            throw GraphException("error writing to file '" + file + "':" + e.what());
+            throw GraphException("error writing to file '" + file + "':" +
+                                 e.what());
         }
     }
 
@@ -147,25 +177,26 @@ struct get_community_network
     class dynamic_property_map_wrap: public dynamic_property_map
     {
     public:
-        dynamic_property_map_wrap(EdgeMap& edge_map, dynamic_property_map& dm): _edge_map(edge_map), _dm(dm) {}
+        dynamic_property_map_wrap(EdgeMap& edge_map, dynamic_property_map& dm):
+            _edge_map(edge_map), _dm(dm) {}
         any get(const any& key)
         {
-            return _dm.get(_edge_map[any_cast<typename property_traits<EdgeMap>::key_type>(key)]);
+            return _dm.get(_edge_map[any_cast<key_t>(key)]);
         }
 
         string get_string(const any& key)
         {
-            return _dm.get_string(_edge_map[any_cast<typename property_traits<EdgeMap>::key_type>(key)]);
+            return _dm.get_string(_edge_map[any_cast<key_t>(key)]);
         }
 
         void put(const any& key, const any& value)
         {
-            return _dm.put(_edge_map[any_cast<typename property_traits<EdgeMap>::key_type>(key)], value);
+            return _dm.put(_edge_map[any_cast<key_t>(key)], value);
         }
 
         const type_info& key() const
         {
-            return typeid(typename property_traits<EdgeMap>::key_type);
+            return typeid(key_t);
         }
 
         const type_info& value() const
@@ -174,26 +205,35 @@ struct get_community_network
         }
     private:
         EdgeMap& _edge_map;
+        typedef typename property_traits<EdgeMap>::key_type key_t;
         dynamic_property_map& _dm;
     };
 
 };
 
-void GraphInterface::GetCommunityNetwork(string property, string size_property, string out_file, string format) const
+void GraphInterface::GetCommunityNetwork(string property, string size_property,
+                                         string out_file, string format) const
 {
-    try 
+    try
     {
-        typedef DynamicPropertyMapWrap<double, graph_traits<multigraph_t>::vertex_descriptor> comm_map_t;
-        comm_map_t comm_map(find_property_map(_properties, property, typeid(graph_traits<multigraph_t>::vertex_descriptor)));
-        
-        dynamic_properties_copy edge_properties;
-        for (typeof(_properties.begin()) iter = _properties.begin(); iter != _properties.end(); ++iter)
-            if (iter->second->key() == typeid(graph_traits<multigraph_t>::edge_descriptor))
-                edge_properties.insert(iter->first, auto_ptr<dynamic_property_map>(iter->second));
+        typedef DynamicPropertyMapWrap<double,vertex_t> comm_map_t;
+        comm_map_t comm_map(find_property_map(_properties, property,
+                                              typeid(vertex_t)));
 
-        check_filter(*this, bind<void>(get_community_network(), _1, var(comm_map), property, size_property, var(edge_properties), out_file, format), reverse_check(), directed_check());
+        dynamic_properties_copy edge_properties;
+        for (typeof(_properties.begin()) iter = _properties.begin();
+             iter != _properties.end(); ++iter)
+            if (iter->second->key() == typeid(edge_t))
+                edge_properties.insert(iter->first,
+                                       auto_ptr<dynamic_property_map>
+                                           (iter->second));
+
+        check_filter(*this, bind<void>(get_community_network(), _1,
+                                       var(comm_map), property, size_property,
+                                       var(edge_properties), out_file, format),
+                     reverse_check(), directed_check());
     }
-    catch (property_not_found) 
+    catch (property_not_found)
     {
         throw GraphException("edge property " + property + " not found");
     }
