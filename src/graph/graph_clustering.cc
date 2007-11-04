@@ -13,8 +13,8 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+// along with this program. If not, see <http://www.gnu.org/licenses/>.
+
 
 #include <algorithm>
 #include <tr1/unordered_set>
@@ -34,14 +34,13 @@ using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
 
-//==============================================================================
-// get_triangles(v,g)
 // calculates the number of triangles to which v belongs
-//==============================================================================
 template <class Graph>
-pair<int,int> get_triangles(typename graph_traits<Graph>::vertex_descriptor v, const Graph &g)
+pair<int,int> 
+get_triangles(typename graph_traits<Graph>::vertex_descriptor v, const Graph &g)
 {
-    tr1::unordered_set<typename graph_traits<Graph>::vertex_descriptor> neighbour_set1, neighbour_set2, neighbour_set3;
+    tr1::unordered_set<typename graph_traits<Graph>::vertex_descriptor> 
+        neighbour_set1, neighbour_set2, neighbour_set3;
     
     size_t triangles = 0, k = 0;
     
@@ -67,7 +66,8 @@ pair<int,int> get_triangles(typename graph_traits<Graph>::vertex_descriptor v, c
             else
                 neighbour_set2.insert(*n2);
             
-            typename graph_traits<Graph>::adjacency_iterator n3_begin, n3_end, n3;
+            typename graph_traits<Graph>::adjacency_iterator 
+                n3_begin, n3_end, n3;
             tie(n3_begin, n3_end) = adjacent_vertices(*n2, g);
             for (n3 = n3_begin; n3 != n3_end; ++n3)
             {
@@ -91,11 +91,7 @@ pair<int,int> get_triangles(typename graph_traits<Graph>::vertex_descriptor v, c
 }
 
 
-//==============================================================================
-// GetGlobalClustering()
 // retrieves the global clustering coefficient
-//==============================================================================
-
 struct get_global_clustering
 {
     template <class Graph>
@@ -106,7 +102,8 @@ struct get_global_clustering
 
         int i, N = num_vertices(g);
 
-        #pragma omp parallel for default(shared) private(i,temp) schedule(dynamic) 
+        #pragma omp parallel for default(shared) private(i,temp) \
+            schedule(dynamic) 
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -126,7 +123,8 @@ struct get_global_clustering
         // "jackknife" variance
         c_err = 0.0;
         
-        #pragma omp parallel for default(shared) private(i,temp) schedule(dynamic) 
+        #pragma omp parallel for default(shared) private(i,temp) \
+            schedule(dynamic) 
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -150,16 +148,14 @@ GraphInterface::GetGlobalClustering()
     double c, c_err;
     bool directed = _directed;
     _directed = false;
-    check_filter(*this, bind<void>(get_global_clustering(), _1, var(c), var(c_err)), reverse_check(), always_undirected()); 
+    check_filter(*this, bind<void>(get_global_clustering(), _1, var(c), 
+                                   var(c_err)), 
+                 reverse_check(), always_undirected()); 
     _directed = directed;
     return make_pair(c,c_err);
 }
 
-//==============================================================================
-// SetLocalClusteringToProperty(string property)
 // sets the local clustering coefficient to a property
-//==============================================================================
-
 struct set_clustering_to_property
 {
     template <class Graph, class ClustMap>
@@ -176,7 +172,9 @@ struct set_clustering_to_property
                 continue;
 
             pair<size_t,size_t> triangles = get_triangles(v,ug); // get from ug
-            double clustering = (triangles.second > 0)?double(triangles.first)/triangles.second:0.0;
+            double clustering = (triangles.second > 0) ?
+                double(triangles.first)/triangles.second :
+                0.0;
 
             #pragma omp critical
             {
@@ -188,9 +186,11 @@ struct set_clustering_to_property
     template <class Graph>
     struct get_undirected_graph
     {
-        typedef typename mpl::if_< is_convertible<typename graph_traits<Graph>::directed_category, directed_tag>,
-                                   const UndirectedAdaptor<Graph>,
-                                   const Graph& >::type type;
+        typedef typename mpl::if_
+            < is_convertible<typename graph_traits<Graph>::directed_category, 
+                             directed_tag>,
+              const UndirectedAdaptor<Graph>,
+              const Graph& >::type type;
     };
 };
 
@@ -202,12 +202,14 @@ void GraphInterface::SetLocalClusteringToProperty(string property)
 
     bool directed = _directed;
     _directed = false;
-    check_filter(*this, bind<void>(set_clustering_to_property(), _1, var(clust_map)), reverse_check(), always_undirected()); 
+    check_filter(*this, bind<void>(set_clustering_to_property(), _1, 
+                                   var(clust_map)), 
+                 reverse_check(), always_undirected()); 
     _directed = directed;
 
     try
     {
-        find_property_map(_properties, property, typeid(graph_traits<multigraph_t>::vertex_descriptor));
+        find_property_map(_properties, property, typeid(vertex_t));
         RemoveVertexProperty(property);
     }
     catch (property_not_found) {}

@@ -13,8 +13,8 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+// along with this program. If not, see <http://www.gnu.org/licenses/>.
+
 
 #include <boost/lambda/lambda.hpp>
 #include <boost/lambda/bind.hpp>
@@ -34,21 +34,28 @@ using namespace graph_tool;
 struct get_kruskal_min_span_tree
 {
     template <class Graph, class IndexMap, class WeightMap, class TreePropMap>
-    void operator()(Graph& g, IndexMap vertex_index, WeightMap weights, TreePropMap tree_map) const
+    void operator()(Graph& g, IndexMap vertex_index, WeightMap weights,
+                    TreePropMap tree_map) const
     {
-        typedef vector<typename graph_traits<Graph>::edge_descriptor> tree_edges_t;
+        typedef vector<typename graph_traits<Graph>::edge_descriptor> 
+            tree_edges_t;
         tree_edges_t tree_edges;
         back_insert_iterator<tree_edges_t> tree_inserter(tree_edges);
 
         HashedDescriptorMap<IndexMap, size_t> ranks(vertex_index);
-        HashedDescriptorMap<IndexMap, typename graph_traits<Graph>::vertex_descriptor> preds(vertex_index);
+        HashedDescriptorMap<IndexMap, 
+                            typename graph_traits<Graph>::vertex_descriptor> 
+            preds(vertex_index);
 
-        kruskal_minimum_spanning_tree(g, tree_inserter, weight_map(weights).rank_map(ranks).predecessor_map(preds));
+        kruskal_minimum_spanning_tree(g, tree_inserter, weight_map(weights).
+                                                        rank_map(ranks).
+                                                        predecessor_map(preds));
 
         typename graph_traits<Graph>::edge_iterator e, e_end;
         for(tie(e, e_end) = edges(g); e != e_end; ++e)
             tree_map[*e] = 0;
-        for(typeof(tree_edges.begin()) te = tree_edges.begin(); te != tree_edges.end(); ++te)
+        for(typeof(tree_edges.begin()) te = tree_edges.begin(); 
+            te != tree_edges.end(); ++te)
             tree_map[*te] = 1;
     }
 };
@@ -65,30 +72,41 @@ void GraphInterface::GetMinimumSpanningTree(string weight, string property)
     {
         try 
         {
-            dynamic_property_map& weight_prop = find_property_map(_properties, weight, typeid(graph_traits<multigraph_t>::edge_descriptor));
-            if (get_static_property_map<vector_property_map<double,edge_index_map_t> >(&weight_prop))
+            dynamic_property_map& weight_prop = 
+                find_property_map(_properties, weight, typeid(edge_t));
+            if (get_static_property_map
+                <vector_property_map<double,edge_index_map_t> >(&weight_prop))
             {
                 vector_property_map<double,edge_index_map_t> weight_map = 
-                    get_static_property_map<vector_property_map<double,edge_index_map_t> >(weight_prop);
-                check_filter(*this, bind<void>(get_kruskal_min_span_tree(), _1, var(_vertex_index),var(weight_map),var(tree_map)), 
+                    get_static_property_map
+                    <vector_property_map<double,edge_index_map_t> >
+                        (weight_prop);
+                check_filter(*this, bind<void>(get_kruskal_min_span_tree(), _1, 
+                                               var(_vertex_index),
+                                               var(weight_map),var(tree_map)), 
                              reverse_check(), always_undirected());
             }
             else
             {
-                DynamicPropertyMapWrap<double,graph_traits<multigraph_t>::edge_descriptor> weight_map(weight_prop);
-                check_filter(*this, bind<void>(get_kruskal_min_span_tree(), _1, var(_vertex_index),var(weight_map),var(tree_map)), 
+                DynamicPropertyMapWrap<double,edge_t> weight_map(weight_prop);
+                check_filter(*this, bind<void>(get_kruskal_min_span_tree(), _1, 
+                                               var(_vertex_index),
+                                               var(weight_map),var(tree_map)), 
                              reverse_check(), always_undirected());
             }
         }
         catch (property_not_found& e)
         {
-            throw GraphException("error getting scalar property: " + string(e.what()));
+            throw GraphException("error getting scalar property: " + 
+                                 string(e.what()));
         }
     }
     else
     {
-        ConstantPropertyMap<double,graph_traits<multigraph_t>::edge_descriptor> weight_map(1.0);
-        check_filter(*this, bind<void>(get_kruskal_min_span_tree(), _1, var(_vertex_index),var(weight_map),var(tree_map)), 
+        ConstantPropertyMap<double,edge_t> weight_map(1.0);
+        check_filter(*this, bind<void>(get_kruskal_min_span_tree(), _1, 
+                                       var(_vertex_index),var(weight_map),
+                                       var(tree_map)), 
                      reverse_check(), always_undirected());
     }
 
@@ -96,7 +114,7 @@ void GraphInterface::GetMinimumSpanningTree(string weight, string property)
 
     try
     {
-        find_property_map(_properties, property, typeid(graph_traits<multigraph_t>::edge_descriptor));
+        find_property_map(_properties, property, typeid(edge_t));
         RemoveVertexProperty(property);
     }
     catch (property_not_found) {}

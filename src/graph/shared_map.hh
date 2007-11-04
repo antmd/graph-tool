@@ -13,21 +13,17 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef SHARED_MAP_HH
 #define SHARED_MAP_HH
 
 #include <tr1/unordered_set>
 
-//==============================================================================
-// SharedMap
-// This will encapsulate a map, and atomically sum it to a given resulting map 
-// (which is shared among all copies) after it is destructed, or when the 
+// This class will encapsulate a map, and atomically sum it to a given resulting
+// map (which is shared among all copies) after it is destructed, or when the
 // Gather() member function is called. This enables, for instance, a histogram
 // to built in parallel.
-//==============================================================================
 
 template <class Map>
 class SharedMap: public Map
@@ -43,7 +39,8 @@ public:
     {
         if (_sum != 0)
         {
-            for (typeof(this->begin()) iter = this->begin(); iter != this->end(); ++iter)
+            for (typeof(this->begin()) iter = this->begin(); 
+                 iter != this->end(); ++iter)
             {
                 #pragma omp critical
                 {
@@ -57,12 +54,10 @@ private:
     Map* _sum;
 };
 
-//==============================================================================
-// SharedContainer This will encapsulate a generic container, such as
-// a vector or list, and atomically concatenate it to a given resulting
-// container (which is shared among all copies) after it is destructed, or
-// when the Gather() member function is called. 
-//==============================================================================
+// This class will encapsulate a generic container, such as a vector or list,
+// and atomically concatenate it to a given resulting container (which is shared
+// among all copies) after it is destructed, or when the Gather() member
+// function is called.
 
 template <class Container>
 class SharedContainer: public Container
@@ -78,7 +73,8 @@ public:
     {
         if (_sum != 0)
         {
-            for (typeof(this->begin()) iter = this->begin(); iter != this->end(); ++iter)
+            for (typeof(this->begin()) iter = this->begin();
+                 iter != this->end(); ++iter)
             {
                 #pragma omp critical
                 {
@@ -91,7 +87,6 @@ public:
 private:
     Container* _sum;
 };
-
 
 
 #endif //SHARED_MAP_HH

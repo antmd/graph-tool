@@ -13,8 +13,8 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+// along with this program. If not, see <http://www.gnu.org/licenses/>.
+
 
 #include <boost/lambda/lambda.hpp>
 #include <boost/lambda/bind.hpp>
@@ -39,7 +39,8 @@ struct get_reciprocity
         double Lbd = 0.0;
 
         int i, NV = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) reduction(+:L,Lbd) schedule(dynamic)
+        #pragma omp parallel for default(shared) private(i) reduction(+:L,Lbd) \
+            schedule(dynamic)
         for (i = 0; i < NV; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -70,7 +71,8 @@ struct get_reciprocity
             }
         }
 
-        if(is_convertible<typename graph_traits<Graph>::directed_category, undirected_tag>::value)
+        if(is_convertible<typename graph_traits<Graph>::directed_category, 
+                          undirected_tag>::value)
         {
             L /= 2;
             Lbd /= 2;
@@ -87,6 +89,7 @@ struct get_reciprocity
 double GraphInterface::GetReciprocity() const
 {
     double reciprocity;
-    check_filter(*this, bind<void>(get_reciprocity(), _1, var(reciprocity)), reverse_check(), directed_check()); 
+    check_filter(*this, bind<void>(get_reciprocity(), _1, var(reciprocity)),
+                 reverse_check(), directed_check()); 
     return reciprocity;
 }

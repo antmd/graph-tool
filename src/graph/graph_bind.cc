@@ -13,8 +13,8 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+// along with this program. If not, see <http://www.gnu.org/licenses/>.
+
 
 #include <boost/python.hpp>
 #include <boost/tuple/tuple.hpp>
@@ -42,7 +42,8 @@ struct tuple_to_tuple
 {
     static PyObject* convert(const boost::tuple<T1,T2,T3>& p)
     {
-        boost::python::tuple t = boost::python::make_tuple(get<0>(p),get<1>(p),get<2>(p));
+        boost::python::tuple t = 
+            boost::python::make_tuple(get<0>(p),get<1>(p),get<2>(p));
         return incref(t.ptr());
     }
 };
@@ -53,7 +54,9 @@ struct tuple_from_tuple
 {
     tuple_from_tuple()
     {
-        converter::registry::push_back(&convertible, &construct,  boost::python::type_id<boost::tuple<T1,T2,T3> >());
+        converter::registry::push_back
+            (&convertible, &construct,  
+             boost::python::type_id<boost::tuple<T1,T2,T3> >());
     }
 
     static void* convertible(PyObject* obj_ptr)
@@ -68,7 +71,8 @@ struct tuple_from_tuple
         return obj_ptr;
     }
 
-    static void construct(PyObject* obj_ptr, converter::rvalue_from_python_stage1_data* data)
+    static void construct(PyObject* obj_ptr, 
+                          converter::rvalue_from_python_stage1_data* data)
     {          
         handle<> x(borrowed(obj_ptr));
         object o(x);
@@ -76,7 +80,9 @@ struct tuple_from_tuple
         get<0>(value) = extract<T1>(o[0]);
         get<1>(value) = extract<T2>(o[1]);
         get<2>(value) = extract<T2>(o[2]);
-        void* storage = ( (boost::python::converter::rvalue_from_python_storage<boost::tuple<T1,T2,T3> >*) data)->storage.bytes;
+        void* storage = 
+            ((boost::python::converter::rvalue_from_python_storage
+              <boost::tuple<T1,T2,T3> >*) data)->storage.bytes;
         new (storage) boost::tuple<T1,T2,T3>(value);
         data->convertible = storage;
     }
@@ -87,7 +93,8 @@ struct pair_from_tuple
 {
     pair_from_tuple()
     {
-        converter::registry::push_back(&convertible, &construct,  boost::python::type_id<pair<T1,T2> >());
+        converter::registry::push_back(&convertible, &construct,  
+                                       boost::python::type_id<pair<T1,T2> >());
     }
 
     static void* convertible(PyObject* obj_ptr)
@@ -101,14 +108,17 @@ struct pair_from_tuple
         return obj_ptr;
     }
 
-    static void construct(PyObject* obj_ptr, converter::rvalue_from_python_stage1_data* data)
+    static void construct(PyObject* obj_ptr, 
+                          converter::rvalue_from_python_stage1_data* data)
     {          
         handle<> x(borrowed(obj_ptr));
         object o(x);
         pair<T1,T2> value;
         value.first = extract<T1>(o[0]);
         value.second = extract<T2>(o[1]);
-        void* storage = ( (boost::python::converter::rvalue_from_python_storage<pair<T1,T2> >*) data)->storage.bytes;
+        void* storage = 
+            ( (boost::python::converter::rvalue_from_python_storage
+               <pair<T1,T2> >*) data)->storage.bytes;
         new (storage) pair<T1,T2>(value);
         data->convertible = storage;
     }
@@ -119,7 +129,9 @@ struct variant_from_python
 {
     variant_from_python()
     {
-        converter::registry::push_back(&convertible, &construct, boost::python::type_id<GraphInterface::deg_t>());
+        converter::registry::push_back
+            (&convertible, &construct, 
+             boost::python::type_id<GraphInterface::deg_t>());
     }
 
     static void* convertible(PyObject* obj_ptr)
@@ -132,13 +144,16 @@ struct variant_from_python
         return obj_ptr;
     }
 
-    static void construct(PyObject* obj_ptr, converter::rvalue_from_python_stage1_data* data)
+    static void construct(PyObject* obj_ptr, 
+                          converter::rvalue_from_python_stage1_data* data)
     {          
         handle<> x(borrowed(obj_ptr));
         object o(x);
         ValueType value = extract<ValueType>(o);
         GraphInterface::deg_t deg = value;
-        void* storage = ( (boost::python::converter::rvalue_from_python_storage<GraphInterface::deg_t>*) data)->storage.bytes;
+        void* storage = 
+            ( (boost::python::converter::rvalue_from_python_storage
+               <GraphInterface::deg_t>*) data)->storage.bytes;
         new (storage) GraphInterface::deg_t(deg);
         data->convertible = storage;
     }
@@ -171,7 +186,8 @@ struct pos_t_from_tuple
 {
     pos_t_from_tuple()
     {
-        converter::registry::push_back(&convertible, &construct,  boost::python::type_id<pos_t>());
+        converter::registry::push_back(&convertible, &construct,  
+                                       boost::python::type_id<pos_t>());
     }
 
     static void* convertible(PyObject* obj_ptr)
@@ -185,14 +201,17 @@ struct pos_t_from_tuple
         return obj_ptr;
     }
 
-    static void construct(PyObject* obj_ptr, converter::rvalue_from_python_stage1_data* data)
+    static void construct(PyObject* obj_ptr, 
+                          converter::rvalue_from_python_stage1_data* data)
     {          
         handle<> x(borrowed(obj_ptr));
         object o(x);
         pos_t value;
         value.x = extract<double>(o[0]);
         value.y = extract<double>(o[1]);
-        void* storage = ( (boost::python::converter::rvalue_from_python_storage<pos_t>*) data)->storage.bytes;
+        void* storage = 
+            ( (boost::python::converter::rvalue_from_python_storage
+               <pos_t>*) data)->storage.bytes;
         new (storage) pos_t(value);
         data->convertible = storage;
     }
@@ -202,15 +221,24 @@ struct pos_t_from_tuple
 class GraphInterfaceWrap: public GraphInterface
 {
 public:
-    void GenerateCorrelatedConfigurationalModel(size_t N, object pjk, object ceil_pjk, object inv_ceil_pjk, double ceil_pjk_bound,
-                                                object corr, object ceil_corr, object inv_ceil_corr, double ceil_corr_bound, bool undirected_corr, 
+    void GenerateCorrelatedConfigurationalModel(size_t N, object pjk, 
+                                                object ceil_pjk, 
+                                                object inv_ceil_pjk, 
+                                                double ceil_pjk_bound,
+                                                object corr, object ceil_corr, 
+                                                object inv_ceil_corr, 
+                                                double ceil_corr_bound, 
+                                                bool undirected_corr, 
                                                 size_t seed, bool verbose) 
     {
         GraphInterface& base = *this;
-        base.GenerateCorrelatedConfigurationalModel(N, pjk_t(python_function(pjk)), pjk_t(python_function(ceil_pjk)), 
-                                                    inv_ceil_t(python_function(inv_ceil_pjk)),
-                                                    ceil_pjk_bound, corr_t(python_function(corr)), corr_t(python_function(ceil_corr)), 
-                                                    inv_corr_t(python_function(inv_ceil_corr)), ceil_corr_bound, undirected_corr, seed, verbose);
+        base.GenerateCorrelatedConfigurationalModel
+            (N, pjk_t(python_function(pjk)), pjk_t(python_function(ceil_pjk)), 
+             inv_ceil_t(python_function(inv_ceil_pjk)),
+             ceil_pjk_bound, corr_t(python_function(corr)), 
+             corr_t(python_function(ceil_corr)), 
+             inv_corr_t(python_function(inv_ceil_corr)), 
+             ceil_corr_bound, undirected_corr, seed, verbose);
     }
 
     struct python_function
@@ -227,12 +255,14 @@ public:
         pair<size_t,size_t> operator()(double r1, double r2)
         {
             object retval = _o(r1,r2);
-            return make_pair(size_t(max(int(extract<int>(retval[0])),0)), size_t(max(int(extract<int>(retval[1])),0)));
+            return make_pair(size_t(max(int(extract<int>(retval[0])),0)), 
+                             size_t(max(int(extract<int>(retval[1])),0)));
         }
         pair<size_t,size_t> operator()(double r1, double r2, size_t j, size_t k)
         {
             object retval = _o(r1,r2,j,k);
-            return make_pair(size_t(max(int(extract<int>(retval[0])),0)), size_t(max(int(extract<int>(retval[1])),0)));
+            return make_pair(size_t(max(int(extract<int>(retval[0])),0)), 
+                             size_t(max(int(extract<int>(retval[1])),0)));
         }
         object _o;
     };
@@ -249,40 +279,58 @@ struct LibInfo
 };
 
 // overloads
-void  (GraphInterfaceWrap::*ReadFromFile1) (string)          = &GraphInterfaceWrap::ReadFromFile;
-void  (GraphInterfaceWrap::*ReadFromFile2) (string, string)  = &GraphInterfaceWrap::ReadFromFile;
-void  (GraphInterfaceWrap::*WriteToFile1)  (string)          = &GraphInterfaceWrap::WriteToFile;
-void  (GraphInterfaceWrap::*WriteToFile2)  (string, string)  = &GraphInterfaceWrap::WriteToFile;
+void  (GraphInterfaceWrap::*ReadFromFile1) (string) =
+    &GraphInterfaceWrap::ReadFromFile;
+void  (GraphInterfaceWrap::*ReadFromFile2) (string, string) =
+    &GraphInterfaceWrap::ReadFromFile;
+void  (GraphInterfaceWrap::*WriteToFile1)  (string) =
+    &GraphInterfaceWrap::WriteToFile;
+void  (GraphInterfaceWrap::*WriteToFile2)  (string, string)  = 
+    &GraphInterfaceWrap::WriteToFile;
 
 
 BOOST_PYTHON_MODULE(libgraph_tool)
 {
     class_<GraphInterfaceWrap>("GraphInterface")
-        .def("GenerateCorrelatedConfigurationalModel", &GraphInterfaceWrap::GenerateCorrelatedConfigurationalModel)
+        .def("GenerateCorrelatedConfigurationalModel", 
+             &GraphInterfaceWrap::GenerateCorrelatedConfigurationalModel)
         .def("GetNumberOfVertices", &GraphInterfaceWrap::GetNumberOfVertices)
         .def("GetNumberOfEdges", &GraphInterfaceWrap::GetNumberOfEdges)
         .def("GetVertexHistogram", &GraphInterfaceWrap::GetVertexHistogram)
         .def("GetEdgeHistogram", &GraphInterfaceWrap::GetEdgeHistogram)
         .def("LabelComponents", &GraphInterfaceWrap::LabelComponents)
         .def("LabelParallelEdges", &GraphInterfaceWrap::LabelParallelEdges)
-        .def("GetCombinedVertexHistogram", &GraphInterfaceWrap::GetCombinedVertexHistogram)
-        .def("GetAverageCombinedVertexCorrelation", &GraphInterfaceWrap::GetAverageCombinedVertexCorrelation)
-        .def("GetVertexCorrelationHistogram", &GraphInterfaceWrap::GetVertexCorrelationHistogram)
-        .def("GetEdgeVertexCorrelationHistogram", &GraphInterfaceWrap::GetEdgeVertexCorrelationHistogram)
-        .def("GetAverageNearestNeighboursCorrelation", &GraphInterfaceWrap::GetAverageNearestNeighboursCorrelation)
-        .def("GetAssortativityCoefficient", &GraphInterfaceWrap::GetAssortativityCoefficient)
-        .def("GetScalarAssortativityCoefficient", &GraphInterfaceWrap::GetScalarAssortativityCoefficient)
+        .def("GetCombinedVertexHistogram",
+             &GraphInterfaceWrap::GetCombinedVertexHistogram)
+        .def("GetAverageCombinedVertexCorrelation", 
+             &GraphInterfaceWrap::GetAverageCombinedVertexCorrelation)
+        .def("GetVertexCorrelationHistogram", 
+             &GraphInterfaceWrap::GetVertexCorrelationHistogram)
+        .def("GetEdgeVertexCorrelationHistogram", 
+             &GraphInterfaceWrap::GetEdgeVertexCorrelationHistogram)
+        .def("GetAverageNearestNeighboursCorrelation", 
+             &GraphInterfaceWrap::GetAverageNearestNeighboursCorrelation)
+        .def("GetAssortativityCoefficient", 
+             &GraphInterfaceWrap::GetAssortativityCoefficient)
+        .def("GetScalarAssortativityCoefficient", 
+             &GraphInterfaceWrap::GetScalarAssortativityCoefficient)
         .def("GetGlobalClustering", &GraphInterfaceWrap::GetGlobalClustering)
-        .def("SetLocalClusteringToProperty", &GraphInterfaceWrap::SetLocalClusteringToProperty)
-        .def("SetExtendedClusteringToProperty", &GraphInterfaceWrap::SetExtendedClusteringToProperty)
+        .def("SetLocalClusteringToProperty",
+             &GraphInterfaceWrap::SetLocalClusteringToProperty)
+        .def("SetExtendedClusteringToProperty",
+             &GraphInterfaceWrap::SetExtendedClusteringToProperty)
         .def("GetDistanceHistogram", &GraphInterfaceWrap::GetDistanceHistogram)
-        .def("GetSampledDistanceHistogram", &GraphInterfaceWrap::GetSampledDistanceHistogram)
+        .def("GetSampledDistanceHistogram", 
+             &GraphInterfaceWrap::GetSampledDistanceHistogram)
         .def("GetReciprocity", &GraphInterfaceWrap::GetReciprocity)
-        .def("GetMinimumSpanningTree", &GraphInterfaceWrap::GetMinimumSpanningTree)
+        .def("GetMinimumSpanningTree", 
+             &GraphInterfaceWrap::GetMinimumSpanningTree)
         .def("GetLineGraph", &GraphInterfaceWrap::GetLineGraph)
         .def("GetBetweenness", &GraphInterfaceWrap::GetBetweenness)
-        .def("GetCentralPointDominance", &GraphInterfaceWrap::GetCentralPointDominance)
-        .def("GetCommunityStructure", &GraphInterfaceWrap::GetCommunityStructure)
+        .def("GetCentralPointDominance", 
+             &GraphInterfaceWrap::GetCentralPointDominance)
+        .def("GetCommunityStructure",
+             &GraphInterfaceWrap::GetCommunityStructure)
         .def("GetCommunityNetwork", &GraphInterfaceWrap::GetCommunityNetwork)
         .def("GetModularity", &GraphInterfaceWrap::GetModularity)
         .def("RandomRewire", &GraphInterfaceWrap::RandomRewire)
@@ -290,10 +338,12 @@ BOOST_PYTHON_MODULE(libgraph_tool)
         .def("GetDirected", &GraphInterfaceWrap::GetDirected)
         .def("SetReversed", &GraphInterfaceWrap::SetReversed)
         .def("GetReversed", &GraphInterfaceWrap::GetReversed)
-        .def("SetVertexFilterProperty", &GraphInterfaceWrap::SetVertexFilterProperty)
+        .def("SetVertexFilterProperty", 
+             &GraphInterfaceWrap::SetVertexFilterProperty)
         .def("SetVertexFilterRange", &GraphInterfaceWrap::SetVertexFilterRange)
         .def("IsVertexFilterActive", &GraphInterfaceWrap::IsVertexFilterActive)
-        .def("SetEdgeFilterProperty", &GraphInterfaceWrap::SetEdgeFilterProperty)
+        .def("SetEdgeFilterProperty",
+             &GraphInterfaceWrap::SetEdgeFilterProperty)
         .def("SetEdgeFilterRange", &GraphInterfaceWrap::SetEdgeFilterRange)
         .def("IsEdgeFilterActive", &GraphInterfaceWrap::IsEdgeFilterActive)
         .def("EditEdgeProperty",  &GraphInterfaceWrap::EditEdgeProperty)
@@ -305,10 +355,14 @@ BOOST_PYTHON_MODULE(libgraph_tool)
         .def("ListProperties",  &GraphInterfaceWrap::ListProperties)
         .def("PurgeVertices",  &GraphInterfaceWrap::PurgeVertices)
         .def("PurgeEdges",  &GraphInterfaceWrap::PurgeEdges)
-        .def("InsertEdgeIndexProperty",  &GraphInterfaceWrap::InsertEdgeIndexProperty)
-        .def("InsertVertexIndexProperty",  &GraphInterfaceWrap::InsertVertexIndexProperty)
-        .def("ComputeGraphLayoutGursoy", &GraphInterfaceWrap::ComputeGraphLayoutGursoy)
-        .def("ComputeGraphLayoutSpringBlock", &GraphInterfaceWrap::ComputeGraphLayoutSpringBlock)
+        .def("InsertEdgeIndexProperty",  
+             &GraphInterfaceWrap::InsertEdgeIndexProperty)
+        .def("InsertVertexIndexProperty", 
+             &GraphInterfaceWrap::InsertVertexIndexProperty)
+        .def("ComputeGraphLayoutGursoy", 
+             &GraphInterfaceWrap::ComputeGraphLayoutGursoy)
+        .def("ComputeGraphLayoutSpringBlock", 
+             &GraphInterfaceWrap::ComputeGraphLayoutSpringBlock)
         .def("WriteToFile", WriteToFile1)
         .def("WriteToFile", WriteToFile2)
         .def("ReadFromFile", ReadFromFile1)
@@ -333,15 +387,20 @@ BOOST_PYTHON_MODULE(libgraph_tool)
     variant_from_python<GraphInterfaceWrap::degree_t>();
     to_python_converter<pair<double,double>, pair_to_tuple<double,double> >();
     pair_from_tuple<double,double>();
-    to_python_converter<boost::tuple<double,double,double>, tuple_to_tuple<double,double,double> >();
+    to_python_converter<boost::tuple<double,double,double>, 
+                        tuple_to_tuple<double,double,double> >();
     tuple_from_tuple<double,double,double>();
     to_python_converter<pos_t, pos_t_to_tuple>();
     pos_t_from_tuple();
     pair_from_tuple<bool,bool>();
-    to_python_converter<GraphInterfaceWrap::hist_t, hist_to_dict<GraphInterfaceWrap::hist_t> >();
-    to_python_converter<GraphInterfaceWrap::hist2d_t, hist_to_dict<GraphInterfaceWrap::hist2d_t> >();
-    to_python_converter<GraphInterfaceWrap::hist3d_t, hist_to_dict<GraphInterfaceWrap::hist3d_t> >();
-    to_python_converter<GraphInterfaceWrap::avg_corr_t, hist_to_dict<GraphInterfaceWrap::avg_corr_t> >();
+    to_python_converter<GraphInterfaceWrap::hist_t, 
+                        hist_to_dict<GraphInterfaceWrap::hist_t> >();
+    to_python_converter<GraphInterfaceWrap::hist2d_t, 
+                        hist_to_dict<GraphInterfaceWrap::hist2d_t> >();
+    to_python_converter<GraphInterfaceWrap::hist3d_t, 
+                        hist_to_dict<GraphInterfaceWrap::hist3d_t> >();
+    to_python_converter<GraphInterfaceWrap::avg_corr_t, 
+                        hist_to_dict<GraphInterfaceWrap::avg_corr_t> >();
 
     class_<LibInfo>("mod_info")
         .add_property("name", &LibInfo::GetName)

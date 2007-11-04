@@ -151,8 +151,10 @@ private:
                     else 
                     {
                         std::stringstream s;
-                        s << "on line " << XML_GetCurrentLineNumber(self->m_parser) 
-                          << ", column " << XML_GetCurrentColumnNumber(self->m_parser)
+                        s << "on line " 
+                          << XML_GetCurrentLineNumber(self->m_parser) 
+                          << ", column " 
+                          << XML_GetCurrentColumnNumber(self->m_parser)
                           << ": unrecognized key kind '" << value << "'";
                         throw parse_error(s.str());
                     }
@@ -260,7 +262,8 @@ private:
         if (is_new)
         {
             std::map<std::string, std::string>::iterator iter;
-            for (iter = m_key_default.begin(); iter != m_key_default.end(); ++iter)
+            for (iter = m_key_default.begin(); iter != m_key_default.end(); 
+                 ++iter)
             {
                 if (m_keys[iter->first] == node_key)
                     handle_property(iter->first, v, iter->second);
@@ -310,20 +313,29 @@ private:
         }
     }
 
-    void handle_property(const std::string& key_id, const variant<std::string,size_t>& descriptor, const std::string& value)
+    void handle_property(const std::string& key_id, 
+                         const variant<std::string,size_t>& descriptor, 
+                         const std::string& value)
     {
         try 
         {
             if (get<std::string>(&descriptor))
             {
                 if (get<std::string>(descriptor) == "")
-                    m_g.set_graph_property(m_key_name[key_id], value, m_key_type[key_id]);
+                    m_g.set_graph_property(m_key_name[key_id], value, 
+                                           m_key_type[key_id]);
                 else
-                    m_g.set_vertex_property(m_key_name[key_id], get_vertex_descriptor(get<std::string>(descriptor)), value, m_key_type[key_id]);
+                    m_g.set_vertex_property(m_key_name[key_id], 
+                                            get_vertex_descriptor
+                                                (get<std::string>(descriptor)), 
+                                            value, m_key_type[key_id]);
             }
             else
             {
-                m_g.set_edge_property(m_key_name[key_id], get_edge_descriptor(get<size_t>(descriptor)), value, m_key_type[key_id]);
+                m_g.set_edge_property(m_key_name[key_id], 
+                                      get_edge_descriptor
+                                          (get<size_t>(descriptor)), 
+                                      value, m_key_type[key_id]);
             }
         }
         catch (parse_error &e)
