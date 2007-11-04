@@ -13,8 +13,8 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+// along with this program. If not, see <http://www.gnu.org/licenses/>.
+
 
 #include <algorithm>
 #include <tr1/unordered_set>
@@ -34,15 +34,13 @@ using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
 
-//==============================================================================
-// GetAssortativityCoefficient(type)
-//==============================================================================
+// this will calculate the assortativity coefficient, based on the property
+// pointed by 'deg'
 
 template <class DegreeSelector>
 struct get_assortativity_coefficient
 {
     get_assortativity_coefficient(DegreeSelector& deg): _deg(deg) {}
-
 
     template <class Graph>
     void operator()(const Graph& g, double& r, double& r_err) const
@@ -53,7 +51,8 @@ struct get_assortativity_coefficient
         SharedMap<tr1::unordered_map<double,int> > sa(a), sb(b);
 
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) firstprivate(sa,sb) schedule(dynamic) reduction(+:e_kk, n_edges)
+        #pragma omp parallel for default(shared) private(i) firstprivate(sa,sb)\
+            schedule(dynamic) reduction(+:e_kk, n_edges)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -77,17 +76,18 @@ struct get_assortativity_coefficient
         sb.Gather();
 
         double t1=double(e_kk)/n_edges, t2=0.0;
-        
+
         for (typeof(a.begin()) iter = a.begin(); iter != a.end(); ++iter)
             if (b.find(iter->second) != b.end())
                 t2 += double(iter->second * b[iter->first]);
         t2 /= n_edges*n_edges;
-        
+
         r = (t1 - t2)/(1.0 - t2);
 
         // "jackknife" variance
         double err = 0.0;
-        #pragma omp parallel for default(shared) private(i) schedule(dynamic) reduction(+:err)
+        #pragma omp parallel for default(shared) private(i) schedule(dynamic)\
+            reduction(+:err)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -98,8 +98,9 @@ struct get_assortativity_coefficient
             typename graph_traits<Graph>::out_edge_iterator e, e_end;
             for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
             {
-                double k2 = _deg(target(*e,g),g);                
-                double tl2 = (t2*(n_edges*n_edges) - b[k1] - a[k2])/((n_edges-1)*(n_edges-1));
+                double k2 = _deg(target(*e,g),g);
+                double tl2 = (t2*(n_edges*n_edges) - b[k1] - a[k2])/
+                    ((n_edges-1)*(n_edges-1));
                 double tl1 = t1*n_edges;
                 if (k1 == k2)
                     tl1 -= 1;
@@ -110,30 +111,33 @@ struct get_assortativity_coefficient
         }
         r_err = sqrt(err);
     }
-    
+
     DegreeSelector& _deg;
 };
 
 struct choose_assortativity_coefficient
 {
-    choose_assortativity_coefficient(const GraphInterface& g, GraphInterface::deg_t deg, double& a, double& a_err)
-        : _g(g), _a(a), _a_err(a_err) 
+    choose_assortativity_coefficient(const GraphInterface& g,
+                                     GraphInterface::deg_t deg,
+                                     double& a, double& a_err)
+        : _g(g), _a(a), _a_err(a_err)
     {
         tie(_deg, _deg_name) = get_degree_type(deg);
     }
-    
-    
+
+
     template <class DegreeSelector>
     void operator()(DegreeSelector)
-    {        
+    {
         if (mpl::at<degree_selector_index, DegreeSelector>::type::value == _deg)
         {
             DegreeSelector deg(_deg_name, _g, true);
-            check_filter(_g, bind<void>(get_assortativity_coefficient<DegreeSelector>(deg), _1, var(_a), var(_a_err)), 
+            check_filter(_g, bind<void>(get_assortativity_coefficient
+                                            <DegreeSelector>(deg),
+                                        _1, var(_a), var(_a_err)),
                          reverse_check(),directed_check());
         }
     };
-
 
     const GraphInterface& _g;
     double& _a;
@@ -149,21 +153,22 @@ GraphInterface::GetAssortativityCoefficient(GraphInterface::deg_t deg) const
     double a, a_err;
     try
     {
-        typedef mpl::vector<in_degreeS, out_degreeS, total_degreeS, scalarS> degrees;
-        mpl::for_each<degrees>(choose_assortativity_coefficient(*this, deg, a, a_err));
+        typedef mpl::vector<in_degreeS, out_degreeS, total_degreeS, scalarS>
+            degrees;
+        mpl::for_each<degrees>(choose_assortativity_coefficient(*this, deg, a,
+                                                                a_err));
     }
     catch (dynamic_get_failure &e)
     {
-        throw GraphException("error getting scalar property: " + string(e.what()));
+        throw GraphException("error getting scalar property: " +
+                             string(e.what()));
     }
 
     return make_pair(a, a_err);
 }
 
-
-//==============================================================================
-// GetScalarAssortativityCoefficient(type)
-//==============================================================================
+// this will calculate the _scalar_ assortativity coefficient, based on the
+// scalar property pointed by 'deg'
 
 template <class DegreeSelector>
 struct get_scalar_assortativity_coefficient
@@ -179,7 +184,8 @@ struct get_scalar_assortativity_coefficient
         SharedMap<tr1::unordered_map<double,int> > sa(a), sb(b);
 
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) firstprivate(sa,sb) schedule(dynamic) reduction(+:e_xy, n_edges)
+        #pragma omp parallel for default(shared) private(i) firstprivate(sa,sb)\
+            schedule(dynamic) reduction(+:e_xy, n_edges)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -201,11 +207,11 @@ struct get_scalar_assortativity_coefficient
         sa.Gather();
         sb.Gather();
 
-         
         double t1 = e_xy/n_edges;
         double avg_a = GetHistogramMean(a), avg_b = GetHistogramMean(b);
-        double da = GetHistogramDeviation(a,avg_a), db = GetHistogramDeviation(b,avg_b);
-        
+        double da = GetHistogramDeviation(a,avg_a), db =
+            GetHistogramDeviation(b,avg_b);
+
         if (da*db > 0)
             r = (t1 - avg_a*avg_b)/(da*db);
         else
@@ -218,9 +224,10 @@ struct get_scalar_assortativity_coefficient
             diff_a += (iter->first - avg_a)*iter->second;
         for (typeof(b.begin()) iter = b.begin(); iter != b.end(); ++iter)
             diff_b += (iter->first - avg_b)*iter->second;
-        
+
         double err = 0.0;
-        #pragma omp parallel for default(shared) private(i) schedule(dynamic) reduction(+:err)
+        #pragma omp parallel for default(shared) private(i) schedule(dynamic)\
+            reduction(+:err)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -231,11 +238,14 @@ struct get_scalar_assortativity_coefficient
             typename graph_traits<Graph>::out_edge_iterator e, e_end;
             for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
             {
-                double k2 = _deg(target(*e, g), g);                
+                double k2 = _deg(target(*e, g), g);
                 double t1l = (e_xy - k1*k2)/(n_edges-1);
-                double avg_al = (avg_a*n_edges - k1)/(n_edges-1), avg_bl = (avg_b*n_edges - k2)/(n_edges-1);
-                double dal = da - 2*diff_a*(avg_al-avg_a) + (avg_al-avg_a)*(avg_al-avg_a);
-                double dbl = db - 2*diff_b*(avg_bl-avg_b) + (avg_bl-avg_b)*(avg_bl-avg_b);
+                double avg_al = (avg_a*n_edges - k1)/(n_edges-1);
+                double avg_bl = (avg_b*n_edges - k2)/(n_edges-1);
+                double dal = da - 2*diff_a*(avg_al-avg_a) +
+                    (avg_al-avg_a)*(avg_al-avg_a);
+                double dbl = db - 2*diff_b*(avg_bl-avg_b) +
+                    (avg_bl-avg_b)*(avg_bl-avg_b);
                 double rl;
                 if (dal*dbl > 0)
                     rl = (t1l - avg_al*avg_bl)/(dal*dbl);
@@ -246,30 +256,33 @@ struct get_scalar_assortativity_coefficient
         }
         r_err = sqrt(err);
     }
-    
+
     DegreeSelector& _deg;
 };
 
 struct choose_scalar_assortativity_coefficient
 {
-    choose_scalar_assortativity_coefficient(const GraphInterface& g, GraphInterface::deg_t deg, double& a, double& a_err)
-        : _g(g), _a(a), _a_err(a_err) 
+    choose_scalar_assortativity_coefficient(const GraphInterface& g,
+                                            GraphInterface::deg_t deg,
+                                            double& a, double& a_err)
+        : _g(g), _a(a), _a_err(a_err)
     {
         tie(_deg, _deg_name) = get_degree_type(deg);
     }
-    
-    
+
+
     template <class DegreeSelector>
     void operator()(DegreeSelector)
-    {        
+    {
         if (mpl::at<degree_selector_index, DegreeSelector>::type::value == _deg)
         {
             DegreeSelector deg(_deg_name, _g, true);
-            check_filter(_g, bind<void>(get_scalar_assortativity_coefficient<DegreeSelector>(deg), _1, var(_a), var(_a_err)), 
+            check_filter(_g, bind<void>(get_scalar_assortativity_coefficient
+                                            <DegreeSelector>(deg),
+                                        _1, var(_a), var(_a_err)),
                          reverse_check(),directed_check());
         }
     };
-
 
     const GraphInterface& _g;
     double& _a;
@@ -280,17 +293,21 @@ struct choose_scalar_assortativity_coefficient
 
 
 pair<double,double>
-GraphInterface::GetScalarAssortativityCoefficient(GraphInterface::deg_t deg) const
+GraphInterface::GetScalarAssortativityCoefficient(GraphInterface::deg_t deg)
+    const
 {
     double a, a_err;
     try
     {
-        typedef mpl::vector<in_degreeS, out_degreeS, total_degreeS, scalarS> degrees;
-        mpl::for_each<degrees>(choose_scalar_assortativity_coefficient(*this, deg, a, a_err));
+        typedef mpl::vector<in_degreeS, out_degreeS, total_degreeS, scalarS>
+            degrees;
+        mpl::for_each<degrees>
+            (choose_scalar_assortativity_coefficient(*this,deg, a, a_err));
     }
     catch (dynamic_get_failure &e)
     {
-        throw GraphException("error getting scalar property: " + string(e.what()));
+        throw GraphException("error getting scalar property: " +
+                             string(e.what()));
     }
 
     return make_pair(a, a_err);

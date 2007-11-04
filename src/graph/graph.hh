@@ -14,8 +14,7 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef GRAPH_HH
 #define GRAPH_HH
@@ -33,11 +32,13 @@
 
 namespace graph_tool
 {
+using namespace std;
+using namespace boost;
 
-//==============================================================================
 // GraphInterface
-// this structure is an interface to the internally kept graph
-//==============================================================================
+// this class is the main interface to the internally kept graph. This is how
+// the external world will manipulate the graph. All the algorithms should be
+// registered here. This class will be exported to python in graph_bind.hh
 
 class GraphInterface
 {
@@ -54,52 +55,72 @@ public:
     };
 
     // histogram types
-    typedef std::tr1::unordered_map<double,double> hist_t;
-    typedef std::tr1::unordered_map<std::pair<double,double>,double, boost::hash<std::pair<double,double> > > hist2d_t;
-    typedef std::tr1::unordered_map<boost::tuple<double,double,double>,double, boost::hash<boost::tuple<double,double,double> > > hist3d_t;
-    typedef std::tr1::unordered_map<double,std::pair<double,double> > avg_corr_t;
+    typedef tr1::unordered_map<double,double> hist_t;
+    typedef tr1::unordered_map<pair<double,double>,double,
+                                    hash<pair<double,double> > > hist2d_t;
+    typedef tr1::unordered_map<tuple<double,double,double>,double,
+                               hash<tuple<double,double,double> > > hist3d_t;
+    typedef tr1::unordered_map<double,pair<double,double> > avg_corr_t;
 
-    typedef boost::variant<degree_t,std::string> deg_t;
+    typedef variant<degree_t,string> deg_t;
 
     //graph generation
-    typedef boost::function<double (size_t j, size_t k)> pjk_t;
-    typedef boost::function<std::pair<size_t,size_t> (double r1, double r2)> inv_ceil_t;
-    typedef boost::function<double (size_t jl, size_t kl, size_t j, size_t k)> corr_t;
-    typedef boost::function<std::pair<size_t,size_t>  (double r1, double r2, size_t j, size_t k)> inv_corr_t;
-    void GenerateCorrelatedConfigurationalModel(size_t N, pjk_t p, pjk_t ceil, inv_ceil_t inv_ceil, double ceil_pjk_bound, corr_t corr, corr_t ceil_corr, inv_corr_t inv_ceil_corr, double ceil_corr_bound, bool undirected_corr, size_t seed, bool verbose);
+    typedef function<double (size_t j, size_t k)> pjk_t;
+    typedef function<pair<size_t,size_t> (double r1, double r2)> inv_ceil_t;
+    typedef function<double (size_t jl, size_t kl, size_t j, size_t k)> corr_t;
+    typedef function<pair<size_t,size_t>(double r1, 
+                                         double r2, 
+                                         size_t j, 
+                                         size_t k)> inv_corr_t;
+    void GenerateCorrelatedConfigurationalModel(size_t N, pjk_t p, pjk_t ceil,
+                                                inv_ceil_t inv_ceil,
+                                                double ceil_pjk_bound, 
+                                                corr_t corr, corr_t ceil_corr,
+                                                inv_corr_t inv_ceil_corr, 
+                                                double ceil_corr_bound,
+                                                bool undirected_corr, 
+                                                size_t seed, bool verbose);
 
     // basic stats
     size_t GetNumberOfVertices() const;
     size_t GetNumberOfEdges() const;
     hist_t GetVertexHistogram(deg_t degree) const;
-    hist_t GetEdgeHistogram(std::string property) const;
+    hist_t GetEdgeHistogram(string property) const;
 
     //correlations
     hist2d_t   GetCombinedVertexHistogram(deg_t degree1, deg_t degree2) const;
-    avg_corr_t GetAverageCombinedVertexCorrelation(deg_t degree1, deg_t degree2) const;
-    hist2d_t   GetVertexCorrelationHistogram(deg_t degree1, deg_t degree2, std::string weight) const;
-    hist3d_t   GetEdgeVertexCorrelationHistogram(deg_t deg1, std::string scalar, deg_t deg2) const;
-    avg_corr_t GetAverageNearestNeighboursCorrelation(deg_t origin_degree, deg_t neighbour_degree, std::string weight) const;
+    avg_corr_t GetAverageCombinedVertexCorrelation(deg_t degree1,
+                                                   deg_t degree2)const;
+    hist2d_t   GetVertexCorrelationHistogram(deg_t degree1, deg_t degree2,
+                                             string weight) const;
+    hist3d_t   GetEdgeVertexCorrelationHistogram(deg_t deg1, string scalar,
+                                                 deg_t deg2) const;
+    avg_corr_t GetAverageNearestNeighboursCorrelation(deg_t origin_degree,
+                                                      deg_t neighbour_degree,
+                                                      string weight) const;
 
     // mixing
-    std::pair<double,double> GetAssortativityCoefficient(deg_t deg) const;
-    std::pair<double,double> GetScalarAssortativityCoefficient(deg_t deg) const;
+    pair<double,double> GetAssortativityCoefficient(deg_t deg) const;
+    pair<double,double> GetScalarAssortativityCoefficient(deg_t deg) const;
 
     //clustering
-    void SetLocalClusteringToProperty(std::string property);
-    std::pair<double,double> GetGlobalClustering();
-    void SetExtendedClusteringToProperty(std::string property_prefix, size_t max_depth);
+    void SetLocalClusteringToProperty(string property);
+    pair<double,double> GetGlobalClustering();
+    void SetExtendedClusteringToProperty(string property_prefix,
+                                         size_t max_depth);
 
     // other
-    void   LabelComponents(std::string property);
-    void   LabelParallelEdges(std::string property);
-    hist_t GetDistanceHistogram(std::string weight) const;
-    hist_t GetSampledDistanceHistogram(std::string weight, size_t samples, size_t seed) const;
+    void   LabelComponents(string property);
+    void   LabelParallelEdges(string property);
+    hist_t GetDistanceHistogram(string weight) const;
+    hist_t GetSampledDistanceHistogram(string weight, size_t samples,
+                                       size_t seed) const;
     double GetReciprocity() const;
-    void   GetMinimumSpanningTree(std::string weight, std::string property);
-    void   GetLineGraph(std::string out_file, std::string format);
-    void   GetBetweenness(std::string weight, std::string edge_betweenness, std::string vertex_betweenness);
-    double GetCentralPointDominance(std::string vertex_betweenness);
+    void   GetMinimumSpanningTree(string weight, string property);
+    void   GetLineGraph(string out_file, string format);
+    void   GetBetweenness(string weight, string edge_betweenness,
+                          string vertex_betweenness);
+    double GetCentralPointDominance(string vertex_betweenness);
 
     // community structure
     enum comm_corr_t
@@ -109,9 +130,13 @@ public:
         CORRELATED
     };
 
-    void   GetCommunityStructure(double gamma, comm_corr_t corr, size_t n_iter, double Tmin, double Tmax, size_t Nseeds, size_t seed, bool verbose, std::string history_file, std::string weight, std::string property);
-    double GetModularity(std::string weight, std::string property);
-    void   GetCommunityNetwork(std::string property, std::string size_property, std::string out_file, std::string format) const;
+    void   GetCommunityStructure(double gamma, comm_corr_t corr, size_t n_iter,
+                                 double Tmin, double Tmax, size_t Nseeds,
+                                 size_t seed, bool verbose, string history_file,
+                                 string weight, string property);
+    double GetModularity(string weight, string property);
+    void   GetCommunityNetwork(string property, string size_property,
+                               string out_file, string format) const;
 
     // filtering
     void SetDirected(bool directed) {_directed = directed;}
@@ -120,120 +145,126 @@ public:
     void SetReversed(bool reversed) {_reversed = reversed;}
     bool GetReversed() const {return _reversed;}
 
-    void SetVertexFilterProperty(std::string property);
-    void SetVertexFilterRange(std::pair<double,double> allowed_range, std::pair<bool,bool> include, bool invert);
+    void SetVertexFilterProperty(string property);
+    void SetVertexFilterRange(pair<double,double> allowed_range,
+                              pair<bool,bool> include, bool invert);
     bool IsVertexFilterActive() const;
 
-    void SetEdgeFilterProperty(std::string property);
-    void SetEdgeFilterRange(std::pair<double,double> allowed_range, std::pair<bool,bool> include, bool invert);
+    void SetEdgeFilterProperty(string property);
+    void SetEdgeFilterRange(pair<double,double> allowed_range,
+                            pair<bool,bool> include, bool invert);
     bool IsEdgeFilterActive() const;
 
     // modification
-    void RemoveVertexProperty(std::string property);
-    void RemoveEdgeProperty(std::string property);
-    void RemoveGraphProperty(std::string property);
-    void InsertEdgeIndexProperty(std::string property);
-    void InsertVertexIndexProperty(std::string property);
-    void EditVertexProperty(std::string property, std::string type, boost::python::object op);
-    void EditEdgeProperty(std::string property, std::string type, boost::python::object op);
-    void EditGraphProperty(std::string property, std::string type, boost::python::object op);
+    void RemoveVertexProperty(string property);
+    void RemoveEdgeProperty(string property);
+    void RemoveGraphProperty(string property);
+    void InsertEdgeIndexProperty(string property);
+    void InsertVertexIndexProperty(string property);
+    void EditVertexProperty(string property, string type, python::object op);
+    void EditEdgeProperty(string property, string type, python::object op);
+    void EditGraphProperty(string property, string type, python::object op);
     void ListProperties() const;
     void PurgeVertices();
     void PurgeEdges();
 
     // layout
-    void ComputeGraphLayoutGursoy(std::string prop, std::string weight, std::string topology, size_t iter = 0, size_t seed = 4357);
-    void ComputeGraphLayoutSpringBlock(std::string prop, std::string weight, std::string type, size_t iter = 0, size_t seed = 4357);
+    void ComputeGraphLayoutGursoy(string prop, string weight, string topology,
+                                  size_t iter = 0, size_t seed = 4357);
+    void ComputeGraphLayoutSpringBlock(string prop, string weight, string type,
+                                       size_t iter = 0, size_t seed = 4357);
 
     // i/o
-    void WriteToFile(std::string s);
-    void WriteToFile(std::string s, std::string format);
-    void ReadFromFile(std::string s);
-    void ReadFromFile(std::string s, std::string format);
+    void WriteToFile(string s);
+    void WriteToFile(string s, string format);
+    void ReadFromFile(string s);
+    void ReadFromFile(string s, string format);
 
     // signal handling
     void InitSignalHandling();
 
     // the following defines the edges' internal properties
-    typedef boost::property<boost::edge_index_t, size_t> EdgeProperty;
+    typedef property<edge_index_t, size_t> EdgeProperty;
 
     // this is the main graph type
-    typedef boost::adjacency_list <boost::vecS, // edges
-                                   boost::vecS, // vertices
-                                   boost::bidirectionalS,
-                                   boost::no_property,
-                                   EdgeProperty >  multigraph_t;
+    typedef adjacency_list <vecS, // edges
+                            vecS, // vertices
+                            bidirectionalS,
+                            no_property,
+                            EdgeProperty>  multigraph_t;
+    typedef graph_traits<multigraph_t>::vertex_descriptor vertex_t;
+    typedef graph_traits<multigraph_t>::edge_descriptor edge_t;
 
 private:
     template <class Action, class ReverseCheck, class DirectedCheck>
-    friend void check_filter(const GraphInterface &g, Action a, ReverseCheck, DirectedCheck);
-    template <class Graph, class Action, class ReverseCheck, class DirectedCheck>
-    friend void check_python_filter(const Graph& g, const GraphInterface &gi, Action a, bool& found, ReverseCheck, DirectedCheck);
-
+        friend void check_filter(const GraphInterface &g, Action a,
+                                 ReverseCheck, DirectedCheck);
     friend class scalarS;
 
+    // this is the main graph
     multigraph_t _mg;
 
     bool _reversed;
     bool _directed;
 
     // vertex index map
-    typedef boost::property_map<multigraph_t, boost::vertex_index_t>::type vertex_index_map_t;
+    typedef property_map<multigraph_t,vertex_index_t>::type vertex_index_map_t;
     vertex_index_map_t _vertex_index;
 
     // edge index map
-    typedef boost::property_map<multigraph_t, boost::edge_index_t>::type edge_index_map_t;
+    typedef property_map<multigraph_t,edge_index_t>::type edge_index_map_t;
     edge_index_map_t _edge_index;
 
     // graph properties
-    boost::dynamic_properties _properties;
+    dynamic_properties _properties;
 
     // vertex filter
-    std::string _vertex_filter_property;
-    typedef boost::variant<boost::vector_property_map<double, vertex_index_map_t>,
-                           HashedDescriptorMap<vertex_index_map_t,double>,
-                           boost::vector_property_map<size_t, vertex_index_map_t>,
-                           HashedDescriptorMap<vertex_index_map_t, size_t>,
-                           vertex_index_map_t,
-                           DynamicPropertyMapWrap<double, boost::graph_traits<multigraph_t>::vertex_descriptor> > vertex_filter_map_t;
+    string _vertex_filter_property;
+    typedef variant<vector_property_map<double,vertex_index_map_t>,
+                    HashedDescriptorMap<vertex_index_map_t,double>,
+                    vector_property_map<size_t,vertex_index_map_t>,
+                    HashedDescriptorMap<vertex_index_map_t,size_t>,
+                    vertex_index_map_t,
+                    DynamicPropertyMapWrap<double,vertex_t> >
+        vertex_filter_map_t;
     vertex_filter_map_t _vertex_filter_map;
-    std::pair<double,double> _vertex_range;
-    std::pair<bool,bool> _vertex_range_include;
+    pair<double,double> _vertex_range;
+    pair<bool,bool> _vertex_range_include;
     bool _vertex_range_invert;
 
     // edge filter
-    std::string _edge_filter_property;
-    typedef boost::variant<boost::vector_property_map<double, edge_index_map_t>,
-                           HashedDescriptorMap<edge_index_map_t, double>,
-                           boost::vector_property_map<size_t, edge_index_map_t>,
-                           HashedDescriptorMap<edge_index_map_t, size_t>,
-                           edge_index_map_t,
-                           DynamicPropertyMapWrap<double, boost::graph_traits<multigraph_t>::edge_descriptor> > edge_filter_map_t;
+    string _edge_filter_property;
+    typedef variant<vector_property_map<double, edge_index_map_t>,
+                    HashedDescriptorMap<edge_index_map_t, double>,
+                    vector_property_map<size_t, edge_index_map_t>,
+                    HashedDescriptorMap<edge_index_map_t, size_t>,
+                    edge_index_map_t,
+                    DynamicPropertyMapWrap<double,edge_t> >
+        edge_filter_map_t;
     edge_filter_map_t _edge_filter_map;
-    std::pair<double,double> _edge_range;
-    std::pair<bool,bool> _edge_range_include;
+    pair<double,double> _edge_range;
+    pair<bool,bool> _edge_range_include;
     bool _edge_range_invert;
 
 };
 
-std::pair<GraphInterface::degree_t,std::string> get_degree_type(GraphInterface::deg_t degree);
+pair<GraphInterface::degree_t,string>
+get_degree_type(GraphInterface::deg_t degree);
 
-//==============================================================================
-// GraphException
-//==============================================================================
+// GraphException 
+// This is the main exception which will be thrown the outside world, when
+// things go wrong
 
-class GraphException : public std::exception
+class GraphException : public exception
 {
-    std::string _error;
+    string _error;
 public:
-    GraphException(std::string error) {_error = error;}
+    GraphException(string error) {_error = error;}
     virtual ~GraphException() throw () {}
     virtual const char * what () const throw () {return _error.c_str();}
 };
 
 } //namespace graph_tool
-
-//#include "node_graph_io.hh"
 
 #endif
 
