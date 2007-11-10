@@ -336,8 +336,8 @@ void GraphInterface::PurgeEdges()
     reindex_edges(_mg, _edge_index, _properties);
 }
 
-// this will definitively remove all the verticess from the graph, which are being
-// currently filtered out. This will also disable the vertex filter
+// this will definitively remove all the verticess from the graph, which are
+// being currently filtered out. This will also disable the vertex filter
 void GraphInterface::PurgeVertices()
 {
     if (!IsVertexFilterActive())
@@ -371,7 +371,7 @@ void GraphInterface::PurgeVertices()
     }
 
     //remove vertices
-    for (size_t i = N-1; i >= 0 && i < N; --i)
+    for (size_t i = N-1; i < N; --i)
     {
         if (deleted[i])
         {
