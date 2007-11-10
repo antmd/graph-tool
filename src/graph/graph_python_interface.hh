@@ -41,6 +41,8 @@
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/functional.hpp>
 
+#include "graph_properties.hh"
+
 // this file includes a simple python interface for the internally kept
 // graph. It defines a PythonVertex, PythonEdge and PythonGraph types, which
 // contain the proper member functions for graph traversal and property
@@ -60,8 +62,6 @@ public:
 
     python::object operator()()
     {
-        typedef mpl::vector<bool,int,long,size_t,float,double,std::string>
-            value_types;
         mpl::for_each<value_types>(try_conversion(*this));
         return _retval;
     }
