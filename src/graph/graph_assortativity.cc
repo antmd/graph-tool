@@ -137,7 +137,7 @@ struct choose_assortativity_coefficient
                                         _1, var(_a), var(_a_err)),
                          reverse_check(),directed_check());
         }
-    };
+    }
 
     const GraphInterface& _g;
     double& _a;
@@ -282,7 +282,7 @@ struct choose_scalar_assortativity_coefficient
                                         _1, var(_a), var(_a_err)),
                          reverse_check(),directed_check());
         }
-    };
+    }
 
     const GraphInterface& _g;
     double& _a;
