@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-# graph-tool -- a general graph modification and manipulation thingy
+# graph-tool -- a general graph manipulation stand-alone tool
 #
 # Copyright (C) 2007 Tiago de Paula Peixoto <tiago@forked.de>
 #
@@ -16,982 +16,477 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-__author__="Tiago de Paula Peixoto <tiago@forked.de>"
-__copyright__="Copyright 2007 Tiago de Paula Peixoto"
-__license__="GPL version 3 or above"
-__URL__="http://graph-tool.forked.de"
 
-from libgraph_tool import *
-__version__ = mod_info().version
+from graph_tool import *
+from graph_tool import libgraph_tool
 
 import sys, os, os.path, re, struct, fcntl, termios, gzip, bz2, string,\
-       textwrap, time, signal, traceback, shutil, optparse, time, math,\
-       inspect
+       textwrap, time, signal, traceback, shutil, time, math, inspect, \
+       functools, types, optparse
 
-# General utilities
-def getheightwidth():
-    """ This will get the terminal width and height"""
-    height, width = 20, 80
-    try:
-        height, width = struct.unpack("hhhh", fcntl.ioctl(0, termios.TIOCGWINSZ ,"\000"*8))[0:2]
-    except IOError:
-        pass
-    return height, width
+def _main():
+    """Function to be run only when module is executed"""
 
-# Some exceptions
-class ParserError:
-    """Error raised from option parser"""
-    def __init__(self, error):
-        self.error = error
-    def __str__(self):
-        return self.error
+    # General utilities
+    def getheightwidth():
+        """This will get the terminal width and height"""
+        height, width = 20, 80
+        try:
+            height, width = struct.unpack("hhhh",
+                                          fcntl.ioctl(0, termios.TIOCGWINSZ,
+                                                      "\000"*8))[0:2]
+        except IOError:
+            pass
+        return height, width
 
-class OptionError:
-    """Parse error in a command line option"""
-    def __init__(self, option, error):
-        self.option = option
-        self.error = error
+    ############################################################################
+    # Command line parsing
+    ############################################################################
 
-    def __str__(self):
-        msg = "error parsing option --%s: %s\n\n" % (self.option.name, self.error)
-        help =  "--%s=%s\n" % (self.option.name, self.option.metavars)
-        wrapper = textwrap.TextWrapper(initial_indent = " "*3, subsequent_indent =  " "*3, width = getheightwidth()[1])
-        msg += help + wrapper.fill( self.option.help)
-        return msg
-
-def parse_options(arguments = sys.argv[1:]):
-    """This  function will  parse  all the  command-line options,  and
-    return a list  of parsed options, ordered according  to how it was
-    given in the command line.   The list will contain tuples (option,
-    value), where  'option' is an  instance of the Opt  class, defined
-    below.  The  option will  be  checked  for  validity, except  when
-    contextual information  is necessary  (such as deciding  whether a
-    specific property exists in a graph)."""
-
-    # The values below will be used to initialize the Opt classes. See the class
-    # definition for the meaning of each field.
-
-    option_groups = []
-    basic = ["Basic options",
-             ["load",  "[FILE[|FORMAT]]", "load graph from file. The format is guessed from the FILE, or can be specified by FORMAT.",
-              {"FILE":"-", "FORMAT":"auto"},
-              ["if $FORMAT == 'auto':\n  graph.ReadFromFile($FILE)\nelse:\n  graph.ReadFromFile($FILE, $FORMAT)","None"]],
-             ["save",  "[FILE[|FORMAT]]", "save graph to file. The format is guessed from the FILE, or can be specified by FORMAT.",
-              {"FILE":"-", "FORMAT":"auto"},
-              ["if $FORMAT == 'auto':\n  graph.WriteToFile($FILE)\nelse:\n  graph.WriteToFile($FILE, $FORMAT)","None"]]]
-    option_groups.append(basic)
-
-    generation =  [ "Graph generation",
-                    ["correlated-configurational-model", "OPTIONS",
-                     "generate graph using the configurational model with arbitrary degree correlations. Options are: $OPTIONS_LIST. See documentation for details.",
-                     {"OPTIONS":[ ("N",("int",10000)), ("pjk",("exp","lambda j,k: 1.0")), ("pjk_ceil",("exp", "lambda j,k: pjk(j,k)")),
-                                  ("pjk_m",("float",1.0)), ("inv_pjk_ceil",("exp","lambda p,r:(inv_poisson(p,2), inv_poisson(p,2))")),
-                                  ("corr",("exp","lambda jl,kl,j,k: 1.0")), ("corr_ceil",("exp","lambda jl,kl,j,k: corr(jl,kl,j,k)")),
-                                  ("corr_m",("float",1.0)),("inv_corr_ceil",("exp","lambda p,r,a,b: inv_pjk_ceil(p,r)")),("undirected",("bool[1]",False)),
-                                  ("directed",("bool[1]",True)), ("progress",("bool",False)), ("seed",("int",int(time.time())))]},
-                      "graph.GenerateCorrelatedConfigurationalModel($N, $pjk, $pjk_ceil, $inv_pjk_ceil, $pjk_m, $corr, $corr_ceil, $inv_corr_ceil, $corr_m, $undirected, $seed, $progress)"] ]
-    option_groups.append(generation)
-
-    filtering =  ["Filtering",
-                  ["directed", None,"treat graph as directed (default).", {}, "graph.SetDirected(True)"],
-                  ["undirected", None,"treat graph as undirected.", {}, "graph.SetDirected(False)"],
-                  ["reverse", None, "reverse edges.", {}, "graph.SetReversed(not graph.GetReversed())"],
-                  ["exclude-vertex-range", "PROPERTY|RANGE", "choose vertex property and range to exclude.", {},
-                   ["graph.SetVertexFilterProperty($PROPERTY)",
-                    "graph.SetVertexFilterRange($RANGE[0],$RANGE[1], True)"] ],
-                  ["keep-vertex-range", "PROPERTY|RANGE", "choose vertex property and range to keep (and exclude the rest).", {},
-                   ["graph.SetVertexFilterProperty($PROPERTY)",
-                    "graph.SetVertexFilterRange($RANGE[0],$RANGE[1], False)"] ],
-                  ["reset-vertex-filter", None, "remove edge filter.", {}, "graph.SetVertexFilterProperty('')"],
-                  ["exclude-edge-range", "PROPERTY|RANGE", "choose edge property and range to exclude.", {},
-                   ["graph.SetEdgeFilterProperty($PROPERTY)",
-                    "graph.SetEdgeFilterRange($RANGE[0],$RANGE[1], True)"] ],
-                  ["keep-edge-range", "PROPERTY|RANGE", "choose edge property and range to keep (and exclude the rest).", {},
-                   ["graph.SetEdgeFilterProperty($PROPERTY)",
-                    "graph.SetEdgeFilterRange($RANGE[0],$RANGE[1], False)"] ],
-                  ["reset-edge-filter",   None, "remove edge filter.", {}, "graph.SetEdgeFilterProperty('')"] ]
-    option_groups.append(filtering)
-
-    modification =  ["Graph Modification",
-                     ["edit-vertex-property", "PROPERTY[|TYPE]|EXPRESSION", "edit the selected vertex property", {"TYPE":"double"},
-                       "graph.EditVertexProperty($PROPERTY, $TYPE, edit_function_wrap('vertex',$EXPRESSION))"],
-                     ["edit-edge-property", "PROPERTY[|TYPE]|EXPRESSION", "edit the selected edge property",   {"TYPE":"double"},
-                      "graph.EditEdgeProperty($PROPERTY, $TYPE, edit_function_wrap('edge',$EXPRESSION))"],
-                     ["edit-graph-property", "PROPERTY[|TYPE]|EXPRESSION", "edit the selected graph property",  {"TYPE":"double"},
-                      "graph.EditGraphProperty($PROPERTY, $TYPE, edit_function_wrap('graph',$EXPRESSION))"],
-                     ["remove-vertex-property", "PROPERTY", "remove the selected vertex property", {}, "graph.RemoveVertexProperty($PROPERTY)"],
-                     ["remove-edge-property", "PROPERTY", "remove the selected edge property",   {}, "graph.RemoveEdgeProperty($PROPERTY)"],
-                     ["remove-graph-property", "PROPERTY", "remove the selected graph property",  {}, "graph.RemoveGraphProperty($PROPERTY)"],
-                     ["insert-vertex-index-property", "PROPERTY", "insert vertex index as property", {}, "graph.InsertVertexIndexProperty($PROPERTY)"],
-                     ["insert-edge-index-property", "PROPERTY", "insert edge index as property",   {}, "graph.InsertEdgeIndexProperty($PROPERTY)"],
-                     ["list-properties", None, "list all properties", {}, "graph.ListProperties()"],
-                     ["purge-vertices", None, "Remove all vertices of the graph which are currently being filtered out, and return to the unfiltered state",
-                      {}, ["graph.PurgeVertices()", "graph.SetVertexFilterProperty('')" ]],
-                     ["purge-edges", None, "Remove all edges of the graph which are currently being filtered out, and return to the unfiltered state",
-                      {}, ["graph.PurgeEdges()", "graph.SetEdgeFilterProperty('')" ]]
-                     ]
-
-    option_groups.append(modification)
-
-    statistics =  ["Basic Statistics",
-                   ["number-of-vertices", "[FILE]", "get the number of vertices.", {"FILE":"-"}, "graph.GetNumberOfVertices()" ],
-                   ["number-of-edges", "[FILE]", "get the number of edges", {"FILE":"-"}, "graph.GetNumberOfEdges()"],
-                   ["vertex-histogram", "DEGREE[|FILE]", "get the vertex degree/property histogram", {"FILE":"-"}, "graph.GetVertexHistogram($DEGREE)"],
-                   ["edge-histogram", "PROPERTY[|FILE]", "get the edge property histogram", {"FILE":"-"}, "graph.GetEdgeHistogram($PROPERTY)"],
-                   ["average-vertex-property",  "DEGREE[|FILE]", "get the average of the vertex property", {"FILE":"-"}, "get_mean(graph.GetVertexHistogram($DEGREE))"],
-                   ["average-edge-property",  "PROPERTY[|FILE]", "get the average of the edge property", {"FILE":"-"},  "get_mean(graph.GetEdgeHistogram($PROPERTY))"],
-
-                   ["combined-vertex-histogram", "DEGREE1|DEGREE2[|FILE]", "get the combined (DEGREE1,DEGREE2) histogram. Scalar properties are also accepted as DEGREE1 or DEGREE2",
-                    {"FILE":"-"}, "graph.GetCombinedVertexHistogram($DEGREE1,$DEGREE2)"],
-                   ["distance-histogram", "[[WEIGHT|]FILE]", "get the distance histogram", {"FILE":"-", "WEIGHT":""}, "graph.GetDistanceHistogram($WEIGHT)"],
-                   ["average-distance", "[[WEIGHT|]FILE]", "get the averarge distance", {"FILE":"-", "WEIGHT":""}, "get_mean(graph.GetDistanceHistogram($WEIGHT))"],
-                   ["average-harmonic-distance",  "[[WEIGHT|]FILE]", "get the averarge harmonic distance", {"FILE":"-", "WEIGHT":""},
-                    ["hist = graph.GetDistanceHistogram($WEIGHT)",
-                     "avg, err = get_mean(dict((1.0/k,v) for k,v in hist.iteritems()))",
-                     "(1.0/avg, err/(avg**2))"]],
-                   ["sampled-distance-histogram", "[OPTIONS[|FILE]]", "get the sampled distance histogram. Options are $OPTIONS_LIST",
-                    {"FILE":"-", "OPTIONS":[ ("samples",("int",1000)), ("weight",("str","")), ("seed",("int",int(time.time())))] },
-                    "graph.GetSampledDistanceHistogram($weight,$samples,$seed)"],
-                   ["average-sampled-distance", "[OPTIONS[|FILE]]", "get the average sampled distance. Options are $OPTIONS_LIST",
-                    {"FILE":"-", "OPTIONS":[ ("samples",("int",1000)), ("weight",("str","")), ("seed",("int",int(time.time())))] },
-                    "get_mean(graph.GetSampledDistanceHistogram($weight,$samples,$seed))"],
-                   ["average-sampled-harmonic-distance",  "[OPTIONS[|FILE]]", "get the average sampled harmonic distance. Options are $OPTIONS_LIST",
-                    {"FILE":"-", "OPTIONS":[ ("samples",("int",1000)), ("weight",("str","")), ("seed",("int",int(time.time())))] },
-                    ["hist = graph.GetSampledDistanceHistogram($weight,$samples,$seed)",
-                     "avg, err = get_mean(dict([(1.0/k,v) for k,v in hist.iteritems()]))",
-                     "(1.0/avg, err/(avg**2))"]],
-                   ["label-components",  "PROPERTY", "label components to PROPERTY", {}, "graph.LabelComponents($PROPERTY)"],
-                   ["label-parallel-edges",  "PROPERTY", "label parallel edges to PROPERTY", {}, "graph.LabelParallelEdges($PROPERTY)"],
-                   ["reciprocity",  "[FILE]", "get the edge reciprocity", {"FILE":"-"},  "graph.GetReciprocity()"],
-                   ["minimum-spanning-tree", "[WEIGHT|]PROPERTY", "mark the minimum spanning tree edges in PROPERTY", {"WEIGHT":""},  "graph.GetMinimumSpanningTree($WEIGHT, $PROPERTY)"],
-                   ["line-graph",  "FILE[|FORMAT]", "save the corresponding line graph to FILE", {"FORMAT":"xml"}, "graph.GetLineGraph($FILE,$FORMAT)"],
-                   ["betweenness-centrality", "VERTEX_BETWEENESS[|EDGE_BETWEENESS[|WEIGHT]]", "calculate and store the vertex and/or edge betweenness centrality",
-                    {"EDGE_BETWEENESS":"", "WEIGHT":""}, "graph.GetBetweenness($WEIGHT, $EDGE_BETWEENESS, $VERTEX_BETWEENESS)" ],
-                   ["central-point-dominance", "VERTEX_BETWEENESS[|FILE]", "calculate central point dominance, given the VERTEX_BETWEENESS vertex property",
-                    {"FILE":"-"},  "graph.GetCentralPointDominance($VERTEX_BETWEENESS)"]]
-    option_groups.append(statistics)
-
-    correlations = ["Correlations",
-                    ["average-combined-vertex-correlation",  "DEGREE1|DEGREE2[|FILE]",
-                     "get the average of DEGREE2 in function of DEGREE1. Scalar properties are also accepted as DEGREE1 or DEGREE2",
-                     {"FILE":"-"}, "graph.GetAverageCombinedVertexCorrelation($DEGREE1, $DEGREE2)"],
-                    ["vertex-correlation-histogram",  "ORIGIN_DEGREE|NEIGHBOUR_DEGREE[[|WEIGHT]|FILE]",
-                     "get the degree correlation histogram. Scalar properties are also accepted in place of *_DEGREE. An optional edge weight property can be passed by WEIGHT",
-                     {"FILE":"-", "WEIGHT":""}, "graph.GetVertexCorrelationHistogram($ORIGIN_DEGREE, $NEIGHBOUR_DEGREE, $WEIGHT)"],
-                    ["average-nearest-neighbours-correlation",  "ORIGIN_DEGREE|NEIGHBOUR_DEGREE[[|WEIGHT]|FILE]",
-                     "get the average nearest neighbours correlation. Scalar properties are also accepted in place of *_DEGREE. An optional edge weight property can be passed by WEIGHT",
-                     {"FILE":"-", "WEIGHT":""}, "graph.GetAverageNearestNeighboursCorrelation($ORIGIN_DEGREE, $NEIGHBOUR_DEGREE, $WEIGHT)"],
-                    ["edge-vertex-correlation-histogram",  "DEGREE_SOURCE|EDGE_PROP|DEGREE_TARGET[|FILE]",
-                     "get the source degree vs. edge scalar vs. target degree correlation histogram. Scalar properties are also accepted in place of DEGREE_*",
-                     {"FILE":"-"}, "graph.GetEdgeVertexCorrelationHistogram($DEGREE_SOURCE, $EDGE_PROP, $DEGREE_TARGET)"],
-                    ["assortativity-coefficient",  "DEGREE[|FILE]", "get the assortativity coefficient. Scalar properties are also accepted in place of DEGREE",
-                     {"FILE":"-"}, "graph.GetAssortativityCoefficient($DEGREE)"],
-                    ["scalar-assortativity-coefficient",  "DEGREE[|FILE]", "get the scalar assortativity coefficient. Scalar properties are also accepted in place of DEGREE",
-                     {"FILE":"-"}, "graph.GetScalarAssortativityCoefficient($DEGREE)"]]
-    option_groups.append(correlations)
-
-    clustering =  ["Clustering",
-                   ["local-clustering-coefficient",  "PROPERTY", "set the local clustering coefficient to vertex property", {},
-                    "graph.SetLocalClusteringToProperty($PROPERTY)"],
-                   ["global-clustering-coefficient",  "[FILE]", "get the global clustering coefficient", {"FILE":"-"}, "graph.GetGlobalClustering()"],
-                   ["extended-clustering-coefficient",  "PREFIX|MAX", "set the extended clustering coefficients c1 to cMAX to vertex properties PREFIX1 to PREFIXMAX", {},
-                    "graph.SetExtendedClusteringToProperty($PREFIX, $MAX)"]]
-    option_groups.append(clustering)
-
-    layout = ["Layout",
-              ["spring-block-layout",  "PROPERTY|OPTIONS", "compute the spring block layout. The positions will be stored in PROPERTY. Options are $OPTIONS_LIST",
-               {"OPTIONS": [("kw",("str[1]",True)), ("fg-grid",("str[1]",False)), ("fg-all-pairs",("str[1]",False)), ("iter",("int",1000)),
-                            ("seed",("int",int(time.time()))), ("weight",("str",""))] },
-               "graph.ComputeGraphLayoutSpringBlock($PROPERTY, $weight, $kw, $iter, $seed)"],
-              ["gursoy-atun-layout",  "PROPERTY|OPTIONS", "compute the Gursoy-Atun layout. Options are $OPTIONS_LIST",
-               {"OPTIONS": [("square",("str[1]",True)), ("circle",("str[1]",False)), ("heart",("str[1]",False)), ("iter",("int",1000)),
-                            ("seed",("int",int(time.time()))), ("weight",("str",""))] },
-               "graph.ComputeGraphLayoutGursoy($PROPERTY, $weight, $circle, $iter, $seed)" ]]
-    option_groups.append(layout)
-
-    community = [ "Community",
-                  ["community-structure",  "PROPERTY|OPTIONS", "calculate the community structure and assign it to PROPERTY. Options are: $OPTIONS_LIST",
-                   { "OPTIONS": [("g",("float",1.0)), ("N",("int",1000)), ("Tmin",("float",0.01)), ("Tmax",("float",1.0)), ("spins",("int",0)),
-                                 ("correlated",("str[1]",False)), ("uncorrelated",("str[1]",True)), ("random",("str[1]",False)), ("weight",("str","")),
-                                 ("seed",("int",int(time.time()))), ("verbose",("bool",False)), ("history",("str",""))]},
-                   ["strat_map = {'correlated':CommCorr.Correlated, 'uncorrelated':CommCorr.Uncorrelated, 'random':CommCorr.ErdosReyni}",
-                    "graph.GetCommunityStructure($g, strat_map[$correlated], $N, $Tmin, $Tmax, $spins, $seed, $verbose, $history, $weight, $PROPERTY)"]],
-                  ["modularity",  "PROPERTY[[|WEIGHT]|FILE]", "calculate the modularity, given a community partition specified by PROPERTY",
-                   {"FILE":"-", "WEIGHT":""},
-                   "graph.GetModularity($WEIGHT, $PROPERTY)" ],
-                  ["community-graph",  "PROPERTY|SIZE_PROPERTY|FILE[|FORMAT]",
-                   "obtain the graph of communities, given a community partition specified by PROPERTY. The resulting graph will have a vertex property named SIZE-PROPERTY, which will contain the size of the corresponding communities.",
-                   {"FORMAT":"auto"},
-                   ["if $FORMAT == 'auto':\n  format = ''\nelse:\n  format = $FORMAT",
-                   "graph.GetCommunityNetwork($PROPERTY, $SIZE_PROPERTY, $FILE, format)"]]]
-    option_groups.append(community)
-
-    history = ["History",
-               ["for", "INIT_EXPRESSION|CONDITION_EXPRESSION|STEP_EXPRESSION[|PREFIX_EXPRESSION]", "simplified scripting", {"PREFIX_EXPRESSION":"''"}, "None"],
-               ["history", "INIT_EXPRESSION|CONDITION_EXPRESSION|STEP_EXPRESSION[|PREFIX_EXPRESSION]", "simplified scripting (does not overwrite previous results)", {"PREFIX_EXPRESSION":"''"}, "None"],
-               ["flush-rate", "TIME", "for/history files flush rate (default 1h)", {}, "globals()['loop_io_flush_rate']=$TIME"]]
-    option_groups.append(history)
-
-    # Below are the defintion of the option classes (OptionError, SubOpt and
-    # Opt)
-
-    class SubOpt:
-        """A suboption in a command line option. This will handle mostly groups."""
-        def __init__(self, init):
-            "this will initialize the suboption with a specific list"
-            type_re = re.compile(r"([a-z]+)\[(\d+)\]")
-            match = type_re.match(init[1][0])
-            if match != None:
-                self.type = match.group(1)
-                self.group_name = int(match.group(2))
-            else:
-                self.type = init[1][0]
-                self.group_name = None
-            self.group = {}
-            self.name = init[0]
-            self.default = init[1][1]
-
+    class OptionError(Exception):
+        """Parse error in a command line option"""
+        def __init__(self, option, message):
+            self.option = option
+            self.message = message
         def __str__(self):
-            if self.default == None:
-                return self.name
-            elif self.group_name == None:
-                return "%s (default: %s)" % (self.name, str(self.default))
+            if self.option != None:
+                msg = "error parsing option --%s: %s\n\n" % (self.option.name,
+                                                             self.message)
+                help =  "--%s=%s\n" % (self.option.name,
+                                       self.option.get_metavars())
+                wrapper = textwrap.TextWrapper(initial_indent = " "*3,
+                                               subsequent_indent =  " "*3,
+                                               width = getheightwidth()[1])
+                msg += help + wrapper.fill(self.option.get_help())
             else:
-                if self.default == True:
-                    return self.name + " (default)"
+                msg = self.message
+            return msg
+
+    class OptionMask:
+        """This class masks a function as command line option. The idea is that
+        something like:
+            --foo="baz|gnat|7.0||bar=42, opt='abc'"
+        should be translated to:
+            foo("baz", "gnat", 7.0, None, bar=42, opt='abc')
+
+        The argument types should be deduced from the default arguments values.
+        In general, there are two types of option values: positional (separated
+        by '|') and sub-options (separated by ', '). Sub-options always come
+        after all other positional arguments, and are themselves, as a whole, a
+        positional argument. A positional argument is considered optional if it
+        has a default value in the underlying function. Suboptions are
+        identified by the 'first_subopt' attribute, which, if existent, tells
+        which of the function parameters correspond to the start of the
+        sub-options. If the function returns a value (has a 'has_output'
+        attribute), an optional 'file' option is appended to its option list, so
+        it can be redirected to a file.
+        """
+
+        def __init__(self, func):
+            self.func = func
+            self.name = func.__name__.replace("_", "-")
+
+            arg_spec = inspect.getargspec(func)
+
+            if func.__class__ == types.MethodType:
+                args = arg_spec[0][1:] # bound methods always have a spurious
+                                       # first argument called 'self'
+            else:
+                args = arg_spec[0]
+            defaults = arg_spec[3]
+            self.args = args
+
+            if defaults != None:
+                self.defaults = dict([ (args[-i], defaults[-i]) \
+                                       for i in xrange(1, len(defaults)+1) ])
+            else:
+                self.defaults = {}
+
+            if func.func_dict.has_key("first_subopt"):
+                first_subopt = func.func_dict["first_subopt"]
+                self.positional = args[0:args.index(first_subopt)]
+                self.subopts = args[args.index(first_subopt):]
+            else:
+                self.positional = args
+                self.subopts = None
+
+            self.has_output = func.func_dict.get("has_output", False)
+            if self.has_output:
+                self.output_file = None
+
+        def get_metavars(self):
+            """This returns the meta-variables string, ex: [foo]|bar|[baz] """
+            metavars = []
+            for arg in self.positional:
+                if self.defaults.has_key(arg):
+                    metavars.append("[%s]" % arg)
                 else:
-                    return self.name
+                    metavars.append(arg)
+            if self.subopts != None:
+                metavars.append("[options]")
+            if self.has_output:
+                metavars.append("[output_file]")
+            return "|".join(metavars) if len(metavars) > 0 else None
 
-    class Opt:
-        """This class represents a command line option. It understands
-        multiple  arguments, separated  by  '|', as  specified by  the
-        meta-variables (self.metavars), as  well as optional arguments
-        (enclosed  by '[]'),  which can  be recursevly  optional.  The
-        parse()  method will  parse  a given  argument  string into  a
-        dictionary, containing the parsed  value of each metavar. This
-        later can  be used to interpolate the  self.action field, with
-        the run()  method, which will  activate the proper  action for
-        the option. It also  understands suboptions, which is a series
-        of  'subopt=value' strings, separated  by commas,  with option
-        grouping and type-checking."""
-
-        def __init__(self, init):
-            """This will initialize the option with a specific list"""
-            self.name = init[0]
-            self.metavars = init[1]
-            self.help = init[2]
-            self.params = init[3]
-            self.action = init[4]
-            self.groups = {}
-
-            # Build sub-option list, if necessary
-            if self.params.has_key("OPTIONS"):
-                self.suboptions = [SubOpt(x) for x in self.params["OPTIONS"]]
-                self.help = self.help.replace("$OPTIONS_LIST", ", ".join([str(x) for x in self.suboptions]))
-                self.suboptions = dict([(x.name,x) for x in self.suboptions])
-
-                # Handle groups
-                for opt in self.suboptions.values():
-                    if opt.group_name != None:
-                        if not self.groups.has_key(opt.group_name):
-                            self.groups[opt.group_name] = [[opt.name], opt.name]
+        def get_help(self):
+            """This returns the option's help string"""
+            if self.subopts != None:
+                opts = []
+                for o in self.subopts:
+                    if self.defaults.has_key(o):
+                        if self.defaults[o].__class__ == str:
+                            opts.append(o + " (default: '%s')" % \
+                                        self.defaults[o])
                         else:
-                            self.groups[opt.group_name][0].append(opt.name)
-                            if opt.default == True:
-                                self.groups[opt.group_name][1] = opt.name
-                        opt.group = self.groups[opt.group_name][0]
-
-        def unquote(self, string):
-            """ This will unquote a string, if quoted"""
-            quote_re = re.compile(r"('(.*)')|(\"(.*)\")")
-            m = quote_re.match(string)
-            if m != None:
-                if m.group(2) != "":
-                    return m.group(2)
-                else:
-                    return m.group(4)
+                            opts.append(o + " (default: %s)" % \
+                                        str(self.defaults[o]))
+                    else:
+                        opts.append(o)
+                opts = " Options are: " + ", ".join(opts)
             else:
-                return string
+                opts = ""
+            return inspect.getdoc(self.func).replace("\n", " ")  + opts
 
-        def parse(self, args):
-            """This method  will parse a given argument  string into a
-            dictionary,   containing   the   parsed  value   of   each
-            metavar. The  dictionary will  also contain the  values of
-            any eventual suboption."""
-
-            if self.metavars == None:
-                return
-
+        def parse(self, arg, dry_run=False):
+            """this parses the command line argument in 'arg' and calls the
+            underlying function"""
             # Parameter regexp
             p = re.compile(r"((('[^']*')|(\"[^\"']*\"))|([^\|]+)|(^(?=[^$]))(?=\||$))")
-            values = [x[0].strip() for x in p.findall(args)]
+            values = [x[0].strip() for x in p.findall(arg)]
 
-            # Match each value to its metavar, by finding the best match in the
-            # 'optional-tree'
-            optional_re = re.compile(r"\[([^][]*)\]")
-            bracket_re = re.compile(r"[][]")
-            metavars = self.metavars
-            mvar_list = [x[0].strip() for x in p.findall(bracket_re.sub("", metavars))]
-            while len(mvar_list) != len(values) and "[" in metavars:
-                metavars = optional_re.sub(r"", metavars)
-                mvar_list = [x[0].strip() for x in p.findall(bracket_re.sub("", metavars))]
+            n_min = len([x for x in self.positional \
+                         if not self.defaults.has_key(x)])
+            n_max = len(self.positional)
+            if self.subopts != None:
+                n_max += 1
+            if self.has_output:
+                n_max += 1
 
-            if len(mvar_list) != len(values):
-                opt_re = re.compile(r"\[.*\]")
-                min_args = len([x[0].strip() for x in p.findall(opt_re.sub(r"", self.metavars))])
-                max_args = len([x[0].strip() for x in p.findall(bracket_re.sub(r"", self.metavars))])
-                if min_args != max_args:
-                    raise OptionError(self, "invalid number of arguments, %d (expected between %d and %d)" % (len(values), min_args, max_args))
+            if len(values) > n_max or len(values) < n_min:
+                if n_min != n_max:
+                    expected = "between %d and %d" % (n_min, n_max)
                 else:
-                    raise OptionError(self, "invalid number of arguments, %d (expected %d)" % (len(values), min_args))
+                    expected = str(n_min)
+                raise OptionError(self, "invalid number of arguments: %d" % \
+                                  len(values) +" (expected %s)" % expected)
 
-            # Put in the default values
-            parsed_mvars = self.params.copy()
-            if parsed_mvars.has_key("OPTIONS"):
-                parsed_mvars["OPTIONS"] = dict([ (k, v.default) for k,v in self.suboptions.iteritems() if v.default != None and v.group_name == None])
-
-            # Do the parsing
-            for i in xrange(0, len(values)):
-                mvar = mvar_list[i]
-                value = values[i]
-
-                if "DEGREE" in mvar:
-                    parsed_mvars[mvar] = degree(value)
-                elif mvar == "MAX":
-                    try:
-                        parsed_mvars[mvar] = int(value)
-                    except ValueError:
-                        raise OptionError(self, "invalid value for '%s': %s (expected an int)" % (mvar, value))
-                elif "FILE" in mvar:
-                    parsed_mvars[mvar] = os.path.expanduser(value)
-                elif mvar == "OPTIONS":
-                    subopts = {}
-                    groups = {}
-
-                    # Default suboption values
-                    subopt_list = parsed_mvars[mvar]
-
-                    # Parse suboptions
-                    p = re.compile(r"([^,'\"]+|[^,]+'[^']*'|[^,]+\"[^\"]*\")(?:,|$)")
-                    subopt_list.update(dict([ (x.split("=",1)[0].strip(),x.split("=",1)[1].strip()) for x in p.findall(value) if "=" in x]))
-                    subopt_list.update(dict([ (x.strip(),None) for x in p.findall(value) if "=" not in x]))
-                    subopt_context = {}
-                    for name,value in subopt_list.iteritems():
-                        if not self.suboptions.has_key(name):
-                            raise OptionError(self, "invalid option: " + name)
-                        opt = self.suboptions[name]
-
-                        # Handle suboption grouping
-                        if opt.group_name != None:
-                            if value != False:
-                                if groups.has_key(opt.group_name):
-                                    raise OptionError(self, "cannot specify '%s' and '%s' simultaneously " % (name, groups[opt.group_name]) )
-                                groups[opt.group_name] = name
-                                self.groups[opt.group_name][1] = name
-                            continue
-
-                        if value == None and opt.type != "bool":
-                            raise OptionError(self, "you must specify a value for '%s'" % name)
-                        if value.__class__ == str and opt.type != "str":
-                            value = self.unquote(value)
+            # parse suboptions
+            subopt_list = {}
+            if self.subopts != None and len(values) > len(self.positional):
+                p = re.compile(r"([^, '\"]+|[^, ]+'[^']*'|[^, ]+\"[^\"]*\")(?:, |$)")
+                subopt_list = dict([ (x.split("=", 1)[0].strip(),
+                                      x.split("=", 1)[1].strip()) \
+                                     for x in p.findall(values[-1]) \
+                                     if "=" in x])
+                for k, v in subopt_list.iteritems():
+                    if self.defaults.has_key(k):
                         try:
-                            if value == None:
-                                if opt.type == "bool":
-                                    value = True
-                                else:
-                                    value = eval("%s('%s')" % (opt.type, value))
-                            elif opt.type == "exp":
-                                try:
-                                    value = eval_expr(value, subopt_context)
-                                    subopt_context[opt.name] = value
-                                except:
-                                    (file_name, line, function, text) = traceback.extract_tb(sys.exc_info()[2])[-1]
-                                    raise OptionError(self, "suboption %s: error evaluating expression \"%s\": %s \n%s" % \
-                                                      (opt.name, value, sys.exc_info()[1], "[traceback: File %s, line %d, in %s (text: %s)]" % \
-                                                       (file_name, line, function, str(text))))
-                            elif value.__class__ == str:
-                                if opt.type == "bool":
-                                    value = eval(value)
-                                else:
-                                    value = eval("%s('%s')" % (opt.type, self.unquote(value)))
-                        except ValueError:
-                            raise OptionError(self, "invalid value for '%s': %s (expected %s)" % (opt.name, value, opt.type))
-                        subopts[opt.name] = value
-                    # Handle value for groups
-                    for g in self.groups.values():
-                        for opt_name in g[0]:
-                            opt = self.suboptions[opt_name]
-                            if opt.type == "bool":
-                                if g[1] == opt.name:
-                                    subopts[opt.name] = True
-                                else:
-                                    subopts[opt.name] = False
-                            else:
-                                subopts[opt.name] = g[1]
-                    parsed_mvars[mvar] = subopts
-                elif "EXPRESSION" in mvar:
-                    try:
-                        context = {}
-                        value = (eval_expr(value, context), context)
-                    except:
-                        (file_name, line, function, text) = traceback.extract_tb(sys.exc_info()[2])[-1]
-                        raise OptionError(self, "error evaluating expression \"%s\": %s \n%s" % \
-                                          (value, sys.exc_info()[1], "[traceback: File %s, line %d, in %s (text: %s)]" % \
-                                                                     (file_name, line, function, str(text))))
-                    parsed_mvars[mvar] = value
-                elif mvar == "TIME":
-                    r = re.compile(r"(.*)(s|m|h|d|y)")
-                    m = r.match(value)
-                    if m != None:
-                        try:
-                            time = float(m.group(1))
-                        except ValueError:
-                            raise OptionError(self, "invalid value for TIME: %s" % value)
-                    if m.group(2) == "m":
-                        time *= 60
-                    if m.group(2) == "h":
-                        time *= 60*60
-                    if m.group(2) == "d":
-                        time *= 60*60*24
-                    if m.group(2) == "d":
-                        time *= 60*60*24*365
-                    parsed_mvars[mvar] = time
-                elif "RANGE" in mvar:
-                    try:
-                        rcomp = re.compile(r"(>|<|>=|<=|==|=)\s*([^=]+)")
-                        rrange = re.compile(r"([^\*]+)(\*?)\s+([^\*]+)(\*?)")
-                        if rcomp.match(value):
-                            comp = rcomp.match(value).group(1)
-                            thres = rcomp.match(value).group(2)
-                            thres = float(thres)
-                            if "<" in comp:
-                                ran = (float('-Inf'), thres)
-                                if "=" in comp:
-                                    inc = (False, True)
-                                else:
-                                    inc = (False, False)
-                            elif ">" in comp:
-                                ran = (thres, float('Inf'))
-                                if "=" in comp:
-                                    inc = (True, False)
-                                else:
-                                    inc = (False, False)
-                            elif comp == "==" or  comp == "=" :
-                                ran = (thres, thres)
-                                inc = (True, True)
-                        elif rrange.match(value):
-                            m = rrange.match(value)
-                            r1 = float(m.group(1))
-                            i1 = "*" in m.group(2)
-                            r2 = float(m.group(3))
-                            i2 = "*" in m.group(4)
-                            ran = (r1,r2)
-                            inc = (i1,i2)
-                        else:
-                            raise ValueError
-                    except ValueError:
-                        raise OptionError(self, "invalid value for RANGE: " + value)
-                    parsed_mvars[mvar] = (ran, inc)
-                else:
-                    parsed_mvars[mvar] = value
-            return parsed_mvars
-
-        def run(self, args):
-            """This will interpolate the self.action field with the parsed
-            values, and run the proper action for the option"""
-
-            parsed_mvars = self.parse(args)
-            globals()['parsed_mvars'] = parsed_mvars
-            subst_list = {}
-
-            if parsed_mvars != None:
-                for mvar in parsed_mvars.keys():
-                    subst_list[mvar] = "parsed_mvars['%s']" % mvar
-                    if mvar == "OPTIONS":
-                        for k,v in parsed_mvars[mvar].iteritems():
-                            subst_list[k] = "parsed_mvars['OPTIONS']['%s']" % k
-
-            if self.action.__class__ == list:
-                for a in self.action[:-1]:
-                    action = string.Template(a).substitute(subst_list)
-                    exec action in globals()
-                action = self.action[-1]
-            else:
-                action = self.action
-
-            action = string.Template(action).substitute(subst_list)
-            retval = eval(action, globals())
-            del globals()['parsed_mvars']
-            return retval
-
-    # Setup 'optparse' and load it with all the options
-    prog_info = mod_info()
-    version_string = "%s %s\nWritten by %s\n\n%s" % (prog_info.name, prog_info.version, \
-                                                     prog_info.author,prog_info.copyright)
-
-    # The option parser
-    class MyOptionParser(optparse.OptionParser):
-        def error(self, error):
-            raise ParserError(error)
-    parser = MyOptionParser(usage="%s [options]" % sys.argv[0], version=version_string,
-                            formatter=optparse.IndentedHelpFormatter(max_help_position=getheightwidth()[1]/2,
-                                                                     width=getheightwidth()[1]))
-
-    option_list = []
-
-    def push_option(option, opt_str, value, parser, opt=None):
-        try:
-            opt.parse(value)
-        except OptionError, e:
-            parser.error(str(e))
-        option_list.append((opt, value))
-
-    options = {}
-    # Populate the option parser
-    for group in option_groups:
-        g = parser.add_option_group(group[0])
-        for opt in group[1:]:
-            option = Opt(opt)
-            if option.metavars != None:
-                g.add_option("--%s" % option.name, action="callback", callback=push_option, callback_kwargs={"opt":option},
-                             metavar=option.metavars, type="string", help=option.help)
-            else:
-                g.add_option("--%s" % option.name, action="callback", callback=push_option, callback_kwargs={"opt":option},
-                             help=option.help)
-            options[option.name] = option
-
-    # Support bashcompletion, with the optcomplete module. See
-    # http://furius.ca/optcomplete for details.
-    try:
-        import optcomplete
-        optcomplete.autocomplete(parser)
-    except ImportError:
-        pass
-
-    # A hack to  allow optional option arguments. We'll  just append a
-    # '=' to options  with arguments and have been  supplied with zero
-    # arguments.
-    args = []
-    for i in xrange(0, len(arguments)):
-        a = arguments[i]
-        if i < len(arguments) - 1:
-            n = arguments[i+1] # next parameter
-        else:
-            n = a
-        if options.has_key(a[2:]):
-            option = options[a[2:]]
-            if option.metavars != None and n.startswith("--"):
-                args.append(a + "=")
-            else:
-                args.append(a)
-        else:
-            args.append(a)
-
-    # Do the actual parsing
-    (opt_val, args) =  parser.parse_args(args)
-    if len(args) > 0:
-        parser.error("invalid arguments: " + " ".join(args))
-    return (option_list, options)
-
-# Below are some utility functions for the command-line parsing
-
-def degree(name):
-    """This will retrieve the degree type from string"""
-    deg = name
-    if name == "in-degree" or name == "in":
-        deg = Degree.In
-    if name == "out-degree" or name == "out":
-        deg = Degree.Out
-    if name == "total-degree" or name == "total":
-        deg = Degree.Total
-    return deg
-
-def get_mean(hist):
-    """ This will get the mean, and the standard deviation fo the mean, for a
-    given histogram."""
-    avg, dev, count = 0.0, 0.0, 0.0
-    try:
-        for k,v in hist.iteritems():
-            avg += k*v
-            count += v
-        avg /= count
-        for k,v in hist.iteritems():
-            dev += (k - avg)**2
-        dev = math.sqrt(dev/(count**2))
-    except ZeroDivisionError:
-        avg = dev = float("nan") # nans are ok, since graph can be empty
-    return (avg,dev)
-
-def open_file(name, mode="w", suffix=""):
-    """Open the file correctly, acording to its filename"""
-    if name == "-":
-        if mode == "r":
-            return sys.stdin
-        else:
-            return sys.stdout
-    if name.endswith("bz2"):
-        return bz2.BZ2File(name + suffix, mode)
-    if name.endswith("gz"):
-        return gzip.GzipFile(name + suffix, mode)
-    return file(name + suffix, mode)
-
-def eval_expr(expr, vars=dict()):
-    """Evaluats a  given python  expression into a  callable function,
-    which returns the  evaluation of the last statement."""
-
-    import random
-    vars.update(dict([(x,eval("random."+x)) for x in dir(random) if not x.startswith("_")]))
-    import math
-    vars.update(dict([(x,eval("math."+x)) for x in dir(math) if not x.startswith("_")]))
-
-    # Load some specific functions form scipy if available (and only on demand)
-    try:
-        if 'gamaincc' in expr:
-            from scipy.special import gammaincc
-            vars['gamaincc'] = gammaincc
-        if 'fsolve' in expr:
-            from scipy.optimize import fsolve
-            vars['fsolve'] = fsolve
-    except ImportError:
-        pass
-
-    # Some other predefined functions
-    def inv_poisson(p,m):
-        from scipy.optimize import fsolve
-        from scipy.special import gammaincc
-        """returns the inverse of the poisson distribution, with average m"""
-        return int(round(fsolve(lambda k,l: gammaincc(k,l)-p, m, (m))-0.5+1e-15)) # FIXME: the 1e-15 constant hack is ugly
-    vars["inv_poisson"] = inv_poisson
-
-    def inv_exponential(p,m):
-        """returns the inverse of the discrete exponential distibution, with average m"""
-        return int(round(log(1-p)/log(float(m)/(m+1))-0.5+1e-15)) # FIXME: the 1e-15 constant hack is ugly
-    vars["inv_exponential"] = inv_exponential
-
-    def inv_power_law(p,b):
-        """returns the inverse of the power-law distibution, with exponent b"""
-        return int(round((1-p)**(-1/(b-1)) - 1))
-    vars["inv_power_law"] = inv_power_law
-
-    # Evaluate all statements
-    r = re.compile(r"((('[^']*')|(\"[^\"']*\"))|([^;]+)(?=;|$))")
-    statements = [x[0].strip() for x in r.findall(expr)]
-    file_re = re.compile(r"^import:(.*)")
-    external_contex_re = re.compile(r"^ext:(.*)")
-    for s in statements[:-1]:
-        m = file_re.match(s)
-        mext = external_contex_re.match(s)
-        if m != None:
-            # Import code from file
-            file_name = os.path.expanduser(m.group(1))
-            exec open_file(file_name.strip(), mode="r") in vars
-        elif mext != None:
-            # Import external context
-            vars.update(external_context[mext.group(1)])
-        else:
-            exec s in vars
-
-    # Last statement must be returned as a function
-    last = statements[-1].strip()
-    if last.startswith("lambda ") or last.startswith("lambda:") or last in vars:
-        return eval(last, vars)
-    else:
-        return eval("lambda: " + last, vars)
-
-def edit_function_wrap(type, exp):
-    """This will properly wrap a given edit expression/function"""
-    vars = exp[1]
-    func = exp[0]
-    if type == "vertex":
-        desc = "v"
-    elif type == "edge":
-        desc = "e"
-    else:
-        desc = "g"
-    nargs = len(inspect.getargspec(func)[0])
-    if inspect.getargspec(func)[3] != None:
-        nargs -= len(inspect.getargspec(func)[3])
-    if nargs > 0:
-        vars['__edit_func'] = func
-        if desc != "g":
-            func = eval("lambda: __edit_func(%s, g)" % desc, vars, vars)
-        else:
-            func = eval("lambda: __edit_func(%s)" % desc, vars, vars)
-    return (func,vars)
-
-def print_result(retval, file=sys.stdout, prefix=""):
-    """This will print a given result, according to its type"""
-    if retval.__class__ == dict:
-        keys = retval.keys()
-        keys.sort()
-        for k in keys:
-            if k.__class__ == tuple or k.__class__ == list:
-                print >> file, "%s%s" % (prefix," \t".join(["%.20g" % x for x in k])),
-            else:
-                print >> file, "%s%.20g" % (prefix, k),
-            if retval[k].__class__ == tuple or retval[k].__class__ == list:
-                print >> file, " \t", " \t".join(["%.20g" % x for x in retval[k]])
-            else:
-                print >> file, " \t%.20g" % retval[k]
-    else:
-        if retval.__class__ == list or retval.__class__ == tuple:
-            print >> file, "%s%s" % (prefix," \t".join(["%.20g" % x for x in retval]))
-        else:
-            print >> file, "%s%.20g" % (prefix, retval)
-    if hasattr(file,'flush'):
-        file.flush()
-
-class RunError:
-    """ Error raised during option run"""
-    def __init__(self, option, value, error):
-        self.option = option
-        self.value = value
-        self.error = error
-    def __str__(self):
-        return "error during evaluation of command --%s=%s: %s" % (self.option.name, self.value, self.error)
-
-def run(arguments, output_prefix="", file_suffix="", file_list=[], return_first = False):
-    """ This will parse the options and run the specified actions."""
-    option_list = parse_options(arguments)[0]
-    for opt in option_list:
-        # Run the option itself, and report on any error
-        try:
-            retval = opt[0].run(opt[1])
-            if retval != None and return_first:
-                return retval
-        except (ParserError, OptionError, IOError, RuntimeError, TypeError), e:
-            raise RunError(opt[0], opt[1], e)
-        except:
-            (file_name, line, function, text) = traceback.extract_tb(sys.exc_info()[2])[-1]
-            raise RunError(opt[0], opt[1], "unknown error: " + str(sys.exc_info()[1]) +
-                           "\n[traceback: File %s, line %d, in %s (text: %s)]" % (file_name, line, function, str(text)))
-
-        # if there is a return value, store it or display it properly
-        if retval != None:
-            parsed_opt = opt[0].parse(opt[1])
-            if parsed_opt.has_key("FILE"):
-                if parsed_opt["FILE"] == "-":
-                    if len(parsed_opt) > 0 and not (len(parsed_opt) == 1 and parsed_opt.has_key("FILE")):
-                        parms = opt[0].metavars.replace("[","").replace("]","").split("|")
-                        if parsed_opt.has_key("OPTIONS"):
-                            parsed_opt["OPTIONS"] = "[%s]" % ", ".join(["%s=%s" % (k,v) for k,v in parsed_opt["OPTIONS"].iteritems() if v.__class__ != str]+
-                                                                       ["%s='%s'" % (k,v) for k,v in parsed_opt["OPTIONS"].iteritems() if v.__class__ == str])
-                        parms = [ "%s: %s" % (k,parsed_opt[k]) for k in parms if parsed_opt[k] != "" and k != "FILE"] +\
-                                [ "%s: None" % k for k in parms if parsed_opt[k] == "" and k != "FILE"]
-                        print "# %s (%s)" % (opt[0].name.replace("-"," "), ", ".join(parms))
+                            vtype = self.defaults[k].__class__
+                            subopt_list[k] = vtype(v)
+                        except ValueError, e:
+                            raise OptionError(self,
+                                              "invalid value for option" + \
+                                              " '%s': %s (%s)" % (k, v, str(e)))
                     else:
-                        print "# %s" % opt[0].name.replace("-"," ")
+                        raise OptionError(self, "invalid option: %s" % k)
+                bool_list = dict([ (x.strip(), True) \
+                                   for x in p.findall(values[-1]) \
+                                   if "=" not in x])
+                for k in bool_list.keys():
+                    if self.defaults.has_key(k):
+                        if self.defaults[k].__class__ != bool:
+                            raise OptionError(self, "option '%s' " % k +
+                                              "requires an argument")
+                    else:
+                        raise OptionError(self, "invalid option: %s" % k)
+                subopt_list.update(bool_list)
+
+            # setup args and call function
+            args = values
+            if len(args) - len(self.positional) == 2:
+                self.output_file = args.pop()
+                args.pop() # suboptions
+            elif len(args) - len(self.positional) == 1:
+                if self.subopts != None:
+                    args.pop()
+                else:
+                    self.output_file = args.pop()
+
+            args = tuple(args)
+            if not dry_run:
+                if len(subopt_list) > 0:
+                    return self.func(*args, **subopt_list)
+                else:
+                    return self.func(*args)
+
+    def populate_options(graph, parsed_options):
+        """This function will take an instance of a Graph class and populate the
+        command line option parser with its methods, and will return a tuple
+        with the parser, and the list of options. Later, during the actual
+        parsing, the parsed_options list will keep each option which was found
+        in the command line, together with its value, after being parsed"""
+
+        # We will take 'graph', which is an instance of a Graph class, and
+        # collect all its appropriate methods as command line options. They will
+        # be put in a list of groups, where each group itself is a list where
+        # the first element is the name and the others are the options, which
+        # point to the corresponding method in the Graph class, through an
+        # instance of an OptionMask class.
+
+        option_groups = [ [x] for x in Graph._Graph__groups ]
+        functions = [ getattr(graph, f) for f in dir(graph) ]
+        functions = [ f for f in functions if callable(f) and \
+                      f.func_dict.has_key("opt_group") ]
+        for g in option_groups:
+            g.extend([OptionMask(f) for f in functions \
+                      if f.func_dict["opt_group"] == g[0]])
+
+        # Setup 'optparse' and load it with all the options
+        prog_info = libgraph_tool.mod_info()
+        version_string = "%s %s\nWritten by %s\n\n%s" % (prog_info.name,
+                                                         prog_info.version,
+                                                         prog_info.author,
+                                                         prog_info.copyright)
+
+        # The option parser
+        class MyOptionParser(optparse.OptionParser):
+            def error(self, error):
+                raise OptionError(None, error)
+        (height, width) = getheightwidth()
+        fmtr = optparse.IndentedHelpFormatter(max_help_position=width/2,
+                                              width=width)
+        parser = MyOptionParser(usage="%s [options]" % sys.argv[0],
+                                version=version_string,
+                                formatter=fmtr)
+
+        # the parsed_options list will keep each option which was found in the
+        # command line, together with its value, after being parsed
+        def push_option(option, opt_str, value, parser, opt=None,
+                        option_list=None):
+            "pushes the option into the option list"
+            try:
+                opt.parse(value, dry_run=True)
+            except OptionError, e:
+                parser.error(str(e))
+            option_list.append((opt, value))
+
+        # Populate the option parser
+        options = {} # maps each option by name
+        for group in option_groups:
+            g = parser.add_option_group(group[0])
+            for option in group[1:]:
+                if option.get_metavars() != None:
+                    g.add_option("--%s" % option.name, action="callback",
+                                 callback=push_option,
+                                 callback_kwargs={"opt":option,
+                                                  "option_list":parsed_options},
+                                 metavar=option.get_metavars(), type="string",
+                                 help=option.get_help())
+                else:
+                    g.add_option("--%s" % option.name, action="callback",
+                                 callback=push_option,
+                                 callback_kwargs={"opt":option,
+                                                  "option_list":parsed_options},
+                                 help=option.get_help())
+                options[option.name] = option
+
+        # add --for option
+        g = parser.add_option_group("Scripting")
+        g.add_option("--for", dest="for_arg",
+                     metavar="init_expr|cond_expr|step_expr|[prefix_expr]",
+                     type="string", help="simplified scripting")
+
+        # build option list
+        options = []
+        for g in option_groups:
+            for o in g[1:]:
+                options.append(o)
+
+        return (parser, options)
+
+    def print_result(retval, file=sys.stdout, prefix=""):
+        """This will print a given result, according to its type. It will also
+        prefix each line with 'prefix'"""
+        if retval.__class__ == dict:
+            keys = retval.keys()
+            keys.sort()
+            for k in keys:
+                if k.__class__ == tuple or k.__class__ == list:
+                    print >> file, "%s%s" % (prefix, " \t".join(["%.20g" % x \
+                                                                 for x in k])),
+                else:
+                    print >> file, "%s%.20g" % (prefix, k),
+                if retval[k].__class__ == tuple or retval[k].__class__ == list:
+                    print >> file, " \t", " \t".join(["%.20g" % x for x\
+                                                      in retval[k]])
+                else:
+                    print >> file, " \t%.20g" % retval[k]
+        else:
+            if retval.__class__ == list or retval.__class__ == tuple:
+                print >> file, "%s%s" % (prefix, " \t".join(["%.20g" % x \
+                                                             for x in retval]))
+            else:
+                print >> file, "%s%.20g" % (prefix, retval)
+        if hasattr(file, 'flush'):
+            file.flush()
+
+    class RunError(Exception):
+        """Error raised during option run"""
+        def __init__(self, option, value, message):
+            self.option = option
+            self.value = value
+            self.message = message
+        def __str__(self):
+            return "error during evaluation of command --%s=%s: %s" % \
+                   (self.option.name, self.value, self.message)
+
+    def run(option_list, output_prefix=""):
+        """This will parse the options and run the specified actions."""
+        for opt in option_list:
+            # Run the option itself, and report on any error
+            try:
+                retval = opt[0].parse(opt[1])
+            except (GraphError, OptionError, IOError, TypeError, ValueError), e:
+                raise RunError(opt[0], opt[1], str(e))
+
+            # if there is a return value, store it or display it properly
+            if retval != None:
+                output_file = opt[0].output_file
+                if output_file == "-" or output_file == None:
+                    if opt[1] != "":
+                        print "# %s (%s)" % (opt[0].name.replace("-", " "),
+                                             opt[1])
+                    else:
+                        print "# %s" % opt[0].name.replace("-", " ")
                     print_result(retval, prefix=output_prefix)
                     print
                 else:
-                    print_result(retval, open_file(parsed_opt["FILE"], suffix = file_suffix), prefix = output_prefix)
-                    file_list.append(parsed_opt["FILE"])
+                    print_result(retval,
+                                 _open_file(output_file,
+                                            mode = "w" if output_prefix == "" \
+                                                    else "a"),
+                                 prefix=output_prefix)
+
+    def run_loop(expr, arguments, parsed_options):
+        """This will loop through the loop specification given by the arguments,
+        parse the options and run the specified actions."""
+
+        class LoopTemplate(string.Template):
+            delimiter = "%"
+        try:
+            p = re.compile(r"((('[^']*')|(\"[^\"']*\"))|([^\|]+)|(^(?=[^$]))(?=\||$))")
+            loop_args = [x[0].strip() for x in p.findall(expr)]
+            if len(loop_args) not in range(3,5):
+                raise RunError("for", expr, "invalid loop specification")
+
+            loop_vars = dict()
+            _eval_expr(loop_args[0] + "; None", loop_vars)
+            cond_expr = loop_args[1]
+            step_expr = loop_args[2]
+            if len(loop_args) > 3:
+                prefix_expr = loop_args[3]
             else:
-                raise RunError(opt[0], opt[1], "bug: command returned a value and there's no FILE metavar.")
+                prefix_expr = "''"
+            while eval(cond_expr, loop_vars):
+                args = []
+                for arg in arguments:
+                    try:
+                        args.append(LoopTemplate(arg).substitute(loop_vars))
+                    except KeyError, e:
+                        raise RunError("for", expr,
+                                       "key %s not found at '%s'" % (e, arg))
+                prefix = eval(prefix_expr, loop_vars)
+                if prefix.__class__ != str:
+                    prefix = "%.20g\t " % prefix
 
-def run_loop(arguments):
-    """ This  will loop  through the loop  specification given  by the
-    arguments, parse the options and run the specified actions."""
+                # parse the command line
+                while len(parsed_options) > 0:
+                    parsed_options.pop()
+                (opt_val, pargs) =  parser.parse_args(args)
+                if len(pargs) > 0:
+                    parser.error("invalid arguments: " + " ".join(pargs))
 
-    class LoopTemplate(string.Template):
-        delimiter = "%"
-    file_list = []
-    last_update = time.time()
-    if not globals().has_key("loop_io_flush_rate"):
-        globals()["loop_io_flush_rate"] = 3600
-    temp_suffix = "___temp"
-    def move_files(file_list, temp_suffix, option_list):
-        for f in file_list:
-            if os.path.exists(f + temp_suffix):
-                try:
-                    shutil.move(f + temp_suffix, f)
-                except:
-                    raise RunError(option_list[0][0], option_list[0][1], "error moving file '%s' to '%s': %s" % (f + temp_suffix, f, e))
-        file_list = []
-    option_list = parse_options(arguments[:1])[0]
+                run(parsed_options, prefix)
 
-    if len(option_list) == 0:
-        return
+                exec step_expr in loop_vars
+        except SyntaxError, e:
+            raise RunError("for", expr, "error evaluating loop: " % e)
 
+    # Do the actual parsing.
     try:
-        loop_args = option_list[0][0].parse(option_list[0][1])
-        loop_vars = dict()
-        eval_expr(loop_args["INIT_EXPRESSION"] + "; None", loop_vars)
-        while eval(loop_args["CONDITION_EXPRESSION"], loop_vars):
-            args = []
-            for arg in arguments[1:]:
-                try:
-                    args.append(LoopTemplate(arg).substitute(loop_vars))
-                except KeyError, e:
-                    raise RunError(option_list[0][0], option_list[0][1], "key %s not found at '%s'" % (e, arg))
-            prefix = eval(loop_args["PREFIX_EXPRESSION"], loop_vars)
-            if prefix.__class__ != str:
-                prefix = "%.20g\t " % prefix
-            run(args, output_prefix = prefix, file_suffix = temp_suffix, file_list = file_list)
-            if time.time() - last_update >= loop_io_flush_rate:
-                move_files(file_list, temp_suffix)
-            exec loop_args["STEP_EXPRESSION"] in loop_vars
-        move_files(file_list, temp_suffix)
-    except SyntaxError, e:
-        raise RunError(option_list[0][0], option_list[0][1], "error evaluating loop: " % e)
+        g = Graph() # the one and only graph
 
+        # initialize internal signal handling
+        g._Graph__graph.InitSignalHandling()
 
-def main():
-    try:
-        globals()['graph'] = GraphInterface()
-        # signal handling
-        graph.InitSignalHandling()
+        parsed_options = []
+        (parser, option_list) = populate_options(g, parsed_options)
 
-        normal_args, hist_args = [], []
-        args = normal_args
-        for arg in sys.argv[1:]:
-            args.append(arg)
-            if arg.startswith("--for") or arg.startswith("--history"):
-                args = hist_args
-                args.append(arg)
-        run(normal_args)
-        run_loop(hist_args)
-    except RunError,e:
+        # A hack to allow optional option arguments. We'll just append a '=' to
+        # options with arguments and have been supplied with zero arguments.
+        arguments = sys.argv[1:]
+        args = []
+        opt_names = [o.name for o in option_list]
+        for i in xrange(0, len(arguments)):
+            a = arguments[i]
+            if i < len(arguments) - 1:
+                n = arguments[i+1] # next parameter
+            else:
+                n = a
+            if a[2:] in opt_names:
+                option = option_list[opt_names.index(a[2:])]
+                if (option.get_metavars() != None or option.has_output) and \
+                       n.startswith("--"):
+                    args.append(a + "=")
+                else:
+                    args.append(a)
+            else:
+                args.append(a)
+
+        # Support bashcompletion, with the optcomplete module. See
+        # http://furius.ca/optcomplete for details.
+        try:
+            import optcomplete
+            optcomplete.autocomplete(parser)
+        except ImportError:
+            pass
+
+        # separate "normal" args from args after the "--for" option
+        normal_args, for_args = [], []
+        arg_list = normal_args
+        for arg in args:
+            arg_list.append(arg)
+            if arg.startswith("--for"):
+                arg_list = for_args
+
+        # parse the command line
+        (opt_val, pargs) = parser.parse_args(normal_args)
+        if len(pargs) > 0:
+            parser.error("invalid arguments: " + " ".join(pargs))
+
+        # execute the options
+        run(parsed_options)
+
+        if opt_val.for_arg != None:
+            run_loop(opt_val.for_arg, for_args, parsed_options)
+
+    except (OptionError, RunError), e:
         print >> sys.stderr, "graph-tool:", e
         sys.exit(1)
     except SystemExit, e:
         sys.exit(e)
-    except (ParserError, OptionError, IOError, RuntimeError), e:
-        print >> sys.stderr, "graph-tool error:", e
-        sys.exit(2)
     except KeyboardInterrupt:
         print >> sys.stderr, "graph-tool error: Keyboard interrupt."
         sys.exit(3)
     except MemoryError, e:
         error = str(e)
         if error != "":
-            print >> sys.stderr, "graph-tool error: out of memory. (text:", error, ")"
+            print >> sys.stderr, "graph-tool error: out of memory. (text:",
+            print >> sys.stderr, error, ")"
         else:
             print >> sys.stderr, "graph-tool error: out of memory."
         sys.exit(4)
-    except:
-        (file_name, line, function, text) = traceback.extract_tb(sys.exc_info()[2])[-1]
-        print >> sys.stderr, "graph-tool unknown error: ", sys.exc_info()[1], \
-              "\n[traceback: File %s, line %d, in %s (text: %s)]" % (file_name, line, function, str(text))
-        sys.exit(42)
 
 # when executed, run main():
 if __name__ == '__main__':
-    main()
-else:
-    graph = GraphInterface()
-    # signal handling
-    graph.InitSignalHandling()
-
-    def sanitize(string):
-        return string.replace("]","").replace("[","").replace("-","_")
-    def desanitize(string):
-        return string.replace("_","-")
-
-    def call_option(opt, *args, **kwargs):
-        """ This will run an option with the parameters given by args and kwargs"""
-        args = list(args)
-        if opt.metavars != None:
-            mvars = sanitize(opt.metavars)
-        else:
-            mvars = ""
-        mvars = mvars.split("|")
-
-        # Handle supplied functions objects
-        def insert_func(cname, func):
-            if not external_context.has_key(cname):
-                external_context[cname] = {}
-            if func.__name__ == "<lambda>":
-                name = "_lambda"
-            else:
-                name = func.__name__
-            external_context[cname][name] = func
-            return "ext:%s;" % (cname) + name
-        for a in xrange(0, len(args)):
-            if callable(args[a]) and len(mvars) > a:
-                cname = opt.name+mvars[a]
-                args[a] = insert_func(cname, args[a])
-        for arg,value in kwargs.iteritems():
-            if callable(value):
-                cname = opt.name+arg
-                kwargs[arg] = insert_func(cname, value)
-
-        # Assemble parameters
-        arg = []
-        a = 0
-        for mvar in mvars:
-            if mvar != "OPTIONS":
-                if len(args) > a:
-                    arg.append("%s" % str(args[a]))
-                    a += 1
-                elif opt.params.has_key(mvar):
-                    arg.append("%s" % str(opt.params[mvar]))
-            else:
-                arg.append(", ".join(["%s=%s" % (k,str(v)) for k,v in kwargs.iteritems()\
-                                      if (opt.suboptions[k].group_name == None or v == True) and v.__class__ != str ] + \
-                                     ["%s='%s'" % (k,str(v)) for k,v in kwargs.iteritems() \
-                                      if (opt.suboptions[k].group_name == None or v == True) and v.__class__ == str ]))
-        arg = "|".join(arg)
-        if arg != "":
-            cmd = "--%s=%s" % (opt.name, arg)
-        else:
-            cmd = "--%s" % opt.name
-        return run([cmd], return_first = True)
-
-    def populate_module():
-        """This will populate the module with the command line options as functions"""
-
-        # This is the complete list of options
-        options = parse_options([])[1]
-        globals()["options"] = options
-        globals()["call_option"] = call_option
-        globals()["external_context"] = {} # this will hold function/symbols supplied externally
-
-        # Put predefined expression functions in module's namespace
-        vars = {}
-        eval_expr("None", vars=vars)
-        for k,v in vars.iteritems():
-            if k in ["inv_poisson", "inv_power_law", "inv_exponential"]:
-                globals()[k] = v
-
-        # For each option, build a corresponding function
-        for opt in options.values():
-            if opt.name == "for" or opt.name == "history":
-                continue
-            func_name = sanitize(opt.name)
-            func_desc = opt.help
-
-            if opt.metavars != None:
-                mvars = sanitize(opt.metavars)
-            else:
-                mvars = ""
-            mvars = mvars.split("|")
-
-            arg_list = []
-            call_list = []
-            for mvar in mvars:
-                if mvar != "OPTIONS":
-                    if not opt.params.has_key(mvar):
-                        arg_list.append("%s" % sanitize(mvar).lower())
-                        call_list.append("%s" % sanitize(mvar).lower())
-                    else:
-                        call_list.append("%s" % sanitize(mvar).lower())
-            for mvar in mvars:
-                if mvar != "OPTIONS" and opt.params.has_key(mvar):
-                    default = opt.params[mvar]
-                    if default.__class__ == str:
-                        default = "'%s'" % default
-                    arg_list.append("%s=%s" % (sanitize(mvar).lower(), default))
-            if "OPTIONS" in mvars:
-                for subopt in opt.suboptions.values():
-                    default = subopt.default
-                    if default.__class__ == str:
-                        default = "'%s'" % default
-                    arg_list.append("%s=%s" % (sanitize(subopt.name), str(default)))
-                    call_list.append("%s=%s" % (sanitize(subopt.name), sanitize(subopt.name)))
-            arg_list = ", ".join(arg_list)
-            call_list = ", ".join(call_list)
-
-            fun_def = "def %s(%s):\n   '''%s'''\n   return call_option(options['%s'], %s)" % (func_name, arg_list, func_desc, opt.name, call_list)
-            exec fun_def in globals()
-    populate_module()
+    _main()
