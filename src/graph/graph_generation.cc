@@ -21,6 +21,7 @@
 #include <boost/lambda/lambda.hpp>
 #include <boost/lambda/bind.hpp>
 #include <boost/random.hpp>
+#include <boost/python.hpp>
 #include <iomanip>
 #include <map>
 
@@ -40,11 +41,11 @@ typedef boost::mt19937 rng_t;
 template <class Distribution, class Ceil, class InvCeil>
 struct sample_from_distribution
 {
-    sample_from_distribution(Distribution &dist, Ceil& ceil, InvCeil &inv_ceil, 
+    sample_from_distribution(Distribution &dist, Ceil& ceil, InvCeil &inv_ceil,
                              double bound, rng_t& rng)
-        : _dist(dist), _ceil(ceil), _inv_ceil(inv_ceil), _bound(bound), 
+        : _dist(dist), _ceil(ceil), _inv_ceil(inv_ceil), _bound(bound),
           _rng(rng), _uniform_p(0.0, 1.0) {}
-    
+
     pair<size_t, size_t> operator()()
     {
         // sample j,k from ceil
@@ -69,11 +70,11 @@ struct sample_from_distribution
 
 // desired vertex type, with desired j,k values and the index in the real graph
 
-struct dvertex_t 
+struct dvertex_t
 {
     dvertex_t() {}
     dvertex_t(size_t in, size_t out): in_degree(in), out_degree(out) {}
-    dvertex_t(const pair<size_t,size_t>& deg): in_degree(deg.first), 
+    dvertex_t(const pair<size_t,size_t>& deg): in_degree(deg.first),
                                               out_degree(deg.second) {}
     size_t index, in_degree, out_degree;
     bool operator==(const dvertex_t& other) const {return other.index == index;}
@@ -88,7 +89,7 @@ inline std::size_t hash_value(const dvertex_t& v)
 
 inline size_t dist(const dvertex_t& a, const dvertex_t& b)
 {
-    return int(a.in_degree-b.in_degree)*int(a.in_degree-b.in_degree) + 
+    return int(a.in_degree-b.in_degree)*int(a.in_degree-b.in_degree) +
         int(a.out_degree-b.out_degree)*int(a.out_degree-b.out_degree);
 }
 
@@ -105,8 +106,8 @@ struct total_deg_comp
 
 class degree_matrix_t
 {
-public:    
-    degree_matrix_t(size_t N, size_t minj, size_t mink, size_t maxj, 
+public:
+    degree_matrix_t(size_t N, size_t minj, size_t mink, size_t maxj,
                     size_t maxk)
     {
         _L = max(size_t(pow(2,ceil(log2(sqrt(N))))),size_t(2));
@@ -132,7 +133,7 @@ public:
             _high_bins[i][hj][hk]++;
         }
     }
-    
+
     void erase(const pair<size_t,size_t>& v)
     {
         size_t j_bin, k_bin;
@@ -145,14 +146,14 @@ public:
                 break;
             }
         }
-        
+
         for (size_t i = 0; i < _high_bins.size(); ++i)
         {
             size_t hj,hk;
             tie(hj,hk) = get_bin(j_bin,k_bin, i+1);
             _high_bins[i][hj][hk]--;
         }
-        
+
     }
 
     pair<size_t,size_t> find_closest(size_t j, size_t k, rng_t& rng)
@@ -177,22 +178,22 @@ public:
         size_t j_bin, k_bin;
         tie(j_bin, k_bin) = get_bin(j, k, level);
 
-        for (size_t hj = ((j_bin>0)?j_bin-1:j_bin); 
+        for (size_t hj = ((j_bin>0)?j_bin-1:j_bin);
              hj < j_bin + 1 && hj <= get_bin(_maxj, _maxk, level).first; ++hj)
-            for (size_t hk = ((k_bin>0)?k_bin-1:k_bin); 
-                 hk < k_bin + 1 && hk <= get_bin(_maxj, _maxk, level).second; 
+            for (size_t hk = ((k_bin>0)?k_bin-1:k_bin);
+                 hk < k_bin + 1 && hk <= get_bin(_maxj, _maxk, level).second;
                  ++hk)
                 search_bin(hj,hk,j,k,level,candidates);
-        
+
         uniform_int<size_t> sample(0, candidates.size() - 1);
         return candidates[sample(rng)];
     }
 
-private:    
-    pair<size_t,size_t> get_bin(size_t j, size_t k, size_t level) 
+private:
+    pair<size_t,size_t> get_bin(size_t j, size_t k, size_t level)
     {
         if (level == 0)
-            return make_pair(((j-_minj)*(_L-1))/_maxj, 
+            return make_pair(((j-_minj)*(_L-1))/_maxj,
                              ((k-_mink)*(_L-1))/_maxk);
 
         pair<size_t, size_t> bin = get_bin(j,k,0);
@@ -209,7 +210,7 @@ private:
             return _high_bins[level-1][bin_j][bin_k];
     }
 
-    void search_bin(size_t hj, size_t hk, size_t j, size_t k, size_t level, 
+    void search_bin(size_t hj, size_t hk, size_t j, size_t k, size_t level,
                     vector<pair<size_t,size_t> >& candidates)
     {
         size_t w = 1 << level;
@@ -224,13 +225,13 @@ private:
                         candidates.push_back(v);
                         continue;
                     }
-                    if (dist(dvertex_t(v), dvertex_t(j,k)) < 
+                    if (dist(dvertex_t(v), dvertex_t(j,k)) <
                         dist(dvertex_t(candidates.front()),dvertex_t(j,k)))
                     {
                         candidates.clear();
                         candidates.push_back(v);
                     }
-                    else if (dist(dvertex_t(v), dvertex_t(j,k)) == 
+                    else if (dist(dvertex_t(v), dvertex_t(j,k)) ==
                              dist(dvertex_t(candidates.front()),dvertex_t(j,k)))
                     {
                         candidates.push_back(v);
@@ -248,21 +249,62 @@ private:
     size_t _maxk;
 };
 
+struct python_function
+{
+    python_function(python::object o): _o(o) {}
+    double operator()(size_t j, size_t k)
+    {
+        return python::extract<double>(_o(j,k));
+    }
+    double operator()(size_t jl, size_t kl, size_t j, size_t k)
+    {
+        return python::extract<double>(_o(jl,kl,j,k));
+    }
+    pair<size_t,size_t> operator()(double r1, double r2)
+    {
+        python::object retval = _o(r1,r2);
+        return make_pair(size_t(max(int(python::extract<int>(retval[0])),0)),
+                         size_t(max(int(python::extract<int>(retval[1])),0)));
+    }
+    pair<size_t,size_t> operator()(double r1, double r2, size_t j, size_t k)
+    {
+        python::object retval = _o(r1,r2,j,k);
+        return make_pair(size_t(max(int(python::extract<int>(retval[0])),0)),
+                         size_t(max(int(python::extract<int>(retval[1])),0)));
+    }
+    python::object _o;
+};
+
 // generates a directed graph with given pjk and degree correlation
 
 void GraphInterface::GenerateCorrelatedConfigurationalModel
-    (size_t N, pjk_t pjk, pjk_t ceil_pjk, inv_ceil_t inv_ceil_pjk, 
-     double ceil_pjk_bound, corr_t corr, corr_t ceil_corr, 
-     inv_corr_t inv_ceil_corr, double ceil_corr_bound, 
-     bool undirected_corr, size_t seed, bool verbose)
+    (size_t N, python::object ppjk, python::object pceil_pjk,
+     python::object pinv_ceil_pjk, double ceil_pjk_bound, python::object pcorr,
+     python::object pceil_corr, python::object pinv_ceil_corr,
+     double ceil_corr_bound, bool undirected_corr, size_t seed, bool verbose)
 {
+    typedef function<double (size_t j, size_t k)> pjk_t;
+    typedef function<pair<size_t,size_t> (double r1, double r2)> inv_ceil_t;
+    typedef function<double (size_t jl, size_t kl, size_t j, size_t k)> corr_t;
+    typedef function<pair<size_t,size_t>(double r1,
+                                         double r2,
+                                         size_t j,
+                                         size_t k)> inv_corr_t;
+
+    pjk_t pjk = python_function(ppjk);
+    pjk_t ceil_pjk = python_function(pceil_pjk);
+    inv_ceil_t inv_ceil_pjk = python_function(pinv_ceil_pjk);
+    corr_t corr =  python_function(pcorr);
+    corr_t ceil_corr = python_function(pceil_corr);
+    inv_corr_t inv_ceil_corr = python_function(pinv_ceil_corr);
+
     _mg.clear();
     _properties = dynamic_properties();
     rng_t rng(static_cast<rng_t::result_type>(seed));
 
     // sample the N (j,k) pairs
 
-    sample_from_distribution<pjk_t, pjk_t, inv_ceil_t> 
+    sample_from_distribution<pjk_t, pjk_t, inv_ceil_t>
         pjk_sample(pjk, ceil_pjk, inv_ceil_pjk, ceil_pjk_bound, rng);
     vector<dvertex_t> vertices(N);
     size_t sum_j=0, sum_k=0, min_j=0, min_k=0, max_j=0, max_k=0;
@@ -289,7 +331,7 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel
         min_j = min(v.in_degree,min_j);
         min_k = min(v.out_degree,min_k);
         max_j = max(v.in_degree,max_j);
-        max_k = max(v.out_degree,max_k); 
+        max_k = max(v.out_degree,max_k);
     }
 
     if (verbose)
@@ -323,15 +365,15 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel
     }
 
     size_t E = sum_k;
- 
+
     vector<dvertex_t> sources; // sources of edges
-    typedef tr1::unordered_multimap<pair<size_t,size_t>, dvertex_t, 
+    typedef tr1::unordered_multimap<pair<size_t,size_t>, dvertex_t,
                                     hash<pair<size_t,size_t> > > targets_t;
     targets_t targets; // vertices with j > 0
-    typedef tr1::unordered_set<pair<size_t,size_t>, hash<pair<size_t,size_t> > > 
+    typedef tr1::unordered_set<pair<size_t,size_t>, hash<pair<size_t,size_t> > >
         target_degrees_t;
     target_degrees_t target_degrees; // existing (j,k) pairs
-    
+
     // fill up sources, targets and target_degrees
     sources.reserve(E);
     for(size_t i = 0; i < N; ++i)
@@ -340,10 +382,10 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel
             sources.push_back(vertices[i]);
         if (vertices[i].in_degree > 0)
         {
-            targets.insert(make_pair(make_pair(vertices[i].in_degree, 
-                                               vertices[i].out_degree), 
+            targets.insert(make_pair(make_pair(vertices[i].in_degree,
+                                               vertices[i].out_degree),
                                      vertices[i]));
-            target_degrees.insert(make_pair(vertices[i].in_degree, 
+            target_degrees.insert(make_pair(vertices[i].in_degree,
                                             vertices[i].out_degree));
         }
     }
@@ -351,8 +393,8 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel
     typedef multiset<pair<size_t,size_t>, total_deg_comp> ordered_degrees_t;
     ordered_degrees_t ordered_degrees; // (j,k) pairs ordered by (j+k), i.e,
                                        // total degree
-    degree_matrix_t degree_matrix(target_degrees.size(), 
-                                  min_j, min_k, 
+    degree_matrix_t degree_matrix(target_degrees.size(),
+                                  min_j, min_k,
                                   max_j, max_k); // (j,k) pairs layed out in a 2
                                                  // dimensional matrix
     for(typeof(target_degrees.begin()) iter = target_degrees.begin();
@@ -361,8 +403,8 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel
             ordered_degrees.insert(*iter);
         else
             degree_matrix.insert(*iter);
-    
-    // shuffle sources 
+
+    // shuffle sources
     for (size_t i = 0; i < sources.size(); ++i)
     {
         uniform_int<size_t> source_sample(i, sources.size()-1);
@@ -373,25 +415,25 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel
         cout << "\nadding edges: " << flush;
 
     // connect the sources to targets
-    uniform_real<double> sample_probability(0.0, 1.0); 
+    uniform_real<double> sample_probability(0.0, 1.0);
     for (size_t i = 0; i < sources.size(); ++i)
     {
         dvertex_t source = sources[i], target;
         size_t j = source.in_degree;
         size_t k = source.out_degree;
-        
+
         //choose the target vertex according to correlation
-            
+
         pjk_t prob_func = lambda::bind(corr,lambda::_1,lambda::_2,j,k);
         pjk_t ceil = lambda::bind(ceil_corr,lambda::_1,lambda::_2,j,k);
         inv_ceil_t inv_ceil = lambda::bind(inv_ceil_corr,
                                            lambda::_1,lambda::_2,j,k);
-        sample_from_distribution<pjk_t, pjk_t, inv_ceil_t> 
+        sample_from_distribution<pjk_t, pjk_t, inv_ceil_t>
             corr_sample(prob_func, ceil, inv_ceil, ceil_corr_bound, rng);
-        
+
         size_t jl,kl;
         tie(jl,kl) = corr_sample(); // target (j,k)
-        
+
         target_degrees_t::iterator iter = target_degrees.find(make_pair(jl,kl));
         if (iter != target_degrees.end())
         {
@@ -399,7 +441,7 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel
                                                   // just use that
         }
         else
-        {        
+        {
             pair<size_t, size_t> deg;
             if (undirected_corr)
             {
@@ -419,10 +461,10 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel
                 {
                     ordered_degrees_t::iterator lower = upper;
                     --lower;
-                    if (jl + kl - (lower->first + lower->second) < 
+                    if (jl + kl - (lower->first + lower->second) <
                         upper->first + upper->second - (jl + kl))
                         deg = *lower;
-                    else if (jl + kl - (lower->first + lower->second) != 
+                    else if (jl + kl - (lower->first + lower->second) !=
                              upper->first + upper->second - (jl + kl))
                         deg = *upper;
                     else
@@ -438,19 +480,19 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel
                 target = targets.find(deg)->second;
             }
             else
-            {   
+            {
                 // select the (j,k) which is the closest in the j,k plane.
                 deg = degree_matrix.find_closest(jl, kl, rng);
                 target = targets.find(deg)->second;
 //                cerr << "wanted: " << jl << ", " << kl
 //                     << " got: " << deg.first << ", " << deg.second << "\n";
-               
-            }            
+
+            }
         }
 
         //add edge
         graph_traits<multigraph_t>::edge_descriptor e;
-        e = add_edge(vertex(source.index, _mg), 
+        e = add_edge(vertex(source.index, _mg),
                      vertex(target.index, _mg), _mg).first;
         _edge_index[e] = i;
 
@@ -458,9 +500,9 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel
         if (in_degree(vertex(target.index, _mg), _mg) == target.in_degree)
         {
             targets_t::iterator iter,end;
-            for(tie(iter,end) = 
-                    targets.equal_range(make_pair(target.in_degree, 
-                                                  target.out_degree)); 
+            for(tie(iter,end) =
+                    targets.equal_range(make_pair(target.in_degree,
+                                                  target.out_degree));
                 iter != end; ++iter)
                 if (iter->second == target)
                 {
@@ -474,24 +516,24 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel
                 targets.end())
             {
                 target_degrees.erase(target_degrees.find(make_pair
-                                                         (target.in_degree, 
+                                                         (target.in_degree,
                                                           target.out_degree)));
                 if (target_degrees.bucket_count() > 2*target_degrees.size())
                 {
                     target_degrees_t temp;
-                    for(target_degrees_t::iterator iter = 
-                            target_degrees.begin(); 
+                    for(target_degrees_t::iterator iter =
+                            target_degrees.begin();
                         iter != target_degrees.end(); ++iter)
                         temp.insert(*iter);
                     target_degrees = temp;
                 }
                 if (undirected_corr)
                 {
-                    for(ordered_degrees_t::iterator iter = 
-                            ordered_degrees.find(make_pair(target.in_degree, 
-                                                           target.out_degree)); 
+                    for(ordered_degrees_t::iterator iter =
+                            ordered_degrees.find(make_pair(target.in_degree,
+                                                           target.out_degree));
                         iter != ordered_degrees.end(); ++iter)
-                        if (*iter == make_pair(target.in_degree, 
+                        if (*iter == make_pair(target.in_degree,
                                                target.out_degree))
                         {
                             ordered_degrees.erase(iter);
@@ -500,16 +542,16 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel
                 }
                 else
                 {
-                    degree_matrix.erase(make_pair(target.in_degree, 
+                    degree_matrix.erase(make_pair(target.in_degree,
                                                   target.out_degree));
                 }
             }
-            
+
         }
 
         if (verbose)
         {
-            static stringstream str;            
+            static stringstream str;
             for (size_t j = 0; j < str.str().length(); ++j)
                 cout << "\b";
             for (size_t j = 0; j < str.str().length(); ++j)
@@ -520,9 +562,9 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel
             str << (i+1) << " of " << E << " (" << (i+1)*100/E << "%)";
             cout << str.str() << flush;
         }
-        
+
     }
-    
+
     if (verbose)
         cout << "\n";
 }

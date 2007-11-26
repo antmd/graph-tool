@@ -3,7 +3,7 @@
 AM_CPPFLAGS =\
     -I. -I.. \
     -I../boost-workaround \
-    -DHAVE_CONFIG_H 
+    -DHAVE_CONFIG_H
 
 AM_CXXFLAGS =\
     -Wall \
@@ -22,6 +22,7 @@ libgraph_tool_la_SOURCES = \
     graph.cc\
     graph_filtering.hh\
     graph_python_interface.hh\
+    graph_python_interface.cc\
     graph_selectors.hh\
     graph_properties.hh\
     graph_properties.cc\

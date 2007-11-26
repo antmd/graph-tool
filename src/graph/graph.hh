@@ -65,21 +65,12 @@ public:
     typedef variant<degree_t,string> deg_t;
 
     //graph generation
-    typedef function<double (size_t j, size_t k)> pjk_t;
-    typedef function<pair<size_t,size_t> (double r1, double r2)> inv_ceil_t;
-    typedef function<double (size_t jl, size_t kl, size_t j, size_t k)> corr_t;
-    typedef function<pair<size_t,size_t>(double r1, 
-                                         double r2, 
-                                         size_t j, 
-                                         size_t k)> inv_corr_t;
-    void GenerateCorrelatedConfigurationalModel(size_t N, pjk_t p, pjk_t ceil,
-                                                inv_ceil_t inv_ceil,
-                                                double ceil_pjk_bound, 
-                                                corr_t corr, corr_t ceil_corr,
-                                                inv_corr_t inv_ceil_corr, 
-                                                double ceil_corr_bound,
-                                                bool undirected_corr, 
-                                                size_t seed, bool verbose);
+    void GenerateCorrelatedConfigurationalModel
+        (size_t N, python::object ppjk, python::object pceil_pjk,
+         python::object pinv_ceil_pjk, double ceil_pjk_bound,
+         python::object pcorr, python::object pceil_corr,
+         python::object pinv_ceil_corr, double ceil_corr_bound,
+         bool undirected_corr, size_t seed, bool verbose);
 
     // basic stats
     size_t GetNumberOfVertices() const;
@@ -180,6 +171,12 @@ public:
     void ReadFromFile(string s);
     void ReadFromFile(string s, string format);
 
+    // python interface
+    python::object Vertices() const;
+    python::object Edges() const;
+
+    void ExportPythonInterface() const;
+
     // signal handling
     void InitSignalHandling();
 
@@ -197,8 +194,8 @@ public:
 
 private:
     template <class Action, class ReverseCheck, class DirectedCheck>
-        friend void check_filter(const GraphInterface &g, Action a,
-                                 ReverseCheck, DirectedCheck);
+    friend void check_filter(const GraphInterface &g, Action a,
+                             ReverseCheck, DirectedCheck, bool run_all=false);
     friend class scalarS;
 
     // this is the main graph
@@ -251,7 +248,7 @@ private:
 pair<GraphInterface::degree_t,string>
 get_degree_type(GraphInterface::deg_t degree);
 
-// GraphException 
+// GraphException
 // This is the main exception which will be thrown the outside world, when
 // things go wrong
 

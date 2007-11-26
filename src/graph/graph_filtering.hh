@@ -41,7 +41,7 @@ namespace boost
 //==============================================================================
 // vertex(i, filtered_graph<G>)
 //==============================================================================
-template <class Graph, class EdgePredicate, class VertexPredicate> 
+template <class Graph, class EdgePredicate, class VertexPredicate>
 inline
 typename graph_traits<filtered_graph<Graph,
                                      EdgePredicate,
@@ -58,7 +58,7 @@ vertex(size_t i, const filtered_graph<Graph,EdgePredicate,VertexPredicate>& g)
 //==============================================================================
 // vertex(i, reverse_graph<G>)
 //==============================================================================
-template <class Graph> 
+template <class Graph>
 inline
 typename graph_traits<reverse_graph<Graph> >::vertex_descriptor
 vertex(size_t i, const reverse_graph<Graph>& g)
@@ -70,14 +70,14 @@ vertex(size_t i, const reverse_graph<Graph>& g)
 //==============================================================================
 // add_edge(u, v, filtered_graph<G>)
 //==============================================================================
-template <class Graph, class EdgePredicate, class VertexPredicate> 
+template <class Graph, class EdgePredicate, class VertexPredicate>
 inline
 std::pair<typename graph_traits
               <filtered_graph<Graph,EdgePredicate,
                               VertexPredicate> >::edge_descriptor, bool>
 add_edge(typename graph_traits
               <filtered_graph<Graph,EdgePredicate,
-                              VertexPredicate> >::vertex_descriptor u, 
+                              VertexPredicate> >::vertex_descriptor u,
          typename graph_traits
               <filtered_graph<Graph,EdgePredicate,
                               VertexPredicate> >::vertex_descriptor v,
@@ -89,11 +89,11 @@ add_edge(typename graph_traits
 //==============================================================================
 //remove_edge(e, filtered_graph<G>)
 //==============================================================================
-template <class Graph, class EdgePredicate, class VertexPredicate> 
+template <class Graph, class EdgePredicate, class VertexPredicate>
 inline
 void remove_edge(typename graph_traits
                      <filtered_graph<Graph,EdgePredicate,
-                                     VertexPredicate> >::edge_descriptor e, 
+                                     VertexPredicate> >::edge_descriptor e,
                  filtered_graph<Graph,EdgePredicate,VertexPredicate>& g)
 {
     return remove_edge(e,const_cast<Graph&>(g.m_g));
@@ -147,7 +147,7 @@ struct HardNumEdges
 // this will return the number of edges on a graph, as given by num_edges
 struct SoftNumEdges
 {
-    template <class Graph> 
+    template <class Graph>
     size_t operator()(const Graph &g) const { return num_edges(g); }
 };
 
@@ -160,18 +160,18 @@ class RangeFilter
 {
 public:
     RangeFilter(){}
-    RangeFilter(FilteredPropertyMap filtered_property, 
-                std::pair<double, double> range, 
-                std::pair<bool, bool> include, bool invert)
-        : _filtered_property(filtered_property), _range(range), 
-          _include(include), _invert(invert) {}
+    RangeFilter(const FilteredPropertyMap& filtered_property,
+                const std::pair<double, double>& range,
+                const std::pair<bool, bool>& include, const bool& invert)
+        : _filtered_property(&filtered_property), _range(&range),
+          _include(&include), _invert(&invert) {}
 
     template <class VertexOrEdge>
-    bool operator() (VertexOrEdge e) const 
+    bool operator() (VertexOrEdge e) const
     {
         bool retval;
-        map_visitor<VertexOrEdge> visitor(e, _range, _include, _invert, retval);
-        apply_visitor(visitor, _filtered_property);
+        map_visitor<VertexOrEdge> visitor(e, *_range, *_include, *_invert, retval);
+        apply_visitor(visitor, *_filtered_property);
         return retval;
     }
 
@@ -180,11 +180,11 @@ private:
     class map_visitor: public static_visitor<void>
     {
     public:
-        map_visitor(const VertexOrEdge& descriptor, 
-                    const std::pair<double, double>& range, 
-                    const std::pair<bool, bool>& include, bool invert, 
+        map_visitor(const VertexOrEdge& descriptor,
+                    const std::pair<double, double>& range,
+                    const std::pair<bool, bool>& include, bool invert,
                     bool& retval)
-            : _descriptor(descriptor), _range(range), _include(include), 
+            : _descriptor(descriptor), _range(range), _include(include),
               _invert(invert), _retval(retval) {}
         template <class MapType>
         void operator()(MapType& filter_prop)
@@ -195,7 +195,7 @@ private:
             //       vertex or edge in the graph, every time they're iterated
             //       through. Therefore, it must be guaranteed this is as
             //       optimized as possible.
-            
+
             double val = double(get(filter_prop, _descriptor));
             bool lower;
             if (_include.first)
@@ -206,7 +206,7 @@ private:
             if (_include.second)
                 upper = val > _range.second;
             else
-                upper = val >= _range.second;            
+                upper = val >= _range.second;
             _retval = !(lower || upper);
             if (_invert)
                 _retval = !_retval;
@@ -220,10 +220,10 @@ private:
         bool& _retval;
     };
 
-    FilteredPropertyMap _filtered_property;
-    std::pair<double, double> _range;
-    std::pair<bool, bool> _include;
-    bool _invert;
+    const FilteredPropertyMap* _filtered_property;
+    const std::pair<double, double>* _range;
+    const std::pair<bool, bool>* _include;
+    const bool* _invert;
 };
 
 
@@ -244,23 +244,24 @@ typedef mpl::vector<mpl::bool_<false> > always_undirected;
 template <class Graph, class Action>
 struct check_reverse
 {
-    check_reverse(const Graph &g, Action a, bool reverse, bool& found)
-        : _g(g), _a(a), _reverse(reverse), _found(found) {}
+    check_reverse(const Graph &g, Action a, bool reverse, bool& found,
+                  bool run_all)
+        : _g(g), _a(a), _reverse(reverse), _found(found), _run_all(run_all) {}
 
     template <class Reverse>
     void operator()(Reverse) const
     {
-        if (_reverse)
+        if (_reverse || _run_all)
         {
-            reverse_graph<Graph> rg(_g);
+            static reverse_graph<Graph> rg(_g);
             _a(rg);
             _found = true;
         }
     }
 
     void operator()(mpl::bool_<false>) const
-    { 
-        if (!_reverse)
+    {
+        if (!_reverse || _run_all)
         {
             _a(_g);
             _found = true;
@@ -271,6 +272,7 @@ struct check_reverse
     Action _a;
     bool _reverse;
     bool& _found;
+    bool _run_all;
 };
 
 // this will check whether a graph is directed and run the proper version of the
@@ -280,22 +282,24 @@ template <class Graph, class Action, class ReverseCheck>
 struct check_directed
 {
     check_directed(const Graph &g, Action a, bool reverse, bool directed,
-                   bool& found)
-        : _g(g), _a(a), _reverse(reverse), _directed(directed), _found(found) {}
+                   bool& found, bool run_all)
+        : _g(g), _a(a), _reverse(reverse), _directed(directed), _found(found),
+          _run_all(run_all) {}
 
     template <class Directed>
     void operator()(Directed)
     {
-        if (_directed)
+        if (_directed || _run_all)
             mpl::for_each<ReverseCheck>
-                (check_reverse<Graph, Action>(_g, _a, _reverse, _found));
+                (check_reverse<Graph, Action>(_g, _a, _reverse, _found,
+                                              _run_all));
     }
 
     void operator()(mpl::bool_<false>)
-    { 
-        if (!_directed)
+    {
+        if (!_directed || _run_all)
         {
-            UndirectedAdaptor<Graph> ug(_g);
+            static UndirectedAdaptor<Graph> ug(_g);
             _a(ug);
             _found = true;
         }
@@ -306,52 +310,55 @@ struct check_directed
     bool _reverse;
     bool _directed;
     bool& _found;
+    bool _run_all;
 };
 
 // this will check whether a graph is range filtered and run the proper version
 // of the algorithm
 
-template <class Action, class ReverseCheck, class DirectedCheck> 
-void check_filter(const GraphInterface &g, Action a, ReverseCheck, 
-                  DirectedCheck)
+template <class Action, class ReverseCheck, class DirectedCheck>
+void check_filter(const GraphInterface &g, Action a, ReverseCheck,
+                  DirectedCheck, bool run_all = false)
 {
     bool found = false;
 
     typedef RangeFilter<GraphInterface::vertex_filter_map_t> vertex_filter_t;
     typedef RangeFilter<GraphInterface::edge_filter_map_t> edge_filter_t;
 
-#ifndef NO_RANGE_FILTERING        
-        if (g._vertex_filter_property != "" || g._edge_filter_property != "")
-        {        
-            typedef filtered_graph<GraphInterface::multigraph_t, edge_filter_t, 
-                                   vertex_filter_t> fg_t;
-            fg_t fg(g._mg, edge_filter_t(g._edge_filter_map, g._edge_range, 
-                                         g._edge_range_include, 
-                                         g._edge_range_invert),
-                    vertex_filter_t(g._vertex_filter_map, g._vertex_range, 
-                                    g._vertex_range_include, 
-                                    g._vertex_range_invert));
-            mpl::for_each<DirectedCheck>
-                (check_directed<fg_t,Action,ReverseCheck>(fg, a, g._reversed, 
-                                                          g._directed, found));
-        }
-        else
-        {
-            mpl::for_each<DirectedCheck>
-                (check_directed<GraphInterface::multigraph_t,Action,
-                                ReverseCheck>
-                 (g._mg, a, g._reversed, g._directed, found));
-        }
-#else
+#ifndef NO_RANGE_FILTERING
+    if (g._vertex_filter_property != "" || g._edge_filter_property != "" ||
+        run_all)
+    {
+        typedef filtered_graph<GraphInterface::multigraph_t, edge_filter_t,
+            vertex_filter_t> fg_t;
+        static fg_t fg(g._mg, edge_filter_t(g._edge_filter_map, g._edge_range,
+                                            g._edge_range_include,
+                                            g._edge_range_invert),
+                       vertex_filter_t(g._vertex_filter_map, g._vertex_range,
+                                       g._vertex_range_include,
+                                       g._vertex_range_invert));
         mpl::for_each<DirectedCheck>
-            (check_directed<GraphInterface::multigraph_t,Action,ReverseCheck>
-             (g._mg, a, g._reversed, g._directed, found));
+            (check_directed<fg_t,Action,ReverseCheck>(fg, a, g._reversed,
+                                                      g._directed, found,
+                                                      run_all));
+    }
+    if (!found || run_all)
+    {
+        mpl::for_each<DirectedCheck>
+            (check_directed<GraphInterface::multigraph_t,Action,
+             ReverseCheck>
+             (g._mg, a, g._reversed, g._directed, found, run_all));
+    }
+#else
+    mpl::for_each<DirectedCheck>
+        (check_directed<GraphInterface::multigraph_t,Action,ReverseCheck>
+         (g._mg, a, g._reversed, g._directed, found));
 #endif
     if (!found)
         throw GraphException("graph filtering error: filter not found "
                              "(this is a bug in graph-tool)");
 }
 
-} //graph_tool namespace 
+} //graph_tool namespace
 
 #endif // FILTERING_HH
