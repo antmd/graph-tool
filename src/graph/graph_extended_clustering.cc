@@ -33,11 +33,10 @@ using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
 
-
 // graph filter to remove a single vertex
 
 template <class Vertex>
-struct single_vertex_filter 
+struct single_vertex_filter
 {
     single_vertex_filter() {}
     single_vertex_filter(Vertex v):_v(v) {}
@@ -52,17 +51,17 @@ class bfs_stop_exception {};
 // this will abort the BFS search when no longer useful
 
 template <class TargetSet, class DistanceMap>
-struct bfs_max_depth_watcher 
+struct bfs_max_depth_watcher
 {
     typedef on_tree_edge event_filter;
 
-    bfs_max_depth_watcher(TargetSet& targets, size_t max_depth, 
+    bfs_max_depth_watcher(TargetSet& targets, size_t max_depth,
                           DistanceMap distance)
         : _targets(targets), _max_depth(max_depth), _distance(distance) {}
-    
+
     template <class Graph>
-    void operator()(typename graph_traits<Graph>::edge_descriptor e, 
-                    const Graph& g) 
+    void operator()(typename graph_traits<Graph>::edge_descriptor e,
+                    const Graph& g)
     {
         typename graph_traits<Graph>::vertex_descriptor v = target(e,g);
         if (get(_distance, v) > _max_depth)
@@ -72,13 +71,14 @@ struct bfs_max_depth_watcher
         if (_targets.empty())
             throw bfs_stop_exception();
     }
-    
+
     TargetSet& _targets;
     size_t _max_depth;
     DistanceMap _distance;
 };
 
-// abstract target collecting so algorithm works for bidirectional and undirected
+// abstract target collecting so algorithm works for bidirectional and
+// undirected
 
 template<class Graph, class Vertex, class Targets, class DirectedCategory>
 void collect_targets (Vertex v, Graph& g, Targets* t, DirectedCategory)
@@ -117,20 +117,20 @@ void collect_targets (Vertex v, Graph& g, Targets* t, undirected_tag)
 struct get_extended_clustering
 {
     template <class Graph, class IndexMap, class ClusteringMap>
-    void operator()(Graph& g, IndexMap vertex_index, 
+    void operator()(Graph& g, IndexMap vertex_index,
                     vector<ClusteringMap>& cmaps) const
-    {       
+    {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
         int i, N = num_vertices(g);
 
-        #pragma omp parallel for default(shared) private(i) schedule(dynamic) 
+        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
         for (i = 0; i < N; ++i)
         {
             vertex_t v = vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
-        
+
             // We must disconsider paths through the original vertex
             typedef single_vertex_filter<vertex_t> filter_t;
             typedef filtered_graph<Graph, keep_all, filter_t> fg_t;
@@ -143,7 +143,8 @@ struct get_extended_clustering
             typename neighbour_set_t::iterator ni, ti;
 
             // collect targets, neighbours and calculate normalization factor
-            collect_targets (v, g, &targets, typename graph_traits<Graph>::directed_category());
+            collect_targets (v, g, &targets,
+                             typename graph_traits<Graph>::directed_category());
             size_t k_in = targets.size(), k_out, k_inter=0, z;
             typename graph_traits<Graph>::adjacency_iterator a, a_end;
             for(tie(a, a_end) = adjacent_vertices(v, g); a != a_end; ++a)
@@ -166,28 +167,28 @@ struct get_extended_clustering
                 typedef tr1::unordered_map<vertex_t,size_t,
                                            DescriptorHash<IndexMap> > dmap_t;
                 dmap_t dmap(0, DescriptorHash<IndexMap>(vertex_index));
-                InitializedPropertyMap<dmap_t> 
+                InitializedPropertyMap<dmap_t>
                     distance_map(dmap, numeric_limits<size_t>::max());
 
                 typedef tr1::unordered_map<vertex_t,default_color_type,
                                            DescriptorHash<IndexMap> > cmap_t;
                 cmap_t cmap(0, DescriptorHash<IndexMap>(vertex_index));
-                InitializedPropertyMap<cmap_t> 
+                InitializedPropertyMap<cmap_t>
                     color_map(cmap, color_traits<default_color_type>::white());
-                
+
                 try
                 {
                     distance_map[*ni] = 0;
                     neighbour_set_t specific_targets = targets;
                     specific_targets.erase(*ni);
                     bfs_max_depth_watcher<neighbour_set_t,
-                                          InitializedPropertyMap<dmap_t> > 
+                                          InitializedPropertyMap<dmap_t> >
                         watcher(specific_targets, cmaps.size(), distance_map);
-                    breadth_first_visit(fg, *ni, 
+                    breadth_first_visit(fg, *ni,
                                         visitor
                                         (make_bfs_visitor
                                          (make_pair(record_distances
-                                                    (distance_map, 
+                                                    (distance_map,
                                                      boost::on_tree_edge()),
                                                     watcher))).
                                         color_map(color_map));
