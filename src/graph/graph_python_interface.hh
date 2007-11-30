@@ -15,8 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef PYTHON_FILTERING_HH
-#define PYTHON_FILTERING_HH
+#ifndef PYTHON_INTERFACE_HH
+#define PYTHON_INTERFACE_HH
 
 #include <boost/python.hpp>
 #include <boost/graph/graph_traits.hpp>
@@ -78,6 +78,11 @@ public:
         _v = v._v;
     }
 
+    const vertex_descriptor& GetDescriptor() const
+    {
+        return _v;
+    }
+
     size_t GetInDegree() const
     {
         return in_degreeS()(_v, _g);
@@ -104,6 +109,11 @@ public:
     {
         return PythonIterator<Graph,PythonEdge<Graph>,in_edge_iterator>
             (_g, in_edge_iteratorS<Graph>::in_edges(_v, _g));
+    }
+
+    std::string GetString() const
+    {
+        return lexical_cast<std::string>(_v);
     }
 
     size_t GetHash() const
@@ -141,6 +151,11 @@ public:
         _e = e._e;
     }
 
+    const edge_descriptor& GetDescriptor() const
+    {
+        return _e;
+    }
+
     PythonVertex<Graph> GetSource() const
     {
         return PythonVertex<Graph>(_g, source(_e, _g));
@@ -149,6 +164,12 @@ public:
     PythonVertex<Graph> GetTarget() const
     {
         return PythonVertex<Graph>(_g, target(_e, _g));
+    }
+
+    std::string GetString() const
+    {
+        return "("+GetSource().GetString() + "," +
+            GetTarget().GetString() + ")";
     }
 
     size_t GetHash() const
@@ -174,6 +195,42 @@ private:
     const Graph& _g;
     edge_descriptor _e;
 };
+
+template <class ValueType>
+class PythonPropertyMap
+{
+public:
+    PythonPropertyMap(const std::string& name, dynamic_property_map& pmap)
+        : _name(name), _pmap(pmap) {}
+
+    template <class PythonDescriptor>
+    ValueType GetValue(const PythonDescriptor& key) const
+    {
+        any val = _pmap.get(key.GetDescriptor());
+        return any_cast<ValueType>(val);
+    }
+
+    template <class PythonDescriptor>
+    void SetValue(const PythonDescriptor& key, const ValueType& val)
+    {
+        _pmap.put(key.GetDescriptor(), val);
+    }
+
+    size_t GetHash() const
+    {
+        return hash<std::string>()(_name + this->GetType());
+    }
+
+    std::string GetType() const
+    {
+        return type_names[mpl::find<value_types,ValueType>::type::pos::value];
+    }
+
+private:
+    const std::string& _name;
+    dynamic_property_map& _pmap;
+};
+
 
 } //graph_tool namespace
 

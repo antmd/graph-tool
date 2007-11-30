@@ -250,40 +250,38 @@ void GraphInterface::SetEdgeFilterRange(pair<double,double> allowed_range,
 
 // this function will reindex all the edges, in the order in which they are
 // found, taking care of preserving all the properties
-template<class Graph, class EdgeIndex>
-void reindex_edges(Graph &g, EdgeIndex edge_index, dynamic_properties& dp)
-{
-    typedef typename graph_traits<Graph>::edge_descriptor edge_t;
-
-    size_t n_edges = num_edges(g);
+void GraphInterface::ReIndexEdges()
+{    
+    size_t n_edges = num_edges(_mg);
     if (n_edges == 0)
         return;
     vector<pair<edge_t,bool> > edge_map
         (n_edges, make_pair(edge_t(), false));
-    typename graph_traits<Graph>::vertex_iterator v, v_end;
-    typename graph_traits<Graph>::out_edge_iterator e, e_end;
-    for (tie(v, v_end) = vertices(g); v != v_end; ++v)
-        for (tie(e, e_end) = out_edges(*v, g); e != e_end; ++e)
+    graph_traits<multigraph_t>::vertex_iterator v, v_end;
+    graph_traits<multigraph_t>::out_edge_iterator e, e_end;
+    for (tie(v, v_end) = vertices(_mg); v != v_end; ++v)
+        for (tie(e, e_end) = out_edges(*v, _mg); e != e_end; ++e)
         {
-            size_t index = edge_index[*e];
+            size_t index = _edge_index[*e];
             if (index >= edge_map.size())
                 edge_map.resize(index+1);
             edge_map[index] = make_pair(*e, true);
         }
     size_t new_index = 0;
-    for (tie(v, v_end) = vertices(g); v != v_end; ++v)
-        for (tie(e, e_end) = out_edges(*v, g); e != e_end; ++e)
+    for (tie(v, v_end) = vertices(_mg); v != v_end; ++v)
+        for (tie(e, e_end) = out_edges(*v, _mg); e != e_end; ++e)
         {
             edge_t old_edge = edge_map[new_index].first;
             if (edge_map[new_index].second)
             {
                 // another edge exists with the same index; indexes
                 // must be swapped, as well as the properties
-                edge_index[old_edge] = edge_index[*e];
-                edge_map[edge_index[*e]] = make_pair(old_edge, true);
-                edge_index[*e] = new_index;
+                _edge_index[old_edge] = _edge_index[*e];
+                edge_map[_edge_index[*e]] = make_pair(old_edge, true);
+                _edge_index[*e] = new_index;
                 edge_map[new_index] = make_pair(*e, true);
-                for (typeof(dp.begin()) p = dp.begin(); p != dp.end(); ++p)
+                for (typeof(_properties.begin()) p = _properties.begin();
+                     p != _properties.end(); ++p)
                     if (p->second->key() == typeid(edge_t))
                     {
                         boost::any temp = p->second->get(*e);
@@ -296,13 +294,14 @@ void reindex_edges(Graph &g, EdgeIndex edge_index, dynamic_properties& dp)
                 // no other edge has this index; it must be then
                 // assigned for this edge, and the properties must be
                 // copied over
-                size_t old_index = edge_index[*e];
-                for (typeof(dp.begin()) p = dp.begin(); p != dp.end(); ++p)
+                size_t old_index = _edge_index[*e];
+                for (typeof(_properties.begin()) p = _properties.begin();
+                     p != _properties.end(); ++p)
                     if (p->second->key() == typeid(edge_t))
                     {
-                        edge_index[*e] = old_index;
+                        _edge_index[*e] = old_index;
                         boost::any val = p->second->get(*e);
-                        edge_index[*e] = new_index;
+                        _edge_index[*e] = new_index;
                         p->second->put(*e, val);
                     }
             }
@@ -333,8 +332,9 @@ void GraphInterface::PurgeEdges()
             remove_edge(*iter, _mg);
         deleted_edges.clear();
     }
-    reindex_edges(_mg, _edge_index, _properties);
+    ReIndexEdges();
 }
+
 
 // this will definitively remove all the verticess from the graph, which are
 // being currently filtered out. This will also disable the vertex filter
@@ -380,7 +380,7 @@ void GraphInterface::PurgeVertices()
             remove_vertex(v, _mg);
         }
     }
-    reindex_edges(_mg, _edge_index, _properties);
+    ReIndexEdges();
 }
 
 // this will get the number of vertices, either the "soft" O(1) way, or the hard

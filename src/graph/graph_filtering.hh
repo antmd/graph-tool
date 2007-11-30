@@ -66,7 +66,6 @@ vertex(size_t i, const reverse_graph<Graph>& g)
     return vertex(i, g.m_g);
 }
 
-
 //==============================================================================
 // add_edge(u, v, filtered_graph<G>)
 //==============================================================================
@@ -87,6 +86,19 @@ add_edge(typename graph_traits
 }
 
 //==============================================================================
+// add_edge(u, v, reverse_graph<G>)
+//==============================================================================
+template <class Graph>
+inline
+std::pair<typename graph_traits<reverse_graph<Graph> >::edge_descriptor,bool>
+add_edge(typename graph_traits<reverse_graph<Graph> >::vertex_descriptor u,
+         typename graph_traits<reverse_graph<Graph> >::vertex_descriptor v,
+         reverse_graph<Graph>& g)
+{
+    return add_edge(v, u, const_cast<Graph&>(g.m_g)); // insert reversed
+}
+
+//==============================================================================
 //remove_edge(e, filtered_graph<G>)
 //==============================================================================
 template <class Graph, class EdgePredicate, class VertexPredicate>
@@ -97,6 +109,29 @@ void remove_edge(typename graph_traits
                  filtered_graph<Graph,EdgePredicate,VertexPredicate>& g)
 {
     return remove_edge(e,const_cast<Graph&>(g.m_g));
+}
+
+//==============================================================================
+// add_vertex(filtered_graph<G>)
+//==============================================================================
+template <class Graph, class EdgePredicate, class VertexPredicate>
+inline
+typename graph_traits
+    <filtered_graph<Graph,EdgePredicate,VertexPredicate> >::vertex_descriptor
+add_vertex(filtered_graph<Graph,EdgePredicate,VertexPredicate>& g)
+{
+    return add_vertex(const_cast<Graph&>(g.m_g));
+}
+
+//==============================================================================
+// add_vertex(reverse_graph<G>)
+//==============================================================================
+template <class Graph>
+inline
+typename graph_traits<reverse_graph<Graph> >::vertex_descriptor
+add_vertex(reverse_graph<Graph>& g)
+{
+    return add_vertex(const_cast<Graph&>(g.m_g));
 }
 
 
@@ -244,7 +279,7 @@ typedef mpl::vector<mpl::bool_<false> > always_undirected;
 template <class Graph, class Action>
 struct check_reverse
 {
-    check_reverse(const Graph &g, Action a, bool reverse, bool& found,
+    check_reverse(Graph &g, Action a, bool reverse, bool& found,
                   bool run_all)
         : _g(g), _a(a), _reverse(reverse), _found(found), _run_all(run_all) {}
 
@@ -253,7 +288,13 @@ struct check_reverse
     {
         if (_reverse || _run_all)
         {
-            static reverse_graph<Graph> rg(_g);
+            typedef typename mpl::if_<is_const<Graph>,
+                                      const reverse_graph
+                                          <typename remove_const<Graph>::type>,
+                                      reverse_graph<Graph> >::type 
+                reverse_graph_t;                
+
+            static reverse_graph_t rg(_g);
             _a(rg);
             _found = true;
         }
@@ -268,7 +309,7 @@ struct check_reverse
         }
     }
 
-    const Graph &_g;
+    Graph& _g;
     Action _a;
     bool _reverse;
     bool& _found;
@@ -281,7 +322,7 @@ struct check_reverse
 template <class Graph, class Action, class ReverseCheck>
 struct check_directed
 {
-    check_directed(const Graph &g, Action a, bool reverse, bool directed,
+    check_directed(Graph &g, Action a, bool reverse, bool directed,
                    bool& found, bool run_all)
         : _g(g), _a(a), _reverse(reverse), _directed(directed), _found(found),
           _run_all(run_all) {}
@@ -291,7 +332,7 @@ struct check_directed
     {
         if (_directed || _run_all)
             mpl::for_each<ReverseCheck>
-                (check_reverse<Graph, Action>(_g, _a, _reverse, _found,
+                (check_reverse<Graph,Action>(_g, _a, _reverse, _found,
                                               _run_all));
     }
 
@@ -305,7 +346,7 @@ struct check_directed
         }
     }
 
-    const Graph &_g;
+    Graph& _g;
     Action _a;
     bool _reverse;
     bool _directed;
@@ -316,10 +357,14 @@ struct check_directed
 // this will check whether a graph is range filtered and run the proper version
 // of the algorithm
 
-template <class Action, class ReverseCheck, class DirectedCheck>
-void check_filter(const GraphInterface &g, Action a, ReverseCheck,
+template <class GraphInterfaceType, class Action, class ReverseCheck, 
+          class DirectedCheck>
+void check_filter(GraphInterfaceType &g, Action a, ReverseCheck,
                   DirectedCheck, bool run_all = false)
 {
+    typedef typename mpl::if_<is_const<GraphInterfaceType>,
+                              const GraphInterface::multigraph_t,
+                              GraphInterface::multigraph_t>::type multigraph_t;
     bool found = false;
 
     typedef RangeFilter<GraphInterface::vertex_filter_map_t> vertex_filter_t;
@@ -329,8 +374,7 @@ void check_filter(const GraphInterface &g, Action a, ReverseCheck,
     if (g._vertex_filter_property != "" || g._edge_filter_property != "" ||
         run_all)
     {
-        typedef filtered_graph<GraphInterface::multigraph_t, edge_filter_t,
-            vertex_filter_t> fg_t;
+        typedef filtered_graph<multigraph_t, edge_filter_t,vertex_filter_t> fg_t;
         static fg_t fg(g._mg, edge_filter_t(g._edge_filter_map, g._edge_range,
                                             g._edge_range_include,
                                             g._edge_range_invert),
@@ -345,13 +389,12 @@ void check_filter(const GraphInterface &g, Action a, ReverseCheck,
     if (!found || run_all)
     {
         mpl::for_each<DirectedCheck>
-            (check_directed<GraphInterface::multigraph_t,Action,
-             ReverseCheck>
+            (check_directed<multigraph_t,Action,ReverseCheck>
              (g._mg, a, g._reversed, g._directed, found, run_all));
     }
 #else
     mpl::for_each<DirectedCheck>
-        (check_directed<GraphInterface::multigraph_t,Action,ReverseCheck>
+        (check_directed<multigraph_t,Action,ReverseCheck>
          (g._mg, a, g._reversed, g._directed, found));
 #endif
     if (!found)

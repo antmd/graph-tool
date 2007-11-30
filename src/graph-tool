@@ -152,6 +152,8 @@ def _main():
             underlying function"""
             # Parameter regexp
             p = re.compile(r"((('[^']*')|(\"[^\"']*\"))|([^\|]+)|(^(?=[^$]))(?=\||$))")
+            if arg == None:
+                arg = ""
             values = [x[0].strip() for x in p.findall(arg)]
 
             n_min = len([x for x in self.positional \
@@ -233,10 +235,11 @@ def _main():
         # point to the corresponding method in the Graph class, through an
         # instance of an OptionMask class.
 
-        option_groups = [ [x] for x in Graph._Graph__groups ]
+        option_groups = [ [x] for x in graph._Graph__groups ]
         functions = [ getattr(graph, f) for f in dir(graph) ]
         functions = [ f for f in functions if callable(f) and \
-                      f.func_dict.has_key("opt_group") ]
+                      "opt_group" in dir(f) ]
+
         for g in option_groups:
             g.extend([OptionMask(f) for f in functions \
                       if f.func_dict["opt_group"] == g[0]])

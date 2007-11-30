@@ -26,6 +26,7 @@
 #include <boost/dynamic_property_map.hpp>
 #include <boost/variant.hpp>
 #include <boost/python/object.hpp>
+#include <boost/python/dict.hpp>
 #include "histogram.hh"
 #include "config.h"
 #include "graph_properties.hh"
@@ -155,7 +156,7 @@ public:
     void EditVertexProperty(string property, string type, python::object op);
     void EditEdgeProperty(string property, string type, python::object op);
     void EditGraphProperty(string property, string type, python::object op);
-    void ListProperties() const;
+    void ReIndexEdges();
     void PurgeVertices();
     void PurgeEdges();
 
@@ -175,6 +176,18 @@ public:
     python::object Vertices() const;
     python::object Edges() const;
 
+    python::object AddVertex();
+    void RemoveVertex(python::object v);
+    python::object AddEdge(python::object s, python::object t);
+    void RemoveEdge(python::object e);
+
+    python::dict GetVertexProperties() const;
+    python::dict GetEdgeProperties() const;
+    python::dict GetGraphProperties() const;
+
+    // used for graph properties
+    graph_property_tag GetDescriptor() const { return graph_property_tag(); }
+
     void ExportPythonInterface() const;
 
     // signal handling
@@ -193,8 +206,9 @@ public:
     typedef graph_traits<multigraph_t>::edge_descriptor edge_t;
 
 private:
-    template <class Action, class ReverseCheck, class DirectedCheck>
-    friend void check_filter(const GraphInterface &g, Action a,
+    template <class GraphInterfaceType, class Action, class ReverseCheck, 
+              class DirectedCheck>
+    friend void check_filter(GraphInterfaceType &g, Action a,
                              ReverseCheck, DirectedCheck, bool run_all=false);
     friend class scalarS;
 

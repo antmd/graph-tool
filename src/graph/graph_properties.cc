@@ -146,7 +146,8 @@ template <class Descriptor>
 struct edit_property
 {
     template <class Graph>
-    void operator()(GraphInterface& gi, const Graph& g, const dynamic_properties& dp,
+    void operator()(GraphInterface& gi, const Graph& g,
+                    const dynamic_properties& dp,
                     dynamic_property_map* prop_map, python::object& op) const
     {
         put_properties(gi, g, Descriptor(), *prop_map, op);
@@ -158,6 +159,9 @@ struct edit_property
                         dynamic_property_map& prop_map,
                         python::object& operation) const
     {
+        if (operation == python::object()) // don't set properties if op == None
+            return;
+
         typename graph_traits<Graph>::vertex_iterator v,v_end;
         for (tie(v, v_end) = vertices(g); v != v_end; ++v)
         {
@@ -174,6 +178,9 @@ struct edit_property
                         dynamic_property_map& prop_map,
                         python::object& operation) const
     {
+        if (operation == python::object()) // don't set properties if op == None
+            return;
+
         typename graph_traits<Graph>::edge_iterator e, e_end;
         for (tie(e, e_end) = edges(g); e != e_end; ++e)
         {
@@ -329,8 +336,11 @@ void GraphInterface::EditGraphProperty(string property, string type,
           ConstantPropertyMap<size_t,graph_property_tag> >
          (*this, _properties, graph_index, property, type, type_names, pmap));
 
-    python::object val = op(python::object(ref(*this)));
-    pmap->put(graph_property_tag(), val);
+    if (op != python::object()) // don't set property if op == None
+    {
+        python::object val = op(python::object(ref(*this)));
+        pmap->put(graph_property_tag(), val);
+    }
     delete pmap;
 }
 
@@ -353,48 +363,4 @@ private:
     const char** _types;
     string& _name;
 };
-
-void GraphInterface::ListProperties() const
-{
-    list<tuple<string,string,string> > graph_properties, vertex_properties,
-        edge_properties;
-
-    for (typeof(_properties.begin()) p = _properties.begin();
-         p != _properties.end(); ++p)
-    {
-        tuple<string,string,string> prop;
-        get<0>(prop) = p->first;
-        mpl::for_each<value_types>
-            (get_type_name<value_types>(p->second->value(), type_names,
-                                        get<2>(prop)));
-        if (p->second->key() == typeid(vertex_t))
-        {
-            get<1>(prop) = "(vertex)";
-            vertex_properties.push_back(prop);
-        }
-        else
-            if (p->second->key() == typeid(edge_t))
-            {
-                get<1>(prop) = "(edge)";
-                edge_properties.push_back(prop);
-            }
-            else
-            {
-                get<1>(prop) = "(graph)";
-                graph_properties.push_back(prop);
-            }
-    }
-
-    list<tuple<string,string,string> > props;
-    props.insert(props.end(), graph_properties.begin(), graph_properties.end());
-    props.insert(props.end(), vertex_properties.begin(),
-                 vertex_properties.end());
-    props.insert(props.end(), edge_properties.begin(), edge_properties.end());
-    for (typeof(props.begin()) iter = props.begin();
-         iter != props.end(); ++iter)
-    {
-        cout << setw(15) << left << get<0>(*iter) << " " << setw(8) << left
-             << get<1>(*iter) << "  type: " << get<2>(*iter) << endl;
-    }
-}
 
