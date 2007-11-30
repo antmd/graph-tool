@@ -615,6 +615,14 @@ class Graph(object):
         self.__graph.PurgeEdges()
         self.__graph.SetEdgeFilterProperty('')
 
+    @_attrs(opt_group=__groups[-1], fist_subopt="parallel_edges")
+    @_handle_exceptions
+    @_limit_args({"strategy":["correlated", "uncorrelated"]})
+    def random_rewire(self, strategy="uncorrelated", parallel_edges=False,
+                      self_loops=False, seed=int(time.time())):
+        """Randomly rewire the edges of the graph"""            
+        self.__graph.RandomRewire(strategy, self_loops, parallel_edges, seed)
+
     # Basic graph statistics
     __groups.append("Basic Statistics")
 

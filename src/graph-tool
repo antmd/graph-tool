@@ -16,9 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
 from graph_tool import *
-from graph_tool import libgraph_tool
+from graph_tool import libgraph_tool, _eval_expr, _open_file
 
 import sys, os, os.path, re, struct, fcntl, termios, gzip, bz2, string,\
        textwrap, time, signal, traceback, shutil, time, math, inspect, \

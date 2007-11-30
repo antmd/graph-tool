@@ -130,6 +130,9 @@ public:
     void   GetCommunityNetwork(string property, string size_property,
                                string out_file, string format) const;
 
+    void RandomRewire(std::string strat, bool self_loops, bool parallel_edges,
+                      size_t seed);
+
     // filtering
     void SetDirected(bool directed) {_directed = directed;}
     bool GetDirected() const {return _directed;}
