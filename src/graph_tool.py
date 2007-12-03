@@ -620,7 +620,7 @@ class Graph(object):
     @_limit_args({"strategy":["correlated", "uncorrelated"]})
     def random_rewire(self, strategy="uncorrelated", parallel_edges=False,
                       self_loops=False, seed=int(time.time())):
-        """Randomly rewire the edges of the graph"""            
+        """Randomly rewire the edges of the graph"""
         self.__graph.RandomRewire(strategy, self_loops, parallel_edges, seed)
 
     # Basic graph statistics
@@ -782,8 +782,8 @@ class Graph(object):
     def average_combined_vertex_correlation(self, degree1, degree2):
         """Get the average of degree2 in function of degree1. Scalar properties
         are also accepted as degree1 or degree2"""
-        return self.__graph.GetAverageCombinedVertexCorrelation(degree1,
-                                                                degree2)
+        f = self.__graph.GetAverageCombinedVertexCorrelation
+        return f(_degree(degree1), _degree(degree2))
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
@@ -794,8 +794,8 @@ class Graph(object):
         passed by weight"""
         if weight == None:
             weight = ""
-        self.__graph.GetVertexCorrelationHistogram(origin_degree,
-                                                   neighbour_degree, weight)
+        f = self.__graph.GetVertexCorrelationHistogram
+        return f(_degree(origin_degree), _degree(neighbour_degree), weight)
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
