@@ -193,10 +193,10 @@ public:
     UndirectedAdaptorOutEdgeIterator
         (typename graph_traits<Graph>::out_edge_iterator out_iter,
          typename graph_traits<Graph>::in_edge_iterator in_iter,
-         const std::pair<typename graph_traits<Graph>::out_edge_iterator,
-         typename graph_traits<Graph>::out_edge_iterator> out_range,
-         const std::pair<typename graph_traits<Graph>::in_edge_iterator,
-         typename graph_traits<Graph>::in_edge_iterator> in_range)
+         std::pair<typename graph_traits<Graph>::out_edge_iterator,
+                   typename graph_traits<Graph>::out_edge_iterator> out_range,
+         std::pair<typename graph_traits<Graph>::in_edge_iterator,
+                   typename graph_traits<Graph>::in_edge_iterator> in_range)
             : _out_range(out_range), _in_range(in_range),
               _out_iter(out_iter), _in_iter(in_iter) {};
 
