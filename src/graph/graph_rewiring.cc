@@ -134,12 +134,15 @@ struct swap_edge_triad
             s = source(e, g),          // current source
             t = target(e, g),          // current target
             ns = source(se, g),        // new source
-            nt = target_in()(te, g),        // new target
+            nt = target_in()(te, g),   // new target
             te_s = source_in()(te, g), // target edge source
             se_t = target(se, g);      // source edge target
 
+
+        if (edge_is_new[se] && (ns == s) && (nt == se_t))
+            return true; // e is parallel to se after swap
         if (edge_is_new[te] && (te_s == ns) && (nt == t) )
-            return true; // s is parallel to te after swap
+            return true; // e is parallel to te after swap
         if (edge_is_new[te] && edge_is_new[se] && (te != se) &&
              (s == te_s) && (t == se_t))
             return true; // se is parallel to te after swap
@@ -412,9 +415,6 @@ public:
                 }
                 if (!parallel_edges) // reject parallel edges if not allowed
                 {
-                    if(_edge_is_new[*esi] && (source(e, _g)==source(*esi, _g)) &&
-                       (target(*esi, _g)==target_in()(*eti, _g)))
-                        continue;
                     if (swap_edge_triad::parallel_check(e, *esi, *eti,
                                                         _edge_is_new, _g))
                         continue;
@@ -448,7 +448,8 @@ public:
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
     typedef typename graph_traits<Graph>::edge_descriptor edge_t;
 
-    CorrelatedRewireStrategy (const Graph& g, EdgeIndexMap edge_index, rng_t& rng)
+    CorrelatedRewireStrategy (const Graph& g, EdgeIndexMap edge_index,
+                              rng_t& rng)
         : _g(g), _rng(rng), _edge_is_new(edge_index)
     {
         int i, N = num_vertices(_g);
@@ -525,13 +526,6 @@ public:
                     {
                         if((*vs == *vt) ||
                            (source(e, _g) == target(*out_vs_i, _g)))
-                            continue;
-                    }
-
-                    if(!parallel_edges) // reject parallel edges if not allowed
-                    {
-                        if(_edge_is_new[*out_vs_i] && (source(e, _g)==*vs) &&
-                           (target(*out_vs_i, _g)==*vt))
                             continue;
                     }
 
