@@ -114,8 +114,8 @@ struct swap_edge_triad
 {
     template <class Graph, class NewEdgeMap>
     static bool parallel_check(typename graph_traits<Graph>::edge_descriptor e,
-                               typename graph_traits<Graph>::edge_descriptor te,
                                typename graph_traits<Graph>::edge_descriptor se,
+                               typename graph_traits<Graph>::edge_descriptor te,
                                NewEdgeMap edge_is_new, const Graph &g)
     {
         // We want to check that if we swap the source of 'e' with the source of
@@ -134,7 +134,7 @@ struct swap_edge_triad
             s = source(e, g),          // current source
             t = target(e, g),          // current target
             ns = source(se, g),        // new source
-            nt = target(te, g),        // new target
+            nt = target_in()(te, g),        // new target
             te_s = source_in()(te, g), // target edge source
             se_t = target(se, g);      // source edge target
 
@@ -412,6 +412,9 @@ public:
                 }
                 if (!parallel_edges) // reject parallel edges if not allowed
                 {
+                    if(_edge_is_new[*esi] && (source(e, _g)==source(*esi, _g)) &&
+                       (target(*esi, _g)==target_in()(*eti, _g)))
+                        continue;
                     if (swap_edge_triad::parallel_check(e, *esi, *eti,
                                                         _edge_is_new, _g))
                         continue;
