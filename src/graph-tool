@@ -150,7 +150,7 @@ def _main():
             """this parses the command line argument in 'arg' and calls the
             underlying function"""
             # Parameter regexp
-            p = re.compile(r"((('[^']*')|(\"[^\"']*\"))|([^\|]+)|(^(?=[^$]))(?=\||$))")
+            p = re.compile(r"((('[^']*')|(\"[^\"']*\"))|([^\|]+)|(\B)|(^(?=[^$]))(?=\||$))")
             if arg == None:
                 arg = ""
             values = [x[0].strip() for x in p.findall(arg)]
