@@ -33,32 +33,8 @@ using namespace graph_tool;
 
 typedef boost::mt19937 rng_t;
 
-struct get_in_degree
-{
-    template <class Graph>
-    size_t operator()(typename graph_traits<Graph>::vertex_descriptor v,
-                      const Graph& g)
-    {
-        return get_degree(v, g, typename is_convertible
-                          <typename graph_traits<Graph>::directed_category,
-                           directed_tag>::type());
-    }
-
-    template <class Graph>
-    size_t get_degree(typename graph_traits<Graph>::vertex_descriptor v,
-                      const Graph& g, true_type)
-    {
-        return in_degree(v,g);
-    }
-
-    template <class Graph>
-    size_t get_degree(typename graph_traits<Graph>::vertex_descriptor v,
-                      const Graph& g, false_type)
-    {
-        return out_degree(v,g);
-    }
-};
-
+// this will get the source of an edge for directed graphs and the target for
+// undirected graphs, i.e. "the source of an in-edge"
 struct source_in
 {
     template <class Graph>
@@ -87,6 +63,8 @@ struct source_in
     }
 };
 
+// this will get the target of an edge for directed graphs and the source for
+// undirected graphs, i.e. "the target of an in-edge"
 struct target_in
 {
     template <class Graph>
@@ -115,9 +93,11 @@ struct target_in
     }
 };
 
+// returns true if vertices u and v are adjacent. This is O(k(u)).
 template <class Graph>
 bool is_adjacent(typename graph_traits<Graph>::vertex_descriptor u,
-                 typename graph_traits<Graph>::vertex_descriptor v, Graph& g )
+                 typename graph_traits<Graph>::vertex_descriptor v,
+                 const Graph& g )
 {
     typename graph_traits<Graph>::out_edge_iterator e, e_end;
     for (tie(e, e_end) = out_edges(u, g); e != e_end; ++e)
@@ -128,100 +108,123 @@ bool is_adjacent(typename graph_traits<Graph>::vertex_descriptor u,
     return false;
 }
 
-template <class Graph, class EdgeIsNew>
-bool is_adjacent_in_new(typename graph_traits<Graph>::vertex_descriptor u,
-                        typename graph_traits<Graph>::vertex_descriptor v,
-                        Graph& g , EdgeIsNew& edge_is_new,
-                        const typename graph_traits<Graph>::edge_descriptor& e1,
-                        const typename graph_traits<Graph>::edge_descriptor& e2)
+// this functor will swap the source of the edge e with the source of edge se
+// and the target of edge e with the target of te
+struct swap_edge_triad
 {
-    typename graph_traits<Graph>::out_edge_iterator ei, ei_end;
-    for (tie(ei, ei_end) = out_edges(u, g); ei != ei_end; ++ei)
+    template <class Graph, class NewEdgeMap>
+    static bool parallel_check(typename graph_traits<Graph>::edge_descriptor e,
+                               typename graph_traits<Graph>::edge_descriptor te,
+                               typename graph_traits<Graph>::edge_descriptor se,
+                               NewEdgeMap edge_is_new, const Graph &g)
     {
-        if ( (target(*ei, g) == v) && edge_is_new[*ei] &&
-             (*ei != e1) && (*ei != e2) )
-            return true;
-    }
-    return false;
-}
+        // We want to check that if we swap the source of 'e' with the source of
+        // 'se', and the target of 'te' with the target of 'e', as such
+        //
+        //  (s)    -e--> (t)          (ns)   -e--> (nt)
+        //  (ns)   -se-> (se_t)   =>  (s)    -se-> (se_t)
+        //  (te_s) -te-> (nt)         (te_s) -te-> (t),
+        //
+        // no parallel edges are introduced. We must considered only "new
+        // edges", i.e., edges which were already sampled and swapped. "Old
+        // edges" will have their chance of being swapped, and then they'll be
+        // checked for parallelism.
 
-template <class RandomAccessIterator, class RandomNumberGenerator>
-class iterative_random_shuffle
-{
-public:
-    iterative_random_shuffle( RandomAccessIterator first,
-                              RandomAccessIterator last,
-                              RandomNumberGenerator& rand )
-        : _i(first), _last(last), _rand(rand)
-    {
-        std::iter_swap(_i, _i + _rand(_last - _i) );
+        typename graph_traits<Graph>::vertex_descriptor
+            s = source(e, g),          // current source
+            t = target(e, g),          // current target
+            ns = source(se, g),        // new source
+            nt = target(te, g),        // new target
+            te_s = source_in()(te, g), // target edge source
+            se_t = target(se, g);      // source edge target
+
+        if (edge_is_new[te] && (te_s == ns) && (nt == t) )
+            return true; // s is parallel to te after swap
+        if (edge_is_new[te] && edge_is_new[se] && (te != se) &&
+             (s == te_s) && (t == se_t))
+            return true; // se is parallel to te after swap
+        if (is_adjacent_in_new(ns,  nt, se, te, edge_is_new, g))
+            return true; // e would clash with an existing (new) edge
+        if (is_adjacent_in_new(te_s, t, se, te, edge_is_new, g))
+            return true; // te would clash with an existing (new) edge
+        if (is_adjacent_in_new(s, se_t, se, te, edge_is_new, g))
+            return true; // se would clash with an existing (new) edge
+        return false; // the coast is clear - hooray!
     }
-    typename RandomAccessIterator::value_type operator*()
+
+    // returns true if vertices u and v are adjacent in the new graph. This is
+    // O(k(u)).
+    template <class Graph, class EdgeIsNew>
+    static bool is_adjacent_in_new
+        (typename graph_traits<Graph>::vertex_descriptor u,
+         typename graph_traits<Graph>::vertex_descriptor v,
+         typename graph_traits<Graph>::edge_descriptor e1,
+         typename graph_traits<Graph>::edge_descriptor e2,
+         EdgeIsNew edge_is_new, const Graph& g)
     {
-        return *_i;
+        typename graph_traits<Graph>::out_edge_iterator e, e_end;
+        for (tie(e, e_end) = out_edges(u, g); e != e_end; ++e)
+        {
+            if (target(*e,g) == v && edge_is_new[*e] &&
+                (*e != e1) && (*e != e2))
+                return true;
+        }
+        return false;
     }
-    iterative_random_shuffle operator++()
+
+    template <class Graph, class EdgeIndexMap, class EdgesType>
+    void operator()(typename graph_traits<Graph>::edge_descriptor e,
+                    typename graph_traits<Graph>::edge_descriptor se,
+                    typename graph_traits<Graph>::edge_descriptor te,
+                    EdgesType& edges, EdgeIndexMap edge_index, Graph& g)
     {
-        ++_i;
-        if(_i != _last)
-            std::iter_swap(_i, _i + _rand(_last - _i) );
-        return *this;
+        // swap the source of the edge 'e' with the source of edge 'se' and the
+        // target of edge 'e' with the target of 'te', as such:
+        //
+        //  (s)    -e--> (t)          (ns)   -e--> (nt)
+        //  (ns)   -se-> (se_t)   =>  (s)    -se-> (se_t)
+        //  (te_s) -te-> (nt)         (te_s) -te-> (t),
+
+        // new edges which will replace the old ones
+        typename graph_traits<Graph>::edge_descriptor ne, nse, nte;
+
+        // split cases where different combinations of the three edges are
+        // the same
+        if(se != te)
+        {
+            ne = add_edge(source(se, g), target_in()(te, g), g).first;
+            if(e != se)
+            {
+                nse = add_edge(source(e, g), target(se, g), g).first;
+                edge_index[nse] = edge_index[se];
+                remove_edge(se, g);
+                edges[edge_index[nse]] = nse;
+            }
+            if(e != te)
+            {
+                nte = add_edge(source_in()(te, g), target(e, g), g).first;
+                edge_index[nte] = edge_index[te];
+                remove_edge(te, g);
+                edges[edge_index[nte]] = nte;
+            }
+            edge_index[ne] = edge_index[e];
+            remove_edge(e, g);
+            edges[edge_index[ne]] = ne;
+        }
+        else
+        {
+            if(e != se)
+            {
+                // se and te are the same. swapping indexes only.
+                swap(edge_index[se], edge_index[e]);
+                edges[edge_index[se]] = se;
+                edges[edge_index[e]] = e;
+            }
+        }
     }
-    bool operator==(const RandomAccessIterator& i)
-    {
-        return _i == i;
-    }
-    bool operator!=(const RandomAccessIterator& i)
-    {
-        return _i != i;
-    }
-private:
-    RandomAccessIterator _i, _last;
-    RandomNumberGenerator& _rand;
 };
 
-template <class Graph, class EdgeIndexMap, class EdgesType>
-void swap_edge_triad( typename graph_traits<Graph>::edge_descriptor& e,
-                      typename graph_traits<Graph>::edge_descriptor& se,
-                      typename graph_traits<Graph>::edge_descriptor& te,
-                      EdgesType& edges, EdgeIndexMap edge_index, Graph& g )
-{
-            typename graph_traits<Graph>::edge_descriptor ne, nse, nte;
-            // split cases where different combinations of the three edges are
-            // the same
-            if( se != te )
-            {
-                ne = add_edge(source(se, g), target_in()(te, g), g).first;
-                if(e != se)
-                {
-                    nse = add_edge(source(e, g), target(se, g), g).first;
-                    edge_index[nse] = edge_index[se];
-                    remove_edge(se, g);
-                    edges[edge_index[nse]] = nse;
-                }
-                if(e != te)
-                {
-                    nte = add_edge(source_in()(te, g), target(e, g), g).first;
-                    edge_index[nte] = edge_index[te];
-                    remove_edge(te, g);
-                    edges[edge_index[nte]] = nte;
-                }
-                edge_index[ne] = edge_index[e];
-                remove_edge(e, g);
-                edges[edge_index[ne]] = ne;
-            }
-            else
-            {
-                if(e != se)
-                {
-                    ne = se; nse = e;
-                    tie(edge_index[ne], edge_index[nse]) =
-                        make_pair(edge_index[e], edge_index[se]);
-                    edges[edge_index[ne]] = ne; edges[edge_index[nse]] = nse;
-                }
-            }
-}
-
+// main rewire loop
 template <template <class Graph, class EdgeIndexMap> class RewireStrategy>
 struct graph_rewire
 {
@@ -285,7 +288,7 @@ struct graph_rewire
                                      "already contains parallel edges!");
         }
 
-        RewireStrategy<Graph, EdgeIndexMap> rewire(g, rng);
+        RewireStrategy<Graph, EdgeIndexMap> rewire(g, edge_index, rng);
 
         vector<edge_t> edges(num_edges(g));
         int i, N = num_vertices(g);
@@ -306,16 +309,65 @@ struct graph_rewire
             typename graph_traits<Graph>::edge_descriptor e = edges[i];
             typename graph_traits<Graph>::edge_descriptor se, te;
             tie(se, te) = rewire(e, edges, self_loops, parallel_edges);
-            swap_edge_triad(e, se, te, edges, edge_index, g);
+            swap_edge_triad()(e, se, te, edges, edge_index, g);
         }
     }
 };
 
+// This will iterate over a random permutation of a random access sequence, by
+// swapping the values of the sequence as it iterates
+template <class RandomAccessIterator, class RNG>
+class random_permutation_iterator
+{
+public:
+    random_permutation_iterator(RandomAccessIterator first,
+                                RandomAccessIterator last, RNG& rng )
+        : _i(first), _last(last), _rng(rng)
+    {
+        std::iter_swap(_i, _i + _rng(_last - _i));
+    }
+    typename RandomAccessIterator::value_type operator*()
+    {
+        return *_i;
+    }
+    random_permutation_iterator& operator++()
+    {
+        ++_i;
+        if(_i != _last)
+            std::iter_swap(_i, _i + _rng(_last - _i));
+        return *this;
+    }
+    bool operator==(const RandomAccessIterator& i)
+    {
+        return _i == i;
+    }
+    bool operator!=(const RandomAccessIterator& i)
+    {
+        return _i != i;
+    }
+private:
+    RandomAccessIterator _i, _last;
+    RNG& _rng;
+};
+
+// utility function for random_permutation_iterator
+template <class RandomAccessIterator, class RNG>
+inline random_permutation_iterator<RandomAccessIterator,RNG>
+make_random_permutation_iterator(RandomAccessIterator first,
+                                 RandomAccessIterator last, RNG& rng)
+{
+    return random_permutation_iterator<RandomAccessIterator,RNG>(first, last,
+                                                                 rng);
+}
+
+// this will rewire the edges so that the combined (in, out) degree distribution
+// will be the same, but all the rest is random
 template <class Graph, class EdgeIndexMap>
 class RandomRewireStrategy
 {
 public:
-    RandomRewireStrategy (const Graph& g, rng_t& rng): _g(g), _rng(rng)
+    RandomRewireStrategy (const Graph& g, EdgeIndexMap edge_index, rng_t& rng)
+        : _g(g), _rng(rng), _edge_is_new(edge_index)
     {
     }
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
@@ -327,65 +379,51 @@ public:
     {
         _edges_source = edges;
         _edges_target = edges;
-        random_number_generator<rng_t, size_t> generator(_rng);
-        bool pass=false;
-        edge_t se, te;
+        typedef random_number_generator<rng_t,size_t> random_t;
+        random_t random(_rng);
+        typedef random_permutation_iterator<typename edges_t::iterator,random_t>
+            random_edge_iter;
 
         //try randomly drawn pairs of edges until one satisfies all the
         //consistency checks
-        iterative_random_shuffle<typename edges_t::iterator,
-                                 random_number_generator<rng_t, size_t> >
-            esi(_edges_source.begin(), _edges_source.end(), generator);
-        for(; esi != _edges_source.end() ; ++esi)
+        bool found = false;
+        edge_t se, te;
+
+        random_edge_iter esi(_edges_source.begin(), _edges_source.end(),
+                             random);
+        for (; esi != _edges_source.end() && !found; ++esi)
         {
-            iterative_random_shuffle<typename edges_t::iterator,
-                                     random_number_generator<rng_t, size_t> >
-                eti(_edges_target.begin(), _edges_target.end(), generator);
-            for(; eti != _edges_target.end() ; ++eti)
+            if(!self_loops) // reject self-loops if not allowed
             {
-                if(!self_loops)
+                if((source(e, _g) == target(*esi, _g)))
+                    continue;
+            }
+
+            random_edge_iter eti(_edges_target.begin(), _edges_target.end(),
+                                 random);
+
+            for (; eti != _edges_target.end() && !found; ++eti)
+            {
+                if (!self_loops) // reject self-loops if not allowed
                 {
-                    if((source(e, _g) == target(*esi, _g)))
-                        break;
-                    if((source(*esi, _g) == target_in()(*eti, _g)) ||
-                       (source_in()(*eti, _g) == target(e, _g)))
+                    if ((source(*esi, _g) == target_in()(*eti, _g)) ||
+                        (source_in()(*eti, _g) == target(e, _g)))
                         continue;
                 }
-                if(!parallel_edges)
+                if (!parallel_edges) // reject parallel edges if not allowed
                 {
-                    //TODO: make this readable - count0
-                    if(is_adjacent_in_new(source(*esi, _g),
-                                          target_in()(*eti, _g),
-                                          _g, _edge_is_new, *esi, *eti) ||
-                        is_adjacent_in_new(source_in()(*eti, _g),
-                                           target(e, _g), _g,
-                                           _edge_is_new, *esi, *eti) ||
-                        is_adjacent_in_new(source(e, _g), target(*esi, _g),
-                                           _g, _edge_is_new, *esi, *eti) ||
-                       (_edge_is_new[*eti] &&
-                        (source_in()(*eti, _g) == source(*esi, _g)) &&
-                        (target( e  , _g) == target_in()(*eti, _g)) ) ||
-                       (_edge_is_new[*esi] && (source( e  , _g) ==
-                                               source(*esi, _g))
-                        && (target(*esi, _g) == target_in()(*eti, _g)) ) ||
-                       ( _edge_is_new[*eti] && _edge_is_new[*esi]  &&
-                         (*eti != *esi) &&
-                         (source(e, _g) == source_in()(*eti, _g)) &&
-                         (target(e, _g) == target(*esi, _g)) ) )
+                    if (swap_edge_triad::parallel_check(e, *esi, *eti,
+                                                        _edge_is_new, _g))
                         continue;
                 }
                 se = *esi;
                 te = *eti;
-                pass = true;
-                break;
+                found = true;
             }
-            if(pass) break;
         }
-        if(pass==false)
-            throw GraphException("Bad things happen when you're not one with"
-                                 "your inner self."); // also when you don't
-                                                      // comment your code
-                                                      // properly :-) - count0
+        if (!found)
+            throw GraphException("Couldn't find random pair of edges to swap"
+                                 "... This is a bug.");
         _edge_is_new[e]=true;
         return make_pair(se, te);
     }
@@ -398,6 +436,8 @@ private:
     vector_property_map<bool, EdgeIndexMap> _edge_is_new;
 };
 
+// this will rewire the edges so that the (in,out) degree distributions and the
+// (in,out)->(in,out) correlations will be the same, but all the rest is random
 template <class Graph, class EdgeIndexMap>
 class CorrelatedRewireStrategy
 {
@@ -405,7 +445,8 @@ public:
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
     typedef typename graph_traits<Graph>::edge_descriptor edge_t;
 
-    CorrelatedRewireStrategy (const Graph& g, rng_t& rng): _g(g), _rng(rng)
+    CorrelatedRewireStrategy (const Graph& g, EdgeIndexMap edge_index, rng_t& rng)
+        : _g(g), _rng(rng), _edge_is_new(edge_index)
     {
         int i, N = num_vertices(_g);
         for (i = 0; i < N; ++i)
@@ -414,10 +455,14 @@ public:
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
 
-            size_t j = get_in_degree()(v, _g);
+            size_t j = in_degreeS()(v, _g);
             size_t k = out_degree(v, _g);
 
-            if (j > 0)
+            typedef typename is_convertible
+                <typename graph_traits<Graph>::directed_category,
+                 directed_tag>::type is_directed;
+
+            if (j > 0 || !is_directed::value)
                 _deg_target_vertices[make_pair(j,k)].push_back(v);
 
             if (k > 0)
@@ -430,106 +475,89 @@ public:
                                     bool self_loops, bool parallel_edges)
     {
         vector<vertex_t>& source_vertices =
-            _deg_source_vertices[make_pair(get_in_degree()(source(e, _g), _g),
+            _deg_source_vertices[make_pair(in_degreeS()(source(e, _g), _g),
                                            out_degree(source(e, _g), _g))];
         vector<vertex_t>& target_vertices =
-            _deg_target_vertices[make_pair(get_in_degree()(target(e, _g), _g),
+            _deg_target_vertices[make_pair(in_degreeS()(target(e, _g), _g),
                                            out_degree(target(e, _g), _g))];
 
-        random_number_generator<rng_t, size_t> generator(_rng);
-        edge_t se, te;
-        bool pass=false;
+        typedef random_number_generator<rng_t, size_t> random_t;
+        random_t random(_rng);
+        typedef random_permutation_iterator<typename vector<vertex_t>::iterator,
+                                            random_t>
+            random_vertex_iter;
+        typedef random_permutation_iterator<typename vector<edge_t>::iterator,
+                                            random_t>
+            random_edge_iter;
 
+        edge_t se, te;
         //try new combinations until one satisfies all the consistency checks
-        typedef iterative_random_shuffle
-            <typename vector<vertex_t>::iterator,
-             random_number_generator<rng_t, size_t> > viter_random_shuffle_t;
-        viter_random_shuffle_t vs(source_vertices.begin(), 
-                                  source_vertices.end(), generator);
-        for(; vs != source_vertices.end(); ++vs)
+        bool found = false;
+        random_vertex_iter vs(source_vertices.begin(),
+                              source_vertices.end(), random);
+        for (; vs != source_vertices.end() && !found; ++vs)
         {
-            viter_random_shuffle_t vt(target_vertices.begin(),
-                                     target_vertices.end(), generator);
-            for(; vt != target_vertices.end(); ++vt)
+            random_vertex_iter vt(target_vertices.begin(),
+                                  target_vertices.end(), random);
+            for (; vt != target_vertices.end() && !found; ++vt)
             {
                 // set up the edges to draw from
                 vector<edge_t> in_edges_vt, out_edges_vs;
-                typename in_edge_iteratorS<Graph>::type ie, ie_end;
+                typename in_or_out_edge_iteratorS<Graph>::type ie, ie_end;
                 typename graph_traits<Graph>::out_edge_iterator oe, oe_end;
-                for(tie(ie, ie_end) = 
-                        in_edge_iteratorS<Graph>::in_edges(*vt, _g);
-                     ie != ie_end ; ++ie)
+                tie(ie, ie_end) =
+                    in_or_out_edge_iteratorS<Graph>::get_edges(*vt, _g);
+                for (; ie != ie_end; ++ie)
                     in_edges_vt.push_back(*ie);
-                for(tie(oe, oe_end) = out_edges(*vs, _g); oe != oe_end ; ++oe)
+                for (tie(oe, oe_end) = out_edges(*vs, _g); oe != oe_end ; ++oe)
                     out_edges_vs.push_back(*oe);
 
                 // for combinations of in_vt and out_vs...
-                typedef iterative_random_shuffle
-                    <typename vector<edge_t>::iterator,
-                     random_number_generator<rng_t, size_t> >
-                    eiter_random_shuffle_t;
-                eiter_random_shuffle_t out_vs_i(out_edges_vs.begin(),
-                                                out_edges_vs.end(), generator);
-                for(; out_vs_i != out_edges_vs.end(); ++out_vs_i)
+                random_edge_iter out_vs_i(out_edges_vs.begin(),
+                                          out_edges_vs.end(), random);
+                for (; out_vs_i != out_edges_vs.end() && !found; ++out_vs_i)
                 {
-                    eiter_random_shuffle_t in_vt_i(in_edges_vt.begin(),
-                                                   in_edges_vt.end(),
-                                                   generator);
-                    for(; in_vt_i != in_edges_vt.end(); ++in_vt_i)
+
+                    if(!self_loops) // reject self-loops if not allowed
                     {
-                        if(!parallel_edges)  // check all break conditions
-                                             // before continue conditions
+                        if((*vs == *vt) ||
+                           (source(e, _g) == target(*out_vs_i, _g)))
+                            continue;
+                    }
+
+                    if(!parallel_edges) // reject parallel edges if not allowed
+                    {
+                        if(_edge_is_new[*out_vs_i] && (source(e, _g)==*vs) &&
+                           (target(*out_vs_i, _g)==*vt))
+                            continue;
+                    }
+
+                    random_edge_iter in_vt_i(in_edges_vt.begin(),
+                                             in_edges_vt.end(), random);
+                    for (; in_vt_i != in_edges_vt.end() && !found; ++in_vt_i)
+                    {
+                        if(!self_loops) // reject self-loops if not allowed
                         {
-                            if(_edge_is_new[*out_vs_i] &&
-                               (source(e, _g)==*vs) &&
-                               (target(*out_vs_i, _g)==*vt))
-                                break;
-                        }
-                        if(!self_loops)
-                        {
-                            if((*vs == *vt) ||
-                                (source(e, _g) == target(*out_vs_i, _g)))
-                                break;
                             if((source_in()(*in_vt_i, _g) == target(e, _g)))
                                 continue;
                         }
-                        if(!parallel_edges)
+                        if(!parallel_edges) // reject parallel edges if not
+                                            // allowed
                         {
-                            if(is_adjacent_in_new(*vs, *vt, _g, _edge_is_new,
-                                                  *out_vs_i, *in_vt_i) ||
-                               is_adjacent_in_new(source_in()(*in_vt_i, _g),
-                                                  target( e, _g), _g,
-                                                  _edge_is_new, *out_vs_i,
-                                                  *in_vt_i) ||
-                               is_adjacent_in_new(source(e, _g),
-                                                  target(*out_vs_i, _g), _g,
-                                                  _edge_is_new, *out_vs_i,
-                                                  *in_vt_i) ||
-                               (_edge_is_new[*in_vt_i]
-                                && (source_in()(*in_vt_i, _g) == *vs) &&
-                                (target(e, _g)==*vt) ) ||
-                               ( _edge_is_new[*in_vt_i] &&
-                                 _edge_is_new[*out_vs_i] &&
-                                 (*in_vt_i != *out_vs_i) &&
-                                 (source(e, _g) ==
-                                  source_in()(*in_vt_i, _g)) &&
-                                 (target(e, _g) == target(*out_vs_i, _g))))
+                            if (swap_edge_triad::parallel_check
+                                (e, *out_vs_i, *in_vt_i, _edge_is_new, _g))
                                 continue;
                         }
                         se = *out_vs_i;
                         te = *in_vt_i;
-                        pass = true;
-                        break;
+                        found = true;
                     }
-                    if(pass) break;
                 }
-                if(pass) break;
             }
-            if(pass) break;
         }
-        if(pass==false)
-            throw GraphException("Bad things happen when you're not one with"
-                                 " your inner self.");
+        if (!found)
+            throw GraphException("Couldn't find random pair of edges to swap"
+                                 "... This is a bug.");
         _edge_is_new[e]=true;
         return make_pair(se, te);
     }

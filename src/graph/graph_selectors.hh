@@ -28,6 +28,7 @@
 #include <boost/dynamic_property_map.hpp>
 
 #include "graph.hh"
+#include "graph_adaptor.hh"
 
 namespace graph_tool
 {
@@ -219,11 +220,11 @@ struct get_in_edges
     typedef typename graph_traits<Graph>::vertex_descriptor
         vertex_descriptor;
     typedef typename graph_traits<Graph>::in_edge_iterator type;
-    static std::pair<type,type> in_edges(vertex_descriptor v,
-                                         const Graph& g)
+    static std::pair<type,type> get_edges(vertex_descriptor v,
+                                          const Graph& g)
     {
         using namespace boost;
-        return in_edges(v,g);
+        return in_edges(v, g);
     }
 };
 
@@ -236,8 +237,8 @@ struct get_in_edges<Graph,boost::false_type>
     typedef typename graph_traits<Graph>::vertex_descriptor
         vertex_descriptor;
     typedef typename graph_traits<Graph>::out_edge_iterator type;
-    static std::pair<type,type> in_edges(vertex_descriptor v,
-                                         const Graph& g)
+    static std::pair<type,type> get_edges(vertex_descriptor v,
+                                          const Graph& g)
     {
         return make_pair(type(), type());
     }
@@ -257,12 +258,105 @@ struct in_edge_iteratorS
 
     typedef typename boost::graph_traits<Graph>::vertex_descriptor
         vertex_descriptor;
-    static std::pair<type,type> in_edges(vertex_descriptor v,
-                                         const Graph& g)
+    static std::pair<type,type> get_edges(vertex_descriptor v,
+                                          const Graph& g)
     {
-        return get_in_edges<Graph,is_directed>::in_edges(v, g);
+        return get_in_edges<Graph,is_directed>::get_edges(v, g);
     }
 };
+
+// helper types for all_edges_iteratorS
+template <class Graph, class IsDirected>
+struct get_all_edges
+{
+    BOOST_MPL_ASSERT((is_same<IsDirected,boost::true_type>));
+    BOOST_MPL_ASSERT((is_convertible
+                      <typename graph_traits<Graph>::directed_category,
+                      boost::directed_tag>));
+    typedef typename graph_traits<Graph>::vertex_descriptor
+        vertex_descriptor;
+    typedef typename graph_traits<UndirectedAdaptor<Graph> >::out_edge_iterator
+        type;
+    static std::pair<type,type> get_edges(vertex_descriptor v,
+                                          const Graph& g)
+    {
+        using namespace boost;
+        const UndirectedAdaptor<Graph> ug(g);
+        return out_edges(v, ug);
+    }
+};
+
+template <class Graph>
+struct get_all_edges<Graph,boost::false_type>
+{
+    BOOST_MPL_ASSERT((is_convertible
+                      <typename graph_traits<Graph>::directed_category,
+                      boost::undirected_tag>));
+    typedef typename graph_traits<Graph>::vertex_descriptor
+        vertex_descriptor;
+    typedef typename graph_traits<Graph>::out_edge_iterator type;
+    static std::pair<type,type> get_edges(vertex_descriptor v,
+                                          const Graph& g)
+    {
+        using namespace boost;
+        return out_edges(v, g);
+    }
+};
+
+// this "all edges" iterator selector returns the in-edge + out-edge ranges for
+// directed graphs and the out-edge range for undirected graphs. The
+// iterator type is given by all_edges_iteratorS<Graph>::type.
+template <class Graph>
+struct all_edges_iteratorS
+{
+    typedef typename boost::graph_traits<Graph>::directed_category
+        directed_category;
+    typedef typename is_convertible<directed_category,
+                                    boost::directed_tag>::type is_directed;
+    typedef typename get_all_edges<Graph,is_directed>::type type;
+
+    typedef typename boost::graph_traits<Graph>::vertex_descriptor
+        vertex_descriptor;
+    static std::pair<type,type> get_edges(vertex_descriptor v,
+                                          const Graph& g)
+    {
+        return get_all_edges<Graph,is_directed>::all_edges(v, g);
+    }
+};
+
+// helper types for in_or_out_edge_iteratorS
+template <class Graph, class IsDirected>
+struct get_in_or_out_edges
+    : public get_in_edges<Graph,IsDirected>
+{};
+
+template <class Graph>
+struct get_in_or_out_edges<Graph,boost::false_type>
+    : public get_all_edges<Graph,boost::false_type>
+{};
+
+// this "in or out" iterator selector returns the in-edge range for directed
+// graphs and the out-edge range for undirected graphs. The iterator type is
+// given by in_or_out_edges_iteratorS<Graph>::type
+template <class Graph>
+struct in_or_out_edge_iteratorS
+{
+    typedef typename boost::graph_traits<Graph>::directed_category
+        directed_category;
+    typedef typename is_convertible<directed_category,
+                                    boost::directed_tag>::type is_directed;
+    typedef typename get_in_or_out_edges<Graph,is_directed>::type type;
+
+    typedef typename boost::graph_traits<Graph>::vertex_descriptor
+        vertex_descriptor;
+    static std::pair<type,type> get_edges(vertex_descriptor v,
+                                          const Graph& g)
+    {
+        return get_in_or_out_edges<Graph,is_directed>::get_edges(v, g);
+    }
+};
+
+
 
 } //namespace graph_tool
 

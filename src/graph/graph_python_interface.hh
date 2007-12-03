@@ -108,7 +108,7 @@ public:
     InEdges() const
     {
         return PythonIterator<Graph,PythonEdge<Graph>,in_edge_iterator>
-            (_g, in_edge_iteratorS<Graph>::in_edges(_v, _g));
+            (_g, in_edge_iteratorS<Graph>::get_edges(_v, _g));
     }
 
     std::string GetString() const
