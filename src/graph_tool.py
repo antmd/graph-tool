@@ -253,6 +253,19 @@ def _limit_args(allowed_vals):
         return wrap
     return decorate
 
+def _lazy_load(func):
+    """Decorator which will call the 'load' method before executing the
+    decorated function, thus implementing 'lazy loading'."""
+    @_wraps(func)
+    def wrap(*args, **kwargs):
+        self = args[0]
+        if self.lazy_filename != None and self.lazy_format != None:
+            self.load(self.lazy_filename, self.lazy_format)
+            self.lazy_filename = None
+            self.lazy_format = None
+        return func(*args, **kwargs)
+    return wrap
+
 ################################################################################
 # Graph class
 # The main graph interface
@@ -271,52 +284,63 @@ class Graph(object):
 
     def __init__(self):
         self.__graph = libgraph_tool.GraphInterface()
+        self.lazy_filename = None
+        self.lazy_format = None
 
     # Graph access
 
     @_handle_exceptions
+    @_lazy_load
     def vertices(self):
         "Return iterator over the vertices"
         return self.__graph.Vertices()
 
     @_handle_exceptions
+    @_lazy_load
     def edges(self):
         "Return iterator over the edges"
         return self.__graph.Edges()
 
     @_handle_exceptions
+    @_lazy_load
     def add_vertex(self):
         "Add a new vertex to the graph, and return it"
         return self.__graph.AddVertex()
 
     @_handle_exceptions
+    @_lazy_load
     def remove_vertex(self, vertex):
         "Remove a vertex from the graph"
         return self.__graph.RemoveVertex(vertex)
 
     @_handle_exceptions
+    @_lazy_load
     def add_edge(self, source, target):
         "Add a new edge from 'source' to 'target' to the graph, and return it"
         return self.__graph.AddEdge(source, target)
 
     @_handle_exceptions
+    @_lazy_load
     def remove_edge(self, edge):
         "Remove a edge from the graph"
         return self.__graph.RemoveEdge(edge)
 
     @_handle_exceptions
+    @_lazy_load
     def __get_vertex_properties(self):
         return self.__graph.GetVertexProperties()
     vertex_properties = property(__get_vertex_properties,
                                  doc="Dictionary of vertex properties")
 
     @_handle_exceptions
+    @_lazy_load
     def __get_edge_properties(self):
         return self.__graph.GetEdgeProperties()
     edge_properties = property(__get_edge_properties,
                                  doc="Dictionary of edge properties")
 
     @_handle_exceptions
+    @_lazy_load
     def __get_graph_properties(self):
         class GraphPropertyDict(dict):
             """Wrapper for the dict of graph properties, which sets the value on
@@ -346,7 +370,9 @@ class Graph(object):
         valdict = dict((k, v[self.__graph]) \
                        for k,v in self.__graph.GetGraphProperties().iteritems())
         return GraphPropertyDict(self, valdict)
+
     @_handle_exceptions
+    @_lazy_load
     def __set_graph_properties(self, val):
         props = self.__graph.GetGraphProperties()
         for k,v in val.iteritems():
@@ -365,10 +391,12 @@ class Graph(object):
                 self.add_graph_property(k, typename)
                 props = self.__graph.GetGraphProperties()
             props[k][self.__graph] = v
+
     graph_properties = property(__get_graph_properties, __set_graph_properties,
                                 doc="Dictionary of graph properties")
 
     @_handle_exceptions
+    @_lazy_load
     def add_vertex_property(self, name, type):
         """Add a new (uninitialized) vertex property map of type 'type', and
         return it"""
@@ -376,6 +404,7 @@ class Graph(object):
         return self.vertex_properties[name]
 
     @_handle_exceptions
+    @_lazy_load
     def add_edge_property(self, name, type):
         """Add a new (uninitialized) edge property map of type 'type', and
         return it"""
@@ -383,6 +412,7 @@ class Graph(object):
         return self.vertex_properties[name]
 
     @_handle_exceptions
+    @_lazy_load
     def add_graph_property(self, name, type):
         """Add a new (uninitialized) graph property map of type 'type'"""
         self.edit_graph_property(name, type)
@@ -400,9 +430,19 @@ class Graph(object):
             self.__graph.ReadFromFile(filename)
         else:
             self.__graph.ReadFromFile(filename, format)
+        self.lazy_filename = filename
+        self.lazy_format = format
+
+    @_handle_exceptions
+    def lazy_load(self, filename, format="auto"):
+        """Calls load() with the same arguments when the graph is first accessed."""
+
+        self.lazy_filename = filename
+        self.lazy_format = format
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def save(self, filename, format="auto"):
         """Save graph to file. The format is guessed from the 'file' name, or
         can be specified by 'format', which can be either 'xml' or 'dot'."""
@@ -417,6 +457,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1], first_subopt="N")
     @_handle_exceptions
+    @_lazy_load
     def correlated_configurational_model \
             (self, N = 10000, pjk = "lambda j, k: 1.0",
              pjk_ceil = "lambda j, k: pjk(j, k)", pjk_m = 1.0,
@@ -445,45 +486,53 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def directed(self):
         """Treat graph as directed (default)."""
         self.__graph.SetDirected(True)
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def undirected(self):
         """Treat graph as undirected."""
         self.__graph.SetDirected(False)
 
     @_handle_exceptions
+    @_lazy_load
     def set_directed(self, is_directed):
         """Set the directedness of the graph"""
         self.__graph.SetDirected(is_directed)
 
     @_handle_exceptions
+    @_lazy_load
     def is_directed(self):
         """Get the directedness of the graph"""
         return self.__graph.GetDirected()
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def reverse(self):
         """Reverse the direction of the edges."""
         self.__graph.SetReversed(not self.__graph.GetReversed())
 
     @_handle_exceptions
+    @_lazy_load
     def set_reverse(self, reversed):
         """Reverse the direction of the edges, if 'reversed' is True, or
         maintain the original direction otherwise."""
         self.__graph.SetReversed(is_reversed)
 
     @_handle_exceptions
+    @_lazy_load
     def get_reverse(self):
         """Return 'True' if the edges are reversed, and 'False' otherwise."""
         return self.__graph.GetReversed()
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def exclude_vertex_range(self, property, range):
         """Choose vertex property and range to exclude."""
         (ran, inc, inverted) = _parse_range(range)
@@ -492,6 +541,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def keep_vertex_range(self, property, range):
         """Choose vertex property and range to keep (and exclude the rest)."""
         (ran, inc, inverted) = _parse_range(range)
@@ -500,12 +550,14 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def reset_vertex_filter(self):
         """Remove edge filter."""
         self.__graph.SetVertexFilterProperty('')
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def exclude_edge_range(self, property, range):
         """Choose edge property and range to exclude."""
         (ran, inc, inverted) = _parse_range(range)
@@ -514,6 +566,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def keep_edge_range(self, property, range):
         """Choose edge property and range to keep (and exclude the rest)."""
         (ran, inc, inverted) = _parse_range(range)
@@ -531,6 +584,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def edit_vertex_property(self, property, type="double", expr=None):
         """Edit the selected vertex property"""
         self.__graph.EditVertexProperty(property, type,
@@ -539,6 +593,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def edit_edge_property(self, property, type="double", expr=None):
         """Edit the selected edge property"""
         self.__graph.EditEdgeProperty(property, type,
@@ -547,6 +602,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def edit_graph_property(self, property, type="double", expr=None):
         """Edit the selected graph property"""
         self.__graph.EditGraphProperty(property, type,
@@ -555,36 +611,42 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def remove_vertex_property(self, property):
         """Remove the selected vertex property"""
         self.__graph.RemoveVertexProperty(property)
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def remove_edge_property(self, property):
         """Remove the selected edge property"""
         self.__graph.RemoveEdgeProperty(property)
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def remove_graph_property(self, property):
         """Remove the selected graph property"""
         self.__graph.RemoveGraphProperty(property)
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def insert_vertex_index_property(self, property):
         """Insert vertex index as property"""
         self.__graph.InsertVertexIndexProperty(property)
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def insert_edge_index_property(self, property):
         """Insert edge index as property"""
         self.__graph.InsertEdgeIndexProperty(property)
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def list_properties(self):
         """List all properties"""
         w = max([len(x) for x in self.graph_properties.keys() + \
@@ -601,6 +663,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def purge_vertices(self):
         """Remove all vertices of the graph which are currently being filtered
         out, and return to the unfiltered state"""
@@ -609,6 +672,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def purge_edges(self):
         """Remove all edges of the graph which are currently being filtered out,
         and return to the unfiltered state"""
@@ -617,6 +681,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1], fist_subopt="parallel_edges")
     @_handle_exceptions
+    @_lazy_load
     @_limit_args({"strategy":["correlated", "uncorrelated"]})
     def random_rewire(self, strategy="uncorrelated", parallel_edges=False,
                       self_loops=False, seed=int(time.time())):
@@ -628,42 +693,49 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
+    @_lazy_load
     def number_of_vertices(self):
         """Get the number of vertices."""
         return self.__graph.GetNumberOfVertices()
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
+    @_lazy_load
     def number_of_edges(self):
         """Get the number of edges"""
         return self.__graph.GetNumberOfEdges()
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
+    @_lazy_load
     def vertex_histogram(self, degree):
         """Get the vertex degree/property histogram"""
         return self.__graph.GetVertexHistogram(_degree(degree))
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
+    @_lazy_load
     def edge_histogram(self, property):
         """Get the edge property histogram"""
         return self.__graph.GetEdgeHistogram(property)
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
+    @_lazy_load
     def average_vertex_property(self, degree):
         """Get the average of the vertex property"""
         return _get_mean(self.__graph.GetVertexHistogram(_degree(degree)))
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
+    @_lazy_load
     def average_edge_property(self, property):
         """Get the average of the edge property"""
         return _get_mean(self.__graph.GetEdgeHistogram(property))
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
+    @_lazy_load
     def combined_vertex_histogram(self, degree1, degree2):
         """Get the combined (degree1, degree2) histogram. Scalar properties are
         also accepted as degree1 or degree2"""
@@ -672,6 +744,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
+    @_lazy_load
     def distance_histogram(self, weight=None):
         """Get the distance histogram"""
         if weight == None:
@@ -680,6 +753,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
+    @_lazy_load
     def average_distance(self, weight=None):
         """Get the averarge distance"""
         if weight == None:
@@ -688,6 +762,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
+    @_lazy_load
     def average_harmonic_distance(self, weight=None):
         """Get the averarge harmonic distance"""
         if weight == None:
@@ -698,6 +773,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1], fist_subopt="samples", has_output=True)
     @_handle_exceptions
+    @_lazy_load
     def sampled_distance_histogram(self, samples=1000, weight=None,
                                    seed=int(time.time())):
         """Get the sampled distance histogram"""
@@ -707,6 +783,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1], has_output=True, first_subopt="samples")
     @_handle_exceptions
+    @_lazy_load
     def average_sampled_distance(self, samples=1000, weight=None,
                                  seed=int(time.time())):
         """Get the average sampled distance."""
@@ -718,6 +795,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1], has_output=True, first_subopt="samples")
     @_handle_exceptions
+    @_lazy_load
     def average_sampled_harmonic_distance(self, samples=1000, weight=None,
                                  seed=int(time.time())):
         """Get the average sampled harmonic distance."""
@@ -729,24 +807,28 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def label_components(self, property):
         """Label components to property"""
         self.__graph.LabelComponents(property)
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def label_parallel_edges(self, property):
         """Label parallel edges to property"""
         self.__graph.LabelParallelEdges(property)
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
+    @_lazy_load
     def reciprocity(self):
         """Get the edge reciprocity"""
         self.__graph.GetReciprocity()
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def minimum_spanning_tree(self, property,  weight=None):
         """Mark the minimum spanning tree edges in property"""
         if weight == None:
@@ -755,12 +837,14 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def line_graph(self, file, format="xml"):
         """Save the corresponding line graph to file"""
         self.__graph.GetLineGraph(file, format)
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def betweenness_centrality(self, vertex_betweeness, edge_betweeness,
                                weight=None):
         """Calculate and store the vertex and/or edge betweenness centrality"""
@@ -770,6 +854,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
+    @_lazy_load
     def central_point_dominance(self, vertex_betweeness):
         """Calculate central point dominance, given the 'vertex_betweeness'
         vertex property"""
@@ -779,6 +864,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
+    @_lazy_load
     def average_combined_vertex_correlation(self, degree1, degree2):
         """Get the average of degree2 in function of degree1. Scalar properties
         are also accepted as degree1 or degree2"""
@@ -787,6 +873,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
+    @_lazy_load
     def vertex_correlation_histogram(self, origin_degree, neighbour_degree,
                                      weight=None):
         """Get the degree correlation histogram. Scalar properties are also
@@ -799,6 +886,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
+    @_lazy_load
     def average_nearest_neighbours_correlation(self, origin_degree,
                                                neighbour_degree, weight=None):
         """Get the average nearest neighbours correlation. Scalar properties are
@@ -811,6 +899,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
+    @_lazy_load
     def edge_vertex_correlation_histogram(self, degree_source, edge_prop,
                                           degree_target):
         """Get the source degree vs. edge scalar vs. target degree correlation
@@ -820,6 +909,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
+    @_lazy_load
     def assortativity_coefficient(self, degree):
         """Get the assortativity coefficient. Scalar properties are also
         accepted in place of degree"""
@@ -827,6 +917,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def scalar_assortativity_coefficient(self, degree):
         """Get the scalar assortativity coefficient. Scalar properties are also
         accepted in place of degree"""
@@ -836,18 +927,21 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def local_clustering_coefficient(self, property):
         """Set the local clustering coefficient to vertex property"""
         self.__graph.SetLocalClusteringToProperty(property)
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
+    @_lazy_load
     def global_clustering_coefficient(self, file):
         """Get the global clustering coefficient"""
         return self.__graph.GetGlobalClustering()
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def extended_clustering_coefficient(self, prefix, max):
         """Set the extended clustering coefficients c1 to cmax to vertex
         properties prefix1 to prefixmax"""
@@ -857,6 +951,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1], first_subopt="type")
     @_handle_exceptions
+    @_lazy_load
     @_limit_args({"type":["fg-all-pairs", "fg-grid", "kw"]})
     def spring_block_layout(self, property, type="fg-all-pairs", iter=1000,
                             weight=None, seed=int(time.time())):
@@ -869,6 +964,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1], first_subopt="type")
     @_handle_exceptions
+    @_lazy_load
     @_limit_args({"type":["square", "circle", "heart"]})
     def gursoy_atun_layout(self, property, type="square", iter=1000,
                            weight=None, seed=int(time.time())):
@@ -881,6 +977,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1], first_subopt="g")
     @_handle_exceptions
+    @_lazy_load
     @_limit_args({"corr":["correlated", "uncorrelated", "random"]})
     def community_structure(self, property, g=1.0, n=1000, tmin=0.01, tmax=1.0,
                             spins=0, corr="uncorrelated", weight=None,
@@ -897,6 +994,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
+    @_lazy_load
     def modularity(self, property, weight=None):
         """Calculate the modularity, given a community partition specified by
         property"""
@@ -906,6 +1004,7 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
+    @_lazy_load
     def community_graph(self, property, size_property, file, format):
         """Obtain the graph of communities, given a community partition
         specified by property. The resulting graph will have a vertex property
