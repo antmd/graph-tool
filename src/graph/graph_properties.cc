@@ -146,18 +146,18 @@ template <class Descriptor>
 struct edit_property
 {
     template <class Graph>
-    void operator()(GraphInterface& gi, const Graph& g,
-                    const dynamic_properties& dp,
-                    dynamic_property_map* prop_map, python::object& op) const
+    void operator()(const Graph& g, const dynamic_properties& dp,
+                    dynamic_property_map* prop_map, python::object& op,
+                    python::object& pg) const
     {
-        put_properties(gi, g, Descriptor(), *prop_map, op);
+        put_properties(g, Descriptor(), *prop_map, op, pg);
     }
 
     template<class Graph>
-    void put_properties(GraphInterface& gi, const Graph& g,
+    void put_properties(const Graph& g,
                         typename graph_traits<Graph>::vertex_descriptor,
                         dynamic_property_map& prop_map,
-                        python::object& operation) const
+                        python::object& operation, python::object& pg) const
     {
         if (operation == python::object()) // don't set properties if op == None
             return;
@@ -166,17 +166,16 @@ struct edit_property
         for (tie(v, v_end) = vertices(g); v != v_end; ++v)
         {
             python::object val =
-                operation(python::object(PythonVertex<Graph>(g, *v)),
-                          python::object(ref(gi)));
+                operation(python::object(PythonVertex<Graph>(g, *v)), pg);
             prop_map.put(*v, val);
         }
     }
 
     template<class Graph>
-    void put_properties(GraphInterface& gi, const Graph& g,
+    void put_properties(const Graph& g,
                         typename graph_traits<Graph>::edge_descriptor,
                         dynamic_property_map& prop_map,
-                        python::object& operation) const
+                        python::object& operation, python::object& pg) const
     {
         if (operation == python::object()) // don't set properties if op == None
             return;
@@ -185,8 +184,7 @@ struct edit_property
         for (tie(e, e_end) = edges(g); e != e_end; ++e)
         {
             python::object val =
-                operation(python::object(PythonEdge<Graph>(g, *e)),
-                          python::object(ref(gi)));
+                operation(python::object(PythonEdge<Graph>(g, *e)), pg);
             prop_map.put(*e, val);
         }
     }
@@ -271,8 +269,8 @@ private:
 };
 
 
-void GraphInterface::EditVertexProperty(string property,
-                                        string type, python::object op)
+void GraphInterface::EditVertexProperty(string property, string type, 
+                                        python::object op, python::object g)
 {
     bool valid = false;
     for(int i = 0; i < mpl::size<value_types>::type::value; ++i)
@@ -287,16 +285,15 @@ void GraphInterface::EditVertexProperty(string property,
         (get_property_map<value_types,vertex_descriptor,vertex_index_map_t>
          (*this, _properties, _vertex_index, property, type, type_names, pmap));
     check_filter(*this, lambda::bind<void>(edit_property<vertex_descriptor>(),
-                                           var(*this), lambda::_1,
-                                           var(_properties), var(pmap),
-                                           var(op)),
+                                           lambda::_1, var(_properties),
+                                           var(pmap), var(op), var(g)),
                  reverse_check(), directed_check());
     delete pmap;
 }
 
 
 void GraphInterface::EditEdgeProperty(string property, string type,
-                                      python::object op)
+                                      python::object op, python::object g)
 {
     bool valid = false;
     for(int i = 0; i < mpl::size<value_types>::type::value; ++i)
@@ -311,15 +308,14 @@ void GraphInterface::EditEdgeProperty(string property, string type,
         (get_property_map<value_types,edge_descriptor,edge_index_map_t>
          (*this, _properties, _edge_index, property, type, type_names,pmap));
     check_filter(*this, lambda::bind<void>(edit_property<edge_descriptor>(),
-                                           var(*this), lambda::_1,
-                                           var(_properties), var(pmap),
-                                           var(op)),
+                                           lambda::_1, var(_properties), 
+                                           var(pmap), var(op), var(g)),
                  reverse_check(), directed_check());
     delete pmap;
 }
 
 void GraphInterface::EditGraphProperty(string property, string type,
-                                       python::object op)
+                                       python::object op, python::object g)
 {
     bool valid = false;
     for(int i = 0; i < mpl::size<value_types>::type::value; ++i)
@@ -338,7 +334,7 @@ void GraphInterface::EditGraphProperty(string property, string type,
 
     if (op != python::object()) // don't set property if op == None
     {
-        python::object val = op(python::object(ref(*this)));
+        python::object val = op(g);
         pmap->put(graph_property_tag(), val);
     }
     delete pmap;

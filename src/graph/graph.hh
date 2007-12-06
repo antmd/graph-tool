@@ -156,9 +156,12 @@ public:
     void RemoveGraphProperty(string property);
     void InsertEdgeIndexProperty(string property);
     void InsertVertexIndexProperty(string property);
-    void EditVertexProperty(string property, string type, python::object op);
-    void EditEdgeProperty(string property, string type, python::object op);
-    void EditGraphProperty(string property, string type, python::object op);
+    void EditVertexProperty(string property, string type, python::object op,
+                            python::object g);
+    void EditEdgeProperty(string property, string type, python::object op,
+                          python::object g);
+    void EditGraphProperty(string property, string type, python::object op,
+                           python::object g);
     void ReIndexEdges();
     void PurgeVertices();
     void PurgeEdges();

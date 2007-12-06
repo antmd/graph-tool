@@ -589,7 +589,7 @@ class Graph(object):
         """Edit the selected vertex property"""
         self.__graph.EditVertexProperty(property, type,
                                         _eval_expr(expr,
-                                                   edit_expr="v"))
+                                                   edit_expr="v"), self)
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
@@ -598,7 +598,7 @@ class Graph(object):
         """Edit the selected edge property"""
         self.__graph.EditEdgeProperty(property, type,
                                       _eval_expr(expr,
-                                                 edit_expr="e"))
+                                                 edit_expr="e"), self)
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
@@ -607,7 +607,7 @@ class Graph(object):
         """Edit the selected graph property"""
         self.__graph.EditGraphProperty(property, type,
                                        _eval_expr(expr,
-                                                  edit_expr="g"))
+                                                  edit_expr="g"), self)
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
