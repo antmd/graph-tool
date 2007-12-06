@@ -363,64 +363,63 @@ make_random_permutation_iterator(RandomAccessIterator first,
                                                                  rng);
 }
 
-// this will rewire the edges so that the combined (in, out) degree distribution
-// will be the same, but all the rest is random
-template <class Graph, class EdgeIndexMap>
-class RandomRewireStrategy
+// this is the mother class for edge-based rewire strategies
+// it contains the common loop for finding edges to swap, so different
+// strategies need only to specify where to sample the edges from.
+template<class Graph, class EdgeIndexMap>
+class EdgeBasedRewireStrategy
 {
 public:
-    RandomRewireStrategy (const Graph& g, EdgeIndexMap edge_index, rng_t& rng)
-        : _g(g), _rng(rng), _edge_is_new(edge_index)
-    {
-    }
-    typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
     typedef typename graph_traits<Graph>::edge_descriptor edge_t;
+    typedef typename EdgeIndexMap::value_type index_t;
+
+    EdgeBasedRewireStrategy (const Graph& g, EdgeIndexMap edge_index,
+                              rng_t& rng)
+        : _g(g), _edge_is_new(edge_index), random(rng) {}
 
     template<class EdgesType>
-    pair<edge_t,edge_t> operator()(const edge_t& e, const EdgesType& edges,
-                                   bool self_loops, bool parallel_edges)
+    pair<edge_t, edge_t> operator()(const edge_t& e, const EdgesType& edges,
+                                    bool self_loops, bool parallel_edges)
     {
-        _edges_source = edges;
-        _edges_target = edges;
-        typedef random_number_generator<rng_t,size_t> random_t;
-        random_t random(_rng);
-        typedef random_permutation_iterator<typename edges_t::iterator,random_t>
-            random_edge_iter;
+        // where should we sample the edges from
+        vector<index_t> *edges_source, *edges_target;
+        get_edges(e, &edges_source, &edges_target);
 
         //try randomly drawn pairs of edges until one satisfies all the
         //consistency checks
         bool found = false;
-        edge_t se, te;
+        edge_t es, et;
+        typedef random_permutation_iterator
+            <typename vector<index_t>::iterator, random_t> random_edge_iter;
 
-        random_edge_iter esi(_edges_source.begin(), _edges_source.end(),
+        random_edge_iter esi(edges_source->begin(), edges_source->end(),
                              random);
-        for (; esi != _edges_source.end() && !found; ++esi)
+        for (; esi != edges_source->end() && !found; ++esi)
         {
+            es = edges[*esi];
             if(!self_loops) // reject self-loops if not allowed
             {
-                if((source(e, _g) == target(*esi, _g)))
+                if((source(e, _g) == target(es, _g)))
                     continue;
             }
 
-            random_edge_iter eti(_edges_target.begin(), _edges_target.end(),
+            random_edge_iter eti(edges_target->begin(), edges_target->end(),
                                  random);
-
-            for (; eti != _edges_target.end() && !found; ++eti)
+            for (; eti != edges_target->end() && !found; ++eti)
             {
+                et = edges[*eti];
                 if (!self_loops) // reject self-loops if not allowed
                 {
-                    if ((source(*esi, _g) == target_in()(*eti, _g)) ||
-                        (source_in()(*eti, _g) == target(e, _g)))
+                    if ((source(es, _g) == target_in()(et, _g)) ||
+                        (source_in()(et, _g) == target(e, _g)))
                         continue;
                 }
                 if (!parallel_edges) // reject parallel edges if not allowed
                 {
-                    if (swap_edge_triad::parallel_check(e, *esi, *eti,
+                    if (swap_edge_triad::parallel_check(e, es, et,
                                                         _edge_is_new, _g))
                         continue;
                 }
-                se = *esi;
-                te = *eti;
                 found = true;
             }
         }
@@ -428,29 +427,35 @@ public:
             throw GraphException("Couldn't find random pair of edges to swap"
                                  "... This is a bug.");
         _edge_is_new[e]=true;
-        return make_pair(se, te);
+        return make_pair(es, et);
     }
+
+    virtual void get_edges(const edge_t& e, vector<index_t>** edges_source,
+                   vector<index_t>** edges_target) = 0;
+
+    virtual ~EdgeBasedRewireStrategy() {}
 
 private:
     const Graph& _g;
-    rng_t& _rng;
-    typedef vector<edge_t> edges_t;
-    edges_t _edges_target, _edges_source;
     vector_property_map<bool, EdgeIndexMap> _edge_is_new;
+    typedef random_number_generator<rng_t, size_t> random_t;
+    random_t random;
 };
 
-// this will rewire the edges so that the (in,out) degree distributions and the
-// (in,out)->(in,out) correlations will be the same, but all the rest is random
+// this will rewire the edges so that the combined (in, out) degree distribution
+// will be the same, but all the rest is random
 template <class Graph, class EdgeIndexMap>
-class CorrelatedRewireStrategy
+class RandomRewireStrategy
+    : public EdgeBasedRewireStrategy<Graph,EdgeIndexMap>
 {
 public:
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
     typedef typename graph_traits<Graph>::edge_descriptor edge_t;
+    typedef typename EdgeIndexMap::value_type index_t;
 
-    CorrelatedRewireStrategy (const Graph& g, EdgeIndexMap edge_index,
+    RandomRewireStrategy (const Graph& g, EdgeIndexMap edge_index,
                               rng_t& rng)
-        : _g(g), _rng(rng), _edge_is_new(edge_index)
+        : EdgeBasedRewireStrategy<Graph,EdgeIndexMap>(g, edge_index, rng), _g(g)
     {
         int i, N = num_vertices(_g);
         for (i = 0; i < N; ++i)
@@ -458,115 +463,75 @@ public:
             vertex_t v = vertex(i, _g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
-
-            size_t j = in_degreeS()(v, _g);
-            size_t k = out_degree(v, _g);
-
-            typedef typename is_convertible
-                <typename graph_traits<Graph>::directed_category,
-                 directed_tag>::type is_directed;
-
-            if (j > 0 || !is_directed::value)
-                _deg_target_vertices[make_pair(j,k)].push_back(v);
-
-            if (k > 0)
-                _deg_source_vertices[make_pair(j,k)].push_back(v);
-        }
-    }
-
-    template<class EdgesType>
-    pair<edge_t, edge_t> operator()(const edge_t& e, const EdgesType& edges,
-                                    bool self_loops, bool parallel_edges)
-    {
-        vector<vertex_t>& source_vertices =
-            _deg_source_vertices[make_pair(in_degreeS()(source(e, _g), _g),
-                                           out_degree(source(e, _g), _g))];
-        vector<vertex_t>& target_vertices =
-            _deg_target_vertices[make_pair(in_degreeS()(target(e, _g), _g),
-                                           out_degree(target(e, _g), _g))];
-
-        typedef random_number_generator<rng_t, size_t> random_t;
-        random_t random(_rng);
-        typedef random_permutation_iterator<typename vector<vertex_t>::iterator,
-                                            random_t>
-            random_vertex_iter;
-        typedef random_permutation_iterator<typename vector<edge_t>::iterator,
-                                            random_t>
-            random_edge_iter;
-
-        edge_t se, te;
-        //try new combinations until one satisfies all the consistency checks
-        bool found = false;
-        random_vertex_iter vs(source_vertices.begin(),
-                              source_vertices.end(), random);
-        for (; vs != source_vertices.end() && !found; ++vs)
-        {
-            random_vertex_iter vt(target_vertices.begin(),
-                                  target_vertices.end(), random);
-            for (; vt != target_vertices.end() && !found; ++vt)
+            typename graph_traits<Graph>::out_edge_iterator e_i, e_i_end;
+            for (tie(e_i, e_i_end) = out_edges(v, _g); e_i != e_i_end; ++e_i)
             {
-                // set up the edges to draw from
-                vector<edge_t> in_edges_vt, out_edges_vs;
-                typename in_or_out_edge_iteratorS<Graph>::type ie, ie_end;
-                typename graph_traits<Graph>::out_edge_iterator oe, oe_end;
-                tie(ie, ie_end) =
-                    in_or_out_edge_iteratorS<Graph>::get_edges(*vt, _g);
-                for (; ie != ie_end; ++ie)
-                    in_edges_vt.push_back(*ie);
-                for (tie(oe, oe_end) = out_edges(*vs, _g); oe != oe_end ; ++oe)
-                    out_edges_vs.push_back(*oe);
-
-                // for combinations of in_vt and out_vs...
-                random_edge_iter out_vs_i(out_edges_vs.begin(),
-                                          out_edges_vs.end(), random);
-                for (; out_vs_i != out_edges_vs.end() && !found; ++out_vs_i)
-                {
-
-                    if(!self_loops) // reject self-loops if not allowed
-                    {
-                        if((*vs == *vt) ||
-                           (source(e, _g) == target(*out_vs_i, _g)))
-                            continue;
-                    }
-
-                    random_edge_iter in_vt_i(in_edges_vt.begin(),
-                                             in_edges_vt.end(), random);
-                    for (; in_vt_i != in_edges_vt.end() && !found; ++in_vt_i)
-                    {
-                        if(!self_loops) // reject self-loops if not allowed
-                        {
-                            if((source_in()(*in_vt_i, _g) == target(e, _g)))
-                                continue;
-                        }
-                        if(!parallel_edges) // reject parallel edges if not
-                                            // allowed
-                        {
-                            if (swap_edge_triad::parallel_check
-                                (e, *out_vs_i, *in_vt_i, _edge_is_new, _g))
-                                continue;
-                        }
-                        se = *out_vs_i;
-                        te = *in_vt_i;
-                        found = true;
-                    }
-                }
+                _all_edges.push_back(edge_index[*e_i]);
             }
         }
-        if (!found)
-            throw GraphException("Couldn't find random pair of edges to swap"
-                                 "... This is a bug.");
-        _edge_is_new[e]=true;
-        return make_pair(se, te);
     }
-
+    void get_edges(const edge_t& e, vector<index_t>** edges_source,
+                   vector<index_t>** edges_target)
+    {
+        *edges_source = &_all_edges;
+        *edges_target = &_all_edges;
+    }
 private:
     const Graph& _g;
-    rng_t& _rng;
-    typedef tr1::unordered_map<pair<size_t, size_t>, vector<vertex_t>,
-                               hash<pair<size_t, size_t> > > deg_vertices_t;
-    deg_vertices_t _deg_source_vertices;
-    deg_vertices_t _deg_target_vertices;
-    vector_property_map<bool, EdgeIndexMap> _edge_is_new;
+    vector<index_t> _all_edges;
+};
+
+
+// this will rewire the edges so that the (in,out) degree distributions and the
+// (in,out)->(in,out) correlations will be the same, but all the rest is random
+template <class Graph, class EdgeIndexMap>
+class CorrelatedRewireStrategy
+    : public EdgeBasedRewireStrategy<Graph,EdgeIndexMap>
+{
+public:
+    typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
+    typedef typename graph_traits<Graph>::edge_descriptor edge_t;
+    typedef typename EdgeIndexMap::value_type index_t;
+
+    CorrelatedRewireStrategy (const Graph& g, EdgeIndexMap edge_index,
+                              rng_t& rng)
+        : EdgeBasedRewireStrategy<Graph,EdgeIndexMap>(g, edge_index, rng), _g(g)
+    {
+        int i, N = num_vertices(_g);
+        for (i = 0; i < N; ++i)
+        {
+            vertex_t v = vertex(i, _g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+            typename graph_traits<Graph>::out_edge_iterator e_i, e_i_end;
+            for (tie(e_i, e_i_end) = out_edges(v, _g); e_i != e_i_end; ++e_i)
+            {
+                _edges_source_by
+                    [make_pair(in_degreeS()(source(*e_i, _g), _g),
+                                  out_degree(source(*e_i, _g), _g))]
+                    .push_back(edge_index[*e_i]);
+                _edges_target_by
+                    [make_pair(in_degreeS()(target_in()(*e_i, _g), _g),
+                               out_degree(target_in()(*e_i, _g), _g))]
+                    .push_back(edge_index[*e_i]);
+            }
+        }
+    }
+    void get_edges(const edge_t& e, vector<index_t>** edges_source,
+                   vector<index_t>** edges_target)
+    {
+        *edges_source =
+            &_edges_source_by[make_pair(in_degreeS()(source(e, _g), _g),
+                                        out_degree(source(e, _g), _g))];
+        *edges_target =
+            &_edges_target_by[make_pair(in_degreeS()(target_in()(e, _g), _g),
+                                        out_degree(target_in()(e, _g), _g))];
+    }
+private:
+    const Graph& _g;
+    typedef tr1::unordered_map<pair<size_t, size_t>, vector<index_t>,
+                            hash<pair<size_t, size_t> > > edges_by_end_deg_t;
+    edges_by_end_deg_t _edges_source_by, _edges_target_by;
 };
 
 } // graph_tool namespace
