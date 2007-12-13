@@ -89,7 +89,6 @@ struct get_reciprocity
 double GraphInterface::GetReciprocity() const
 {
     double reciprocity;
-    check_filter(*this, bind<void>(get_reciprocity(), _1, var(reciprocity)),
-                 reverse_check(), directed_check()); 
+    run_action(*this, bind<void>(get_reciprocity(), _1, var(reciprocity))); 
     return reciprocity;
 }

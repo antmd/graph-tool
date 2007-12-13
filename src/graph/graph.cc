@@ -389,11 +389,9 @@ size_t GraphInterface::GetNumberOfVertices() const
 {
     size_t n = 0;
     if (IsVertexFilterActive())
-        check_filter(*this,var(n)=bind<size_t>(HardNumVertices(),_1),
-                     reverse_check(),directed_check());
+        run_action(*this,var(n)=bind<size_t>(HardNumVertices(),_1));
     else
-        check_filter(*this,var(n)=bind<size_t>(SoftNumVertices(),_1),
-                     reverse_check(),directed_check());
+        run_action(*this,var(n)=bind<size_t>(SoftNumVertices(),_1));
     return n;
 }
 
@@ -404,11 +402,9 @@ size_t GraphInterface::GetNumberOfEdges() const
 {
     size_t n = 0;
     if (IsEdgeFilterActive() || IsVertexFilterActive())
-        check_filter(*this,var(n)=bind<size_t>(HardNumEdges(),_1),
-                     reverse_check(),directed_check());
+        run_action(*this,var(n)=bind<size_t>(HardNumEdges(),_1));
     else
-        check_filter(*this,var(n)=bind<size_t>(SoftNumEdges(),_1),
-                     reverse_check(),directed_check());
+        run_action(*this,var(n)=bind<size_t>(SoftNumEdges(),_1));
     return n;
 }
 
@@ -441,7 +437,7 @@ struct get_vertex_histogram
 struct choose_vertex_histogram
 {
     choose_vertex_histogram(const GraphInterface& g, GraphInterface::deg_t deg,
-                            GraphInterface::hist_t& hist)
+                            hist_t& hist)
         : _g(g), _hist(hist)
     {
         tie(_deg, _deg_name) = get_degree_type(deg);
@@ -452,20 +448,19 @@ struct choose_vertex_histogram
         if (mpl::at<degree_selector_index,DegreeSelector>::type::value == _deg)
         {
             DegreeSelector selector(_deg_name, _g, true);
-            check_filter(_g, bind<void>(get_vertex_histogram<DegreeSelector>
-                                        (selector), _1, var(_hist)),
-                         reverse_check(),directed_check());
+            run_action(_g, bind<void>(get_vertex_histogram<DegreeSelector>
+                                        (selector), _1, var(_hist)));
         }
     }
     const GraphInterface &_g;
-    GraphInterface::hist_t &_hist;
+    hist_t &_hist;
     GraphInterface::degree_t _deg;
     string _deg_name;
 };
 
 
 // this will return the vertex histogram of degrees or scalar properties
-GraphInterface::hist_t
+hist_t
 GraphInterface::GetVertexHistogram(GraphInterface::deg_t deg) const
 {
     hist_t hist;
@@ -522,14 +517,13 @@ struct get_edge_histogram
 
 
 // returns the histogram of a given edge property
-GraphInterface::hist_t GraphInterface::GetEdgeHistogram(string property) const
+hist_t GraphInterface::GetEdgeHistogram(string property) const
 {
     hist_t hist;
     try
     {
         scalarS prop(property, *this, false);
-        check_filter(*this, bind<void>(get_edge_histogram(prop), _1, var(hist)),
-                     reverse_check(),directed_check());
+        run_action(*this, bind<void>(get_edge_histogram(prop), _1, var(hist)));
     }
     catch (dynamic_get_failure &e)
     {
@@ -576,8 +570,7 @@ void GraphInterface::LabelComponents(string prop)
     typedef vector_property_map<size_t, vertex_index_map_t> comp_map_t;
     comp_map_t comp_map(_vertex_index);
 
-    check_filter(*this, bind<void>(label_components(), _1, comp_map),
-                 reverse_check(), directed_check());
+    run_action(*this, bind<void>(label_components(), _1, comp_map));
 
     try
     {
@@ -634,17 +627,15 @@ void GraphInterface::LabelParallelEdges(string property)
         DynamicPropertyMapWrap<size_t,edge_t>
             parallel_map(find_property_map(_properties, property,
                                            typeid(edge_t)));
-        check_filter(*this, bind<void>(label_parallel_edges(), _1, _edge_index,
-                                       parallel_map),
-                     reverse_check(), directed_check());
+        run_action(*this, bind<void>(label_parallel_edges(), _1, _edge_index,
+                                       parallel_map));
     }
     catch (property_not_found)
     {
         typedef vector_property_map<size_t,edge_index_map_t> parallel_map_t;
         parallel_map_t parallel_map(_edge_index);
-        check_filter(*this, bind<void>(label_parallel_edges(), _1, _edge_index,
-                                       parallel_map),
-                     reverse_check(), directed_check());
+        run_action(*this, bind<void>(label_parallel_edges(), _1, _edge_index,
+                                     parallel_map));
         _properties.property(property, parallel_map);
     }
 }

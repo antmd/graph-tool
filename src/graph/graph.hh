@@ -19,7 +19,6 @@
 #ifndef GRAPH_HH
 #define GRAPH_HH
 
-#include <tr1/unordered_map>
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/vector_property_map.hpp>
@@ -47,39 +46,76 @@ public:
     GraphInterface();
     ~GraphInterface();
 
+    // this enum specifies all the different types of degree
     enum degree_t
     {
         IN_DEGREE,
         OUT_DEGREE,
-        TOTAL_DEGREE,
-        SCALAR
+        TOTAL_DEGREE, // in + out
+        SCALAR        // scalar vertex property
     };
 
-    // histogram types
-    typedef tr1::unordered_map<double,double> hist_t;
-    typedef tr1::unordered_map<pair<double,double>,double,
-                                    hash<pair<double,double> > > hist2d_t;
-    typedef tr1::unordered_map<tuple<double,double,double>,double,
-                               hash<tuple<double,double,double> > > hist3d_t;
-    typedef tr1::unordered_map<double,pair<double,double> > avg_corr_t;
+    typedef variant<degree_t,string> deg_t; // useful when function also expects
+                                            // a scalar vertex property
 
-    typedef variant<degree_t,string> deg_t;
+    //
+    // Basic manipulation
+    //
 
-    //graph generation
-    void GenerateCorrelatedConfigurationalModel
-        (size_t N, python::object ppjk, python::object pceil_pjk,
-         python::object pinv_ceil_pjk, double ceil_pjk_bound,
-         python::object pcorr, python::object pceil_corr,
-         python::object pinv_ceil_corr, double ceil_corr_bound,
-         bool undirected_corr, size_t seed, bool verbose);
-
-    // basic stats
     size_t GetNumberOfVertices() const;
     size_t GetNumberOfEdges() const;
+    void SetDirected(bool directed) {_directed = directed;}
+    bool GetDirected() const {return _directed;}
+    void SetReversed(bool reversed) {_reversed = reversed;}
+    bool GetReversed() const {return _reversed;}
+
+
+    // graph filtering
+    void SetVertexFilterProperty(string property);
+    void SetVertexFilterRange(pair<double,double> allowed_range,
+                              pair<bool,bool> include, bool invert);
+    bool IsVertexFilterActive() const;
+
+    void SetEdgeFilterProperty(string property);
+    void SetEdgeFilterRange(pair<double,double> allowed_range,
+                            pair<bool,bool> include, bool invert);
+    bool IsEdgeFilterActive() const;
+
+
+    // graph modification
+    void RemoveVertexProperty(string property);
+    void RemoveEdgeProperty(string property);
+    void RemoveGraphProperty(string property);
+    void InsertEdgeIndexProperty(string property);
+    void InsertVertexIndexProperty(string property);
+    void EditVertexProperty(string property, string type, python::object op,
+                            python::object g);
+    void EditEdgeProperty(string property, string type, python::object op,
+                          python::object g);
+    void EditGraphProperty(string property, string type, python::object op,
+                           python::object g);
+    void ReIndexEdges();
+    void PurgeVertices(); // removes filtered vertices
+    void PurgeEdges();    // removes filtered edges
+    void RandomRewire(std::string strat, bool self_loops, bool parallel_edges,
+                      size_t seed);
+
+    // i/o
+    void WriteToFile(string s);
+    void WriteToFile(string s, string format);
+    void ReadFromFile(string s);
+    void ReadFromFile(string s, string format);
+
+    //
+    // Algorithms
+    // Below are all the algorithms that operate somehow on the graph
+    //
+
+    // basic statistics
     hist_t GetVertexHistogram(deg_t degree) const;
     hist_t GetEdgeHistogram(string property) const;
 
-    //correlations
+    // correlations
     hist2d_t   GetCombinedVertexHistogram(deg_t degree1, deg_t degree2) const;
     avg_corr_t GetAverageCombinedVertexCorrelation(deg_t degree1,
                                                    deg_t degree2)const;
@@ -91,11 +127,11 @@ public:
                                                       deg_t neighbour_degree,
                                                       string weight) const;
 
-    // mixing
+    // vertex mixing
     pair<double,double> GetAssortativityCoefficient(deg_t deg) const;
     pair<double,double> GetScalarAssortativityCoefficient(deg_t deg) const;
 
-    //clustering
+    // clustering
     void SetLocalClusteringToProperty(string property);
     pair<double,double> GetGlobalClustering();
     void SetExtendedClusteringToProperty(string property_prefix,
@@ -115,7 +151,7 @@ public:
     double GetCentralPointDominance(string vertex_betweenness);
 
     // community structure
-    enum comm_corr_t
+    enum comm_corr_t // null model correlation type
     {
         ERDOS_REYNI,
         UNCORRELATED,
@@ -127,56 +163,23 @@ public:
                                  size_t seed, bool verbose, string history_file,
                                  string weight, string property);
     double GetModularity(string weight, string property);
+    // TODO: this should return a GraphInterface type
     void   GetCommunityNetwork(string property, string size_property,
                                string out_file, string format) const;
 
-    void RandomRewire(std::string strat, bool self_loops, bool parallel_edges,
-                      size_t seed);
+    // Graph generation
+    void GenerateCorrelatedConfigurationalModel
+        (size_t N, python::object ppjk, python::object pceil_pjk,
+         python::object pinv_ceil_pjk, double ceil_pjk_bound,
+         python::object pcorr, python::object pceil_corr,
+         python::object pinv_ceil_corr, double ceil_corr_bound,
+         bool undirected_corr, size_t seed, bool verbose);
 
-    // filtering
-    void SetDirected(bool directed) {_directed = directed;}
-    bool GetDirected() const {return _directed;}
-
-    void SetReversed(bool reversed) {_reversed = reversed;}
-    bool GetReversed() const {return _reversed;}
-
-    void SetVertexFilterProperty(string property);
-    void SetVertexFilterRange(pair<double,double> allowed_range,
-                              pair<bool,bool> include, bool invert);
-    bool IsVertexFilterActive() const;
-
-    void SetEdgeFilterProperty(string property);
-    void SetEdgeFilterRange(pair<double,double> allowed_range,
-                            pair<bool,bool> include, bool invert);
-    bool IsEdgeFilterActive() const;
-
-    // modification
-    void RemoveVertexProperty(string property);
-    void RemoveEdgeProperty(string property);
-    void RemoveGraphProperty(string property);
-    void InsertEdgeIndexProperty(string property);
-    void InsertVertexIndexProperty(string property);
-    void EditVertexProperty(string property, string type, python::object op,
-                            python::object g);
-    void EditEdgeProperty(string property, string type, python::object op,
-                          python::object g);
-    void EditGraphProperty(string property, string type, python::object op,
-                           python::object g);
-    void ReIndexEdges();
-    void PurgeVertices();
-    void PurgeEdges();
-
-    // layout
+    // graph layout
     void ComputeGraphLayoutGursoy(string prop, string weight, string topology,
                                   size_t iter = 0, size_t seed = 4357);
     void ComputeGraphLayoutSpringBlock(string prop, string weight, string type,
                                        size_t iter = 0, size_t seed = 4357);
-
-    // i/o
-    void WriteToFile(string s);
-    void WriteToFile(string s, string format);
-    void ReadFromFile(string s);
-    void ReadFromFile(string s, string format);
 
     // python interface
     python::object Vertices() const;
@@ -199,6 +202,10 @@ public:
     // signal handling
     void InitSignalHandling();
 
+    //
+    // Internal types
+    //
+
     // the following defines the edges' internal properties
     typedef property<edge_index_t, size_t> EdgeProperty;
 
@@ -212,15 +219,32 @@ public:
     typedef graph_traits<multigraph_t>::edge_descriptor edge_t;
 
 private:
-    template <class GraphInterfaceType, class Action, class ReverseCheck, 
+
+    // The following function is very central to the implementation of the above
+    // member functions. Most of the algorithms are implemented as template
+    // functors, which must be run on the correct version of the graph, i.e.,
+    // filtered, unfiltered, directed, undirected, etc. The functor in question
+    // must be fed to the function below as the "a" variable, which will take
+    // care of business, selection the correct implementation. The ReverseCheck
+    // and DirectedCheck below are utility types which allow for limiting the
+    // implementation generation when you want it to be confined for only
+    // specific graph types. See graph_filtering.hh for details.
+
+    template <class GraphInterfaceType, class Action, class ReverseCheck,
               class DirectedCheck>
-    friend void check_filter(GraphInterfaceType &g, Action a,
-                             ReverseCheck, DirectedCheck, bool run_all=false);
+    friend void run_action(GraphInterfaceType &g, Action a, 
+                           ReverseCheck, DirectedCheck, bool run_all=false);
+
+    // useful overload for common case where all graph types should be probed
+    template <class GraphInterfaceType, class Action>
+    friend void run_action(GraphInterfaceType &g, Action a); 
+
     friend class scalarS;
 
     // this is the main graph
     multigraph_t _mg;
 
+    // reverse and directed states
     bool _reversed;
     bool _directed;
 
@@ -268,7 +292,6 @@ private:
 pair<GraphInterface::degree_t,string>
 get_degree_type(GraphInterface::deg_t degree);
 
-// GraphException
 // This is the main exception which will be thrown the outside world, when
 // things go wrong
 

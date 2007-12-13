@@ -29,6 +29,11 @@
 #include "graph_properties.hh"
 #include <boost/graph/graphviz.hpp>
 #include <boost/graph/graphml.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/filter/bzip2.hpp>
+#include <boost/iostreams/device/file.hpp>
 
 using namespace std;
 using namespace boost;
@@ -228,10 +233,9 @@ void GraphInterface::GetCommunityNetwork(string property, string size_property,
                                        auto_ptr<dynamic_property_map>
                                            (iter->second));
 
-        check_filter(*this, bind<void>(get_community_network(), _1,
-                                       var(comm_map), property, size_property,
-                                       var(edge_properties), out_file, format),
-                     reverse_check(), directed_check());
+        run_action(*this, bind<void>(get_community_network(), _1,
+                                     var(comm_map), property, size_property,
+                                     var(edge_properties), out_file, format));
     }
     catch (property_not_found)
     {

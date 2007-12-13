@@ -22,6 +22,12 @@
 #include <boost/lambda/bind.hpp>
 #include <boost/random.hpp>
 #include <boost/python.hpp>
+#include <boost/function.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/filter/bzip2.hpp>
+#include <boost/iostreams/device/file.hpp>
+
 #include <iomanip>
 #include <map>
 
@@ -294,7 +300,7 @@ void GraphInterface::GenerateCorrelatedConfigurationalModel
     pjk_t pjk = python_function(ppjk);
     pjk_t ceil_pjk = python_function(pceil_pjk);
     inv_ceil_t inv_ceil_pjk = python_function(pinv_ceil_pjk);
-    corr_t corr =  python_function(pcorr);
+    corr_t corr = python_function(pcorr);
     corr_t ceil_corr = python_function(pceil_corr);
     inv_corr_t inv_ceil_corr = python_function(pinv_ceil_corr);
 

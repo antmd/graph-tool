@@ -85,7 +85,7 @@ struct choose_edge_vertex_correlation_histogram
                                              GraphInterface::deg_t deg1,
                                              scalarS& edge_scalar,
                                              GraphInterface::deg_t deg2,
-                                             GraphInterface::hist3d_t& hist)
+                                             hist3d_t& hist)
         : _g(g), _edge_scalar(edge_scalar), _hist(hist)
     {
         tie(_deg1, _deg_name1) = get_degree_type(deg1);
@@ -107,13 +107,12 @@ struct choose_edge_vertex_correlation_histogram
             {
                 DegreeSelector1 deg1(_parent._deg_name1, _parent._g, true);
                 DegreeSelector2 deg2(_parent._deg_name2, _parent._g, true);
-                check_filter(_parent._g,
-                             bind<void>
-                             (get_edge_correlation_histogram<DegreeSelector1,
-                                                             DegreeSelector2>
-                              (deg1,deg2,_parent._edge_scalar),
-                              _1, var(_parent._hist)),
-                             reverse_check(),directed_check());
+                run_action(_parent._g,
+                           bind<void>
+                           (get_edge_correlation_histogram<DegreeSelector1,
+                                                           DegreeSelector2>
+                            (deg1,deg2,_parent._edge_scalar),
+                            _1, var(_parent._hist)));
             }
         }
         choose_edge_vertex_correlation_histogram<SecondDegreeSelectors> _parent;
@@ -128,14 +127,14 @@ struct choose_edge_vertex_correlation_histogram
     }
     const GraphInterface& _g;
     scalarS& _edge_scalar;
-    GraphInterface::hist3d_t& _hist;
+    hist3d_t& _hist;
     GraphInterface::degree_t _deg1;
     string _deg_name1;
     GraphInterface::degree_t _deg2;
     string _deg_name2;
 };
 
-GraphInterface::hist3d_t
+hist3d_t
 GraphInterface::GetEdgeVertexCorrelationHistogram(GraphInterface::deg_t deg1,
                                                   string edge_scalar,
                                                   GraphInterface::deg_t deg2)

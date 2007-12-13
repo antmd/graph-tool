@@ -29,6 +29,11 @@
 #include "graph_properties.hh"
 #include <boost/graph/graphviz.hpp>
 #include <boost/graph/graphml.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/filter/bzip2.hpp>
+#include <boost/iostreams/device/file.hpp>
 
 using namespace std;
 using namespace boost;
@@ -228,8 +233,8 @@ void GraphInterface::GetLineGraph(string out_file, string format)
 {
     bool directed = _directed;
     _directed = false;
-    check_filter(*this, bind<void>(get_line_graph(), _1, var(_edge_index), 
-                                   var(_properties), out_file, format), 
-                 reverse_check(), always_undirected());
+    run_action(*this, bind<void>(get_line_graph(), _1, var(_edge_index), 
+                                 var(_properties), out_file, format), 
+               reverse_check(), always_undirected());
     _directed = directed;
 }

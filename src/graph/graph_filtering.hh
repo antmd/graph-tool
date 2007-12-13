@@ -268,9 +268,9 @@ private:
 
 typedef mpl::vector<mpl::bool_<true>, mpl::bool_<false> > reverse_check;
 typedef mpl::vector<mpl::bool_<false> > never_reversed;
-typedef mpl::vector<mpl::bool_<true> > always_reversed;
+typedef mpl::vector<mpl::bool_<true> >  always_reversed;
 typedef mpl::vector<mpl::bool_<true>, mpl::bool_<false> > directed_check;
-typedef mpl::vector<mpl::bool_<true> > always_directed;
+typedef mpl::vector<mpl::bool_<true> >  always_directed;
 typedef mpl::vector<mpl::bool_<false> > always_undirected;
 
 // this will check whether a graph is reversed and run the proper version of the
@@ -291,8 +291,8 @@ struct check_reverse
             typedef typename mpl::if_<is_const<Graph>,
                                       const reverse_graph
                                           <typename remove_const<Graph>::type>,
-                                      reverse_graph<Graph> >::type 
-                reverse_graph_t;                
+                                      reverse_graph<Graph> >::type
+                reverse_graph_t;
 
             static reverse_graph_t rg(_g);
             _a(rg);
@@ -357,10 +357,11 @@ struct check_directed
 // this will check whether a graph is range filtered and run the proper version
 // of the algorithm
 
-template <class GraphInterfaceType, class Action, class ReverseCheck, 
+template <class GraphInterfaceType, class Action, class ReverseCheck,
           class DirectedCheck>
-void check_filter(GraphInterfaceType &g, Action a, ReverseCheck,
-                  DirectedCheck, bool run_all = false)
+void run_action(GraphInterfaceType &g, Action a,
+                ReverseCheck rcheck=reverse_check(),
+                DirectedCheck dcheck=directed_check(), bool run_all=false)
 {
     typedef typename mpl::if_<is_const<GraphInterfaceType>,
                               const GraphInterface::multigraph_t,
@@ -401,6 +402,14 @@ void check_filter(GraphInterfaceType &g, Action a, ReverseCheck,
         throw GraphException("graph filtering error: filter not found "
                              "(this is a bug in graph-tool)");
 }
+
+
+template <class GraphInterfaceType, class Action>
+void run_action(GraphInterfaceType &g, Action a)
+{
+    run_action(g, a, reverse_check(), directed_check());
+}
+
 
 } //graph_tool namespace
 

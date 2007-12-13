@@ -129,7 +129,7 @@ struct get_sampled_distances
     
 };
 
-GraphInterface::hist_t 
+hist_t 
 GraphInterface::GetSampledDistanceHistogram(string weight, size_t samples,
                                             size_t seed) const
 {
@@ -137,10 +137,9 @@ GraphInterface::GetSampledDistanceHistogram(string weight, size_t samples,
 
     if (weight == "")
     {
-        check_filter(*this, bind<void>(get_sampled_distances(), _1,
-                                       _vertex_index, no_weightS(), var(hist),
-                                       samples, seed),
-                     reverse_check(), directed_check()); 
+        run_action(*this, bind<void>(get_sampled_distances(), _1,
+                                     _vertex_index, no_weightS(), var(hist),
+                                     samples, seed)); 
     }
     else
     {
@@ -154,18 +153,16 @@ GraphInterface::GetSampledDistanceHistogram(string weight, size_t samples,
                 weight_map = get_static_property_map
                     <vector_property_map<double, 
                                          edge_index_map_t> >(weight_prop);
-                check_filter(*this, bind<void>(get_sampled_distances(), _1, 
-                                               _vertex_index, weight_map, 
-                                               var(hist), samples, seed),
-                             reverse_check(), directed_check()); 
+                run_action(*this, bind<void>(get_sampled_distances(), _1, 
+                                             _vertex_index, weight_map, 
+                                             var(hist), samples, seed)); 
             }
             catch (bad_cast)
             {
                 DynamicPropertyMapWrap<double, edge_t> weight_map(weight_prop);
-                check_filter(*this, bind<void>(get_sampled_distances(), _1, 
-                                               _vertex_index, weight_map, 
-                                               var(hist), samples, seed),
-                             reverse_check(), directed_check()); 
+                run_action(*this, bind<void>(get_sampled_distances(), _1, 
+                                             _vertex_index, weight_map, 
+                                             var(hist), samples, seed)); 
             }
         }
         catch (property_not_found& e)

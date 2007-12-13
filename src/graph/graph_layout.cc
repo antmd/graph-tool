@@ -111,10 +111,9 @@ void GraphInterface::ComputeGraphLayoutGursoy(string prop, string weight,
 
     if (weight == "")
     {
-        check_filter(*this,bind<void>(compute_gursoy(),_1,iter,seed, pos_map,
-                                      dummy_property_map(), topology,
-                                      _vertex_index),
-                     reverse_check(), directed_check());
+        run_action(*this,bind<void>(compute_gursoy(),_1,iter,seed, pos_map,
+                                    dummy_property_map(), topology,
+                                    _vertex_index));
     }
     else
     {
@@ -129,18 +128,16 @@ void GraphInterface::ComputeGraphLayoutGursoy(string prop, string weight,
                     get_static_property_map
                         <vector_property_map<double, edge_index_map_t> >
                             (weight_prop);
-                check_filter(*this,bind<void>(compute_gursoy(),_1,iter,seed,
-                                              pos_map, weight_map, topology,
-                                              _vertex_index),
-                             reverse_check(),directed_check());
+                run_action(*this,bind<void>(compute_gursoy(),_1,iter,seed,
+                                            pos_map, weight_map, topology,
+                                            _vertex_index));
             }
             catch (bad_cast)
             {
                 DynamicPropertyMapWrap<double, edge_t> weight_map(weight_prop);
-                check_filter(*this,bind<void>(compute_gursoy(),_1,iter,seed,
-                                              pos_map, weight_map, topology,
-                                              _vertex_index),reverse_check(),
-                             directed_check());
+                run_action(*this,bind<void>(compute_gursoy(),_1,iter,seed,
+                                            pos_map, weight_map, topology,
+                                            _vertex_index));
             }
         }
         catch (property_not_found& e)
@@ -247,11 +244,10 @@ void GraphInterface::ComputeGraphLayoutSpringBlock(string prop, string weight,
 
     if (weight == "")
     {
-        check_filter(*this,bind<void>(compute_spring_block(), _1, type, iter,
-                                      seed, pos_map, progressive,
-                                      ConstantPropertyMap<double,edge_t>(1.0),
-                                      _vertex_index),
-                     reverse_check(), directed_check());
+        run_action(*this,bind<void>(compute_spring_block(), _1, type, iter,
+                                    seed, pos_map, progressive,
+                                    ConstantPropertyMap<double,edge_t>(1.0),
+                                    _vertex_index));
     }
     else
     {
@@ -266,18 +262,16 @@ void GraphInterface::ComputeGraphLayoutSpringBlock(string prop, string weight,
                     get_static_property_map
                         <vector_property_map<double, edge_index_map_t> >
                             (weight_prop);
-                check_filter(*this,bind<void>(compute_spring_block(), _1, type,
-                                              iter, seed, pos_map, progressive,
-                                              weight_map, _vertex_index),
-                             reverse_check(), directed_check());
+                run_action(*this,bind<void>(compute_spring_block(), _1, type,
+                                            iter, seed, pos_map, progressive,
+                                            weight_map, _vertex_index));
             }
             catch (bad_cast)
             {
                 DynamicPropertyMapWrap<double,edge_t> weight_map(weight_prop);
-                check_filter(*this,bind<void>(compute_spring_block(), _1, type,
-                                              iter, seed, pos_map, progressive,
-                                              weight_map, _vertex_index),
-                             reverse_check(), directed_check());
+                run_action(*this,bind<void>(compute_spring_block(), _1, type,
+                                            iter, seed, pos_map, progressive,
+                                            weight_map, _vertex_index));
             }
         }
         catch (property_not_found& e)

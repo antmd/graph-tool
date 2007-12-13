@@ -106,7 +106,7 @@ struct choose_average_nearest_neighbours_correlation
     choose_average_nearest_neighbours_correlation
         (const GraphInterface &g, WeightMap weight,
          GraphInterface::deg_t origin_deg, GraphInterface::deg_t neighbour_deg,
-         GraphInterface::avg_corr_t &avg_deg)
+         avg_corr_t &avg_deg)
         : _g(g), _weight(weight), _avg_deg(avg_deg)
     {
         tie(_origin_deg, _origin_deg_name) = get_degree_type(origin_deg);
@@ -130,14 +130,13 @@ struct choose_average_nearest_neighbours_correlation
                                                 _parent._g, true);
                 DegreeSelector deg(_parent._neighbour_deg_name,
                                    _parent._g, true);
-                check_filter(_parent._g,
-                             bind<void>
-                                 (get_average_nearest_neighbours_correlation
-                                      <OriginDegreeSelector,DegreeSelector>
-                                          (origin_deg, deg),
-                                  _1, var(_parent._weight),
-                                  var(_parent._avg_deg)),
-                             reverse_check(),directed_check());
+                run_action(_parent._g,
+                           bind<void>
+                               (get_average_nearest_neighbours_correlation
+                                    <OriginDegreeSelector,DegreeSelector>
+                                        (origin_deg, deg),
+                                _1, var(_parent._weight),
+                                var(_parent._avg_deg)));
             }
         }
         choose_average_nearest_neighbours_correlation<WeightMap,DegreeSelectors>
@@ -155,20 +154,20 @@ struct choose_average_nearest_neighbours_correlation
 
     const GraphInterface &_g;
     WeightMap _weight;
-    GraphInterface::avg_corr_t &_avg_deg;
+    avg_corr_t &_avg_deg;
     GraphInterface::degree_t _origin_deg;
     string _origin_deg_name;
     GraphInterface::degree_t _neighbour_deg;
     string _neighbour_deg_name;
 };
 
-GraphInterface::avg_corr_t
+avg_corr_t
 GraphInterface::GetAverageNearestNeighboursCorrelation(deg_t origin_deg,
                                                        deg_t neighbours_deg,
                                                        std::string weight)
     const
 {
-    GraphInterface::avg_corr_t avg_corr;
+    avg_corr_t avg_corr;
 
     try
     {

@@ -25,6 +25,11 @@
 #include "graph_filtering.hh"
 #include "graph_properties.hh"
 #include <boost/graph/graphml.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/filter/bzip2.hpp>
+#include <boost/iostreams/device/file.hpp>
 
 using namespace std;
 using namespace boost;
@@ -379,8 +384,7 @@ void GraphInterface::WriteToFile(string file, string format)
             typedef tr1::unordered_map<vertex_t, size_t>  map_t;
             map_t vertex_to_index;
             associative_property_map<map_t> index_map(vertex_to_index);
-            check_filter(*this, bind<void>(generate_index(), _1, index_map),
-                         reverse_check(), directed_check());
+            run_action(*this, bind<void>(generate_index(), _1, index_map));
             if (graphviz)
             {
                 try
@@ -394,17 +398,17 @@ void GraphInterface::WriteToFile(string file, string format)
             }
             if (GetDirected())
             {
-                check_filter(*this,bind<void>(write_to_file(),
-                                              var(stream), _1, index_map,
-                                              var(dp), graphviz),
-                             reverse_check(), always_directed());
+                run_action(*this,bind<void>(write_to_file(),
+                                            var(stream), _1, index_map,
+                                            var(dp), graphviz),
+                           reverse_check(), always_directed());
             }
             else
             {
-                check_filter(*this,bind<void>(write_to_file_fake_undir(),
-                                              var(stream), _1, index_map,
-                                              var(dp), graphviz),
-                             never_reversed(), always_undirected());
+                run_action(*this,bind<void>(write_to_file_fake_undir(),
+                                            var(stream), _1, index_map,
+                                            var(dp), graphviz),
+                           never_reversed(), always_undirected());
             }
         }
         else
@@ -423,17 +427,17 @@ void GraphInterface::WriteToFile(string file, string format)
 
             if (GetDirected())
             {
-                check_filter(*this,bind<void>(write_to_file(), var(stream),
-                                              _1, _vertex_index, var(dp),
-                                              graphviz),
-                             reverse_check(), always_directed());
+                run_action(*this,bind<void>(write_to_file(), var(stream),
+                                            _1, _vertex_index, var(dp),
+                                            graphviz),
+                           reverse_check(), always_directed());
             }
             else
             {
-                check_filter(*this,bind<void>(write_to_file_fake_undir(),
-                                              var(stream), _1, _vertex_index,
-                                              var(dp), graphviz),
-                             never_reversed(), always_undirected());
+                run_action(*this,bind<void>(write_to_file_fake_undir(),
+                                            var(stream), _1, _vertex_index,
+                                            var(dp), graphviz),
+                           never_reversed(), always_undirected());
             }
         }
         stream.reset();

@@ -45,10 +45,9 @@ python::object
 GraphInterface::Vertices() const
 {
     python::object iter;
-    check_filter(*this, lambda::bind<void>(get_vertex_iterator(),
-                                           lambda::_1,
-                                           lambda::var(iter)),
-                 reverse_check(), directed_check());
+    run_action(*this, lambda::bind<void>(get_vertex_iterator(),
+                                         lambda::_1,
+                                         lambda::var(iter)));
     return iter;
 }
 
@@ -69,17 +68,16 @@ python::object
 GraphInterface::Edges() const
 {
     python::object iter;
-    check_filter(*this, lambda::bind<void>(get_edge_iterator(),
-                                           lambda::_1,
-                                           lambda::var(iter)),
-                 reverse_check(), directed_check());
+    run_action(*this, lambda::bind<void>(get_edge_iterator(),
+                                         lambda::_1,
+                                         lambda::var(iter)));
     return iter;
 }
 
 struct add_new_vertex
 {
     template <class Graph>
-        void operator()(Graph& g, python::object& new_v) const
+    void operator()(Graph& g, python::object& new_v) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         vertex_t v = add_vertex(g);
@@ -90,9 +88,8 @@ struct add_new_vertex
 python::object GraphInterface::AddVertex()
 {
     python::object new_v;
-    check_filter(*this, lambda::bind<void>(add_new_vertex(), lambda::_1,
-                                           lambda::var(new_v)),
-                 reverse_check(), directed_check());
+    run_action(*this, lambda::bind<void>(add_new_vertex(), lambda::_1,
+                                           lambda::var(new_v)));
     return new_v;
 }
 
@@ -111,9 +108,8 @@ struct get_vertex_descriptor
 void GraphInterface::RemoveVertex(python::object v)
 {
     graph_traits<multigraph_t>::vertex_descriptor dv;
-    check_filter(*this, lambda::bind<void>(get_vertex_descriptor(), lambda::_1,
-                                           lambda::var(v), lambda::var(dv)),
-                 reverse_check(), directed_check());
+    run_action(*this, lambda::bind<void>(get_vertex_descriptor(), lambda::_1,
+                                         lambda::var(v), lambda::var(dv)));
 
     //shift properties
     size_t N = num_vertices(_mg);
@@ -158,10 +154,9 @@ struct add_new_edge
 python::object GraphInterface::AddEdge(python::object s, python::object t)
 {
     python::object new_e;
-    check_filter(*this, lambda::bind<void>(add_new_edge(), lambda::_1,
+    run_action(*this, lambda::bind<void>(add_new_edge(), lambda::_1,
                                            lambda::var(s), lambda::var(t),
-                                           lambda::var(new_e)),
-                 reverse_check(), directed_check());
+                                           lambda::var(new_e)));
     return new_e;
 }
 
@@ -181,9 +176,8 @@ struct get_edge_descriptor
 void GraphInterface::RemoveEdge(python::object e)
 {
     graph_traits<multigraph_t>::edge_descriptor de;
-    check_filter(*this, lambda::bind<void>(get_edge_descriptor(), lambda::_1,
-                                           lambda::var(e), lambda::var(de)),
-                 reverse_check(), directed_check());
+    run_action(*this, lambda::bind<void>(get_edge_descriptor(), lambda::_1,
+                                         lambda::var(e), lambda::var(de)));
     remove_edge(de, _mg);
     ReIndexEdges();
 }
@@ -372,9 +366,9 @@ struct export_property_map
         python::class_<pmap_t> pclass(_name.c_str(), python::no_init);
         pclass.def("__hash__", &pmap_t::GetHash);
         pclass.def("get_type", &pmap_t::GetType);
-        check_filter(_gi, lambda::bind<void>(export_access<ValueType>(pclass),
-                                            lambda::_1),
-                     reverse_check(), directed_check(), true);
+        run_action(_gi, lambda::bind<void>(export_access<ValueType>(pclass),
+                                           lambda::_1),
+                   reverse_check(), directed_check(), true);
     }
 
     string _name;
@@ -385,8 +379,8 @@ struct export_property_map
 
 void GraphInterface::ExportPythonInterface() const
 {
-    check_filter(*this, lambda::bind<void>(export_python_interface(),
-                                           lambda::_1),
-                 reverse_check(), directed_check(), true);
+    run_action(*this, lambda::bind<void>(export_python_interface(),
+                                         lambda::_1),
+               reverse_check(), directed_check(), true);
     mpl::for_each<value_types>(export_property_map("PropertyMap", *this));
 }

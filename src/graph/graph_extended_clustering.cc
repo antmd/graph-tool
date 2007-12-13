@@ -216,9 +216,8 @@ void GraphInterface::SetExtendedClusteringToProperty(string property_prefix,
     for (size_t i = 0; i < cmaps.size(); ++i)
         cmaps[i] = cmap_t(num_vertices(_mg), _vertex_index);
 
-    check_filter(*this, bind<void>(get_extended_clustering(), _1, _vertex_index,
-                                   var(cmaps)),
-                 reverse_check(), directed_check());
+    run_action(*this, bind<void>(get_extended_clustering(), _1, _vertex_index,
+                                 var(cmaps)));
 
     for (size_t i = 0; i < cmaps.size(); ++i)
     {

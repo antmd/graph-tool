@@ -81,7 +81,7 @@ struct choose_vertex_correlation_histogram
                                         WeightMap weight,
                                         GraphInterface::deg_t deg1,
                                         GraphInterface::deg_t deg2,
-                                        GraphInterface::hist2d_t &hist)
+                                        hist2d_t &hist)
         : _g(g), _weight(weight), _hist(hist)
     {
         tie(_deg1, _deg_name1) = get_degree_type(deg1);
@@ -103,12 +103,11 @@ struct choose_vertex_correlation_histogram
             {
                 DegreeSelector1 deg1(_parent._deg_name1, _parent._g, true);
                 DegreeSelector2 deg2(_parent._deg_name2, _parent._g, true);
-                check_filter(_parent._g,
-                             bind<void>
-                                 (get_correlation_histogram<DegreeSelector1,
-                                  DegreeSelector2>(deg1,deg2),
-                                  _1, var(_parent._weight), var(_parent._hist)),
-                             reverse_check(),directed_check());
+                run_action(_parent._g,
+                           bind<void>
+                               (get_correlation_histogram<DegreeSelector1,
+                                DegreeSelector2>(deg1,deg2),
+                                _1, var(_parent._weight), var(_parent._hist)));
             }
         }
         choose_vertex_correlation_histogram<WeightMap,SecondDegreeSelectors> 
@@ -125,7 +124,7 @@ struct choose_vertex_correlation_histogram
 
     const GraphInterface &_g;
     WeightMap _weight;
-    GraphInterface::hist2d_t &_hist;
+    hist2d_t &_hist;
     GraphInterface::degree_t _deg1;
     string _deg_name1;
     GraphInterface::degree_t _deg2;
@@ -133,7 +132,7 @@ struct choose_vertex_correlation_histogram
 
 };
 
-GraphInterface::hist2d_t
+hist2d_t
 GraphInterface::GetVertexCorrelationHistogram(GraphInterface::deg_t deg1,
                                               GraphInterface::deg_t deg2, 
                                               string weight) const

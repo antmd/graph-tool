@@ -20,6 +20,7 @@
 #include <boost/lambda/bind.hpp>
 #include <boost/random.hpp>
 #include <tr1/unordered_set>
+#include <fstream>
 #include <iomanip>
 
 #include "graph.hh"
@@ -698,9 +699,9 @@ void GraphInterface::GetCommunityStructure(double gamma, comm_corr_t corr,
     {
         DynamicPropertyMapWrap<size_t,vertex_t> 
             old_s(find_property_map(_properties, property, typeid(vertex_t)));
-        check_filter(*this, bind<void>(copy_spins(), _1, var(old_s), 
-                                       var(comm_map)),
-                     reverse_check(), always_undirected());
+        run_action(*this, bind<void>(copy_spins(), _1, var(old_s), 
+                                     var(comm_map)),
+                   reverse_check(), always_undirected());
         RemoveVertexProperty(property);
         new_spins = false;
     }
@@ -723,27 +724,26 @@ void GraphInterface::GetCommunityStructure(double gamma, comm_corr_t corr,
                     get_static_property_map
                         <vector_property_map<double,edge_index_map_t> >
                     (weight_prop);
-                check_filter(*this, bind<void>(get_communities_selector(corr),
-                                               _1, var(weight_map), 
-                                               var(comm_map), 
-                                               gamma, n_iter, 
-                                               make_pair(Tmin, Tmax), 
-                                               make_pair(Nspins, new_spins), 
-                                               seed, 
-                                               make_pair(verbose,history_file)),
-                             reverse_check(), always_undirected());
+                run_action(*this, bind<void>(get_communities_selector(corr),
+                                             _1, var(weight_map), 
+                                             var(comm_map), gamma, n_iter, 
+                                             make_pair(Tmin, Tmax), 
+                                             make_pair(Nspins, new_spins), 
+                                             seed, 
+                                             make_pair(verbose,history_file)),
+                           reverse_check(), always_undirected());
             }
             else
             {
                 DynamicPropertyMapWrap<double,edge_t> weight_map(weight_prop);
-                check_filter(*this, bind<void>(get_communities_selector(corr),
-                                               _1, var(weight_map), 
-                                               var(comm_map), gamma, n_iter, 
-                                               make_pair(Tmin, Tmax), 
-                                               make_pair(Nspins, new_spins), 
-                                               seed, 
-                                               make_pair(verbose,history_file)),
-                             reverse_check(), always_undirected());
+                run_action(*this, bind<void>(get_communities_selector(corr),
+                                             _1, var(weight_map), 
+                                             var(comm_map), gamma, n_iter, 
+                                             make_pair(Tmin, Tmax), 
+                                             make_pair(Nspins, new_spins), 
+                                             seed, 
+                                             make_pair(verbose,history_file)),
+                           reverse_check(), always_undirected());
             }
         }
         catch (property_not_found& e)
@@ -755,12 +755,12 @@ void GraphInterface::GetCommunityStructure(double gamma, comm_corr_t corr,
     else
     {
         ConstantPropertyMap<double,edge_t> weight_map(1.0);
-        check_filter(*this, bind<void>(get_communities_selector(corr), _1, 
-                                       var(weight_map), var(comm_map), gamma, 
-                                       n_iter, make_pair(Tmin, Tmax), 
-                                       make_pair(Nspins, new_spins), seed, 
-                                       make_pair(verbose, history_file)),
-                     reverse_check(), always_undirected());
+        run_action(*this, bind<void>(get_communities_selector(corr), _1, 
+                                     var(weight_map), var(comm_map), gamma, 
+                                     n_iter, make_pair(Tmin, Tmax), 
+                                     make_pair(Nspins, new_spins), seed, 
+                                     make_pair(verbose, history_file)),
+                   reverse_check(), always_undirected());
     }
     _directed = directed;
 
@@ -819,17 +819,17 @@ double GraphInterface::GetModularity(string weight, string property)
             dynamic_property_map& weight_prop = 
                 find_property_map(_properties, weight, typeid(edge_t));
             DynamicPropertyMapWrap<double,edge_t> weight_map(weight_prop);
-            check_filter(*this, bind<void>(get_modularity(), _1, 
-                                           var(weight_map), var(comm_map), 
-                                           var(modularity)),
+            run_action(*this, bind<void>(get_modularity(), _1, 
+                                         var(weight_map), var(comm_map), 
+                                         var(modularity)),
             reverse_check(), always_undirected());            
         }
         else
         {
             ConstantPropertyMap<double,edge_t> weight_map(1.0);
-            check_filter(*this, bind<void>(get_modularity(), _1, 
-                                           var(weight_map), var(comm_map), 
-                                           var(modularity)),
+            run_action(*this, bind<void>(get_modularity(), _1, 
+                                         var(weight_map), var(comm_map), 
+                                         var(modularity)),
             reverse_check(), always_undirected());
         }
     }

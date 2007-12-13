@@ -119,15 +119,14 @@ struct get_distance_histogram
     
 };
 
-GraphInterface::hist_t GraphInterface::GetDistanceHistogram(string weight) const
+hist_t GraphInterface::GetDistanceHistogram(string weight) const
 {
     hist_t hist;
 
     if (weight == "")
     {
-        check_filter(*this, bind<void>(get_distance_histogram(), _1,
-                                       _vertex_index, no_weightS(), var(hist)),
-                     reverse_check(), directed_check()); 
+        run_action(*this, bind<void>(get_distance_histogram(), _1,
+                                     _vertex_index, no_weightS(), var(hist))); 
     }
     else
     {
@@ -140,18 +139,16 @@ GraphInterface::hist_t GraphInterface::GetDistanceHistogram(string weight) const
                 vector_property_map<double, edge_index_map_t> weight_map;
                 weight_map = get_static_property_map<vector_property_map
                     <double, edge_index_map_t> >(weight_prop);
-                check_filter(*this, bind<void>(get_distance_histogram(), 
+                run_action(*this, bind<void>(get_distance_histogram(), 
                                                _1, _vertex_index, weight_map, 
-                                               var(hist)),
-                             reverse_check(), directed_check()); 
+                                             var(hist))); 
             }
             catch (bad_cast)
             {
                 DynamicPropertyMapWrap<double, edge_t> weight_map(weight_prop);
-                check_filter(*this, bind<void>(get_distance_histogram(), _1, 
-                                               _vertex_index, weight_map, 
-                                               var(hist)),
-                             reverse_check(), directed_check()); 
+                run_action(*this, bind<void>(get_distance_histogram(), _1, 
+                                             _vertex_index, weight_map, 
+                                             var(hist))); 
             }
         }
         catch (property_not_found& e)

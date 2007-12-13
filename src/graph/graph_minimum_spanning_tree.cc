@@ -81,18 +81,18 @@ void GraphInterface::GetMinimumSpanningTree(string weight, string property)
                     get_static_property_map
                     <vector_property_map<double,edge_index_map_t> >
                         (weight_prop);
-                check_filter(*this, bind<void>(get_kruskal_min_span_tree(), _1, 
-                                               var(_vertex_index),
-                                               var(weight_map),var(tree_map)), 
-                             reverse_check(), always_undirected());
+                run_action(*this, bind<void>(get_kruskal_min_span_tree(), _1, 
+                                             var(_vertex_index),
+                                             var(weight_map),var(tree_map)), 
+                           reverse_check(), always_undirected());
             }
             else
             {
                 DynamicPropertyMapWrap<double,edge_t> weight_map(weight_prop);
-                check_filter(*this, bind<void>(get_kruskal_min_span_tree(), _1, 
-                                               var(_vertex_index),
-                                               var(weight_map),var(tree_map)), 
-                             reverse_check(), always_undirected());
+                run_action(*this, bind<void>(get_kruskal_min_span_tree(), _1, 
+                                             var(_vertex_index),
+                                             var(weight_map),var(tree_map)), 
+                           reverse_check(), always_undirected());
             }
         }
         catch (property_not_found& e)
@@ -104,10 +104,10 @@ void GraphInterface::GetMinimumSpanningTree(string weight, string property)
     else
     {
         ConstantPropertyMap<double,edge_t> weight_map(1.0);
-        check_filter(*this, bind<void>(get_kruskal_min_span_tree(), _1, 
-                                       var(_vertex_index),var(weight_map),
-                                       var(tree_map)), 
-                     reverse_check(), always_undirected());
+        run_action(*this, bind<void>(get_kruskal_min_span_tree(), _1, 
+                                     var(_vertex_index),var(weight_map),
+                                     var(tree_map)), 
+                   reverse_check(), always_undirected());
     }
 
     _directed = directed;

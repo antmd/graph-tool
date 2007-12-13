@@ -284,10 +284,9 @@ void GraphInterface::EditVertexProperty(string property, string type,
     mpl::for_each<value_types>
         (get_property_map<value_types,vertex_descriptor,vertex_index_map_t>
          (*this, _properties, _vertex_index, property, type, type_names, pmap));
-    check_filter(*this, lambda::bind<void>(edit_property<vertex_descriptor>(),
-                                           lambda::_1, var(_properties),
-                                           var(pmap), var(op), var(g)),
-                 reverse_check(), directed_check());
+    run_action(*this, lambda::bind<void>(edit_property<vertex_descriptor>(),
+                                         lambda::_1, var(_properties),
+                                         var(pmap), var(op), var(g)));
     delete pmap;
 }
 
@@ -307,10 +306,9 @@ void GraphInterface::EditEdgeProperty(string property, string type,
     mpl::for_each<value_types>
         (get_property_map<value_types,edge_descriptor,edge_index_map_t>
          (*this, _properties, _edge_index, property, type, type_names,pmap));
-    check_filter(*this, lambda::bind<void>(edit_property<edge_descriptor>(),
-                                           lambda::_1, var(_properties), 
-                                           var(pmap), var(op), var(g)),
-                 reverse_check(), directed_check());
+    run_action(*this, lambda::bind<void>(edit_property<edge_descriptor>(),
+                                         lambda::_1, var(_properties), 
+                                         var(pmap), var(op), var(g)));
     delete pmap;
 }
 

@@ -347,14 +347,10 @@ BOOST_PYTHON_MODULE(libgraph_tool)
     to_python_converter<pos_t, pos_t_to_tuple>();
     pos_t_from_tuple();
     pair_from_tuple<bool,bool>();
-    to_python_converter<GraphInterface::hist_t,
-                        hist_to_dict<GraphInterface::hist_t> >();
-    to_python_converter<GraphInterface::hist2d_t,
-                        hist_to_dict<GraphInterface::hist2d_t> >();
-    to_python_converter<GraphInterface::hist3d_t,
-                        hist_to_dict<GraphInterface::hist3d_t> >();
-    to_python_converter<GraphInterface::avg_corr_t,
-                        hist_to_dict<GraphInterface::avg_corr_t> >();
+    to_python_converter<hist_t,hist_to_dict<hist_t> >();
+    to_python_converter<hist2d_t,hist_to_dict<hist2d_t> >();
+    to_python_converter<hist3d_t,hist_to_dict<hist3d_t> >();
+    to_python_converter<avg_corr_t,hist_to_dict<avg_corr_t> >();
 
     class_<LibInfo>("mod_info")
         .add_property("name", &LibInfo::GetName)

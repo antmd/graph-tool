@@ -148,9 +148,9 @@ GraphInterface::GetGlobalClustering()
     double c, c_err;
     bool directed = _directed;
     _directed = false;
-    check_filter(*this, bind<void>(get_global_clustering(), _1, var(c), 
+    run_action(*this, bind<void>(get_global_clustering(), _1, var(c), 
                                    var(c_err)), 
-                 reverse_check(), always_undirected()); 
+               reverse_check(), always_undirected()); 
     _directed = directed;
     return make_pair(c,c_err);
 }
@@ -202,9 +202,9 @@ void GraphInterface::SetLocalClusteringToProperty(string property)
 
     bool directed = _directed;
     _directed = false;
-    check_filter(*this, bind<void>(set_clustering_to_property(), _1, 
-                                   var(clust_map)), 
-                 reverse_check(), always_undirected()); 
+    run_action(*this, bind<void>(set_clustering_to_property(), _1, 
+                                 var(clust_map)), 
+               reverse_check(), always_undirected()); 
     _directed = directed;
 
     try

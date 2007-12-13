@@ -576,15 +576,15 @@ void GraphInterface::RandomRewire(string strat, bool self_loops,
     SetReversed(false);
 
     if (strat == "uncorrelated")
-        check_filter(*this, bind<void>(graph_rewire<RandomRewireStrategy>(),
-                                       _1, _edge_index, seed, self_loops,
-                                       parallel_edges),
-                     never_reversed(), directed_check());
+        run_action(*this, bind<void>(graph_rewire<RandomRewireStrategy>(),
+                                     _1, _edge_index, seed, self_loops,
+                                     parallel_edges),
+                   never_reversed(), directed_check());
     else if (strat == "correlated")
-        check_filter(*this, bind<void>(graph_rewire<CorrelatedRewireStrategy>(),
-                                       _1, _edge_index, seed, self_loops,
-                                       parallel_edges),
-                     never_reversed(), directed_check());
+        run_action(*this, bind<void>(graph_rewire<CorrelatedRewireStrategy>(),
+                                     _1, _edge_index, seed, self_loops,
+                                     parallel_edges),
+                   never_reversed(), directed_check());
     else
         throw GraphException("invalid random rewire stategy: " + strat);
     SetReversed(reversed);

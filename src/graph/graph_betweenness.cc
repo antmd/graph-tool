@@ -149,23 +149,22 @@ void GraphInterface::GetBetweenness(string weight, string edge_betweenness,
     if (weight != "")
     {
         bool found = false;
-        check_filter(*this, bind<void>(choose_weight_map(), _1, 
-                                       var(_vertex_index), var(_edge_index), 
-                                       var(weight), var(_properties), 
-                                       var(edge_betweenness_map), 
-                                       var(vertex_betweenness_map),
-                                       var(found)), 
-                     reverse_check(), directed_check());
+        run_action(*this, bind<void>(choose_weight_map(), _1, 
+                                     var(_vertex_index), var(_edge_index), 
+                                     var(weight), var(_properties), 
+                                     var(edge_betweenness_map), 
+                                     var(vertex_betweenness_map),
+                                     var(found)));
         if (!found)
             throw GraphException("error getting scalar property: " + weight);
     }
     else
     {
-        check_filter(*this, bind<void>(get_betweenness(), _1, 
-                                       var(_vertex_index),
-                                       var(edge_betweenness_map), 
-                                       var(vertex_betweenness_map)), 
-                     reverse_check(), directed_check());
+        run_action(*this, bind<void>(get_betweenness(), _1, 
+                                     var(_vertex_index),
+                                     var(edge_betweenness_map), 
+                                     var(vertex_betweenness_map)), 
+                   reverse_check(), directed_check());
     }        
 
     if (vertex_betweenness != "")
@@ -221,8 +220,8 @@ double GraphInterface::GetCentralPointDominance(string vertex_betweenness)
         bool directed = this->GetDirected();
         this->SetReversed(false);
         this->SetDirected(true);
-        check_filter(*this, bind<void>(get_central_point_dominance(), _1, 
-                                       var(betweenness), var(c)), 
+        run_action(*this, bind<void>(get_central_point_dominance(), _1, 
+                                     var(betweenness), var(c)), 
                      never_reversed(), always_directed());
         this->SetReversed(reversed);
         this->SetDirected(directed);
