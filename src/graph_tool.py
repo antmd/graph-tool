@@ -409,7 +409,7 @@ class Graph(object):
         """Add a new (uninitialized) edge property map of type 'type', and
         return it"""
         self.edit_edge_property(name, type)
-        return self.vertex_properties[name]
+        return self.edge_properties[name]
 
     @_handle_exceptions
     @_lazy_load
