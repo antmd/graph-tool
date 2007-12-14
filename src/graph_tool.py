@@ -519,7 +519,7 @@ class Graph(object):
 
     @_handle_exceptions
     @_lazy_load
-    def set_reverse(self, reversed):
+    def set_reverse(self, is_reversed):
         """Reverse the direction of the edges, if 'reversed' is True, or
         maintain the original direction otherwise."""
         self.__graph.SetReversed(is_reversed)
@@ -802,7 +802,7 @@ class Graph(object):
         if weight == None:
             weight = ""
         hist = self.__graph.GetSampledDistanceHistogram(weight, samples, seed)
-        avg, err = get_mean(dict([(1.0/k, v) for k, v in hist.iteritems()]))
+        avg, err = _get_mean(dict([(1.0/k, v) for k, v in hist.iteritems()]))
         (1.0/avg, err/(avg**2))
 
     @_attrs(opt_group=__groups[-1])
@@ -1013,3 +1013,113 @@ class Graph(object):
         if format == 'auto':
             format = ''
         self.__graph.GetCommunityNetwork(property, size_property, file, format)
+
+    __groups.append("Plugins")
+
+    @_attrs(opt_group=__groups[-1], first_subopt="arg_names")
+    @_handle_exceptions
+    @_lazy_load
+    def run_action(self, code, arg_names=[], local_dict=None,
+                   global_dict=None, force=0, compiler="gcc", verbose=0,
+                   auto_downcast=1, support_code="", libraries=[],
+                   library_dirs=[], extra_compile_args=[],
+                   runtime_library_dirs=[], extra_objects=[],
+                   extra_link_args=[]):
+        """Compile (if necessary) and run the C++ action specified by 'code',
+        using weave."""
+        try:
+            import scipy.weave
+        except ImportError:
+            raise GraphError(self, "You need to have scipy installed to use" + \
+                             " 'run_action'.")
+
+        # this is the code template which defines the action functor
+        support_code_template = """
+        #include <boost/lambda/lambda.hpp>
+        #include <boost/lambda/bind.hpp>
+        #include <boost/tuple/tuple.hpp>
+        #include <boost/type_traits/remove_pointer.hpp>
+        #include <graph_tool/graph.hh>
+        #include <graph_tool/graph_filtering.hh>
+        #include <graph_tool/graph_properties.hh>
+
+        using namespace boost;
+        using namespace boost::tuples;
+        using namespace std;
+        using namespace graph_tool;
+
+        struct action
+        {
+            template <class Graph, class VertexIndex, class EdgeIndex,
+                      class Args>
+            void operator()(Graph& g, VertexIndex vertex_index,
+                            EdgeIndex edge_index,
+                            dynamic_properties& properties,
+                            const Args& args) const
+            {
+                // convenience typedefs
+                typedef typename graph_traits<Graph>::vertex_descriptor
+                    vertex_t;
+                typedef typename graph_traits<Graph>::vertex_iterator
+                    vertex_iter_t;
+                typedef typename graph_traits<Graph>::edge_descriptor edge_t;
+                typedef typename graph_traits<Graph>::edge_iterator edge_iter_t;
+
+                // the arguments will be expanded below
+                %s
+
+                // the actual code
+                %s
+            }
+        };
+
+        """
+        # each term on the expansion will properly unwrap a tuple pointer value
+        # to a reference with the appropriate name and type
+        exp_term = """typename remove_pointer<typename element<%d,Args>::type>
+                          ::type& %s = *get<%d>(args);"""
+        arg_expansion = "\n".join([ exp_term % (i,arg_names[i],i) for i in \
+                                    xrange(0, len(arg_names))])
+        support_code = support_code_template % (arg_expansion, code) + \
+                       support_code
+
+        # insert a hash value of the support_code into the code below, to force
+        # recompilation when support_code changes
+        import hashlib
+        support_code_hash = hashlib.md5(support_code).hexdigest()
+
+        # the actual inline code will just call g.RunAction() on the underlying
+        # GraphInterface instance. The inline arguments will be packed into a
+        # tuple of pointers.
+        code = r"""
+        python::object pg(python::handle<>
+                            (python::borrowed((PyObject*)(self___graph))));
+        GraphInterface& g = python::extract<GraphInterface&>(pg);
+        g.RunAction(action(), make_tuple(%s));
+        // %s
+        """ % (", ".join(["&%s" %a for a in arg_names]), support_code_hash)
+
+        # we need to get the locals and globals of the _calling_ function. We
+        # need to go deeper into the call stack due to all the function
+        # decorators being used.
+        call_frame = sys._getframe(5)
+        if local_dict is None:
+            local_dict = call_frame.f_locals
+        if global_dict is None:
+            global_dict = call_frame.f_globals
+        local_dict["self___graph"] = self.__graph # the graph interface
+
+        # call weave and pass all the updated kw arguments
+        scipy.weave.inline(code, ["self___graph"] + arg_names, force=force,
+                           local_dict=local_dict, global_dict=global_dict,
+                           compiler=compiler, verbose=verbose,
+                           auto_downcast=auto_downcast,
+                           support_code=support_code,
+                           libraries=["graph_tool"] + libraries,
+                           library_dirs=sys.path + library_dirs,
+                           extra_compile_args=["-O3","-ftemplate-depth-150",
+                                               "-Wall", "-Wno-deprecated"] + \
+                                            extra_compile_args,
+                           runtime_library_dirs=runtime_library_dirs,
+                           extra_objects=extra_objects,
+                           extra_link_args=extra_link_args)

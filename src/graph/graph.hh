@@ -26,6 +26,7 @@
 #include <boost/variant.hpp>
 #include <boost/python/object.hpp>
 #include <boost/python/dict.hpp>
+#include <boost/lambda/lambda.hpp>
 #include "histogram.hh"
 #include "config.h"
 #include "graph_properties.hh"
@@ -202,6 +203,15 @@ public:
     // signal handling
     void InitSignalHandling();
 
+    // arbitrary code execution, for run-time code integration
+    template <class Action, class Args>
+    void RunAction(const Action &a, const Args& args)
+    {
+        using namespace boost::lambda;
+        run_action(*this, bind<void>(a, boost::lambda::_1, _vertex_index,
+                                     _edge_index, var(_properties), var(args)));
+    }
+
     //
     // Internal types
     //
@@ -232,12 +242,12 @@ private:
 
     template <class GraphInterfaceType, class Action, class ReverseCheck,
               class DirectedCheck>
-    friend void run_action(GraphInterfaceType &g, Action a, 
+    friend void run_action(GraphInterfaceType &g, Action a,
                            ReverseCheck, DirectedCheck, bool run_all=false);
 
     // useful overload for common case where all graph types should be probed
     template <class GraphInterfaceType, class Action>
-    friend void run_action(GraphInterfaceType &g, Action a); 
+    friend void run_action(GraphInterfaceType &g, Action a);
 
     friend class scalarS;
 
