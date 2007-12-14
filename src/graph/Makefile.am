@@ -69,3 +69,8 @@ libgraph_tool_la_LIBADD = \
     -lboost_python \
     -lboost_iostreams \
     -lexpat
+
+# needed for typeinfo objects to work across DSO boundaries.
+# see http://gcc.gnu.org/faq.html#dso
+libgraph_tool_la_LDFLAGS = \
+    -Wl,-E 

@@ -23,10 +23,26 @@ __URL__="http://graph-tool.forked.de"
 
 __all__ = ["Graph", "GraphError"]
 
+import sys
+# RTLD_GLOBAL needs to be set in dlopen() if we want typeinfo and friends to
+# work properly across DSO boundaries. See http://gcc.gnu.org/faq.html#dso
+
+# The "except" is because the dl module raises a system error on ia64 and x86_64
+# systems because "int" and addresses are different sizes.
+try:
+    from dl import RTLD_NOW, RTLD_GLOBAL
+except ImportError:
+    RTLD_NOW = 2
+    RTLD_GLOBAL = 256
+_orig_dlopen_flags = sys.getdlopenflags()
+
+sys.setdlopenflags(RTLD_NOW|RTLD_GLOBAL)
 import libgraph_tool
+sys.setdlopenflags(_orig_dlopen_flags) # reset it to normal case to avoid
+                                       # unnecessary symbol collision
 __version__ = libgraph_tool.mod_info().version
 
-import sys, os, os.path, re, struct, fcntl, termios, gzip, bz2, string,\
+import os, os.path, re, struct, fcntl, termios, gzip, bz2, string,\
        textwrap, time, signal, traceback, shutil, time, math, inspect, \
        functools, types
 
@@ -1034,11 +1050,15 @@ class Graph(object):
                              " 'run_action'.")
 
         # this is the code template which defines the action functor
-        support_code_template = """
+        support_template = r"""
+        #include <map>
+        #include <set>
+        #include <tr1/unordered_set>
+        #include <tr1/unordered_map>
         #include <boost/lambda/lambda.hpp>
         #include <boost/lambda/bind.hpp>
         #include <boost/tuple/tuple.hpp>
-        #include <boost/type_traits/remove_pointer.hpp>
+        #include <boost/type_traits.hpp>
         #include <graph_tool/graph.hh>
         #include <graph_tool/graph_filtering.hh>
         #include <graph_tool/graph_properties.hh>
@@ -1048,7 +1068,18 @@ class Graph(object):
         using namespace std;
         using namespace graph_tool;
 
-        struct action
+
+        template <class IndexMap>
+        struct prop_bind_t
+        {
+            template <class Value>
+            struct as
+            {
+                typedef vector_property_map<Value,IndexMap> type;
+            };
+        };
+
+        struct action_${code_hash}
         {
             template <class Graph, class VertexIndex, class EdgeIndex,
                       class Args>
@@ -1064,50 +1095,101 @@ class Graph(object):
                     vertex_iter_t;
                 typedef typename graph_traits<Graph>::edge_descriptor edge_t;
                 typedef typename graph_traits<Graph>::edge_iterator edge_iter_t;
+                typedef typename graph_traits<Graph>::out_edge_iterator
+                    out_edge_iter_t;
+                typedef typename in_edge_iteratorS<Graph>::type in_edge_iter_t;
+
+                typedef prop_bind_t<VertexIndex> vertex_prop_t;
+                typedef prop_bind_t<EdgeIndex> edge_prop_t;
+
+                typedef typename vertex_prop_t::template as<bool>::type
+                    vprop_bool_t;
+                typedef typename vertex_prop_t::template as<int>::type
+                    vprop_int_t;
+                typedef typename vertex_prop_t::template as<long long>::type
+                    vprop_long_long_t;
+                typedef typename vertex_prop_t::template as<size_t>::type
+                    vprop_size_t_t;
+                typedef typename vertex_prop_t::template as<double>::type
+                    vprop_double_t;
+                typedef typename vertex_prop_t::template as<float>::type
+                    vprop_float_t;
+                typedef typename vertex_prop_t::template as<string>::type
+                    vprop_string_t;
+
+                typedef typename edge_prop_t::template as<bool>::type
+                    eprop_bool_t;
+                typedef typename edge_prop_t::template as<int>::type
+                    eprop_int_t;
+                typedef typename edge_prop_t::template as<long long>::type
+                    eprop_long_long_t;
+                typedef typename edge_prop_t::template as<size_t>::type
+                    eprop_size_t_t;
+                typedef typename edge_prop_t::template as<double>::type
+                    eprop_double_t;
+                typedef typename edge_prop_t::template as<float>::type
+                    eprop_float_t;
+                typedef typename edge_prop_t::template as<string>::type
+                    eprop_string_t;
 
                 // the arguments will be expanded below
-                %s
+                ${arg_expansion}
 
                 // the actual code
-                %s
+                ${code}
             }
         };
 
         """
+        # we need to have different template names for each actions, to avoid
+        # strange RTTI issues. We'll therefore add an md5 hash of the code to
+        # each action's name
+        import hashlib
+        code_hash = hashlib.md5(code).hexdigest()
+
         # each term on the expansion will properly unwrap a tuple pointer value
         # to a reference with the appropriate name and type
-        exp_term = """typename remove_pointer<typename element<%d,Args>::type>
-                          ::type& %s = *get<%d>(args);"""
+        exp_term = """typename boost::remove_pointer<typename element<%d,Args>
+                                                     ::type>::type& %s =
+                          *get<%d>(args);"""
         arg_expansion = "\n".join([ exp_term % (i,arg_names[i],i) for i in \
                                     xrange(0, len(arg_names))])
-        support_code = support_code_template % (arg_expansion, code) + \
-                       support_code
+        support_template = string.Template(support_template)
+        support_code = support_template.substitute(code_hash=code_hash,
+                                                   arg_expansion=arg_expansion,
+                                                   code=code) + support_code
 
         # insert a hash value of the support_code into the code below, to force
-        # recompilation when support_code changes
-        import hashlib
-        support_code_hash = hashlib.md5(support_code).hexdigest()
+        # recompilation when support_code (and module version) changes
+        support_hash = hashlib.md5(support_code + __version__).hexdigest()
 
         # the actual inline code will just call g.RunAction() on the underlying
         # GraphInterface instance. The inline arguments will be packed into a
         # tuple of pointers.
-        code = r"""
+        code = string.Template(r"""
         python::object pg(python::handle<>
                             (python::borrowed((PyObject*)(self___graph))));
         GraphInterface& g = python::extract<GraphInterface&>(pg);
-        g.RunAction(action(), make_tuple(%s));
-        // %s
-        """ % (", ".join(["&%s" %a for a in arg_names]), support_code_hash)
+        g.RunAction(action_${code_hash}(), make_tuple(${args}));
+        // support code hash: ${support_hash}
+        """).substitute(args=", ".join(["&%s" %a for a in arg_names]),
+                        code_hash=code_hash, support_hash=support_hash)
 
         # we need to get the locals and globals of the _calling_ function. We
         # need to go deeper into the call stack due to all the function
         # decorators being used.
         call_frame = sys._getframe(5)
         if local_dict is None:
-            local_dict = call_frame.f_locals
+            local_dict = {}
+            local_dict.update(call_frame.f_locals)
         if global_dict is None:
             global_dict = call_frame.f_globals
         local_dict["self___graph"] = self.__graph # the graph interface
+
+        # RTLD_GLOBAL needs to be set in dlopen() if we want typeinfo and
+        # friends to work properly across DSO boundaries. See
+        # http://gcc.gnu.org/faq.html#dso
+        sys.setdlopenflags(RTLD_NOW|RTLD_GLOBAL)
 
         # call weave and pass all the updated kw arguments
         scipy.weave.inline(code, ["self___graph"] + arg_names, force=force,
@@ -1122,4 +1204,9 @@ class Graph(object):
                                             extra_compile_args,
                            runtime_library_dirs=runtime_library_dirs,
                            extra_objects=extra_objects,
-                           extra_link_args=extra_link_args)
+                           extra_link_args=["-Wl,-E"]+extra_link_args)
+
+        sys.setdlopenflags(_orig_dlopen_flags) # reset dlopen to normal case to
+                                               # avoid unnecessary symbol
+                                               # collision
+

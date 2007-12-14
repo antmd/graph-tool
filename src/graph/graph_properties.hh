@@ -75,6 +75,18 @@ boost::dynamic_property_map&
 find_property_map(const boost::dynamic_properties& dp, std::string name,
                   const std::type_info& key_type);
 
+// convenience function which finds and returns the appropriate static property
+// from the dynamic properties
+template <class PropertyMap>
+PropertyMap& find_static_property_map(const boost::dynamic_properties& dp, 
+                                      std::string name)
+{
+    typedef typename boost::property_traits<PropertyMap>::key_type key_type;
+    boost::dynamic_property_map& dmap = find_property_map(dp, name, 
+                                                          typeid(key_type));
+    return get_static_property_map<PropertyMap>(dmap);
+}
+
 // this class contains a copy of a dynamic_properties, which does not delete its
 // members when it deconstructs
 struct dynamic_properties_copy: public boost::dynamic_properties

@@ -41,6 +41,9 @@ using namespace boost;
 // the external world will manipulate the graph. All the algorithms should be
 // registered here. This class will be exported to python in graph_bind.hh
 
+// default visibility is necessary for related typeinfo objects to work across
+// DSO boundaries
+#pragma GCC visibility push(default)
 class GraphInterface
 {
 public:
@@ -298,6 +301,7 @@ private:
     bool _edge_range_invert;
 
 };
+#pragma GCC visibility pop
 
 pair<GraphInterface::degree_t,string>
 get_degree_type(GraphInterface::deg_t degree);
@@ -305,6 +309,7 @@ get_degree_type(GraphInterface::deg_t degree);
 // This is the main exception which will be thrown the outside world, when
 // things go wrong
 
+#pragma GCC visibility push(default)
 class GraphException : public exception
 {
     string _error;
@@ -313,6 +318,7 @@ public:
     virtual ~GraphException() throw () {}
     virtual const char * what () const throw () {return _error.c_str();}
 };
+#pragma GCC visibility pop
 
 } //namespace graph_tool
 
