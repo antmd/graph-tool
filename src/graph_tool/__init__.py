@@ -1111,6 +1111,8 @@ class Graph(object):
                     vprop_bool_t;
                 typedef typename vertex_prop_t::template as<int>::type
                     vprop_int_t;
+                typedef typename vertex_prop_t::template as<long>::type
+                    vprop_long_t;
                 typedef typename vertex_prop_t::template as<long long>::type
                     vprop_long_long_t;
                 typedef typename vertex_prop_t::template as<size_t>::type
@@ -1124,6 +1126,8 @@ class Graph(object):
 
                 typedef typename edge_prop_t::template as<bool>::type
                     eprop_bool_t;
+                typedef typename edge_prop_t::template as<long>::type
+                    eprop_long_t;
                 typedef typename edge_prop_t::template as<int>::type
                     eprop_int_t;
                 typedef typename edge_prop_t::template as<long long>::type
