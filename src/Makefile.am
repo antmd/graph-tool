@@ -2,10 +2,7 @@
 
 AUTOMAKE_OPTIONS = subdir-objects
 
-SUBDIRS = graph .
-
-graph_tool_PYTHON = graph_tool.py
-graph_tooldir = $(pythondir)
+SUBDIRS = graph graph_tool .
 
 bin_SCRIPTS = graph-tool
 

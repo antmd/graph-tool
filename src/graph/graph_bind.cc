@@ -225,6 +225,9 @@ struct LibInfo
     string GetCopyright() const {return COPYRIGHT;}
     string GetVersion()   const {return VERSION " (commit " GIT_COMMIT ", " GIT_COMMIT_DATE ")";}
     string GetLicense()   const {return "GPL version 3 or above";}
+    string GetCXXFLAGS()  const {return CXXFLAGS;}
+    string GetInstallPrefix() const {return INSTALL_PREFIX;}
+    string GetPythonDir() const {return PYTHON_DIR;}
 };
 
 // overloads
@@ -357,5 +360,8 @@ BOOST_PYTHON_MODULE(libgraph_tool)
         .add_property("author", &LibInfo::GetAuthor)
         .add_property("copyright", &LibInfo::GetCopyright)
         .add_property("version", &LibInfo::GetVersion)
-        .add_property("license", &LibInfo::GetLicense);
+        .add_property("license", &LibInfo::GetLicense)
+        .add_property("cxxflags", &LibInfo::GetCXXFLAGS)
+        .add_property("install_prefix", &LibInfo::GetInstallPrefix)
+        .add_property("python_dir", &LibInfo::GetPythonDir);
 }

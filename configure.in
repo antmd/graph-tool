@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT(graph-tool, 1.2.0devel)
+AC_INIT(graph-tool, 1.2.0devel, [http://graph-tool.forked.de])
 AC_CONFIG_SRCDIR(src/graph-tool)
 AM_INIT_AUTOMAKE
 AM_PROG_CC_C_O
@@ -21,13 +21,13 @@ dnl Checks for options
 
 dnl Turn debugging on or off
 AC_MSG_CHECKING(whether to enable debug info...)
-   
+
 AC_ARG_ENABLE([debug], [AC_HELP_STRING([--enable-debug@<:@=full@:>@],
         [compile debug information [default=yes] ])],
         [AC_MSG_RESULT(yes)]
         [AC_DEFINE([DEBUG], 1, [compile debug info])]
         [CXXFLAGS=" $CXXFLAGS -ggdb3 "],
-        [AC_MSG_RESULT(no)] 
+        [AC_MSG_RESULT(no)]
         )
 
 dnl set template depth and hidden visibility
@@ -35,7 +35,7 @@ dnl set template depth and hidden visibility
 [CXXFLAGS="$CXXFLAGS -ftemplate-depth-150 "]
 
 AC_MSG_CHECKING(whether to enable function inlining...)
-                                                                                
+
 AC_ARG_ENABLE([inline], [AC_HELP_STRING([--disable-inline],
         [disable inline functions [default=enabled] ])],
         if test $enableval = no; then
@@ -50,11 +50,11 @@ AC_ARG_ENABLE([inline], [AC_HELP_STRING([--disable-inline],
         [AC_MSG_RESULT(yes)]
         NO_INLINE=no
         )
-         
+
 AM_CONDITIONAL(NO_INLINE, test $NO_INLINE = yes)
 
 AC_MSG_CHECKING(whether to enable optimizations...)
-                                                                                
+
 AC_ARG_ENABLE([optimization], [AC_HELP_STRING([--disable-optimization],
         [disable optimization [default=enabled] ])],
         [AC_MSG_RESULT(no)]
@@ -64,7 +64,7 @@ AC_ARG_ENABLE([optimization], [AC_HELP_STRING([--disable-optimization],
         )
 
 AC_MSG_CHECKING(whether to enable hidden visibility...)
-                                                                                
+
 AC_ARG_ENABLE([visibility], [AC_HELP_STRING([--disable-visibility],
         [disable hidden visibility [default=enabled] ])],
         [AC_MSG_RESULT(no)]
@@ -95,8 +95,8 @@ AC_ARG_ENABLE([openmp], [AC_HELP_STRING([--enable-openmp],
         if test $enableval = yes; then
            [AC_MSG_RESULT(yes)]
            [AC_DEFINE([USING_OPENMP], 1, [using openmp])]
-           USING_OPENMP=yes  
-           [CXXFLAGS="$CXXFLAGS -fopenmp"]  
+           USING_OPENMP=yes
+           [CXXFLAGS="$CXXFLAGS -fopenmp"]
            [OPENMP_LDFLAGS=" -lgomp "]
         fi
         ,
@@ -108,7 +108,7 @@ AC_ARG_ENABLE([openmp], [AC_HELP_STRING([--enable-openmp],
         )
 AC_SUBST(OPENMP_LDFLAGS)
 
-         
+
 dnl Checks for programs.
 
 dnl Checks for libraries.
@@ -164,6 +164,12 @@ AC_SUBST(NO_PREFIX_PACKAGE_DOC_DIR)
 PACKAGE_DOC_DIR="${packageprefix}/${packagedocdir}"
 AC_SUBST(PACKAGE_DOC_DIR)
 
+dnl Subst PYTHON_DIR.
+AC_DEFINE_UNQUOTED([INSTALL_PREFIX],"${prefix}", [python prefix])
+AC_DEFINE_UNQUOTED([PYTHON_DIR], "${pythondir}", [The directory name for the site-packages subdirectory of the standard Python install tree.])
+
+AC_DEFINE_UNQUOTED([CXXFLAGS],"${CXXFLAGS}", [c++ compilation options])
+
 AC_DEFINE_UNQUOTED([PACKAGE_DATA_DIR], "${packageprefix}/${packagedatadir}", [package data dir])
 AC_DEFINE_UNQUOTED([PACKAGE_DOC_DIR], "${packageprefix}/${packagedocdir}", [package doc dir])
 AC_DEFINE_UNQUOTED([PACKAGE_SOURCE_DIR], "${packagesrcdir}", [package source dir])
@@ -181,5 +187,6 @@ AC_OUTPUT([
 Makefile
 src/Makefile
 src/graph/Makefile
+src/graph_tool/Makefile
 ])
 

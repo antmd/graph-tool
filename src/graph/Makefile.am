@@ -12,13 +12,11 @@ AM_CXXFLAGS =\
 
 AM_CFLAGS=$(AM_CXXFLAGS)
 
-libgraph_tool_ladir = ${pythondir}
-libgraph_tool_includedir = $(includedir)/graph_tool
-install-data-hook:		
-	chmod 755 $(includedir)/graph_tool
+libgraph_tooldir = $(pythondir)/graph_tool
 
+libgraph_tool_LTLIBRARIES = libgraph_tool.la
 
-lib_LTLIBRARIES = libgraph_tool.la
+libgraph_tool_la_includedir = $(pythondir)/graph_tool/include
 
 libgraph_tool_la_SOURCES = \
     graph.hh\
@@ -51,7 +49,7 @@ libgraph_tool_la_SOURCES = \
     ../boost-workaround/boost/graph/fruchterman_reingold.hpp\
     ../boost-workaround/boost/graph/graphml.hpp
 
-libgraph_tool_include_HEADERS = \
+libgraph_tool_la_include_HEADERS = \
     graph_adaptor.hh\
     graph.hh\
     graph_filtering.hh\
@@ -73,4 +71,9 @@ libgraph_tool_la_LIBADD = \
 # needed for typeinfo objects to work across DSO boundaries.
 # see http://gcc.gnu.org/faq.html#dso
 libgraph_tool_la_LDFLAGS = \
-    -Wl,-E 
+    -module \
+    -avoid-version \
+    -export-dynamic \
+    -no-undefined \
+    -Wl,-E
+

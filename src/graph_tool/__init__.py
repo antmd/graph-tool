@@ -1049,25 +1049,30 @@ class Graph(object):
             raise GraphError(self, "You need to have scipy installed to use" + \
                              " 'run_action'.")
 
+        prefix_dir = libgraph_tool.mod_info().install_prefix
+        python_dir = libgraph_tool.mod_info().python_dir
+        python_dir = string.Template(python_dir).substitute(prefix=prefix_dir)
+        cxxflags = libgraph_tool.mod_info().cxxflags
+        
         # this is the code template which defines the action functor
         support_template = r"""
         #include <map>
         #include <set>
+        #include <list>
         #include <tr1/unordered_set>
         #include <tr1/unordered_map>
         #include <boost/lambda/lambda.hpp>
         #include <boost/lambda/bind.hpp>
         #include <boost/tuple/tuple.hpp>
         #include <boost/type_traits.hpp>
-        #include <graph_tool/graph.hh>
-        #include <graph_tool/graph_filtering.hh>
-        #include <graph_tool/graph_properties.hh>
+        #include "${include_prefix}/graph.hh"
+        #include "${include_prefix}/graph_filtering.hh"
+        #include "${include_prefix}/graph_properties.hh"
 
         using namespace boost;
         using namespace boost::tuples;
         using namespace std;
         using namespace graph_tool;
-
 
         template <class IndexMap>
         struct prop_bind_t
@@ -1155,9 +1160,12 @@ class Graph(object):
         arg_expansion = "\n".join([ exp_term % (i,arg_names[i],i) for i in \
                                     xrange(0, len(arg_names))])
         support_template = string.Template(support_template)
+        inc_prefix = python_dir + "/graph_tool/include"
         support_code = support_template.substitute(code_hash=code_hash,
                                                    arg_expansion=arg_expansion,
-                                                   code=code) + support_code
+                                                   code=code,
+                                                   include_prefix = inc_prefix)\
+                                                   + support_code
 
         # insert a hash value of the support_code into the code below, to force
         # recompilation when support_code (and module version) changes
@@ -1199,12 +1207,12 @@ class Graph(object):
                            support_code=support_code,
                            libraries=["graph_tool"] + libraries,
                            library_dirs=sys.path + library_dirs,
-                           extra_compile_args=["-O3","-ftemplate-depth-150",
-                                               "-Wall", "-Wno-deprecated"] + \
+                           extra_compile_args=[cxxflags] + \
                                             extra_compile_args,
                            runtime_library_dirs=runtime_library_dirs,
                            extra_objects=extra_objects,
-                           extra_link_args=["-Wl,-E"]+extra_link_args)
+                           extra_link_args=["-L" + python_dir + "/graph_tool/",
+                                            "-Wl,-E"] + extra_link_args)
 
         sys.setdlopenflags(_orig_dlopen_flags) # reset dlopen to normal case to
                                                # avoid unnecessary symbol
