@@ -673,9 +673,11 @@ void catch_sig_stop(int sig_num)
     case SIGHUP:
         std::cerr << "SIGHUP (Hangup).";
         break;
+#ifdef SIGPWR
     case SIGPWR:
         std::cerr << "SIGPWR (Power failure restart).";
         break;
+#endif
     case SIGSEGV:
         std::cerr << "SIGSEGV (Segmentation fault). "
                   << "There's a bug somewhere in the program. Go fix it.";
@@ -710,7 +712,9 @@ void GraphInterface::InitSignalHandling()
     signal(SIGTERM, catch_sig_stop);
     signal(SIGQUIT, catch_sig_stop);
     signal(SIGHUP, catch_sig_stop);
+#ifdef SIGPWR
     signal(SIGPWR, catch_sig_stop);
+#endif
     signal(SIGSEGV, catch_sig_stop);
     signal(SIGBUS, catch_sig_stop);
     signal(SIGFPE, catch_sig_stop);
