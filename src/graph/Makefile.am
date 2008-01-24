@@ -75,5 +75,4 @@ libgraph_tool_la_LDFLAGS = \
     -avoid-version \
     -export-dynamic \
     -no-undefined \
-    -Wl,-E
-
+    $(LD_EXPORT_DYNAMIC)

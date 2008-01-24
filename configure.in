@@ -17,6 +17,14 @@ AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
 AC_PROG_INSTALL
 
+dnl needed for typeinfo objects to work across DSO boundaries. (see
+dnl http://gcc.gnu.org/faq.html#dso). however this only works for GNU
+dnl ld. Hopefully other linkers will behave properly...
+AX_LD_CHECK_FLAG([-Wl,-E],[],[],
+        [LD_EXPORT_DYNAMIC="-Wl,-E"],
+        [LD_EXPORT_DYNAMIC=""])
+AC_SUBST(LD_EXPORT_DYNAMIC)
+
 dnl Checks for options
 
 dnl Turn debugging on or off

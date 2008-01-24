@@ -835,3 +835,44 @@ if test "$ac_cv_boost_python" = "yes"; then
   AC_SUBST(BOOST_PYTHON_LIB)
 fi
 ])dnl
+
+# This macro tests if the C++ compiler supports the flag FLAG-TO-CHECK. If
+# successfull execute ACTION-IF-SUCCESS otherwise ACTION-IF-FAILURE. PROLOGUE
+# and BODY are optional and should be used as in AC_LANG_PROGRAM macro.
+
+AC_DEFUN([AX_LD_CHECK_FLAG],[
+  AC_PREREQ([2.61])
+  AC_REQUIRE([AC_PROG_CXX])
+  AC_REQUIRE([AC_PROG_SED])
+
+  flag=`echo "$1" | $SED 'y% .=/+-(){}<>:*,%_______________%'`
+
+  AC_CACHE_CHECK([whether the linker accepts the $1 flag],
+    [ax_cv_ld_check_flag_$flag],[
+
+    #AC_LANG_PUSH([C])
+
+    save_LDFLAGS="$LDFLAGS"
+    LDFLAGS="$LDFLAGS $1"
+    AC_LINK_IFELSE([
+      AC_LANG_PROGRAM([$2],[$3])
+    ],[
+      eval "ax_cv_ld_check_flag_$flag=yes"
+    ],[
+      eval "ax_cv_ld_check_flag_$flag=no"
+    ])
+
+    LDFLAGS="$save_LDFLAGS"
+
+    #AC_LANG_POP
+
+  ])
+
+  AS_IF([eval "test \"`echo '$ax_cv_ld_check_flag_'$flag`\" = yes"],[
+    :
+    $4
+  ],[
+    :
+    $5
+  ])
+])
