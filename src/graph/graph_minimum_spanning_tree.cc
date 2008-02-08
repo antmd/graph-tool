@@ -15,16 +15,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+#include "graph_filtering.hh"
+#include "graph.hh"
+#include "graph_properties.hh"
 
-#include <boost/lambda/lambda.hpp>
 #include <boost/lambda/bind.hpp>
 #include <boost/graph/kruskal_min_spanning_tree.hpp>
-
-#include "graph.hh"
-#include "histogram.hh"
-#include "graph_filtering.hh"
-#include "graph_selectors.hh"
-#include "graph_properties.hh"
 
 using namespace std;
 using namespace boost;
@@ -34,22 +30,16 @@ using namespace graph_tool;
 struct get_kruskal_min_span_tree
 {
     template <class Graph, class IndexMap, class WeightMap, class TreePropMap>
-    void operator()(Graph& g, IndexMap vertex_index, WeightMap weights,
+    void operator()(const Graph* gp, IndexMap vertex_index, WeightMap weights,
                     TreePropMap tree_map) const
     {
+        const Graph& g = *gp;
         typedef vector<typename graph_traits<Graph>::edge_descriptor> 
             tree_edges_t;
         tree_edges_t tree_edges;
         back_insert_iterator<tree_edges_t> tree_inserter(tree_edges);
 
-        HashedDescriptorMap<IndexMap, size_t> ranks(vertex_index);
-        HashedDescriptorMap<IndexMap, 
-                            typename graph_traits<Graph>::vertex_descriptor> 
-            preds(vertex_index);
-
-        kruskal_minimum_spanning_tree(g, tree_inserter, weight_map(weights).
-                                                        rank_map(ranks).
-                                                        predecessor_map(preds));
+        kruskal_minimum_spanning_tree(g, tree_inserter, weight_map(weights));
 
         typename graph_traits<Graph>::edge_iterator e, e_end;
         for(tie(e, e_end) = edges(g); e != e_end; ++e)
@@ -62,62 +52,46 @@ struct get_kruskal_min_span_tree
 
 void GraphInterface::GetMinimumSpanningTree(string weight, string property)
 {
-    typedef vector_property_map<size_t, edge_index_map_t> tree_map_t;
-    tree_map_t tree_map(_edge_index);
+    boost::any weight_map, tree_map;
 
-    bool directed = _directed;
-    _directed = false;
+    try
+    {
+        tree_map = prop(property, _edge_index, _properties);
+    }
+    catch (property_not_found)
+    {
+        typedef vector_property_map<bool, edge_index_map_t> tree_map_t;
+        tree_map_t new_tree_map(_edge_index);
+        _properties.property(property, new_tree_map);
+        tree_map = new_tree_map;
+    }
 
     if(weight != "")
-    {
+    {        
         try 
         {
-            dynamic_property_map& weight_prop = 
-                find_property_map(_properties, weight, typeid(edge_t));
-            if (get_static_property_map
-                <vector_property_map<double,edge_index_map_t> >(&weight_prop))
-            {
-                vector_property_map<double,edge_index_map_t> weight_map = 
-                    get_static_property_map
-                    <vector_property_map<double,edge_index_map_t> >
-                        (weight_prop);
-                run_action(*this, bind<void>(get_kruskal_min_span_tree(), _1, 
-                                             var(_vertex_index),
-                                             var(weight_map),var(tree_map)), 
-                           reverse_check(), always_undirected());
-            }
-            else
-            {
-                DynamicPropertyMapWrap<double,edge_t> weight_map(weight_prop);
-                run_action(*this, bind<void>(get_kruskal_min_span_tree(), _1, 
-                                             var(_vertex_index),
-                                             var(weight_map),var(tree_map)), 
-                           reverse_check(), always_undirected());
-            }
+            weight_map = prop(weight, _edge_index, _properties);
         }
-        catch (property_not_found& e)
+        catch (property_not_found)
         {
-            throw GraphException("error getting scalar property: " + 
-                                 string(e.what()));
+            throw GraphException("weight edge property " + weight + 
+                                 " not found");
         }
     }
     else
     {
-        ConstantPropertyMap<double,edge_t> weight_map(1.0);
-        run_action(*this, bind<void>(get_kruskal_min_span_tree(), _1, 
-                                     var(_vertex_index),var(weight_map),
-                                     var(tree_map)), 
-                   reverse_check(), always_undirected());
+        weight_map = ConstantPropertyMap<size_t,edge_t>(1);
     }
 
+    bool directed = _directed;
+    _directed = false;
+    typedef mpl::push_back<edge_scalar_properties,
+                           ConstantPropertyMap<size_t,edge_t> >::type
+        weight_maps;
+    run_action<detail::never_directed>()
+        (*this, bind<void>(get_kruskal_min_span_tree(), _1, _vertex_index,
+                           _2, _3),
+         weight_maps(), edge_scalar_properties())(weight_map, tree_map);
+    
     _directed = directed;
-
-    try
-    {
-        find_property_map(_properties, property, typeid(edge_t));
-        RemoveVertexProperty(property);
-    }
-    catch (property_not_found) {}
-
-    _properties.property(property, tree_map);
 }

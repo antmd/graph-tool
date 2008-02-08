@@ -15,70 +15,60 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+#include "graph_filtering.hh"
+#include "graph.hh"
+#include "graph_properties.hh"
 
-#include <algorithm>
-#include <tr1/unordered_set>
-#include <boost/lambda/lambda.hpp>
-#include <boost/lambda/bind.hpp>
 #include <boost/graph/gursoy_atun_layout.hpp>
 #include <boost/graph/kamada_kawai_spring_layout.hpp>
 #include <boost/graph/fruchterman_reingold.hpp>
 #include <boost/graph/random_layout.hpp>
 #include <boost/random.hpp>
-
-#include "graph.hh"
-#include "graph_filtering.hh"
-#include "graph_properties.hh"
+#include <boost/lambda/lambda.hpp>
 
 using namespace std;
 using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
 
-
 struct compute_gursoy
 {
     template <class Graph, class PosMap, class WeightMap, class IndexMap>
-    void operator()(Graph &g, size_t iter, size_t seed, PosMap pos,
+    void operator()(const Graph* gp, size_t iter, size_t seed, PosMap pos,
                     WeightMap weight, string topology, IndexMap index_map) const
     {
+        const Graph& g = *gp;
         mt19937 rng(static_cast<mt19937::result_type>(seed));
-        size_t n = HardNumVertices()(g);
+        size_t n = HardNumVertices()(&g);
 
-        vector_property_map<square_topology<mt19937>::point_type, IndexMap>
-            position_map(index_map);
+        typename get_weight_map<WeightMap>::type weight_map(weight);
+
         if (iter == 0)
             iter = n;
         if (topology == "square")
         {
             square_topology<mt19937> top(rng, sqrt(n));
-            gursoy_atun_layout (g, top,  position_map, iter, sqrt(double(n)),
-                                1.0, 0.8, 0.2, index_map, weight);
+            gursoy_atun_layout(g, top,  pos, iter, sqrt(double(n)),
+                               1.0, 0.8, 0.2, index_map, weight_map);
         }
         else if (topology == "circle")
         {
             circle_topology<mt19937> top(rng, n/2);
-            gursoy_atun_layout (g, top,  position_map, iter, sqrt(double(n)),
-                                1.0, 0.8, 0.2, index_map, weight);
+            gursoy_atun_layout(g, top,  pos, iter, sqrt(double(n)),
+                               1.0, 0.8, 0.2, index_map, weight_map);
         }
         else if (topology == "heart")
         {
             heart_topology<mt19937> top(rng);
-            vector_property_map<heart_topology<mt19937>::point_type, IndexMap>
-                pos_map(index_map);
-            gursoy_atun_layout (g, top, pos_map, iter, sqrt(double(n)), 1.0,
-                                0.8, 0.2, index_map, weight);
-            int i, N = num_vertices(g);
-            #pragma omp parallel for default(shared) private(i) \
-                schedule(dynamic)
-            for (i = 0; i < N; ++i)
+            vector_property_map<heart_topology<mt19937>::point_type,
+                                IndexMap> pos_map (index_map);
+            gursoy_atun_layout(g, top, pos_map, iter, sqrt(double(n)),
+                              1.0, 0.8, 0.2, index_map, weight_map);
+            typename graph_traits<Graph>::vertex_iterator v, v_end;
+            for (tie(v, v_end) = vertices(g); v != v_end; ++v)
             {
-                typename graph_traits<Graph>::vertex_descriptor v =
-                    vertex(i, g);
-                if (v == graph_traits<Graph>::null_vertex())
-                    continue;
-                position_map[v][0] = pos_map[v][0];
-                position_map[v][1] = pos_map[v][1];
+                pos[*v][0] = pos_map[*v][0];
+                pos[*v][1] = pos_map[*v][1];
             }
         }
         else
@@ -86,91 +76,83 @@ struct compute_gursoy
             throw GraphException("invalid topology for graph layout: " +
                                  topology);
         }
+    }
 
-        int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
-        for (i = 0; i < N; ++i)
+    template <class PropertyMap>
+    struct get_weight_map
+    {
+        typedef typename property_traits<PropertyMap>::value_type
+            value_type;
+        typedef typename mpl::if_<
+            typename mpl::or_<is_floating_point<value_type>,
+                              is_same<PropertyMap,dummy_property_map> >::type,
+            PropertyMap,
+            ConvertedPropertyMap<PropertyMap,double> >::type type;
+    };
+};
+
+struct copy_points
+{
+    template <class Graph, class VectorProperty, class PointsMap>
+    void operator()(const Graph* g, VectorProperty vec_prop, PointsMap pos_map)
+        const
+    {
+        typename graph_traits<Graph>::vertex_iterator v, v_end;
+        for (tie(v, v_end) = vertices(*g); v != v_end; ++v)
         {
-            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
-            if (v == graph_traits<Graph>::null_vertex())
-                continue;
-            pos[v].x = position_map[v][0];
-            pos[v].y = position_map[v][1];
+            vec_prop[*v].resize(2);
+            vec_prop[*v][0] = pos_map[*v][0];
+            vec_prop[*v][1] = pos_map[*v][1];
+        }
+    }
+};
+
+struct copy_weights
+{
+    template <class Graph, class WeightSrcMap, class WeightTgtMap>
+    void operator()(const Graph* g, WeightSrcMap src_map, WeightTgtMap tgt_map)
+        const
+    {
+        do_copy(g, src_map, tgt_map, is_same<WeightSrcMap, WeightTgtMap>());
+    }
+
+    template <class Graph, class WeightSrcMap, class WeightTgtMap>
+    void do_copy(const Graph* g, WeightSrcMap src_map, WeightTgtMap tgt_map,
+                 true_type) const
+    {
+        tgt_map = src_map;
+    }
+
+    template <class Graph, class WeightSrcMap, class WeightTgtMap>
+    void do_copy(const Graph* g, WeightSrcMap src_map, WeightTgtMap tgt_map,
+                 false_type) const
+    {
+        typename graph_traits<Graph>::edge_iterator e, e_end;
+        for (tie(e, e_end) = edges(*g); e != e_end; ++e)
+        {
+            tgt_map[*e] = src_map[*e];
         }
     }
 };
 
 
-void GraphInterface::ComputeGraphLayoutGursoy(string prop, string weight,
-                                              string topology, size_t iter,
-                                              size_t seed)
-{
-    // vertex postion map
-    typedef vector_property_map<pos_t, vertex_index_map_t> pos_map_t;
-    pos_map_t pos_map(num_vertices(_mg), _vertex_index);
-
-    if (weight == "")
-    {
-        run_action(*this,bind<void>(compute_gursoy(),_1,iter,seed, pos_map,
-                                    dummy_property_map(), topology,
-                                    _vertex_index));
-    }
-    else
-    {
-        try
-        {
-            dynamic_property_map& weight_prop =
-                find_property_map(_properties, weight, typeid(edge_t));
-            try
-            {
-                vector_property_map<double, edge_index_map_t> weight_map;
-                weight_map =
-                    get_static_property_map
-                        <vector_property_map<double, edge_index_map_t> >
-                            (weight_prop);
-                run_action(*this,bind<void>(compute_gursoy(),_1,iter,seed,
-                                            pos_map, weight_map, topology,
-                                            _vertex_index));
-            }
-            catch (bad_cast)
-            {
-                DynamicPropertyMapWrap<double, edge_t> weight_map(weight_prop);
-                run_action(*this,bind<void>(compute_gursoy(),_1,iter,seed,
-                                            pos_map, weight_map, topology,
-                                            _vertex_index));
-            }
-        }
-        catch (property_not_found& e)
-        {
-            throw GraphException("error getting scalar property: " +
-                                 string(e.what()));
-        }
-    }
-
-    try
-    {
-        find_property_map(_properties, prop, typeid(vertex_t));
-        RemoveVertexProperty(prop);
-    }
-    catch (property_not_found) {}
-    _properties.property(prop, pos_map);
-}
-
 struct compute_spring_block
 {
     template <class Graph, class PosMap, class IndexMap, class WeightMap>
-    void operator()(Graph &g, string type, size_t iter, size_t seed, PosMap pos,
-                    bool progressive, WeightMap weight, IndexMap index_map) const
+    void operator()(const Graph* gp, string type, size_t iter, size_t seed,
+                    PosMap pos, bool progressive, WeightMap weight,
+                    IndexMap index_map)
+        const
     {
+        const Graph& g = *gp;
         mt19937 rng(static_cast<mt19937::result_type>(seed));
-        size_t n = HardNumVertices()(g);
+        size_t n = HardNumVertices()(&g);
 
         if (iter == 0)
             iter = 100;
         double radius = n;
         if (!progressive)
-            random_graph_layout(g, pos,
-                                -radius/2, radius/2,
+            random_graph_layout(g, pos, -radius/2, radius/2,
                                 -radius/2, radius/2, rng);
         if (type == "fg-grid")
         {
@@ -222,70 +204,112 @@ struct compute_spring_block
     }
 };
 
-void GraphInterface::ComputeGraphLayoutSpringBlock(string prop, string weight,
-                                                   string type, size_t iter,
+
+struct copy_positions
+{
+    template <class Graph, class VectorProperty, class PosMap>
+    void operator()(const Graph* g, VectorProperty vec_prop, PosMap pos_map)
+        const
+    {
+        typename graph_traits<Graph>::vertex_iterator v, v_end;
+        for (tie(v, v_end) = vertices(*g); v != v_end; ++v)
+        {
+            vec_prop[*v].resize(2);
+            vec_prop[*v][0] = pos_map[*v].x;
+            vec_prop[*v][1] = pos_map[*v].y;
+        }
+    }
+};
+
+void GraphInterface::ComputeGraphLayoutGursoy(string pos_prop, string weight,
+                                              string topology, size_t iter,
+                                              size_t seed)
+{
+    typedef vector_property_map<double, edge_index_map_t> temp_weight_t;
+    boost::any pos_map, weight_map;
+    try
+    {
+        pos_map = prop(pos_prop, _vertex_index, _properties);
+        if (!belongs<vertex_floating_vector_properties>()(pos_map))
+            throw GraphException("property " + pos_prop +
+                                 "is not of floating point vector type");
+        if (weight == "")
+        {
+            weight_map = dummy_property_map();
+        }
+        else
+        {
+            temp_weight_t temp_weight(_edge_index);
+            run_action<>()(*this, bind<void>(copy_weights(), _1, _2,
+                                             temp_weight),
+                           edge_scalar_properties())
+                (prop(weight, _edge_index, _properties));
+            weight_map = temp_weight;
+        }
+    }
+    catch (property_not_found& e)
+    {
+        throw GraphException("error getting property: " + string(e.what()));
+    }
+
+    vector_property_map<convex_topology<2>::point_type, vertex_index_map_t>
+        pos(_vertex_index);
+    run_action<>()(*this, bind<void>(compute_gursoy(), _1, iter, seed, pos,
+                                     _2, topology, _vertex_index),
+                   mpl::vector<temp_weight_t,dummy_property_map>())
+        (weight_map);
+    run_action<>()(*this, bind<void>(copy_points(), _1, _2, pos),
+                   vertex_floating_vector_properties())(pos_map);
+}
+
+struct pos_t
+{
+    double x;
+    double y;
+};
+
+void GraphInterface::ComputeGraphLayoutSpringBlock(string pos_prop,
+                                                   string weight, string type,
+                                                   size_t iter,
+                                                   bool progressive,
                                                    size_t seed)
 {
-    // vertex postion map
-    typedef vector_property_map<pos_t, vertex_index_map_t> pos_map_t;
-    pos_map_t pos_map(num_vertices(_mg), vertex_index);
-    bool progressive = false;
+    typedef vector_property_map<double, edge_index_map_t> temp_weight_t;
+    boost::any pos_map, weight_map;
     try
     {
-        dynamic_property_map& pos = find_property_map(_properties, weight,
-                                                      typeid(edge_t));
-        pos_map =
-            get_static_property_map
-                <vector_property_map<pos_t,vertex_index_map_t> >(pos);
-        progressive = true;
-    }
-    catch (bad_cast) {}
-    catch (property_not_found) {}
+        pos_map = prop(pos_prop, _vertex_index, _properties);
+        if (!belongs<vertex_floating_vector_properties>()(pos_map))
+            throw GraphException("property " + pos_prop +
+                                 "is not of floating point vector type");
 
-    if (weight == "")
-    {
-        run_action(*this,bind<void>(compute_spring_block(), _1, type, iter,
-                                    seed, pos_map, progressive,
-                                    ConstantPropertyMap<double,edge_t>(1.0),
-                                    _vertex_index));
-    }
-    else
-    {
-        try
+        if (weight == "")
         {
-            dynamic_property_map& weight_prop =
-                find_property_map(_properties, weight, typeid(edge_t));
-            try
-            {
-                vector_property_map<double, edge_index_map_t> weight_map;
-                weight_map =
-                    get_static_property_map
-                        <vector_property_map<double, edge_index_map_t> >
-                            (weight_prop);
-                run_action(*this,bind<void>(compute_spring_block(), _1, type,
-                                            iter, seed, pos_map, progressive,
-                                            weight_map, _vertex_index));
-            }
-            catch (bad_cast)
-            {
-                DynamicPropertyMapWrap<double,edge_t> weight_map(weight_prop);
-                run_action(*this,bind<void>(compute_spring_block(), _1, type,
-                                            iter, seed, pos_map, progressive,
-                                            weight_map, _vertex_index));
-            }
+            weight_map = ConstantPropertyMap<double,edge_t>(1.0);
         }
-        catch (property_not_found& e)
+        else
         {
-            throw GraphException("error getting scalar property: " +
-                                 string(e.what()));
+            temp_weight_t temp_weight(_edge_index);
+            run_action<>()(*this, bind<void>(copy_weights(), _1, _2,
+                                             temp_weight),
+                           edge_scalar_properties())
+                (prop(weight, _edge_index, _properties));
+            weight_map = temp_weight;
         }
     }
-
-    try
+    catch (property_not_found& e)
     {
-        find_property_map(_properties, prop, typeid(vertex_t));
-        RemoveVertexProperty(prop);
+        throw GraphException("error getting property: " + string(e.what()));
     }
-    catch (property_not_found) {}
-    _properties.property(prop, pos_map);
+
+    typedef mpl::vector<temp_weight_t, ConstantPropertyMap<double,edge_t> >
+        weight_maps;
+
+    vector_property_map<pos_t, vertex_index_map_t> pos(_vertex_index);
+    run_action<>()(*this, bind<void>(compute_spring_block(), _1, type, iter,
+                                     seed, pos, progressive, _2, _vertex_index),
+                   weight_maps())
+        (weight_map);
+    run_action<>()(*this, bind<void>(copy_positions(), _1, _2, pos),
+                   vertex_floating_vector_properties())(pos_map);
 }

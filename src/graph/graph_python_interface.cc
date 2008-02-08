@@ -15,29 +15,28 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/python.hpp>
-#include <boost/lambda/lambda.hpp>
-#include <boost/lambda/bind.hpp>
-
-#include "graph_python_interface.hh"
-#include "graph.hh"
 #include "graph_filtering.hh"
+#include "graph.hh"
+#include "graph_python_interface.hh"
+
+#include <boost/python.hpp>
+#include <boost/lambda/bind.hpp>
+#include <set>
 
 using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-
 struct get_vertex_iterator
 {
     template <class Graph>
-    void operator()(const Graph& g,
+    void operator()(const Graph* gp, const GraphInterface& gi,
                     python::object& iter) const
     {
+        const Graph& g = *gp;
         typedef typename graph_traits<Graph>::vertex_iterator vertex_iterator;
-        iter = python::object(PythonIterator<Graph,
-                                             PythonVertex<Graph>,
-                                             vertex_iterator>(g, vertices(g)));
+        iter = python::object(PythonIterator<PythonVertex,
+                                             vertex_iterator>(gi, vertices(g)));
     }
 };
 
@@ -45,22 +44,68 @@ python::object
 GraphInterface::Vertices() const
 {
     python::object iter;
-    run_action(*this, lambda::bind<void>(get_vertex_iterator(),
-                                         lambda::_1,
-                                         lambda::var(iter)));
+    run_action<>()(*this, lambda::bind<void>(get_vertex_iterator(), lambda::_1,
+                                             lambda::var(*this),
+                                             lambda::var(iter)))();
     return iter;
+}
+
+struct get_vertex_soft
+{
+    template <class Graph>
+    void operator()(const Graph* gp, 
+                    const GraphInterface& gi,
+                    size_t i, python::object& v) const
+    {
+        const Graph& g = *gp;
+        v = python::object(PythonVertex(gi, vertex(i, g)));
+    }
+};
+
+struct get_vertex_hard
+{
+    template <class Graph>
+    void operator()(const Graph* gp, const GraphInterface& gi, size_t i,
+                    python::object& v) const
+    {
+        const Graph& g = *gp;
+        size_t c = 0;
+        typename graph_traits<Graph>::vertex_iterator vi, v_end;
+        for (tie(vi, v_end) = vertices(g); vi != v_end; ++vi)
+        {
+            if (c == i)
+                v = python::object(PythonVertex(gi, *vi));
+            ++c;
+        }
+    }
+};
+
+python::object
+GraphInterface::Vertex(size_t i) const
+{
+    python::object v;
+    if (IsVertexFilterActive())
+        run_action<>()(*this, lambda::bind<void>(get_vertex_hard(), lambda::_1, 
+                                                 lambda::var(*this),
+                                                 i, lambda::var(v)))();
+    else
+        run_action<detail::never_filtered>()
+            (*this, lambda::bind<void>(get_vertex_soft(), lambda::_1,
+                                       lambda::var(*this), i, 
+                                       lambda::var(v)))();        
+    return v;
 }
 
 struct get_edge_iterator
 {
     template <class Graph>
-    void operator()(const Graph& g,
+    void operator()(const Graph* gp,  const GraphInterface& gi,
                     python::object& iter) const
     {
+        const Graph& g = *gp;
         typedef typename graph_traits<Graph>::edge_iterator edge_iterator;
-        iter = python::object(PythonIterator<Graph,
-                                             PythonEdge<Graph>,
-                                             edge_iterator>(g, edges(g)));
+        iter = python::object(PythonIterator<PythonEdge<Graph>,
+                                             edge_iterator>(gi, edges(g)));
     }
 };
 
@@ -68,104 +113,96 @@ python::object
 GraphInterface::Edges() const
 {
     python::object iter;
-    run_action(*this, lambda::bind<void>(get_edge_iterator(),
-                                         lambda::_1,
-                                         lambda::var(iter)));
+    run_action<>()(*this, lambda::bind<void>(get_edge_iterator(), lambda::_1,
+                                             lambda::var(*this),
+                                             lambda::var(iter)))();
     return iter;
 }
 
-struct add_new_vertex
+size_t GraphInterface::GetEdgeHash(const edge_t& e) const
 {
-    template <class Graph>
-    void operator()(Graph& g, python::object& new_v) const
-    {
-        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-        vertex_t v = add_vertex(g);
-        new_v = python::object(PythonVertex<Graph>(g, v));
-    }
-};
+    return hash<size_t>()(_edge_index[e]);
+}
 
 python::object GraphInterface::AddVertex()
 {
-    python::object new_v;
-    run_action(*this, lambda::bind<void>(add_new_vertex(), lambda::_1,
-                                           lambda::var(new_v)));
-    return new_v;
+    return python::object(PythonVertex(*this, add_vertex(_mg)));
 }
 
-struct get_vertex_descriptor
+struct shift_vertex_property
 {
-    template <class Graph>
-    void operator()(Graph& g, python::object& v,
-                    typename graph_traits<Graph>::vertex_descriptor& vertex)
+    template <class Graph, class PropertyMap>
+    void operator()(const Graph* gp, size_t vi, PropertyMap pmap)
         const
     {
-        PythonVertex<Graph>& pv = python::extract<PythonVertex<Graph>&>(v);
-        vertex = pv.GetDescriptor();
+        const Graph& g = *gp;
+        size_t N = num_vertices(g);
+        for (size_t i = vi; i < N-1; ++i)
+        {
+            pmap[vertex(i, g)] = pmap[vertex(i+1, g)];
+        }
     }
 };
 
 void GraphInterface::RemoveVertex(python::object v)
 {
-    graph_traits<multigraph_t>::vertex_descriptor dv;
-    run_action(*this, lambda::bind<void>(get_vertex_descriptor(), lambda::_1,
-                                         lambda::var(v), lambda::var(dv)));
-
-    //shift properties
-    size_t N = num_vertices(_mg);
-    for (size_t i = _vertex_index[dv]; i < N-1; ++i)
+    PythonVertex& pv = python::extract<PythonVertex&>(v);
+    vertex_t dv = pv.GetDescriptor();
+    
+    //shift properties. O(N)
+    for (typeof(_properties.begin()) p = _properties.begin();
+         p != _properties.end(); ++p)
     {
-        graph_traits<multigraph_t>::vertex_descriptor v = vertex(i, _mg);
-        for (typeof(_properties.begin()) p = _properties.begin();
-             p != _properties.end(); ++p)
-            if (p->second->key() == typeid(vertex_t))
-                try
-                {
-                    p->second->put(v, p->second->get(vertex(i+1, _mg)));
-                }
-                catch (dynamic_const_put_error) {} // index prop. is const
+        if (p->second->key() == typeid(vertex_t))
+        {
+            
+            typedef property_map_types::apply<value_types,
+                                              vertex_index_map_t,
+                                              mpl::bool_<false> >::type
+                properties;
 
+            run_action<>()(*this, 
+                           lambda::bind<void>(shift_vertex_property(), 
+                                              lambda::_1, _vertex_index[dv], 
+                                              lambda::_2), properties())
+                (prop(p->first, _vertex_index, _properties));
+        }
     }
 
     //remove vertex
-    if (in_degree(dv, _mg) + out_degree(dv, _mg) > 0)
-    {
-        clear_vertex(dv, _mg);
-        ReIndexEdges();
-    }
+    clear_vertex(dv, _mg);
     remove_vertex(dv, _mg);
 }
 
 struct add_new_edge
 {
     template <class Graph>
-        void operator()(Graph& g, const python::object& s,
-                        const python::object& t, python::object& new_e) const
+    void operator()(Graph* gp, const GraphInterface& gi, const PythonVertex& s,
+                    const PythonVertex& t, python::object& new_e) const
     {
-        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
-
-        PythonVertex<Graph>& src = python::extract<PythonVertex<Graph>&>(s);
-        PythonVertex<Graph>& tgt = python::extract<PythonVertex<Graph>&>(t);
-        edge_t e = add_edge(src.GetDescriptor(), tgt.GetDescriptor(), g).first;
-        new_e = python::object(PythonEdge<Graph>(g, e));
+        Graph& g = *gp;
+        typename graph_traits<Graph>::edge_descriptor e = 
+            add_edge(s.GetDescriptor(), t.GetDescriptor(), g).first;
+        new_e = python::object(PythonEdge<Graph>(gi, e));
     }
 };
 
 python::object GraphInterface::AddEdge(python::object s, python::object t)
 {
+    PythonVertex& src = python::extract<PythonVertex&>(s);
+    PythonVertex& tgt = python::extract<PythonVertex&>(t);
     python::object new_e;
-    run_action(*this, lambda::bind<void>(add_new_edge(), lambda::_1,
-                                           lambda::var(s), lambda::var(t),
-                                           lambda::var(new_e)));
+    run_action<>()(*this, lambda::bind<void>(add_new_edge(), lambda::_1, 
+                                             lambda::var(*this), src, tgt, 
+                                             lambda::var(new_e)))();
     return new_e;
 }
 
 struct get_edge_descriptor
 {
     template <class Graph>
-    void operator()(Graph& g, python::object& v,
-                    typename graph_traits
-                    <GraphInterface::multigraph_t>::edge_descriptor& edge)
+    void operator()(const Graph* gp, python::object& v,
+                    typename GraphInterface::edge_t& edge)
         const
     {
         PythonEdge<Graph>& pv = python::extract<PythonEdge<Graph>&>(v);
@@ -176,10 +213,10 @@ struct get_edge_descriptor
 void GraphInterface::RemoveEdge(python::object e)
 {
     graph_traits<multigraph_t>::edge_descriptor de;
-    run_action(*this, lambda::bind<void>(get_edge_descriptor(), lambda::_1,
-                                         lambda::var(e), lambda::var(de)));
+    run_action<>()(*this, 
+                   lambda::bind<void>(get_edge_descriptor(), lambda::_1,
+                                      lambda::var(e), lambda::var(de)))();
     remove_edge(de, _mg);
-    ReIndexEdges();
 }
 
 struct get_property_map
@@ -200,6 +237,11 @@ struct get_property_map
     python::object& _pmap;
 };
 
+void GraphInterface::Clear()
+{
+    _mg.clear();
+    _properties = dynamic_properties();
+}
 
 python::dict
 GraphInterface::GetVertexProperties() const
@@ -253,7 +295,6 @@ GraphInterface::GetGraphProperties() const
     return props;
 }
 
-
 //
 // Below are the functions with will properly register all the types to python,
 // for every filter, type, etc.
@@ -263,19 +304,9 @@ GraphInterface::GetGraphProperties() const
 struct export_python_interface
 {
     template <class Graph>
-    void operator()(const Graph&) const
+        void operator()(const Graph*, set<string>& v_iterators) const
     {
         using namespace boost::python;
-
-        class_<PythonVertex<Graph> >("Vertex", no_init)
-            .def("in_degree", &PythonVertex<Graph>::GetInDegree)
-            .def("out_degree", &PythonVertex<Graph>::GetOutDegree)
-            .def("out_edges", &PythonVertex<Graph>::OutEdges)
-            .def("in_edges", &PythonVertex<Graph>::InEdges)
-            .def(python::self == python::self)
-            .def(python::self != python::self)
-            .def("__str__", &PythonVertex<Graph>::GetString)
-            .def("__hash__", &PythonVertex<Graph>::GetHash);
 
         class_<PythonEdge<Graph> > ("Edge", no_init)
             .def("source", &PythonEdge<Graph>::GetSource)
@@ -286,25 +317,31 @@ struct export_python_interface
             .def("__hash__", &PythonEdge<Graph>::GetHash);
 
         typedef typename graph_traits<Graph>::vertex_iterator vertex_iterator;
-        class_<PythonIterator<Graph,PythonVertex<Graph>,
-                              vertex_iterator> >("VertexIterator",no_init)
-            .def("__iter__", objects::identity_function())
-            .def("next", &PythonIterator<Graph,PythonVertex<Graph>,
-                                         vertex_iterator>::Next);
+        if (v_iterators.find(typeid(vertex_iterator).name()) == 
+            v_iterators.end())
+        {
+            class_<PythonIterator<PythonVertex,
+                                  vertex_iterator> >("VertexIterator", no_init)
+                .def("__iter__", objects::identity_function())
+                .def("next", &PythonIterator<PythonVertex,
+                                             vertex_iterator>::Next);
+            v_iterators.insert(typeid(vertex_iterator).name());
+        }
+
 
         typedef typename graph_traits<Graph>::edge_iterator edge_iterator;
-        class_<PythonIterator<Graph,PythonEdge<Graph>,
+        class_<PythonIterator<PythonEdge<Graph>,
                               edge_iterator> >("EdgeIterator", no_init)
             .def("__iter__", objects::identity_function())
-            .def("next", &PythonIterator<Graph,PythonEdge<Graph>,
+            .def("next", &PythonIterator<PythonEdge<Graph>,
                                          edge_iterator>::Next);
 
         typedef typename graph_traits<Graph>::out_edge_iterator
             out_edge_iterator;
-        class_<PythonIterator<Graph,PythonEdge<Graph>,
+        class_<PythonIterator<PythonEdge<Graph>,
                               out_edge_iterator> >("OutEdgeIterator", no_init)
             .def("__iter__", objects::identity_function())
-            .def("next", &PythonIterator<Graph,PythonEdge<Graph>,
+            .def("next", &PythonIterator<PythonEdge<Graph>,
                                          out_edge_iterator>::Next);
 
         typedef typename graph_traits<Graph>::directed_category
@@ -314,73 +351,40 @@ struct export_python_interface
         if (is_directed::value)
         {
             typedef typename in_edge_iteratorS<Graph>::type in_edge_iterator;
-            class_<PythonIterator<Graph,PythonEdge<Graph>,
+            class_<PythonIterator<PythonEdge<Graph>,
                                   in_edge_iterator> >("InEdgeIterator", no_init)
                 .def("__iter__", objects::identity_function())
-                .def("next", &PythonIterator<Graph,PythonEdge<Graph>,
+                .def("next", &PythonIterator<PythonEdge<Graph>,
                                              in_edge_iterator>::Next);
         }
     }
 };
 
-// this will register the property maps types and all its possible access
-// functions to python
-struct export_property_map
+struct export_vertex_iterators
 {
-    export_property_map(const string& name, const GraphInterface &gi)
-        : _name(name), _gi(gi) {}
-
-    template <class ValueType>
-    struct export_access
-    {
-        typedef PythonPropertyMap<ValueType> pmap_t;
-
-        export_access(python::class_<pmap_t>& pclass)
-            : _pclass(pclass) {}
-
-        template <class Graph>
-        void operator()(const Graph&) const
-        {
-            _pclass
-                .def("__getitem__",
-                     &pmap_t::template GetValue<PythonVertex<Graph> >)
-                .def("__setitem__",
-                     &pmap_t::template SetValue<PythonVertex<Graph> >)
-                .def("__getitem__",
-                     &pmap_t::template GetValue<PythonEdge<Graph> >)
-                .def("__setitem__",
-                     &pmap_t::template SetValue<PythonEdge<Graph> >)
-                .def("__getitem__",
-                     &pmap_t::template GetValue<GraphInterface>)
-                .def("__setitem__",
-                     &pmap_t::template SetValue<GraphInterface>);
-        }
-
-        python::class_<PythonPropertyMap<ValueType> >& _pclass;
-    };
-
-    template <class ValueType>
-    void operator()(ValueType) const
-    {
-        typedef PythonPropertyMap<ValueType> pmap_t;
-        python::class_<pmap_t> pclass(_name.c_str(), python::no_init);
-        pclass.def("__hash__", &pmap_t::GetHash);
-        pclass.def("get_type", &pmap_t::GetType);
-        run_action(_gi, lambda::bind<void>(export_access<ValueType>(pclass),
-                                           lambda::_1),
-                   reverse_check(), directed_check(), true);
-    }
-
-    string _name;
-    const GraphInterface& _gi;
 };
+
+
+void export_python_properties(const GraphInterface&);
 
 // register everything
 
 void GraphInterface::ExportPythonInterface() const
 {
-    run_action(*this, lambda::bind<void>(export_python_interface(),
-                                         lambda::_1),
-               reverse_check(), directed_check(), true);
-    mpl::for_each<value_types>(export_property_map("PropertyMap", *this));
+    python::class_<PythonVertex>("Vertex", python::no_init)
+        .def("in_degree", &PythonVertex::GetInDegree)
+        .def("out_degree", &PythonVertex::GetOutDegree)
+        .def("out_edges", &PythonVertex::OutEdges)
+        .def("in_edges", &PythonVertex::InEdges)
+        .def(python::self == python::self)
+        .def(python::self != python::self)
+        .def("__str__", &PythonVertex::GetString)
+        .def("__hash__", &PythonVertex::GetHash);
+
+    set<string> v_iterators;
+    typedef mpl::transform<graph_tool::detail::all_graph_views,
+                           mpl::quote1<add_pointer> >::type graph_views;
+    mpl::for_each<graph_views>(lambda::bind<void>(export_python_interface(),
+                                                  lambda::_1,
+                                                  lambda::var(v_iterators)));
 }

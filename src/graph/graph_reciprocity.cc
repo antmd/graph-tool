@@ -20,7 +20,6 @@
 #include <boost/lambda/bind.hpp>
 
 #include "graph.hh"
-#include "histogram.hh"
 #include "graph_filtering.hh"
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
@@ -33,8 +32,9 @@ using namespace graph_tool;
 struct get_reciprocity
 {
     template <class Graph>
-    void operator()(Graph& g, double& reciprocity) const
-    {        
+    void operator()(const Graph* gp, double& reciprocity) const
+    {  
+        const Graph& g = *gp;
         size_t L = 0;
         double Lbd = 0.0;
 
@@ -78,17 +78,17 @@ struct get_reciprocity
             Lbd /= 2;
         }
 
-        size_t N = HardNumVertices()(g);
+        size_t N = HardNumVertices()(&g);
         double a = L/double(N*(N-1));
 
         reciprocity = (Lbd/L - a)/(1-a);
     }
 };
 
-
 double GraphInterface::GetReciprocity() const
 {
     double reciprocity;
-    run_action(*this, bind<void>(get_reciprocity(), _1, var(reciprocity))); 
+    run_action<>()(*this, bind<void>(get_reciprocity(), _1, 
+                                     var(reciprocity)))(); 
     return reciprocity;
 }

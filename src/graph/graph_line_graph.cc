@@ -15,18 +15,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+#include "graph_filtering.hh"
+#include "graph.hh"
+#include "graph_properties.hh"
 
-#include <boost/lambda/lambda.hpp>
-#include <boost/lambda/bind.hpp>
 #include <tr1/unordered_set>
 #include <iostream>
 #include <iomanip>
-
-#include "graph.hh"
-#include "histogram.hh"
-#include "graph_filtering.hh"
-#include "graph_selectors.hh"
-#include "graph_properties.hh"
+#include <boost/lambda/bind.hpp>
 #include <boost/graph/graphviz.hpp>
 #include <boost/graph/graphml.hpp>
 #include <boost/algorithm/string.hpp>
@@ -45,10 +41,11 @@ using namespace graph_tool;
 struct get_line_graph
 {
     template <class Graph, class EdgeIndexMap>
-    void operator()(const Graph& g, EdgeIndexMap edge_index, 
+    void operator()(const Graph* pg, EdgeIndexMap edge_index, 
                     dynamic_properties& properties,  string file, 
                     string format) const
     {
+        const Graph& g = *pg;
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         typedef boost::property<edge_index_t, size_t> EdgeProperty;
 
@@ -233,8 +230,8 @@ void GraphInterface::GetLineGraph(string out_file, string format)
 {
     bool directed = _directed;
     _directed = false;
-    run_action(*this, bind<void>(get_line_graph(), _1, var(_edge_index), 
-                                 var(_properties), out_file, format), 
-               reverse_check(), always_undirected());
+    run_action<detail::never_directed>()
+        (*this, bind<void>(get_line_graph(), _1, var(_edge_index), 
+                           var(_properties), out_file, format))();
     _directed = directed;
 }

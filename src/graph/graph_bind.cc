@@ -16,6 +16,7 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 
+#include "graph_filtering.hh"
 #include <boost/python.hpp>
 #include <boost/tuple/tuple.hpp>
 #include "graph.hh"
@@ -174,56 +175,13 @@ struct hist_to_dict
     }
 };
 
-struct pos_t_to_tuple
-{
-    static PyObject* convert(const pos_t& p)
-    {
-        boost::python::tuple t = boost::python::make_tuple(p.x,p.y);
-        return incref(t.ptr());
-    }
-};
-
-struct pos_t_from_tuple
-{
-    pos_t_from_tuple()
-    {
-        converter::registry::push_back(&convertible, &construct,
-                                       boost::python::type_id<pos_t>());
-    }
-
-    static void* convertible(PyObject* obj_ptr)
-    {
-        handle<> x(borrowed(obj_ptr));
-        object o(x);
-        extract<double> first(o[0]);
-        extract<double> second(o[1]);
-        if (!first.check() || !second.check())
-            return 0;
-        return obj_ptr;
-    }
-
-    static void construct(PyObject* obj_ptr,
-                          converter::rvalue_from_python_stage1_data* data)
-    {
-        handle<> x(borrowed(obj_ptr));
-        object o(x);
-        pos_t value;
-        value.x = extract<double>(o[0]);
-        value.y = extract<double>(o[1]);
-        void* storage =
-            ( (boost::python::converter::rvalue_from_python_storage
-               <pos_t>*) data)->storage.bytes;
-        new (storage) pos_t(value);
-        data->convertible = storage;
-    }
-};
-
 struct LibInfo
 {
     string GetName()      const {return PACKAGE_NAME;}
     string GetAuthor()    const {return AUTHOR;}
     string GetCopyright() const {return COPYRIGHT;}
-    string GetVersion()   const {return VERSION " (commit " GIT_COMMIT ", " GIT_COMMIT_DATE ")";}
+    string GetVersion()   const {return VERSION " (commit " GIT_COMMIT 
+                                        ", " GIT_COMMIT_DATE ")";}
     string GetLicense()   const {return "GPL version 3 or above";}
     string GetCXXFLAGS()  const {return CXXFLAGS;}
     string GetInstallPrefix() const {return INSTALL_PREFIX;}
@@ -293,15 +251,13 @@ BOOST_PYTHON_MODULE(libgraph_tool)
         .def("GetReversed", &GraphInterface::GetReversed)
         .def("SetVertexFilterProperty",
              &GraphInterface::SetVertexFilterProperty)
-        .def("SetVertexFilterRange", &GraphInterface::SetVertexFilterRange)
         .def("IsVertexFilterActive", &GraphInterface::IsVertexFilterActive)
         .def("SetEdgeFilterProperty",
              &GraphInterface::SetEdgeFilterProperty)
-        .def("SetEdgeFilterRange", &GraphInterface::SetEdgeFilterRange)
         .def("IsEdgeFilterActive", &GraphInterface::IsEdgeFilterActive)
-        .def("EditEdgeProperty",  &GraphInterface::EditEdgeProperty)
-        .def("EditVertexProperty",  &GraphInterface::EditVertexProperty)
-        .def("EditGraphProperty",  &GraphInterface::EditGraphProperty)
+        .def("AddEdgeProperty",  &GraphInterface::AddEdgeProperty)
+        .def("AddVertexProperty",  &GraphInterface::AddVertexProperty)
+        .def("AddGraphProperty",  &GraphInterface::AddGraphProperty)
         .def("RemoveEdgeProperty",  &GraphInterface::RemoveEdgeProperty)
         .def("RemoveVertexProperty",  &GraphInterface::RemoveVertexProperty)
         .def("RemoveGraphProperty",  &GraphInterface::RemoveGraphProperty)
@@ -320,11 +276,13 @@ BOOST_PYTHON_MODULE(libgraph_tool)
         .def("ReadFromFile", ReadFromFile1)
         .def("ReadFromFile", ReadFromFile2)
         .def("Vertices", &GraphInterface::Vertices)
+        .def("Vertex", &GraphInterface::Vertex)
         .def("Edges", &GraphInterface::Edges)
         .def("AddVertex", &GraphInterface::AddVertex)
         .def("AddEdge", &GraphInterface::AddEdge)
         .def("RemoveVertex", &GraphInterface::RemoveVertex)
         .def("RemoveEdge", &GraphInterface::RemoveEdge)
+        .def("Clear", &GraphInterface::Clear)
         .def("GetVertexProperties", &GraphInterface::GetVertexProperties)
         .def("GetEdgeProperties", &GraphInterface::GetEdgeProperties)
         .def("GetGraphProperties", &GraphInterface::GetGraphProperties)
@@ -347,8 +305,6 @@ BOOST_PYTHON_MODULE(libgraph_tool)
     to_python_converter<boost::tuple<double,double,double>,
                         tuple_to_tuple<double,double,double> >();
     tuple_from_tuple<double,double,double>();
-    to_python_converter<pos_t, pos_t_to_tuple>();
-    pos_t_from_tuple();
     pair_from_tuple<bool,bool>();
     to_python_converter<hist_t,hist_to_dict<hist_t> >();
     to_python_converter<hist2d_t,hist_to_dict<hist2d_t> >();

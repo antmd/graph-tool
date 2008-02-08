@@ -1,6 +1,23 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT(graph-tool, 1.2.0devel, [http://graph-tool.forked.de])
+dnl graph-tool package version number
+dnl An odd micro number indicates in-progress development.
+dnl An even micro number indicates a released version.
+m4_define(graph_tool_version_major, 1)
+m4_define(graph_tool_version_minor, 9)
+m4_define(graph_tool_version_micro, 0)
+
+AC_INIT([graph-tool],
+        [graph_tool_version_major().graph_tool_version_minor().graph_tool_version_micro()],
+        [http://graph-tool.forked.de])
+
+GRAPH_TOOL_VERSION_MAJOR=graph_tool_version_major()
+GRAPH_TOOL_VERSION_MINOR=graph_tool_version_minor()
+GRAPH_TOOL_VERSION_MICRO=graph_tool_version_micro()
+AC_SUBST(GRAPH_TOOL_VERSION_MAJOR)
+AC_SUBST(GRAPH_TOOL_VERSION_MINOR)
+AC_SUBST(GRAPH_TOOL_VERSION_MICRO)
+
 AC_CONFIG_SRCDIR(src/graph-tool)
 AM_INIT_AUTOMAKE
 AM_PROG_CC_C_O
@@ -74,19 +91,19 @@ AC_ARG_ENABLE([visibility], [AC_HELP_STRING([--disable-visibility],
         )
 
 
-AC_MSG_CHECKING(whether to enable graph range filtering...)
-AC_ARG_ENABLE([range-filtering], [AC_HELP_STRING([--disable-range-filtering],
-        [disable range filtering [default=enabled] ])],
+AC_MSG_CHECKING(whether to enable graph filtering...)
+AC_ARG_ENABLE([graph-filtering], [AC_HELP_STRING([--disable-graph-filtering],
+        [disable graph filtering [default=enabled] ])],
         if test $enableval = no; then
            [AC_MSG_RESULT(no)]
-           [AC_DEFINE([NO_RANGE_FILTERING], 1, [disable range filtering])]
-           NO_RANGE_FILTERING=yes
+           [AC_DEFINE([NO_GRAPH_FILTERING], 1, [disable graph filtering])]
+           NO_GRAPH_FILTERING=yes
         else
            [AC_MSG_RESULT(yes)]
         fi
         ,
         [AC_MSG_RESULT(yes)]
-        NO_RANGE_FILTERING=no
+        NO_GRAPH_FILTERING=no
         )
 
 AC_MSG_CHECKING(whether to enable parallel algorithms with openmp...)
@@ -126,8 +143,8 @@ dnl AX_BOOST_PYTHON
 dnl expat
 AC_CHECK_LIB(expat,main)
 
-AM_PATH_PYTHON([2.4])
-AC_PYTHON_DEVEL(>= '2.4')
+AM_PATH_PYTHON([2.5])
+AC_PYTHON_DEVEL(>= '2.5')
 
 dnl Checks for header files.
 AC_CHECK_HEADER([expat.h])

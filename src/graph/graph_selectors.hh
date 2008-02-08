@@ -21,6 +21,7 @@
 #include <utility>
 #include <boost/mpl/pair.hpp>
 #include <boost/mpl/map.hpp>
+#include <boost/mpl/at.hpp>
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/find.hpp>
 #include <boost/mpl/not.hpp>
@@ -29,6 +30,7 @@
 
 #include "graph.hh"
 #include "graph_adaptor.hh"
+#include "graph_properties.hh"
 
 namespace graph_tool
 {
@@ -44,8 +46,6 @@ namespace graph_tool
 struct total_degreeS
 {
     total_degreeS() {}
-    total_degreeS(std::string scalar_property, const GraphInterface& g,
-                  bool vertex = true) {}
     template <class Graph, class Vertex>
     size_t operator()(const Vertex& v, const Graph &g) const
     {
@@ -69,15 +69,11 @@ struct total_degreeS
     {
         return out_degree(v,g);
     }
-
-    std::string name() {return "total_degree";}
 };
 
 struct in_degreeS
 {
     in_degreeS() {}
-    in_degreeS(std::string scalar_property, const GraphInterface& g,
-               bool vertex = true) {}
     template <class Graph, class Vertex>
     size_t operator()(const Vertex& v, const Graph &g) const
     {
@@ -101,112 +97,92 @@ struct in_degreeS
     {
         return 0;
     }
-
-    std::string name() {return "in_degree";}
 };
 
 struct out_degreeS
 {
     out_degreeS() {}
-    out_degreeS(std::string scalar_property, const GraphInterface& g,
-                bool vertex = true) {}
     template <class Graph, class Vertex>
     size_t operator()(const Vertex& v, const Graph &g) const
     {
         return out_degree(v,g);
     }
-    std::string name() {return "out_degree";}
 };
 
+template <class PropertyMap>
 struct scalarS
 {
-    scalarS(){}
-    scalarS(std::string scalar_property, const GraphInterface& g,
-            bool is_vertex_prop):
-        _name(scalar_property), _g(&g)
+    scalarS() {}
+    scalarS(PropertyMap pmap): _pmap(pmap) {}
+
+    template <class Descriptor, class Graph>
+    typename property_traits<PropertyMap>::value_type 
+    operator()(const Descriptor& d, const Graph &g) const
     {
-        if (is_vertex_prop)
-            _scalar_property =
-                &find_property_map(g._properties, _name,
-                                   typeid(GraphInterface::vertex_t));
-        else
-            _scalar_property =
-                &find_property_map(g._properties, _name,
-                                   typeid(GraphInterface::edge_t));
+        return get(_pmap, d);
     }
 
-    typedef boost::mpl::vector<double,int,long double,float,long,unsigned long,
-                               unsigned int,short,unsigned short,char,
-                               unsigned char,bool,std::string> scalar_types;
-    template <class Graph>
-    double operator()
-        (const typename boost::graph_traits<Graph>::vertex_descriptor& v,
-         const Graph &g) const
+    PropertyMap _pmap;
+};
+
+struct get_degree_selector
+{
+    get_degree_selector(int deg_index, boost::any& deg)
+        : _index(deg_index), _deg(deg) {}
+
+    typedef boost::mpl::map
+        <boost::mpl::pair<in_degreeS,
+                          boost::mpl::int_<GraphInterface::IN_DEGREE> >,
+         boost::mpl::pair<out_degreeS,
+                          boost::mpl::int_<GraphInterface::OUT_DEGREE> >,
+         boost::mpl::pair<total_degreeS,
+                          boost::mpl::int_<GraphInterface::TOTAL_DEGREE> > >
+        degree_selector_index;
+    
+    template <class Selector>
+    void operator()(Selector) const
     {
-        using namespace boost;
-
-        any value = _scalar_property->get(v);
-        double *val = any_cast<double>(&value);
-        if (val != 0)
-            return *val;
-        else
-            return get_value<mpl::next<mpl::begin<scalar_types>::type>::type>
-                (value);
-
+        if (mpl::at<degree_selector_index, Selector>::type::value == _index)
+            _deg = Selector();
     }
 
-    template <class Graph>
-    double operator()
-        (const typename boost::graph_traits<Graph>::edge_descriptor& e,
-         const Graph &g) const
-    {
-        using namespace boost;
+    int _index;
+    boost::any& _deg;
+};
 
-        graph_traits<GraphInterface::multigraph_t>::edge_descriptor edge =  e;
-        any value = _scalar_property->get(edge);
-        double *val = any_cast<double>(&value);
-        if (val != 0)
-            return *val;
-        else
-            return get_value<mpl::next<mpl::begin<scalar_types>::type>::type>
-                (value);
+struct get_scalar_selector
+{
+    get_scalar_selector(boost::dynamic_property_map& dmap, boost::any& deg)
+        : _dmap(dmap), _deg(deg) {}
+    
+    template <class PropertyMap>
+    void operator()(PropertyMap) const
+    {
+        PropertyMap* static_map = get_static_property_map<PropertyMap>(&_dmap);
+        if (static_map != 0)
+            _deg = scalarS<PropertyMap>(*static_map);
     }
 
-    template <class ValueIter>
-    double get_value(const boost::any& value , ValueIter = ValueIter()) const
-    {
-        using namespace boost;
-        typedef typename mpl::deref<ValueIter>::type val_type;
-        const val_type *val = any_cast<val_type>(&value);
-        if (val != 0)
-            return lexical_cast<double>(*val);
-        else
-            return get_value(value, typename mpl::next<ValueIter>::type());
-    }
+    boost::dynamic_property_map& _dmap;
+    boost::any& _deg;
+};
 
-    double get_value(const boost::any& value,
-                     boost::mpl::end<scalar_types>::type) const
+struct scalar_selector_type
+{
+    template <class PropertyMap>
+    struct apply
     {
-        throw boost::dynamic_get_failure(_name);
-    }
-
-    std::string name() {return _name;}
-    std::string _name;
-    boost::dynamic_property_map* _scalar_property;
-    GraphInterface const* _g;
+        typedef scalarS<PropertyMap> type;
+    };
 };
 
 
-typedef boost::mpl::map
-    < boost::mpl::pair<in_degreeS,boost::mpl::int_<GraphInterface::IN_DEGREE> >,
-      boost::mpl::pair<out_degreeS,
-                       boost::mpl::int_<GraphInterface::OUT_DEGREE> >,
-      boost::mpl::pair<total_degreeS,
-                       boost::mpl::int_<GraphInterface::TOTAL_DEGREE> >,
-      boost::mpl::pair<scalarS,
-                       boost::mpl::int_<GraphInterface::SCALAR> > >
-    degree_selector_index;
+struct selectors: 
+    boost::mpl::vector<out_degreeS, in_degreeS, total_degreeS> {};
 
+// retrieves the appropriate degree selector
+boost::any degree_selector(GraphInterface::deg_t deg, 
+                           boost::dynamic_properties dp);
 
 // helper types for in_edge_iteratorS
 
@@ -356,7 +332,71 @@ struct in_or_out_edge_iteratorS
     }
 };
 
+// useful type lists
 
+typedef mpl::vector<in_degreeS, out_degreeS, total_degreeS>
+    degree_selectors;
+
+typedef property_map_types::apply<scalar_types,
+                                  GraphInterface::vertex_index_map_t>::type
+    vertex_scalar_properties;
+
+typedef property_map_types::apply<integer_types,
+                                  GraphInterface::vertex_index_map_t>::type
+    vertex_integer_properties;
+
+typedef property_map_types::apply<floating_types,
+                                  GraphInterface::vertex_index_map_t,
+                                  mpl::bool_<false> >::type
+    vertex_floating_properties;
+
+typedef property_map_types::apply<scalar_vector_types,
+                                  GraphInterface::vertex_index_map_t>::type
+    vertex_scalar_vector_properties;
+
+typedef property_map_types::apply<integer_vector_types,
+                                  GraphInterface::vertex_index_map_t>::type
+    vertex_integer_vector_properties;
+
+typedef property_map_types::apply<floating_vector_types,
+                                  GraphInterface::vertex_index_map_t,
+                                  mpl::bool_<false> >::type
+    vertex_floating_vector_properties;
+
+typedef property_map_types::apply<scalar_types,
+                                  GraphInterface::edge_index_map_t>::type
+    edge_scalar_properties;
+
+typedef property_map_types::apply<integer_types,
+                                  GraphInterface::edge_index_map_t>::type
+    edge_integer_properties;
+
+typedef property_map_types::apply<floating_types,
+                                  GraphInterface::edge_index_map_t,
+                                  mpl::bool_<false> >::type
+    edge_floating_properties;
+
+typedef property_map_types::apply<scalar_vector_types,
+                                  GraphInterface::edge_index_map_t>::type
+    edge_scalar_vector_properties;
+
+typedef property_map_types::apply<integer_vector_types,
+                                  GraphInterface::edge_index_map_t>::type
+    edge_integer_vector_properties;
+
+typedef property_map_types::apply<floating_vector_types,
+                                  GraphInterface::edge_index_map_t,
+                                  mpl::bool_<false> >::type
+    edge_floating_vector_properties;
+
+struct vertex_scalar_selectors:
+    mpl::transform<vertex_scalar_properties,
+                   scalar_selector_type>::type {};
+
+struct all_selectors:
+    mpl::transform<vertex_scalar_properties,
+                   scalar_selector_type,
+                   mpl::back_inserter<degree_selectors> >::type {};
 
 } //namespace graph_tool
 

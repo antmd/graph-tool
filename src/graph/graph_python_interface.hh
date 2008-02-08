@@ -19,6 +19,7 @@
 #define PYTHON_INTERFACE_HH
 
 #include <boost/python.hpp>
+#include <boost/lambda/bind.hpp>
 #include <boost/graph/graph_traits.hpp>
 #include <boost/mpl/logical.hpp>
 #include <boost/functional/hash.hpp>
@@ -38,22 +39,22 @@ using namespace boost;
 
 // generic iterator adaptor which can be used to iterate vertices, edges,
 // out_edges and in_edges through python
-template <class Graph, class Descriptor, class Iterator>
+template <class Descriptor, class Iterator>
 class PythonIterator
 {
 public:
-    PythonIterator(const Graph& g, std::pair<Iterator,Iterator> e)
-        : _g(g), _e(e) {}
+    PythonIterator(const GraphInterface& gi, std::pair<Iterator,Iterator> e)
+        : _gi(gi), _e(e) {}
     Descriptor Next()
     {
         if (_e.first == _e.second)
             python::objects::stop_iteration_error();
-        Descriptor e(_g, *_e.first);
+        Descriptor e(_gi, *_e.first);
         ++_e.first;
         return e;
     }
 private:
-    const Graph& _g;
+    const GraphInterface& _gi;
     std::pair<Iterator,Iterator> _e;
 };
 
@@ -63,54 +64,106 @@ template <class Graph>
 class PythonEdge;
 
 // below are classes related to the PythonVertex type
-template <class Graph>
-    class PythonVertex
+class PythonVertex
 {
 public:
-    typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
-    typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
+    PythonVertex(const GraphInterface& gi, GraphInterface::vertex_t v):
+        _gi(gi), _v(v) {}
 
-    PythonVertex(const Graph& g, vertex_descriptor v):
-        _g(g), _v(v) {}
-
-    PythonVertex(const PythonVertex& v): _g(v._g)
+    PythonVertex(const PythonVertex& v): _gi(v._gi)
     {
+
         _v = v._v;
     }
 
-    const vertex_descriptor& GetDescriptor() const
+    GraphInterface::vertex_t GetDescriptor() const
     {
         return _v;
     }
 
+    template <class DegSelector>
+    struct get_degree
+    {
+        template<class Graph>
+        void operator()(const Graph* gp,
+                        typename graph_traits<Graph>::vertex_descriptor v,
+                        size_t& deg) const
+        {
+            deg = DegSelector()(v, *gp);
+        }
+    };
+    
+
     size_t GetInDegree() const
     {
-        return in_degreeS()(_v, _g);
+        size_t in_deg;
+        run_action<>()(_gi,lambda::bind<void>(get_degree<in_degreeS>(),
+                                              lambda::_1, _v,
+                                              lambda::var(in_deg)))();
+        return in_deg;
     }
 
     size_t GetOutDegree() const
     {
-        return out_degreeS()(_v, _g);
+        size_t out_deg;
+        run_action<>()(_gi,lambda::bind<void>(get_degree<out_degreeS>(),
+                                              lambda::_1, _v,
+                                              lambda::var(out_deg)))();
+        return out_deg;
     }
 
     // provide iterator support for out_edges
+    
+    struct get_out_edges
+    {
+        template<class Graph>
+        void operator()(const Graph* gp, const GraphInterface& gi,
+                        typename graph_traits<Graph>::vertex_descriptor v,
+                        python::object& iter) const
+        {
+            typedef typename graph_traits<Graph>::out_edge_iterator
+                out_edge_iterator;
+            iter = python::object(PythonIterator<PythonEdge<Graph>,
+                                                 out_edge_iterator>
+                                  (gi, out_edges(v, *gp)));
+        }
+    };
 
-    typedef typename graph_traits<Graph>::out_edge_iterator out_edge_iterator;
-    PythonIterator<Graph,PythonEdge<Graph>,out_edge_iterator>
+    python::object
     OutEdges() const
     {
-        return PythonIterator<Graph,PythonEdge<Graph>,out_edge_iterator>
-            (_g, out_edges(_v, _g));
+        python::object iter;
+        run_action<>()(_gi, lambda::bind<void>(get_out_edges(), lambda::_1,
+                                               lambda::var(_gi), _v,
+                                               lambda::var(iter)))();
+        return iter;
     }
 
-    typedef typename in_edge_iteratorS<Graph>::type in_edge_iterator;
-    PythonIterator<Graph,PythonEdge<Graph>, in_edge_iterator>
+    struct get_in_edges
+    {
+        template<class Graph>
+        void operator()(const Graph* gp, const GraphInterface& gi,
+                        typename graph_traits<Graph>::vertex_descriptor v,
+                        python::object& iter) const
+        {
+            typedef typename in_edge_iteratorS<Graph>::type
+                in_edge_iterator;
+            iter = python::object
+                (PythonIterator<PythonEdge<Graph>,in_edge_iterator>
+                 (gi, in_edge_iteratorS<Graph>::get_edges(v, *gp)));
+        }
+    };
+
+    python::object
     InEdges() const
     {
-        return PythonIterator<Graph,PythonEdge<Graph>,in_edge_iterator>
-            (_g, in_edge_iteratorS<Graph>::get_edges(_v, _g));
+        python::object iter;
+        run_action<>()(_gi, lambda::bind<void>(get_in_edges(), lambda::_1, 
+                                               lambda::var(_gi), _v,
+                                               lambda::var(iter)))();
+        return iter;
     }
-
+    
     std::string GetString() const
     {
         return lexical_cast<std::string>(_v);
@@ -118,7 +171,7 @@ public:
 
     size_t GetHash() const
     {
-        return hash<vertex_descriptor>()(_v);
+        return hash<GraphInterface::vertex_t>()(_v);
     }
 
     bool operator==(const PythonVertex& other) const
@@ -132,8 +185,8 @@ public:
     }
 
 private:
-    const Graph& _g;
-    vertex_descriptor _v;
+    const GraphInterface& _gi;
+    GraphInterface::vertex_t _v;
 };
 
 // below are classes related to the PythonEdge type
@@ -142,43 +195,71 @@ template <class Graph>
 class PythonEdge
 {
 public:
-    typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
     typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
-
-    PythonEdge(const Graph& g, edge_descriptor e): _g(g), _e(e) {}
-    PythonEdge(const PythonEdge& e): _g(e._g)
+    PythonEdge(const GraphInterface& gi, edge_descriptor e)
+        : _gi(gi), _e(e) {}
+    PythonEdge(const PythonEdge& e): _gi(e._gi)
     {
         _e = e._e;
     }
 
-    const edge_descriptor& GetDescriptor() const
+    const GraphInterface::edge_t& GetDescriptor() const
     {
         return _e;
     }
 
-    PythonVertex<Graph> GetSource() const
+    struct get_source
     {
-        return PythonVertex<Graph>(_g, source(_e, _g));
+        template<class GraphType>
+        void operator()(const GraphType* gp, const GraphInterface& gi,
+                        const edge_descriptor& edge, python::object& vertex)
+            const
+        {
+            vertex = python::object(PythonVertex(gi, source(edge, *gp)));
+        }
+    };
+    
+    python::object GetSource() const
+    {
+        python::object v;
+        run_action<>()(_gi, lambda::bind<void>(get_source(), lambda::_1, 
+                                               lambda::var(_gi),
+                                               lambda::var(_e), 
+                                               lambda::var(v)))();
+        return v;
     }
 
-    PythonVertex<Graph> GetTarget() const
+    struct get_target
     {
-        return PythonVertex<Graph>(_g, target(_e, _g));
+        template<class GraphType>
+        void operator()(const GraphType* gp, const GraphInterface& gi,
+                        const edge_descriptor& edge, 
+                        python::object& vertex) const
+        {
+            vertex = python::object(PythonVertex(gi, target(edge, *gp)));
+        }
+    };
+    
+    python::object GetTarget() const
+    {
+        python::object v;
+        run_action<>()(_gi, lambda::bind<void>(get_target(), lambda::_1, 
+                                               lambda::var(_gi),
+                                               lambda::var(_e),
+                                               lambda::var(v)))();
+        return v;        
     }
 
     std::string GetString() const
     {
-        return "("+GetSource().GetString() + "," +
-            GetTarget().GetString() + ")";
+        PythonVertex& src = python::extract<PythonVertex&>(GetSource());
+        PythonVertex& tgt = python::extract<PythonVertex&>(GetTarget());
+        return "(" + src.GetString() + "," + tgt.GetString() + ")";
     }
 
     size_t GetHash() const
     {
-        vertex_descriptor s,t;
-        s = source(_e, _g);
-        t = target(_e, _g);
-        return hash<std::pair<vertex_descriptor, vertex_descriptor> >()
-            (make_pair(s,t));
+        return _gi.GetEdgeHash(_e);;
     }
 
     bool operator==(const PythonEdge& other) const
@@ -192,7 +273,7 @@ public:
     }
 
 private:
-    const Graph& _g;
+    const GraphInterface& _gi;
     edge_descriptor _e;
 };
 

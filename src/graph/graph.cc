@@ -35,6 +35,7 @@
 #include "graph_filtering.hh"
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
+#include "graph_util.hh"
 #include "shared_map.hh"
 
 using namespace std;
@@ -42,24 +43,6 @@ using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
 
-// this will return the degree type contained in 'degree' or the name of the
-// scalar property.
-pair<GraphInterface::degree_t,string>
-graph_tool::get_degree_type(GraphInterface::deg_t degree)
-{
-    GraphInterface::degree_t deg;
-    string name;
-    try
-    {
-        deg = boost::get<GraphInterface::degree_t>(degree);
-    }
-    catch (bad_get)
-    {
-        name = boost::get<std::string>(degree);
-        deg = GraphInterface::SCALAR;
-    }
-    return make_pair(deg,name);
-}
 
 // this is the constructor for the graph interface
 GraphInterface::GraphInterface()
@@ -69,13 +52,11 @@ GraphInterface::GraphInterface()
      _vertex_index(get(vertex_index,_mg)),
      _edge_index(get(edge_index_t(),_mg)),
      _vertex_filter_map(_vertex_index),
-     _vertex_range(make_pair(0.0, numeric_limits<double>::max())),
-     _vertex_range_include(make_pair(true, true)),
-     _vertex_range_invert(false),
+     _vertex_filter_invert(false),
+     _vertex_filter_active(false),
      _edge_filter_map(_edge_index),
-     _edge_range(make_pair(0.0, numeric_limits<double>::max())),
-     _edge_range_include(make_pair(true, true)),
-     _edge_range_invert(false)
+     _edge_filter_invert(false),
+     _edge_filter_active(false)
 {
 
 }
@@ -85,313 +66,15 @@ GraphInterface::~GraphInterface()
 {
 }
 
-// these test whether or not the vertex and filter are active, by checking the
-// corresponding property value
-bool GraphInterface::IsVertexFilterActive() const
-{ return _vertex_filter_property != ""; }
-
-bool GraphInterface::IsEdgeFilterActive() const
-{ return _edge_filter_property != ""; }
-
-// this function will get a dynamic property map, and return its static type, if
-// it matches a couple of possibilities that have 'double' as value
-// type. Otherwise it wraps it around a DynamicPropertyMapWrap
-template <class FilterMap, class Descriptor, class IndexMap>
-FilterMap choose_filter_map(string property, dynamic_properties& dp)
-{
-    FilterMap filter_map;
-    try
-    {
-        dynamic_property_map& pmap =
-            find_property_map(dp, property, typeid(Descriptor));
-
-        try
-        {
-            return get_static_property_map
-                <vector_property_map<double,IndexMap> >(pmap);
-        }
-        catch(bad_cast){}
-
-        try
-        {
-            return get_static_property_map
-                <HashedDescriptorMap<IndexMap,double> >(pmap);
-        }
-        catch(bad_cast){}
-
-        try
-        {
-            return get_static_property_map
-                <vector_property_map<size_t,IndexMap> >(pmap);
-        }
-        catch(bad_cast){}
-
-        try
-        {
-            return get_static_property_map
-                <HashedDescriptorMap<IndexMap,size_t> >(pmap);
-        }
-        catch(bad_cast){}
-
-        try
-        {
-            return get_static_property_map<IndexMap>(pmap);
-        }
-        catch(bad_cast){}
-
-        return DynamicPropertyMapWrap<double,Descriptor>(pmap);
-    }
-    catch (property_not_found)
-    {
-        throw GraphException("property " + property + " not found");
-    }
-
-}
-
-// this will set enable the vertex filter, according to the given property. If
-// property is an empty string, this will disable the filter
-void GraphInterface::SetVertexFilterProperty(string property)
-{
-#ifndef NO_RANGE_FILTERING
-    _vertex_filter_property = property;
-
-    if (property != "")
-    {
-        _vertex_filter_map = choose_filter_map<vertex_filter_map_t,
-                                               vertex_t,vertex_index_map_t>
-            (property, _properties);
-    }
-    else
-    {
-        _vertex_filter_map = _vertex_index;
-        _vertex_range = make_pair(0.0, numeric_limits<double>::max());
-        _vertex_range_include = make_pair(true, true);
-        _vertex_range_invert = false;
-    }
-#else
-    if (property != "")
-        throw GraphException("support for graph range filtering was not enabled"
-                             " during compilation.");
-#endif
-}
-
-// this will set enable the edge filter, according to the given property. If
-// property is an empty string, this will disable the filter
-void GraphInterface::SetEdgeFilterProperty(string property)
-{
-#ifndef NO_RANGE_FILTERING
-    _edge_filter_property = property;
-
-    if (property != "")
-    {
-        _edge_filter_map = choose_filter_map<edge_filter_map_t,
-                                               edge_t,edge_index_map_t>
-            (property, _properties);
-    }
-    else
-    {
-        _edge_filter_map = _edge_index;
-        _edge_range = make_pair(0.0, numeric_limits<double>::max());
-        _edge_range_include = make_pair(true, true);
-        _edge_range_invert = false;
-    }
-#else
-    if (property != "")
-        throw GraphException("support for graph range filtering was not enabled"
-                             " during compilation.");
-#endif
-}
-
-
-void GraphInterface::SetVertexFilterRange(pair<double,double> allowed_range,
-                                          pair<bool,bool> include, bool invert)
-{
-#ifndef NO_RANGE_FILTERING
-    if (isinf(allowed_range.first) == 1)
-        allowed_range.first = numeric_limits<double>::max();
-    else if (isinf(allowed_range.first) == -1)
-        allowed_range.first = -numeric_limits<double>::max();
-    if (isinf(allowed_range.second) == 1)
-        allowed_range.second = numeric_limits<double>::max();
-    else if (isinf(allowed_range.second) == -1)
-        allowed_range.second = -numeric_limits<double>::max();
-
-    _vertex_range = allowed_range;
-    _vertex_range_include = include;
-    _vertex_range_invert = invert;
-#else
-    throw GraphException("support for graph range filtering was not enabled"
-                         " during compilation.");
-#endif
-}
-
-void GraphInterface::SetEdgeFilterRange(pair<double,double> allowed_range,
-                                        pair<bool,bool> include, bool invert)
-{
-#ifndef NO_RANGE_FILTERING
-    if (isinf(allowed_range.first) == 1)
-        allowed_range.first = numeric_limits<double>::max();
-    else if (isinf(allowed_range.first) == -1)
-        allowed_range.first = -numeric_limits<double>::max();
-    if (isinf(allowed_range.second) == 1)
-        allowed_range.second = numeric_limits<double>::max();
-    else if (isinf(allowed_range.second) == -1)
-        allowed_range.second = -numeric_limits<double>::max();
-
-    _edge_range = allowed_range;
-    _edge_range_include = include;
-    _edge_range_invert = invert;
-#else
-    throw GraphException("support for graph range filtering was not enabled"
-                         " during compilation.");
-#endif
-}
-
-
-// this function will reindex all the edges, in the order in which they are
-// found, taking care of preserving all the properties
-void GraphInterface::ReIndexEdges()
-{    
-    size_t n_edges = num_edges(_mg);
-    if (n_edges == 0)
-        return;
-    vector<pair<edge_t,bool> > edge_map
-        (n_edges, make_pair(edge_t(), false));
-    graph_traits<multigraph_t>::vertex_iterator v, v_end;
-    graph_traits<multigraph_t>::out_edge_iterator e, e_end;
-    for (tie(v, v_end) = vertices(_mg); v != v_end; ++v)
-        for (tie(e, e_end) = out_edges(*v, _mg); e != e_end; ++e)
-        {
-            size_t index = _edge_index[*e];
-            if (index >= edge_map.size())
-                edge_map.resize(index+1);
-            edge_map[index] = make_pair(*e, true);
-        }
-    size_t new_index = 0;
-    for (tie(v, v_end) = vertices(_mg); v != v_end; ++v)
-        for (tie(e, e_end) = out_edges(*v, _mg); e != e_end; ++e)
-        {
-            edge_t old_edge = edge_map[new_index].first;
-            if (edge_map[new_index].second)
-            {
-                // another edge exists with the same index; indexes
-                // must be swapped, as well as the properties
-                _edge_index[old_edge] = _edge_index[*e];
-                edge_map[_edge_index[*e]] = make_pair(old_edge, true);
-                _edge_index[*e] = new_index;
-                edge_map[new_index] = make_pair(*e, true);
-                for (typeof(_properties.begin()) p = _properties.begin();
-                     p != _properties.end(); ++p)
-                    if (p->second->key() == typeid(edge_t))
-                    {
-                        boost::any temp = p->second->get(*e);
-                        p->second->put(*e, p->second->get(old_edge));
-                        p->second->put(old_edge, temp);
-                    }
-            }
-            else
-            {
-                // no other edge has this index; it must be then
-                // assigned for this edge, and the properties must be
-                // copied over
-                size_t old_index = _edge_index[*e];
-                for (typeof(_properties.begin()) p = _properties.begin();
-                     p != _properties.end(); ++p)
-                    if (p->second->key() == typeid(edge_t))
-                    {
-                        _edge_index[*e] = old_index;
-                        boost::any val = p->second->get(*e);
-                        _edge_index[*e] = new_index;
-                        p->second->put(*e, val);
-                    }
-            }
-            ++new_index;
-        }
-}
-
-// this will definitively remove all the edges from the graph, which are being
-// currently filtered out. This will also disable the edge filter
-void GraphInterface::PurgeEdges()
-{
-    if (!IsEdgeFilterActive())
-        return;
-
-    RangeFilter<edge_filter_map_t> filter(_edge_filter_map, _edge_range,
-                                          _edge_range_include,
-                                          _edge_range_invert);
-    graph_traits<multigraph_t>::vertex_iterator v, v_end;
-    graph_traits<multigraph_t>::out_edge_iterator e, e_end;
-    vector<graph_traits<multigraph_t>::edge_descriptor> deleted_edges;
-    for (tie(v, v_end) = vertices(_mg); v != v_end; ++v)
-    {
-        for (tie(e, e_end) = out_edges(*v, _mg); e != e_end; ++e)
-            if (!filter(*e))
-                deleted_edges.push_back(*e);
-        for (typeof(deleted_edges.begin()) iter = deleted_edges.begin();
-             iter != deleted_edges.end(); ++iter)
-            remove_edge(*iter, _mg);
-        deleted_edges.clear();
-    }
-    ReIndexEdges();
-}
-
-
-// this will definitively remove all the verticess from the graph, which are
-// being currently filtered out. This will also disable the vertex filter
-void GraphInterface::PurgeVertices()
-{
-    if (!IsVertexFilterActive())
-        return;
-
-    RangeFilter<vertex_filter_map_t> filter(_vertex_filter_map, _vertex_range,
-                                            _vertex_range_include,
-                                            _vertex_range_invert);
-    size_t N = num_vertices(_mg);
-    vector<bool> deleted(N, false);
-    for (size_t i = 0; i < N; ++i)
-        deleted[i] = !filter(vertex(i, _mg));
-
-    //migrate properties
-    size_t last = 0;
-    for (size_t i = 0; i < N; ++i)
-    {
-        graph_traits<multigraph_t>::vertex_descriptor v = vertex(i, _mg);
-        if (filter(v))
-        {
-            for (typeof(_properties.begin()) p = _properties.begin();
-                 p != _properties.end(); ++p)
-                if (p->second->key() == typeid(vertex_t))
-                    try
-                    {
-                        p->second->put(vertex(last, _mg), p->second->get(v));
-                    }
-                    catch (dynamic_const_put_error) {} // index prop. is const
-            last++;
-        }
-    }
-
-    //remove vertices
-    for (size_t i = N-1; i < N; --i)
-    {
-        if (deleted[i])
-        {
-            graph_traits<multigraph_t>::vertex_descriptor v = vertex(i, _mg);
-            clear_vertex(v, _mg);
-            remove_vertex(v, _mg);
-        }
-    }
-    ReIndexEdges();
-}
-
 // this will get the number of vertices, either the "soft" O(1) way, or the hard
 // O(V) way, which is necessary if the graph is filtered
 size_t GraphInterface::GetNumberOfVertices() const
 {
     size_t n = 0;
     if (IsVertexFilterActive())
-        run_action(*this,var(n)=bind<size_t>(HardNumVertices(),_1));
+        run_action<>()(*this, var(n)=bind<size_t>(HardNumVertices(),_1))();
     else
-        run_action(*this,var(n)=bind<size_t>(SoftNumVertices(),_1));
+        run_action<>()(*this, var(n)=bind<size_t>(SoftNumVertices(),_1))();
     return n;
 }
 
@@ -402,21 +85,19 @@ size_t GraphInterface::GetNumberOfEdges() const
 {
     size_t n = 0;
     if (IsEdgeFilterActive() || IsVertexFilterActive())
-        run_action(*this,var(n)=bind<size_t>(HardNumEdges(),_1));
+        run_action<>()(*this, var(n)=bind<size_t>(HardNumEdges(),_1))();
     else
-        run_action(*this,var(n)=bind<size_t>(SoftNumEdges(),_1));
+        run_action<>()(*this, var(n)=bind<size_t>(SoftNumEdges(),_1))();
     return n;
 }
 
-
 // generalized functor to obtain histogram of different types of "degrees"
-template <class DegreeSelector>
 struct get_vertex_histogram
 {
-    get_vertex_histogram(DegreeSelector& deg): _degree(deg) {}
-    template <class Graph, class Hist>
-    void operator()(const Graph& g, Hist& hist) const
+    template <class Graph, class DegreeSelector, class Hist>
+    void operator()(const Graph* gp, DegreeSelector deg, Hist& hist) const
     {
+        const Graph& g = *gp;
         SharedMap<Hist> s_hist(hist);
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i) \
@@ -426,36 +107,10 @@ struct get_vertex_histogram
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
-            s_hist[_degree(v,g)]++;
+            s_hist[deg(v,g)]++;
         }
         s_hist.Gather();
     }
-    DegreeSelector& _degree;
-};
-
-// used to cycle through the different types of histograms
-struct choose_vertex_histogram
-{
-    choose_vertex_histogram(const GraphInterface& g, GraphInterface::deg_t deg,
-                            hist_t& hist)
-        : _g(g), _hist(hist)
-    {
-        tie(_deg, _deg_name) = get_degree_type(deg);
-    }
-    template <class DegreeSelector>
-    void operator()(DegreeSelector)
-    {
-        if (mpl::at<degree_selector_index,DegreeSelector>::type::value == _deg)
-        {
-            DegreeSelector selector(_deg_name, _g, true);
-            run_action(_g, bind<void>(get_vertex_histogram<DegreeSelector>
-                                        (selector), _1, var(_hist)));
-        }
-    }
-    const GraphInterface &_g;
-    hist_t &_hist;
-    GraphInterface::degree_t _deg;
-    string _deg_name;
 };
 
 
@@ -464,13 +119,12 @@ hist_t
 GraphInterface::GetVertexHistogram(GraphInterface::deg_t deg) const
 {
     hist_t hist;
+    
     try
     {
-        mpl::for_each<mpl::vector<in_degreeS,
-                                  out_degreeS,
-                                  total_degreeS,
-                                  scalarS> >
-            (choose_vertex_histogram(*this, deg, hist));
+        run_action<>()(*this, bind<void>(get_vertex_histogram(), _1, _2,
+                                         var(hist)),
+                       all_selectors())(degree_selector(deg, _properties));
     }
     catch (dynamic_get_failure &e)
     {
@@ -484,12 +138,10 @@ GraphInterface::GetVertexHistogram(GraphInterface::deg_t deg) const
 // generalized functor to obtain histogram of edge properties
 struct get_edge_histogram
 {
-    get_edge_histogram(scalarS& prop): _prop(prop) {}
-    template <class Graph, class Hist>
-    void operator()(const Graph& g, Hist& hist) const
-    {
-        typedef typename graph_traits<Graph>::directed_category
-            directed_category;
+    template <class Graph, class Prop, class Hist>
+    void operator()(const Graph* gp, Prop eprop, Hist& hist) const
+    {        
+        const Graph& g = *gp;
         SharedMap<Hist> s_hist(hist);
 
         int i, N = num_vertices(g);
@@ -504,16 +156,20 @@ struct get_edge_histogram
             typename graph_traits<Graph>::out_edge_iterator e, e_begin, e_end;
             tie(e_begin,e_end) = out_edges(v,g);
             for(e = e_begin; e != e_end; ++e)
-                if(is_convertible<directed_category,undirected_tag>::value)
-                    s_hist[_prop(*e,g)] += 0.5;
-                else
-                    s_hist[_prop(*e,g)]++;
+                s_hist[eprop[*e]]++;
         }
         s_hist.Gather();
-    }
-    scalarS& _prop;
-};
 
+        typedef typename graph_traits<Graph>::directed_category
+            directed_category;
+        if(is_convertible<directed_category,undirected_tag>::value)
+        {
+            for (typeof(s_hist.begin()) iter = s_hist.begin();
+                 iter != s_hist.end(); ++iter)
+                iter->second /= typename Hist::value_type::second_type(2);
+        }
+    }
+};
 
 
 // returns the histogram of a given edge property
@@ -522,10 +178,12 @@ hist_t GraphInterface::GetEdgeHistogram(string property) const
     hist_t hist;
     try
     {
-        scalarS prop(property, *this, false);
-        run_action(*this, bind<void>(get_edge_histogram(prop), _1, var(hist)));
+        run_action<>()(*this, bind<void>(get_edge_histogram(), _1, _2,
+                                         var(hist)),
+                       edge_scalar_properties())
+            (prop(property, _edge_index, _properties));
     }
-    catch (dynamic_get_failure &e)
+    catch (dynamic_get_failure& e)
     {
         throw GraphException("error getting scalar property: " +
                              string(e.what()));
@@ -540,8 +198,9 @@ hist_t GraphInterface::GetEdgeHistogram(string property) const
 struct label_components
 {
     template <class Graph, class CompMap>
-    void operator()(const Graph &g, CompMap comp_map) const
+    void operator()(const Graph* gp, CompMap comp_map) const
     {
+        const Graph& g = *gp;
         typedef typename graph_traits<Graph>::directed_category
             directed_category;
         get_components(g, comp_map,
@@ -567,28 +226,28 @@ struct label_components
 
 void GraphInterface::LabelComponents(string prop)
 {
-    typedef vector_property_map<size_t, vertex_index_map_t> comp_map_t;
-    comp_map_t comp_map(_vertex_index);
-
-    run_action(*this, bind<void>(label_components(), _1, comp_map));
-
     try
     {
-        find_property_map(_properties, prop, typeid(vertex_t));
-        RemoveVertexProperty(prop);
+        run_action<>()(*this, label_components(), _1, vertex_scalar_selectors())
+            (degree_selector(prop, _properties));
     }
-    catch (property_not_found) {}
-
-    _properties.property(prop, comp_map);
+    catch (property_not_found) 
+    {
+        typedef vector_property_map<int32_t, vertex_index_map_t> comp_map_t;
+        comp_map_t comp_map(_vertex_index);
+        _properties.property(prop, comp_map);
+        run_action<>()(*this, bind<void>(label_components(), _1, comp_map))();
+    }
 }
 
 // label parallel edges in the order they are found, starting from 0
 struct label_parallel_edges
 {
     template <class Graph, class EdgeIndexMap, class ParallelMap>
-    void operator()(const Graph& g, EdgeIndexMap edge_index,
+    void operator()(const Graph* gp, EdgeIndexMap edge_index,
                     ParallelMap parallel) const
     {
+        const Graph& g = *gp;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
 
         int i, N = num_vertices(g);
@@ -623,20 +282,19 @@ struct label_parallel_edges
 void GraphInterface::LabelParallelEdges(string property)
 {
     try
-    {
-        DynamicPropertyMapWrap<size_t,edge_t>
-            parallel_map(find_property_map(_properties, property,
-                                           typeid(edge_t)));
-        run_action(*this, bind<void>(label_parallel_edges(), _1, _edge_index,
-                                       parallel_map));
+    {        
+        run_action<>()(*this, bind<void>(label_parallel_edges(), _1, 
+                                         _edge_index, _2),
+                       edge_scalar_properties()) 
+            (prop(property, _edge_index, _properties));
     }
     catch (property_not_found)
     {
-        typedef vector_property_map<size_t,edge_index_map_t> parallel_map_t;
+        typedef vector_property_map<int32_t,edge_index_map_t> parallel_map_t;
         parallel_map_t parallel_map(_edge_index);
-        run_action(*this, bind<void>(label_parallel_edges(), _1, _edge_index,
-                                     parallel_map));
         _properties.property(property, parallel_map);
+        run_action<>()(*this, bind<void>(label_parallel_edges(), _1, 
+                                         _edge_index, parallel_map))();
     }
 }
 

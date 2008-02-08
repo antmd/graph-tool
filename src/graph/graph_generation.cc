@@ -16,9 +16,7 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 
-#include <algorithm>
 #include <tr1/unordered_set>
-#include <boost/lambda/lambda.hpp>
 #include <boost/lambda/bind.hpp>
 #include <boost/random.hpp>
 #include <boost/python.hpp>

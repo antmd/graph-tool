@@ -15,26 +15,27 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-
-#include <boost/lambda/lambda.hpp>
-#include <boost/lambda/bind.hpp>
-#include <boost/graph/graphviz.hpp>
-
+#include "graph_filtering.hh"
 #include "graph.hh"
 #include "histogram.hh"
-#include "graph_filtering.hh"
 #include "graph_properties.hh"
+#include "graph_util.hh"
+
+#include <iostream>
 #include <boost/graph/graphml.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/filter/bzip2.hpp>
 #include <boost/iostreams/device/file.hpp>
+#include <boost/lambda/bind.hpp>
+#include <boost/graph/graphviz.hpp>
 
 using namespace std;
 using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
+
 
 // this functor will check whether a value is of a specific type, create a
 // corresponding vector_property_map and add the value to it
@@ -287,7 +288,7 @@ void GraphInterface::ReadFromFile(string file, string format)
 struct write_to_file
 {
     template <class Graph, class IndexMap>
-    void operator()(ostream& stream, Graph& g, IndexMap index_map,
+    void operator()(ostream& stream, Graph* g, IndexMap index_map,
                     dynamic_properties& dp, bool graphviz) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
@@ -304,11 +305,11 @@ struct write_to_file
             {
                 name = "vertex_id";
             }
-            write_graphviz(stream, g, dp, name);
+            write_graphviz(stream, *g, dp, name);
         }
         else
         {
-            write_graphml(stream, g, index_map, dp, true);
+            write_graphml(stream, *g, index_map, dp, true);
         }
 
     }
@@ -317,23 +318,23 @@ struct write_to_file
 struct write_to_file_fake_undir: public write_to_file
 {
     template <class Graph, class IndexMap>
-    void operator()(ostream& stream, Graph& g, IndexMap index_map,
+    void operator()(ostream& stream, Graph* g, IndexMap index_map,
                     dynamic_properties& dp, bool graphviz) const
     {
         typedef typename Graph::original_graph_t graph_t;
-        FakeUndirGraph<graph_t> ug(g);
-        write_to_file(*this)(stream, ug, index_map, dp, graphviz);
+        FakeUndirGraph<graph_t> ug(*g);
+        write_to_file(*this)(stream, &ug, index_map, dp, graphviz);
     }
 };
 
 struct generate_index
 {
     template <class Graph, class IndexMap>
-    void operator()(Graph& g, IndexMap index_map) const
+    void operator()(Graph* g, IndexMap index_map) const
     {
         size_t n = 0;
         typename graph_traits<Graph>::vertex_iterator v, v_end;
-        for( tie(v, v_end) = vertices(g); v != v_end; ++v)
+        for( tie(v, v_end) = vertices(*g); v != v_end; ++v)
             index_map[*v] = n++;
     }
 };
@@ -384,7 +385,8 @@ void GraphInterface::WriteToFile(string file, string format)
             typedef tr1::unordered_map<vertex_t, size_t>  map_t;
             map_t vertex_to_index;
             associative_property_map<map_t> index_map(vertex_to_index);
-            run_action(*this, bind<void>(generate_index(), _1, index_map));
+            run_action<>()(*this, bind<void>(generate_index(), _1, 
+                                             index_map))();
             if (graphviz)
             {
                 try
@@ -398,17 +400,15 @@ void GraphInterface::WriteToFile(string file, string format)
             }
             if (GetDirected())
             {
-                run_action(*this,bind<void>(write_to_file(),
-                                            var(stream), _1, index_map,
-                                            var(dp), graphviz),
-                           reverse_check(), always_directed());
+                run_action<detail::always_directed>()
+                    (*this,bind<void>(write_to_file(), var(stream), _1,
+                                      index_map, var(dp), graphviz))();
             }
             else
             {
-                run_action(*this,bind<void>(write_to_file_fake_undir(),
-                                            var(stream), _1, index_map,
-                                            var(dp), graphviz),
-                           never_reversed(), always_undirected());
+                run_action<detail::never_directed>()
+                    (*this,bind<void>(write_to_file_fake_undir(), var(stream),
+                                      _1, index_map, var(dp), graphviz))();
             }
         }
         else
@@ -427,17 +427,17 @@ void GraphInterface::WriteToFile(string file, string format)
 
             if (GetDirected())
             {
-                run_action(*this,bind<void>(write_to_file(), var(stream),
-                                            _1, _vertex_index, var(dp),
-                                            graphviz),
-                           reverse_check(), always_directed());
+                run_action<detail::always_directed>()
+                    (*this,bind<void>(write_to_file(), var(stream),
+                                      _1, _vertex_index, var(dp),
+                                      graphviz))();
             }
             else
             {
-                run_action(*this,bind<void>(write_to_file_fake_undir(),
-                                            var(stream), _1, _vertex_index,
-                                            var(dp), graphviz),
-                           never_reversed(), always_undirected());
+                run_action<detail::never_directed>()
+                    (*this,bind<void>(write_to_file_fake_undir(), var(stream),
+                                      _1, _vertex_index, var(dp),
+                                      graphviz))();
             }
         }
         stream.reset();
@@ -447,5 +447,4 @@ void GraphInterface::WriteToFile(string file, string format)
         throw GraphException("error writing to file '" + file + "':" +
                              e.what());
     }
-
 }

@@ -17,218 +17,101 @@
 
 // based on code written by Alexandre Hannud Abdo <abdo@member.fsf.org>
 
-#include <algorithm>
-#include <tr1/unordered_set>
-#include <boost/lambda/bind.hpp>
-#include <boost/graph/breadth_first_search.hpp>
-
+#include "graph_filtering.hh"
 #include "graph.hh"
 #include "histogram.hh"
-#include "graph_filtering.hh"
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
+
+#include <boost/graph/breadth_first_search.hpp>
+
+#include "graph_extended_clustering.hh"
 
 using namespace std;
 using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
 
-// graph filter to remove a single vertex
-
-template <class Vertex>
-struct single_vertex_filter
-{
-    single_vertex_filter() {}
-    single_vertex_filter(Vertex v):_v(v) {}
-
-    bool operator()(Vertex v) const { return v != _v; }
-
-    Vertex _v;
-};
-
-class bfs_stop_exception {};
-
-// this will abort the BFS search when no longer useful
-
-template <class TargetSet, class DistanceMap>
-struct bfs_max_depth_watcher
-{
-    typedef on_tree_edge event_filter;
-
-    bfs_max_depth_watcher(TargetSet& targets, size_t max_depth,
-                          DistanceMap distance)
-        : _targets(targets), _max_depth(max_depth), _distance(distance) {}
-
-    template <class Graph>
-    void operator()(typename graph_traits<Graph>::edge_descriptor e,
-                    const Graph& g)
+template <class PropertySequence>
+struct prop_vector
+{    
+    boost::any operator()(const vector<boost::any>& props, bool& found) const
     {
-        typename graph_traits<Graph>::vertex_descriptor v = target(e,g);
-        if (get(_distance, v) > _max_depth)
-            throw bfs_stop_exception();
-        if (_targets.find(v) != _targets.end())
-            _targets.erase(v);
-        if (_targets.empty())
-            throw bfs_stop_exception();
+        boost::any prop_vec;
+        mpl::for_each<PropertySequence>(bind<void>(get_prop_vector(), _1,
+                                                   var(props), var(prop_vec),
+                                                   var(found)));
+        return prop_vec;
     }
 
-    TargetSet& _targets;
-    size_t _max_depth;
-    DistanceMap _distance;
-};
-
-// abstract target collecting so algorithm works for bidirectional and
-// undirected
-
-template<class Graph, class Vertex, class Targets, class DirectedCategory>
-void collect_targets (Vertex v, Graph& g, Targets* t, DirectedCategory)
-{
-    typename graph_traits<Graph>::in_edge_iterator ei, ei_end;
-    typename graph_traits<Graph>::vertex_descriptor u;
-    for(tie(ei, ei_end) = in_edges(v, g); ei != ei_end; ++ei)
+    struct get_prop_vector
     {
-        u = source(*ei, g);
-        if (u == v) // no self-loops
-            continue;
-        if (t->find(u) != t->end()) // avoid parallel edges
-            continue;
-        t->insert(u);
-    }
-}
-
-template<class Graph, class Vertex, class Targets>
-void collect_targets (Vertex v, Graph& g, Targets* t, undirected_tag)
-{
-    typename graph_traits<Graph>::out_edge_iterator ei, ei_end;
-    typename graph_traits<Graph>::vertex_descriptor u;
-    for(tie(ei, ei_end) = out_edges(v, g); ei != ei_end; ++ei)
-    {
-        u = target(*ei, g);
-        if (u == v) // no self-loops
-            continue;
-        if (t->find(u) != t->end()) // avoid parallel edges
-            continue;
-        t->insert(u);
-    }
-}
-
-// get_extended_clustering
-
-struct get_extended_clustering
-{
-    template <class Graph, class IndexMap, class ClusteringMap>
-    void operator()(Graph& g, IndexMap vertex_index,
-                    vector<ClusteringMap>& cmaps) const
-    {
-        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-
-        int i, N = num_vertices(g);
-
-        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
-        for (i = 0; i < N; ++i)
-        {
-            vertex_t v = vertex(i, g);
-            if (v == graph_traits<Graph>::null_vertex())
-                continue;
-
-            // We must disconsider paths through the original vertex
-            typedef single_vertex_filter<vertex_t> filter_t;
-            typedef filtered_graph<Graph, keep_all, filter_t> fg_t;
-            fg_t fg(g, keep_all(), filter_t(v));
-
-            typedef DescriptorHash<IndexMap> hasher_t;
-            typedef tr1::unordered_set<vertex_t,hasher_t> neighbour_set_t;
-            neighbour_set_t neighbours(0, hasher_t(vertex_index));
-            neighbour_set_t targets(0, hasher_t(vertex_index));
-            typename neighbour_set_t::iterator ni, ti;
-
-            // collect targets, neighbours and calculate normalization factor
-            collect_targets (v, g, &targets,
-                             typename graph_traits<Graph>::directed_category());
-            size_t k_in = targets.size(), k_out, k_inter=0, z;
-            typename graph_traits<Graph>::adjacency_iterator a, a_end;
-            for(tie(a, a_end) = adjacent_vertices(v, g); a != a_end; ++a)
+        template <class Property>
+            void operator()(Property, const vector<boost::any>& props,
+                            boost::any& prop_vec, bool& found) const
+        {            
+            if (typeid(Property) == props[0].type())
             {
-                if (*a == v) // no self-loops
-                    continue;
-                if (neighbours.find(*a) != neighbours.end()) // avoid parallel
-                    continue;                                // edges
-
-                neighbours.insert(*a);
-                if (targets.find(*a) != targets.end())
-                    ++k_inter;
-            }
-            k_out = neighbours.size();
-            z = (k_in*k_out) - k_inter;
-
-            // And now we setup and start the BFS bonanza
-            for(ni = neighbours.begin(); ni != neighbours.end(); ++ni)
-            {
-                typedef tr1::unordered_map<vertex_t,size_t,
-                                           DescriptorHash<IndexMap> > dmap_t;
-                dmap_t dmap(0, DescriptorHash<IndexMap>(vertex_index));
-                InitializedPropertyMap<dmap_t>
-                    distance_map(dmap, numeric_limits<size_t>::max());
-
-                typedef tr1::unordered_map<vertex_t,default_color_type,
-                                           DescriptorHash<IndexMap> > cmap_t;
-                cmap_t cmap(0, DescriptorHash<IndexMap>(vertex_index));
-                InitializedPropertyMap<cmap_t>
-                    color_map(cmap, color_traits<default_color_type>::white());
-
                 try
                 {
-                    distance_map[*ni] = 0;
-                    neighbour_set_t specific_targets = targets;
-                    specific_targets.erase(*ni);
-                    bfs_max_depth_watcher<neighbour_set_t,
-                                          InitializedPropertyMap<dmap_t> >
-                        watcher(specific_targets, cmaps.size(), distance_map);
-                    breadth_first_visit(fg, *ni,
-                                        visitor
-                                        (make_bfs_visitor
-                                         (make_pair(record_distances
-                                                    (distance_map,
-                                                     boost::on_tree_edge()),
-                                                    watcher))).
-                                        color_map(color_map));
+                    vector<Property> vec;
+                    vec.resize(props.size());
+                    for (size_t i = 0; i < props.size(); ++i)
+                        vec[i] = any_cast<Property>(props[i]);
+                    prop_vec = vec;
+                    found = true;
                 }
-                catch(bfs_stop_exception) {}
-
-                for(ti = targets.begin(); ti != targets.end(); ++ti)
+                catch (bad_any_cast)
                 {
-                    if (*ti == *ni) // no self-loops
-                        continue;
-                    if (distance_map[*ti] <= cmaps.size())
-                        cmaps[distance_map[*ti]-1][v] += 1.0/z;
+                    found = false;
                 }
             }
         }
-    }
+    };
 };
 
+
+struct get_property_vector_type
+{
+    template <class Property>
+    struct apply
+    {
+        typedef vector<Property> type;
+    };
+};
 
 void GraphInterface::SetExtendedClusteringToProperty(string property_prefix,
                                                      size_t max_depth)
 {
     typedef vector_property_map<double, vertex_index_map_t> cmap_t;
-    vector<cmap_t> cmaps(max_depth);
-    for (size_t i = 0; i < cmaps.size(); ++i)
-        cmaps[i] = cmap_t(num_vertices(_mg), _vertex_index);
-
-    run_action(*this, bind<void>(get_extended_clustering(), _1, _vertex_index,
-                                 var(cmaps)));
-
+    vector<any> cmaps(max_depth);
     for (size_t i = 0; i < cmaps.size(); ++i)
     {
         string name = property_prefix + lexical_cast<string>(i+1);
         try
         {
-            find_property_map(_properties, name, typeid(vertex_t));
-            RemoveVertexProperty(name);
+            cmaps[i] = prop(name, _vertex_index, _properties);
         }
-        catch (property_not_found) {}
-
-        _properties.property(name, cmaps[i]);
+        catch (property_not_found)
+        {
+            cmap_t cmap(num_vertices(_mg), _vertex_index);
+            _properties.property(name, cmap);
+            cmaps[i] = cmap;
+        }
     }
+
+    typedef mpl::transform<vertex_floating_properties, 
+                           get_property_vector_type>::type
+        property_vectors;
+
+    bool found = false;
+
+    run_action<>()
+        (*this, bind<void>(get_extended_clustering(), _1, _vertex_index,_2), 
+         property_vectors())
+        (prop_vector<vertex_scalar_properties>()(cmaps, found));
+
+    if (!found)
+        throw GraphException("All vertex properties " + property_prefix + 
+                             "* must be of the same floating point type!");
 }

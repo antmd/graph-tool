@@ -15,170 +15,67 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+#include "graph_filtering.hh"
 
-#include <algorithm>
-#include <tr1/unordered_set>
-#include <boost/lambda/lambda.hpp>
 #include <boost/lambda/bind.hpp>
-#include <boost/random.hpp>
 
 #include "graph.hh"
 #include "histogram.hh"
-#include "graph_filtering.hh"
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
-#include "shared_map.hh"
+
+#include "graph_correlations.hh"
 
 using namespace std;
 using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
 
-// retrieves the generalized vertex-vertex correlation histogram
+// implementations spread across different compile units to minimize memory
+// usage during compilation
+void graph_correlations_imp1(const GraphInterface& g, hist2d_t& hist,
+                             boost::any deg1, boost::any deg2,
+                             boost::any weight);
+void graph_correlations_imp2(const GraphInterface& g, hist2d_t& hist,
+                             boost::any deg1, boost::any deg2,
+                             boost::any weight);
+void graph_correlations_imp3(const GraphInterface& g, hist2d_t& hist,
+                             boost::any deg1, boost::any deg2,
+                             boost::any weight);
 
-template <class DegreeSelector1, class DegreeSelector2>
-struct get_correlation_histogram
-{
-    get_correlation_histogram(DegreeSelector1& deg1, DegreeSelector2& deg2):
-        _deg1(deg1), _deg2(deg2) {}
-
-    template <class Graph, class WeightMap, class Hist>
-    void operator()(Graph& g, WeightMap weight, Hist& hist) const
-    {
-        SharedMap<Hist> s_hist(hist);
-
-        int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) \
-            firstprivate(s_hist) schedule(dynamic)
-        for (i = 0; i < N; ++i)
-        {
-            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
-            if (v == graph_traits<Graph>::null_vertex())
-                continue;
-
-            typename Hist::key_type key;
-            key.first = _deg1(v, g);
-            typename graph_traits<Graph>::out_edge_iterator e, e_end;
-            for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
-            {
-                key.second = _deg2(target(*e,g),g);
-                s_hist[key] +=
-                    typename Hist::value_type::second_type(get(weight, *e));
-            }
-        }
-        s_hist.Gather();
-    }
-    DegreeSelector1& _deg1;
-    DegreeSelector2& _deg2;
-};
-
-// retrieves the degree correlation histogram
-
-template <class WeightMap, class SecondDegreeSelectors>
-struct choose_vertex_correlation_histogram
-{
-    choose_vertex_correlation_histogram(const GraphInterface &g,
-                                        WeightMap weight,
-                                        GraphInterface::deg_t deg1,
-                                        GraphInterface::deg_t deg2,
-                                        hist2d_t &hist)
-        : _g(g), _weight(weight), _hist(hist)
-    {
-        tie(_deg1, _deg_name1) = get_degree_type(deg1);
-        tie(_deg2, _deg_name2) = get_degree_type(deg2);
-    }
-
-    template <class DegreeSelector1>
-    struct check_second_degree
-    {
-        check_second_degree
-            (choose_vertex_correlation_histogram
-                 <WeightMap,SecondDegreeSelectors> &parent):
-                _parent(parent) {}
-        template <class DegreeSelector2>
-        void operator()(DegreeSelector2)
-        {
-            if (mpl::at<degree_selector_index,DegreeSelector2>::type::value ==
-                _parent._deg2)
-            {
-                DegreeSelector1 deg1(_parent._deg_name1, _parent._g, true);
-                DegreeSelector2 deg2(_parent._deg_name2, _parent._g, true);
-                run_action(_parent._g,
-                           bind<void>
-                               (get_correlation_histogram<DegreeSelector1,
-                                DegreeSelector2>(deg1,deg2),
-                                _1, var(_parent._weight), var(_parent._hist)));
-            }
-        }
-        choose_vertex_correlation_histogram<WeightMap,SecondDegreeSelectors> 
-            _parent;
-    };
-
-    template <class DegreeSelector>
-    void operator()(DegreeSelector)
-    {
-        if (mpl::at<degree_selector_index,DegreeSelector>::type::value == _deg1)
-            mpl::for_each<SecondDegreeSelectors>
-                (check_second_degree<DegreeSelector>(*this));
-    }
-
-    const GraphInterface &_g;
-    WeightMap _weight;
-    hist2d_t &_hist;
-    GraphInterface::degree_t _deg1;
-    string _deg_name1;
-    GraphInterface::degree_t _deg2;
-    string _deg_name2;
-
-};
+typedef ConstantPropertyMap<int,GraphInterface::edge_t> cweight_map_t;
 
 hist2d_t
 GraphInterface::GetVertexCorrelationHistogram(GraphInterface::deg_t deg1,
-                                              GraphInterface::deg_t deg2, 
+                                              GraphInterface::deg_t deg2,
                                               string weight) const
 {
     hist2d_t hist;
-    typedef mpl::vector<in_degreeS, out_degreeS, total_degreeS, scalarS> 
-        degree_selectors;
 
     try
-    {
-        if(weight != "")
-        {
-            try
-            {
-                // FIXME: it would be good also to have a version for a static
-                //        map (vector_property_map), but adding this makes GCC
-                //        use more than 1 GB of RAM in my system.
-
-                dynamic_property_map& weight_prop = 
-                    find_property_map(_properties, weight, typeid(edge_t));
-                typedef DynamicPropertyMapWrap<double,edge_t> weight_map_t;
-                weight_map_t weight_map(weight_prop);
-                mpl::for_each<degree_selectors>
-                    (choose_vertex_correlation_histogram<weight_map_t, 
-                                                         degree_selectors>
-                     (*this, weight_map, deg1, deg2, hist));
-            }
-            catch (property_not_found& e)
-            {
-                throw GraphException("error getting scalar property: " + 
-                                     string(e.what()));
-            }
-        }
+    {        
+        any weight_prop;
+        if (weight != "")
+            weight_prop = prop(weight, _edge_index, _properties);
         else
-        {
-            typedef ConstantPropertyMap<double,edge_t>  weight_map_t;
-            weight_map_t weight_map(1.0);
-            mpl::for_each<degree_selectors>
-                (choose_vertex_correlation_histogram<weight_map_t, 
-                                                     degree_selectors>
-                 (*this, weight_map, deg1, deg2, hist));
-        }
+            weight_prop = cweight_map_t(1);
+
+        run_action<>()(*this, get_correlation_histogram<hist2d_t>(hist), 
+                       all_selectors(), all_selectors(), 
+                       mpl::vector<cweight_map_t>())
+            (degree_selector(deg1, _properties),
+             degree_selector(deg2, _properties), weight);
+        graph_correlations_imp1(*this, hist, degree_selector(deg1, _properties),
+                                degree_selector(deg2, _properties), weight);
+        graph_correlations_imp2(*this, hist, degree_selector(deg1, _properties),
+                                degree_selector(deg2, _properties), weight);
+        graph_correlations_imp3(*this, hist, degree_selector(deg1, _properties),
+                                degree_selector(deg2, _properties), weight);
+
     }
     catch (dynamic_get_failure &e)
     {
-        throw GraphException("error getting scalar property: " + 
+        throw GraphException("error getting scalar property: " +
                              string(e.what()));
     }
 
