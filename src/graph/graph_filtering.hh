@@ -40,11 +40,13 @@
 #include <boost/mpl/comparison.hpp>
 #include <boost/mpl/transform_view.hpp>
 #include <boost/mpl/quote.hpp>
+#include <boost/mpl/range_c.hpp>
 
-#include "mpl_nested_loop.hh"
+#include "graph.hh"
 #include "graph_adaptor.hh"
 #include "graph_selectors.hh"
 #include "graph_util.hh"
+#include "mpl_nested_loop.hh"
 
 namespace graph_tool
 {
@@ -102,6 +104,15 @@ using namespace boost;
 // The above line will run my_algorithm::operator() with Graph being the
 // appropriate graph view type and ValueType being 'double' and val = 42.0.
 
+// Whenever no implementation is called, the following exception is thrown
+#pragma GCC visibility push(default)
+class ActionNotFound: public GraphException
+{
+public:
+    ActionNotFound(boost::any graph_view, const type_info& action,
+                   const vector<string>& args);
+};
+#pragma GCC visibility pop
 
 namespace detail
 {
@@ -166,7 +177,7 @@ struct graph_filter
     template <class Graph, class EdgeProperty, class VertexProperty>
     struct apply
     {
-        
+
         typedef typename get_predicate<EdgeProperty>::type edge_predicate;
         typedef typename get_predicate<VertexProperty>::type vertex_predicate;
 
@@ -181,7 +192,7 @@ struct graph_filter
                 is_same<edge_predicate,
                         keep_all>,
                 is_same<vertex_predicate,
-                        keep_all> 
+                        keep_all>
                 >::type,
             Graph,
             filtered_graph>::type type;
@@ -336,14 +347,14 @@ struct get_graph_filtered
 // this metafunction returns all the possible graph views
 struct get_all_graph_views
 {
-    template <class TypePairs, 
+    template <class TypePairs,
               class AlwaysDirected = mpl::bool_<false>,
               class NeverDirected = mpl::bool_<false>,
               class AlwaysReversed = mpl::bool_<false>,
               class NeverReversed = mpl::bool_<false>,
               class NeverFiltered = mpl::bool_<false> >
     struct apply
-    {        
+    {
         // filtered graphs
         struct filtered_graphs:
             mpl::if_
@@ -386,6 +397,39 @@ struct get_all_graph_views
         typedef undirected_graphs type;
     };
 };
+
+// useful metafunction to split sequences in half
+struct split
+{
+    template <class Sequence>
+    struct get_element
+    {
+        template <class Index>
+        struct apply
+        {
+            typedef typename mpl::at<Sequence,Index>::type type;
+        };
+    };
+
+    template <class Sequence>
+    struct apply
+    {
+        typedef typename mpl::size<Sequence>::type size;
+        typedef typename mpl::divides<size, mpl::int_<2> >::type half_size;
+        typedef typename mpl::transform<mpl::range_c<int, 0, half_size::value>,
+                                        get_element<Sequence>,
+                                        mpl::back_inserter<mpl::vector<> > >
+            ::type first_part;
+        typedef typename mpl::transform<mpl::range_c<int, half_size::value,
+                                                     size::value>,
+                                        get_element<Sequence>,
+                                        mpl::back_inserter<mpl::vector<> > >
+            ::type second_part;
+        typedef typename mpl::pair<first_part,second_part> type;
+    };
+};
+
+
 
 // all scalar types plus edge and vertex index property (we actually only use
 // bool)
@@ -441,37 +485,6 @@ BOOST_MPL_ASSERT_RELATION(n_views::value, == , mpl::int_<3>::value);
 // run_action() implementation
 // ===========================
 //
-// Whenever no implementation is called, the following exception is thrown
-
-#pragma GCC visibility push(default)
-class ActionNotFound: public GraphException
-{
-    string _error;
-public:
-    ActionNotFound(boost::any graph_view, const type_info& action,
-                   const vector<string>& args)
-        : GraphException("")
-    {        
-        _error = 
-            "No static implementation was found for the desired routine. "
-            "This is a graph_tool bug. :-( Please follow but report "
-            "instructions at " PACKAGE_BUGREPORT ". What follows is debug "
-            "information.\n\n";
-
-        _error += "Graph view: " + string(graph_view.type().name()) + "\n";
-
-        _error += "Action: " + string(action.name()) + "\n";
-        for (size_t i = 0; i < args.size(); ++i)
-        {
-            _error += "Arg " + lexical_cast<string>(i+1) + ": " + args[i] + 
-                "\n";
-        }
-    }
-    virtual ~ActionNotFound() throw () {}
-    virtual const char * what () const throw () {return _error.c_str();}
-};
-#pragma GCC visibility pop
-
 // this functor encapsulates another functor Action, which takes a pointer to a
 // graph view as first argument
 template <class Action, class GraphViews, class TR1, class TR2, class TR3,

@@ -49,7 +49,7 @@ namespace detail { namespace graph {
                              IncomingMap incoming,
                              DistanceMap distance,
                              PathCountMap path_count)
-      : ordered_vertices(ordered_vertices), weight(weight), 
+      : ordered_vertices(ordered_vertices), weight(weight),
         incoming(incoming), distance(distance),
         path_count(path_count)
     { }
@@ -59,8 +59,8 @@ namespace detail { namespace graph {
      * for w is set to {(v, w)} and the shortest path count of w is set to
      * the number of paths that reach {v}.
      */
-    void edge_relaxed(edge_descriptor e, const Graph& g) 
-    { 
+    void edge_relaxed(edge_descriptor e, const Graph& g)
+    {
       vertex_descriptor v = source(e, g), w = target(e, g);
       incoming[w].clear();
       incoming[w].push_back(e);
@@ -73,7 +73,7 @@ namespace detail { namespace graph {
      * incoming edges of w and add all of the shortest paths to v to the
      * shortest path count of w.
      */
-    void edge_not_relaxed(edge_descriptor e, const Graph& g) 
+    void edge_not_relaxed(edge_descriptor e, const Graph& g)
     {
       typedef typename property_traits<WeightMap>::value_type weight_type;
       typedef typename property_traits<DistanceMap>::value_type distance_type;
@@ -89,8 +89,8 @@ namespace detail { namespace graph {
     }
 
     /// Keep track of vertices as they are reached
-    void examine_vertex(vertex_descriptor w, const Graph&) 
-    { 
+    void examine_vertex(vertex_descriptor w, const Graph&)
+    {
       ordered_vertices.push(w);
     }
 
@@ -110,13 +110,13 @@ namespace detail { namespace graph {
   template<typename WeightMap>
   struct brandes_dijkstra_shortest_paths
   {
-    brandes_dijkstra_shortest_paths(WeightMap weight_map) 
+    brandes_dijkstra_shortest_paths(WeightMap weight_map)
       : weight_map(weight_map) { }
 
-    template<typename Graph, typename IncomingMap, typename DistanceMap, 
+    template<typename Graph, typename IncomingMap, typename DistanceMap,
              typename PathCountMap, typename VertexIndexMap>
-    void 
-    operator()(Graph& g, 
+    void
+    operator()(Graph& g,
                typename graph_traits<Graph>::vertex_descriptor s,
                std::stack<typename graph_traits<Graph>::vertex_descriptor>& ov,
                IncomingMap incoming,
@@ -124,11 +124,11 @@ namespace detail { namespace graph {
                PathCountMap path_count,
                VertexIndexMap vertex_index)
     {
-      typedef brandes_dijkstra_visitor<Graph, WeightMap, IncomingMap, 
+      typedef brandes_dijkstra_visitor<Graph, WeightMap, IncomingMap,
                                        DistanceMap, PathCountMap> visitor_type;
       visitor_type visitor(ov, weight_map, incoming, distance, path_count);
 
-      dijkstra_shortest_paths(g, s, 
+      dijkstra_shortest_paths(g, s,
                               boost::weight_map(weight_map)
                               .vertex_index_map(vertex_index)
                               .distance_map(distance)
@@ -150,18 +150,18 @@ namespace detail { namespace graph {
      * records predecessor and the number of shortest paths to each
      * vertex.
      */
-    template<typename Graph, typename IncomingMap, typename DistanceMap, 
+    template<typename Graph, typename IncomingMap, typename DistanceMap,
              typename PathCountMap>
     struct visitor_type : public bfs_visitor<>
     {
       typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
-      typedef typename graph_traits<Graph>::vertex_descriptor 
+      typedef typename graph_traits<Graph>::vertex_descriptor
         vertex_descriptor;
-      
-      visitor_type(IncomingMap incoming, DistanceMap distance, 
-                   PathCountMap path_count, 
+
+      visitor_type(IncomingMap incoming, DistanceMap distance,
+                   PathCountMap path_count,
                    std::stack<vertex_descriptor>& ordered_vertices)
-        : incoming(incoming), distance(distance), 
+        : incoming(incoming), distance(distance),
           path_count(path_count), ordered_vertices(ordered_vertices) { }
 
       /// Keep track of vertices as they are reached
@@ -180,7 +180,7 @@ namespace detail { namespace graph {
         vertex_descriptor v = source(e, g);
         vertex_descriptor w = target(e, g);
         put(distance, w, get(distance, v) + 1);
-        
+
         put(path_count, w, get(path_count, v));
         incoming[w].push_back(e);
       }
@@ -208,10 +208,10 @@ namespace detail { namespace graph {
       std::stack<vertex_descriptor>& ordered_vertices;
     };
 
-    template<typename Graph, typename IncomingMap, typename DistanceMap, 
+    template<typename Graph, typename IncomingMap, typename DistanceMap,
              typename PathCountMap, typename VertexIndexMap>
-    void 
-    operator()(Graph& g, 
+    void
+    operator()(Graph& g,
                typename graph_traits<Graph>::vertex_descriptor s,
                std::stack<typename graph_traits<Graph>::vertex_descriptor>& ov,
                IncomingMap incoming,
@@ -224,12 +224,12 @@ namespace detail { namespace graph {
 
       visitor_type<Graph, IncomingMap, DistanceMap, PathCountMap>
         visitor(incoming, distance, path_count, ov);
-      
-      std::vector<default_color_type> 
+
+      std::vector<default_color_type>
         colors(num_vertices(g), color_traits<default_color_type>::white());
       boost::queue<vertex_descriptor> Q;
-      breadth_first_visit(g, s, Q, visitor, 
-                          make_iterator_property_map(colors.begin(), 
+      breadth_first_visit(g, s, Q, visitor,
+                          make_iterator_property_map(colors.begin(),
                                                      vertex_index));
     }
   };
@@ -237,16 +237,16 @@ namespace detail { namespace graph {
   // When the edge centrality map is a dummy property map, no
   // initialization is needed.
   template<typename Iter>
-  inline void 
+  inline void
   init_centrality_map(std::pair<Iter, Iter>, dummy_property_map) { }
 
   // When we have a real edge centrality map, initialize all of the
   // centralities to zero.
   template<typename Iter, typename Centrality>
-  void 
+  void
   init_centrality_map(std::pair<Iter, Iter> keys, Centrality centrality_map)
   {
-    typedef typename property_traits<Centrality>::value_type 
+    typedef typename property_traits<Centrality>::value_type
       centrality_type;
     while (keys.first != keys.second) {
       put(centrality_map, *keys.first, centrality_type(0));
@@ -257,22 +257,22 @@ namespace detail { namespace graph {
   // When the edge centrality map is a dummy property map, no update
   // is performed.
   template<typename Key, typename T>
-  inline void 
+  inline void
   update_centrality(dummy_property_map, const Key&, const T&) { }
 
   // When we have a real edge centrality map, add the value to the map
   template<typename CentralityMap, typename Key, typename T>
-  inline void 
+  inline void
   update_centrality(CentralityMap centrality_map, Key k, const T& x)
   { put(centrality_map, k, get(centrality_map, k) + x); }
 
   template<typename Iter>
-  inline void 
+  inline void
   divide_centrality_by_two(std::pair<Iter, Iter>, dummy_property_map) {}
 
   template<typename Iter, typename CentralityMap>
   inline void
-  divide_centrality_by_two(std::pair<Iter, Iter> keys, 
+  divide_centrality_by_two(std::pair<Iter, Iter> keys,
                            CentralityMap centrality_map)
   {
     typename property_traits<CentralityMap>::value_type two(2);
@@ -283,11 +283,11 @@ namespace detail { namespace graph {
   }
 
   template<typename Graph, typename CentralityMap, typename EdgeCentralityMap,
-           typename IncomingMap, typename DistanceMap, 
+           typename IncomingMap, typename DistanceMap,
            typename DependencyMap, typename PathCountMap,
            typename VertexIndexMap, typename ShortestPaths>
-  void 
-  brandes_betweenness_centrality_impl(const Graph& g, 
+  void
+  brandes_betweenness_centrality_impl(const Graph& g,
                                       CentralityMap centrality,     // C_B
                                       EdgeCentralityMap edge_centrality_map,
                                       IncomingMap, //incoming, // P
@@ -306,7 +306,7 @@ namespace detail { namespace graph {
     init_centrality_map(edges(g), edge_centrality_map);
 
     int i, N = num_vertices(g);
-    #pragma omp parallel for default(shared) private(i) schedule(dynamic) 
+    #pragma omp parallel for default(shared) private(i) schedule(dynamic)
     for (i = 0; i < N; ++i)
     {
       typename graph_traits<Graph>::vertex_descriptor s = vertex(i, g);
@@ -328,24 +328,24 @@ namespace detail { namespace graph {
         put(dependency, *w, 0);
       }
       put(path_count, s, 1);
-      
+
       // Execute the shortest paths algorithm. This will be either
       // Dijkstra's algorithm or a customized breadth-first search,
       // depending on whether the graph is weighted or unweighted.
       shortest_paths(g, s, ordered_vertices, incoming, distance,
                      path_count, vertex_index);
-      
-      while (!ordered_vertices.empty()) 
+
+      while (!ordered_vertices.empty())
       {
           vertex_descriptor w = ordered_vertices.top();
           ordered_vertices.pop();
-        
+
           typedef typename property_traits<IncomingMap>::value_type
               incoming_type;
           typedef typename incoming_type::iterator incoming_iterator;
-          typedef typename property_traits<DependencyMap>::value_type 
+          typedef typename property_traits<DependencyMap>::value_type
               dependency_type;
-        
+
           for (incoming_iterator vw = incoming[w].begin();
                vw != incoming[w].end(); ++vw) {
               vertex_descriptor v = source(*vw, g);
@@ -355,17 +355,17 @@ namespace detail { namespace graph {
               put(dependency, v, get(dependency, v) + factor);
               update_centrality(edge_centrality_map, *vw, factor);
           }
-                
+
           if (w != s) {
               update_centrality(centrality, w, get(dependency, w));
           }
-      }      
+      }
 
     }
-  
+
 
     typedef typename graph_traits<Graph>::directed_category directed_category;
-    const bool is_undirected = 
+    const bool is_undirected =
       is_convertible<directed_category*, undirected_tag*>::value;
     if (is_undirected) {
       divide_centrality_by_two(vertices(g), centrality);
@@ -376,11 +376,11 @@ namespace detail { namespace graph {
 } } // end namespace detail::graph
 
 template<typename Graph, typename CentralityMap, typename EdgeCentralityMap,
-         typename IncomingMap, typename DistanceMap, 
-         typename DependencyMap, typename PathCountMap, 
+         typename IncomingMap, typename DistanceMap,
+         typename DependencyMap, typename PathCountMap,
          typename VertexIndexMap>
-void 
-brandes_betweenness_centrality(const Graph& g, 
+void
+brandes_betweenness_centrality(const Graph& g,
                                CentralityMap centrality,     // C_B
                                EdgeCentralityMap edge_centrality_map,
                                IncomingMap incoming, // P
@@ -391,20 +391,20 @@ brandes_betweenness_centrality(const Graph& g,
 {
   detail::graph::brandes_unweighted_shortest_paths shortest_paths;
 
-  detail::graph::brandes_betweenness_centrality_impl(g, centrality, 
+  detail::graph::brandes_betweenness_centrality_impl(g, centrality,
                                                      edge_centrality_map,
                                                      incoming, distance,
                                                      dependency, path_count,
-                                                     vertex_index, 
+                                                     vertex_index,
                                                      shortest_paths);
 }
 
-template<typename Graph, typename CentralityMap, typename EdgeCentralityMap, 
-         typename IncomingMap, typename DistanceMap, 
-         typename DependencyMap, typename PathCountMap, 
-         typename VertexIndexMap, typename WeightMap>    
-void 
-brandes_betweenness_centrality(const Graph& g, 
+template<typename Graph, typename CentralityMap, typename EdgeCentralityMap,
+         typename IncomingMap, typename DistanceMap,
+         typename DependencyMap, typename PathCountMap,
+         typename VertexIndexMap, typename WeightMap>
+void
+brandes_betweenness_centrality(const Graph& g,
                                CentralityMap centrality,     // C_B
                                EdgeCentralityMap edge_centrality_map,
                                IncomingMap incoming, // P
@@ -417,18 +417,18 @@ brandes_betweenness_centrality(const Graph& g,
   detail::graph::brandes_dijkstra_shortest_paths<WeightMap>
     shortest_paths(weight_map);
 
-  detail::graph::brandes_betweenness_centrality_impl(g, centrality, 
+  detail::graph::brandes_betweenness_centrality_impl(g, centrality,
                                                      edge_centrality_map,
                                                      incoming, distance,
                                                      dependency, path_count,
-                                                     vertex_index, 
+                                                     vertex_index,
                                                      shortest_paths);
 }
 
 namespace detail { namespace graph {
   template<typename Graph, typename CentralityMap, typename EdgeCentralityMap,
            typename WeightMap, typename VertexIndexMap>
-  void 
+  void
   brandes_betweenness_centrality_dispatch2(const Graph& g,
                                            CentralityMap centrality,
                                            EdgeCentralityMap edge_centrality_map,
@@ -438,15 +438,15 @@ namespace detail { namespace graph {
     typedef typename graph_traits<Graph>::degree_size_type degree_size_type;
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
     typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
-    typedef typename mpl::if_c<(is_same<CentralityMap, 
+    typedef typename mpl::if_c<(is_same<CentralityMap,
                                         dummy_property_map>::value),
-                                         EdgeCentralityMap, 
+                                         EdgeCentralityMap,
                                CentralityMap>::type a_centrality_map;
-    typedef typename property_traits<a_centrality_map>::value_type 
+    typedef typename property_traits<a_centrality_map>::value_type
       centrality_type;
 
     typename graph_traits<Graph>::vertices_size_type V = num_vertices(g);
-    
+
     std::vector<std::vector<edge_descriptor> > incoming(V);
     std::vector<centrality_type> distance(V);
     std::vector<centrality_type> dependency(V);
@@ -461,11 +461,11 @@ namespace detail { namespace graph {
       vertex_index,
       weight_map);
   }
-  
+
 
   template<typename Graph, typename CentralityMap, typename EdgeCentralityMap,
            typename VertexIndexMap>
-  void 
+  void
   brandes_betweenness_centrality_dispatch2(const Graph& g,
                                            CentralityMap centrality,
                                            EdgeCentralityMap edge_centrality_map,
@@ -474,15 +474,15 @@ namespace detail { namespace graph {
     typedef typename graph_traits<Graph>::degree_size_type degree_size_type;
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
     typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
-    typedef typename mpl::if_c<(is_same<CentralityMap, 
+    typedef typename mpl::if_c<(is_same<CentralityMap,
                                         dummy_property_map>::value),
-                                         EdgeCentralityMap, 
+                                         EdgeCentralityMap,
                                CentralityMap>::type a_centrality_map;
-    typedef typename property_traits<a_centrality_map>::value_type 
+    typedef typename property_traits<a_centrality_map>::value_type
       centrality_type;
 
     typename graph_traits<Graph>::vertices_size_type V = num_vertices(g);
-    
+
     std::vector<std::vector<edge_descriptor> > incoming(V);
     std::vector<centrality_type> distance(V);
     std::vector<centrality_type> dependency(V);
@@ -500,10 +500,10 @@ namespace detail { namespace graph {
   template<typename WeightMap>
   struct brandes_betweenness_centrality_dispatch1
   {
-    template<typename Graph, typename CentralityMap, 
+    template<typename Graph, typename CentralityMap,
              typename EdgeCentralityMap, typename VertexIndexMap>
-    static void 
-    run(const Graph& g, CentralityMap centrality, 
+    static void
+    run(const Graph& g, CentralityMap centrality,
         EdgeCentralityMap edge_centrality_map, VertexIndexMap vertex_index,
         WeightMap weight_map)
     {
@@ -515,10 +515,10 @@ namespace detail { namespace graph {
   template<>
   struct brandes_betweenness_centrality_dispatch1<error_property_not_found>
   {
-    template<typename Graph, typename CentralityMap, 
+    template<typename Graph, typename CentralityMap,
              typename EdgeCentralityMap, typename VertexIndexMap>
-    static void 
-    run(const Graph& g, CentralityMap centrality, 
+    static void
+    run(const Graph& g, CentralityMap centrality,
         EdgeCentralityMap edge_centrality_map, VertexIndexMap vertex_index,
         error_property_not_found)
     {
@@ -530,25 +530,25 @@ namespace detail { namespace graph {
 } } // end namespace detail::graph
 
 template<typename Graph, typename Param, typename Tag, typename Rest>
-void 
-brandes_betweenness_centrality(const Graph& g, 
+void
+brandes_betweenness_centrality(const Graph& g,
                                const bgl_named_params<Param,Tag,Rest>& params)
 {
   typedef bgl_named_params<Param,Tag,Rest> named_params;
 
   typedef typename property_value<named_params, edge_weight_t>::type ew;
   detail::graph::brandes_betweenness_centrality_dispatch1<ew>::run(
-    g, 
-    choose_param(get_param(params, vertex_centrality), 
+    g,
+    choose_param(get_param(params, vertex_centrality),
                  dummy_property_map()),
-    choose_param(get_param(params, edge_centrality), 
+    choose_param(get_param(params, edge_centrality),
                  dummy_property_map()),
     choose_const_pmap(get_param(params, vertex_index), g, vertex_index),
     get_param(params, edge_weight));
 }
 
 template<typename Graph, typename CentralityMap>
-void 
+void
 brandes_betweenness_centrality(const Graph& g, CentralityMap centrality)
 {
   detail::graph::brandes_betweenness_centrality_dispatch2(
@@ -556,7 +556,7 @@ brandes_betweenness_centrality(const Graph& g, CentralityMap centrality)
 }
 
 template<typename Graph, typename CentralityMap, typename EdgeCentralityMap>
-void 
+void
 brandes_betweenness_centrality(const Graph& g, CentralityMap centrality,
                                EdgeCentralityMap edge_centrality_map)
 {
@@ -571,7 +571,7 @@ brandes_betweenness_centrality(const Graph& g, CentralityMap centrality,
  * given centrality map.
  */
 template<typename Graph, typename CentralityMap>
-void 
+void
 relative_betweenness_centrality(const Graph& g, CentralityMap centrality)
 {
   typedef typename graph_traits<Graph>::vertex_iterator vertex_iterator;

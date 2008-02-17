@@ -212,16 +212,6 @@ struct graph_traits<FakeUndirGraph<Graph> >
 //==============================================================================
 
 
-void GraphInterface::ReadFromFile(string file)
-{
-    bool graphviz = boost::ends_with(file,".dot") ||
-        boost::ends_with(file,".dot.gz") || boost::ends_with(file,".dot.bz2");
-    if (graphviz)
-        ReadFromFile(file, "dot");
-    else
-        ReadFromFile(file, "xml");
-}
-
 void GraphInterface::ReadFromFile(string file, string format)
 {
     bool graphviz = false;
@@ -339,17 +329,6 @@ struct generate_index
     }
 };
 
-
-void GraphInterface::WriteToFile(string file)
-{
-    bool graphviz = boost::ends_with(file,".dot") ||
-        boost::ends_with(file,".dot.gz") || boost::ends_with(file,".dot.bz2");
-    if (graphviz)
-        WriteToFile(file, "dot");
-    else
-        WriteToFile(file, "xml");
-}
-
 void GraphInterface::WriteToFile(string file, string format)
 {
     bool graphviz = false;
@@ -385,7 +364,7 @@ void GraphInterface::WriteToFile(string file, string format)
             typedef tr1::unordered_map<vertex_t, size_t>  map_t;
             map_t vertex_to_index;
             associative_property_map<map_t> index_map(vertex_to_index);
-            run_action<>()(*this, bind<void>(generate_index(), _1, 
+            run_action<>()(*this, bind<void>(generate_index(), _1,
                                              index_map))();
             if (graphviz)
             {

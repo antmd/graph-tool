@@ -204,6 +204,7 @@ AC_OUTPUT([
 Makefile
 src/Makefile
 src/graph/Makefile
+src/graph/correlations/Makefile
 src/graph_tool/Makefile
 ])
 

@@ -44,11 +44,11 @@ inline std::size_t hash_value(const boost::tuple<double,double,double>& hist)
 // histogram types
 typedef std::tr1::unordered_map<double,double> hist_t;
 typedef std::tr1::unordered_map<std::pair<double,double>,double,
-                                boost::hash<std::pair<double,double> > > 
+                                boost::hash<std::pair<double,double> > >
     hist2d_t;
 typedef std::tr1::unordered_map<boost::tuple<double,double,double>,double,
                                 boost::hash<boost::tuple<double,
-                                                         double,double> > > 
+                                                         double,double> > >
     hist3d_t;
 typedef std::tr1::unordered_map<double,std::pair<double,double> > avg_corr_t;
 

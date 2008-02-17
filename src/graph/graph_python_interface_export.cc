@@ -46,17 +46,9 @@ struct export_property_map
         {
             _pclass
                 .def("__getitem__",
-                     &pmap_t::template GetValue<PythonVertex>)
-                .def("__setitem__",
-                     &pmap_t::template SetValue<PythonVertex>)
-                .def("__getitem__",
                      &pmap_t::template GetValue<PythonEdge<Graph> >)
                 .def("__setitem__",
-                     &pmap_t::template SetValue<PythonEdge<Graph> >)
-                .def("__getitem__",
-                     &pmap_t::template GetValue<GraphInterface>)
-                .def("__setitem__",
-                     &pmap_t::template SetValue<GraphInterface>);
+                     &pmap_t::template SetValue<PythonEdge<Graph> >);
         }
 
         python::class_<PythonPropertyMap<ValueType> >& _pclass;
@@ -65,14 +57,22 @@ struct export_property_map
     template <class ValueType>
     void operator()(ValueType) const
     {
+        string type_name =
+            type_names[mpl::find<value_types,ValueType>::type::pos::value];
+        string class_name = _name + "<" + type_name + ">";
+
         typedef PythonPropertyMap<ValueType> pmap_t;
-        python::class_<pmap_t> pclass(_name.c_str(), python::no_init);
-        pclass.def("__hash__", &pmap_t::GetHash);
-        pclass.def("get_type", &pmap_t::GetType);
-        
+        python::class_<pmap_t> pclass(class_name.c_str(), python::no_init);
+        pclass.def("__hash__", &pmap_t::GetHash)
+            .def("value_type", &pmap_t::GetType)
+            .def("__getitem__", &pmap_t::template GetValue<PythonVertex>)
+            .def("__setitem__", &pmap_t::template SetValue<PythonVertex>)
+            .def("__getitem__", &pmap_t::template GetValue<GraphInterface>)
+            .def("__setitem__", &pmap_t::template SetValue<GraphInterface>);
+
         typedef mpl::transform<graph_tool::detail::all_graph_views,
                                mpl::quote1<add_pointer> >::type graph_views;
-                      
+
         mpl::for_each<graph_views>(export_access<ValueType>(pclass));
     }
 

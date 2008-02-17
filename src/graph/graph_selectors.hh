@@ -28,9 +28,9 @@
 #include <boost/mpl/logical.hpp>
 #include <boost/dynamic_property_map.hpp>
 
-#include "graph.hh"
 #include "graph_adaptor.hh"
 #include "graph_properties.hh"
+#include "graph.hh"
 
 namespace graph_tool
 {
@@ -116,7 +116,7 @@ struct scalarS
     scalarS(PropertyMap pmap): _pmap(pmap) {}
 
     template <class Descriptor, class Graph>
-    typename property_traits<PropertyMap>::value_type 
+    typename property_traits<PropertyMap>::value_type
     operator()(const Descriptor& d, const Graph &g) const
     {
         return get(_pmap, d);
@@ -138,7 +138,7 @@ struct get_degree_selector
          boost::mpl::pair<total_degreeS,
                           boost::mpl::int_<GraphInterface::TOTAL_DEGREE> > >
         degree_selector_index;
-    
+
     template <class Selector>
     void operator()(Selector) const
     {
@@ -154,7 +154,7 @@ struct get_scalar_selector
 {
     get_scalar_selector(boost::dynamic_property_map& dmap, boost::any& deg)
         : _dmap(dmap), _deg(deg) {}
-    
+
     template <class PropertyMap>
     void operator()(PropertyMap) const
     {
@@ -177,11 +177,11 @@ struct scalar_selector_type
 };
 
 
-struct selectors: 
+struct selectors:
     boost::mpl::vector<out_degreeS, in_degreeS, total_degreeS> {};
 
 // retrieves the appropriate degree selector
-boost::any degree_selector(GraphInterface::deg_t deg, 
+boost::any degree_selector(GraphInterface::deg_t deg,
                            boost::dynamic_properties dp);
 
 // helper types for in_edge_iteratorS

@@ -31,6 +31,8 @@
 #include <boost/mpl/find.hpp>
 #include <boost/lambda/bind.hpp>
 
+#include "graph.hh"
+
 // this file provides general functions for manipulating graph properties
 
 namespace graph_tool
@@ -38,10 +40,15 @@ namespace graph_tool
 using namespace std;
 using namespace boost;
 
+// Metaprogramming
+// ===============
+//
+// Metafunctions and data structures to deal with property maps
+
 // global property types. only these types are allowed in property maps
 typedef mpl::vector<bool, int32_t, int64_t, double, long double, string,
                     vector<bool>, vector<int32_t>, vector<int64_t>,
-                    vector<double>, vector<long double> >
+                    vector<double>, vector<long double>, vector<string> >
     value_types;
 
 extern const char* type_names[]; // respective type names
@@ -79,7 +86,7 @@ struct property_map_type
     struct apply
     {
         typedef vector_property_map<ValueType,IndexMap> type;
-    };                           
+    };
 };
 
 struct property_map_types
@@ -91,30 +98,49 @@ struct property_map_types
     template <class Bind>
     struct bind_wrap1
     {
-        template <class T1> struct apply 
+        template <class T1> struct apply
         { typedef typename Bind::template apply<T1>::type type; };
     };
 
-    template <class ValueTypes, class IndexMap, 
+    template <class ValueTypes, class IndexMap,
               class IncludeIndexMap = mpl::bool_<false> >
     struct apply
     {
         typedef typename mpl::transform<
             ValueTypes,
-            bind_wrap1<mpl::bind2<property_map_type, 
-                                  mpl::_1, 
+            bind_wrap1<mpl::bind2<property_map_type,
+                                  mpl::_1,
                                   IndexMap> >
             >::type scalar_properties;
 
-        // put index map itself        
+        // put index map itself
         typedef typename mpl::if_<
             IncludeIndexMap,
             typename mpl::push_back<scalar_properties,IndexMap>::type,
             scalar_properties
             >::type type;
-    };                           
+    };
 };
 
+// Property map manipulation
+// =========================
+//
+// Functions which deal with several aspects of property map manipulation
+
+// the following exception gets thrown when no properties are found
+#pragma GCC visibility push(default)
+class PropertyNotFound: public GraphException
+{
+public:
+    PropertyNotFound(const string& name, const type_info& key,
+                     const string& extra_info = "");
+    PropertyNotFound(const string& name, const type_info& key,
+                     const type_info& value, const string& extra_info = "");
+    PropertyNotFound(const string& name, const type_info& key,
+                     const vector<string>& values,
+                     const string& extra_info = "");
+};
+#pragma GCC visibility push(default)
 
 // this function gets the "static" property map behind the dynamic property map,
 // or throws bad_cast if it doesn't match the correct type
@@ -122,7 +148,7 @@ template <class PropertyMap>
 PropertyMap& get_static_property_map(dynamic_property_map& map)
 {
     return dynamic_cast
-        <detail::dynamic_property_map_adaptor<PropertyMap>&>(map).base();
+        <boost::detail::dynamic_property_map_adaptor<PropertyMap>&>(map).base();
 }
 
 // same as above, but returns a pointer and does not throw an exception, and
@@ -130,9 +156,9 @@ PropertyMap& get_static_property_map(dynamic_property_map& map)
 template <class PropertyMap>
 PropertyMap* get_static_property_map(dynamic_property_map* map)
 {
-    detail::dynamic_property_map_adaptor<PropertyMap>* adaptor =
+    boost::detail::dynamic_property_map_adaptor<PropertyMap>* adaptor =
         dynamic_cast
-        <detail::dynamic_property_map_adaptor<PropertyMap>*>(map);
+        <boost::detail::dynamic_property_map_adaptor<PropertyMap>*>(map);
     if (adaptor)
         return &adaptor->base();
     else
@@ -140,7 +166,7 @@ PropertyMap* get_static_property_map(dynamic_property_map* map)
 }
 
 // this function gets the dynamic property map inside dp which matches the given
-// name and key type
+// name and key type. It throws PropertyNotFound in case of failure
 dynamic_property_map&
 find_property_map(const dynamic_properties& dp, string name,
                   const type_info& key_type);
@@ -148,14 +174,151 @@ find_property_map(const dynamic_properties& dp, string name,
 // convenience function which finds and returns the appropriate static property
 // from the dynamic properties
 template <class PropertyMap>
-PropertyMap& find_static_property_map(const dynamic_properties& dp, 
+PropertyMap& find_static_property_map(const dynamic_properties& dp,
                                       string name)
 {
     typedef typename property_traits<PropertyMap>::key_type key_type;
-    dynamic_property_map& dmap = find_property_map(dp, name, 
+    dynamic_property_map& dmap = find_property_map(dp, name,
                                                    typeid(key_type));
     return get_static_property_map<PropertyMap>(dmap);
 }
+
+// the following function returns the actual property map wrapped as a
+// boost::any object
+struct get_static_prop; // forward decl.
+template <class IndexMap>
+boost::any prop(const string& name, IndexMap,
+                const dynamic_properties& dp)
+{
+    using namespace lambda;
+    typedef typename property_traits<IndexMap>::key_type key_t;
+    dynamic_property_map& dmap =
+        find_property_map(dp, name, typeid(key_t));
+    boost::any prop;
+    typedef typename property_map_types::apply<value_types,IndexMap>::type
+        properties_t;
+    bool found = false;
+    mpl::for_each<properties_t>(bind<void>(get_static_prop(), _1,
+                                           &dmap, var(prop),
+                                           var(found)));
+    if (!found)
+        throw PropertyNotFound(name, typeid(key_t),
+                               "This is a graph-tool bug. :-( "
+                               "Please follow but report instructions at "
+                               PACKAGE_BUGREPORT);
+    return prop;
+}
+
+// used in function prop() above
+struct get_static_prop
+{
+    template <class PropertyMap>
+    void operator()(PropertyMap, dynamic_property_map* dmap,
+                    boost::any& smap, bool& found) const
+    {
+        PropertyMap* pmap = get_static_property_map<PropertyMap>(dmap);
+        if (pmap != 0)
+        {
+            smap = boost::any(*pmap);
+            found = true;
+        }
+    }
+};
+
+// this functor tests whether or not a given boost::any object holds a type
+// contained in a given type Sequence
+template <class Sequence>
+struct belongs
+{
+    struct get_type
+    {
+        get_type(const boost::any& val, bool& found)
+            : _val(val), _found(found) {}
+
+        template <class Type>
+        void operator()(Type) const
+        {
+            const Type* ptr = any_cast<Type>(&_val);
+            if (ptr != 0)
+                _found = true;
+        }
+
+        const boost::any& _val;
+        bool& _found;
+    };
+
+    bool operator()(const boost::any& prop)
+    {
+        bool found = false;
+        mpl::for_each<Sequence>(get_type(prop, found));
+        return found;
+    }
+};
+
+// this will return the name of a given type
+template <class TypeSequence = value_types,
+          class NamedSequence = value_types>
+class get_type_name
+{
+public:
+    get_type_name(const char* names[] = type_names)
+        : _type_names(type_names)
+    {
+        if (_all_names.empty())
+        {
+            using namespace lambda;
+            mpl::for_each<TypeSequence>
+                (lambda::bind<void>(get_all_names(), lambda::_1,
+                                    var(_type_names), var(_all_names)));
+        }
+    }
+
+    const string& operator()(const type_info& type) const
+    {
+        using namespace lambda;
+        string* name;
+        mpl::for_each<TypeSequence>
+            (lambda::bind<void>(find_name(), lambda::_1, var(type),
+                                var(_all_names), var(name)));
+        return *name;
+    }
+
+    const vector<string>& all_names() const
+    {
+        return _all_names;
+    }
+
+private:
+    struct find_name
+    {
+        template <class Type>
+        void operator()(Type, const type_info& type,
+                        vector<string>& all_names,
+                        string*& name) const
+        {
+            size_t index = mpl::find<TypeSequence,Type>::type::pos::value;
+            if (type == typeid(Type))
+                name = &all_names[index];
+        }
+    };
+
+    struct get_all_names
+    {
+        template <class Type>
+        void operator()(Type, const char** type_names,
+                        vector<string>& names) const
+        {
+            size_t index = mpl::find<NamedSequence,Type>::type::pos::value;
+            names.push_back(type_names[index]);
+        }
+    };
+
+    const char** _type_names;
+    static vector<string> _all_names;
+};
+
+template <class TypeSequence, class NamedSequence>
+vector<string> get_type_name<TypeSequence,NamedSequence>::_all_names;
 
 // this class contains a copy of a dynamic_properties, which does not delete its
 // members when it deconstructs
@@ -169,7 +332,7 @@ struct dynamic_properties_copy: public dynamic_properties
          (const string&, const boost::any&, const boost::any&)>& fn)
             : dynamic_properties(fn) {}
     ~dynamic_properties_copy()
-{
+    {
         for (typeof(this->begin()) iter = this->begin(); iter != this->end();
              ++iter)
             iter->second = 0; // will be deleted when original dp deconstructs
@@ -376,10 +539,7 @@ public:
     ConstantPropertyMap(value_type c): _c(c) {}
     ConstantPropertyMap(){}
 
-    const value_type& operator[](const key_type& k) const
-    {
-        return _c;
-    }
+    const value_type& operator[](const key_type& k) const { return _c; }
 
 private:
     value_type _c;
@@ -428,105 +588,6 @@ void put(graph_tool::ConvertedPropertyMap<PropertyMap,Type> pmap,
 {
     pmap.put(k, val);
 }
-
-struct get_static_prop
-{
-    get_static_prop(dynamic_property_map& dmap, boost::any& smap)
-        : _dmap(dmap), _smap(smap) {}
-    
-    template <class PropertyMap>
-    void operator()(PropertyMap) const
-    {
-        PropertyMap* smap = get_static_property_map<PropertyMap>(&_dmap);
-        if (smap != 0)
-            _smap = boost::any(*smap);
-    }
-
-    dynamic_property_map& _dmap;
-    boost::any& _smap;
-};
-
-template <class IndexMap>
-boost::any prop(const string& name, IndexMap, 
-                const dynamic_properties& dp)
-{
-    typedef typename property_traits<IndexMap>::key_type key_t;
-    dynamic_property_map& dmap = 
-        find_property_map(dp, name, typeid(key_t));
-    boost::any prop;
-    typedef typename property_map_types::apply<value_types,IndexMap>::type 
-        properties_t;
-    mpl::for_each<properties_t>(get_static_prop(dmap, prop));
-    return prop;
-}
-
-// this functor tests whether or not a given boost::any object holds a type
-// contained in a given type Sequence
-template <class Sequence>
-struct belongs
-{
-    struct get_type
-    {
-        get_type(const boost::any& val, bool& found)
-            : _val(val), _found(found) {}
-        
-        template <class Type>
-        void operator()(Type) const
-        {
-            const Type* ptr = any_cast<Type>(&_val);
-            if (ptr != 0)
-                _found = true;
-        }
-
-        const boost::any& _val;
-        bool& _found;
-    };
-
-    bool operator()(const boost::any& prop)
-    {
-        bool found = false;
-        mpl::for_each<Sequence>(get_type(prop, found));
-        return found;
-    }
-};
-
-// this will return the name of a given type
-template <class TypeSequence = value_types>
-class get_type_name
-{
-public:
-    get_type_name(const char* type_names[])
-        : _type_names(type_names) {}
-
-    get_type_name()
-        : _type_names(type_names) {}
-
-    string operator()(const type_info& type) const
-    {
-        using namespace lambda;
-        string name;
-        mpl::for_each<TypeSequence>
-            (lambda::bind<void>(find_name(), lambda::_1, var(type), 
-                                var(_type_names), var(name)));
-        return name;
-    }
-
-private:
-    struct find_name
-    {
-        template <class Type>
-        void operator()(Type, const type_info& type, 
-                        const char** type_names,
-                        string& name) const
-        {
-            size_t index = mpl::find<TypeSequence,Type>::type::pos::value;
-            if (type == typeid(Type))
-                name = type_names[index];
-        }
-    };
-
-    const char** _type_names;
-};
 
 } // graph_tool namespace
 

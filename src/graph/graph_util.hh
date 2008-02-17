@@ -74,7 +74,7 @@ struct SoftNumEdges
 
 // computes the out-degree of a graph, ignoring self-edges
 template <class Graph>
-inline size_t 
+inline size_t
 out_degree_no_loops(typename graph_traits<Graph>::vertex_descriptor v,
                     const Graph &g)
 {
@@ -198,7 +198,7 @@ inline bool max(const bool& a, const bool& b) { return a || b; }
 }
 
 // std::vector<> stream i/o
-namespace std 
+namespace std
 {
 template <class Type>
 ostream& operator<<(ostream& out, const vector<Type>& vec)
@@ -218,7 +218,7 @@ template <class Type>
 istream& operator>>(istream& in, vector<Type>& vec)
 {
     vec.clear();
-    char c;    
+    char c;
     in >> c;
     while (c != ']')
     {

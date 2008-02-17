@@ -16,10 +16,37 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "graph_filtering.hh"
+#include <boost/python/type_id.hpp>
 
 using namespace graph_tool;
 using namespace graph_tool::detail;
 using namespace boost;
+
+// Whenever no implementation is called, the following exception is thrown
+graph_tool::ActionNotFound::ActionNotFound(boost::any graph_view,
+                                           const type_info& action,
+                                           const vector<string>& args)
+    : GraphException("")
+{
+    using python::detail::gcc_demangle;
+
+    string error =
+        "No static implementation was found for the desired routine. "
+        "This is a graph_tool bug. :-( Please follow but report "
+        "instructions at " PACKAGE_BUGREPORT ". What follows is debug "
+        "information.\n\n";
+
+    error += "Graph view: " + string(gcc_demangle(graph_view.type().name()))
+        + "\n";
+
+    error += "Action: " + string(gcc_demangle(action.name())) + "\n";
+    for (size_t i = 0; i < args.size(); ++i)
+    {
+        error += "Arg " + lexical_cast<string>(i+1) + ": " +
+            string(gcc_demangle(args[i].c_str())) + "\n";
+    }
+    this->SetError(error);
+}
 
 // this function retrieves a graph view stored in graph_views, or stores one if
 // non-existent
@@ -85,9 +112,9 @@ boost::any check_directed(const Graph &g, bool reverse, bool directed,
 // encapsulated
 template <class Graph, class EdgeFilter, class VertexFilter>
 boost::any
-check_filtered(const Graph &g, const EdgeFilter& edge_filter, 
-               const bool& e_invert, bool e_active, 
-               const VertexFilter& vertex_filter, const bool& v_invert, 
+check_filtered(const Graph &g, const EdgeFilter& edge_filter,
+               const bool& e_invert, bool e_active,
+               const VertexFilter& vertex_filter, const bool& v_invert,
                bool v_active, vector<boost::any>& graph_views, bool reverse,
                bool directed)
 {
@@ -104,7 +131,7 @@ check_filtered(const Graph &g, const EdgeFilter& edge_filter,
             fg_t init(g, e_filter, v_filter);
             fg_t& fg = retrieve_graph(graph_views, init);
             fg.m_edge_pred = e_filter;
-            fg.m_vertex_pred = v_filter;            
+            fg.m_vertex_pred = v_filter;
             return check_directed(fg, reverse, directed, graph_views);
         }
         else
@@ -143,45 +170,68 @@ boost::any GraphInterface::GetGraphView() const
 {
     // TODO: implement memoization
 
-    boost::any graph = 
-        check_filtered(_mg, _edge_filter_map, _edge_filter_invert, 
+    boost::any graph =
+        check_filtered(_mg, _edge_filter_map, _edge_filter_invert,
                        _edge_filter_active, _vertex_filter_map,
-                       _vertex_filter_invert, _vertex_filter_active, 
-                       const_cast<vector<boost::any>&>(_graph_views), 
+                       _vertex_filter_invert, _vertex_filter_active,
+                       const_cast<vector<boost::any>&>(_graph_views),
                        _reversed, _directed);
     return graph;
 }
 
-// these test whether or not the vertex and filter are active
+// these test whether or not the vertex and edge filters are active
 bool GraphInterface::IsVertexFilterActive() const
 { return _vertex_filter_active; }
 
 bool GraphInterface::IsEdgeFilterActive() const
 { return _edge_filter_active; }
 
+pair<string, bool> GraphInterface::GetVertexFilterProperty() const
+{ return make_pair(_vertex_filter_property, _vertex_filter_invert); }
+
+pair<string, bool> GraphInterface::GetEdgeFilterProperty() const
+{ return make_pair(_edge_filter_property, _edge_filter_invert); }
+
 // this function will reindex all the edges, in the order in which they are
 // found, taking care of preserving all the properties
 void GraphInterface::ReIndexEdges()
-{    
+{
     size_t n_edges = num_edges(_mg);
-    if (n_edges == 0)
+    if (n_edges == 0 || true)
         return;
+
+    vector<dynamic_property_map*> edge_props;
+    for (typeof(_properties.begin()) p = _properties.begin();
+         p != _properties.end(); ++p)
+        if (p->second->key() == typeid(edge_t))
+            edge_props.push_back(p->second);
+
     vector<pair<edge_t,bool> > edge_map
         (n_edges, make_pair(edge_t(), false));
+
     graph_traits<multigraph_t>::vertex_iterator v, v_end;
     graph_traits<multigraph_t>::out_edge_iterator e, e_end;
     for (tie(v, v_end) = vertices(_mg); v != v_end; ++v)
         for (tie(e, e_end) = out_edges(*v, _mg); e != e_end; ++e)
         {
             size_t index = _edge_index[*e];
+            if (index >= num_edges(_mg))
+                continue;
             if (index >= edge_map.size())
                 edge_map.resize(index+1);
             edge_map[index] = make_pair(*e, true);
         }
+
     size_t new_index = 0;
     for (tie(v, v_end) = vertices(_mg); v != v_end; ++v)
         for (tie(e, e_end) = out_edges(*v, _mg); e != e_end; ++e)
         {
+            if (_edge_index[*e] == new_index)
+            {
+                ++new_index;
+                continue;
+            }
+
             edge_t old_edge = edge_map[new_index].first;
             if (edge_map[new_index].second)
             {
@@ -191,14 +241,23 @@ void GraphInterface::ReIndexEdges()
                 edge_map[_edge_index[*e]] = make_pair(old_edge, true);
                 _edge_index[*e] = new_index;
                 edge_map[new_index] = make_pair(*e, true);
-                for (typeof(_properties.begin()) p = _properties.begin();
-                     p != _properties.end(); ++p)
-                    if (p->second->key() == typeid(edge_t))
+                for (size_t i = 0; i < edge_props.size(); ++i)
+                {
+                    boost::any temp = edge_props[i]->get(*e);
+                    if (edge_props[i]->value() == typeid(bool))
                     {
-                        boost::any temp = p->second->get(*e);
-                        p->second->put(*e, p->second->get(old_edge));
-                        p->second->put(old_edge, temp);
+                        // more vector<bool> weirdness
+                        bool val =
+                            any_cast<std::_Bit_reference>(edge_props[i]->
+                                                          get(old_edge));
+                        edge_props[i]->put(old_edge, val);
                     }
+                    else
+                    {
+                        edge_props[i]->put(*e, edge_props[i]->get(old_edge));
+                        edge_props[i]->put(old_edge, temp);
+                    }
+                }
             }
             else
             {
@@ -206,15 +265,26 @@ void GraphInterface::ReIndexEdges()
                 // assigned for this edge, and the properties must be
                 // copied over
                 size_t old_index = _edge_index[*e];
-                for (typeof(_properties.begin()) p = _properties.begin();
-                     p != _properties.end(); ++p)
-                    if (p->second->key() == typeid(edge_t))
+                for (size_t i = 0; i < edge_props.size(); ++i)
+                {
+                    if (edge_props[i]->value() == typeid(bool))
+                    {
+                        // more vector<bool> weirdness
+                        _edge_index[*e] = old_index;
+                        bool val =
+                            any_cast<std::_Bit_reference>(edge_props[i]->
+                                                          get(*e));
+                        _edge_index[*e] = new_index;
+                        edge_props[i]->put(*e, val);
+                    }
+                    else
                     {
                         _edge_index[*e] = old_index;
-                        boost::any val = p->second->get(*e);
+                        boost::any val = edge_props[i]->get(*e);
                         _edge_index[*e] = new_index;
-                        p->second->put(*e, val);
+                        edge_props[i]->put(*e, val);
                     }
+                }
             }
             ++new_index;
         }
@@ -297,18 +367,23 @@ void GraphInterface::SetVertexFilterProperty(string property, bool invert)
 #endif
 
     if (property == "")
+    {
         _vertex_filter_active = false;
-    
+        _vertex_filter_property = "";
+        return;
+    }
+
     try
     {
-        _vertex_filter_map = 
+        _vertex_filter_map =
             find_static_property_map<vertex_filter_t>(_properties, property);
+        _vertex_filter_property = property;
         _vertex_filter_invert = invert;
         _vertex_filter_active = true;
     }
     catch(property_not_found)
     {
-        throw GraphException("no boolean vertex property " + property + 
+        throw GraphException("no boolean vertex property " + property +
                              " found");
     }
 
@@ -321,18 +396,23 @@ void GraphInterface::SetEdgeFilterProperty(string property, bool invert)
 #endif
 
     if (property == "")
+    {
         _edge_filter_active = false;
+        _vertex_filter_property = "";
+        return;
+    }
 
     try
     {
-        _edge_filter_map = 
+        _edge_filter_map =
             find_static_property_map<edge_filter_t>(_properties, property);
         _edge_filter_invert = invert;
+        _vertex_filter_property = property;
         _edge_filter_active = true;
     }
     catch(property_not_found)
     {
-        throw GraphException("no boolean edge property " + property + 
+        throw GraphException("no boolean edge property " + property +
                              " found");
     }
 }

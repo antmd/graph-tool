@@ -239,7 +239,7 @@ struct nested_for_each;
 template <class Action> struct selected_types; // forward decl.
 
 template <class Action>
-selected_types<Action> 
+selected_types<Action>
 select_types(Action a, bool& found, any a1 = any(), any a2 = any(),
              any a3 = any(), any a4 = any(), any a5 = any())
 {

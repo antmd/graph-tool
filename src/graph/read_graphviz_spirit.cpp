@@ -5,15 +5,15 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 
 //
-// read_graphviz_spirit.hpp - 
+// read_graphviz_spirit.hpp -
 //   Initialize a model of the BGL's MutableGraph concept and an associated
 //  collection of property maps using a graph expressed in the GraphViz
-// DOT Language.  
+// DOT Language.
 //
 //   Based on the grammar found at:
 //   http://www.graphviz.org/cvs/doc/info/lang.html
 //
-//   See documentation for this code at: 
+//   See documentation for this code at:
 //     http://www.boost.org/libs/graph/doc/read-graphviz.html
 //
 
@@ -25,9 +25,9 @@
 #endif
 #include <boost/graph/graphviz.hpp>
 
-namespace boost { namespace detail { namespace graph { 
+namespace boost { namespace detail { namespace graph {
 
-bool read_graphviz(std::istream& in, mutate_graph& graph) 
+bool read_graphviz(std::istream& in, mutate_graph& graph)
 {
   using namespace boost;
   using namespace boost::spirit;
