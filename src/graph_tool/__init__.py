@@ -38,7 +38,9 @@ __license__="GPL version 3 or above"
 __URL__="http://graph-tool.forked.de"
 
 from . core import  __version__, Graph, GraphError, Vector_bool, \
-     Vector_int32_t, Vector_int64_t, Vector_double, Vector_long_double
+     Vector_int32_t, Vector_int64_t, Vector_double, Vector_long_double,\
+     Vector_string, value_types
 
 __all__ = ["Graph", "GraphError", "Vector_bool", "Vector_int32_t",
-           "Vector_int64_t", "Vector_double", "Vector_long_double"]
+           "Vector_int64_t", "Vector_double", "Vector_long_double",
+           "Vector_string", "value_types"]

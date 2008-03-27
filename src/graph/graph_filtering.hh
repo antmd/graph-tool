@@ -109,8 +109,14 @@ using namespace boost;
 class ActionNotFound: public GraphException
 {
 public:
-    ActionNotFound(boost::any graph_view, const type_info& action,
-                   const vector<string>& args);
+    ActionNotFound(const boost::any& graph_view, const type_info& action,
+                   const vector<const type_info*>& args);
+    virtual const char * what () const throw ();
+    virtual ~ActionNotFound() throw () {}
+private:
+    boost::any _graph_view;
+    const type_info& _action;
+    vector<const type_info*> _args;
 };
 #pragma GCC visibility pop
 
@@ -122,7 +128,8 @@ namespace detail
 //
 // The class MaskFilter below is the main filter predicate for the filtered
 // graph view, based on descriptor property maps.  It filters out edges or
-// vertices which are masked according to a property map with bool value type.
+// vertices which are masked according to a property map with bool (actually
+// uint8_t) value type.
 
 template <class DescriptorProperty>
 class MaskFilter
@@ -382,7 +389,7 @@ struct get_all_graph_views
         // undirected + filtereed + reversed graphs
         struct undirected_graphs:
             mpl::if_<AlwaysDirected,
-                     filtered_graphs,
+                     reversed_graphs,
                      typename mpl::if_<
                          NeverDirected,
                          typename mpl::transform<filtered_graphs,
@@ -436,9 +443,9 @@ struct split
 
 #ifndef NO_GRAPH_FILTERING
 struct edge_scalars:
-    mpl::vector<keep_all, bool> {};
+    mpl::vector<keep_all, uint8_t> {};
 struct vertex_scalars:
-    mpl::vector<keep_all, bool> {};
+    mpl::vector<keep_all, uint8_t> {};
 #else
 struct edge_scalars:
     mpl::vector<keep_all> {};
@@ -504,7 +511,8 @@ struct graph_action
             (boost::mpl::select_types(_a, found, gview));
         if (!found)
         {
-            throw ActionNotFound(gview, typeid(Action), vector<string>());
+            throw ActionNotFound(gview, typeid(Action),
+                                 vector<const type_info*>());
         }
     }
 
@@ -516,8 +524,8 @@ struct graph_action
             (boost::mpl::select_types(_a, found, gview, a1));
         if (!found)
         {
-            vector<string> args;
-            args.push_back(a1.type().name());
+            vector<const type_info*> args;
+            args.push_back(&a1.type());
             throw ActionNotFound(gview, typeid(Action), args);
         }
     }
@@ -530,9 +538,9 @@ struct graph_action
             (boost::mpl::select_types(_a, found, gview, a1, a2));
         if (!found)
         {
-            vector<string> args;
-            args.push_back(a1.type().name());
-            args.push_back(a2.type().name());
+            vector<const type_info*> args;
+            args.push_back(&a1.type());
+            args.push_back(&a2.type());
             throw ActionNotFound(gview, typeid(Action), args);
         }
     }
@@ -545,10 +553,10 @@ struct graph_action
             (boost::mpl::select_types(_a, found, gview, a1, a2, a3));
         if (!found)
         {
-            vector<string> args;
-            args.push_back(a1.type().name());
-            args.push_back(a2.type().name());
-            args.push_back(a3.type().name());
+            vector<const type_info*> args;
+            args.push_back(&a1.type());
+            args.push_back(&a2.type());
+            args.push_back(&a3.type());
             throw ActionNotFound(gview, typeid(Action), args);
         }
     }
@@ -562,11 +570,11 @@ struct graph_action
             (boost::mpl::select_types(_a, found, gview, a1, a2, a3,a4));
         if (!found)
         {
-            vector<string> args;
-            args.push_back(a1.type().name());
-            args.push_back(a2.type().name());
-            args.push_back(a3.type().name());
-            args.push_back(a4.type().name());
+            vector<const type_info*> args;
+            args.push_back(&a1.type());
+            args.push_back(&a2.type());
+            args.push_back(&a3.type());
+            args.push_back(&a4.type());
             throw ActionNotFound(gview, typeid(Action), args);
         }
     }

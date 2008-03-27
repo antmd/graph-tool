@@ -330,38 +330,73 @@ private:
     bool _valid;
 };
 
-template <class ValueType>
+// metafunction to determine wether or not to return copies or internal
+// references to property types
+struct return_reference
+{
+    template <class ValueType>
+    struct apply
+    {
+        // return actual references only for non-string and non-python::object
+        // classes
+
+        typedef typename mpl::if_<
+            typename mpl::and_<
+                is_class<ValueType>,
+                typename mpl::and_<
+                    typename mpl::not_<is_same<ValueType,
+                                               string> >::type,
+                    typename mpl::not_<is_same<ValueType,
+                                               python::object> >::type>::type
+                >::type,
+            mpl::bool_<true>,
+            mpl::bool_<false> >::type type;
+    };
+};
+
+template <class PropertyMap>
 class PythonPropertyMap
 {
 public:
-    PythonPropertyMap(const std::string& name, dynamic_property_map& pmap)
+    PythonPropertyMap(const std::string& name, PropertyMap& pmap)
         : _name(name), _pmap(pmap) {}
 
+    typedef typename property_traits<PropertyMap>::value_type value_type;
+
+    typedef typename mpl::if_<
+        typename return_reference::apply<value_type>::type,
+        value_type&,
+        value_type>::type reference;
+
     template <class PythonDescriptor>
-    ValueType GetValue(const PythonDescriptor& key) const
+    reference GetValue(const PythonDescriptor& key)
     {
         key.CheckValid();
-        any val = _pmap.get(key.GetDescriptor());
-        return extract_value(val, is_same<ValueType,bool>());
-    }
-
-    ValueType extract_value(boost::any val, false_type) const
-    {
-        return any_cast<ValueType>(val);
-    }
-
-    ValueType extract_value(boost::any val, true_type) const
-    {
-        // STL's vector<bool> weirdness
-        std::_Bit_reference& ref = any_cast<std::_Bit_reference&>(val);
-        return ref;
+        return get(_pmap, key.GetDescriptor());
     }
 
     template <class PythonDescriptor>
-    void SetValue(const PythonDescriptor& key, const ValueType& val)
+    void SetValue(const PythonDescriptor& key, const value_type& val)
+    {
+        set_value(key, val,
+                  is_convertible<
+                  typename property_traits<PropertyMap>::category,
+                  writable_property_map_tag>());
+    }
+
+    template <class PythonDescriptor>
+    void set_value(const PythonDescriptor& key, const value_type& val,
+                   true_type)
     {
         key.CheckValid();
-        _pmap.put(key.GetDescriptor(), val);
+        put(_pmap, key.GetDescriptor(), val);
+    }
+
+    template <class PythonDescriptor>
+    void set_value(const PythonDescriptor& key, const value_type& val,
+                   false_type)
+    {
+        throw GraphException("property '" + _name + "' is read-only");
     }
 
     size_t GetHash() const
@@ -371,12 +406,12 @@ public:
 
     std::string GetType() const
     {
-        return type_names[mpl::find<value_types,ValueType>::type::pos::value];
+        return type_names[mpl::find<value_types,value_type>::type::pos::value];
     }
 
 private:
     const std::string& _name;
-    dynamic_property_map& _pmap;
+    PropertyMap& _pmap;
 };
 
 

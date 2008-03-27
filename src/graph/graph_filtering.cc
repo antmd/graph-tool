@@ -23,10 +23,13 @@ using namespace graph_tool::detail;
 using namespace boost;
 
 // Whenever no implementation is called, the following exception is thrown
-graph_tool::ActionNotFound::ActionNotFound(boost::any graph_view,
+graph_tool::ActionNotFound::ActionNotFound(const boost::any& graph_view,
                                            const type_info& action,
-                                           const vector<string>& args)
-    : GraphException("")
+                                           const vector<const type_info*>& args)
+    : GraphException(""), _graph_view(graph_view),
+      _action(action), _args(args) {}
+
+const char * graph_tool::ActionNotFound::what () const throw ()
 {
     using python::detail::gcc_demangle;
 
@@ -36,16 +39,16 @@ graph_tool::ActionNotFound::ActionNotFound(boost::any graph_view,
         "instructions at " PACKAGE_BUGREPORT ". What follows is debug "
         "information.\n\n";
 
-    error += "Graph view: " + string(gcc_demangle(graph_view.type().name()))
+    error += "Graph view: " + string(gcc_demangle(_graph_view.type().name()))
         + "\n";
 
-    error += "Action: " + string(gcc_demangle(action.name())) + "\n";
-    for (size_t i = 0; i < args.size(); ++i)
+    error += "Action: " + string(gcc_demangle(_action.name())) + "\n";
+    for (size_t i = 0; i < _args.size(); ++i)
     {
         error += "Arg " + lexical_cast<string>(i+1) + ": " +
-            string(gcc_demangle(args[i].c_str())) + "\n";
+            string(gcc_demangle(_args[i]->name())) + "\n";
     }
-    this->SetError(error);
+    return error.c_str();
 }
 
 // this function retrieves a graph view stored in graph_views, or stores one if
@@ -244,19 +247,8 @@ void GraphInterface::ReIndexEdges()
                 for (size_t i = 0; i < edge_props.size(); ++i)
                 {
                     boost::any temp = edge_props[i]->get(*e);
-                    if (edge_props[i]->value() == typeid(bool))
-                    {
-                        // more vector<bool> weirdness
-                        bool val =
-                            any_cast<std::_Bit_reference>(edge_props[i]->
-                                                          get(old_edge));
-                        edge_props[i]->put(old_edge, val);
-                    }
-                    else
-                    {
-                        edge_props[i]->put(*e, edge_props[i]->get(old_edge));
-                        edge_props[i]->put(old_edge, temp);
-                    }
+                    edge_props[i]->put(*e, edge_props[i]->get(old_edge));
+                    edge_props[i]->put(old_edge, temp);
                 }
             }
             else
@@ -267,23 +259,10 @@ void GraphInterface::ReIndexEdges()
                 size_t old_index = _edge_index[*e];
                 for (size_t i = 0; i < edge_props.size(); ++i)
                 {
-                    if (edge_props[i]->value() == typeid(bool))
-                    {
-                        // more vector<bool> weirdness
-                        _edge_index[*e] = old_index;
-                        bool val =
-                            any_cast<std::_Bit_reference>(edge_props[i]->
-                                                          get(*e));
-                        _edge_index[*e] = new_index;
-                        edge_props[i]->put(*e, val);
-                    }
-                    else
-                    {
-                        _edge_index[*e] = old_index;
-                        boost::any val = edge_props[i]->get(*e);
-                        _edge_index[*e] = new_index;
-                        edge_props[i]->put(*e, val);
-                    }
+                    _edge_index[*e] = old_index;
+                    boost::any val = edge_props[i]->get(*e);
+                    _edge_index[*e] = new_index;
+                    edge_props[i]->put(*e, val);
                 }
             }
             ++new_index;

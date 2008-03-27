@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 #include <tr1/unordered_map>
+#include <boost/python/object.hpp>
 
 #include <boost/property_map.hpp>
 #include <boost/dynamic_property_map.hpp>
@@ -46,18 +47,25 @@ using namespace boost;
 // Metafunctions and data structures to deal with property maps
 
 // global property types. only these types are allowed in property maps
-typedef mpl::vector<bool, int32_t, int64_t, double, long double, string,
-                    vector<bool>, vector<int32_t>, vector<int64_t>,
-                    vector<double>, vector<long double>, vector<string> >
+// Note: we must avoid a vector<bool> (and bools in general) since it is quite
+//       broken, and use a vector<uint8_t> instead!
+//       see: http://www.gotw.ca/publications/N1211.pdf
+
+typedef mpl::vector<uint8_t, int32_t, int64_t, double, long double, string,
+                    vector<uint8_t>, vector<int32_t>, vector<int64_t>,
+                    vector<double>, vector<long double>, vector<string>,
+                    python::object>
     value_types;
 
-extern const char* type_names[]; // respective type names
+extern const char* type_names[]; // respective type names (defined in
+                                 // graph_properties.cc)
 
 // scalar types: types contained in value_types which are scalar
-typedef mpl::vector<bool, int32_t, int64_t, double, long double> scalar_types;
+typedef mpl::vector<uint8_t, int32_t, int64_t, double, long double>
+    scalar_types;
 
 // integer_types: scalar types which are integer
-typedef mpl::vector<bool, int32_t, int64_t> integer_types;
+typedef mpl::vector<uint8_t, int32_t, int64_t> integer_types;
 
 // floating_types: scalar types which are floating point
 typedef mpl::vector<double, long double> floating_types;
@@ -198,9 +206,10 @@ boost::any prop(const string& name, IndexMap,
     typedef typename property_map_types::apply<value_types,IndexMap>::type
         properties_t;
     bool found = false;
-    mpl::for_each<properties_t>(bind<void>(get_static_prop(), _1,
-                                           &dmap, var(prop),
-                                           var(found)));
+    mpl::for_each<properties_t>(lambda::bind<void>(get_static_prop(),
+                                                   lambda::_1,
+                                                   &dmap, var(prop),
+                                                   var(found)));
     if (!found)
         throw PropertyNotFound(name, typeid(key_t),
                                "This is a graph-tool bug. :-( "
@@ -224,6 +233,10 @@ struct get_static_prop
         }
     }
 };
+
+boost::any vertex_prop(const string& name, const GraphInterface& gi);
+boost::any edge_prop(const string& name, const GraphInterface& gi);
+boost::any graph_prop(const string& name, const GraphInterface& gi);
 
 // this functor tests whether or not a given boost::any object holds a type
 // contained in a given type Sequence
@@ -381,8 +394,8 @@ struct AttemptAnyConversion
     {
         try
         {
-            _value = lexical_cast<T>(any_cast<Source>(_source));
-            _success = true;
+           _value = lexical_cast<T>(any_cast<Source>(_source));
+           _success = true;
         }
         catch (bad_any_cast){}
         catch (bad_lexical_cast){}

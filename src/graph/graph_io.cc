@@ -22,20 +22,211 @@
 #include "graph_util.hh"
 
 #include <iostream>
-#include <boost/graph/graphml.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/iostreams/categories.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/filter/bzip2.hpp>
+#include <boost/iostreams/device/file_descriptor.hpp>
 #include <boost/iostreams/device/file.hpp>
 #include <boost/lambda/bind.hpp>
+#include <boost/graph/graphml.hpp>
 #include <boost/graph/graphviz.hpp>
+#include <boost/python/extract.hpp>
+#include <boost/lexical_cast.hpp>
 
 using namespace std;
 using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
 
+//
+// String representation of individual data types. We have to take care
+// specifically that no information is lost with floating point I/O.
+//
+
+namespace boost
+{
+template <>
+string lexical_cast<string,uint8_t>(const uint8_t& val)
+{
+
+    // "chars" should be printed as numbers, since they can be non-printable
+    return lexical_cast<std::string>(int(val));
+}
+
+template <>
+uint8_t lexical_cast<uint8_t,string>(const string& val)
+{
+
+    // "chars" should be printed as numbers, since they can be non-printable
+    return uint8_t(lexical_cast<int>(val));
+}
+
+// double and long double should be printed in hexadecimal format to preserve
+// internal representation
+template <>
+string lexical_cast<string,double>(const double& val)
+{
+    char* str = 0;
+    asprintf(&str, "%la", val);
+    std::string ret = str;
+    free(str);
+    return ret;
+}
+
+template <>
+double lexical_cast<double,string>(const string& val)
+{
+    double ret;
+    int nc = sscanf(val.c_str(), "%la", &ret);
+    if (nc != 1)
+        throw bad_lexical_cast();
+    return ret;
+}
+
+template <>
+string lexical_cast<string,long double>(const long double& val)
+{
+    char* str = 0;
+    asprintf(&str, "%La", val);
+    std::string ret = str;
+    free(str);
+    return ret;
+}
+
+template <>
+long double lexical_cast<long double,string>(const string& val)
+{
+    long double ret;
+    int nc = sscanf(val.c_str(), "%La", &ret);
+    if (nc != 1)
+        throw bad_lexical_cast();
+    return ret;
+}
+
+}
+
+// vector io
+namespace std
+{
+// string vectors need special attention, since separators must be properly
+// escaped.
+template <>
+ostream& operator<<(ostream& out, const vector<string>& vec)
+{
+    for (size_t i = 0; i < vec.size(); ++i)
+    {
+        string s = vec[i];
+        // escape separators
+        boost::replace_all(s, "\\", "\\\\");
+        boost::replace_all(s, ", ", ",\\ ");
+
+        out << s;
+        if (i < vec.size() - 1)
+            out << ", ";
+    }
+    return out;
+}
+
+template <>
+istream& operator>>(istream& in, vector<string>& vec)
+{
+    using namespace boost;
+    using namespace boost::algorithm;
+    using namespace boost::xpressive;
+
+    vec.clear();
+    string data;
+    while (in.good())
+    {
+        string line;
+        getline(in, line);
+        data += line;
+    }
+
+    sregex re = sregex::compile(", ");
+    sregex_token_iterator iter(data.begin(), data.end(), re, -1), end;
+    for (; iter != end; ++iter)
+    {
+        vec.push_back(*iter);
+        // un-escape separators
+        boost::replace_all(vec.back(), ",\\ ", ", ");
+        boost::replace_all(vec.back(), "\\\\", "\\");
+    }
+    return in;
+}
+}
+
+//
+// Persistent IO of python::object types. All the magic is done in python,
+// through the object_pickler and object_unplickler below
+//
+
+namespace graph_tool
+{
+python::object object_pickler;
+python::object object_unpickler;
+}
+
+namespace boost
+{
+template <>
+string lexical_cast<string,python::object>(const python::object & o)
+{
+    stringstream s;
+    object_pickler(OStream(s), o);
+    return s.str();
+    return "";
+}
+
+template <>
+python::object lexical_cast<python::object,string>(const string& ps)
+{
+    stringstream s(ps);
+    python::object o;
+    o = object_unpickler(IStream(s));
+    return o;
+}
+}
+
+// the following source & sink provide iostream access to python file-like
+// objects
+
+class python_file_device
+{
+public:
+    typedef char                 char_type;
+    typedef iostreams::seekable_device_tag  category;
+
+    python_file_device(python::object file): _file(file) {}
+    std::streamsize read(char* s, std::streamsize n)
+    {
+        python::object pbuf = _file.attr("read")(n);
+        string buf = python::extract<string>(pbuf);
+        for (size_t i = 0; i < buf.size(); ++i)
+            s[i] = buf[i];
+        return buf.size();
+    }
+
+    std::streamsize write(const char* s, std::streamsize n)
+    {
+        string buf(s, s+n);
+        python::object pbuf(buf);
+        _file.attr("write")(pbuf);
+        return n;
+    }
+
+    iostreams::stream_offset seek(iostreams::stream_offset off,
+                                  std::ios_base::seekdir way)
+    {
+        _file.attr("seek")(off, int(way));
+        return python::extract<iostreams::stream_offset>(_file.attr("tell")());
+    }
+
+private:
+    python::object _file;
+};
 
 // this functor will check whether a value is of a specific type, create a
 // corresponding vector_property_map and add the value to it
@@ -208,25 +399,19 @@ struct graph_traits<FakeUndirGraph<Graph> >
 
 
 //==============================================================================
-// ReadFromFile(file, format)
+// ReadFromFile(file, pfile, format)
 //==============================================================================
 
-
-void GraphInterface::ReadFromFile(string file, string format)
+void build_stream
+    (boost::iostreams::filtering_stream<boost::iostreams::input>& stream,
+     const string& file,  python::object& pfile, std::ifstream& file_stream)
 {
-    bool graphviz = false;
-    if (format == "dot")
-        graphviz = true;
-    else if (format != "xml")
-        throw GraphException("error reading from file '" + file +
-                             "': requested invalid format '" + format + "'");
-    try
+    stream.reset();
+    if (file == "-")
+        stream.push(std::cin);
+    else
     {
-        boost::iostreams::filtering_stream<boost::iostreams::input> stream;
-        std::ifstream file_stream;
-        if (file == "-")
-            stream.push(std::cin);
-        else
+        if (pfile == python::object())
         {
             file_stream.open(file.c_str(), std::ios_base::in |
                              std::ios_base::binary);
@@ -237,7 +422,31 @@ void GraphInterface::ReadFromFile(string file, string format)
                 stream.push(boost::iostreams::bzip2_decompressor());
             stream.push(file_stream);
         }
-        stream.exceptions(ios_base::badbit);
+        else
+        {
+            python_file_device src(pfile);
+            stream.push(src);
+        }
+    }
+    stream.exceptions(ios_base::badbit);
+}
+
+
+void GraphInterface::ReadFromFile(string file, python::object pfile,
+                                  string format)
+{
+    bool graphviz = false;
+    if (format == "dot")
+        graphviz = true;
+    else if (format != "xml")
+        throw GraphException("error reading from file '" + file +
+                             "': requested invalid format '" + format + "'");
+    try
+    {
+        boost::iostreams::filtering_stream<boost::iostreams::input>
+            stream;
+        std::ifstream file_stream;
+        build_stream(stream, file, pfile, file_stream);
 
         _properties = dynamic_properties();
         _mg.clear();
@@ -246,15 +455,24 @@ void GraphInterface::ReadFromFile(string file, string format)
             dp(create_dynamic_map<vertex_index_map_t, edge_index_map_t>
                (_vertex_index, _edge_index));
         GraphEdgeIndexWrap<multigraph_t,edge_index_map_t> wg(_mg, _edge_index);
-        if (_directed)
+        _directed = true;
+        try
         {
             if (graphviz)
                 read_graphviz(stream, wg, dp, "vertex_name");
             else
                 read_graphml(stream, wg, dp);
         }
-        else
+        catch (const undirected_graph_error&)
         {
+            _directed = false;
+            file_stream.close();
+            if (pfile != python::object())
+            {
+                python_file_device src(pfile);
+                src.seek(0, std::ios_base::beg);
+            }
+            build_stream(stream, file, pfile, file_stream);
             FakeUndirGraph<GraphEdgeIndexWrap<multigraph_t,edge_index_map_t> >
                 ug(wg);
             if (graphviz)
@@ -329,7 +547,8 @@ struct generate_index
     }
 };
 
-void GraphInterface::WriteToFile(string file, string format)
+void GraphInterface::WriteToFile(string file, python::object pfile,
+                                 string format)
 {
     bool graphviz = false;
     if (format == "dot")
@@ -345,14 +564,22 @@ void GraphInterface::WriteToFile(string file, string format)
             stream.push(std::cout);
         else
         {
-            file_stream.open(file.c_str(), std::ios_base::out |
-                                           std::ios_base::binary);
-            file_stream.exceptions(ios_base::badbit | ios_base::failbit);
-            if (boost::ends_with(file,".gz"))
-                stream.push(boost::iostreams::gzip_compressor());
-            if (boost::ends_with(file,".bz2"))
-                stream.push(boost::iostreams::bzip2_compressor());
-            stream.push(file_stream);
+            if (pfile == python::object())
+            {
+                file_stream.open(file.c_str(), std::ios_base::out |
+                                 std::ios_base::binary);
+                file_stream.exceptions(ios_base::badbit | ios_base::failbit);
+                if (boost::ends_with(file,".gz"))
+                    stream.push(boost::iostreams::gzip_compressor());
+                if (boost::ends_with(file,".bz2"))
+                    stream.push(boost::iostreams::bzip2_compressor());
+                stream.push(file_stream);
+            }
+            else
+            {
+                python_file_device sink(pfile);
+                stream.push(sink);
+            }
         }
         stream.exceptions(ios_base::badbit | ios_base::failbit);
 

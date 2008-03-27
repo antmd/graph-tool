@@ -33,7 +33,8 @@ namespace graph_tool
 const char* type_names[] =
     {"bool", "int32_t", "int64_t", "double", "long double",
      "string", "vector<bool>","vector<int32_t>", "vector<int64_t>",
-     "vector<double>", "vector<long double>", "vector<string>"};
+     "vector<double>", "vector<long double>", "vector<string>",
+     "python::object"};
 
 
 PropertyNotFound::PropertyNotFound(const string& name, const type_info& key,
@@ -111,6 +112,21 @@ find_property_map(const dynamic_properties& dp, string name,
             return *iter->second;
 
     throw PropertyNotFound(name, key_type);
+}
+
+boost::any vertex_prop(const string& name, const GraphInterface& gi)
+{
+    return prop(name, gi._vertex_index, gi._properties);
+}
+boost::any edge_prop(const string& name, const GraphInterface& gi)
+{
+    return prop(name, gi._edge_index, gi._properties);
+}
+
+boost::any graph_prop(const string& name, const GraphInterface& gi)
+{
+    ConstantPropertyMap<size_t,graph_property_tag> graph_index(0);
+    return prop(name, graph_index, gi._properties);
 }
 
 void GraphInterface::RemoveVertexProperty(string property)

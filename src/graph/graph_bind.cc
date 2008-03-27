@@ -17,6 +17,7 @@
 
 #include "graph.hh"
 #include "graph_python_interface.hh"
+#include "graph_util.hh"
 
 #include <boost/python.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
@@ -80,6 +81,27 @@ struct vector_from_list
     }
 };
 
+template <class ValueType>
+bool vector_equal_compare(const vector<ValueType>& v1,
+                          const vector<ValueType>& v2)
+{
+    if (v1.size() != v2.size())
+        return false;
+    for (size_t i = 0; i < v1.size(); ++i)
+    {
+        if (v1[i] != v2[i])
+            return false;
+    }
+    return true;
+}
+
+template <class ValueType>
+bool vector_nequal_compare(const vector<ValueType>& v1,
+                           const vector<ValueType>& v2)
+{
+    return !vector_equal_compare(v1,v2);
+}
+
 struct export_vector_types
 {
     template <class ValueType>
@@ -90,7 +112,9 @@ struct export_vector_types
             type_name = "long_double";
         string name = "Vector_" + type_name;
         class_<vector<ValueType> >(name.c_str())
-            .def(vector_indexing_suite<vector<ValueType> >());
+            .def(vector_indexing_suite<vector<ValueType> >())
+            .def("__eq__", &vector_equal_compare<ValueType>)
+            .def("__ne__", &vector_nequal_compare<ValueType>);
         vector_from_list<ValueType>();
     }
 };
@@ -127,6 +151,23 @@ struct pair_to_tuple
         return incref(t.ptr());
     }
 };
+
+// persistent python object IO
+namespace graph_tool
+{
+extern python::object object_pickler;
+extern python::object object_unpickler;
+}
+
+void set_pickler(python::object o)
+{
+    graph_tool::object_pickler = o;
+}
+
+void set_unpickler(python::object o)
+{
+    graph_tool::object_unpickler = o;
+}
 
 BOOST_PYTHON_MODULE(libgraph_tool_core)
 {
@@ -186,6 +227,12 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
         .def("InitSignalHandling", &GraphInterface::InitSignalHandling);
 
     to_python_converter<pair<string,bool>, pair_to_tuple<string,bool> >();
+
+    class_<IStream>("IStream", no_init).def("Read", &IStream::Read);
+    class_<OStream>("OStream", no_init).def("Write", &OStream::Write).
+        def("Flush", &OStream::Flush);
+    def("set_pickler", &set_pickler);
+    def("set_unpickler", &set_unpickler);
 
     class_<LibInfo>("mod_info")
         .add_property("name", &LibInfo::GetName)

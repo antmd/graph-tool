@@ -28,52 +28,127 @@ using namespace graph_tool;
 
 // this will register the property maps types and all its possible access
 // functions to python
-struct export_property_map
+struct export_vertex_property_map
 {
-    export_property_map(const string& name, const GraphInterface &gi)
+    export_vertex_property_map(const string& name, const GraphInterface &gi)
         : _name(name), _gi(gi) {}
 
-    template <class ValueType>
+    template <class PropertyMap>
+    void operator()(PropertyMap) const
+    {
+        typedef PythonPropertyMap<PropertyMap> pmap_t;
+
+        string type_name =
+            type_names[mpl::find<value_types,
+                       typename pmap_t::value_type>::type::pos::value];
+        string class_name = _name + "<" + type_name + ">";
+
+        typedef typename mpl::if_<
+            typename return_reference::apply<typename pmap_t::value_type>::type,
+            python::return_internal_reference<>,
+            python::return_value_policy<python::return_by_value> >
+            ::type return_policy;
+
+        python::class_<pmap_t> pclass(class_name.c_str(),
+                                      python::no_init);
+        pclass.def("__hash__", &pmap_t::GetHash)
+            .def("value_type", &pmap_t::GetType)
+            .def("__getitem__", &pmap_t::template GetValue<PythonVertex>,
+                 return_policy())
+            .def("__setitem__", &pmap_t::template SetValue<PythonVertex>);
+    }
+
+    string _name;
+    const GraphInterface& _gi;
+};
+
+struct export_edge_property_map
+{
+    export_edge_property_map(const string& name, const GraphInterface &gi)
+        : _name(name), _gi(gi) {}
+
+    template <class PropertyMap>
     struct export_access
     {
-        typedef PythonPropertyMap<ValueType> pmap_t;
+        typedef PythonPropertyMap<PropertyMap> pmap_t;
 
         export_access(python::class_<pmap_t>& pclass)
             : _pclass(pclass) {}
+
+        typedef typename mpl::if_<
+            typename return_reference::apply<typename pmap_t::value_type>::type,
+            python::return_internal_reference<>,
+            python::return_value_policy<python::return_by_value> >
+            ::type return_policy;
 
         template <class Graph>
         void operator()(Graph*) const
         {
             _pclass
                 .def("__getitem__",
-                     &pmap_t::template GetValue<PythonEdge<Graph> >)
+                     &pmap_t::template GetValue<PythonEdge<Graph> >,
+                     return_policy())
                 .def("__setitem__",
                      &pmap_t::template SetValue<PythonEdge<Graph> >);
         }
 
-        python::class_<PythonPropertyMap<ValueType> >& _pclass;
+        python::class_<PythonPropertyMap<PropertyMap> >& _pclass;
     };
 
-    template <class ValueType>
-    void operator()(ValueType) const
+    template <class PropertyMap>
+    void operator()(PropertyMap) const
     {
+
+        typedef PythonPropertyMap<PropertyMap> pmap_t;
+
         string type_name =
-            type_names[mpl::find<value_types,ValueType>::type::pos::value];
+            type_names[mpl::find<value_types,
+                       typename pmap_t::value_type>::type::pos::value];
         string class_name = _name + "<" + type_name + ">";
 
-        typedef PythonPropertyMap<ValueType> pmap_t;
-        python::class_<pmap_t> pclass(class_name.c_str(), python::no_init);
+        python::class_<pmap_t> pclass(class_name.c_str(),
+                                      python::no_init);
         pclass.def("__hash__", &pmap_t::GetHash)
-            .def("value_type", &pmap_t::GetType)
-            .def("__getitem__", &pmap_t::template GetValue<PythonVertex>)
-            .def("__setitem__", &pmap_t::template SetValue<PythonVertex>)
-            .def("__getitem__", &pmap_t::template GetValue<GraphInterface>)
-            .def("__setitem__", &pmap_t::template SetValue<GraphInterface>);
+            .def("value_type", &pmap_t::GetType);
 
         typedef mpl::transform<graph_tool::detail::all_graph_views,
                                mpl::quote1<add_pointer> >::type graph_views;
 
-        mpl::for_each<graph_views>(export_access<ValueType>(pclass));
+        mpl::for_each<graph_views>(export_access<PropertyMap>(pclass));
+    }
+
+    string _name;
+    const GraphInterface& _gi;
+};
+
+struct export_graph_property_map
+{
+    export_graph_property_map(const string& name, const GraphInterface &gi)
+        : _name(name), _gi(gi) {}
+
+    template <class PropertyMap>
+    void operator()(PropertyMap) const
+    {
+        typedef PythonPropertyMap<PropertyMap> pmap_t;
+
+        string type_name =
+            type_names[mpl::find<value_types,
+                       typename pmap_t::value_type>::type::pos::value];
+        string class_name = _name + "<" + type_name + ">";
+
+        typedef typename mpl::if_<
+            typename return_reference::apply<typename pmap_t::value_type>::type,
+            python::return_internal_reference<>,
+            python::return_value_policy<python::return_by_value> >
+            ::type return_policy;
+
+        python::class_<pmap_t> pclass(class_name.c_str(),
+                                      python::no_init);
+        pclass.def("__hash__", &pmap_t::GetHash)
+            .def("value_type", &pmap_t::GetType)
+            .def("__getitem__", &pmap_t::template GetValue<GraphInterface>,
+                 return_policy())
+            .def("__setitem__", &pmap_t::template SetValue<GraphInterface>);
     }
 
     string _name;
@@ -82,5 +157,25 @@ struct export_property_map
 
 void export_python_properties(const GraphInterface& gi)
 {
-    mpl::for_each<value_types>(export_property_map("PropertyMap", gi));
+    typedef property_map_types::apply<
+        value_types,
+        GraphInterface::vertex_index_map_t,
+        mpl::bool_<true>
+        >::type vertex_property_maps;
+    typedef property_map_types::apply<
+        value_types,
+        GraphInterface::edge_index_map_t,
+        mpl::bool_<true>
+        >::type edge_property_maps;
+    typedef property_map_types::apply<
+        value_types,
+        ConstantPropertyMap<size_t,graph_property_tag>,
+        mpl::bool_<false>
+        >::type graph_property_maps;
+    mpl::for_each<vertex_property_maps>
+        (export_vertex_property_map("VertexPropertyMap", gi));
+    mpl::for_each<edge_property_maps>
+        (export_edge_property_map("EdgePropertyMap", gi));
+    mpl::for_each<graph_property_maps>
+        (export_graph_property_map("GraphPropertyMap", gi));
 }

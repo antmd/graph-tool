@@ -1,0 +1,63 @@
+#! /usr/bin/env python
+# graph_tool.py -- a general graph manipulation python module
+#
+# Copyright (C) 2007 Tiago de Paula Peixoto <tiago@forked.de>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import pickle, base64
+from StringIO import StringIO
+import libgraph_tool_core
+
+# IStream and OStream need to be tweaked a little to become a real file-like
+# object...
+
+def IStream_read(self, n = None):
+    if n == None:
+        data = ""
+        new_data = None
+        while new_data != "":
+            new_data = self.Read(1)
+            data += new_data
+        return data
+    else:
+        return self.Read(n)
+
+def IStream_readline(self, n = None):
+    c = None
+    line = ""
+    while c != "" and c != "\n" and len(line) < n:
+        c = self.Read(1)
+        line += c
+    return line
+
+def OStream_write(self, s):
+    self.Write(s, len(s))
+
+libgraph_tool_core.IStream.read = IStream_read
+libgraph_tool_core.IStream.readline = IStream_readline
+libgraph_tool_core.OStream.write = OStream_write
+
+# define and set the pickler/unpickler functions
+def pickler(stream, obj):
+    sstream = StringIO()
+    pickle.dump(obj, sstream)
+    stream.write(base64.b64encode(sstream.getvalue()))
+
+def unpickler(stream):
+    sstream = StringIO(base64.b64decode(stream.read()))
+    return pickle.load(sstream)
+
+libgraph_tool_core.set_pickler(pickler)
+libgraph_tool_core.set_unpickler(unpickler)

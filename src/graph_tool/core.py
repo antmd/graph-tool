@@ -36,9 +36,12 @@ sys.setdlopenflags(_orig_dlopen_flags) # reset it to normal case to avoid
                                        # unnecessary symbol collision
 __version__ = libgraph_tool_core.mod_info().version
 
+import io # sets up libgraph_tool_core io routines
+
 import os, os.path, re, struct, fcntl, termios, gzip, bz2, string,\
        textwrap, time, signal, traceback, shutil, time, math, inspect, \
        functools, types
+from StringIO import StringIO
 
 ################################################################################
 # Utility functions
@@ -155,26 +158,13 @@ def _limit_args(allowed_vals):
         return wrap
     return decorate
 
-def _lazy_load(func):
-    """Decorator which will call the 'load' method before executing the
-    decorated function, thus implementing 'lazy loading'."""
-    @_wraps(func)
-    def wrap(*args, **kwargs):
-        self = args[0]
-        if self.lazy_filename != None and self.lazy_format != None:
-            self.load(self.lazy_filename, self.lazy_format)
-            self.lazy_filename = None
-            self.lazy_format = None
-        return func(*args, **kwargs)
-    return wrap
-
 ################################################################################
 # Graph class
 # The main graph interface
 ################################################################################
 
 from libgraph_tool_core import GraphError, Vector_bool, Vector_int32_t, \
-     Vector_int64_t, Vector_double, Vector_long_double
+     Vector_int64_t, Vector_double, Vector_long_double, Vector_string
 
 class Graph(object):
     """The main graph type which encapsulates the GraphInterface"""
@@ -182,15 +172,10 @@ class Graph(object):
     def __init__(self, g = None):
         if g == None:
             self.__graph = libgraph_tool_core.GraphInterface()
-            self.lazy_filename = None
-            self.lazy_format = None
         else:
             self.__graph = libgraph_tool_core.GraphInterface(g.__graph)
-            self.lazy_filename = g.lazy_filename
-            self.lazy_format = g.lazy_format
 
     @_handle_exceptions
-    @_lazy_load
     def copy(self):
         """Returns a deep copy of self"""
         new_graph = Graph()
@@ -200,31 +185,26 @@ class Graph(object):
     # Graph access
 
     @_handle_exceptions
-    @_lazy_load
     def vertices(self):
         """Return iterator over the vertices"""
         return self.__graph.Vertices()
 
     @_handle_exceptions
-    @_lazy_load
     def vertex(self, i):
         """Return the i-th vertex from the graph"""
         return self.__graph.Vertex(i)
 
     @_handle_exceptions
-    @_lazy_load
     def edges(self):
         """Return iterator over the edges"""
         return self.__graph.Edges()
 
     @_handle_exceptions
-    @_lazy_load
     def add_vertex(self):
         """Add a new vertex to the graph, and return it"""
         return self.__graph.AddVertex()
 
     @_handle_exceptions
-    @_lazy_load
     def remove_vertex(self, vertex, reindex_edges=True):
         """Remove a vertex from the graph"""
         k = vertex.in_degree() + vertex.out_degree()
@@ -233,14 +213,12 @@ class Graph(object):
             self.__graph.ReIndexEdges()
 
     @_handle_exceptions
-    @_lazy_load
     def add_edge(self, source, target):
         """Add a new edge from 'source' to 'target' to the graph, and return
         it"""
         return self.__graph.AddEdge(source, target)
 
     @_handle_exceptions
-    @_lazy_load
     def remove_edge(self, edge, reindex=True):
         """Remove a edge from the graph"""
         self.__graph.RemoveEdge(edge)
@@ -248,20 +226,17 @@ class Graph(object):
             self.__graph.ReIndexEdges()
 
     @_handle_exceptions
-    @_lazy_load
     def reindex_edges(self):
         """re-index all edges from 0 to g.num_edges() - 1"""
         self.__graph.ReIndexEdges()
 
     @_handle_exceptions
-    @_lazy_load
     def clear(self):
         """Remove all vertices and edges from the graph (as well as its
         properties)"""
         self.__graph.Clear()
 
     @_handle_exceptions
-    @_lazy_load
     def __get_vertex_properties(self):
         return PropertyDict(self, self.__graph.GetVertexProperties(),
                             lambda g, key: g.get_vertex_property(key),
@@ -273,7 +248,6 @@ class Graph(object):
                                  doc="Dictionary of vertex properties")
 
     @_handle_exceptions
-    @_lazy_load
     def __get_edge_properties(self):
         return PropertyDict(self, self.__graph.GetEdgeProperties(),
                             lambda g, key: g.get_edge_property(key),
@@ -285,7 +259,6 @@ class Graph(object):
                                  doc="Dictionary of edge properties")
 
     @_handle_exceptions
-    @_lazy_load
     def __get_graph_properties(self):
         valdict = dict((k, v[self.__graph]) \
                        for k,v in self.__graph.GetGraphProperties().iteritems())
@@ -296,7 +269,6 @@ class Graph(object):
                             lambda g, key: g.__graph.GetGraphProperties()[key].value_type())
 
     @_handle_exceptions
-    @_lazy_load
     def __set_graph_properties(self, val):
         props = self.__graph.GetGraphProperties()
         for k,v in val.iteritems():
@@ -325,94 +297,97 @@ class Graph(object):
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
     def load(self, filename, format="auto"):
-        """Load graph from 'filename'. The format is guessed from the file name,
-        or can be specified by 'format', which can be either 'xml' or 'dot'."""
-
-        if format == 'auto':
-            self.__graph.ReadFromFile(filename)
+        """Load graph from 'filename' (which can also be a file-like
+        object). The format is guessed from the file name, or can be specified
+        by 'format', which can be either 'xml' or 'dot'."""
+        if format == 'auto' and isinstance(filename, str):
+            if filename.endswith(".xml") or filename.endswith(".xml.gz") or \
+                   filename.endswith(".xml.bz2"):
+                format = "xml"
+            elif filename.endswith(".dot") or filename.endswith(".dot.gz") or \
+                     filename.endswith(".dot.bz2"):
+                format = "dot"
+            else:
+                libgraph_tool_core.raise_error\
+                    ("cannot determine file format of: " + filename )
+        elif format == "auto":
+            format = "xml"
+        if isinstance(filename, str):
+            self.__graph.ReadFromFile(filename, None, format)
         else:
-            self.__graph.ReadFromFile(filename, format)
-        self.lazy_filename = filename
-        self.lazy_format = format
-
-    @_handle_exceptions
-    def lazy_load(self, filename, format="auto"):
-        """Calls load() with the same arguments when the graph is first
-        accessed."""
-
-        self.lazy_filename = filename
-        self.lazy_format = format
+            self.__graph.ReadFromFile("", filename, format)
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
-    @_lazy_load
     def save(self, filename, format="auto"):
         """Save graph to file. The format is guessed from the 'file' name, or
         can be specified by 'format', which can be either 'xml' or 'dot'."""
-
-        if format == 'auto':
-            self.__graph.WriteToFile(filename)
+        if format == 'auto' and isinstance(filename, str):
+            if filename.endswith(".xml") or filename.endswith(".xml.gz") or \
+                   filename.endswith(".xml.bz2"):
+                format = "xml"
+            elif filename.endswith(".dot") or filename.endswith(".dot.gz") or \
+                     filename.endswith(".dot.bz2"):
+                format = "dot"
+            else:
+                libgraph_tool_core.raise_error\
+                    ("cannot determine file format of: " + filename )
+        elif format == "auto":
+            format = "xml"
+        if isinstance(filename, str):
+            self.__graph.WriteToFile(filename, None, format)
         else:
-            self.__graph.WriteToFile(filename, format)
+            self.__graph.WriteToFile("", filename, format)
 
     # Graph filtering
     __groups.append("Filtering")
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
-    @_lazy_load
     def directed(self):
         """Treat graph as directed (default)."""
         self.__graph.SetDirected(True)
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
-    @_lazy_load
     def undirected(self):
         """Treat graph as undirected."""
         self.__graph.SetDirected(False)
 
     @_handle_exceptions
-    @_lazy_load
     def set_directed(self, is_directed):
         """Set the directedness of the graph"""
         self.__graph.SetDirected(is_directed)
 
     @_handle_exceptions
-    @_lazy_load
     def is_directed(self):
         """Get the directedness of the graph"""
         return self.__graph.GetDirected()
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
-    @_lazy_load
     def reversed(self):
         """Reverse the direction of the edges."""
         self.__graph.SetReversed(not self.__graph.GetReversed())
 
     @_handle_exceptions
-    @_lazy_load
     def set_reversed(self, is_reversed):
         """Reverse the direction of the edges, if 'reversed' is True, or
         maintain the original direction otherwise."""
         self.__graph.SetReversed(is_reversed)
 
     @_handle_exceptions
-    @_lazy_load
     def is_reversed(self):
         """Return 'True' if the edges are reversed, and 'False' otherwise."""
         return self.__graph.GetReversed()
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
-    @_lazy_load
     def set_vertex_filter(self, property, inverted=False):
         """Choose vertex boolean property"""
         self.__graph.SetVertexFilterProperty(property, inverted)
 
     @_handle_exceptions
-    @_lazy_load
     def get_vertex_filter(self):
         """Get the vertex filter property and whether or not it is inverted, or
         None if filter is not active"""
@@ -421,22 +396,19 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
-    @_lazy_load
     def set_edge_filter(self, property, inverted=False):
         """Choose edge boolean property"""
         self.__graph.SetEdgeFilterProperty(property, inverted)
 
     @_handle_exceptions
-    @_lazy_load
-    def get_edge_filter(self, property):
+    def get_edge_filter(self):
         """Get the edge filter property and whether or not it is inverted, or
         None if filter is not active"""
-        if self.__Graph.IsEdgeFilterActive():
-            return self.__Graph.GetEdgeFilterProperty()
+        if self.__graph.IsEdgeFilterActive():
+            return self.__graph.GetEdgeFilterProperty()
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
-    @_lazy_load
     def exclude_vertex_range(self, property, range):
         """Choose vertex property and range to exclude."""
         (ran, inc, inverted) = _parse_range(range)
@@ -444,7 +416,6 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
-    @_lazy_load
     def keep_vertex_range(self, property, range):
         """Choose vertex property and range to keep (and exclude the rest)."""
         (ran, inc, inverted) = _parse_range(range)
@@ -452,14 +423,12 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
-    @_lazy_load
     def reset_vertex_filter(self):
         """Remove edge filter."""
         self.__graph.SetVertexFilterProperty('',False)
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
-    @_lazy_load
     def exclude_edge_range(self, property, edge_range):
         """Choose edge property and range to exclude."""
         (ran, inc, inverted) = _parse_range(edge_range)
@@ -467,7 +436,6 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
-    @_lazy_load
     def keep_edge_range(self, property, range):
         """Choose edge property and range to keep (and exclude the rest)."""
         (ran, inc, inverted) = _parse_range(range)
@@ -483,7 +451,6 @@ class Graph(object):
     __groups.append("Graph Modification")
 
     @_handle_exceptions
-    @_lazy_load
     def add_vertex_property(self, name, type):
         """Add a new (uninitialized) vertex property map of type 'type', and
         return it"""
@@ -491,15 +458,14 @@ class Graph(object):
         return self.vertex_properties[name]
 
     @_handle_exceptions
-    @_lazy_load
     def add_edge_property(self, name, type):
         """Add a new (uninitialized) edge property map of type 'type', and
         return it"""
         self.__graph.AddEdgeProperty(name, type)
+        foo = self.edge_properties[name]
         return self.edge_properties[name]
 
     @_handle_exceptions
-    @_lazy_load
     def add_graph_property(self, name, type, val=None):
         """Add a new (uninitialized) graph property map of type 'type'"""
         self.__graph.AddGraphProperty(name, type)
@@ -508,7 +474,6 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
-    @_lazy_load
     def set_graph_property(self, property, val):
         """Set the selected graph property"""
         try:
@@ -516,55 +481,48 @@ class Graph(object):
         except KeyError:
             raise
         except:
-            type_name = self.__graph.GetGraphProperties()[property].get_type()
+            type_name = self.__graph.GetGraphProperties()[property].value_type()
             raise ValueError("wrong value for type '%s': '%s'" % \
                              (type_name, str(val)))
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
-    @_lazy_load
     def get_graph_property(self, property):
         """Get the selected graph property"""
         return self.graph_properties[property]
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
-    @_lazy_load
     def remove_vertex_property(self, property):
         """Remove the selected vertex property"""
         self.__graph.RemoveVertexProperty(property)
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
-    @_lazy_load
     def remove_edge_property(self, property):
         """Remove the selected edge property"""
         self.__graph.RemoveEdgeProperty(property)
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
-    @_lazy_load
     def remove_graph_property(self, property):
         """Remove the selected graph property"""
         self.__graph.RemoveGraphProperty(property)
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
-    @_lazy_load
     def insert_vertex_index(self, property):
         """Insert vertex index as property"""
         self.__graph.InsertVertexIndexProperty(property)
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
-    @_lazy_load
     def insert_edge_index(self, property):
         """Insert edge index as property"""
         self.__graph.InsertEdgeIndexProperty(property)
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
-    @_lazy_load
     def list_properties(self):
         """List all properties"""
         w = max([len(x) for x in self.graph_properties.keys() + \
@@ -581,7 +539,6 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
-    @_lazy_load
     def purge_vertices(self):
         """Remove all vertices of the graph which are currently being filtered
         out, and return to the unfiltered state"""
@@ -590,7 +547,6 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
-    @_lazy_load
     def purge_edges(self):
         """Remove all edges of the graph which are currently being filtered out,
         and return to the unfiltered state"""
@@ -602,17 +558,46 @@ class Graph(object):
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
-    @_lazy_load
     def num_vertices(self):
         """Get the number of vertices."""
         return self.__graph.GetNumberOfVertices()
 
     @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
-    @_lazy_load
     def num_edges(self):
         """Get the number of edges"""
         return self.__graph.GetNumberOfEdges()
+
+    def underlying_graph(self):
+        """Retrieve a GraphInterface from a Graph (for internal use only)"""
+        return self.__graph
+
+    #
+    # Pickling support
+    #
+    def __getstate__(self):
+        state = dict()
+        state["vertex_filt"] = self.get_vertex_filter()
+        self.reset_vertex_filter()
+        state["edge_filt"] = self.get_edge_filter()
+        self.reset_edge_filter()
+        sio = StringIO()
+        self.save(sio, "xml")
+        state["blob"] = sio.getvalue()
+        return state
+    def __setstate__(self, state):
+        self.__init__()
+        blob = state["blob"]
+        if blob != "":
+            sio = StringIO(blob)
+            self.load(sio, "xml")
+        if state["vertex_filt"] != None:
+            self.set_vertex_filter(state["vertex_filt"][0],
+                                   state["vertex_filt"][1])
+        if state["edge_filt"] != None:
+            self.set_edge_filter(state["edge_filt"][0],
+                                 state["edge_filt"][1])
+
 
 class PropertyDict(dict):
     """Wrapper for the dict of vertex, graph or edge properties, which sets the
@@ -636,3 +621,7 @@ class PropertyDict(dict):
     def get_type(self, key):
         """Return the type of the internal property"""
         return self.type_func(self.g, key)
+
+def value_types():
+    """Return a list of possible properties value types"""
+    return libgraph_tool_core.get_property_types()

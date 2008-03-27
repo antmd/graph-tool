@@ -1,10 +1,11 @@
 ## Process this file with automake to produce Makefile.in
 
-SUBDIRS = correlations
+#SUBDIRS = correlations
 
 AM_CPPFLAGS =\
     -I. -I.. \
     -I../boost-workaround \
+    -I $(pythondir)/numpy/core/include/numpy/ \
     -DHAVE_CONFIG_H
 
 AM_CXXFLAGS =\
@@ -46,6 +47,7 @@ libgraph_tool_core_la_include_HEADERS = \
     histogram.hh \
     mpl_nested_loop.hh \
     shared_map.hh \
+    numpy_bind.hh \
     ../../config.h
 
 # leave out precompiled headers for now, since it doesn't seem to help much

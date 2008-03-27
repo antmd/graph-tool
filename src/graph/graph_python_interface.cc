@@ -242,11 +242,13 @@ struct get_property_map
                      python::object& pmap)
         : _name(name), _dp(dp), _pmap(pmap) {}
 
-    template <class ValueType>
-    void operator()(ValueType) const
+    template <class PropertyMap>
+    void operator()(PropertyMap) const
     {
-        if (typeid(ValueType) == _dp.value())
-            _pmap = python::object(PythonPropertyMap<ValueType>(_name, _dp));
+        PropertyMap* pmap = get_static_property_map<PropertyMap>(&_dp);
+        if (pmap != 0)
+            _pmap =
+                python::object(PythonPropertyMap<PropertyMap>(_name, *pmap));
     }
 
     const string& _name;
@@ -263,16 +265,20 @@ void GraphInterface::Clear()
 python::dict
 GraphInterface::GetVertexProperties() const
 {
-    typedef graph_traits<multigraph_t>::vertex_descriptor vertex_t;;
-
+    typedef graph_traits<multigraph_t>::vertex_descriptor vertex_t;
+    typedef property_map_types::apply<
+        value_types,
+        vertex_index_map_t,
+        mpl::bool_<true>
+        >::type vertex_property_maps;
     python::dict props;
     for(typeof(_properties.begin()) iter = _properties.begin();
         iter != _properties.end(); ++iter)
         if (iter->second->key() == typeid(vertex_t))
         {
             python::object pmap;
-            mpl::for_each<value_types>(get_property_map
-                                       (iter->first, *iter->second, pmap));
+            mpl::for_each<vertex_property_maps>
+                (get_property_map(iter->first, *iter->second, pmap));
             props[iter->first] = pmap;
         }
     return props;
@@ -281,16 +287,20 @@ GraphInterface::GetVertexProperties() const
 python::dict
 GraphInterface::GetEdgeProperties() const
 {
-    typedef graph_traits<multigraph_t>::edge_descriptor edge_t;;
-
+    typedef graph_traits<multigraph_t>::edge_descriptor edge_t;
+    typedef property_map_types::apply<
+        value_types,
+        edge_index_map_t,
+        mpl::bool_<true>
+        >::type edge_property_maps;
     python::dict props;
     for(typeof(_properties.begin()) iter = _properties.begin();
         iter != _properties.end(); ++iter)
         if (iter->second->key() == typeid(edge_t))
         {
             python::object pmap;
-            mpl::for_each<value_types>(get_property_map
-                                       (iter->first, *iter->second, pmap));
+            mpl::for_each<edge_property_maps>
+                (get_property_map(iter->first, *iter->second, pmap));
             props[iter->first] = pmap;
         }
     return props;
@@ -299,14 +309,18 @@ GraphInterface::GetEdgeProperties() const
 python::dict
 GraphInterface::GetGraphProperties() const
 {
+    typedef property_map_types::apply<
+        value_types,
+        ConstantPropertyMap<size_t,graph_property_tag>
+        >::type graph_property_maps;
     python::dict props;
     for(typeof(_properties.begin()) iter = _properties.begin();
         iter != _properties.end(); ++iter)
         if (iter->second->key() == typeid(graph_property_tag))
         {
             python::object pmap;
-            mpl::for_each<value_types>(get_property_map
-                                       (iter->first, *iter->second, pmap));
+            mpl::for_each<graph_property_maps>
+                (get_property_map(iter->first, *iter->second, pmap));
             props[iter->first] = pmap;
         }
     return props;

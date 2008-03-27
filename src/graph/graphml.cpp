@@ -15,6 +15,18 @@
 #include <boost/algorithm/string/replace.hpp>
 
 using namespace boost;
+namespace boost
+{
+std::string protect_xml_string(const std::string& os)
+{
+    using namespace boost::algorithm;
+    std::string s(os);
+    replace_all(s, "&", "&amp;");
+    replace_all(s, "<", "&lt;");
+    replace_all(s, ">", "&gt;");
+    return s;
+}
+}
 
 class graphml_reader
 {

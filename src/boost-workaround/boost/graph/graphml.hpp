@@ -22,8 +22,9 @@
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/find.hpp>
 #include <boost/mpl/for_each.hpp>
+#include <boost/python/object.hpp>
+#include <boost/lambda/bind.hpp>
 #include <exception>
-#include <sstream>
 
 namespace boost
 {
@@ -33,13 +34,16 @@ namespace boost
 /////////////////////////////////////////////////////////////////////////////
 struct parse_error: public graph_exception
 {
-    parse_error(const std::string& err) {error = err; statement = "parse error: " + error;}
+    parse_error(const std::string& err)
+    {
+        error = err;
+        statement = "parse error: " + error;
+    }
     virtual ~parse_error() throw() {}
     virtual const char* what() const throw() {return statement.c_str();}
     std::string statement;
     std::string error;
 };
-
 
 class mutate_graph
 {
@@ -48,32 +52,41 @@ public:
     virtual bool is_directed() const = 0;
 
     virtual boost::any do_add_vertex() = 0;
-    virtual std::pair<boost::any,bool> do_add_edge(boost::any source, boost::any target) = 0;
+    virtual std::pair<boost::any,bool> do_add_edge(boost::any source,
+                                                   boost::any target) = 0;
 
     virtual void
-    set_graph_property(const std::string& name, const std::string& value, const std::string& value_type) = 0;
+    set_graph_property(const std::string& name, const std::string& value,
+                       const std::string& value_type) = 0;
 
     virtual void
-    set_vertex_property(const std::string& name, boost::any vertex, const std::string& value, const std::string& value_type) = 0;
+    set_vertex_property(const std::string& name, boost::any vertex,
+                        const std::string& value,
+                        const std::string& value_type) = 0;
 
     virtual void
-    set_edge_property(const std::string& name, boost::any edge, const std::string& value, const std::string& value_type) = 0;
+    set_edge_property(const std::string& name, boost::any edge,
+                      const std::string& value,
+                      const std::string& value_type) = 0;
 };
 
-template<typename MutableGraph>
+template <typename MutableGraph>
 class mutate_graph_impl : public mutate_graph
 {
-    typedef typename graph_traits<MutableGraph>::vertex_descriptor vertex_descriptor;
-    typedef typename graph_traits<MutableGraph>::edge_descriptor edge_descriptor;
+    typedef typename graph_traits<MutableGraph>::vertex_descriptor
+        vertex_descriptor;
+    typedef typename graph_traits<MutableGraph>::edge_descriptor
+        edge_descriptor;
 
- public:
+public:
     mutate_graph_impl(MutableGraph& g, dynamic_properties& dp)
         : m_g(g), m_dp(dp) { }
 
     bool is_directed() const
     {
-        return is_convertible<typename graph_traits<MutableGraph>::directed_category,
-                              directed_tag>::value;
+        return is_convertible
+            <typename graph_traits<MutableGraph>::directed_category,
+            directed_tag>::value;
     }
 
     virtual any do_add_vertex()
@@ -83,19 +96,23 @@ class mutate_graph_impl : public mutate_graph
 
     virtual std::pair<any,bool> do_add_edge(any source, any target)
     {
-        std::pair<edge_descriptor,bool> retval = add_edge(any_cast<vertex_descriptor>(source),
-                                                          any_cast<vertex_descriptor>(target), m_g);
+        std::pair<edge_descriptor,bool> retval =
+            add_edge(any_cast<vertex_descriptor>(source),
+                     any_cast<vertex_descriptor>(target), m_g);
         return std::make_pair(any(retval.first), retval.second);
     }
 
     virtual void
-    set_graph_property(const std::string& name, const std::string& value, const std::string& value_type)
+    set_graph_property(const std::string& name,
+                       const std::string& value, const std::string& value_type)
     {
         bool type_found = false;
         try
         {
-            mpl::for_each<value_types>(put_property<graph_property_tag,value_types>
-                                       (name, m_dp, graph_property_tag(), value, value_type, m_type_names, type_found));
+            mpl::for_each<value_types>
+                (put_property<graph_property_tag,value_types>
+                 (name, m_dp, graph_property_tag(), value, value_type,
+                  m_type_names, type_found));
         }
         catch (bad_lexical_cast)
         {
@@ -109,14 +126,16 @@ class mutate_graph_impl : public mutate_graph
     }
 
     virtual void
-    set_vertex_property(const std::string& name, any vertex, const std::string& value, const std::string& value_type)
+    set_vertex_property(const std::string& name, any vertex,
+                        const std::string& value, const std::string& value_type)
     {
         bool type_found = false;
         try
         {
-            mpl::for_each<value_types>(put_property<vertex_descriptor,value_types>
-                                       (name, m_dp, any_cast<vertex_descriptor>(vertex),
-                                        value, value_type, m_type_names, type_found));
+            mpl::for_each<value_types>
+                (put_property<vertex_descriptor,value_types>
+                 (name, m_dp, any_cast<vertex_descriptor>(vertex),
+                  value, value_type, m_type_names, type_found));
         }
         catch (bad_lexical_cast)
         {
@@ -130,14 +149,16 @@ class mutate_graph_impl : public mutate_graph
     }
 
     virtual void
-    set_edge_property(const std::string& name, any edge, const std::string& value, const std::string& value_type)
+    set_edge_property(const std::string& name, any edge,
+                      const std::string& value, const std::string& value_type)
     {
         bool type_found = false;
         try
         {
-            mpl::for_each<value_types>(put_property<edge_descriptor,value_types>
-                                       (name, m_dp, any_cast<edge_descriptor>(edge),
-                                        value, value_type, m_type_names, type_found));
+            mpl::for_each<value_types>
+                (put_property<edge_descriptor,value_types>
+                 (name, m_dp, any_cast<edge_descriptor>(edge),
+                  value, value_type, m_type_names, type_found));
         }
         catch (bad_lexical_cast)
         {
@@ -153,7 +174,8 @@ class mutate_graph_impl : public mutate_graph
     class put_property
     {
     public:
-        put_property(const std::string& name, dynamic_properties& dp, const Key& key,
+        put_property(const std::string& name, dynamic_properties& dp,
+                     const Key& key,
                      const std::string& value, const std::string& value_type,
                      const char** type_names, bool& type_found)
             : m_name(name), m_dp(dp), m_key(key), m_value(value),
@@ -162,9 +184,34 @@ class mutate_graph_impl : public mutate_graph
         template <class Value>
         void operator()(Value)
         {
-            if (m_value_type == m_type_names[mpl::find<ValueVector,Value>::type::pos::value])
+            if (m_value_type ==
+                m_type_names[mpl::find<ValueVector,Value>::type::pos::value])
             {
-                put(m_name, m_dp, m_key, lexical_cast<Value>(m_value));
+                if (is_same<Value,uint8_t>::value) // chars are stored as ints
+                {
+                    int v = lexical_cast<int>(m_value);
+                    put(m_name, m_dp, m_key, uint8_t(v));
+                }
+                else if (is_same<Value,double>::value)
+                {
+                    double v;
+                    int ret = sscanf(m_value.c_str(), "%la", &v);
+                    if (ret != 1)
+                        throw bad_lexical_cast();
+                    put(m_name, m_dp, m_key, v);
+                }
+                else if (is_same<Value,long double>::value)
+                {
+                    long double v;
+                    int ret = sscanf(m_value.c_str(), "%La", &v);
+                    if (ret != 1)
+                        throw bad_lexical_cast();
+                    put(m_name, m_dp, m_key, v);
+                }
+                else
+                {
+                    put(m_name, m_dp, m_key, lexical_cast<Value>(m_value));
+                }
                 m_type_found = true;
             }
         }
@@ -181,12 +228,20 @@ class mutate_graph_impl : public mutate_graph
 protected:
     MutableGraph& m_g;
     dynamic_properties& m_dp;
-    typedef mpl::vector<bool, int, long long, float, double, std::string> value_types;
+    typedef mpl::vector<uint8_t, int32_t, int64_t, double, long double,
+                        std::vector<uint8_t>, std::vector<int32_t>,
+                        std::vector<int64_t>, std::vector<double>,
+                        std::vector<long double>, std::vector<std::string>,
+                        std::string, python::object>
+        value_types;
     static const char* m_type_names[];
 };
 
 template<typename MutableGraph>
-const char* mutate_graph_impl<MutableGraph>::m_type_names[] = {"boolean", "int", "long", "float", "double", "string"};
+const char* mutate_graph_impl<MutableGraph>::m_type_names[] =
+{"boolean",  "int", "long", "float", "double", "vector_boolean", "vector_int",
+ "vector_long", "vector_float", "vector_double", "vector_string", "string",
+ "python_object"};
 
 void
 read_graphml(std::istream& in, mutate_graph& g);
@@ -203,7 +258,8 @@ template <typename Types>
 class get_type_name
 {
 public:
-    get_type_name(const std::type_info& type, const char** type_names, std::string& type_name)
+    get_type_name(const std::type_info& type, const char** type_names,
+                  std::string& type_name)
         : m_type(type), m_type_names(type_names), m_type_name(type_name) {}
     template <typename Type>
     void operator()(Type)
@@ -217,6 +273,34 @@ private:
     std::string &m_type_name;
 };
 
+// we will rely on lexical_cast to convert the values to strings. Thus it is
+// possible to deal with correct representation issues by specializing the
+// lexical_cast<> template.
+struct get_string
+{
+    template <typename ValueType>
+    void operator()(const boost::any& val, std::string& sval, ValueType) const
+    {
+        const ValueType* v = any_cast<ValueType>(&val);
+        if (v != 0)
+        {
+            sval = lexical_cast<std::string>(*v);
+        }
+    }
+};
+
+template <typename ValueTypes, typename Descriptor>
+std::string print_value(dynamic_property_map& pmap, Descriptor v)
+{
+    using namespace boost::lambda;
+    std::string val;
+    boost::any oval = pmap.get(v);
+    mpl::for_each<ValueTypes>(bind<void>(get_string(), var(oval),
+                                         var(val), _1));
+    return val;
+}
+
+std::string protect_xml_string(const std::string& s);
 
 template <typename Graph, typename VertexIndexMap>
 void
@@ -227,19 +311,34 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
     typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
 
-    BOOST_STATIC_CONSTANT(bool,
-                          graph_is_directed =
-                          (is_convertible<directed_category*, directed_tag*>::value));
+    BOOST_STATIC_CONSTANT(bool, graph_is_directed =
+                          (is_convertible<directed_category*,
+                                          directed_tag*>::value));
 
     out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-        << "<graphml xmlns=\"http://graphml.graphdrawing.org/xmlns\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd\">\n";
+        << "<graphml xmlns=\"http://graphml.graphdrawing.org/xmlns\"\n"
+           "         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n"
+           "         xsi:schemaLocation=\"http://graphml.graphdrawing.org/xmlns"
+           " http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd\">\n\n";
 
-    typedef mpl::vector<bool, short, unsigned short, int, unsigned int, long, unsigned long, long long, unsigned long long, float, double, long double, std::string> value_types;
-    const char* type_names[] = {"boolean", "int", "int", "int", "int", "long", "long", "long", "long", "float", "double", "double", "string"};
+    typedef mpl::vector<bool, uint8_t, int8_t, uint32_t, int32_t,
+                        uint64_t, int64_t, float, double, long double,
+                        std::vector<uint8_t>, std::vector<int32_t>,
+                        std::vector<int64_t>, std::vector<double>,
+                        std::vector<long double>,std::vector<std::string>,
+                        std::string, python::object> value_types;
+    const char* type_names[] = {"boolean", "boolean", "boolean", "int", "int",
+                                "long", "long", "float", "float", "double",
+                                "vector_boolean", "vector_int", "vector_long",
+                                "vector_float", "vector_double",
+                                "vector_string", "string", "python_object"};
+
     std::map<std::string, std::string> graph_key_ids;
     std::map<std::string, std::string> vertex_key_ids;
     std::map<std::string, std::string> edge_key_ids;
     int key_count = 0;
+
+    out << "  <!-- property keys -->\n";
 
     // Output keys
     for (dynamic_properties::const_iterator i = dp.begin(); i != dp.end(); ++i)
@@ -254,28 +353,40 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
         else
             continue;
         std::string type_name = "string";
-        mpl::for_each<value_types>(get_type_name<value_types>(i->second->value(), type_names, type_name));
-        out << "  <key id=\"" << key_id << "\" for=\""
-            << (i->second->key() == typeid(graph_property_tag) ? "graph" : (i->second->key() == typeid(vertex_descriptor) ? "node" : "edge")) << "\""
-            << " attr.name=\"" << i->first << "\""
-            << " attr.type=\"" << type_name << "\""
+        mpl::for_each<value_types>
+            (get_type_name<value_types>(i->second->value(), type_names,
+                                        type_name));
+        out << "  <key id=\"" << protect_xml_string(key_id) << "\" for=\""
+            << (i->second->key() == typeid(graph_property_tag) ? "graph" :
+                (i->second->key() == typeid(vertex_descriptor) ? "node" :
+                 "edge")) << "\""
+            << " attr.name=\"" << protect_xml_string(i->first) << "\""
+            << " attr.type=\"" << protect_xml_string(type_name) << "\""
             << " />\n";
     }
 
-    out << "  <graph id=\"G\" edgedefault=\""
+    out << "\n  <graph id=\"G\" edgedefault=\""
         << (graph_is_directed ? "directed" : "undirected") << "\""
-        << " parse.nodeids=\"" << (ordered_vertices ? "canonical" : "free") << "\""
-        << " parse.edgeids=\"canonical\" parse.order=\"nodesfirst\">\n";
+        << " parse.nodeids=\"" << (ordered_vertices ? "canonical" : "free")
+        << "\""
+        << " parse.edgeids=\"canonical\" parse.order=\"nodesfirst\">\n\n";
 
+    out << "   <!-- graph properties -->\n";
     // Output graph data
     for (dynamic_properties::const_iterator i = dp.begin(); i != dp.end(); ++i)
     {
         if (i->second->key() == typeid(graph_property_tag))
         {
-            out << "   <data key=\"" << graph_key_ids[i->first] << "\">"
-                << i->second->get_string(graph_property_tag()) << "</data>\n";
+            out << "   <data key=\""
+                << protect_xml_string(graph_key_ids[i->first]) << "\">"
+                << protect_xml_string
+                (print_value<value_types>(*i->second,
+                                          graph_property_tag()))
+                << "</data>\n";
         }
     }
+
+    out << "\n   <!-- vertices -->\n";
 
     typedef typename graph_traits<Graph>::vertex_iterator vertex_iterator;
     vertex_iterator v, v_end;
@@ -283,17 +394,22 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
     {
         out << "    <node id=\"n" << get(vertex_index, *v) << "\">\n";
         // Output data
-        for (dynamic_properties::const_iterator i = dp.begin(); i != dp.end(); ++i)
+        for (dynamic_properties::const_iterator i = dp.begin(); i != dp.end();
+             ++i)
         {
             if (i->second->key() == typeid(vertex_descriptor))
             {
-                out << "      <data key=\"" << vertex_key_ids[i->first] << "\">"
-                    << i->second->get_string(*v) << "</data>\n";
+                out << "      <data key=\""
+                    << protect_xml_string(vertex_key_ids[i->first]) << "\">"
+                    << protect_xml_string
+                    (print_value<value_types>(*i->second, *v))
+                    << "</data>\n";
             }
         }
         out << "    </node>\n";
     }
 
+    out << "\n   <!-- edges -->\n";
     typedef typename graph_traits<Graph>::edge_iterator edge_iterator;
     edge_iterator e, e_end;
     typename graph_traits<Graph>::edges_size_type edge_count = 0;
@@ -304,18 +420,22 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
             << get(vertex_index, target(*e, g)) << "\">\n";
 
         // Output data
-        for (dynamic_properties::const_iterator i = dp.begin(); i != dp.end(); ++i)
+        for (dynamic_properties::const_iterator i = dp.begin(); i != dp.end();
+             ++i)
         {
             if (i->second->key() == typeid(edge_descriptor))
             {
-                out << "      <data key=\"" << edge_key_ids[i->first] << "\">"
-                    << i->second->get_string(*e) << "</data>\n";
+                out << "      <data key=\""
+                    << protect_xml_string(edge_key_ids[i->first]) << "\">"
+                    << protect_xml_string
+                    (print_value<value_types>(*i->second, *e))
+                    << "</data>\n";
             }
         }
         out << "    </edge>\n";
     }
 
-    out << "  </graph>\n"
+    out << "\n  </graph>\n"
         << "</graphml>\n";
 }
 

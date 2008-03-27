@@ -1,4 +1,3 @@
-
 // graph-tool -- a general graph modification and manipulation thingy
 //
 // Copyright (C) 2007  Tiago de Paula Peixoto <tiago@forked.de>
@@ -110,8 +109,8 @@ public:
     void Clear();
 
     // i/o
-    void WriteToFile(string s, string format);
-    void ReadFromFile(string s, string format);
+    void WriteToFile(string s, python::object pf, string format);
+    void ReadFromFile(string s, python::object pf, string format);
 
     //
     // python interface
@@ -167,6 +166,16 @@ private:
               class TR3=boost::mpl::vector<>, class TR4=boost::mpl::vector<> >
     friend struct detail::graph_action;
 
+    // Arbitrary code execution
+    template <class Action>
+    friend void RunAction(GraphInterface &g, const Action& a);
+
+    friend boost::any degree_selector(deg_t deg, const GraphInterface&gi);
+
+    friend boost::any vertex_prop(const string& name, const GraphInterface& gi);
+    friend boost::any edge_prop(const string& name, const GraphInterface& gi);
+    friend boost::any graph_prop(const string& name, const GraphInterface& gi);
+
     // python interface
     friend class PythonVertex;
     template <class Graph>
@@ -192,14 +201,14 @@ private:
     dynamic_properties _properties;
 
     // vertex filter
-    typedef vector_property_map<bool,vertex_index_map_t> vertex_filter_t;
+    typedef vector_property_map<uint8_t,vertex_index_map_t> vertex_filter_t;
     vertex_filter_t _vertex_filter_map;
     string _vertex_filter_property;
     bool _vertex_filter_invert;
     bool _vertex_filter_active;
 
     // edge filter
-    typedef vector_property_map<bool,edge_index_map_t> edge_filter_t;
+    typedef vector_property_map<uint8_t,edge_index_map_t> edge_filter_t;
     edge_filter_t _edge_filter_map;
     string _edge_filter_property;
     bool _edge_filter_invert;

@@ -21,6 +21,15 @@
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/filtered_graph.hpp>
 #include <boost/graph/reverse_graph.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/replace.hpp>
+#include <boost/algorithm/string/trim.hpp>
+#include <boost/xpressive/xpressive.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/lambda/bind.hpp>
+#include <string>
 
 namespace graph_tool
 {
@@ -203,31 +212,82 @@ namespace std
 template <class Type>
 ostream& operator<<(ostream& out, const vector<Type>& vec)
 {
-    out << "[ ";
     for (size_t i = 0; i < vec.size(); ++i)
     {
-        out << vec[i];
+        out << boost::lexical_cast<string>(vec[i]);
         if (i < vec.size() - 1)
             out << ", ";
     }
-    out << " ]";
     return out;
 }
 
 template <class Type>
 istream& operator>>(istream& in, vector<Type>& vec)
 {
+    using namespace boost;
+    using namespace boost::algorithm;
+
     vec.clear();
-    char c;
-    in >> c;
-    while (c != ']')
+    string data;
+    getline(in, data);
+    vector<string> split_data;
+    split(split_data, data, is_any_of(","));
+    for (size_t i = 0; i < split_data.size(); ++i)
     {
-        Type val;
-        in >> val >> c;
-        vec.push_back(val);
+        trim(split_data[i]);
+        vec.push_back(lexical_cast<Type>(split_data[i]));
     }
     return in;
 }
+
+template <>
+ostream& operator<<(ostream& out, const vector<string>& vec);
+
+template <>
+istream& operator>>(istream& in, vector<string>& vec);
+
 } // std namespace
+
+//
+// Python IO streams (minimal access to c++ streams)
+//
+
+class OStream
+{
+public:
+    OStream(std::ostream& s): _s(s) {}
+
+    void Write(const std::string& s, size_t n)
+    {
+        _s.write(s.c_str(), n);
+    }
+
+    void Flush()
+    {
+        _s.flush();
+    }
+
+private:
+    std::ostream& _s;
+};
+
+class IStream
+{
+public:
+    IStream(std::istream& s): _s(s) {}
+
+    std::string Read(size_t n)
+    {
+        char* buf = new char[n];
+        _s.read(buf, n);
+        std::string ret(buf, buf+_s.gcount());
+        delete buf;
+        return ret;
+    }
+
+private:
+    std::istream& _s;
+};
+
 
 #endif // GRAPH_UTIL_HH

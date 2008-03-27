@@ -45,6 +45,8 @@ namespace graph_tool
 
 struct total_degreeS
 {
+    typedef size_t value_type;
+
     total_degreeS() {}
     template <class Graph, class Vertex>
     size_t operator()(const Vertex& v, const Graph &g) const
@@ -73,6 +75,8 @@ struct total_degreeS
 
 struct in_degreeS
 {
+    typedef size_t value_type;
+
     in_degreeS() {}
     template <class Graph, class Vertex>
     size_t operator()(const Vertex& v, const Graph &g) const
@@ -101,6 +105,8 @@ struct in_degreeS
 
 struct out_degreeS
 {
+    typedef size_t value_type;
+
     out_degreeS() {}
     template <class Graph, class Vertex>
     size_t operator()(const Vertex& v, const Graph &g) const
@@ -112,6 +118,8 @@ struct out_degreeS
 template <class PropertyMap>
 struct scalarS
 {
+    typedef typename property_traits<PropertyMap>::value_type value_type;
+
     scalarS() {}
     scalarS(PropertyMap pmap): _pmap(pmap) {}
 
@@ -181,8 +189,7 @@ struct selectors:
     boost::mpl::vector<out_degreeS, in_degreeS, total_degreeS> {};
 
 // retrieves the appropriate degree selector
-boost::any degree_selector(GraphInterface::deg_t deg,
-                           boost::dynamic_properties dp);
+boost::any degree_selector(GraphInterface::deg_t deg, const GraphInterface&gi);
 
 // helper types for in_edge_iteratorS
 
