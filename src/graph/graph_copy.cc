@@ -40,6 +40,7 @@ struct graph_copy
     {
         GraphDst& dst = *dstp;
         GraphSrc& src = *srcp;
+
         vector<size_t> index_map(num_vertices(src));
         typename graph_traits<GraphSrc>::vertex_iterator v, v_end;
         for (tie(v, v_end) = vertices(src); v != v_end; ++v)
@@ -54,8 +55,8 @@ struct graph_copy
         typename graph_traits<GraphSrc>::edge_iterator e, e_end;
         for (tie(e, e_end) = edges(src); e != e_end; ++e)
         {
-            size_t s = src_vertex_index[source(*e, src)];
-            size_t t = src_vertex_index[target(*e, src)];
+            size_t s = index_map[src_vertex_index[source(*e, src)]];
+            size_t t = index_map[src_vertex_index[target(*e, src)]];
             typename graph_traits<GraphDst>::edge_descriptor new_e =
                 add_edge(vertex(s,dst), vertex(t,dst), dst).first;
             dst_edge_index[new_e] = src_edge_index[new_e];
