@@ -358,7 +358,7 @@ template <class PropertyMap>
 class PythonPropertyMap
 {
 public:
-    PythonPropertyMap(const std::string& name, PropertyMap& pmap)
+    PythonPropertyMap(const std::string& name, const PropertyMap& pmap)
         : _name(name), _pmap(pmap) {}
 
     typedef typename property_traits<PropertyMap>::value_type value_type;
@@ -409,9 +409,14 @@ public:
         return type_names[mpl::find<value_types,value_type>::type::pos::value];
     }
 
+    PropertyMap GetMap() const
+    {
+        return _pmap;
+    }
+
 private:
     const std::string& _name;
-    PropertyMap& _pmap;
+    PropertyMap _pmap; // hold an internal copy, since it's cheap
 };
 
 

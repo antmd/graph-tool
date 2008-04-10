@@ -104,7 +104,7 @@ PropertyNotFound::PropertyNotFound(const string& name, const type_info& key,
 // this function gets the dynamic property map inside dp which matches the given
 // name and key type
 dynamic_property_map&
-find_property_map(const dynamic_properties& dp, string name,
+find_property_map(const dynamic_properties& dp, const string& name,
                   const type_info& key_type)
 {
     for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)
@@ -114,19 +114,22 @@ find_property_map(const dynamic_properties& dp, string name,
     throw PropertyNotFound(name, key_type);
 }
 
-boost::any vertex_prop(const string& name, const GraphInterface& gi)
+boost::any vertex_prop(const string& name, const GraphInterface& gi,
+                       bool dynamic)
 {
-    return prop(name, gi._vertex_index, gi._properties);
+    return prop(name, gi._vertex_index, gi._properties, dynamic);
 }
-boost::any edge_prop(const string& name, const GraphInterface& gi)
+boost::any edge_prop(const string& name, const GraphInterface& gi,
+                     bool dynamic)
 {
-    return prop(name, gi._edge_index, gi._properties);
+    return prop(name, gi._edge_index, gi._properties, dynamic);
 }
 
-boost::any graph_prop(const string& name, const GraphInterface& gi)
+boost::any graph_prop(const string& name, const GraphInterface& gi,
+                      bool dynamic)
 {
     ConstantPropertyMap<size_t,graph_property_tag> graph_index(0);
-    return prop(name, graph_index, gi._properties);
+    return prop(name, graph_index, gi._properties, dynamic);
 }
 
 void GraphInterface::RemoveVertexProperty(string property)

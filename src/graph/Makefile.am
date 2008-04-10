@@ -1,6 +1,6 @@
 ## Process this file with automake to produce Makefile.in
 
-#SUBDIRS = correlations
+SUBDIRS = generation correlations
 
 AM_CPPFLAGS =\
     -I. -I.. \

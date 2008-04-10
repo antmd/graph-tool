@@ -15,7 +15,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-
 #include "graph_filtering.hh"
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
@@ -24,48 +23,39 @@
 #include "graph_assortativity.hh"
 
 using namespace std;
-using namespace boost;
-using namespace boost::lambda;
 using namespace graph_tool;
 
-
 pair<double,double>
-GraphInterface::GetAssortativityCoefficient(GraphInterface::deg_t deg) const
+assortativity_coefficient(const GraphInterface& gi,
+                          GraphInterface::deg_t deg)
 {
+    using namespace boost::lambda;
     double a, a_err;
-    try
-    {
-        run_action<>()(*this,
-                       bind<void>(get_assortativity_coefficient(), _1, _2,
-                                  var(a), var(a_err)), all_selectors())
-            (degree_selector(deg, _properties));
-    }
-    catch (dynamic_get_failure &e)
-    {
-        throw GraphException("error getting scalar property: " +
-                             string(e.what()));
-    }
-
+    run_action<>()(gi,bind<void>(get_assortativity_coefficient(), _1, _2,
+                                 var(a), var(a_err)), all_selectors())
+        (degree_selector(deg, gi));
     return make_pair(a, a_err);
 }
 
 pair<double,double>
-GraphInterface::GetScalarAssortativityCoefficient(GraphInterface::deg_t deg)
-    const
+scalar_assortativity_coefficient(const GraphInterface& gi,
+                                 GraphInterface::deg_t deg)
 {
+    using namespace boost::lambda;
     double a, a_err;
-    try
-    {
-        run_action<>()(*this, bind<void>(get_scalar_assortativity_coefficient(),
-                                         _1, _2, var(a), var(a_err)),
+    run_action<>()(gi, bind<void>(get_scalar_assortativity_coefficient(),
+                                  _1, _2, var(a), var(a_err)),
                    all_selectors())
-            (degree_selector(deg, _properties));
-    }
-    catch (dynamic_get_failure &e)
-    {
-        throw GraphException("error getting scalar property: " +
-                             string(e.what()));
-    }
-
+        (degree_selector(deg, gi));
     return make_pair(a, a_err);
+}
+
+#include <boost/python.hpp>
+
+using namespace boost::python;
+
+void export_assortativity()
+{
+    def("assortativity_coefficient", &assortativity_coefficient);
+    def("scalar_assortativity_coefficient", &scalar_assortativity_coefficient);
 }

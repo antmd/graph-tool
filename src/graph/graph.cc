@@ -24,7 +24,6 @@
 #include <signal.h>    /* signal name macros, and the signal() prototype */
 
 #include "graph.hh"
-#include "histogram.hh"
 #include "graph_filtering.hh"
 #include "graph_properties.hh"
 

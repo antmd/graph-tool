@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 #include <tr1/unordered_map>
+#include <tr1/memory>
 #include <boost/python/object.hpp>
 
 #include <boost/property_map.hpp>
@@ -176,14 +177,14 @@ PropertyMap* get_static_property_map(dynamic_property_map* map)
 // this function gets the dynamic property map inside dp which matches the given
 // name and key type. It throws PropertyNotFound in case of failure
 dynamic_property_map&
-find_property_map(const dynamic_properties& dp, string name,
+find_property_map(const dynamic_properties& dp, const string& name,
                   const type_info& key_type);
 
 // convenience function which finds and returns the appropriate static property
 // from the dynamic properties
 template <class PropertyMap>
 PropertyMap& find_static_property_map(const dynamic_properties& dp,
-                                      string name)
+                                      const string& name)
 {
     typedef typename property_traits<PropertyMap>::key_type key_type;
     dynamic_property_map& dmap = find_property_map(dp, name,
@@ -196,25 +197,32 @@ PropertyMap& find_static_property_map(const dynamic_properties& dp,
 struct get_static_prop; // forward decl.
 template <class IndexMap>
 boost::any prop(const string& name, IndexMap,
-                const dynamic_properties& dp)
+                const dynamic_properties& dp, bool dynamic = false)
 {
     using namespace lambda;
     typedef typename property_traits<IndexMap>::key_type key_t;
     dynamic_property_map& dmap =
         find_property_map(dp, name, typeid(key_t));
     boost::any prop;
-    typedef typename property_map_types::apply<value_types,IndexMap>::type
-        properties_t;
-    bool found = false;
-    mpl::for_each<properties_t>(lambda::bind<void>(get_static_prop(),
-                                                   lambda::_1,
-                                                   &dmap, var(prop),
-                                                   var(found)));
-    if (!found)
-        throw PropertyNotFound(name, typeid(key_t),
-                               "This is a graph-tool bug. :-( "
-                               "Please follow but report instructions at "
-                               PACKAGE_BUGREPORT);
+    if (dynamic)
+    {
+        prop = &dmap;
+    }
+    else
+    {
+        typedef typename property_map_types::apply<value_types,IndexMap>::type
+            properties_t;
+        bool found = false;
+        mpl::for_each<properties_t>(lambda::bind<void>(get_static_prop(),
+                                                       lambda::_1,
+                                                       &dmap, var(prop),
+                                                       var(found)));
+        if (!found)
+            throw PropertyNotFound(name, typeid(key_t),
+                                   "This is a graph-tool bug. :-( "
+                                   "Please follow but report instructions at "
+                                   PACKAGE_BUGREPORT);
+    }
     return prop;
 }
 
@@ -234,9 +242,12 @@ struct get_static_prop
     }
 };
 
-boost::any vertex_prop(const string& name, const GraphInterface& gi);
-boost::any edge_prop(const string& name, const GraphInterface& gi);
-boost::any graph_prop(const string& name, const GraphInterface& gi);
+boost::any vertex_prop(const string& name, const GraphInterface& gi,
+                       bool dynamic = false);
+boost::any edge_prop(const string& name, const GraphInterface& gi,
+                     bool dynamic = false);
+boost::any graph_prop(const string& name, const GraphInterface& gi,
+                      bool dynamic = false);
 
 // this functor tests whether or not a given boost::any object holds a type
 // contained in a given type Sequence
@@ -352,64 +363,10 @@ struct dynamic_properties_copy: public dynamic_properties
     }
 };
 
-// this function gets the value in the map corresponding to the given key,
-// converted to ConvertedType, or throws bad_lexical_cast.
-
-template <class T>
-struct AttemptAnyConversion; // forward declaration
-
-template <class ConvertedType, class Key>
-ConvertedType get_converted_scalar_value(dynamic_property_map& dmap,
-                                         const Key& key)
-{
-    ConvertedType target = ConvertedType();
-    const boost::any& source = dmap.get(key);
-    bool success;
-    if (dmap.value() == typeid(ConvertedType))
-    {
-        target = any_cast<ConvertedType>(dmap.get(key));
-        success = true;
-    }
-    else
-    {
-        mpl::for_each<scalar_types>
-            (AttemptAnyConversion<ConvertedType>(target, source, success));
-    }
-    if (!success)
-        throw bad_lexical_cast();
-    return target;
-}
-
-template <class T>
-struct AttemptAnyConversion
-{
-    AttemptAnyConversion(T& value, const boost::any& source, bool& success)
-        :_value(value), _source(source), _success(success)
-    {
-        _success = false;
-    }
-
-    template <class Source>
-    void operator()(Source)
-    {
-        try
-        {
-           _value = lexical_cast<T>(any_cast<Source>(_source));
-           _success = true;
-        }
-        catch (bad_any_cast){}
-        catch (bad_lexical_cast){}
-    }
-
-    T& _value;
-    const boost::any& _source;
-    bool& _success;
-};
-
 // the following class wraps a dynamic_property_map, so it can be used as a
 // regular property map. The values are converted to the desired Value type,
-// which may cause a performance impact. Should be used only when property map
-// access time is not crucial
+// which may cause a performance impact, since virtual functions are
+// used. Should be used only when property map access time is not crucial
 template <class Value, class Key>
 class DynamicPropertyMapWrap
 {
@@ -419,12 +376,23 @@ public:
     typedef Key key_type;
     typedef read_write_property_map_tag category;
 
-    DynamicPropertyMapWrap(dynamic_property_map& dmap):_dmap(&dmap) {}
+    DynamicPropertyMapWrap(dynamic_property_map& dmap)
+        :_dmap(&dmap)
+    {
+        ValueConverter* converter = 0;
+        mpl::for_each<scalar_types>
+            (lambda::bind<void>(choose_converter(), lambda::_1,
+                                lambda::var(_dmap), lambda::var(converter)));
+        if (converter == 0)
+            throw bad_lexical_cast();
+        else
+            _converter = tr1::shared_ptr<ValueConverter>(converter);
+    }
     DynamicPropertyMapWrap() {}
 
     Value get(const Key& k) const
     {
-        return get_converted_scalar_value<Value>(*_dmap, k);
+        return (*_converter)(*_dmap, k);
     }
 
     void put(const Key& k, const Value& val)
@@ -433,19 +401,49 @@ public:
     }
 
 private:
+    class ValueConverter
+    {
+    public:
+        virtual Value operator()(dynamic_property_map& map, const Key& k) = 0;
+    };
+
+    template <class OrigValue>
+    class ValueConverterImp: public ValueConverter
+    {
+    public:
+        virtual Value operator()(dynamic_property_map& dmap, const Key& k)
+        {
+            OrigValue val = any_cast<OrigValue>(dmap.get(k));
+            return lexical_cast<Value>(val);
+        }
+    };
+
+    struct choose_converter
+    {
+        template <class Type>
+        void operator()(Type, dynamic_property_map* dmap,
+                        ValueConverter*& converter) const
+        {
+            if (typeid(Type) == dmap->value())
+                converter = new ValueConverterImp<Type>();
+        }
+    };
+
     dynamic_property_map* _dmap;
+    tr1::shared_ptr<ValueConverter> _converter;
 };
 
-template <class Value, class Key>
+template <class Value, class Key, class ConvKey>
 Value get(const graph_tool::DynamicPropertyMapWrap<Value,Key>& pmap,
-          const Key& k)
+          ConvKey k)
 {
-    return pmap.get(k);
+    Key key = k;
+    return pmap.get(key);
 }
 
 template <class Value, class Key>
-void put(graph_tool::DynamicPropertyMapWrap<Value,Key> pmap,
-         const Key& k, const Value& val)
+void put(graph_tool::DynamicPropertyMapWrap<Value,Key>& pmap,
+         Key k, const Value& val)
 {
     pmap.put(k, val);
 }

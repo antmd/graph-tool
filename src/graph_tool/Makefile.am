@@ -2,7 +2,8 @@
 
 graph_tool_PYTHON = \
     __init__.py \
-    core.py
+    core.py \
+    io.py
 graph_tooldir = $(pythondir)/graph_tool
 
 graph_tool_run_action_PYTHON = \
@@ -16,3 +17,11 @@ graph_tool_test_PYTHON = \
     test/basic.py \
     test/properties.py
 graph_tool_testdir = $(pythondir)/graph_tool/test
+
+graph_tool_generation_PYTHON = \
+    generation/__init__.py
+graph_tool_generationdir = $(pythondir)/graph_tool/generation
+
+graph_tool_correlations_PYTHON = \
+    correlations/__init__.py
+graph_tool_correlationsdir = $(pythondir)/graph_tool/correlations

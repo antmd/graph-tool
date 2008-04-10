@@ -31,12 +31,12 @@ except ImportError:
 _orig_dlopen_flags = sys.getdlopenflags()
 
 sys.setdlopenflags(RTLD_LAZY|RTLD_GLOBAL)
-import libgraph_tool_core
+import libgraph_tool_core as libcore
 sys.setdlopenflags(_orig_dlopen_flags) # reset it to normal case to avoid
                                        # unnecessary symbol collision
-__version__ = libgraph_tool_core.mod_info().version
+__version__ = libcore.mod_info().version
 
-import io # sets up libgraph_tool_core io routines
+import io # sets up libcore io routines
 
 import os, os.path, re, struct, fcntl, termios, gzip, bz2, string,\
        textwrap, time, signal, traceback, shutil, time, math, inspect, \
@@ -51,11 +51,11 @@ def _degree(name):
     """Retrieve the degree type from string"""
     deg = name
     if name == "in-degree" or name == "in":
-        deg = libgraph_tool_core.Degree.In
+        deg = libcore.Degree.In
     if name == "out-degree" or name == "out":
-        deg = libgraph_tool_core.Degree.Out
+        deg = libcore.Degree.Out
     if name == "total-degree" or name == "total":
-        deg = libgraph_tool_core.Degree.Total
+        deg = libcore.Degree.Total
     return deg
 
 def _parse_range(range):
@@ -135,7 +135,7 @@ def _handle_exceptions(func):
         try:
             return func(*args, **kwargs)
         except (IOError, RuntimeError), e:
-            libgraph_tool_core.raise_error(str(e))
+            libcore.raise_error(str(e))
     return wrap
 
 def _limit_args(allowed_vals):
@@ -171,15 +171,15 @@ class Graph(object):
 
     def __init__(self, g = None):
         if g == None:
-            self.__graph = libgraph_tool_core.GraphInterface()
+            self.__graph = libcore.GraphInterface()
         else:
-            self.__graph = libgraph_tool_core.GraphInterface(g.__graph)
+            self.__graph = libcore.GraphInterface(g.__graph)
 
     @_handle_exceptions
     def copy(self):
         """Returns a deep copy of self"""
         new_graph = Graph()
-        new_graph.__graph = libgraph_tool_core.GraphInterface(self.__graph)
+        new_graph.__graph = libcore.GraphInterface(self.__graph)
         return new_graph
 
     # Graph access
@@ -240,7 +240,8 @@ class Graph(object):
     def __get_vertex_properties(self):
         return PropertyDict(self, self.__graph.GetVertexProperties(),
                             lambda g, key: g.get_vertex_property(key),
-                            None,
+                            lambda g, key, value: g.set_vertex_property(key,
+                                                                        value),
                             lambda g, key: g.remove_vertex_property(key),
                             lambda g, key: g.__graph.GetVertexProperties()[key]\
                             .value_type())
@@ -251,7 +252,8 @@ class Graph(object):
     def __get_edge_properties(self):
         return PropertyDict(self, self.__graph.GetEdgeProperties(),
                             lambda g, key: g.get_edge_property(key),
-                            None,
+                            lambda g, key, value: g.set_edge_property(key,
+                                                                      value),
                             lambda g, key: g.remove_edge_property(key),
                             lambda g, key: g.__graph.GetEdgeProperties()[key]\
                             .value_type())
@@ -266,7 +268,8 @@ class Graph(object):
                             lambda g, key: g.get_graph_property(key),
                             lambda g, key, val: g.set_graph_property(key, val),
                             lambda g, key: g.remove_graph_property(key),
-                            lambda g, key: g.__graph.GetGraphProperties()[key].value_type())
+                            lambda g, key: g.__graph.GetGraphProperties()[key]\
+                            .value_type())
 
     @_handle_exceptions
     def __set_graph_properties(self, val):
@@ -308,7 +311,7 @@ class Graph(object):
                      filename.endswith(".dot.bz2"):
                 format = "dot"
             else:
-                libgraph_tool_core.raise_error\
+                libcore.raise_error\
                     ("cannot determine file format of: " + filename )
         elif format == "auto":
             format = "xml"
@@ -330,7 +333,7 @@ class Graph(object):
                      filename.endswith(".dot.bz2"):
                 format = "dot"
             else:
-                libgraph_tool_core.raise_error\
+                libcore.raise_error\
                     ("cannot determine file format of: " + filename )
         elif format == "auto":
             format = "xml"
@@ -471,6 +474,22 @@ class Graph(object):
         self.__graph.AddGraphProperty(name, type)
         if val != None:
             self.set_graph_property(name, val)
+
+    @_handle_exceptions
+    def set_vertex_property(self, name, pmap):
+        """Insert or replaces a vertex property map object 'map' with a give
+        name"""
+        if name in self.vertex_properties.keys():
+            del self.vertex_properties[name]
+        self.__graph.PutPropertyMap(name, pmap)
+
+    @_handle_exceptions
+    def set_edge_property(self, name, pmap):
+        """Insert or replaces an edge property map object 'map' with a give
+        name"""
+        if name not in self.edge_properties.keys():
+            del self.edge_properties[name]
+        self.__graph.PutPropertyMap(name, pmap)
 
     @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
@@ -624,4 +643,4 @@ class PropertyDict(dict):
 
 def value_types():
     """Return a list of possible properties value types"""
-    return libgraph_tool_core.get_property_types()
+    return libcore.get_property_types()

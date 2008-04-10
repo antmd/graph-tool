@@ -18,6 +18,8 @@
 #include "graph.hh"
 #include "graph_python_interface.hh"
 #include "graph_util.hh"
+#define NUMPY_EXPORT
+#include "numpy_bind.hh"
 
 #include <boost/python.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
@@ -152,6 +154,77 @@ struct pair_to_tuple
     }
 };
 
+template <class T1, class T2>
+struct pair_from_tuple
+{
+    pair_from_tuple()
+    {
+        converter::registry::push_back(&convertible, &construct,
+                                       boost::python::type_id<pair<T1,T2> >());
+    }
+
+    static void* convertible(PyObject* obj_ptr)
+    {
+        handle<> x(borrowed(obj_ptr));
+        object o(x);
+        extract<T1> first(o[0]);
+        extract<T2> second(o[1]);
+        if (!first.check() || !second.check())
+            return 0;
+        return obj_ptr;
+    }
+
+    static void construct(PyObject* obj_ptr,
+                          converter::rvalue_from_python_stage1_data* data)
+    {
+        handle<> x(borrowed(obj_ptr));
+        object o(x);
+        pair<T1,T2> value;
+        value.first = extract<T1>(o[0]);
+        value.second = extract<T2>(o[1]);
+        void* storage =
+            ( (boost::python::converter::rvalue_from_python_storage
+               <pair<T1,T2> >*) data)->storage.bytes;
+        new (storage) pair<T1,T2>(value);
+        data->convertible = storage;
+    }
+};
+
+template <class ValueType>
+struct variant_from_python
+{
+    variant_from_python()
+    {
+        converter::registry::push_back
+            (&convertible, &construct,
+             boost::python::type_id<GraphInterface::deg_t>());
+    }
+
+    static void* convertible(PyObject* obj_ptr)
+    {
+        handle<> x(borrowed(obj_ptr));
+        object o(x);
+        extract<ValueType> str(o);
+        if (!str.check())
+            return 0;
+        return obj_ptr;
+    }
+
+    static void construct(PyObject* obj_ptr,
+                          converter::rvalue_from_python_stage1_data* data)
+    {
+        handle<> x(borrowed(obj_ptr));
+        object o(x);
+        ValueType value = extract<ValueType>(o);
+        GraphInterface::deg_t deg = value;
+        void* storage =
+            ( (boost::python::converter::rvalue_from_python_storage
+               <GraphInterface::deg_t>*) data)->storage.bytes;
+        new (storage) GraphInterface::deg_t(deg);
+        data->convertible = storage;
+    }
+};
+
 // persistent python object IO
 namespace graph_tool
 {
@@ -171,6 +244,9 @@ void set_unpickler(python::object o)
 
 BOOST_PYTHON_MODULE(libgraph_tool_core)
 {
+    // numpy
+    import_array();
+
     GraphInterface().ExportPythonInterface();
 
     PyModule_AddObject(python::detail::current_scope, "GraphError", pyex);
@@ -224,9 +300,21 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
         .def("GetVertexProperties", &GraphInterface::GetVertexProperties)
         .def("GetEdgeProperties", &GraphInterface::GetEdgeProperties)
         .def("GetGraphProperties", &GraphInterface::GetGraphProperties)
+        .def("PutPropertyMap", &GraphInterface::PutPropertyMap)
         .def("InitSignalHandling", &GraphInterface::InitSignalHandling);
 
+    enum_<GraphInterface::degree_t>("Degree")
+        .value("In", GraphInterface::IN_DEGREE)
+        .value("Out", GraphInterface::OUT_DEGREE)
+        .value("Total", GraphInterface::TOTAL_DEGREE);
+
+
+    variant_from_python<string>();
+    variant_from_python<GraphInterface::degree_t>();
     to_python_converter<pair<string,bool>, pair_to_tuple<string,bool> >();
+    to_python_converter<pair<size_t,size_t>, pair_to_tuple<size_t,size_t> >();
+    pair_from_tuple<double,double>();
+    pair_from_tuple<size_t,size_t>();
 
     class_<IStream>("IStream", no_init).def("Read", &IStream::Read);
     class_<OStream>("OStream", no_init).def("Write", &OStream::Write).

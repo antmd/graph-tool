@@ -127,6 +127,7 @@ public:
     python::dict GetVertexProperties() const;
     python::dict GetEdgeProperties() const;
     python::dict GetGraphProperties() const;
+    void PutPropertyMap(string name, const python::object& map);
 
     // used for graph properties
     graph_property_tag GetDescriptor() const { return graph_property_tag(); }
@@ -168,13 +169,16 @@ private:
 
     // Arbitrary code execution
     template <class Action>
-    friend void RunAction(GraphInterface &g, const Action& a);
+    friend void RunAction(GraphInterface& g, const Action& a);
 
-    friend boost::any degree_selector(deg_t deg, const GraphInterface&gi);
+    friend boost::any degree_selector(deg_t deg, const GraphInterface& gi);
 
-    friend boost::any vertex_prop(const string& name, const GraphInterface& gi);
-    friend boost::any edge_prop(const string& name, const GraphInterface& gi);
-    friend boost::any graph_prop(const string& name, const GraphInterface& gi);
+    friend boost::any vertex_prop(const string& name, const GraphInterface& gi,
+                                  bool dynamic);
+    friend boost::any edge_prop(const string& name, const GraphInterface& gi,
+                                bool dynamic);
+    friend boost::any graph_prop(const string& name, const GraphInterface& gi,
+                                 bool dynamic);
 
     // python interface
     friend class PythonVertex;

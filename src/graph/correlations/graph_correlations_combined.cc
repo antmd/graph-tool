@@ -16,45 +16,52 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "graph_filtering.hh"
+
+#include <boost/lambda/bind.hpp>
+#include <boost/python.hpp>
+
 #include "graph.hh"
 #include "histogram.hh"
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
-#include "shared_map.hh"
 
-#include <boost/lambda/bind.hpp>
-
-#include "graph_correlations_combined.hh"
+#include "graph_correlations.hh"
 
 using namespace std;
 using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
 
-void graph_correlations_combined_imp1(const GraphInterface& g,
-                                      hist2d_t& hist,
-                                      boost::any deg1, boost::any deg2);
+typedef ConstantPropertyMap<int,GraphInterface::edge_t> dummy_weight;
 
-hist2d_t
-GraphInterface::GetCombinedVertexHistogram(deg_t deg1, deg_t deg2) const
+python::object
+get_vertex_combined_correlation_histogram(const GraphInterface& gi,
+                                          GraphInterface::deg_t deg1,
+                                          GraphInterface::deg_t deg2,
+                                          const vector<long double>& xbin,
+                                          const vector<long double>& ybin)
 {
-    hist2d_t hist;
-    try
-    {
-        run_action<>()(*this, bind<void>(get_combined_degree_histogram(),
-                                         _1, _2, _3, var(hist)),
-                       all_selectors(),
-                       detail::split::apply<all_selectors>::type::first())
-            (degree_selector(deg1, _properties),
-             degree_selector(deg2, _properties));
-        graph_correlations_combined_imp1(*this, hist,
-                                         degree_selector(deg1, _properties),
-                                         degree_selector(deg2, _properties));
-    }
-    catch (dynamic_get_failure &e)
-    {
-        throw GraphException("error getting scalar property: " +
-                             string(e.what()));
-    }
-    return hist;
+    python::object hist;
+    python::object ret_bins;
+
+    array<vector<long double>,2> bins;
+    bins[0] = xbin;
+    bins[1] = ybin;
+
+    run_action<>()(gi, lambda::bind<void>
+                   (get_correlation_histogram<GetCombinedPair>(hist, bins,
+                                                               ret_bins),
+                    lambda::_1, lambda::_2, lambda::_3, dummy_weight(0)),
+                   all_selectors(), all_selectors())
+        (degree_selector(deg1, gi), degree_selector(deg2, gi));
+
+    return python::make_tuple(hist, ret_bins);
+}
+
+using namespace boost::python;
+
+void export_combined_vertex_correlations()
+{
+    def("vertex_combined_correlation_histogram",
+        &get_vertex_combined_correlation_histogram);
 }

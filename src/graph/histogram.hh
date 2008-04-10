@@ -51,17 +51,22 @@ public:
     typedef typename boost::mpl::if_<boost::is_floating_point<ValueType>,
                                      ValueType, double>::type mean_t;
 
-    Histogram(const boost::array<std::vector<ValueType>, 2>& bin_sizes,
+    Histogram(const boost::array<std::vector<ValueType>, Dim>& bins,
               const boost::array<std::pair<ValueType,ValueType>,Dim>&
               data_range)
-        : _bin_sizes(bin_sizes), _data_range(data_range)
+        : _bins(bins), _data_range(data_range)
     {
         bin_t new_shape;
         for (size_t j = 0; j < Dim; ++j)
-            if (_bin_sizes[j].size() == 1)
-                new_shape[j] = _bin_sizes[j][0];
+            if (_bins[j].size() == 1) // constant bin width
+            {
+                new_shape[j] = floor((_data_range[j].second -
+                                      _data_range[j].first)/_bins[j][0]) + 1;
+            }
             else
-                new_shape[j] = _bin_sizes[j].size();
+            {
+                new_shape[j] = _bins[j].size();
+            }
         _counts.resize(new_shape);
     }
 
@@ -70,13 +75,13 @@ public:
         bin_t bin;
         for (size_t i = 0; i < Dim; ++i)
         {
-            if (_bin_sizes[i].size() == 1) // constant bin width
+            if (_bins[i].size() == 1) // constant bin width
             {
-                bin[i] = (v[i] - _data_range[i].first)/_bin_sizes[i][0];
+                bin[i] = (v[i] - _data_range[i].first)/_bins[i][0];
             }
             else // arbitrary bins. do a binary search
             {
-                std::vector<ValueType>& bins = _bin_sizes[i];
+                std::vector<ValueType>& bins = _bins[i];
                 typeof(bins.begin()) iter = upper_bound(bins.begin(),
                                                         bins.end(), v[i]);
                 if (iter == bins.end()) // larger than any bin, thus belongs to
@@ -98,9 +103,28 @@ public:
 
     boost::multi_array<CountType,Dim>& GetArray() { return _counts; }
 
+    boost::array<std::vector<ValueType>, Dim> GetBins()
+    {
+        boost::array<std::vector<ValueType>, Dim> bins;
+        for (size_t j = 0; j < Dim; ++j)
+            if (_bins[j].size() == 1) // constant bin width
+            {
+                for (ValueType i = _data_range[j].first;
+                     i <= _data_range[j].second; i += _bins[j][0])
+                {
+                    bins[j].push_back(i);
+                }
+            }
+            else
+            {
+                bins[j] = _bins[j];
+            }
+        return bins;
+    }
+
 protected:
     boost::multi_array<CountType,Dim> _counts;
-    boost::array<std::vector<ValueType>, Dim> _bin_sizes;
+    boost::array<std::vector<ValueType>, Dim> _bins;
     boost::array<std::pair<ValueType,ValueType>,Dim> _data_range;
 };
 
@@ -132,7 +156,7 @@ public:
                 _sum->GetArray().resize(shape);
                 for (size_t i = 0; i < this->_counts.num_elements(); ++i)
                 {
-                    _sum->GetArray()[i][0] += this->_counts[i][0];
+                    _sum->GetArray().data()[i] += this->_counts.data()[i];
                 }
             }
             _sum = 0;

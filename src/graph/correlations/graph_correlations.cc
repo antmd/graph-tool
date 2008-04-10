@@ -18,6 +18,7 @@
 #include "graph_filtering.hh"
 
 #include <boost/lambda/bind.hpp>
+#include <boost/python.hpp>
 
 #include "graph.hh"
 #include "histogram.hh"
@@ -26,6 +27,8 @@
 
 #include "graph_correlations.hh"
 
+#include <iostream>
+
 using namespace std;
 using namespace boost;
 using namespace boost::lambda;
@@ -33,51 +36,63 @@ using namespace graph_tool;
 
 // implementations spread across different compile units to minimize memory
 // usage during compilation
-void graph_correlations_imp1(const GraphInterface& g, hist2d_t& hist,
+void graph_correlations_imp1(const GraphInterface& g, python::object& hist,
+                             python::object& ret_bins,
                              boost::any deg1, boost::any deg2,
-                             boost::any weight);
-void graph_correlations_imp2(const GraphInterface& g, hist2d_t& hist,
-                             boost::any deg1, boost::any deg2,
-                             boost::any weight);
-void graph_correlations_imp3(const GraphInterface& g, hist2d_t& hist,
-                             boost::any deg1, boost::any deg2,
-                             boost::any weight);
+                             boost::any weight,
+                             const array<vector<long double>,2>& bins);
+
 
 typedef ConstantPropertyMap<int,GraphInterface::edge_t> cweight_map_t;
 
-hist2d_t
-GraphInterface::GetVertexCorrelationHistogram(GraphInterface::deg_t deg1,
-                                              GraphInterface::deg_t deg2,
-                                              string weight) const
+python::object
+get_vertex_correlation_histogram(const GraphInterface& gi,
+                                 GraphInterface::deg_t deg1,
+                                 GraphInterface::deg_t deg2,
+                                 string weight,
+                                 const vector<long double>& xbin,
+                                 const vector<long double>& ybin)
 {
-    hist2d_t hist;
+    python::object hist;
+    python::object ret_bins;
+
+    array<vector<long double>,2> bins;
+    bins[0] = xbin;
+    bins[1] = ybin;
+
+    any weight_prop;
+    typedef DynamicPropertyMapWrap<long double, GraphInterface::edge_t>
+        wrapped_weight_t;
+
+    if (weight != "")
+    {
+        dynamic_property_map* map =
+            any_cast<dynamic_property_map*>(edge_prop(weight, gi, true));
+        weight_prop = wrapped_weight_t(*map);
+    }
+    else
+        weight_prop = cweight_map_t(1);
 
     try
     {
-        any weight_prop;
-        if (weight != "")
-            weight_prop = prop(weight, _edge_index, _properties);
-        else
-            weight_prop = cweight_map_t(1);
-
-        run_action<>()(*this, get_correlation_histogram<hist2d_t>(hist),
+        run_action<>()(gi, get_correlation_histogram<GetNeighboursPairs>
+                       (hist, bins, ret_bins),
                        all_selectors(), all_selectors(),
                        mpl::vector<cweight_map_t>())
-            (degree_selector(deg1, _properties),
-             degree_selector(deg2, _properties), weight);
-        graph_correlations_imp1(*this, hist, degree_selector(deg1, _properties),
-                                degree_selector(deg2, _properties), weight);
-        graph_correlations_imp2(*this, hist, degree_selector(deg1, _properties),
-                                degree_selector(deg2, _properties), weight);
-        graph_correlations_imp3(*this, hist, degree_selector(deg1, _properties),
-                                degree_selector(deg2, _properties), weight);
-
+            (degree_selector(deg1, gi), degree_selector(deg2, gi), weight_prop);
     }
-    catch (dynamic_get_failure &e)
+    catch (ActionNotFound&)
     {
-        throw GraphException("error getting scalar property: " +
-                             string(e.what()));
+        graph_correlations_imp1(gi, hist, ret_bins, degree_selector(deg1, gi),
+                                degree_selector(deg2, gi), weight_prop, bins);
     }
 
-    return hist;
+    return python::make_tuple(hist, ret_bins);
+}
+
+using namespace boost::python;
+
+void export_vertex_correlations()
+{
+    def("vertex_correlation_histogram", &get_vertex_correlation_histogram);
 }

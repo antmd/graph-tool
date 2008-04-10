@@ -20,6 +20,7 @@
 
 #include <tr1/unordered_set>
 #include "shared_map.hh"
+#include "histogram.hh"
 
 namespace graph_tool
 {
@@ -144,9 +145,8 @@ struct get_scalar_assortativity_coefficient
         sb.Gather();
 
         double t1 = e_xy/n_edges;
-        double avg_a = GetHistogramMean(a), avg_b = GetHistogramMean(b);
-        double da = GetHistogramDeviation(a,avg_a), db =
-            GetHistogramDeviation(b,avg_b);
+        double avg_a = GetMapMean(a), avg_b = GetMapMean(b);
+        double da = GetMapDeviation(a,avg_a), db = GetMapDeviation(b,avg_b);
 
         if (da*db > 0)
             r = (t1 - avg_a*avg_b)/(da*db);

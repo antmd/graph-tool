@@ -15,9 +15,18 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+#ifndef NUMPY_BIND_HH
+#define NUMPY_BIND_HH
+
 #include <vector>
 #include <boost/python.hpp>
-#include "ndarrayobject.h"
+
+// numpy unique symbol weirdness
+#define PY_ARRAY_UNIQUE_SYMBOL graph_tool_numpy
+#ifndef NUMPY_EXPORT
+#define NO_IMPORT_ARRAY
+#endif
+#include "arrayobject.h"
 
 #include <boost/array.hpp>
 #define BOOST_DISABLE_ASSERTS
@@ -47,13 +56,21 @@ typedef mpl::map<
 template <class ValueType>
 python::object wrap_vector_owned(vector<ValueType>& vec)
 {
-    ValueType* new_data = new ValueType[vec.size()];
-    memcpy(new_data, &vec[0], vec.size()*sizeof(ValueType));
-    int size = vec.size();
     int val_type = mpl::at<numpy_types,ValueType>::type::value;
-    PyArrayObject* ndarray =
-        (PyArrayObject*) PyArray_SimpleNewFromData(1, &size, val_type,
-                                                   new_data);
+    npy_intp size[1];
+    size[0] = vec.size();
+    PyArrayObject* ndarray;
+    if (vec.empty())
+    {
+        ndarray = (PyArrayObject*) PyArray_SimpleNew(1, size, val_type);
+    }
+    else
+    {
+        ValueType* new_data = new ValueType[vec.size()];
+        memcpy(new_data, &vec[0], vec.size()*sizeof(ValueType));
+        ndarray = (PyArrayObject*) PyArray_SimpleNewFromData(1, size, val_type,
+                                                             new_data);
+    }
     ndarray->flags = NPY_ALIGNED | NPY_C_CONTIGUOUS | NPY_OWNDATA |
         NPY_WRITEABLE;
     handle<> x(borrowed((PyObject*) ndarray));
@@ -64,10 +81,14 @@ python::object wrap_vector_owned(vector<ValueType>& vec)
 template <class ValueType>
 python::object wrap_vector_not_owned(vector<ValueType>& vec)
 {
-    int size = vec.size();
+    PyArrayObject* ndarray;
     int val_type = mpl::at<numpy_types,ValueType>::type::value;
-    PyArrayObject* ndarray =
-        (PyArrayObject*) PyArray_SimpleNewFromData(1, &size, val_type, &vec[0]);
+    int size = vec.size();
+    if (vec.empty())
+        ndarray = (PyArrayObject*) PyArray_SimpleNew(1, &size, val_type);
+    else
+        ndarray = (PyArrayObject*) PyArray_SimpleNewFromData(1, &size, val_type,
+                                                             &vec[0]);
     ndarray->flags = NPY_ALIGNED | NPY_C_CONTIGUOUS | NPY_WRITEABLE;
     handle<> x(borrowed((PyObject*) ndarray));
     object o(x);
@@ -79,7 +100,7 @@ template <class ValueType, int Dim>
 python::object wrap_multi_array_owned(multi_array<ValueType,Dim>& array)
 {
     ValueType* new_data = new ValueType[array.num_elements()];
-    memcpy(new_data, array.origin(), array.num_elements()*sizeof(ValueType));
+    memcpy(new_data, array.data(), array.num_elements()*sizeof(ValueType));
     int val_type = mpl::at<numpy_types,ValueType>::type::value;
     npy_intp shape[Dim];
     for (int i = 0; i < Dim; ++i)
@@ -87,8 +108,8 @@ python::object wrap_multi_array_owned(multi_array<ValueType,Dim>& array)
     PyArrayObject* ndarray =
         (PyArrayObject*) PyArray_SimpleNewFromData(Dim, shape, val_type,
                                                    new_data);
-    ndarray->flags = NPY_ALIGNED | NPY_C_CONTIGUOUS | NPY_OWNDATA |
-        NPY_WRITEABLE;
+//    ndarray->flags = NPY_ALIGNED | NPY_C_CONTIGUOUS | NPY_OWNDATA |
+//        NPY_WRITEABLE;
     handle<> x(borrowed((PyObject*) ndarray));
     object o(x);
     return o;
@@ -106,3 +127,5 @@ python::object wrap_multi_array_not_owned(multi_array<ValueType,Dim>& array)
     object o(x);
     return o;
 }
+
+#endif // NUMPY_BIND_HH

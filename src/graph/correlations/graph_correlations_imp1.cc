@@ -31,20 +31,19 @@ using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
 
-typedef mpl::vector<bool,int32_t> weight_scalar_types;
 
-struct weight_map_types: property_map_types::apply<
-    weight_scalar_types,
-    GraphInterface::edge_index_map_t,
-    mpl::bool_<false> >::type {};
-
-void graph_correlations_imp1(const GraphInterface& g, hist2d_t& hist,
+void graph_correlations_imp1(const GraphInterface& g, python::object& hist,
+                             python::object& ret_bins,
                              boost::any deg1, boost::any deg2,
-                             boost::any weight)
+                             boost::any weight,
+                             const array<vector<long double>,2>& bins)
 {
-    run_action<>()(g, get_correlation_histogram<hist2d_t>(hist),
+    typedef DynamicPropertyMapWrap<long double, GraphInterface::edge_t>
+        wrapped_weight_t;
+    run_action<>()(g, get_correlation_histogram<GetNeighboursPairs>
+                   (hist, bins, ret_bins),
                    all_selectors(), all_selectors(),
-                   weight_map_types())
+                   mpl::vector<wrapped_weight_t>())
         (deg1, deg2, weight);
 }
 

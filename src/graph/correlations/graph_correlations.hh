@@ -19,7 +19,12 @@
 #define GRAPH_CORRELATIONS_HH
 
 #include <algorithm>
-#include <tr1/unordered_set>
+#include <boost/numeric/conversion/bounds.hpp>
+#include <boost/numeric/conversion/cast.hpp>
+#include <boost/python/object.hpp>
+#include <boost/python/list.hpp>
+#include <boost/python/extract.hpp>
+#include "numpy_bind.hh"
 #include "shared_map.hh"
 
 namespace graph_tool
@@ -28,12 +33,85 @@ using namespace std;
 using namespace boost;
 using namespace boost::lambda;
 
-// retrieves the generalized vertex-vertex correlation histogram
+// get degrees pairs from source and of neighbours
+class GetNeighboursPairs
+{
+public:
 
-template <class Hist>
+    template <class Graph, class Deg1, class Deg2, class Hist, class WeightMap>
+    void operator()(typename graph_traits<Graph>::vertex_descriptor v,
+                    Deg1& deg1, Deg2& deg2, Graph& g, WeightMap& weight,
+                    Hist& hist)
+    {
+        typename Hist::point_t k;
+        k[0] = deg1(v, g);
+        typename graph_traits<Graph>::out_edge_iterator e, e_end;
+        for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
+        {
+            k[1] = deg2(target(*e,g),g);
+            hist.PutValue(k, get(weight, *e));
+        }
+    }
+};
+
+// get degrees pairs from one single vertex
+class GetCombinedPair
+{
+public:
+
+    template <class Graph, class Deg1, class Deg2, class Hist, class Dummy>
+    void operator()(typename graph_traits<Graph>::vertex_descriptor v,
+                    Deg1& deg1, Deg2& deg2, Graph& g, const Dummy&,
+                    Hist& hist)
+    {
+        typename Hist::point_t k;
+        k[0] = deg1(v, g);
+        k[1] = deg2(v, g);
+        hist.PutValue(k);
+    }
+};
+
+
+namespace detail
+{
+struct select_larger_type
+{
+    template <class Type1, class Type2>
+    struct apply
+    {
+        typedef typename mpl::if_<
+            typename mpl::greater<typename mpl::sizeof_<Type1>::type,
+                                  typename mpl::sizeof_<Type2>::type>::type,
+            Type1,
+            Type2>::type type;
+    };
+};
+
+struct select_float_and_larger
+{
+    template <class Type1, class Type2>
+    struct apply
+    {
+        typedef typename mpl::if_<
+            mpl::equal_to<is_floating_point<Type1>,
+                          is_floating_point<Type2> >,
+            typename select_larger_type::apply<Type1,Type2>::type,
+            typename mpl::if_<is_floating_point<Type1>,
+                              Type1,
+                              Type2>::type>::type type;
+    };
+};
+
+}
+
+// retrieves the generalized vertex-vertex correlation histogram
+template <class GetDegreePair>
 struct get_correlation_histogram
 {
-    get_correlation_histogram(Hist& hist): _hist(hist) {}
+    get_correlation_histogram(python::object& hist,
+                              const array<vector<long double>,2>& bins,
+                              python::object& ret_bins)
+        : _hist(hist), _bins(bins), _ret_bins(ret_bins) {}
 
     template <class Graph, class DegreeSelector1, class DegreeSelector2,
               class WeightMap>
@@ -41,7 +119,75 @@ struct get_correlation_histogram
                     WeightMap weight) const
     {
         Graph& g = *gp;
-        SharedMap<Hist> s_hist(_hist);
+        GetDegreePair put_point;
+
+        typedef typename DegreeSelector1::value_type type1;
+        typedef typename DegreeSelector2::value_type type2;
+
+        typedef typename graph_tool::detail::
+            select_float_and_larger::apply<type1,type2>::type
+            val_type;
+        typedef typename property_traits<WeightMap>::value_type count_type;
+        typedef Histogram<val_type, count_type, 2> hist_t;
+
+        array<vector<val_type>,2> bins;
+        for (size_t i = 0; i < bins.size(); ++i)
+        {
+            bins[i].resize(_bins[i].size());
+            for (size_t j = 0; j < bins[i].size(); ++j)
+            {
+                // we'll attempt to recover from out of bounds conditions
+                try
+                {
+                    bins[i][j] =
+                        numeric_cast<val_type,long double>(_bins[i][j]);
+                }
+                catch (boost::numeric::negative_overflow&)
+                {
+                    bins[i][j] = boost::numeric::bounds<val_type>::lowest();
+                }
+                catch (boost::numeric::positive_overflow&)
+                {
+                    bins[i][j] = boost::numeric::bounds<val_type>::highest();
+                }
+            }
+            // sort the bins
+            sort(bins[i].begin(), bins[i].end());
+            // clean bins of zero size
+            vector<val_type> temp_bin(1);
+            temp_bin[0] = bins[i][0];
+            for (size_t j = 1; j < bins[i].size(); ++j)
+            {
+                if (bins[i][j] > bins[i][j-1])
+                    temp_bin.push_back(bins[i][j]);
+            }
+            bins[i] = temp_bin;
+        }
+
+        // find the data range
+        pair<type1,type1> range1;
+        pair<type2,type2> range2;
+        typename graph_traits<Graph>::vertex_iterator vi,vi_end;
+        range1.first = boost::numeric::bounds<type1>::highest();
+        range1.second = boost::numeric::bounds<type1>::lowest();
+        range2.first = boost::numeric::bounds<type2>::highest();
+        range2.second = boost::numeric::bounds<type2>::lowest();
+        for (tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
+        {
+            type1 v1 = deg1(*vi, g);
+            type2 v2 = deg2(*vi, g);
+            range1.first = min(range1.first, v1);
+            range1.second = max(range1.second, v1);
+            range2.first = min(range2.first, v2);
+            range2.second = max(range2.second, v2);
+        }
+
+        boost::array<pair<val_type, val_type>, 2> data_range;
+        data_range[0] = range1;
+        data_range[1] = range2;
+
+        hist_t hist(bins, data_range);
+        SharedHistogram<hist_t> s_hist(hist);
 
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i) \
@@ -51,20 +197,20 @@ struct get_correlation_histogram
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
-
-            typename Hist::key_type key;
-            key.first = deg1(v, g);
-            typename graph_traits<Graph>::out_edge_iterator e, e_end;
-            for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
-            {
-                key.second = deg2(target(*e,g),g);
-                s_hist[key] +=
-                    typename Hist::value_type::second_type(get(weight, *e));
-            }
+            put_point(v, deg1, deg2, g, weight, s_hist);
         }
         s_hist.Gather();
+
+        bins = hist.GetBins();
+        python::list ret_bins;
+        ret_bins.append(wrap_vector_owned(bins[0]));
+        ret_bins.append(wrap_vector_owned(bins[1]));
+        _ret_bins = ret_bins;
+        _hist = wrap_multi_array_owned<count_type,2>(hist.GetArray());
     }
-    Hist& _hist;
+    python::object& _hist;
+    const array<vector<long double>,2>& _bins;
+    python::object& _ret_bins;
 };
 
 

@@ -17,7 +17,6 @@
 
 #include "graph_filtering.hh"
 #include "graph.hh"
-#include "histogram.hh"
 #include "graph_properties.hh"
 #include "graph_util.hh"
 

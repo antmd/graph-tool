@@ -236,6 +236,28 @@ void GraphInterface::RemoveEdge(const python::object& e)
     remove_edge(de, _mg);
 }
 
+//
+// Property map manipulation
+//
+// useful typedefs:
+
+typedef property_map_types::apply<
+    value_types,
+    GraphInterface::vertex_index_map_t,
+    mpl::bool_<true>
+    >::type vertex_property_maps;
+
+typedef property_map_types::apply<
+    value_types,
+    GraphInterface::edge_index_map_t,
+    mpl::bool_<true>
+    >::type edge_property_maps;
+
+typedef property_map_types::apply<
+    value_types,
+    ConstantPropertyMap<size_t,graph_property_tag>
+    >::type graph_property_maps;
+
 struct get_property_map
 {
     get_property_map(const string& name, dynamic_property_map& dp,
@@ -266,11 +288,6 @@ python::dict
 GraphInterface::GetVertexProperties() const
 {
     typedef graph_traits<multigraph_t>::vertex_descriptor vertex_t;
-    typedef property_map_types::apply<
-        value_types,
-        vertex_index_map_t,
-        mpl::bool_<true>
-        >::type vertex_property_maps;
     python::dict props;
     for(typeof(_properties.begin()) iter = _properties.begin();
         iter != _properties.end(); ++iter)
@@ -288,11 +305,6 @@ python::dict
 GraphInterface::GetEdgeProperties() const
 {
     typedef graph_traits<multigraph_t>::edge_descriptor edge_t;
-    typedef property_map_types::apply<
-        value_types,
-        edge_index_map_t,
-        mpl::bool_<true>
-        >::type edge_property_maps;
     python::dict props;
     for(typeof(_properties.begin()) iter = _properties.begin();
         iter != _properties.end(); ++iter)
@@ -309,10 +321,6 @@ GraphInterface::GetEdgeProperties() const
 python::dict
 GraphInterface::GetGraphProperties() const
 {
-    typedef property_map_types::apply<
-        value_types,
-        ConstantPropertyMap<size_t,graph_property_tag>
-        >::type graph_property_maps;
     python::dict props;
     for(typeof(_properties.begin()) iter = _properties.begin();
         iter != _properties.end(); ++iter)
@@ -324,6 +332,52 @@ GraphInterface::GetGraphProperties() const
             props[iter->first] = pmap;
         }
     return props;
+}
+
+struct put_property_map
+{
+    template <class PropertyMap>
+    void operator()(PropertyMap, const string& name, dynamic_properties& dp,
+                    const python::object& pmap, bool& found) const
+    {
+        python::extract<PythonPropertyMap<PropertyMap> > map(pmap);
+        if (map.check())
+        {
+            PythonPropertyMap<PropertyMap> python_map = map();
+            try
+            {
+                typedef typename property_traits<PropertyMap>::key_type key_t;
+                find_property_map(dp, name, typeid(key_t));
+                throw GraphException("cannot put property: property of name " +
+                                     name + " of the same key type already"
+                                     " exists");
+            }
+            catch (const PropertyNotFound&)
+            {
+                dp.property(name, python_map.GetMap());
+                found = true;
+            }
+        }
+    }
+};
+
+void GraphInterface::PutPropertyMap(string name, const python::object& map)
+{
+    bool found = false;
+    mpl::for_each<vertex_property_maps>
+        (lambda::bind<void>(put_property_map(), lambda::_1, lambda::var(name),
+                            lambda::var(_properties), lambda::var(map),
+                            lambda::var(found)));
+    mpl::for_each<edge_property_maps>
+        (lambda::bind<void>(put_property_map(), lambda::_1, lambda::var(name),
+                            lambda::var(_properties), lambda::var(map),
+                            lambda::var(found)));
+    mpl::for_each<graph_property_maps>
+        (lambda::bind<void>(put_property_map(), lambda::_1, lambda::var(name),
+                            lambda::var(_properties), lambda::var(map),
+                            lambda::var(found)));
+    if (!found)
+        throw GraphException("cannot put property: property map not recognized");
 }
 
 //
