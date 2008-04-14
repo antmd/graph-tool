@@ -48,12 +48,12 @@ get_vertex_combined_correlation_histogram(const GraphInterface& gi,
     bins[0] = xbin;
     bins[1] = ybin;
 
-    run_action<>()(gi, lambda::bind<void>
-                   (get_correlation_histogram<GetCombinedPair>(hist, bins,
-                                                               ret_bins),
-                    lambda::_1, lambda::_2, lambda::_3, dummy_weight(0)),
-                   all_selectors(), all_selectors())
-        (degree_selector(deg1, gi), degree_selector(deg2, gi));
+    run_action<>()(gi, get_correlation_histogram<GetCombinedPair>(hist, bins,
+                                                                  ret_bins),
+                   all_selectors(), all_selectors(),
+                   mpl::vector<dummy_weight>())
+        (degree_selector(deg1, gi), degree_selector(deg2, gi),
+         boost::any(dummy_weight()));
 
     return python::make_tuple(hist, ret_bins);
 }
