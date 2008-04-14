@@ -1,11 +1,10 @@
 ## Process this file with automake to produce Makefile.in
 
-SUBDIRS = generation correlations
+SUBDIRS = generation correlations stats
 
 AM_CPPFLAGS =\
     -I. -I.. \
     -I../boost-workaround \
-    -I $(pythondir)/numpy/core/include/numpy/ \
     -DHAVE_CONFIG_H
 
 AM_CXXFLAGS =\

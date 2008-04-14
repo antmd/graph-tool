@@ -34,6 +34,9 @@ AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
 AC_PROG_INSTALL
 
+dnl turn on warnings
+CPPFLAGS="$CPPFLAGS -Wall"
+
 dnl Checks for options
 
 dnl Turn debugging on or off
@@ -58,7 +61,7 @@ AC_ARG_ENABLE([inline], [AC_HELP_STRING([--disable-inline],
         if test $enableval = no; then
            [AC_MSG_RESULT(no)]
            [AC_DEFINE([NO_INLINE], 1, [disable function inlining])]
-           [CXXFLAGS="$CXXFLAGS -fno-inline -fno-default-inline "]
+           [CXXFLAGS="$CXXFLAGS -fno-inline -fno-default-inline"]
            NO_INLINE=yes
         else
            [AC_MSG_RESULT(yes)]
@@ -77,7 +80,7 @@ AC_ARG_ENABLE([optimization], [AC_HELP_STRING([--disable-optimization],
         [AC_MSG_RESULT(no)]
         ,
         [AC_MSG_RESULT(yes)]
-        [CXXFLAGS=" $CXXFLAGS -O99 "]
+        [CXXFLAGS="$CXXFLAGS -O99"]
         )
 
 AC_MSG_CHECKING(whether to enable hidden visibility...)
@@ -87,7 +90,7 @@ AC_ARG_ENABLE([visibility], [AC_HELP_STRING([--disable-visibility],
         [AC_MSG_RESULT(no)]
         ,
         [AC_MSG_RESULT(yes)]
-        [CXXFLAGS=" $CXXFLAGS -fvisibility=hidden -fvisibility-inlines-hidden "]
+        [CXXFLAGS="$CXXFLAGS -fvisibility=hidden -fvisibility-inlines-hidden"]
         )
 
 
@@ -125,6 +128,10 @@ AC_ARG_ENABLE([openmp], [AC_HELP_STRING([--enable-openmp],
         )
 AC_SUBST(OPENMP_LDFLAGS)
 
+dnl Override prefix with default value if not set
+if test "x${prefix}" = "xNONE"; then
+  prefix=${ac_default_prefix}
+fi
 
 dnl Checks for programs.
 
@@ -138,21 +145,46 @@ AC_CHECK_LIB(bz2,main)
 
 dnl boost
 AX_BOOST([1.33.1])
+CPPFLAGS="$CPPFLAGS $BOOST_CPPFLAGS"
+
 dnl AX_BOOST_PYTHON
 
 dnl expat
 AC_CHECK_LIB(expat,main)
 
+dnl python
 AM_PATH_PYTHON([2.5])
 AC_PYTHON_DEVEL(>= '2.5')
+PYLIBDIR=`eval echo $pythondir`
+
+#update compiler flags
+CPPFLAGS="$CPPFLAGS $PYTHON_CPPFLAGS"
 
 dnl Checks for header files.
-AC_CHECK_HEADER([expat.h])
+
+dnl numpy
+NUMPY_DIR="${PYLIBDIR}/numpy/core/include/numpy"
+AC_CHECK_HEADER([${NUMPY_DIR}/arrayobject.h],
+                [CPPFLAGS="$CPPFLAGS -I$NUMPY_DIR"],
+                [AC_MSG_ERROR([Numpy extension header not found])],
+                [#include "Python.h"])
+
+dnl scipy
+SCIPY_DIR="${PYLIBDIR}/scipy"
+
+AC_CHECK_HEADER([${SCIPY_DIR}/weave/scxx/object.h],
+                [AC_DEFINE([HAVE_SCIPY], [1], [using scipy's weave])]
+                [CPPFLAGS="$CPPFLAGS -I$SCIPY_DIR"])
+
+dnl expat
+AC_CHECK_HEADER([expat.h],
+                [],
+                [AC_MSG_ERROR([Expat header not found])])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 dnl Checks for library functions.
 
-dnl Checks for Additional stuffs.
+dnl Checks for Additional stuff.
 
 dnl Set PACKAGE SOURCE DIR in config.h.
 packagesrcdir=`cd $srcdir && pwd`
@@ -183,7 +215,7 @@ AC_SUBST(PACKAGE_DOC_DIR)
 
 dnl Subst PYTHON_DIR.
 AC_DEFINE_UNQUOTED([INSTALL_PREFIX],"${prefix}", [python prefix])
-AC_DEFINE_UNQUOTED([PYTHON_DIR], "${pythondir}", [The directory name for the site-packages subdirectory of the standard Python install tree.])
+AC_DEFINE_UNQUOTED([PYTHON_DIR], "${PYLIBDIR}", [The directory name for the site-packages subdirectory of the standard Python install tree.])
 
 AC_DEFINE_UNQUOTED([CXXFLAGS],"${CXXFLAGS}", [c++ compilation options])
 
@@ -194,9 +226,10 @@ AC_DEFINE_UNQUOTED([PACKAGE_SOURCE_DIR], "${packagesrcdir}", [package source dir
 AC_DEFINE_UNQUOTED([AUTHOR], "Tiago de Paula Peixoto <tiago@forked.de>", [program author(s)])
 
 AC_DEFINE_UNQUOTED([COPYRIGHT],
-    "Copyright (C) 2007 Tiago de Paula Peixoto\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "Copyright (C) 2008 Tiago de Paula Peixoto\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
 	[copyright info])
 
+# git information
 AC_DEFINE([GIT_COMMIT], "esyscmd(git show | head -n 1 | sed 's/commit //' |  grep -o -e '.\{8\}' | head -n 1 |tr -d '\n')", [git HEAD commit hash])
 AC_DEFINE([GIT_COMMIT_DATE], "esyscmd(git log -1 | head -n 3 | grep 'Date:' | sed s/'Date:   '// | tr -d '\n')", [git HEAD commit date])
 
@@ -206,6 +239,7 @@ src/Makefile
 src/graph/Makefile
 src/graph/correlations/Makefile
 src/graph/generation/Makefile
+src/graph/stats/Makefile
 src/graph_tool/Makefile
 ])
 

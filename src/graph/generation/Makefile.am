@@ -2,8 +2,7 @@
 
 AM_CPPFLAGS =\
     -I. -I.. \
-    -I $(pythondir)/numpy/core/include/numpy/ \
-    -I../boost-workaround \
+    -I../../boost-workaround \
     -DHAVE_CONFIG_H
 
 AM_CXXFLAGS =\
