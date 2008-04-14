@@ -13,14 +13,146 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-// generalized functor to obtain histogram of different types of "degrees"
-struct get_vertex_histogram
+#ifndef GRAPH_HISTOGRAMS_HH
+#define GRAPH_HISTOGRAMS_HH
+
+#include <algorithm>
+#include <boost/numeric/conversion/bounds.hpp>
+#include <boost/numeric/conversion/cast.hpp>
+#include <boost/python/object.hpp>
+#include <boost/python/list.hpp>
+#include <boost/python/extract.hpp>
+#include "numpy_bind.hh"
+#include "histogram.hh"
+#include "shared_map.hh"
+
+namespace graph_tool
 {
-    template <class Graph, class DegreeSelector, class Hist>
-    void operator()(const Graph* gp, DegreeSelector deg, Hist& hist) const
+using namespace std;
+using namespace boost;
+
+class VertexHistogramFiller
+{
+public:
+    template <class Graph, class DegreeSelector, class ValueType>
+    void UpdateRange(Graph& g,
+                     typename graph_traits<Graph>::vertex_descriptor v,
+                     DegreeSelector& deg, pair<ValueType,ValueType>& range)
     {
-        const Graph& g = *gp;
-        SharedMap<Hist> s_hist(hist);
+        ValueType val = deg(v, g);
+        range.first = min(range.first, val);
+        range.second = max(range.second, val);
+    }
+
+    template <class Graph, class DegreeSelector, class Hist>
+    void operator()(Graph& g, typename graph_traits<Graph>::vertex_descriptor v,
+                    DegreeSelector& deg, Hist& hist)
+    {
+        typename Hist::point_t p;
+        p[0] = deg(v, g);
+        hist.PutValue(p);
+    }
+};
+
+class EdgeHistogramFiller
+{
+public:
+    template <class Graph, class EdgeProperty, class ValueType>
+    void UpdateRange(Graph& g,
+                     typename graph_traits<Graph>::vertex_descriptor v,
+                     EdgeProperty& eprop, pair<ValueType,ValueType>& range)
+    {
+        typename graph_traits<Graph>::out_edge_iterator e, e_begin, e_end;
+        tie(e_begin,e_end) = out_edges(v, g);
+        for(e = e_begin; e != e_end; ++e)
+        {
+            ValueType val = eprop[*e];
+            range.first = min(range.first, val);
+            range.second = max(range.second, val);
+        }
+    }
+
+    template <class Graph, class EdgeProperty, class Hist>
+    void operator()(Graph& g, typename graph_traits<Graph>::vertex_descriptor v,
+                    EdgeProperty& eprop, Hist& hist)
+    {
+        typename graph_traits<Graph>::out_edge_iterator e, e_begin, e_end;
+        tie(e_begin,e_end) = out_edges(v,g);
+        for(e = e_begin; e != e_end; ++e)
+        {
+            typename Hist::point_t p;
+            p[0] = eprop[*e];
+            hist.PutValue(p);
+        }
+    }
+};
+
+// generalized functor to obtain histogram of different types of "degrees"
+template <class HistogramFiller>
+struct get_histogram
+{
+    get_histogram(python::object& hist, const vector<long double>& bins,
+                  python::object& ret_bins)
+        : _hist(hist), _bins(bins), _ret_bins(ret_bins) {}
+
+    template <class Graph, class DegreeSelector>
+    void operator()(Graph* gp, DegreeSelector deg) const
+    {
+        Graph& g = *gp;
+
+        typedef typename DegreeSelector::value_type value_type;
+        typedef Histogram<value_type, size_t, 1> hist_t;
+
+        HistogramFiller filler;
+
+        vector<value_type> bins;
+        for (size_t i = 0; i < bins.size(); ++i)
+        {
+            // we'll attempt to recover from out of bounds conditions
+            try
+            {
+                bins[i] = numeric_cast<value_type,long double>(_bins[i]);
+            }
+            catch (boost::numeric::negative_overflow&)
+            {
+                bins[i] = boost::numeric::bounds<value_type>::lowest();
+            }
+            catch (boost::numeric::positive_overflow&)
+            {
+                bins[i] = boost::numeric::bounds<value_type>::highest();
+            }
+        }
+
+        // sort the bins
+        sort(bins.begin(), bins.end());
+
+        // clean bins of zero size
+        vector<value_type> temp_bin(1);
+        temp_bin[0] = bins[0];
+        for (size_t j = 1; j < bins.size(); ++j)
+        {
+            if (bins[j] > bins[j-1])
+                temp_bin.push_back(bins[j]);
+        }
+        bins = temp_bin;
+
+        // find the data range
+        pair<value_type,value_type> range;
+
+        typename graph_traits<Graph>::vertex_iterator vi,vi_end;
+        range.first = boost::numeric::bounds<value_type>::highest();
+        range.second = boost::numeric::bounds<value_type>::lowest();
+        for (tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
+            filler.UpdateRange(g, *vi, deg, range);
+
+        boost::array<pair<value_type, value_type>, 1> data_range;
+        data_range[0] = range;
+        boost::array<vector<value_type>, 1> bin_list;
+        bin_list[0] = bins;
+
+        hist_t hist(bin_list, data_range);
+        SharedHistogram<hist_t> s_hist(hist);
+
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i) \
             firstprivate(s_hist) schedule(dynamic)
@@ -29,207 +161,20 @@ struct get_vertex_histogram
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
-            s_hist[deg(v,g)]++;
-        }
-        s_hist.Gather();
-    }
-};
-
-
-// this will return the vertex histogram of degrees or scalar properties
-hist_t
-GraphInterface::GetVertexHistogram(GraphInterface::deg_t deg) const
-{
-    hist_t hist;
-
-    try
-    {
-        run_action<>()(*this, bind<void>(get_vertex_histogram(), _1, _2,
-                                         var(hist)),
-                       all_selectors())(degree_selector(deg, _properties));
-    }
-    catch (dynamic_get_failure &e)
-    {
-        throw GraphException("error getting scalar property: " +
-                             string(e.what()));
-    }
-
-    return hist;
-}
-
-// generalized functor to obtain histogram of edge properties
-struct get_edge_histogram
-{
-    template <class Graph, class Prop, class Hist>
-    void operator()(const Graph* gp, Prop eprop, Hist& hist) const
-    {
-        const Graph& g = *gp;
-        SharedMap<Hist> s_hist(hist);
-
-        int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) \
-            firstprivate(s_hist)  schedule(dynamic)
-        for (i = 0; i < N; ++i)
-        {
-            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
-            if (v == graph_traits<Graph>::null_vertex())
-                continue;
-
-            typename graph_traits<Graph>::out_edge_iterator e, e_begin, e_end;
-            tie(e_begin,e_end) = out_edges(v,g);
-            for(e = e_begin; e != e_end; ++e)
-                s_hist[eprop[*e]]++;
+            filler(g, *vi, deg, s_hist);
         }
         s_hist.Gather();
 
-        typedef typename graph_traits<Graph>::directed_category
-            directed_category;
-        if(is_convertible<directed_category,undirected_tag>::value)
-        {
-            for (typeof(s_hist.begin()) iter = s_hist.begin();
-                 iter != s_hist.end(); ++iter)
-                iter->second /= typename Hist::value_type::second_type(2);
-        }
+        bin_list = hist.GetBins();
+        python::object ret_bins = wrap_vector_owned(bin_list[0]);
+        _ret_bins = ret_bins;
+        _hist = wrap_multi_array_owned<size_t,1>(hist.GetArray());
     }
+    python::object& _hist;
+    const vector<long double>& _bins;
+    python::object& _ret_bins;
 };
 
+} // graph_tool namespace
 
-// returns the histogram of a given edge property
-hist_t GraphInterface::GetEdgeHistogram(string property) const
-{
-    hist_t hist;
-    try
-    {
-        run_action<>()(*this, bind<void>(get_edge_histogram(), _1, _2,
-                                         var(hist)),
-                       edge_scalar_properties())
-            (prop(property, _edge_index, _properties));
-    }
-    catch (dynamic_get_failure& e)
-    {
-        throw GraphException("error getting scalar property: " +
-                             string(e.what()));
-    }
-
-    return hist;
-}
-
-// this will label the components of a graph to a given vertex property, from
-// [0, number of components - 1]. If the graph is directed the "strong
-// components" are used.
-struct label_components
-{
-    template <class Graph, class CompMap>
-    void operator()(const Graph* gp, CompMap comp_map) const
-    {
-        const Graph& g = *gp;
-        typedef typename graph_traits<Graph>::directed_category
-            directed_category;
-        get_components(g, comp_map,
-                       typename is_convertible<directed_category,
-                                               directed_tag>::type());
-    }
-
-    template <class Graph, class CompMap>
-    void get_components(const Graph& g, CompMap comp_map,
-                        boost::true_type is_directed) const
-    {
-        strong_components(g, comp_map);
-    }
-
-    template <class Graph, class CompMap>
-    void get_components(const Graph& g, CompMap comp_map,
-                        boost::false_type is_directed) const
-    {
-        connected_components(g, comp_map);
-    }
-
-};
-
-void GraphInterface::LabelComponents(string prop)
-{
-    try
-    {
-        run_action<>()(*this, label_components(), _1, vertex_scalar_selectors())
-            (degree_selector(prop, _properties));
-    }
-    catch (property_not_found)
-    {
-        typedef vector_property_map<int32_t, vertex_index_map_t> comp_map_t;
-        comp_map_t comp_map(_vertex_index);
-        _properties.property(prop, comp_map);
-        run_action<>()(*this, bind<void>(label_components(), _1, comp_map))();
-    }
-}
-
-// label parallel edges in the order they are found, starting from 0
-struct label_parallel_edges
-{
-    template <class Graph, class EdgeIndexMap, class ParallelMap>
-    void operator()(const Graph* gp, EdgeIndexMap edge_index,
-                    ParallelMap parallel) const
-    {
-        const Graph& g = *gp;
-        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
-
-        int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
-        for (i = 0; i < N; ++i)
-        {
-            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
-            if (v == graph_traits<Graph>::null_vertex())
-                continue;
-
-            tr1::unordered_set<edge_t,DescriptorHash<EdgeIndexMap> >
-                p_edges(0, DescriptorHash<EdgeIndexMap>(edge_index));
-
-            typename graph_traits<Graph>::out_edge_iterator e1, e2, e_end;
-            for (tie(e1, e_end) = out_edges(v, g); e1 != e_end; ++e1)
-            {
-                if (p_edges.find(*e1) != p_edges.end())
-                    continue;
-                size_t n = 0;
-                put(parallel, *e1, n);
-                for (tie(e2, e_end) = out_edges(v, g); e2 != e_end; ++e2)
-                    if (*e2 != *e1 && target(*e1, g) == target(*e2, g))
-                    {
-                        put(parallel, *e2, ++n);
-                        p_edges.insert(*e2);
-                    }
-            }
-        }
-    }
-};
-
-void GraphInterface::LabelParallelEdges(string property)
-{
-    try
-    {
-        run_action<>()(*this, bind<void>(label_parallel_edges(), _1,
-                                         _edge_index, _2),
-                       edge_scalar_properties())
-            (prop(property, _edge_index, _properties));
-    }
-    catch (property_not_found)
-    {
-        typedef vector_property_map<int32_t,edge_index_map_t> parallel_map_t;
-        parallel_map_t parallel_map(_edge_index);
-        _properties.property(property, parallel_map);
-        run_action<>()(*this, bind<void>(label_parallel_edges(), _1,
-                                         _edge_index, parallel_map))();
-    }
-}
-
-
-// this inserts the edge index map as a property
-void GraphInterface::InsertEdgeIndexProperty(string property)
-{
-    _properties.property(property, _edge_index);
-}
-
-// this inserts the vertex index map as a property
-void GraphInterface::InsertVertexIndexProperty(string property)
-{
-    _properties.property(property, _vertex_index);
-}
-
+#endif // GRAPH_HISTOGRAMS_HH

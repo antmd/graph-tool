@@ -13,3 +13,60 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+#include "graph.hh"
+#include "graph_filtering.hh"
+#include "graph_properties.hh"
+
+#include "graph_histograms.hh"
+
+#include <boost/python.hpp>
+
+using namespace std;
+using namespace boost;
+using namespace graph_tool;
+
+// this will return the vertex histogram of degrees or scalar properties
+python::object
+get_vertex_histogram(const GraphInterface& gi, GraphInterface::deg_t deg,
+                     const vector<long double>& bins)
+{
+    python::object hist;
+    python::object ret_bins;
+
+    run_action<>()(gi, get_histogram<VertexHistogramFiller>(hist, bins,
+                                                            ret_bins),
+                   all_selectors())(degree_selector(deg, gi));
+    return python::make_tuple(hist, ret_bins);
+}
+
+// this will return the vertex histogram of degrees or scalar properties
+python::object
+get_edge_histogram(GraphInterface& gi, const string& prop,
+                   const vector<long double>& bins)
+{
+    python::object hist;
+    python::object ret_bins;
+
+    bool directed = gi.GetDirected();
+    gi.SetDirected(false);
+
+    typedef property_map_types::apply<scalar_types,
+                                      GraphInterface::edge_index_map_t,
+                                      mpl::bool_<true> >::type
+        edge_props;
+
+    run_action<graph_tool::detail::always_directed>()
+        (gi, get_histogram<EdgeHistogramFiller>(hist, bins, ret_bins),
+         edge_props())(edge_prop(prop,gi));
+    gi.SetDirected(directed);
+
+    return python::make_tuple(hist, ret_bins);
+}
+
+using namespace boost::python;
+
+void export_histograms()
+{
+    def("get_vertex_histogram", &get_vertex_histogram);
+    def("get_edge_histogram", &get_edge_histogram);
+}
