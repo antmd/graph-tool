@@ -21,10 +21,10 @@
 #include <boost/tuple/tuple.hpp>
 #include <boost/type_traits.hpp>
 #include <boost/python.hpp>
-#include "${include_prefix}/graph.hh"
-#include "${include_prefix}/graph_filtering.hh"
-#include "${include_prefix}/graph_properties.hh"
-#include "${include_prefix}/histogram.hh"
+#include "graph.hh"
+#include "graph_filtering.hh"
+#include "graph_properties.hh"
+#include "histogram.hh"
 #include <boost/lambda/lambda.hpp>
 #include <boost/lambda/bind.hpp>
 
@@ -107,22 +107,18 @@ struct action_${code_hash}
         catch (const GraphException& e)
         {
             __exception_error = e.what();
-            throw;
+            __exception_thrown = true;
         }
         catch (const bad_any_cast& e)
         {
             __exception_error = e.what();
             __exception_error += " (wrong property map type?)";
-            throw;
+            __exception_thrown = true;
         }
         catch (const std::exception& e)
         {
             __exception_error = "unknown exception thrown: ";
             __exception_error += e.what();
-            throw;
-        }
-        catch (...)
-        {
             __exception_thrown = true;
         }
 

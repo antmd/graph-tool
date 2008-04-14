@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys, string, hashlib
+import sys, string, hashlib, os.path
 from .. import core
 from .. import libgraph_tool_core
 
@@ -25,15 +25,17 @@ except ImportError:
     raise libgraph_tool_core.raise_error\
           ("You need to have scipy installed to use 'run_action'.")
 
-prefix_dir = libgraph_tool_core.mod_info().install_prefix
-python_dir = libgraph_tool_core.mod_info().python_dir
-python_dir = string.Template(python_dir).substitute(prefix=prefix_dir)
-cxxflags = libgraph_tool_core.mod_info().cxxflags
-inc_prefix = python_dir + "/graph_tool/include"
+prefix = None
+for d in [d + "/graph_tool" for d in sys.path]:
+    if os.path.exists(d):
+        prefix = d
+        break
+
+inc_prefix = prefix + "/include"
+cxxflags = libgraph_tool_core.mod_info().cxxflags + " -I%s" % inc_prefix
 
 # this is the code template which defines the action function object
-support_template = open(python_dir +
-                        "/graph_tool/run_action/run_action_template.hh").read()
+support_template = open(prefix + "/run_action/run_action_template.hh").read()
 
 def inline(g, code, arg_names=[], local_dict=None,
            global_dict=None, force=0, compiler="gcc", verbose=0,
@@ -73,13 +75,11 @@ def inline(g, code, arg_names=[], local_dict=None,
 
     support_template = string.Template(globals()["support_template"])
 
-    support_code = support_template.substitute(code_hash=code_hash,
-                                               property_map_types=props,
-                                               arg_expansion=arg_expansion,
-                                               code=code,
-                                               return_vals = return_vals,
-                                               include_prefix = inc_prefix)\
-                                               + support_code
+    support_code += support_template.substitute(code_hash=code_hash,
+                                                property_map_types=props,
+                                                arg_expansion=arg_expansion,
+                                                code=code,
+                                                return_vals = return_vals)
 
     # insert a hash value of the support_code into the code below, to force
     # recompilation when support_code (and module version) changes
@@ -101,8 +101,7 @@ def inline(g, code, arg_names=[], local_dict=None,
     # need to go deeper into the call stack
     call_frame = sys._getframe(1)
     if local_dict is None:
-        local_dict = {}
-        local_dict.update(call_frame.f_locals)
+        local_dict = call_frame.f_locals
     if global_dict is None:
         global_dict = call_frame.f_globals
     local_dict["self___graph"] = g.underlying_graph() # the graph interface
@@ -131,12 +130,6 @@ def inline(g, code, arg_names=[], local_dict=None,
     if ret_vals["__exception_thrown"]:
         libgraph_tool_core.raise_error(ret_vals["__exception_error"])
 
-    # update returned values
-    for arg in arg_names:
-        if call_frame.f_locals.has_key(arg):
-            call_frame.f_locals[arg] = ret_vals[arg]
-        elif call_frame.f_globals.has_key(arg):
-            call_frame.f_globals[arg] = ret_vals[arg]
-
     sys.setdlopenflags(orig_dlopen_flags) # reset dlopen to normal case to
                                           # avoid unnecessary symbol collision
+    return ret_vals

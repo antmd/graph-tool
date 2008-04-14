@@ -27,6 +27,7 @@
 #include <boost/property_map.hpp>
 #include <boost/dynamic_property_map.hpp>
 #include <boost/vector_property_map.hpp>
+#include <boost/functional/hash.hpp>
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/for_each.hpp>
 #include <boost/mpl/transform.hpp>

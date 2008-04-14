@@ -24,6 +24,10 @@
 #include <boost/python.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 
+#ifdef HAVE_SCIPY // integration with scipy weave
+#include "weave/scxx/object.h"
+#endif
+
 using namespace std;
 using namespace graph_tool;
 using namespace boost;
@@ -225,6 +229,17 @@ struct variant_from_python
     }
 };
 
+// scipy weave integration
+#ifdef HAVE_SCIPY
+struct scxx_to_python
+{
+    static PyObject* convert(const py::object& o)
+    {
+        return incref((PyObject*)(o));
+    }
+};
+#endif
+
 // persistent python object IO
 namespace graph_tool
 {
@@ -242,6 +257,14 @@ void set_unpickler(python::object o)
     graph_tool::object_unpickler = o;
 }
 
+python::list get_property_types()
+{
+    python::list plist;
+    for (int i = 0; i < mpl::size<value_types>::value; ++i)
+        plist.append(string(type_names[i]));
+    return plist;
+}
+
 BOOST_PYTHON_MODULE(libgraph_tool_core)
 {
     // numpy
@@ -253,6 +276,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
     register_exception_translator<GraphException>(graph_exception_translator);
 
     def("raise_error", &raise_error);
+    def("get_property_types", &get_property_types);
 
     mpl::for_each<mpl::push_back<scalar_types,string>::type>(export_vector_types());
 
@@ -315,6 +339,9 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
     to_python_converter<pair<size_t,size_t>, pair_to_tuple<size_t,size_t> >();
     pair_from_tuple<double,double>();
     pair_from_tuple<size_t,size_t>();
+#ifdef HAVE_SCIPY
+    to_python_converter<py::object, scxx_to_python>();
+#endif
 
     class_<IStream>("IStream", no_init).def("Read", &IStream::Read);
     class_<OStream>("OStream", no_init).def("Write", &OStream::Write).

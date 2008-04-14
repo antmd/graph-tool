@@ -157,6 +157,9 @@ public:
     typedef property_map<multigraph_t,vertex_index_t>::type vertex_index_map_t;
     typedef property_map<multigraph_t,edge_index_t>::type edge_index_map_t;
 
+    vertex_index_map_t GetVertexIndex() {return _vertex_index;}
+    edge_index_map_t GetEdgeIndex() {return _edge_index;}
+
 private:
     // Gets the encapsulated graph view. See graph_filtering.cc for details
     boost::any GetGraphView() const;
