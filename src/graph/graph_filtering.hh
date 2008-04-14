@@ -190,7 +190,7 @@ struct graph_filter
 
         typedef filtered_graph<Graph,
                                edge_predicate,
-                               vertex_predicate > filtered_graph;
+                               vertex_predicate> filtered_graph_t;
 
         // If both predicates are keep_all, then return the original graph
         // type. Otherwise return the filtered_graph type.
@@ -202,7 +202,7 @@ struct graph_filter
                         keep_all>
                 >::type,
             Graph,
-            filtered_graph>::type type;
+            filtered_graph_t>::type type;
     };
 };
 
