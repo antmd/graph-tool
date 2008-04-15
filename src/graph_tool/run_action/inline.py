@@ -92,7 +92,7 @@ def inline(g, code, arg_names=[], local_dict=None,
     python::object pg(python::handle<>
                         (python::borrowed((PyObject*)(self___graph))));
     GraphInterface& g = python::extract<GraphInterface&>(pg);
-    RunAction(g, make_action(make_tuple(${args}), return_val));
+    RunAction(g, make_action(boost::make_tuple(${args}), return_val));
     // support code hash: ${support_hash}
     """).substitute(args=", ".join(["&%s" %a for a in arg_names]),
                     code_hash=code_hash, support_hash=support_hash)

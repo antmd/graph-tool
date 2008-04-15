@@ -218,6 +218,7 @@ AC_DEFINE_UNQUOTED([INSTALL_PREFIX],"${prefix}", [python prefix])
 AC_DEFINE_UNQUOTED([PYTHON_DIR], "${PYLIBDIR}", [The directory name for the site-packages subdirectory of the standard Python install tree.])
 
 AC_DEFINE_UNQUOTED([CXXFLAGS],"${CXXFLAGS}", [c++ compilation options])
+AC_DEFINE_UNQUOTED([CPPFLAGS],"${CPPFLAGS}", [c++ preprocessor compilation options])
 
 AC_DEFINE_UNQUOTED([PACKAGE_DATA_DIR], "${packageprefix}/${packagedatadir}", [package data dir])
 AC_DEFINE_UNQUOTED([PACKAGE_DOC_DIR], "${packageprefix}/${packagedocdir}", [package doc dir])
