@@ -105,7 +105,7 @@ struct get_histogram
 
         HistogramFiller filler;
 
-        vector<value_type> bins;
+        vector<value_type> bins(_bins.size());
         for (size_t i = 0; i < bins.size(); ++i)
         {
             // we'll attempt to recover from out of bounds conditions
@@ -161,7 +161,7 @@ struct get_histogram
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
-            filler(g, *vi, deg, s_hist);
+            filler(g, v, deg, s_hist);
         }
         s_hist.Gather();
 
