@@ -15,7 +15,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-
 #include <algorithm>
 #include <tr1/unordered_set>
 #include <boost/lambda/lambda.hpp>
@@ -34,6 +33,17 @@ using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
 
+struct is_directed
+{
+    template <class Graph>
+    struct apply
+    {
+        typedef is_convertible
+            <typename graph_traits<Graph>::directed_category,
+             directed_tag> type;
+    };
+};
+
 // this will calculate the assortativity coefficient, based on the property
 // pointed by 'deg'
 
@@ -45,11 +55,14 @@ struct get_assortativity_coefficient
     template <class Graph>
     void operator()(const Graph& g, double& r, double& r_err) const
     {
-        size_t n_edges = 0;
-        int e_kk = 0;
-        tr1::unordered_map<double,int> a, b;
-        SharedMap<tr1::unordered_map<double,int> > sa(a), sb(b);
+        typedef typename mpl::if_<typename is_directed::apply<Graph>::type,
+                                  size_t, double>::type count_t;
 
+        count_t c = (is_directed::apply<Graph>::type::value) ? 1.0 : 0.5;
+        count_t n_edges = 0;
+        count_t e_kk = 0;
+        tr1::unordered_map<double,count_t> a, b;
+        SharedMap<tr1::unordered_map<double,count_t> > sa(a), sb(b);
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i) firstprivate(sa,sb)\
             schedule(dynamic) reduction(+:e_kk, n_edges)
@@ -64,11 +77,11 @@ struct get_assortativity_coefficient
             for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
             {
                 double k2 = _deg(target(*e, g), g);
-                sa[k1]++;
-                sb[k2]++;
                 if (k1 == k2)
-                    e_kk++;
-                n_edges++;
+                    e_kk += c;
+                sa[k1] += c;
+                sb[k2] += c;
+                n_edges += c;
             }
         }
 
@@ -106,7 +119,7 @@ struct get_assortativity_coefficient
                     tl1 -= 1;
                 tl1 /= n_edges - 1;
                 double rl = (tl1 - tl2)/(1.0 - tl2);
-                err += (r-rl)*(r-rl);
+                err += (r-rl)*(r-rl)*c;
             }
         }
         r_err = sqrt(err);
@@ -177,10 +190,14 @@ struct get_scalar_assortativity_coefficient
     template <class Graph>
     void operator()(const Graph& g, double& r, double& r_err) const
     {
-        size_t n_edges = 0;
+        typedef typename mpl::if_<typename is_directed::apply<Graph>::type,
+                                  size_t, double>::type count_t;
+
+        count_t c = (is_directed::apply<Graph>::type::value) ? 1.0 : 0.5;
+        count_t n_edges = 0;
         double e_xy = 0.0;
-        tr1::unordered_map<double,int> a, b;
-        SharedMap<tr1::unordered_map<double,int> > sa(a), sb(b);
+        tr1::unordered_map<double,count_t> a, b;
+        SharedMap<tr1::unordered_map<double,count_t> > sa(a), sb(b);
 
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i) firstprivate(sa,sb)\
@@ -196,10 +213,10 @@ struct get_scalar_assortativity_coefficient
             for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
             {
                 double k2 = _deg(target(*e,g),g);
-                sa[k1]++;
-                sb[k2]++;
-                e_xy += k1*k2;
-                n_edges++;
+                sa[k1] += c;
+                sb[k2] += c;
+                e_xy += k1*k2*c;
+                n_edges += c;
             }
         }
 
@@ -250,7 +267,7 @@ struct get_scalar_assortativity_coefficient
                     rl = (t1l - avg_al*avg_bl)/(dal*dbl);
                 else
                     rl = (t1l - avg_al*avg_bl);
-                err += (r-rl)*(r-rl);
+                err += (r-rl)*(r-rl)*c;
             }
         }
         r_err = sqrt(err);
