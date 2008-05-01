@@ -337,6 +337,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
     variant_from_python<GraphInterface::degree_t>();
     to_python_converter<pair<string,bool>, pair_to_tuple<string,bool> >();
     to_python_converter<pair<size_t,size_t>, pair_to_tuple<size_t,size_t> >();
+    to_python_converter<pair<double,double>, pair_to_tuple<double,double> >();
     pair_from_tuple<double,double>();
     pair_from_tuple<size_t,size_t>();
 #ifdef HAVE_SCIPY

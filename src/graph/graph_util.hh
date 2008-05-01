@@ -35,6 +35,23 @@ namespace graph_tool
 {
 using namespace boost;
 
+//
+// Metaprogramming
+// ===============
+
+// useful metafunction to determine whether a graph is directed or not
+
+struct is_directed
+{
+    template <class Graph>
+    struct apply
+    {
+        typedef is_convertible<typename graph_traits<Graph>::directed_category,
+                               directed_tag> type;
+    };
+};
+
+
 // This will count "by hand" the number of vertices on a graph. Always O(V).
 struct HardNumVertices
 {
