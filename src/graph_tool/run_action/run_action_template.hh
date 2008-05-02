@@ -52,7 +52,9 @@ struct prop_bind_t
     template <class Value>
     struct as
     {
-        typedef vector_property_map<Value,IndexMap> type;
+        typedef typename mpl::if_<is_same<Value,bool>,
+                                  uint8_t, Value>::type val_t;
+        typedef vector_property_map<val_t,IndexMap> type;
     };
 };
 
