@@ -200,7 +200,7 @@ pair<string, bool> GraphInterface::GetEdgeFilterProperty() const
 void GraphInterface::ReIndexEdges()
 {
     size_t n_edges = num_edges(_mg);
-    if (n_edges == 0 || true)
+    if (n_edges == 0)
         return;
 
     vector<dynamic_property_map*> edge_props;
@@ -209,8 +209,7 @@ void GraphInterface::ReIndexEdges()
         if (p->second->key() == typeid(edge_t))
             edge_props.push_back(p->second);
 
-    vector<pair<edge_t,bool> > edge_map
-        (n_edges, make_pair(edge_t(), false));
+    vector<pair<edge_t,bool> > edge_map(n_edges, make_pair(edge_t(), false));
 
     graph_traits<multigraph_t>::vertex_iterator v, v_end;
     graph_traits<multigraph_t>::out_edge_iterator e, e_end;
@@ -221,7 +220,7 @@ void GraphInterface::ReIndexEdges()
             if (index >= num_edges(_mg))
                 continue;
             if (index >= edge_map.size())
-                edge_map.resize(index+1);
+                edge_map.resize(index+1, make_pair(edge_t(), false));
             edge_map[index] = make_pair(*e, true);
         }
 
@@ -236,10 +235,11 @@ void GraphInterface::ReIndexEdges()
             }
 
             edge_t old_edge = edge_map[new_index].first;
-            if (edge_map[new_index].second)
+            if (edge_map[new_index].second &&
+                _edge_index[*e] != _edge_index[old_edge])
             {
-                // another edge exists with the same index; indexes
-                // must be swapped, as well as the properties
+                // another edge exists with the same (new) index; the properties
+                // must be swapped
                 _edge_index[old_edge] = _edge_index[*e];
                 edge_map[_edge_index[*e]] = make_pair(old_edge, true);
                 _edge_index[*e] = new_index;
@@ -257,6 +257,7 @@ void GraphInterface::ReIndexEdges()
                 // assigned for this edge, and the properties must be
                 // copied over
                 size_t old_index = _edge_index[*e];
+                _edge_index[*e] = new_index;
                 for (size_t i = 0; i < edge_props.size(); ++i)
                 {
                     _edge_index[*e] = old_index;
