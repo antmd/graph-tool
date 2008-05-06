@@ -217,11 +217,12 @@ void GraphInterface::ReIndexEdges()
         for (tie(e, e_end) = out_edges(*v, _mg); e != e_end; ++e)
         {
             size_t index = _edge_index[*e];
-            if (index >= num_edges(_mg))
+            if (index >= n_edges)
                 continue;
             if (index >= edge_map.size())
                 edge_map.resize(index+1, make_pair(edge_t(), false));
-            edge_map[index] = make_pair(*e, true);
+            if (!edge_map[index].second)
+                edge_map[index] = make_pair(*e, true);
         }
 
     size_t new_index = 0;
@@ -236,7 +237,7 @@ void GraphInterface::ReIndexEdges()
 
             edge_t old_edge = edge_map[new_index].first;
             if (edge_map[new_index].second &&
-                _edge_index[*e] != _edge_index[old_edge])
+                (_edge_index[*e] != _edge_index[old_edge]))
             {
                 // another edge exists with the same (new) index; the properties
                 // must be swapped
