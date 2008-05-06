@@ -59,7 +59,7 @@ struct graph_copy
             size_t t = index_map[src_vertex_index[target(*e, src)]];
             typename graph_traits<GraphDst>::edge_descriptor new_e =
                 add_edge(vertex(s,dst), vertex(t,dst), dst).first;
-            dst_edge_index[new_e] = src_edge_index[new_e];
+            dst_edge_index[new_e] = src_edge_index[*e];
         }
     }
 };
