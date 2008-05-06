@@ -29,6 +29,7 @@
 #include "graph_selectors.hh"
 
 #include <boost/python.hpp>
+#include <boost/python/type_id.hpp>
 
 // this file includes a simple python interface for the internally kept
 // graph. It defines a PythonVertex, PythonEdge and PythonIterator template
@@ -406,7 +407,13 @@ public:
 
     std::string GetType() const
     {
-        return type_names[mpl::find<value_types,value_type>::type::pos::value];
+        using python::detail::gcc_demangle;
+        if (is_same<typename mpl::find<value_types,value_type>::type,
+                    typename mpl::end<value_types>::type>::value)
+            return gcc_demangle(typeid(value_type).name());
+        else
+            return type_names[mpl::find<value_types,
+                                        value_type>::type::pos::value];
     }
 
     PropertyMap GetMap() const
