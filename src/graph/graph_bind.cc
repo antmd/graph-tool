@@ -26,6 +26,10 @@
 
 #ifdef HAVE_SCIPY // integration with scipy weave
 #include "weave/scxx/object.h"
+#include "weave/scxx/list.h"
+#include "weave/scxx/tuple.h"
+#include "weave/scxx/dict.h"
+#include "weave/scxx/str.h"
 #endif
 
 using namespace std;
@@ -231,9 +235,10 @@ struct variant_from_python
 
 // scipy weave integration
 #ifdef HAVE_SCIPY
+template <class ScxxType>
 struct scxx_to_python
 {
-    static PyObject* convert(const py::object& o)
+    static PyObject* convert(const ScxxType& o)
     {
         return incref((PyObject*)(o));
     }
@@ -341,7 +346,11 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
     pair_from_tuple<double,double>();
     pair_from_tuple<size_t,size_t>();
 #ifdef HAVE_SCIPY
-    to_python_converter<py::object, scxx_to_python>();
+    to_python_converter<py::object, scxx_to_python<py::object> >();
+    to_python_converter<py::tuple, scxx_to_python<py::tuple> >();
+    to_python_converter<py::list, scxx_to_python<py::list> >();
+    to_python_converter<py::dict, scxx_to_python<py::dict> >();
+    to_python_converter<py::str, scxx_to_python<py::str> >();
 #endif
 
     class_<IStream>("IStream", no_init).def("Read", &IStream::Read);
