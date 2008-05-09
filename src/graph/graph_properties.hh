@@ -211,7 +211,8 @@ boost::any prop(const string& name, IndexMap,
     }
     else
     {
-        typedef typename property_map_types::apply<value_types,IndexMap>::type
+        typedef typename property_map_types::apply<value_types,IndexMap,
+                                                   mpl::bool_<true> >::type
             properties_t;
         bool found = false;
         mpl::for_each<properties_t>(lambda::bind<void>(get_static_prop(),

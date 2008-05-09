@@ -107,12 +107,20 @@ struct export_edge_property_map
     template <class PropertyMap>
     void operator()(PropertyMap) const
     {
+        using python::detail::gcc_demangle;
 
         typedef PythonPropertyMap<PropertyMap> pmap_t;
 
-        string type_name =
-            type_names[mpl::find<value_types,
-                       typename pmap_t::value_type>::type::pos::value];
+        string type_name;
+        if (is_same<typename mpl::find<value_types,
+                                       typename pmap_t::value_type>::type,
+                    typename mpl::end<value_types>::type>::value)
+            type_name =
+                gcc_demangle(typeid(typename pmap_t::value_type).name());
+        else
+            type_name =
+                type_names[mpl::find<value_types,typename pmap_t::value_type>
+                           ::type::pos::value];
         string class_name = _name + "<" + type_name + ">";
 
         python::class_<pmap_t> pclass(class_name.c_str(),
