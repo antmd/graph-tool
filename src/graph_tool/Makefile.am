@@ -25,3 +25,7 @@ graph_tool_generationdir = $(pythondir)/graph_tool/generation
 graph_tool_correlations_PYTHON = \
     correlations/__init__.py
 graph_tool_correlationsdir = $(pythondir)/graph_tool/correlations
+
+graph_tool_stats_PYTHON = \
+    stats/__init__.py
+graph_tool_statsdir = $(pythondir)/graph_tool/stats
