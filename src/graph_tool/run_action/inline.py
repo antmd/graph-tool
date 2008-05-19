@@ -42,7 +42,7 @@ def inline(g, code, arg_names=[], local_dict=None,
            auto_downcast=1, support_code="", libraries=[],
            library_dirs=[], extra_compile_args=[],
            runtime_library_dirs=[], extra_objects=[],
-           extra_link_args=[]):
+           extra_link_args=[], mask_ret=[]):
     """Compile (if necessary) and run the C++ action specified by 'code',
     using weave."""
 
@@ -71,7 +71,8 @@ def inline(g, code, arg_names=[], local_dict=None,
     # handle returned values
     return_vals = ""
     for arg in arg_names:
-        return_vals += 'return_vals["%s"] = %s;\n' % (arg, arg)
+        if arg not in mask_ret:
+            return_vals += 'return_vals["%s"] = %s;\n' % (arg, arg)
 
     support_template = string.Template(globals()["support_template"])
 
