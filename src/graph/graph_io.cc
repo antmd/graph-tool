@@ -508,7 +508,7 @@ struct write_to_file
                 find_property_map(dp, "vertex_name", typeid(vertex_t));
                 name = "vertex_name";
             }
-            catch (property_not_found)
+            catch (PropertyNotFound)
             {
                 name = "vertex_id";
             }
@@ -598,7 +598,7 @@ void GraphInterface::WriteToFile(string file, python::object pfile,
                 {
                     find_property_map(dp, "vertex_name", typeid(vertex_t));
                 }
-                catch (property_not_found)
+                catch (PropertyNotFound)
                 {
                     dp.property("vertex_id", index_map);
                 }
@@ -624,7 +624,7 @@ void GraphInterface::WriteToFile(string file, python::object pfile,
                 {
                     find_property_map(dp, "vertex_name", typeid(vertex_t));
                 }
-                catch (property_not_found)
+                catch (PropertyNotFound)
                 {
                     dp.property("vertex_id", _vertex_index);
                 }
