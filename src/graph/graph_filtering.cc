@@ -217,10 +217,10 @@ void GraphInterface::ReIndexEdges()
         for (tie(e, e_end) = out_edges(*v, _mg); e != e_end; ++e)
         {
             size_t index = _edge_index[*e];
-            if (index >= n_edges)
-                continue;
             if (index >= edge_map.size())
                 edge_map.resize(index+1, make_pair(edge_t(), false));
+            if (index >= n_edges)
+                continue;
             if (!edge_map[index].second)
                 edge_map[index] = make_pair(*e, true);
         }
