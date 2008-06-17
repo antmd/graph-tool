@@ -44,12 +44,12 @@ __all__ = ["vertex_hist", "edge_hist", "label_components",
 def vertex_hist(g, deg, bins=[1]):
     ret = libgraph_tool_stats.\
           get_vertex_histogram(g.underlying_graph(), _degree(deg), bins)
-    return [ret[0], ret[1]]
+    return [array(ret[0]), ret[1]]
 
 def edge_hist(g, eprop, bins=[1]):
     ret = libgraph_tool_stats.\
           get_edge_histogram(g.underlying_graph(), eprop, bins)
-    return [ret[0], ret[1]]
+    return [array(ret[0]), ret[1]]
 
 def label_components(g, vprop):
     if vprop not in g.vertex_properties:
