@@ -29,6 +29,7 @@
 #include <boost/python/object.hpp>
 #include <boost/python/dict.hpp>
 #include <boost/mpl/vector.hpp>
+#include "graph_properties.hh"
 #include "config.h"
 
 namespace graph_tool
@@ -69,11 +70,9 @@ public:
         TOTAL_DEGREE
     } degree_t;
 
-    typedef boost::variant<degree_t, string> deg_t; // general "degree" type,
-                                                    // i.e., either a degree_t
-                                                    // above or a string
-                                                    // representing a scalar
-                                                    // vertex property
+    // general "degree" type, i.e., either a degree_t above or a string
+    // representing a scalar vertex property
+    typedef boost::variant<degree_t, boost::any> deg_t;
 
     //
     // Basic manipulation
@@ -82,35 +81,28 @@ public:
     size_t GetNumberOfVertices() const;
     size_t GetNumberOfEdges() const;
     void SetDirected(bool directed) {_directed = directed;}
-    bool GetDirected() const {return _directed;}
+    bool GetDirected() {return _directed;}
     void SetReversed(bool reversed) {_reversed = reversed;}
-    bool GetReversed() const {return _reversed;}
+    bool GetReversed() {return _reversed;}
 
     // graph filtering
-    void SetVertexFilterProperty(string property, bool invert);
-    pair<string, bool> GetVertexFilterProperty() const;
+    void SetVertexFilterProperty(boost::any prop, bool invert);
     bool IsVertexFilterActive() const;
-    void SetEdgeFilterProperty(string property, bool invert);
-    pair<string, bool> GetEdgeFilterProperty() const;
+    void SetEdgeFilterProperty(boost::any prop, bool invert);
     bool IsEdgeFilterActive() const;
 
     // graph modification
-    void RemoveVertexProperty(string property);
-    void RemoveEdgeProperty(string property);
-    void RemoveGraphProperty(string property);
-    void InsertEdgeIndexProperty(string property);
-    void InsertVertexIndexProperty(string property);
-    void AddVertexProperty(string property, string type);
-    void AddEdgeProperty(string property, string type);
-    void AddGraphProperty(string property, string type);
+    void InsertPropertyMap(string name, boost::any map);
     void ReIndexEdges();
     void PurgeVertices(); // removes filtered vertices
     void PurgeEdges();    // removes filtered edges
     void Clear();
-
-    // i/o
-    void WriteToFile(string s, python::object pf, string format);
-    void ReadFromFile(string s, python::object pf, string format);
+    void ClearEdges();
+    void ShiftVertexProperty(boost::any map, size_t index) const;
+    void CopyVertexProperty(const GraphInterface& src, boost::any prop_src,
+                            boost::any prop_tgt);
+    void CopyEdgeProperty(const GraphInterface& src, boost::any prop_src,
+                          boost::any prop_tgt);
 
     //
     // python interface
@@ -124,19 +116,16 @@ public:
     python::object AddEdge(const python::object& s, const python::object& t);
     void           RemoveEdge(const python::object& e);
 
-    python::dict GetVertexProperties() const;
-    python::dict GetEdgeProperties() const;
-    python::dict GetGraphProperties() const;
-    void PutPropertyMap(string name, const python::object& map);
-
     // used for graph properties
     graph_property_tag GetDescriptor() const { return graph_property_tag(); }
     bool CheckValid() const {return true;}
 
     void ExportPythonInterface() const;
 
-    // signal handling
-    void InitSignalHandling();
+    // I/O
+    void WriteToFile(string s, python::object pf, string format,
+                     python::list properties);
+    python::tuple ReadFromFile(string s, python::object pf, string format);
 
     //
     // Internal types
@@ -156,9 +145,11 @@ public:
 
     typedef property_map<multigraph_t,vertex_index_t>::type vertex_index_map_t;
     typedef property_map<multigraph_t,edge_index_t>::type edge_index_map_t;
+    typedef ConstantPropertyMap<size_t,graph_property_tag> graph_index_map_t;
 
-    vertex_index_map_t GetVertexIndex() {return _vertex_index;}
-    edge_index_map_t GetEdgeIndex() {return _edge_index;}
+    boost::any GetVertexIndex() {return _vertex_index;}
+    boost::any GetEdgeIndex() {return _edge_index;}
+    boost::any GetGraphIndex() {return graph_index_map_t(0);}
 
 private:
     // Gets the encapsulated graph view. See graph_filtering.cc for details
@@ -173,15 +164,6 @@ private:
     // Arbitrary code execution
     template <class Action>
     friend void RunAction(GraphInterface& g, const Action& a);
-
-    friend boost::any degree_selector(deg_t deg, const GraphInterface& gi);
-
-    friend boost::any vertex_prop(const string& name, const GraphInterface& gi,
-                                  bool dynamic);
-    friend boost::any edge_prop(const string& name, const GraphInterface& gi,
-                                bool dynamic);
-    friend boost::any graph_prop(const string& name, const GraphInterface& gi,
-                                 bool dynamic);
 
     // python interface
     friend class PythonVertex;
@@ -204,25 +186,26 @@ private:
     // edge index map
     edge_index_map_t _edge_index;
 
-    // graph properties
-    dynamic_properties _properties;
+    // graph index map
+    graph_index_map_t _graph_index;
 
     // vertex filter
     typedef vector_property_map<uint8_t,vertex_index_map_t> vertex_filter_t;
     vertex_filter_t _vertex_filter_map;
-    string _vertex_filter_property;
     bool _vertex_filter_invert;
     bool _vertex_filter_active;
 
     // edge filter
     typedef vector_property_map<uint8_t,edge_index_map_t> edge_filter_t;
     edge_filter_t _edge_filter_map;
-    string _edge_filter_property;
     bool _edge_filter_invert;
     bool _edge_filter_active;
 };
 #pragma GCC visibility pop
 
+// Exceptions
+// ==========
+//
 // This is the main exception which will be thrown the outside world, when
 // things go wrong
 

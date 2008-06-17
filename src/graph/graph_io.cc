@@ -15,8 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#include "graph_filtering.hh"
 #include "graph.hh"
+#include "graph_filtering.hh"
 #include "graph_properties.hh"
 #include "graph_util.hh"
 
@@ -34,11 +34,16 @@
 #include <boost/python/extract.hpp>
 #include <boost/lexical_cast.hpp>
 
+#include "graph_python_interface.hh"
+
 using namespace std;
 using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
 
+//
+// Data type string representation
+// ===============================
 //
 // String representation of individual data types. We have to take care
 // specifically that no information is lost with floating point I/O.
@@ -226,6 +231,38 @@ public:
 private:
     python::object _file;
 };
+
+// Property Maps
+// =============
+
+struct get_python_property
+{
+    template <class ValueType, class IndexMap>
+    void operator()(ValueType, IndexMap, dynamic_property_map* map,
+                    python::object& pmap) const
+    {
+        typedef vector_property_map<ValueType, IndexMap> map_t;
+        try
+        {
+            pmap = python::object
+                (PythonPropertyMap<map_t>
+                 (dynamic_cast
+                  <boost::detail::dynamic_property_map_adaptor<map_t>&>(*map)
+                  .base()));
+        } catch (bad_cast&) {}
+    }
+};
+
+template <class IndexMap>
+python::object find_property_map(dynamic_property_map* map, IndexMap)
+{
+    python::object pmap;
+    mpl::for_each<value_types>(lambda::bind<void>(get_python_property(),
+                                                  lambda::_1,
+                                                  IndexMap(), lambda::var(map),
+                                                  lambda::var(pmap)));
+    return pmap;
+}
 
 // this functor will check whether a value is of a specific type, create a
 // corresponding vector_property_map and add the value to it
@@ -431,8 +468,8 @@ void build_stream
 }
 
 
-void GraphInterface::ReadFromFile(string file, python::object pfile,
-                                  string format)
+python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
+                                          string format)
 {
     bool graphviz = false;
     if (format == "dot")
@@ -447,12 +484,11 @@ void GraphInterface::ReadFromFile(string file, python::object pfile,
         std::ifstream file_stream;
         build_stream(stream, file, pfile, file_stream);
 
-        _properties = dynamic_properties();
+        create_dynamic_map<vertex_index_map_t,edge_index_map_t>
+            map_creator(_vertex_index, _edge_index);
+        dynamic_properties dp(map_creator);
         _mg.clear();
 
-        dynamic_properties_copy
-            dp(create_dynamic_map<vertex_index_map_t, edge_index_map_t>
-               (_vertex_index, _edge_index));
         GraphEdgeIndexWrap<multigraph_t,edge_index_map_t> wg(_mg, _edge_index);
         _directed = true;
         try
@@ -480,7 +516,20 @@ void GraphInterface::ReadFromFile(string file, python::object pfile,
                 read_graphml(stream, ug, dp);
         }
 
-        _properties = dp;
+        python::dict vprops, eprops, gprops;
+        for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)
+        {
+            if (iter->second->key() == typeid(vertex_t))
+                vprops[iter->first] = find_property_map(iter->second,
+                                                       _vertex_index);
+            else if (iter->second->key() == typeid(edge_t))
+                eprops[iter->first] = find_property_map(iter->second,
+                                                       _edge_index);
+            else
+                gprops[iter->first] = find_property_map(iter->second,
+                                                        _graph_index);
+        }
+        return python::make_tuple(vprops, eprops, gprops);
     }
     catch (ios_base::failure &e)
     {
@@ -489,6 +538,25 @@ void GraphInterface::ReadFromFile(string file, python::object pfile,
     }
 
 };
+
+template <class IndexMap>
+string graphviz_insert_index(dynamic_properties& dp, IndexMap index_map,
+                             bool insert = true)
+{
+    typedef GraphInterface::vertex_t vertex_t;
+    bool found = false;
+    for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end();
+        ++iter)
+        if (iter->first == "vertex_name" &&
+            iter->second->key() == typeid(vertex_t))
+            found = true;
+    if (!found && insert)
+        dp.property("vertex_id", index_map);
+    if (found)
+        return "vertex_name";
+    else
+        return "vertex_id";
+}
 
 // writes a graph to a file
 
@@ -502,16 +570,7 @@ struct write_to_file
 
         if (graphviz)
         {
-            string name;
-            try
-            {
-                find_property_map(dp, "vertex_name", typeid(vertex_t));
-                name = "vertex_name";
-            }
-            catch (PropertyNotFound)
-            {
-                name = "vertex_id";
-            }
+            string name = graphviz_insert_index(dp, index_map, false);
             write_graphviz(stream, *g, dp, name);
         }
         else
@@ -547,7 +606,7 @@ struct generate_index
 };
 
 void GraphInterface::WriteToFile(string file, python::object pfile,
-                                 string format)
+                                 string format, python::list props)
 {
     bool graphviz = false;
     if (format == "dot")
@@ -582,7 +641,16 @@ void GraphInterface::WriteToFile(string file, python::object pfile,
         }
         stream.exceptions(ios_base::badbit | ios_base::failbit);
 
-        dynamic_properties_copy dp = _properties;
+        dynamic_properties dp;
+        for (int i = 0; i < len(props); ++i)
+        {
+            dynamic_property_map* pmap =
+                any_cast<dynamic_property_map*>
+                (python::extract<boost::any>
+                 (props[i][1].attr("get_dynamic_map")()));
+            dp.insert(python::extract<string>(props[i][0]),
+                      auto_ptr<dynamic_property_map>(pmap));
+        }
 
         if (IsVertexFilterActive())
         {
@@ -590,60 +658,45 @@ void GraphInterface::WriteToFile(string file, python::object pfile,
             typedef tr1::unordered_map<vertex_t, size_t>  map_t;
             map_t vertex_to_index;
             associative_property_map<map_t> index_map(vertex_to_index);
-            run_action<>()(*this, bind<void>(generate_index(), _1,
-                                             index_map))();
+            run_action<>()(*this, lambda::bind<void>(generate_index(),
+                                                     lambda::_1,
+                                                     index_map))();
             if (graphviz)
-            {
-                try
-                {
-                    find_property_map(dp, "vertex_name", typeid(vertex_t));
-                }
-                catch (PropertyNotFound)
-                {
-                    dp.property("vertex_id", index_map);
-                }
-            }
+                graphviz_insert_index(dp, index_map);
+
             if (GetDirected())
-            {
                 run_action<detail::always_directed>()
-                    (*this,bind<void>(write_to_file(), var(stream), _1,
-                                      index_map, var(dp), graphviz))();
-            }
+                    (*this, lambda::bind<void>(write_to_file(),
+                                               lambda::var(stream),
+                                               lambda::_1,
+                                               index_map, lambda::var(dp),
+                                               graphviz))();
             else
-            {
                 run_action<detail::never_directed>()
-                    (*this,bind<void>(write_to_file_fake_undir(), var(stream),
-                                      _1, index_map, var(dp), graphviz))();
-            }
+                    (*this,lambda::bind<void>(write_to_file_fake_undir(),
+                                              lambda::var(stream),
+                                              lambda::_1, index_map,
+                                              lambda::var(dp), graphviz))();
         }
         else
         {
             if (graphviz)
-            {
-                try
-                {
-                    find_property_map(dp, "vertex_name", typeid(vertex_t));
-                }
-                catch (PropertyNotFound)
-                {
-                    dp.property("vertex_id", _vertex_index);
-                }
-            }
+                graphviz_insert_index(dp, _vertex_index);
 
             if (GetDirected())
-            {
                 run_action<detail::always_directed>()
-                    (*this,bind<void>(write_to_file(), var(stream),
-                                      _1, _vertex_index, var(dp),
-                                      graphviz))();
-            }
+                    (*this, lambda::bind<void>(write_to_file(),
+                                               lambda::var(stream),
+                                               lambda::_1, _vertex_index,
+                                               lambda::var(dp),
+                                               graphviz))();
             else
-            {
                 run_action<detail::never_directed>()
-                    (*this,bind<void>(write_to_file_fake_undir(), var(stream),
-                                      _1, _vertex_index, var(dp),
-                                      graphviz))();
-            }
+                    (*this,lambda::bind<void>(write_to_file_fake_undir(),
+                                              lambda::var(stream),
+                                              lambda::_1, _vertex_index,
+                                              lambda::var(dp),
+                                              graphviz))();
         }
         stream.reset();
     }

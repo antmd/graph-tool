@@ -64,7 +64,9 @@ struct export_vertex_property_map
             .def("value_type", &pmap_t::GetType)
             .def("__getitem__", &pmap_t::template GetValue<PythonVertex>,
                  return_policy())
-            .def("__setitem__", &pmap_t::template SetValue<PythonVertex>);
+            .def("__setitem__", &pmap_t::template SetValue<PythonVertex>)
+            .def("get_map", &pmap_t::GetMap)
+            .def("get_dynamic_map", &pmap_t::GetDynamicMap);
     }
 
     string _name;
@@ -126,7 +128,10 @@ struct export_edge_property_map
         python::class_<pmap_t> pclass(class_name.c_str(),
                                       python::no_init);
         pclass.def("__hash__", &pmap_t::GetHash)
-            .def("value_type", &pmap_t::GetType);
+            .def("value_type", &pmap_t::GetType)
+            .def("get_map", &pmap_t::GetMap)
+            .def("get_dynamic_map", &pmap_t::GetDynamicMap);
+
 
         typedef mpl::transform<graph_tool::detail::all_graph_views,
                                mpl::quote1<add_pointer> >::type graph_views;
@@ -165,7 +170,9 @@ struct export_graph_property_map
             .def("value_type", &pmap_t::GetType)
             .def("__getitem__", &pmap_t::template GetValue<GraphInterface>,
                  return_policy())
-            .def("__setitem__", &pmap_t::template SetValue<GraphInterface>);
+            .def("__setitem__", &pmap_t::template SetValue<GraphInterface>)
+            .def("get_map", &pmap_t::GetMap)
+            .def("get_dynamic_map", &pmap_t::GetDynamicMap);
     }
 
     string _name;

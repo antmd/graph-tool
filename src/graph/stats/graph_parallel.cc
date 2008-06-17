@@ -25,22 +25,23 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-void do_label_parallel_edges(GraphInterface& gi, const string& property)
+void do_label_parallel_edges(GraphInterface& gi, boost::any property)
 {
+    GraphInterface::edge_index_map_t edge_index =
+        any_cast<GraphInterface::edge_index_map_t>(gi.GetEdgeIndex());
     run_action<>()(gi, bind<void>(label_parallel_edges(), _1,
-                                  gi.GetEdgeIndex(), _2),
-                   edge_scalar_properties())
-            (edge_prop(property, gi));
+                                  edge_index, _2),
+                   edge_scalar_properties())(property);
 }
 
-void do_label_self_loops(GraphInterface& gi, const string& property)
+void do_label_self_loops(GraphInterface& gi, boost::any property)
 {
+    GraphInterface::edge_index_map_t edge_index =
+        any_cast<GraphInterface::edge_index_map_t>(gi.GetEdgeIndex());
     run_action<>()(gi, bind<void>(label_self_loops(), _1,
-                                  gi.GetEdgeIndex(), _2),
-                   edge_scalar_properties())
-            (edge_prop(property, gi));
+                                  edge_index, _2),
+                   edge_scalar_properties())(property);
 }
-
 
 using namespace boost::python;
 

@@ -15,7 +15,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+#include "graph.hh"
 #include "graph_properties.hh"
+#include "graph_selectors.hh"
 #include "graph_util.hh"
 
 #include <boost/lambda/bind.hpp>
@@ -37,248 +39,33 @@ const char* type_names[] =
      "python::object"};
 
 
-PropertyNotFound::PropertyNotFound(const string& name, const type_info& key,
-                                   const string& extra_info)
-    : GraphException("")
+struct shift_vertex_property
 {
-    string key_type;
-    if  (key == typeid(GraphInterface::edge_t))
-        key_type = "edge";
-    else if (key == typeid(GraphInterface::vertex_t))
-        key_type = "vertex";
-    else if (key == typeid(graph_property_tag))
-        key_type = "graph";
-    else
-        key_type = "unknown";
-    string error = "no " + key_type + " property map named \"" + name +
-        "\" found";
-    if (extra_info != "")
-        error += "\n\n" + extra_info;
-    this->SetError(error);
-}
-
-PropertyNotFound::PropertyNotFound(const string& name, const type_info& key,
-                                   const type_info& value,
-                                   const string& extra_info)
-    : GraphException("")
-{
-    string key_type;
-    if  (key == typeid(GraphInterface::edge_t))
-        key_type = "edge";
-    else if (key == typeid(GraphInterface::vertex_t))
-        key_type = "vertex";
-    else if (key == typeid(graph_property_tag))
-        key_type = "graph";
-    else
-        key_type = "unknown";
-    string error = "no " + key_type + " property map named \"" + name +
-        "\", of value type " + get_type_name<>()(value) + " found";
-    if (extra_info != "")
-        error += "\n\n" + extra_info;
-    this->SetError(error);
-}
-
-PropertyNotFound::PropertyNotFound(const string& name, const type_info& key,
-                                   const vector<string>& values,
-                                   const string& extra_info)
-    : GraphException("")
-{
-    string key_type;
-    if  (key == typeid(GraphInterface::edge_t))
-        key_type = "edge";
-    else if (key == typeid(GraphInterface::vertex_t))
-        key_type = "vertex";
-    else if (key == typeid(graph_property_tag))
-        key_type = "graph";
-    else
-        key_type = "unknown";
-    string error = "no " + key_type + " property map named \"" + name +
-        "\", with any of the following value types found:";
-    for (size_t i = 0; i < values.size(); ++i)
-        error += " " + values[i];
-    if (extra_info != "")
-        error += "\n\n" + extra_info;
-    this->SetError(error);
-}
-
-// this function gets the dynamic property map inside dp which matches the given
-// name and key type
-dynamic_property_map&
-find_property_map(const dynamic_properties& dp, const string& name,
-                  const type_info& key_type)
-{
-    for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)
-        if (iter->first == name && iter->second->key() == key_type)
-            return *iter->second;
-
-    throw PropertyNotFound(name, key_type);
-}
-
-boost::any vertex_prop(const string& name, const GraphInterface& gi,
-                       bool dynamic)
-{
-    return prop(name, gi._vertex_index, gi._properties, dynamic);
-}
-boost::any edge_prop(const string& name, const GraphInterface& gi,
-                     bool dynamic)
-{
-    return prop(name, gi._edge_index, gi._properties, dynamic);
-}
-
-boost::any graph_prop(const string& name, const GraphInterface& gi,
-                      bool dynamic)
-{
-    ConstantPropertyMap<size_t,graph_property_tag> graph_index(0);
-    return prop(name, graph_index, gi._properties, dynamic);
-}
-
-void GraphInterface::RemoveVertexProperty(string property)
-{
-    dynamic_properties_copy dp;
-    dynamic_property_map& prop_map =
-        find_property_map(_properties, property, typeid(vertex_t));
-    for (typeof(_properties.begin()) iter = _properties.begin();
-         iter != _properties.end(); ++iter)
+    template <class PropertyMap>
+    void operator()(PropertyMap, const GraphInterface::multigraph_t& g,
+                    boost::any map, size_t vi, bool& found) const
     {
-        if (iter->second != &prop_map)
-            dp.insert(iter->first,
-                      auto_ptr<dynamic_property_map>(iter->second));
-    }
-    _properties = dp;
-    if (_vertex_filter_property == property)
-        SetVertexFilterProperty("",true);
-}
-
-void GraphInterface::RemoveEdgeProperty(string property)
-{
-    dynamic_properties_copy dp;
-    dynamic_property_map& prop_map =
-        find_property_map(_properties, property, typeid(edge_t));
-    for (typeof(_properties.begin()) iter = _properties.begin();
-         iter != _properties.end(); ++iter)
-    {
-        if (iter->second != &prop_map)
-            dp.insert(iter->first,
-                      auto_ptr<dynamic_property_map>(iter->second));
-    }
-    _properties = dp;
-    if (_edge_filter_property == property)
-        SetEdgeFilterProperty("",true);
-}
-
-void GraphInterface::RemoveGraphProperty(string property)
-{
-    dynamic_properties_copy dp;
-    try
-    {
-        dynamic_property_map& prop_map =
-            find_property_map(_properties, property,
-                              typeid(graph_property_tag));
-        for (typeof(_properties.begin()) iter = _properties.begin();
-             iter != _properties.end(); ++iter)
+        try
         {
-            if (iter->second != &prop_map)
-                dp.insert(iter->first,
-                          auto_ptr<dynamic_property_map>(iter->second));
-        }
-    }
-    catch (property_not_found)
-    {
-        throw GraphException("property '" + property + "' not found");
-    }
-    _properties = dp;
-}
-
-
-struct add_property_map
-{
-    template <class ValueType, class IndexMap>
-    void operator()(ValueType, const string& type_name, IndexMap index,
-                    const string& property_name, dynamic_properties& dp,
-                    bool& found) const
-    {
-        size_t i = mpl::find<value_types,ValueType>::type::pos::value;
-        if (type_name == type_names[i])
-        {
-            vector_property_map<ValueType, IndexMap> prop(index);
-            dp.property(property_name, prop);
+            PropertyMap pmap = any_cast<PropertyMap>(map);
+            for (size_t i = vi; i < num_vertices(g)-1; ++i)
+                pmap[vertex(i,g)] = pmap[vertex(i+1,g)];
             found = true;
         }
+        catch (bad_any_cast&) {}
     }
 };
 
-void GraphInterface::AddVertexProperty(string property, string type)
+// this function will shift all the properties when a vertex is to be deleted
+void GraphInterface::ShiftVertexProperty(boost::any prop, size_t index) const
 {
-    try
-    {
-        find_property_map(_properties, property, typeid(vertex_t));
-        throw GraphException("A vertex property named " + property +
-                             " already exists");
-    }
-    catch (PropertyNotFound){}
-
     bool found = false;
-    mpl::for_each<value_types>(lambda::bind<void>(add_property_map(),
-                                                  lambda::_1, lambda::var(type),
-                                                  _vertex_index,
-                                                  lambda::var(property),
-                                                  lambda::var(_properties),
-                                                  lambda::var(found)));
+    mpl::for_each<writable_vertex_properties>
+        (lambda::bind<void>(shift_vertex_property(), _1, var(_mg),
+                            prop, index, var(found)));
     if (!found)
-        throw GraphException("Invalid property type " + type);
+        throw GraphException("invalid writable property map");
 }
 
-void GraphInterface::AddEdgeProperty(string property, string type)
-{
-    try
-    {
-        find_property_map(_properties, property, typeid(edge_t));
-        throw GraphException("An edge property named " + property +
-                             " already exists");
-    }
-    catch (PropertyNotFound) {}
-
-    bool found = false;
-    mpl::for_each<value_types>(lambda::bind<void>(add_property_map(),
-                                                  lambda::_1, lambda::var(type),
-                                                  _edge_index,
-                                                  lambda::var(property),
-                                                  lambda::var(_properties),
-                                                  lambda::var(found)));
-    if (!found)
-        throw GraphException("Invalid property type " + type);
-}
-
-void GraphInterface::AddGraphProperty(string property, string type)
-{
-    ConstantPropertyMap<size_t,graph_property_tag> graph_index(0);
-    try
-    {
-        find_property_map(_properties, property, typeid(graph_property_tag));
-        throw GraphException("A graph property named " + property +
-                             " already exists");
-    }
-    catch (PropertyNotFound){}
-
-    bool found = false;
-    mpl::for_each<value_types>(lambda::bind<void>(add_property_map(),
-                                                  lambda::_1, lambda::var(type),
-                                                  graph_index,
-                                                  lambda::var(property),
-                                                  lambda::var(_properties),
-                                                  lambda::var(found)));
-    if (!found)
-        throw GraphException("Invalid property type " + type);
-}
-
-void GraphInterface::InsertEdgeIndexProperty(string property)
-{
-    _properties.property(property, _edge_index);
-}
-
-void GraphInterface::InsertVertexIndexProperty(string property)
-{
-    _properties.property(property, _vertex_index);
-}
 
 } // graph_tool namespace

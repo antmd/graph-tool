@@ -15,32 +15,26 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+#include <boost/variant/get.hpp>
+#include "graph.hh"
 #include "graph_selectors.hh"
 
 using namespace graph_tool;
+using namespace boost;
 
 // retrieves the appropriate degree selector
-boost::any graph_tool::degree_selector(GraphInterface::deg_t deg,
-                                       const GraphInterface& gi)
+boost::any graph_tool::degree_selector(GraphInterface::deg_t deg)
 {
     try
     {
         boost::any degS;
-        boost::mpl::for_each<selectors>
+        mpl::for_each<selectors>
             (get_degree_selector(boost::get<GraphInterface::degree_t>(deg),
                                  degS));
         return degS;
     }
-    catch (boost::bad_get)
+    catch (bad_get)
     {
-        typedef GraphInterface::vertex_index_map_t index_t;
-        typedef property_map_types::apply<value_types,
-                                          index_t>::type properties;
-        boost::any degS;
-        dynamic_property_map& dmap =
-            find_property_map(gi._properties, boost::get<string>(deg),
-                              typeid(GraphInterface::vertex_t));
-        boost::mpl::for_each<properties>(get_scalar_selector(dmap,degS));
-        return degS;
+        return boost::get<boost::any>(deg);
     }
 }

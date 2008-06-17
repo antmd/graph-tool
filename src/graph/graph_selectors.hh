@@ -158,23 +158,6 @@ struct get_degree_selector
     boost::any& _deg;
 };
 
-struct get_scalar_selector
-{
-    get_scalar_selector(boost::dynamic_property_map& dmap, boost::any& deg)
-        : _dmap(dmap), _deg(deg) {}
-
-    template <class PropertyMap>
-    void operator()(PropertyMap) const
-    {
-        PropertyMap* static_map = get_static_property_map<PropertyMap>(&_dmap);
-        if (static_map != 0)
-            _deg = scalarS<PropertyMap>(*static_map);
-    }
-
-    boost::dynamic_property_map& _dmap;
-    boost::any& _deg;
-};
-
 struct scalar_selector_type
 {
     template <class PropertyMap>
@@ -189,7 +172,7 @@ struct selectors:
     boost::mpl::vector<out_degreeS, in_degreeS, total_degreeS> {};
 
 // retrieves the appropriate degree selector
-boost::any degree_selector(GraphInterface::deg_t deg, const GraphInterface&gi);
+boost::any degree_selector(GraphInterface::deg_t deg);
 
 // helper types for in_edge_iteratorS
 
@@ -344,9 +327,29 @@ struct in_or_out_edge_iteratorS
 typedef mpl::vector<in_degreeS, out_degreeS, total_degreeS>
     degree_selectors;
 
+typedef property_map_types::apply<value_types,
+                                  GraphInterface::vertex_index_map_t>::type
+    vertex_properties;
+typedef property_map_types::apply<value_types,
+                                  GraphInterface::vertex_index_map_t,
+                                  mpl::bool_<false> >::type
+    writable_vertex_properties;
+
+typedef property_map_types::apply<value_types,
+                                  GraphInterface::edge_index_map_t>::type
+    edge_properties;
+typedef property_map_types::apply<value_types,
+                                  GraphInterface::edge_index_map_t,
+                                  mpl::bool_<false> >::type
+    writable_edge_properties;
+
 typedef property_map_types::apply<scalar_types,
                                   GraphInterface::vertex_index_map_t>::type
     vertex_scalar_properties;
+typedef property_map_types::apply<scalar_types,
+                                  GraphInterface::vertex_index_map_t,
+                                  mpl::bool_<false> >::type
+    writable_vertex_scalar_properties;
 
 typedef property_map_types::apply<integer_types,
                                   GraphInterface::vertex_index_map_t>::type
@@ -373,6 +376,11 @@ typedef property_map_types::apply<floating_vector_types,
 typedef property_map_types::apply<scalar_types,
                                   GraphInterface::edge_index_map_t>::type
     edge_scalar_properties;
+
+typedef property_map_types::apply<scalar_types,
+                                  GraphInterface::edge_index_map_t,
+                                  mpl::bool_<false> >::type
+    writable_edge_scalar_properties;
 
 typedef property_map_types::apply<integer_types,
                                   GraphInterface::edge_index_map_t>::type

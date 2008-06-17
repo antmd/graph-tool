@@ -52,7 +52,7 @@ get_vertex_combined_correlation_histogram(const GraphInterface& gi,
                                                                   ret_bins),
                    all_selectors(), all_selectors(),
                    mpl::vector<dummy_weight>())
-        (degree_selector(deg1, gi), degree_selector(deg2, gi),
+        (degree_selector(deg1), degree_selector(deg2),
          boost::any(dummy_weight()));
 
     return python::make_tuple(hist, ret_bins);

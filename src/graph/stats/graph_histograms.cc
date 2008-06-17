@@ -35,13 +35,13 @@ get_vertex_histogram(const GraphInterface& gi, GraphInterface::deg_t deg,
 
     run_action<>()(gi, get_histogram<VertexHistogramFiller>(hist, bins,
                                                             ret_bins),
-                   all_selectors())(degree_selector(deg, gi));
+                   all_selectors())(degree_selector(deg));
     return python::make_tuple(hist, ret_bins);
 }
 
 // this will return the vertex histogram of degrees or scalar properties
 python::object
-get_edge_histogram(GraphInterface& gi, const string& prop,
+get_edge_histogram(GraphInterface& gi, boost::any prop,
                    const vector<long double>& bins)
 {
     python::object hist;
@@ -57,7 +57,7 @@ get_edge_histogram(GraphInterface& gi, const string& prop,
 
     run_action<graph_tool::detail::always_directed>()
         (gi, get_histogram<EdgeHistogramFiller>(hist, bins, ret_bins),
-         edge_props())(edge_prop(prop,gi));
+         edge_props())(prop);
     gi.SetDirected(directed);
 
     return python::make_tuple(hist, ret_bins);

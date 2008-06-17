@@ -189,86 +189,17 @@ bool GraphInterface::IsVertexFilterActive() const
 bool GraphInterface::IsEdgeFilterActive() const
 { return _edge_filter_active; }
 
-pair<string, bool> GraphInterface::GetVertexFilterProperty() const
-{ return make_pair(_vertex_filter_property, _vertex_filter_invert); }
-
-pair<string, bool> GraphInterface::GetEdgeFilterProperty() const
-{ return make_pair(_edge_filter_property, _edge_filter_invert); }
 
 // this function will reindex all the edges, in the order in which they are
-// found, taking care of preserving all the properties
+// found
 void GraphInterface::ReIndexEdges()
 {
-    size_t n_edges = num_edges(_mg);
-    if (n_edges == 0)
-        return;
-
-    vector<dynamic_property_map*> edge_props;
-    for (typeof(_properties.begin()) p = _properties.begin();
-         p != _properties.end(); ++p)
-        if (p->second->key() == typeid(edge_t))
-            edge_props.push_back(p->second);
-
-    vector<pair<edge_t,bool> > edge_map(n_edges, make_pair(edge_t(), false));
-
+    size_t index = 0;
     graph_traits<multigraph_t>::vertex_iterator v, v_end;
     graph_traits<multigraph_t>::out_edge_iterator e, e_end;
     for (tie(v, v_end) = vertices(_mg); v != v_end; ++v)
         for (tie(e, e_end) = out_edges(*v, _mg); e != e_end; ++e)
-        {
-            size_t index = _edge_index[*e];
-            if (index >= edge_map.size())
-                edge_map.resize(index+1, make_pair(edge_t(), false));
-            if (index >= n_edges)
-                continue;
-            if (!edge_map[index].second)
-                edge_map[index] = make_pair(*e, true);
-        }
-
-    size_t new_index = 0;
-    for (tie(v, v_end) = vertices(_mg); v != v_end; ++v)
-        for (tie(e, e_end) = out_edges(*v, _mg); e != e_end; ++e)
-        {
-            if (_edge_index[*e] == new_index)
-            {
-                ++new_index;
-                continue;
-            }
-
-            edge_t old_edge = edge_map[new_index].first;
-            if (edge_map[new_index].second &&
-                (_edge_index[*e] != _edge_index[old_edge]))
-            {
-                // another edge exists with the same (new) index; the properties
-                // must be swapped
-                _edge_index[old_edge] = _edge_index[*e];
-                edge_map[_edge_index[*e]] = make_pair(old_edge, true);
-                _edge_index[*e] = new_index;
-                edge_map[new_index] = make_pair(*e, true);
-                for (size_t i = 0; i < edge_props.size(); ++i)
-                {
-                    boost::any temp = edge_props[i]->get(*e);
-                    edge_props[i]->put(*e, edge_props[i]->get(old_edge));
-                    edge_props[i]->put(old_edge, temp);
-                }
-            }
-            else
-            {
-                // no other edge has this index; it must be then
-                // assigned for this edge, and the properties must be
-                // copied over
-                size_t old_index = _edge_index[*e];
-                _edge_index[*e] = new_index;
-                for (size_t i = 0; i < edge_props.size(); ++i)
-                {
-                    _edge_index[*e] = old_index;
-                    boost::any val = edge_props[i]->get(*e);
-                    _edge_index[*e] = new_index;
-                    edge_props[i]->put(*e, val);
-                }
-            }
-            ++new_index;
-        }
+            _edge_index[*e] = index++;
 }
 
 // this will definitively remove all the edges from the graph, which are being
@@ -303,30 +234,12 @@ void GraphInterface::PurgeVertices()
     if (!IsVertexFilterActive())
         return;
 
-    MaskFilter<vertex_filter_t> filter(_vertex_filter_map, _vertex_filter_invert);
+    MaskFilter<vertex_filter_t> filter(_vertex_filter_map,
+                                       _vertex_filter_invert);
     size_t N = num_vertices(_mg);
     vector<bool> deleted(N, false);
     for (size_t i = 0; i < N; ++i)
         deleted[i] = !filter(vertex(i, _mg));
-
-    //migrate properties
-    size_t last = 0;
-    for (size_t i = 0; i < N; ++i)
-    {
-        graph_traits<multigraph_t>::vertex_descriptor v = vertex(i, _mg);
-        if (filter(v))
-        {
-            for (typeof(_properties.begin()) p = _properties.begin();
-                 p != _properties.end(); ++p)
-                if (p->second->key() == typeid(vertex_t))
-                    try
-                    {
-                        p->second->put(vertex(last, _mg), p->second->get(v));
-                    }
-                    catch (dynamic_const_put_error) {} // index prop. is const
-            last++;
-        }
-    }
 
     //remove vertices
     for (size_t i = N-1; i < N; --i)
@@ -338,63 +251,41 @@ void GraphInterface::PurgeVertices()
             remove_vertex(v, _mg);
         }
     }
-    ReIndexEdges();
 }
 
-void GraphInterface::SetVertexFilterProperty(string property, bool invert)
+void GraphInterface::SetVertexFilterProperty(boost::any property, bool invert)
 {
 #ifdef NO_GRAPH_FILTERING
     throw GraphException("graph filtering was not enabled at compile time");
 #endif
 
-    if (property == "")
-    {
-        _vertex_filter_active = false;
-        _vertex_filter_property = "";
-        return;
-    }
-
     try
     {
-        _vertex_filter_map =
-            find_static_property_map<vertex_filter_t>(_properties, property);
-        _vertex_filter_property = property;
+        _vertex_filter_map = any_cast<vertex_filter_t>(property);
         _vertex_filter_invert = invert;
         _vertex_filter_active = true;
     }
-    catch(property_not_found)
+    catch(bad_any_cast&)
     {
-        throw GraphException("no boolean vertex property " + property +
-                             " found");
+        _vertex_filter_active = false;
     }
-
 }
 
-void GraphInterface::SetEdgeFilterProperty(string property, bool invert)
+void GraphInterface::SetEdgeFilterProperty(boost::any property, bool invert)
 {
 #ifdef NO_GRAPH_FILTERING
     throw GraphException("graph filtering was not enabled at compile time");
 #endif
 
-    if (property == "")
-    {
-        _edge_filter_active = false;
-        _vertex_filter_property = "";
-        return;
-    }
-
     try
     {
-        _edge_filter_map =
-            find_static_property_map<edge_filter_t>(_properties, property);
+        _edge_filter_map = any_cast<edge_filter_t>(property);
         _edge_filter_invert = invert;
-        _vertex_filter_property = property;
         _edge_filter_active = true;
     }
-    catch(property_not_found)
+    catch(bad_any_cast&)
     {
-        throw GraphException("no boolean edge property " + property +
-                             " found");
+        _edge_filter_active = false;
     }
 }
 

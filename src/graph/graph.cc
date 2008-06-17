@@ -40,6 +40,7 @@ GraphInterface::GraphInterface()
      _directed(true),
      _vertex_index(get(vertex_index,_mg)),
      _edge_index(get(edge_index_t(),_mg)),
+     _graph_index(0),
      _vertex_filter_map(_vertex_index),
      _vertex_filter_invert(false),
      _vertex_filter_active(false),
@@ -80,67 +81,13 @@ size_t GraphInterface::GetNumberOfEdges() const
     return n;
 }
 
-// signal handling
-
-void catch_sig_stop(int sig_num)
+void GraphInterface::Clear()
 {
-    std::cerr << "graph-tool: received signal ";
-    switch (sig_num)
-    {
-    case SIGINT:
-        std::cerr << "SIGINT (Interrupt).";
-        break;
-    case SIGTERM:
-        std::cerr << "SIGTERM (Termination).";
-        break;
-    case SIGQUIT:
-        std::cerr << "SIGQUIT (Terminal quit).";
-        break;
-    case SIGHUP:
-        std::cerr << "SIGHUP (Hangup).";
-        break;
-    case SIGPWR:
-        std::cerr << "SIGPWR (Power failure restart).";
-        break;
-    case SIGSEGV:
-        std::cerr << "SIGSEGV (Segmentation fault). "
-                  << "There's a bug somewhere in the program. Go fix it.";
-        break;
-    case SIGBUS:
-        std::cerr << "SIGBUS (BUS error). The bus is broken, I guess...";
-        break;
-    case SIGFPE:
-        std::cerr << "SIGFPE (Floating-point exception). "
-                  << "INFs and NANs are wreaking havoc.";
-        break;
-    case SIGILL:
-        std::cerr << "SIGILL (Illegal instruction). Did you compile it right?";
-        break;
-    case SIGXCPU:
-        std::cerr << "SIGXCPU (CPU limit exceeded). Time's over.";
-        break;
-    case SIGXFSZ:
-        std::cerr << "SIGXFSZ (File size limit exceeded). "
-                  << "The fascist sysadmin doesn't let you write more.";
-        break;
-    }
-    std::cerr << " Bailing out cowardly and calling abort()." << std::endl;
-    abort();
+    _mg.clear();
 }
 
-// initialize signal handling
-
-void GraphInterface::InitSignalHandling()
+void GraphInterface::ClearEdges()
 {
-    signal(SIGINT, catch_sig_stop);
-    signal(SIGTERM, catch_sig_stop);
-    signal(SIGQUIT, catch_sig_stop);
-    signal(SIGHUP, catch_sig_stop);
-    signal(SIGPWR, catch_sig_stop);
-    signal(SIGSEGV, catch_sig_stop);
-    signal(SIGBUS, catch_sig_stop);
-    signal(SIGFPE, catch_sig_stop);
-    signal(SIGILL, catch_sig_stop);
-    signal(SIGXCPU, catch_sig_stop);
-    signal(SIGXFSZ, catch_sig_stop);
+    //
 }
+

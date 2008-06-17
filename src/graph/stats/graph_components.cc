@@ -16,6 +16,7 @@
 #include "graph.hh"
 #include "graph_filtering.hh"
 #include "graph_properties.hh"
+#include "graph_selectors.hh"
 
 #include "graph_components.hh"
 
@@ -25,13 +26,10 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-void do_label_components(GraphInterface& gi, const string& prop)
+void do_label_components(GraphInterface& gi, boost::any prop)
 {
-    typedef property_map_types::apply<scalar_types,
-                                      GraphInterface::vertex_index_map_t>::type
-        vertex_props;
-    run_action<>()(gi, label_components(), vertex_props())
-        (vertex_prop(prop, gi));
+    run_action<>()(gi, label_components(),
+                   writable_vertex_scalar_properties())(prop);
 }
 
 void export_components()

@@ -49,7 +49,7 @@ python::object
 get_vertex_correlation_histogram(const GraphInterface& gi,
                                  GraphInterface::deg_t deg1,
                                  GraphInterface::deg_t deg2,
-                                 string weight,
+                                 boost::any weight,
                                  const vector<long double>& xbin,
                                  const vector<long double>& ybin)
 {
@@ -64,11 +64,9 @@ get_vertex_correlation_histogram(const GraphInterface& gi,
     typedef DynamicPropertyMapWrap<long double, GraphInterface::edge_t>
         wrapped_weight_t;
 
-    if (weight != "")
+    if (!weight.empty())
     {
-        dynamic_property_map* map =
-            any_cast<dynamic_property_map*>(edge_prop(weight, gi, true));
-        weight_prop = wrapped_weight_t(*map);
+        weight_prop = wrapped_weight_t(weight, edge_scalar_properties());
     }
     else
         weight_prop = cweight_map_t(1);
@@ -79,12 +77,12 @@ get_vertex_correlation_histogram(const GraphInterface& gi,
                        (hist, bins, ret_bins),
                        all_selectors(), all_selectors(),
                        mpl::vector<cweight_map_t>())
-            (degree_selector(deg1, gi), degree_selector(deg2, gi), weight_prop);
+            (degree_selector(deg1), degree_selector(deg2), weight_prop);
     }
     catch (ActionNotFound&)
     {
-        graph_correlations_imp1(gi, hist, ret_bins, degree_selector(deg1, gi),
-                                degree_selector(deg2, gi), weight_prop, bins);
+        graph_correlations_imp1(gi, hist, ret_bins, degree_selector(deg1),
+                                degree_selector(deg2), weight_prop, bins);
     }
 
     return python::make_tuple(hist, ret_bins);

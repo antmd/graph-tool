@@ -48,6 +48,8 @@ using namespace boost;
 //
 // Metafunctions and data structures to deal with property maps
 
+// Global Property Types
+// ---------------------
 // global property types. only these types are allowed in property maps
 // Note: we must avoid a vector<bool> (and bools in general) since it is quite
 //       broken, and use a vector<uint8_t> instead!
@@ -86,10 +88,12 @@ typedef mpl::transform<integer_types,make_vector>::type integer_vector_types;
 // floating_vector_types: vector types with floating point values
 typedef mpl::transform<floating_types,make_vector>::type floating_vector_types;
 
+//
+// Property Map Types
+// ------------------
 
-// metafunction to get the associated property map types to ValueTypes and
-// IndexMap
-
+// metafunction to generate the correct property map type given a value type and
+// an index map
 struct property_map_type
 {
     template <class ValueType, class IndexMap>
@@ -99,6 +103,8 @@ struct property_map_type
     };
 };
 
+// metafunction to get the sequence of property map types of ValueTypes and
+// IndexMap
 struct property_map_types
 {
    // this wraps an unary metafunction class Bind into a unary metafunction,
@@ -113,7 +119,7 @@ struct property_map_types
     };
 
     template <class ValueTypes, class IndexMap,
-              class IncludeIndexMap = mpl::bool_<false> >
+              class IncludeIndexMap = mpl::bool_<true> >
     struct apply
     {
         typedef typename mpl::transform<
@@ -137,119 +143,6 @@ struct property_map_types
 //
 // Functions which deal with several aspects of property map manipulation
 
-// the following exception gets thrown when no properties are found
-#pragma GCC visibility push(default)
-class PropertyNotFound: public GraphException
-{
-public:
-    PropertyNotFound(const string& name, const type_info& key,
-                     const string& extra_info = "");
-    PropertyNotFound(const string& name, const type_info& key,
-                     const type_info& value, const string& extra_info = "");
-    PropertyNotFound(const string& name, const type_info& key,
-                     const vector<string>& values,
-                     const string& extra_info = "");
-};
-#pragma GCC visibility push(default)
-
-// this function gets the "static" property map behind the dynamic property map,
-// or throws bad_cast if it doesn't match the correct type
-template <class PropertyMap>
-PropertyMap& get_static_property_map(dynamic_property_map& map)
-{
-    return dynamic_cast
-        <boost::detail::dynamic_property_map_adaptor<PropertyMap>&>(map).base();
-}
-
-// same as above, but returns a pointer and does not throw an exception, and
-// returns 0 in case of failure
-template <class PropertyMap>
-PropertyMap* get_static_property_map(dynamic_property_map* map)
-{
-    boost::detail::dynamic_property_map_adaptor<PropertyMap>* adaptor =
-        dynamic_cast
-        <boost::detail::dynamic_property_map_adaptor<PropertyMap>*>(map);
-    if (adaptor)
-        return &adaptor->base();
-    else
-        return 0;
-}
-
-// this function gets the dynamic property map inside dp which matches the given
-// name and key type. It throws PropertyNotFound in case of failure
-dynamic_property_map&
-find_property_map(const dynamic_properties& dp, const string& name,
-                  const type_info& key_type);
-
-// convenience function which finds and returns the appropriate static property
-// from the dynamic properties
-template <class PropertyMap>
-PropertyMap& find_static_property_map(const dynamic_properties& dp,
-                                      const string& name)
-{
-    typedef typename property_traits<PropertyMap>::key_type key_type;
-    dynamic_property_map& dmap = find_property_map(dp, name,
-                                                   typeid(key_type));
-    return get_static_property_map<PropertyMap>(dmap);
-}
-
-// the following function returns the actual property map wrapped as a
-// boost::any object
-struct get_static_prop; // forward decl.
-template <class IndexMap>
-boost::any prop(const string& name, IndexMap,
-                const dynamic_properties& dp, bool dynamic = false)
-{
-    using namespace lambda;
-    typedef typename property_traits<IndexMap>::key_type key_t;
-    dynamic_property_map& dmap =
-        find_property_map(dp, name, typeid(key_t));
-    boost::any prop;
-    if (dynamic)
-    {
-        prop = &dmap;
-    }
-    else
-    {
-        typedef typename property_map_types::apply<value_types,IndexMap,
-                                                   mpl::bool_<true> >::type
-            properties_t;
-        bool found = false;
-        mpl::for_each<properties_t>(lambda::bind<void>(get_static_prop(),
-                                                       lambda::_1,
-                                                       &dmap, var(prop),
-                                                       var(found)));
-        if (!found)
-            throw PropertyNotFound(name, typeid(key_t),
-                                   "This is a graph-tool bug. :-( "
-                                   "Please follow but report instructions at "
-                                   PACKAGE_BUGREPORT);
-    }
-    return prop;
-}
-
-// used in function prop() above
-struct get_static_prop
-{
-    template <class PropertyMap>
-    void operator()(PropertyMap, dynamic_property_map* dmap,
-                    boost::any& smap, bool& found) const
-    {
-        PropertyMap* pmap = get_static_property_map<PropertyMap>(dmap);
-        if (pmap != 0)
-        {
-            smap = boost::any(*pmap);
-            found = true;
-        }
-    }
-};
-
-boost::any vertex_prop(const string& name, const GraphInterface& gi,
-                       bool dynamic = false);
-boost::any edge_prop(const string& name, const GraphInterface& gi,
-                     bool dynamic = false);
-boost::any graph_prop(const string& name, const GraphInterface& gi,
-                      bool dynamic = false);
 
 // this functor tests whether or not a given boost::any object holds a type
 // contained in a given type Sequence
@@ -346,29 +239,15 @@ private:
 template <class TypeSequence, class NamedSequence>
 vector<string> get_type_name<TypeSequence,NamedSequence>::_all_names;
 
-// this class contains a copy of a dynamic_properties, which does not delete its
-// members when it deconstructs
-struct dynamic_properties_copy: public dynamic_properties
-{
-    dynamic_properties_copy() {}
-    dynamic_properties_copy(dynamic_properties& dp)
-        : dynamic_properties(dp) {}
-    dynamic_properties_copy
-        (const function<auto_ptr<dynamic_property_map>
-         (const string&, const boost::any&, const boost::any&)>& fn)
-            : dynamic_properties(fn) {}
-    ~dynamic_properties_copy()
-    {
-        for (typeof(this->begin()) iter = this->begin(); iter != this->end();
-             ++iter)
-            iter->second = 0; // will be deleted when original dp deconstructs
-    }
-};
+//
+// Extra Property Map Types
+// ========================
 
-// the following class wraps a dynamic_property_map, so it can be used as a
-// regular property map. The values are converted to the desired Value type,
-// which may cause a performance impact, since virtual functions are
-// used. Should be used only when property map access time is not crucial
+// the following class wraps a generic property map, so it can be used as a
+// property with a given Key and Value type. The keys and values are converted
+// to the desired Key and Value type, which may cause a performance impact,
+// since virtual functions are used. Should be used only when property map
+// access time is not crucial
 template <class Value, class Key>
 class DynamicPropertyMapWrap
 {
@@ -378,60 +257,74 @@ public:
     typedef Key key_type;
     typedef read_write_property_map_tag category;
 
-    DynamicPropertyMapWrap(dynamic_property_map& dmap)
-        :_dmap(&dmap)
+    template <class PropertyTypes>
+    DynamicPropertyMapWrap(boost::any pmap, PropertyTypes)
     {
         ValueConverter* converter = 0;
-        mpl::for_each<scalar_types>
+        mpl::for_each<PropertyTypes>
             (lambda::bind<void>(choose_converter(), lambda::_1,
-                                lambda::var(_dmap), lambda::var(converter)));
+                                lambda::var(pmap), lambda::var(converter)));
         if (converter == 0)
             throw bad_lexical_cast();
         else
             _converter = tr1::shared_ptr<ValueConverter>(converter);
     }
+
     DynamicPropertyMapWrap() {}
 
     Value get(const Key& k) const
     {
-        return (*_converter)(*_dmap, k);
+        return (*_converter).get(k);
     }
 
     void put(const Key& k, const Value& val)
     {
-        _dmap->put(k, val);
+        (*_converter).put(k, val);
     }
 
 private:
     class ValueConverter
     {
     public:
-        virtual Value operator()(dynamic_property_map& map, const Key& k) = 0;
+        virtual Value get(const Key& k) = 0;
+        virtual void put(const Key& k, const Value& val) = 0;
     };
 
-    template <class OrigValue>
+    template <class PropertyMap>
     class ValueConverterImp: public ValueConverter
     {
     public:
-        virtual Value operator()(dynamic_property_map& dmap, const Key& k)
+        ValueConverterImp(PropertyMap pmap): _pmap(pmap) {}
+
+        virtual Value get(const Key& k)
         {
-            OrigValue val = any_cast<OrigValue>(dmap.get(k));
-            return lexical_cast<Value>(val);
+            typedef typename property_traits<PropertyMap>::key_type key_t;
+            return boost::get(_pmap, key_t(k));
         }
+
+        virtual void put(const Key& k, const Value& val)
+        {
+            typedef typename property_traits<PropertyMap>::key_type key_t;
+            typedef typename property_traits<PropertyMap>::value_type val_t;
+            boost::put(_pmap, key_t(k), val_t(val));
+        }
+
+    private:
+        PropertyMap _pmap;
     };
 
     struct choose_converter
     {
-        template <class Type>
-        void operator()(Type, dynamic_property_map* dmap,
+        template <class PropertyMap>
+        void operator()(PropertyMap, boost::any& dmap,
                         ValueConverter*& converter) const
         {
-            if (typeid(Type) == dmap->value())
-                converter = new ValueConverterImp<Type>();
+            if (typeid(PropertyMap) == dmap.type())
+                converter = new ValueConverterImp<PropertyMap>
+                    (any_cast<PropertyMap>(dmap));
         }
     };
 
-    dynamic_property_map* _dmap;
     tr1::shared_ptr<ValueConverter> _converter;
 };
 
@@ -549,7 +442,7 @@ public:
     typedef Key key_type;
     typedef readable_property_map_tag category;
 
-    ConstantPropertyMap(value_type c): _c(c) {}
+    ConstantPropertyMap(const value_type& c): _c(c) {}
     ConstantPropertyMap(){}
 
     const value_type& operator[](const key_type& k) const { return _c; }

@@ -359,8 +359,8 @@ template <class PropertyMap>
 class PythonPropertyMap
 {
 public:
-    PythonPropertyMap(const std::string& name, const PropertyMap& pmap)
-        : _name(name), _pmap(pmap) {}
+    PythonPropertyMap(const PropertyMap& pmap)
+        : _pmap(pmap) {}
 
     typedef typename property_traits<PropertyMap>::value_type value_type;
 
@@ -397,12 +397,12 @@ public:
     void set_value(const PythonDescriptor& key, const value_type& val,
                    false_type)
     {
-        throw GraphException("property '" + _name + "' is read-only");
+        throw GraphException("property is read-only");
     }
 
     size_t GetHash() const
     {
-        return hash<std::string>()(_name + this->GetType());
+        return hash<size_t>()(size_t(this));
     }
 
     std::string GetType() const
@@ -416,16 +416,67 @@ public:
                                         value_type>::type::pos::value];
     }
 
-    PropertyMap GetMap() const
+    boost::any GetMap() const
     {
         return _pmap;
     }
 
+    boost::any GetDynamicMap() const
+    {
+        return (dynamic_property_map*)
+            (new boost::detail::dynamic_property_map_adaptor<PropertyMap>
+             (_pmap));
+    }
+
 private:
-    const std::string& _name;
     PropertyMap _pmap; // hold an internal copy, since it's cheap
 };
 
+
+//
+// Create new properties
+//
+
+struct new_property_map
+{
+    template <class ValueType, class IndexMap>
+    void operator()(ValueType, IndexMap index, const string& type_name,
+                    python::object& new_prop, bool& found) const
+    {
+        size_t i = mpl::find<value_types,ValueType>::type::pos::value;
+        if (type_name == type_names[i])
+        {
+            typedef vector_property_map<ValueType, IndexMap> map_t;
+            map_t prop(index);
+            new_prop = python::object(PythonPropertyMap<map_t>(prop));
+            found = true;
+        }
+    }
+};
+
+template <class IndexMap>
+python::object new_property(const string& type, boost::any imap)
+{
+    IndexMap index_map;
+    try
+    {
+        index_map = any_cast<IndexMap>(imap);
+    }
+    catch (bad_any_cast&)
+    {
+        throw GraphException("Invalid index map");
+    }
+    python::object prop;
+    bool found = false;
+    mpl::for_each<value_types>(lambda::bind<void>(new_property_map(),
+                                                  lambda::_1, index_map,
+                                                  lambda::var(type),
+                                                  lambda::var(prop),
+                                                  lambda::var(found)));
+    if (!found)
+        throw GraphException("Invalid property type " + type);
+    return prop;
+}
 
 } //graph_tool namespace
 

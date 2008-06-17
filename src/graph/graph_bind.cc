@@ -282,6 +282,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
 
     def("raise_error", &raise_error);
     def("get_property_types", &get_property_types);
+    class_<boost::any>("any", no_init);
 
     mpl::for_each<mpl::push_back<scalar_types,string>::type>(export_vector_types());
 
@@ -295,27 +296,13 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
         .def("GetReversed", &GraphInterface::GetReversed)
         .def("SetVertexFilterProperty",
              &GraphInterface::SetVertexFilterProperty)
-        .def("GetVertexFilterProperty",
-             &GraphInterface::GetVertexFilterProperty)
         .def("IsVertexFilterActive", &GraphInterface::IsVertexFilterActive)
         .def("SetEdgeFilterProperty",
              &GraphInterface::SetEdgeFilterProperty)
-        .def("GetEdgeFilterProperty",
-             &GraphInterface::GetEdgeFilterProperty)
         .def("IsEdgeFilterActive", &GraphInterface::IsEdgeFilterActive)
-        .def("AddEdgeProperty",  &GraphInterface::AddEdgeProperty)
-        .def("AddVertexProperty",  &GraphInterface::AddVertexProperty)
-        .def("AddGraphProperty",  &GraphInterface::AddGraphProperty)
-        .def("RemoveEdgeProperty",  &GraphInterface::RemoveEdgeProperty)
-        .def("RemoveVertexProperty",  &GraphInterface::RemoveVertexProperty)
-        .def("RemoveGraphProperty",  &GraphInterface::RemoveGraphProperty)
         .def("PurgeVertices",  &GraphInterface::PurgeVertices)
         .def("PurgeEdges",  &GraphInterface::PurgeEdges)
-        .def("ReIndexEdges",  &GraphInterface::ReIndexEdges)
-        .def("InsertEdgeIndexProperty",
-             &GraphInterface::InsertEdgeIndexProperty)
-        .def("InsertVertexIndexProperty",
-             &GraphInterface::InsertVertexIndexProperty)
+        .def("ShiftVertexProperty",  &GraphInterface::ShiftVertexProperty)
         .def("WriteToFile", &GraphInterface::WriteToFile)
         .def("ReadFromFile",&GraphInterface::ReadFromFile)
         .def("Vertices", &GraphInterface::Vertices)
@@ -326,19 +313,19 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
         .def("RemoveVertex", &GraphInterface::RemoveVertex)
         .def("RemoveEdge", &GraphInterface::RemoveEdge)
         .def("Clear", &GraphInterface::Clear)
-        .def("GetVertexProperties", &GraphInterface::GetVertexProperties)
-        .def("GetEdgeProperties", &GraphInterface::GetEdgeProperties)
-        .def("GetGraphProperties", &GraphInterface::GetGraphProperties)
-        .def("PutPropertyMap", &GraphInterface::PutPropertyMap)
-        .def("InitSignalHandling", &GraphInterface::InitSignalHandling);
+        .def("ClearEdges", &GraphInterface::ClearEdges)
+        .def("GetVertexIndex", &GraphInterface::GetVertexIndex)
+        .def("GetEdgeIndex", &GraphInterface::GetEdgeIndex)
+        .def("GetGraphIndex", &GraphInterface::GetGraphIndex)
+        .def("CopyVertexProperty", &GraphInterface::CopyVertexProperty)
+        .def("CopyEdgeProperty", &GraphInterface::CopyEdgeProperty);
 
     enum_<GraphInterface::degree_t>("Degree")
         .value("In", GraphInterface::IN_DEGREE)
         .value("Out", GraphInterface::OUT_DEGREE)
         .value("Total", GraphInterface::TOTAL_DEGREE);
 
-
-    variant_from_python<string>();
+    variant_from_python<boost::any>();
     variant_from_python<GraphInterface::degree_t>();
     to_python_converter<pair<string,bool>, pair_to_tuple<string,bool> >();
     to_python_converter<pair<size_t,size_t>, pair_to_tuple<size_t,size_t> >();

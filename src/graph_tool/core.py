@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-# graph_tool.py -- a general graph manipulation python module
+# graph_tool -- a general graph manipulation python module
 #
 # Copyright (C) 2007 Tiago de Paula Peixoto <tiago@forked.de>
 #
@@ -42,11 +42,13 @@ import os, os.path, re, struct, fcntl, termios, gzip, bz2, string,\
        textwrap, time, signal, traceback, shutil, time, math, inspect, \
        functools, types
 from StringIO import StringIO
+from decorators import _wraps, _require, _attrs, _handle_exceptions, _limit_args
 
 ################################################################################
 # Utility functions
 ################################################################################
 
+_require("name", str)
 def _degree(name):
     """Retrieve the degree type from string"""
     deg = name
@@ -57,6 +59,20 @@ def _degree(name):
     if name == "total-degree" or name == "total":
         deg = libcore.Degree.Total
     return deg
+
+def _prop(t, g, prop):
+    """Returns either a property map, or an internal vertex property map with a
+    given name"""
+    if type(prop) == str:
+        try:
+            pmap = g.properties[(t,prop)]
+        except KeyError:
+            raise GraphError("no internal %s property named: %d" %\
+                             ("vertex" if t == "v" else \
+                              ("edge" if t == "e" else "graph"),prop))
+    else:
+        pmap = prop
+    return pmap._PropertyMap__map
 
 def _parse_range(range):
     """Parse a range in the form 'lower[*] upper[*]' (where an '*' indicates
@@ -102,87 +118,109 @@ def _parse_range(range):
     return (ran, inc, inverted)
 
 ################################################################################
-# Decorators
-# Some useful function decorators which will be used below
+# Property Maps
 ################################################################################
 
-def _wraps(func):
-    """This decorator works like the functools.wraps meta-decorator, but
-    also preserves the function's argument signature. This uses eval, and is
-    thus a bit of a hack, but there no better way I know of to do this."""
-    def decorate(f):
-        argspec = inspect.getargspec(func)
-        args_call = inspect.formatargspec(argspec[0])
-        argspec = inspect.formatargspec(argspec[0], defaults=argspec[3])
-        argspec = argspec.lstrip("(").rstrip(")")
-        wrap = eval("lambda %s: f%s" % (argspec, args_call), locals())
-        return functools.wraps(func)(wrap)
-    return decorate
+class PropertyMap(object):
+    """Property Map class"""
+    def __init__(self, pmap, g, key_type, key_trans = None):
+        self.__map = pmap
+        self.__g = g
+        self.__key_type = key_type
+        self.__key_trans = key_trans if key_trans != None else lambda k: k
+        self.__register_map()
 
-def _attrs(**kwds):
-    """Decorator which adds arbitrary attributes to methods"""
-    def decorate(f):
-        for k in kwds:
-            setattr(f, k, kwds[k])
-        return f
-    return decorate
+    def __register_map(self):
+        self.__g._Graph__known_properties.append((self.key_type(), self.__map))
+    def __unregister_map(self):
+        i = self.__g._Graph__known_properties.index((self.key_type(), self.__map))
+        del self.__g._Graph__known_properties[i]
 
-def _handle_exceptions(func):
-    """Decorator which will catch and properly propagate exceptions raised
-    by GraphInterface in all the methods"""
-    @_wraps(func)
-    def wrap(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except (IOError, RuntimeError), e:
-            libcore.raise_error(str(e))
-    return wrap
+    def __del__(self):
+        self.__unregister_map()
 
-def _limit_args(allowed_vals):
-    """Decorator which will limit the values of given arguments to a specified
-    list of allowed values, and raise TypeError exception if the given value
-    doesn't belong. 'allowed_vals' is a dict containing the allowed value list
-    for each limited function argument."""
-    def decorate(func):
-        @_wraps(func)
-        def wrap(*args, **kwargs):
-            arg_names = inspect.getargspec(func)[0]
-            arguments = zip(arg_names, args)
-            arguments += [(k, kwargs[k]) for k in kwargs.keys()]
-            for a in arguments:
-                if allowed_vals.has_key(a[0]):
-                    if a[1] not in allowed_vals[a[0]]:
-                        raise TypeError("value for '%s' must be one of: %s" % \
-                                         (a[0], ", ".join(allowed_vals[a[0]])))
-            return func(*args, **kwargs)
-        return wrap
-    return decorate
+    def __getitem__(self, k):
+        return self.__map[self.__key_trans(k)]
+
+    def __setitem__(self, k, v):
+        self.__map[self.__key_trans(k)] = v
+
+    def get_graph(self):
+        """Get the graph to which the map refers"""
+        return self.__g
+
+    def key_type(self):
+        """The key type of the map. Either 'g', 'v' or 'e'"""
+        return self.__key_type
+
+    def value_type(self):
+        """The value type of the map"""
+        return self.__map.value_type()
+
+class PropertyDict(dict):
+    """Wrapper for the dict of vertex, graph or edge properties, which sets the
+    value on the property map when changed in the dict."""
+    def __init__(self, g, old, get_func, set_func, del_func):
+        dict.__init__(self)
+        dict.update(self, old)
+        self.g = g
+        self.get_func = get_func
+        self.set_func = set_func
+        self.del_func = del_func
+
+    def __setitem__(self, key, val):
+        if self.set_func != None:
+            self.set_func(self.g, key, val)
+        else:
+            raise KeyError("Property dict cannot be set")
+        dict.__setitem__(self, key, val)
+
+    def __delitem__(self, key):
+        self.del_func(self.g, key)
+        dict.__delitem__(self, key)
 
 ################################################################################
 # Graph class
 # The main graph interface
 ################################################################################
 
-from libgraph_tool_core import GraphError, Vector_bool, Vector_int32_t, \
-     Vector_int64_t, Vector_double, Vector_long_double, Vector_string
+from libgraph_tool_core import Vertex, Edge, GraphError,\
+     Vector_bool, Vector_int32_t,  Vector_int64_t, Vector_double,\
+     Vector_long_double, Vector_string, new_vertex_property, new_edge_property,\
+     new_graph_property
 
 class Graph(object):
-    """The main graph type which encapsulates the GraphInterface"""
+    """The main graph type"""
 
     def __init__(self, g = None):
+        self.__properties = {}
+        self.__known_properties = []
+        self.__filter_state = {"reversed": False,
+                               "edge_filter": (None,False),
+                               "vertex_filter": (None,False),
+                               "directed": True,
+                               "reversed": False}
+        self.__stashed_filter_state = []
+
         if g == None:
             self.__graph = libcore.GraphInterface()
         else:
             self.__graph = libcore.GraphInterface(g.__graph)
+            for k,v in g.__properties.iteritems():
+                new_p = self.new_property(v.key_type(), v.value_type())
+                self.copy_property(v, new_p, g)
+                self.properties[(v.key_type(),k)] = new_p
+            self.__stashed_filter_state = [g.__filter_state]
+            self.pop_filter()
 
     @_handle_exceptions
     def copy(self):
         """Returns a deep copy of self"""
-        new_graph = Graph()
-        new_graph.__graph = libcore.GraphInterface(self.__graph)
+        new_graph = Graph(self)
         return new_graph
 
     # Graph access
+    # ============
 
     @_handle_exceptions
     def vertices(self):
@@ -192,7 +230,7 @@ class Graph(object):
     @_handle_exceptions
     def vertex(self, i):
         """Return the i-th vertex from the graph"""
-        return self.__graph.Vertex(i)
+        return self.__graph.Vertex(int(i))
 
     @_handle_exceptions
     def edges(self):
@@ -208,9 +246,11 @@ class Graph(object):
     def remove_vertex(self, vertex, reindex_edges=True):
         """Remove a vertex from the graph"""
         k = vertex.in_degree() + vertex.out_degree()
+        index = self.vertex_index[vertex]
+        for pmap in self.__known_properties:
+            if pmap[0] == "v":
+                self.__graph.ShiftVertexProperty(pmap[1].get_map(), index)
         self.__graph.RemoveVertex(vertex)
-        if k > 0 and reindex_edges:
-            self.__graph.ReIndexEdges()
 
     @_handle_exceptions
     def add_edge(self, source, target):
@@ -219,85 +259,182 @@ class Graph(object):
         return self.__graph.AddEdge(source, target)
 
     @_handle_exceptions
-    def remove_edge(self, edge, reindex=True):
-        """Remove a edge from the graph"""
+    def remove_edge(self, edge):
+        """Remove an edge from the graph"""
         self.__graph.RemoveEdge(edge)
-        if reindex:
-            self.__graph.ReIndexEdges()
-
-    @_handle_exceptions
-    def reindex_edges(self):
-        """re-index all edges from 0 to g.num_edges() - 1"""
-        self.__graph.ReIndexEdges()
 
     @_handle_exceptions
     def clear(self):
-        """Remove all vertices and edges from the graph (as well as its
-        properties)"""
+        """Remove all vertices and edges from the graph"""
         self.__graph.Clear()
 
     @_handle_exceptions
-    def __get_vertex_properties(self):
-        return PropertyDict(self, self.__graph.GetVertexProperties(),
-                            lambda g, key: g.get_vertex_property(key),
-                            lambda g, key, value: g.set_vertex_property(key,
-                                                                        value),
-                            lambda g, key: g.remove_vertex_property(key),
-                            lambda g, key: g.__graph.GetVertexProperties()[key]\
-                            .value_type())
-    vertex_properties = property(__get_vertex_properties,
-                                 doc="Dictionary of vertex properties")
+    def clear_edges(self):
+        """Remove all edges from the graph"""
+        self.__graph.ClearEdges()
+
+    # Internal property maps
+    # ======================
+
+    # all properties
+    @_handle_exceptions
+    def __get_properties(self):
+        return PropertyDict(self, self.__properties,
+                            lambda g,k: g.__properties[k],
+                            lambda g,k,v: g.__set_property(k[0],k[1],v),
+                            lambda g,k: g.__del_property(k[0],k[1]))
 
     @_handle_exceptions
+    @_limit_args({"t":["v", "e", "g"]})
+    @_require("k", str)
+    @_require("v", PropertyMap)
+    def __set_property(self, t, k, v):
+        if t != v.key_type():
+            raise ValueError("wrong key type for property map")
+        self.__properties[(t,k)] = v
+
+    @_handle_exceptions
+    @_limit_args({"t":["v", "e", "g"]})
+    @_require("k", str)
+    def __del_property(self, t, k):
+        del self.__properties[(t,k)]
+
+    properties = property(__get_properties,
+                          doc="Dictionary of internal properties")
+
+    def __get_specific_properties(self, t):
+        props = dict([(k[1],v) for k,v in self.__properties.iteritems() \
+                      if k[0] == t ])
+        return props
+
+    # vertex properties
+    @_handle_exceptions
+    def __get_vertex_properties(self):
+        return PropertyDict(self, self.__get_specific_properties("v"),
+                            lambda g,k: g.__properties[("v",k)],
+                            lambda g,k,v: g.__set_property("v",k,v),
+                            lambda g,k: g.__del_property("v",k))
+    vertex_properties = property(__get_vertex_properties,
+                                 doc="Dictionary of vertex properties")
+    # edge properties
+    @_handle_exceptions
     def __get_edge_properties(self):
-        return PropertyDict(self, self.__graph.GetEdgeProperties(),
-                            lambda g, key: g.get_edge_property(key),
-                            lambda g, key, value: g.set_edge_property(key,
-                                                                      value),
-                            lambda g, key: g.remove_edge_property(key),
-                            lambda g, key: g.__graph.GetEdgeProperties()[key]\
-                            .value_type())
+        return PropertyDict(self, self.__get_specific_properties("e"),
+                            lambda g,k: g.__properties[("e",k)],
+                            lambda g,k,v: g.__set_property("e",k,v),
+                            lambda g,k: g.__del_property("e",k))
     edge_properties = property(__get_edge_properties,
                                  doc="Dictionary of edge properties")
 
+    # graph properties
     @_handle_exceptions
     def __get_graph_properties(self):
-        valdict = dict((k, v[self.__graph]) \
-                       for k,v in self.__graph.GetGraphProperties().iteritems())
-        return PropertyDict(self, valdict,
-                            lambda g, key: g.get_graph_property(key),
-                            lambda g, key, val: g.set_graph_property(key, val),
-                            lambda g, key: g.remove_graph_property(key),
-                            lambda g, key: g.__graph.GetGraphProperties()[key]\
-                            .value_type())
+        return PropertyDict(self, self.__get_specific_properties("g"),
+                            lambda g,k: g.__properties[("g",k)],
+                            lambda g,k,v: g.__set_property("g",k,v),
+                            lambda g,k: g.__del_property("g",k))
+    graph_properties = property(__get_graph_properties,
+                                 doc="Dictionary of graph properties")
 
     @_handle_exceptions
-    def __set_graph_properties(self, val):
-        props = self.__graph.GetGraphProperties()
-        for k,v in val.iteritems():
-            if not props.has_key(k):
-                if v.__class__ == str:
-                    typename = "string"
-                elif v.__class__ == float:
-                    typename = "double"
-                elif v.__class__ == int:
-                    typename = "int"
-                elif v.__class__ == bool:
-                    typename = "boolean"
-                else:
-                    raise TypeError("invalid value type for graph " + \
-                                    "property '%s'" % k)
-                self.add_graph_property(k, typename)
-                props = self.__graph.GetGraphProperties()
-            props[k][self.__graph] = v
+    def list_properties(self):
+        """List all internal properties"""
+        if len(self.__properties) == 0:
+            return
+        w = max([len(x[0]) for x in self.__properties.keys()]) + 4
+        w = w if w > 14 else 14
 
-    graph_properties = property(__get_graph_properties, __set_graph_properties,
-                                doc="Dictionary of graph properties")
+        for k,v in self.__properties.iteritems():
+            if k[0] == "g":
+                print "%%-%ds (graph)   (type: %%s, val: %%s)" % w % \
+                      (k[1], v.value_type(), str(v[self]))
+        for k,v in self.__properties.iteritems():
+            if k[0] == "v":
+                print "%%-%ds (vertex)  (type: %%s)" % w % (k[1],
+                                                            v.value_type())
+        for k,v in self.__properties.iteritems():
+            if k[0] == "e":
+                print "%%-%ds (edge)    (type: %%s)" % w % (k[1],
+                                                            v.value_type())
 
-    # Basic options (File i/o and such)
-    __groups = ["Basic Options"]
+    # index properties
 
-    @_attrs(opt_group=__groups[-1])
+    def _get_vertex_index(self):
+        return PropertyMap(libcore.get_vertex_index(self.__graph), self, "v")
+    vertex_index = property(_get_vertex_index, doc="Vertex index map")
+
+    def _get_edge_index(self):
+        return PropertyMap(libcore.get_edge_index(self.__graph), self, "v")
+    edge_index = property(_get_edge_index, doc="Edge index map")
+
+    # Property map creation
+
+    @_handle_exceptions
+    def new_property(self, key_type, type):
+        """Create a new (uninitialized) vertex property map of key type
+        'key_type', value type 'type', and return it"""
+        if key_type == "v" or key_type == "vertex":
+            return self.new_vertex_property(type)
+        if key_type == "e" or key_type == "edge":
+            return self.new_edge_property(type)
+        if key_type == "g" or key_type == "graph":
+            return self.new_graph_property(type)
+        raise GraphError("unknown key type: " + key_type)
+
+    @_handle_exceptions
+    def new_vertex_property(self, type):
+        """Create a new (uninitialized) vertex property map of type 'type', and
+        return it"""
+        return PropertyMap(new_vertex_property(type,
+                                               self.__graph.GetVertexIndex()),
+                           self, "v")
+
+    @_handle_exceptions
+    def new_edge_property(self, type):
+        """Create a new (uninitialized) edge property map of type 'type', and
+        return it"""
+        return PropertyMap(new_edge_property(type, self.__graph.GetEdgeIndex()),
+                           self, "e")
+
+    @_handle_exceptions
+    def new_graph_property(self, type):
+        """Create a new (uninitialized) graph property map of type 'type', and
+        return it"""
+        return PropertyMap(new_graph_property(type,
+                                              self.__graph.GetGraphIndex()),
+                           self, "g", lambda k: k.__graph)
+
+    # property map copying
+    @_handle_exceptions
+    @_require("src", PropertyMap)
+    @_require("tgt", PropertyMap)
+    def copy_property(self, src, tgt, g=None):
+        """Copy contents of src property to tgt property. Parameter g specifices
+        the (identical) source graph to copy properties from (defaults to self)
+        """
+        if src.key_type() != tgt.key_type():
+            raise GraphError("source and target properties must have the same" +
+                             " key type")
+        if g == None:
+            g = self
+        if g != self:
+            g.stash_filter()
+        self.stash_filter()
+        if src.key_type() == "v":
+            self.__graph.CopyVertexProperty(g.__graph, src._PropertyMap__map,
+                                            tgt._PropertyMap__map)
+        elif src.key_type() == "e":
+            self.__graph.CopyEdgeProperty(g.__graph, src._PropertyMap__map,
+                                          tgt._PropertyMap__map)
+        else:
+            tgt[self] = src[g]
+        self.pop_filter()
+        if g != self:
+            g.pop_filter()
+
+    # I/O operations
+    # ==============
+
     @_handle_exceptions
     def load(self, filename, format="auto"):
         """Load graph from 'filename' (which can also be a file-like
@@ -316,11 +453,17 @@ class Graph(object):
         elif format == "auto":
             format = "xml"
         if isinstance(filename, str):
-            self.__graph.ReadFromFile(filename, None, format)
+            props = self.__graph.ReadFromFile(filename, None, format)
         else:
-            self.__graph.ReadFromFile("", filename, format)
+            props = self.__graph.ReadFromFile("", filename, format)
+        for name, prop in props[0].iteritems():
+            self.vertex_properties[name] = PropertyMap(prop, self, "v")
+        for name, prop in props[1].iteritems():
+            self.edge_properties[name] = PropertyMap(prop, self, "e")
+        for name, prop in props[2].iteritems():
+            self.graph_properties[name] = PropertyMap(prop, self, "g",
+                                                      lambda k: k.__graph)
 
-    @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
     def save(self, filename, format="auto"):
         """Save graph to file. The format is guessed from the 'file' name, or
@@ -337,21 +480,21 @@ class Graph(object):
                     ("cannot determine file format of: " + filename )
         elif format == "auto":
             format = "xml"
+        props = [(name[1], prop._PropertyMap__map) for name,prop in \
+                 self.__properties.iteritems()]
         if isinstance(filename, str):
-            self.__graph.WriteToFile(filename, None, format)
+            self.__graph.WriteToFile(filename, None, format, props)
         else:
-            self.__graph.WriteToFile("", filename, format)
+            self.__graph.WriteToFile("", filename, format, props)
 
-    # Graph filtering
-    __groups.append("Filtering")
+    # Directedness
+    # ============
 
-    @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
     def directed(self):
         """Treat graph as directed (default)."""
         self.__graph.SetDirected(True)
 
-    @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
     def undirected(self):
         """Treat graph as undirected."""
@@ -367,7 +510,9 @@ class Graph(object):
         """Get the directedness of the graph"""
         return self.__graph.GetDirected()
 
-    @_attrs(opt_group=__groups[-1])
+    # Reversedness
+    # ============
+
     @_handle_exceptions
     def reversed(self):
         """Reverse the direction of the edges."""
@@ -384,179 +529,31 @@ class Graph(object):
         """Return 'True' if the edges are reversed, and 'False' otherwise."""
         return self.__graph.GetReversed()
 
-    @_attrs(opt_group=__groups[-1])
+    # Filtering
+    # =========
+
     @_handle_exceptions
     def set_vertex_filter(self, property, inverted=False):
-        """Choose vertex boolean property"""
+        """Choose vertex boolean filter property"""
         self.__graph.SetVertexFilterProperty(property, inverted)
+        self.__filter_state["vertex_filter"] = (property, inverted)
 
     @_handle_exceptions
     def get_vertex_filter(self):
-        """Get the vertex filter property and whether or not it is inverted, or
-        None if filter is not active"""
-        if self.__graph.IsVertexFilterActive():
-            return self.__graph.GetVertexFilterProperty()
+        """Get the vertex filter property and whether or not it is inverted"""
+        return self.__filter_state["vertex_filter"]
 
-    @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
     def set_edge_filter(self, property, inverted=False):
         """Choose edge boolean property"""
         self.__graph.SetEdgeFilterProperty(property, inverted)
+        self.__filter_state["edge_filter"] = (property, inverted)
 
     @_handle_exceptions
     def get_edge_filter(self):
-        """Get the edge filter property and whether or not it is inverted, or
-        None if filter is not active"""
-        if self.__graph.IsEdgeFilterActive():
-            return self.__graph.GetEdgeFilterProperty()
+        """Get the edge filter property and whether or not it is inverted"""
+        return self.__filter_state["edge_filter"]
 
-    @_attrs(opt_group=__groups[-1])
-    @_handle_exceptions
-    def exclude_vertex_range(self, property, range):
-        """Choose vertex property and range to exclude."""
-        (ran, inc, inverted) = _parse_range(range)
-        self.__graph.SetVertexFilterRange(property, ran, inc, not inverted)
-
-    @_attrs(opt_group=__groups[-1])
-    @_handle_exceptions
-    def keep_vertex_range(self, property, range):
-        """Choose vertex property and range to keep (and exclude the rest)."""
-        (ran, inc, inverted) = _parse_range(range)
-        self.__graph.SetVertexFilterRange(property, ran, inc, inverted)
-
-    @_attrs(opt_group=__groups[-1])
-    @_handle_exceptions
-    def reset_vertex_filter(self):
-        """Remove edge filter."""
-        self.__graph.SetVertexFilterProperty('',False)
-
-    @_attrs(opt_group=__groups[-1])
-    @_handle_exceptions
-    def exclude_edge_range(self, property, edge_range):
-        """Choose edge property and range to exclude."""
-        (ran, inc, inverted) = _parse_range(edge_range)
-        self.__graph.SetEdgeFilterRange(property, ran, inc, not inverted)
-
-    @_attrs(opt_group=__groups[-1])
-    @_handle_exceptions
-    def keep_edge_range(self, property, range):
-        """Choose edge property and range to keep (and exclude the rest)."""
-        (ran, inc, inverted) = _parse_range(range)
-        self.__graph.SetEdgeFilterRange(property, ran, inc, inverted)
-
-    @_attrs(opt_group=__groups[-1])
-    @_handle_exceptions
-    def reset_edge_filter(self):
-        """Remove edge filter"""
-        self.__graph.SetEdgeFilterProperty('',False)
-
-    # Graph modification
-    __groups.append("Graph Modification")
-
-    @_handle_exceptions
-    def add_vertex_property(self, name, type):
-        """Add a new (uninitialized) vertex property map of type 'type', and
-        return it"""
-        self.__graph.AddVertexProperty(name, type)
-        return self.vertex_properties[name]
-
-    @_handle_exceptions
-    def add_edge_property(self, name, type):
-        """Add a new (uninitialized) edge property map of type 'type', and
-        return it"""
-        self.__graph.AddEdgeProperty(name, type)
-        foo = self.edge_properties[name]
-        return self.edge_properties[name]
-
-    @_handle_exceptions
-    def add_graph_property(self, name, type, val=None):
-        """Add a new (uninitialized) graph property map of type 'type'"""
-        self.__graph.AddGraphProperty(name, type)
-        if val != None:
-            self.set_graph_property(name, val)
-
-    @_handle_exceptions
-    def set_vertex_property(self, name, pmap):
-        """Insert or replaces a vertex property map object 'map' with a give
-        name"""
-        if name in self.vertex_properties.keys():
-            del self.vertex_properties[name]
-        self.__graph.PutPropertyMap(name, pmap)
-
-    @_handle_exceptions
-    def set_edge_property(self, name, pmap):
-        """Insert or replaces an edge property map object 'map' with a give
-        name"""
-        if name not in self.edge_properties.keys():
-            del self.edge_properties[name]
-        self.__graph.PutPropertyMap(name, pmap)
-
-    @_attrs(opt_group=__groups[-1])
-    @_handle_exceptions
-    def set_graph_property(self, property, val):
-        """Set the selected graph property"""
-        try:
-            self.__graph.GetGraphProperties()[property][self.__graph] = val
-        except KeyError:
-            raise
-        except:
-            type_name = self.__graph.GetGraphProperties()[property].value_type()
-            raise ValueError("wrong value for type '%s': '%s'" % \
-                             (type_name, str(val)))
-
-    @_attrs(opt_group=__groups[-1])
-    @_handle_exceptions
-    def get_graph_property(self, property):
-        """Get the selected graph property"""
-        return self.graph_properties[property]
-
-    @_attrs(opt_group=__groups[-1])
-    @_handle_exceptions
-    def remove_vertex_property(self, property):
-        """Remove the selected vertex property"""
-        self.__graph.RemoveVertexProperty(property)
-
-    @_attrs(opt_group=__groups[-1])
-    @_handle_exceptions
-    def remove_edge_property(self, property):
-        """Remove the selected edge property"""
-        self.__graph.RemoveEdgeProperty(property)
-
-    @_attrs(opt_group=__groups[-1])
-    @_handle_exceptions
-    def remove_graph_property(self, property):
-        """Remove the selected graph property"""
-        self.__graph.RemoveGraphProperty(property)
-
-    @_attrs(opt_group=__groups[-1])
-    @_handle_exceptions
-    def insert_vertex_index(self, property):
-        """Insert vertex index as property"""
-        self.__graph.InsertVertexIndexProperty(property)
-
-    @_attrs(opt_group=__groups[-1])
-    @_handle_exceptions
-    def insert_edge_index(self, property):
-        """Insert edge index as property"""
-        self.__graph.InsertEdgeIndexProperty(property)
-
-    @_attrs(opt_group=__groups[-1])
-    @_handle_exceptions
-    def list_properties(self):
-        """List all properties"""
-        w = max([len(x) for x in self.graph_properties.keys() + \
-                 self.vertex_properties.keys() + \
-                 self.edge_properties.keys()]) + 4
-        w = w if w > 14 else 14
-        for k,v in self.graph_properties.iteritems():
-            print "%%-%ds (graph)   (type: %%s, val: %%s)" % w % \
-                  (k, self.graph_properties.get_type(k), str(v))
-        for k,v in self.vertex_properties.iteritems():
-            print "%%-%ds (vertex)  (type: %%s)" % w % (k, v.get_type())
-        for k,v in self.edge_properties.iteritems():
-            print "%%-%ds (edge)    (type: %%s)" % w % (k, v.get_type())
-
-    @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
     def purge_vertices(self):
         """Remove all vertices of the graph which are currently being filtered
@@ -564,7 +561,6 @@ class Graph(object):
         self.__graph.PurgeVertices()
         self.__graph.SetVertexFilterProperty('')
 
-    @_attrs(opt_group=__groups[-1])
     @_handle_exceptions
     def purge_edges(self):
         """Remove all edges of the graph which are currently being filtered out,
@@ -572,16 +568,35 @@ class Graph(object):
         self.__graph.PurgeEdges()
         self.__graph.SetEdgeFilterProperty('')
 
-    # Basic graph statistics
-    __groups.append("Basic Statistics")
+    @_handle_exceptions
+    def stash_filter(self):
+        """Stash current filter state and recover unfiltered graph"""
+        self.__stashed_filter_state.append(self.__filter_state)
+        self.set_vertex_filter("")
+        self.set_edge_filter("")
+        self.directed()
+        self.set_reversed(False)
 
-    @_attrs(opt_group=__groups[-1], has_output=True)
+    @_handle_exceptions
+    def pop_filter(self):
+        """Pop last stashed filter state"""
+        state = self.__stashed_filter_state.pop()
+        self.set_vertex_filter(state["vertex_filter"][0],
+                               state["vertex_filter"][1])
+        self.set_edge_filter(state["edge_filter"][0],
+                             state["edge_filter"][1])
+        self.set_directed(state["directed"])
+        self.set_reversed(state["reversed"])
+
+
+    # Basic graph statistics
+    # ======================
+
     @_handle_exceptions
     def num_vertices(self):
         """Get the number of vertices."""
         return self.__graph.GetNumberOfVertices()
 
-    @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
     def num_edges(self):
         """Get the number of edges"""
@@ -591,9 +606,10 @@ class Graph(object):
         """Retrieve a GraphInterface from a Graph (for internal use only)"""
         return self.__graph
 
-    #
+
     # Pickling support
-    #
+    # ================
+
     def __getstate__(self):
         state = dict()
         state["vertex_filt"] = self.get_vertex_filter()
@@ -616,30 +632,6 @@ class Graph(object):
         if state["edge_filt"] != None:
             self.set_edge_filter(state["edge_filt"][0],
                                  state["edge_filt"][1])
-
-
-class PropertyDict(dict):
-    """Wrapper for the dict of vertex, graph or edge properties, which sets the
-    value on the property map when changed in the dict."""
-    def __init__(self, g, old, get_func, set_func, del_func, type_func):
-        dict.__init__(self)
-        dict.update(self, old)
-        self.g = g
-        self.get_func = get_func
-        self.set_func = set_func
-        self.del_func = del_func
-    def __setitem__(self, key, val):
-        if self.set_func != None:
-            self.set_func(self.g, key, val)
-        else:
-            raise KeyError("Property dict cannot be set")
-        dict.__setitem__(self, key, val)
-    def __delitem__(self, key):
-        self.del_func(self.g, key)
-        dict.__delitem__(self, key)
-    def get_type(self, key):
-        """Return the type of the internal property"""
-        return self.type_func(self.g, key)
 
 def value_types():
     """Return a list of possible properties value types"""

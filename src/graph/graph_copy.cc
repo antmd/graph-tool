@@ -17,6 +17,8 @@
 
 #include <boost/lambda/lambda.hpp>
 #include <boost/lambda/bind.hpp>
+#include <boost/mpl/contains.hpp>
+#include <boost/python/extract.hpp>
 
 #include "graph.hh"
 #include "graph_filtering.hh"
@@ -64,43 +66,13 @@ struct graph_copy
     }
 };
 
-struct copy_vertex_property
-{
-    template <class GraphDst, class GraphSrc, class VertexProperty>
-    void operator()(GraphDst* dstp, GraphSrc* srcp,
-                    VertexProperty dst_map,
-                    boost::any src_property) const
-    {
-        GraphDst& dst = *dstp;
-        GraphSrc& src = *srcp;
-        VertexProperty src_map = any_cast<VertexProperty>(src_property);
-        typename graph_traits<GraphSrc>::vertex_iterator v, v_end;
-        size_t count = 0;
-        for (tie(v, v_end) = vertices(src); v != v_end; ++v)
-        {
-            dst_map[vertex(count,dst)] = src_map[*v];
-            ++count;
-        }
-    }
-};
-
-struct copy_edge_property
-{
-    template <class GraphSrc, class EdgeProperty>
-    void operator()(GraphSrc* srcp,
-                    EdgeProperty dst_map,
-                    boost::any src_property) const
-    {
-        GraphSrc& src = *srcp;
-        EdgeProperty src_map = any_cast<EdgeProperty>(src_property);
-        typename graph_traits<GraphSrc>::edge_iterator e, e_end;
-        for (tie(e, e_end) = edges(src); e != e_end; ++e)
-        {
-            put(dst_map, *e, get(src_map, *e));
-        }
-    }
-};
-
+typedef graph_tool::detail::get_all_graph_views
+    ::apply<graph_tool::detail::scalar_pairs,
+            mpl::bool_<false>,
+            mpl::bool_<true>,
+            mpl::bool_<false>,
+            mpl::bool_<true>,
+            mpl::bool_<true> >::type graph_views;
 
 // copy constructor
 GraphInterface::GraphInterface(const GraphInterface& gi)
@@ -117,52 +89,216 @@ GraphInterface::GraphInterface(const GraphInterface& gi)
      _edge_filter_active(false)
 {
     typedef mpl::transform<detail::all_graph_views,
-                           mpl::quote1<add_pointer> >::type graph_views;
+                           mpl::quote1<add_pointer> >::type all_graph_views;
 
-    run_action<detail::never_filtered>()(*this, bind<void>(graph_copy(), _1, _2,
-                                                           _vertex_index,
-                                                           gi._vertex_index,
-                                                           _edge_index,
-                                                           gi._edge_index),
-                                         graph_views())(gi.GetGraphView());
+    run_action<graph_views>()(*this, bind<void>(graph_copy(), _1, _2,
+                                                _vertex_index,
+                                                gi._vertex_index,
+                                                _edge_index,
+                                                gi._edge_index),
+                              all_graph_views())(gi.GetGraphView());
+}
 
-    typedef property_map_types::apply<value_types, vertex_index_map_t,
-                                      mpl::bool_<false> >::type
-        vertex_properties;
+//
+// Property map copying
+// ====================
 
-    typedef property_map_types::apply<value_types, edge_index_map_t,
-                                      mpl::bool_<false> >::type
-        edge_properties;
+// handle type convertions
 
-    for (typeof(gi._properties.begin()) iter = gi._properties.begin();
-         iter != gi._properties.end(); ++iter)
+// generic types
+template <class Type1, class Type2>
+struct convert
+{
+
+    Type1 operator()(const Type2& v) const
     {
-        string name = iter->first;
-        string type = get_type_name<>()(iter->second->value());
-        if (iter->second->key() == typeid(vertex_t))
+        return do_convert(v, is_convertible<Type2,Type1>());
+    }
+
+    Type1 do_convert(const Type2& v, mpl::bool_<true>) const
+    {
+        return Type1(v);
+    }
+
+    Type1 do_convert(const Type2& v, mpl::bool_<false>) const
+    {
+        return specific_convert<Type1,Type2>()(v);
+    }
+
+    template <class T1, class T2>
+    struct specific_convert
+    {
+        T1 operator()(const T2& v) const
         {
-            AddVertexProperty(name, type);
-            run_action<detail::never_filtered>()
-                (*this, bind<void>(copy_vertex_property(), _1, _2, _3,
-                                   prop(name, gi._vertex_index,
-                                        gi._properties)),
-                 graph_views(), vertex_properties())
-                (gi.GetGraphView(), prop(name, _vertex_index, _properties));
+            throw bad_lexical_cast(); // default action
         }
-        else if (iter->second->key() == typeid(edge_t))
+    };
+
+    // specific specializations
+
+    // python::object
+    template <class T1>
+    struct specific_convert<T1,python::object>
+    {
+        T1 operator()(const python::object& v) const
         {
-            AddEdgeProperty(name, type);
-            run_action<detail::never_filtered>()
-                (*this, bind<void>(copy_edge_property(), _1, _2,
-                                   prop(name, gi._edge_index, gi._properties)),
-                 edge_properties())
-                (prop(name, _edge_index, _properties));
+            python::extract<Type1> x(v);
+            if (x.check())
+                return x();
+            else
+                throw bad_lexical_cast();
         }
+    };
+
+    // string
+    template <class T1>
+    struct specific_convert<T1,string>
+    {
+        T1 operator()(const string& v) const
+        {
+            return lexical_cast<Type1>(v);
+        }
+    };
+
+    template <class T2>
+    struct specific_convert<string,T2>
+    {
+        string operator()(const T2& v) const
+        {
+            return lexical_cast<string>(v);
+        }
+    };
+
+    // vectors
+    template <class T1, class T2>
+    struct specific_convert<vector<T1>, vector<T2> >
+    {
+        vector<T1> operator()(const vector<T2>& v) const
+        {
+            vector<T1> v2(v.size());
+            convert<T1,T2> c;
+            for (size_t i = 0; i < v.size(); ++i)
+                v2[i] = c(v[i]);
+            return v2;
+        }
+    };
+
+};
+
+// python::object to string, to solve ambiguity
+template<> template<>
+struct convert<string,python::object>::specific_convert<string,python::object>
+{
+    string operator()(const python::object& v) const
+    {
+        python::extract<string> x(v);
+        if (x.check())
+                return x();
         else
+            throw bad_lexical_cast();
+    }
+};
+
+
+template <class IteratorSel>
+struct copy_property
+{
+    template <class Graph, class PropertySrc,
+              class PropertyTgt>
+    void operator()(Graph* tgtp, boost::any srcp, PropertySrc src_map,
+                    PropertyTgt dst_map) const
+    {
+        typedef typename property_traits<PropertySrc>::value_type val_src;
+        typedef typename property_traits<PropertyTgt>::value_type val_tgt;
+
+        try
         {
-            AddGraphProperty(name, type);
-            put(name, _properties, graph_property_tag(),
-                iter->second->get(graph_property_tag()));
+            Graph& tgt = *tgtp;
+            Graph& src = *any_cast<Graph*>(srcp);
+            convert<val_tgt,val_src> c;
+            typename IteratorSel::template apply<Graph>::type vs, vs_end;
+            typename IteratorSel::template apply<Graph>::type vt, vt_end;
+            tie(vt, vt_end) = IteratorSel::range(tgt);
+            for (tie(vs, vs_end) = IteratorSel::range(src); vs != vs_end; ++vs)
+            {
+                if (vt == vt_end)
+                    throw GraphException("Error copying properties: "
+                                         "graphs not identical");
+                dst_map[*vt] = c(src_map[*vs]);
+                ++vt;
+            }
+        }
+        catch (bad_lexical_cast&)
+        {
+            throw GraphException("property values are not convertible");
         }
     }
+};
+
+struct edge_selector
+{
+    template <class Graph>
+    struct apply
+    {
+        typedef typename graph_traits<Graph>::edge_iterator type;
+    };
+
+    template <class Graph>
+    static pair<typename apply<Graph>::type,
+                typename apply<Graph>::type>
+    range(Graph& g)
+    {
+        return edges(g);
+    }
+};
+
+struct vertex_selector
+{
+    template <class Graph>
+    struct apply
+    {
+        typedef typename graph_traits<Graph>::vertex_iterator type;
+    };
+
+    template <class Graph>
+    static pair<typename apply<Graph>::type,
+                typename apply<Graph>::type>
+    range(Graph& g)
+    {
+        return vertices(g);
+    }
+};
+
+void GraphInterface::CopyVertexProperty(const GraphInterface& src,
+                                        boost::any prop_src,
+                                        boost::any prop_tgt)
+{
+    typedef property_map_types::apply<mpl::vector<string,vector<string> >,
+                                      GraphInterface::edge_index_map_t,
+                                      mpl::bool_<false> >::type
+        edge_properties;
+    typedef edge_properties writable_edge_properties;
+
+    run_action<graph_views>()
+        (*this, bind<void>(copy_property<vertex_selector>(),
+                           _1, src.GetGraphView(),  _2, _3),
+         vertex_properties(), writable_vertex_properties())
+        (prop_src, prop_tgt);
+}
+
+void GraphInterface::CopyEdgeProperty(const GraphInterface& src,
+                                      boost::any prop_src,
+                                      boost::any prop_tgt)
+{
+    typedef property_map_types::apply<mpl::vector<double>,
+                                      GraphInterface::edge_index_map_t,
+                                      mpl::bool_<false> >::type
+        edge_properties;
+    typedef edge_properties writable_edge_properties;
+
+    run_action<graph_views>()
+        (*this, bind<void>(copy_property<edge_selector>(),
+                           _1, src.GetGraphView(), _2, _3),
+         edge_properties(), writable_edge_properties())
+        (prop_src, prop_tgt);
 }
