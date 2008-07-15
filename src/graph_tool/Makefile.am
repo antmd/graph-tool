@@ -29,3 +29,7 @@ graph_tool_correlationsdir = $(pythondir)/graph_tool/correlations
 graph_tool_stats_PYTHON = \
     stats/__init__.py
 graph_tool_statsdir = $(pythondir)/graph_tool/stats
+
+graph_tool_clustering_PYTHON = \
+    clustering/__init__.py
+graph_tool_clusteringdir = $(pythondir)/graph_tool/clustering

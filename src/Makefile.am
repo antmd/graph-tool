@@ -4,5 +4,3 @@ AUTOMAKE_OPTIONS = subdir-objects
 
 SUBDIRS = graph graph_tool .
 
-bin_SCRIPTS = graph-tool
-
