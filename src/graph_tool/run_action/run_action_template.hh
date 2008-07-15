@@ -40,8 +40,7 @@ template <class Action>
 void RunAction(GraphInterface &g, const Action& a)
 {
     run_action<>()(g, lambda::bind<void>(a, lambda::_1, g._vertex_index,
-                                         g._edge_index,
-                                         lambda::var(g._properties)))();
+                                         g._edge_index))();
 }
 }
 
@@ -67,8 +66,7 @@ struct action_${code_hash}
 
     template <class Graph, class VertexIndex, class EdgeIndex>
     void operator()(Graph* __gp, VertexIndex vertex_index,
-                    EdgeIndex edge_index,
-                    dynamic_properties& properties) const
+                    EdgeIndex edge_index) const
     {
         Graph& g = *__gp;
         // convenience typedefs

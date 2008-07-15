@@ -130,7 +130,9 @@ def inline(g, code, arg_names=[], local_dict=None,
     # check if exception was thrown
     if ret_vals["__exception_thrown"]:
         libgraph_tool_core.raise_error(ret_vals["__exception_error"])
-
+    else:
+        del ret_vals["__exception_thrown"]
+        del ret_vals["__exception_error"]
     sys.setdlopenflags(orig_dlopen_flags) # reset dlopen to normal case to
                                           # avoid unnecessary symbol collision
     return ret_vals
