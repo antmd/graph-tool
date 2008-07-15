@@ -18,14 +18,12 @@
 // based on code written by Alexandre Hannud Abdo <abdo@member.fsf.org>
 
 #include "graph_filtering.hh"
-#include "graph.hh"
-#include "histogram.hh"
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
 
-#include <boost/graph/breadth_first_search.hpp>
-
 #include "graph_extended_clustering.hh"
+
+#include <boost/python.hpp>
 
 using namespace std;
 using namespace boost;
@@ -35,20 +33,20 @@ using namespace graph_tool;
 template <class PropertySequence>
 struct prop_vector
 {
-    boost::any operator()(const vector<boost::any>& props, bool& found) const
+    boost::any operator()(const vector<boost::any>& props) const
     {
         boost::any prop_vec;
-        mpl::for_each<PropertySequence>(bind<void>(get_prop_vector(), _1,
-                                                   var(props), var(prop_vec),
-                                                   var(found)));
+        mpl::for_each<PropertySequence>
+            (lambda::bind<void>(get_prop_vector(), lambda::_1,
+                                lambda::var(props), lambda::var(prop_vec)));
         return prop_vec;
     }
 
     struct get_prop_vector
     {
         template <class Property>
-            void operator()(Property, const vector<boost::any>& props,
-                            boost::any& prop_vec, bool& found) const
+        void operator()(Property, const vector<boost::any>& props,
+                        boost::any& prop_vec) const
         {
             if (typeid(Property) == props[0].type())
             {
@@ -59,12 +57,8 @@ struct prop_vector
                     for (size_t i = 0; i < props.size(); ++i)
                         vec[i] = any_cast<Property>(props[i]);
                     prop_vec = vec;
-                    found = true;
                 }
-                catch (bad_any_cast)
-                {
-                    found = false;
-                }
+                catch (bad_any_cast){}
             }
         }
     };
@@ -80,38 +74,25 @@ struct get_property_vector_type
     };
 };
 
-void GraphInterface::SetExtendedClusteringToProperty(string property_prefix,
-                                                     size_t max_depth)
+void extended_clustering(GraphInterface& g, python::list props)
 {
-    typedef vector_property_map<double, vertex_index_map_t> cmap_t;
-    vector<any> cmaps(max_depth);
+    vector<any> cmaps(python::len(props));
     for (size_t i = 0; i < cmaps.size(); ++i)
-    {
-        string name = property_prefix + lexical_cast<string>(i+1);
-        try
-        {
-            cmaps[i] = prop(name, _vertex_index, _properties);
-        }
-        catch (property_not_found)
-        {
-            cmap_t cmap(num_vertices(_mg), _vertex_index);
-            _properties.property(name, cmap);
-            cmaps[i] = cmap;
-        }
-    }
+        cmaps[i] = python::extract<boost::any>(props[i])();
 
-    typedef mpl::transform<vertex_floating_properties,
+    boost::any vprop = prop_vector<vertex_scalar_properties>()(cmaps);
+    if (vprop.empty())
+        throw GraphException("all vertex properties must be of the same"
+                             " floating point type");
+
+    typedef mpl::transform<writable_vertex_scalar_properties,
                            get_property_vector_type>::type
-        property_vectors;
-
-    bool found = false;
+        properties_vector;
 
     run_action<>()
-        (*this, bind<void>(get_extended_clustering(), _1, _vertex_index,_2),
-         property_vectors())
-        (prop_vector<vertex_scalar_properties>()(cmaps, found));
-
-    if (!found)
-        throw GraphException("All vertex properties " + property_prefix +
-                             "* must be of the same floating point type!");
+        (g, lambda::bind<void>(get_extended_clustering(), lambda::_1,
+                               any_cast<GraphInterface::vertex_index_map_t>
+                               (g.GetVertexIndex()), lambda::_2),
+         properties_vector()) (vprop);
 }
+

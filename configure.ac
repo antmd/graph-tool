@@ -241,6 +241,7 @@ src/graph/Makefile
 src/graph/correlations/Makefile
 src/graph/generation/Makefile
 src/graph/stats/Makefile
+src/graph/clustering/Makefile
 src/graph_tool/Makefile
 ])
 

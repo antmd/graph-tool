@@ -128,7 +128,6 @@ struct get_global_clustering
     }
 };
 
-
 // sets the local clustering coefficient to a property
 struct set_clustering_to_property
 {

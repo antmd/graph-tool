@@ -1,6 +1,6 @@
 ## Process this file with automake to produce Makefile.in
 
-SUBDIRS = generation correlations stats
+SUBDIRS = generation correlations stats clustering
 
 AM_CPPFLAGS =\
     -I. -I.. \

@@ -23,46 +23,43 @@
 
 #include "graph_clustering.hh"
 
+#include <boost/python.hpp>
+
 using namespace std;
 using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
 
-pair<double,double>
-GraphInterface::GetGlobalClustering()
+python::tuple global_clustering(GraphInterface& g)
 {
     double c, c_err;
-    bool directed = _directed;
-    _directed = false;
-    run_action<detail::never_directed>()
-        (*this, bind<void>(get_global_clustering(), _1, var(c), var(c_err)))();
-    _directed = directed;
-    return make_pair(c,c_err);
+    bool directed = g.GetDirected();
+    g.SetDirected(false);
+    run_action<graph_tool::detail::never_directed>()
+        (g, lambda::bind<void>(get_global_clustering(), lambda::_1,
+                               lambda::var(c), lambda::var(c_err)))();
+    g.SetDirected(directed);
+    return python::make_tuple(c, c_err);
 }
 
-void GraphInterface::SetLocalClusteringToProperty(string property)
+void local_clustering(GraphInterface& g, boost::any prop)
 {
-    boost::any vertex_prop;
+    bool directed = g.GetDirected();
+    g.SetDirected(false);
+    run_action<graph_tool::detail::never_directed>()
+        (g, lambda::bind<void>(set_clustering_to_property(), lambda::_1,
+                               lambda::_2),
+         writable_vertex_scalar_properties())(prop);
+    g.SetDirected(directed);
+}
 
-    try
-    {
-        find_property_map(_properties, property, typeid(vertex_t));
-        vertex_prop = prop(property, _vertex_index, _properties);
-        if (!belongs<vertex_floating_properties>()(vertex_prop))
-            throw GraphException("vertex property " + property +
-                                 " is not of floating type");
-    }
-    catch (property_not_found)
-    {
-        typedef vector_property_map<double,vertex_index_map_t> clust_map_t;
-        clust_map_t clust_map(num_vertices(_mg), _vertex_index);
-        _properties.property(property, clust_map);
-        vertex_prop = clust_map;
-    }
+using namespace boost::python;
 
-    bool directed = _directed;
-    _directed = false;
-    run_action<detail::never_directed>()
-        (*this, bind<void>(set_clustering_to_property(), _1, _2))(vertex_prop);
-    _directed = directed;
+void extended_clustering(GraphInterface& g, python::list props);
+
+BOOST_PYTHON_MODULE(libgraph_tool_clustering)
+{
+    def("global_clustering", &global_clustering);
+    def("local_clustering", &local_clustering);
+    def("extended_clustering", &extended_clustering);
 }
