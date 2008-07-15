@@ -48,18 +48,6 @@ from decorators import _wraps, _require, _attrs, _handle_exceptions, _limit_args
 # Utility functions
 ################################################################################
 
-_require("name", str)
-def _degree(name):
-    """Retrieve the degree type from string"""
-    deg = name
-    if name == "in-degree" or name == "in":
-        deg = libcore.Degree.In
-    if name == "out-degree" or name == "out":
-        deg = libcore.Degree.Out
-    if name == "total-degree" or name == "total":
-        deg = libcore.Degree.Total
-    return deg
-
 def _prop(t, g, prop):
     """Returns either a property map, or an internal vertex property map with a
     given name"""
@@ -72,7 +60,24 @@ def _prop(t, g, prop):
                               ("edge" if t == "e" else "graph"),prop))
     else:
         pmap = prop
-    return pmap._PropertyMap__map
+    if pmap == None:
+        return libcore.any()
+    else:
+        return pmap._PropertyMap__map.get_map()
+
+def _degree(g, name):
+    """Retrieve the degree type from string, or returns the corresponding
+    property map"""
+    deg = name
+    if name == "in-degree" or name == "in":
+        deg = libcore.Degree.In
+    elif name == "out-degree" or name == "out":
+        deg = libcore.Degree.Out
+    elif name == "total-degree" or name == "total":
+        deg = libcore.Degree.Total
+    else:
+        deg = _prop("v", g, deg)
+    return deg
 
 def _parse_range(range):
     """Parse a range in the form 'lower[*] upper[*]' (where an '*' indicates

@@ -48,16 +48,10 @@ get_edge_histogram(GraphInterface& gi, boost::any prop,
     python::object ret_bins;
 
     bool directed = gi.GetDirected();
-    gi.SetDirected(false);
-
-    typedef property_map_types::apply<scalar_types,
-                                      GraphInterface::edge_index_map_t,
-                                      mpl::bool_<true> >::type
-        edge_props;
-
+    gi.SetDirected(true);
     run_action<graph_tool::detail::always_directed>()
         (gi, get_histogram<EdgeHistogramFiller>(hist, bins, ret_bins),
-         edge_props())(prop);
+         edge_scalar_properties())(prop);
     gi.SetDirected(directed);
 
     return python::make_tuple(hist, ret_bins);

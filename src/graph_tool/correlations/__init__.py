@@ -35,7 +35,7 @@ import libgraph_tool_correlations
 sys.setdlopenflags(_orig_dlopen_flags) # reset it to normal case to avoid
                                        # unnecessary symbol collision
 
-from .. core import _degree
+from .. core import _degree, _prop
 from numpy import *
 
 __all__ = ["assortativity", "scalar_assortativity",
@@ -43,28 +43,30 @@ __all__ = ["assortativity", "scalar_assortativity",
 
 def assortativity(g, deg):
     return libgraph_tool_correlations.\
-           assortativity_coefficient(g.underlying_graph(), _degree(deg))
+           assortativity_coefficient(g.underlying_graph(), _degree(g, deg))
 
 def scalar_assortativity(g, deg):
     return libgraph_tool_correlations.\
            scalar_assortativity_coefficient(g.underlying_graph(),
-                                            _degree(deg))
+                                            _degree(g, deg))
 
-def corr_hist(g, deg1, deg2, weight="", bins=[[1],[1]]):
+def corr_hist(g, deg1, deg2, bins=[[1],[1]], weight=None):
     ret = libgraph_tool_correlations.\
-          vertex_correlation_histogram(g.underlying_graph(), _degree(deg1),
-                                       _degree(deg2), weight, bins[0], bins[1])
+          vertex_correlation_histogram(g.underlying_graph(), _degree(g, deg1),
+                                       _degree(g, deg2), _prop("e", g, weight),
+                                       bins[0], bins[1])
     return [ret[0], [ret[1][0], ret[1][1]]]
 
 def combined_corr_hist(g, deg1, deg2, bins=[[1],[1]]):
     ret = libgraph_tool_correlations.\
           vertex_combined_correlation_histogram(g.underlying_graph(),
-                                                _degree(deg1), _degree(deg2),
+                                                _degree(g, deg1),
+                                                _degree(g, deg2),
                                                 bins[0], bins[1])
     return [ret[0], [ret[1][0], ret[1][1]]]
 
-def avg_neighbour_corr(g, deg1, deg2, weight="", bins=[[1],[1]]):
-    ret = corr_hist(g, deg1, deg2, weight, bins)
+def avg_neighbour_corr(g, deg1, deg2, bins=[[1],[1]], weight=None):
+    ret = corr_hist(g, deg1, deg2, bins, weight)
     xbins = ret[1][0]
     ybins = ret[1][1]
     counts = ret[0]

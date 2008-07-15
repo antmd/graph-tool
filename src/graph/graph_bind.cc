@@ -282,7 +282,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
 
     def("raise_error", &raise_error);
     def("get_property_types", &get_property_types);
-    class_<boost::any>("any", no_init);
+    class_<boost::any>("any");
 
     mpl::for_each<mpl::push_back<scalar_types,string>::type>(export_vector_types());
 

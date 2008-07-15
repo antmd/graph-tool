@@ -135,9 +135,6 @@ struct scalarS
 
 struct get_degree_selector
 {
-    get_degree_selector(int deg_index, boost::any& deg)
-        : _index(deg_index), _deg(deg) {}
-
     typedef boost::mpl::map
         <boost::mpl::pair<in_degreeS,
                           boost::mpl::int_<GraphInterface::IN_DEGREE> >,
@@ -148,14 +145,27 @@ struct get_degree_selector
         degree_selector_index;
 
     template <class Selector>
-    void operator()(Selector) const
+        void operator()(Selector, int deg_index, boost::any& deg) const
     {
-        if (mpl::at<degree_selector_index, Selector>::type::value == _index)
-            _deg = Selector();
+        if (mpl::at<degree_selector_index, Selector>::type::value == deg_index)
+            deg = Selector();
     }
+};
 
-    int _index;
-    boost::any& _deg;
+struct get_scalar_selector
+{
+    template <class PropertyMap>
+    void operator()(PropertyMap, boost::any prop, boost::any& sec, bool& found)
+        const
+    {
+        try
+        {
+            PropertyMap map = any_cast<PropertyMap>(prop);
+            sec = scalarS<PropertyMap>(map);
+            found = true;
+        }
+        catch (bad_any_cast&) {}
+    }
 };
 
 struct scalar_selector_type
@@ -166,7 +176,6 @@ struct scalar_selector_type
         typedef scalarS<PropertyMap> type;
     };
 };
-
 
 struct selectors:
     boost::mpl::vector<out_degreeS, in_degreeS, total_degreeS> {};
