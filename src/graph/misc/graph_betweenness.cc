@@ -33,19 +33,26 @@ void normalize_betweenness(const Graph& g,
                            EdgeBetweenness edge_betweenness,
                            VertexBetweenness vertex_betweenness)
 {
-    size_t n = HardNumVertices()(&g);
-    double factor = 2.0/(n*n - 3*n + 2);
+    size_t n = HardNumVertices()(g);
+    double vfactor = (n > 2) ? 1.0/((n-1)*(n-2)) : 1.0;
+    double efactor = (n > 1) ? 1.0/(n*(n-1)) : 1.0;
+    if (is_convertible<typename graph_traits<Graph>::directed_category,
+                       undirected_tag>::value)
+    {
+        vfactor *= 2;
+        efactor *= 2;
+    }
 
     typename graph_traits<Graph>::vertex_iterator v, v_end;
     for (tie(v, v_end) = vertices(g); v != v_end; ++v)
     {
-        put(vertex_betweenness, *v, factor * get(vertex_betweenness, *v));
+        put(vertex_betweenness, *v, vfactor * get(vertex_betweenness, *v));
     }
 
     typename graph_traits<Graph>::edge_iterator e, e_end;
     for (tie(e, e_end) = edges(g); e != e_end; ++e)
     {
-        put(edge_betweenness, *e, factor * get(edge_betweenness, *e));
+        put(edge_betweenness, *e, efactor * get(edge_betweenness, *e));
     }
 }
 
