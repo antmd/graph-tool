@@ -3,6 +3,7 @@
 graph_tool_PYTHON = \
     __init__.py \
     core.py \
+    decorators.py \
     io.py
 graph_tooldir = $(pythondir)/graph_tool
 
