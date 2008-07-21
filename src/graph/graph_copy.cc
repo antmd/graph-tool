@@ -91,12 +91,12 @@ GraphInterface::GraphInterface(const GraphInterface& gi)
     typedef mpl::transform<detail::all_graph_views,
                            mpl::quote1<add_pointer> >::type all_graph_views;
 
-    run_action<graph_views>()(*this, bind<void>(graph_copy(), _1, _2,
-                                                _vertex_index,
-                                                gi._vertex_index,
-                                                _edge_index,
-                                                gi._edge_index),
-                              all_graph_views())(gi.GetGraphView());
+    run_action<>()(*this, bind<void>(graph_copy(), _1, _2,
+                                     _vertex_index,
+                                     gi._vertex_index,
+                                     _edge_index,
+                                     gi._edge_index),
+                   all_graph_views())(gi.GetGraphView());
 }
 
 //

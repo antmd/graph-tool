@@ -43,23 +43,23 @@ __all__ = ["assortativity", "scalar_assortativity",
 
 def assortativity(g, deg):
     return libgraph_tool_correlations.\
-           assortativity_coefficient(g.underlying_graph(), _degree(g, deg))
+           assortativity_coefficient(g._Graph__graph, _degree(g, deg))
 
 def scalar_assortativity(g, deg):
     return libgraph_tool_correlations.\
-           scalar_assortativity_coefficient(g.underlying_graph(),
+           scalar_assortativity_coefficient(g._Graph__graph,
                                             _degree(g, deg))
 
 def corr_hist(g, deg1, deg2, bins=[[1],[1]], weight=None):
     ret = libgraph_tool_correlations.\
-          vertex_correlation_histogram(g.underlying_graph(), _degree(g, deg1),
+          vertex_correlation_histogram(g._Graph__graph, _degree(g, deg1),
                                        _degree(g, deg2), _prop("e", g, weight),
                                        bins[0], bins[1])
     return [ret[0], [ret[1][0], ret[1][1]]]
 
 def combined_corr_hist(g, deg1, deg2, bins=[[1],[1]]):
     ret = libgraph_tool_correlations.\
-          vertex_combined_correlation_histogram(g.underlying_graph(),
+          vertex_combined_correlation_histogram(g._Graph__graph,
                                                 _degree(g, deg1),
                                                 _degree(g, deg2),
                                                 bins[0], bins[1])

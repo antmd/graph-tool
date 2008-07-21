@@ -216,7 +216,8 @@ class Graph(object):
                 self.copy_property(v, new_p, g)
                 self.properties[(v.key_type(),k)] = new_p
             self.__stashed_filter_state = [g.__filter_state]
-            self.pop_filter()
+            if libcore.graph_filtering_enabled():
+                self.pop_filter()
 
     @_handle_exceptions
     def copy(self):
@@ -540,7 +541,7 @@ class Graph(object):
     @_handle_exceptions
     def set_vertex_filter(self, property, inverted=False):
         """Choose vertex boolean filter property"""
-        self.__graph.SetVertexFilterProperty(property, inverted)
+        self.__graph.SetVertexFilterProperty(_prop("v", self, property), inverted)
         self.__filter_state["vertex_filter"] = (property, inverted)
 
     @_handle_exceptions
@@ -551,7 +552,7 @@ class Graph(object):
     @_handle_exceptions
     def set_edge_filter(self, property, inverted=False):
         """Choose edge boolean property"""
-        self.__graph.SetEdgeFilterProperty(property, inverted)
+        self.__graph.SetEdgeFilterProperty(_prop("e", self, property), inverted)
         self.__filter_state["edge_filter"] = (property, inverted)
 
     @_handle_exceptions
@@ -606,11 +607,6 @@ class Graph(object):
     def num_edges(self):
         """Get the number of edges"""
         return self.__graph.GetNumberOfEdges()
-
-    def underlying_graph(self):
-        """Retrieve a GraphInterface from a Graph (for internal use only)"""
-        return self.__graph
-
 
     # Pickling support
     # ================

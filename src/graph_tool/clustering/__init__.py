@@ -43,12 +43,12 @@ __all__ = ["local_clustering", "global_clustering", "extended_clustering"]
 def local_clustering(g, prop=None):
     if prop == None:
         prop = g.new_vertex_property("double")
-    libgraph_tool_clustering.extended_clustering(g.underlying_graph(),
+    libgraph_tool_clustering.extended_clustering(g._Graph__graph,
                                                  [_prop("v", g, prop)])
     return prop
 
 def global_clustering(g):
-    c = libgraph_tool_clustering.global_clustering(g.underlying_graph())
+    c = libgraph_tool_clustering.global_clustering(g._Graph__graph)
     return c
 
 def extended_clustering(g, props=None, max_depth=3):
@@ -56,6 +56,6 @@ def extended_clustering(g, props=None, max_depth=3):
         props = []
         for i in xrange(0, max_depth):
             props.append(g.new_vertex_property("double"))
-    libgraph_tool_clustering.extended_clustering(g.underlying_graph(),
+    libgraph_tool_clustering.extended_clustering(g._Graph__graph,
                                                  [_prop("v", g, p) for p in props])
     return props

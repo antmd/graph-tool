@@ -22,6 +22,15 @@ using namespace graph_tool;
 using namespace graph_tool::detail;
 using namespace boost;
 
+bool graph_tool::graph_filtering_enabled()
+{
+#ifndef NO_GRAPH_FILTERING
+    return true;
+#else
+    return false;
+#endif
+}
+
 // Whenever no implementation is called, the following exception is thrown
 graph_tool::ActionNotFound::ActionNotFound(const boost::any& graph_view,
                                            const type_info& action,
@@ -40,13 +49,13 @@ const char * graph_tool::ActionNotFound::what () const throw ()
         "information.\n\n";
 
     error += "Graph view: " + string(gcc_demangle(_graph_view.type().name()))
-        + "\n";
+        + "\n\n";
 
-    error += "Action: " + string(gcc_demangle(_action.name())) + "\n";
+    error += "Action: " + string(gcc_demangle(_action.name())) + "\n\n";
     for (size_t i = 0; i < _args.size(); ++i)
     {
         error += "Arg " + lexical_cast<string>(i+1) + ": " +
-            string(gcc_demangle(_args[i]->name())) + "\n";
+            string(gcc_demangle(_args[i]->name())) + "\n\n";
     }
     return error.c_str();
 }

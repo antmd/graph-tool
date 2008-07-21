@@ -284,6 +284,8 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
     def("get_property_types", &get_property_types);
     class_<boost::any>("any");
 
+    def("graph_filtering_enabled", &graph_filtering_enabled);
+
     mpl::for_each<mpl::push_back<scalar_types,string>::type>(export_vector_types());
 
     class_<GraphInterface>("GraphInterface", init<>())

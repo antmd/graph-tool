@@ -50,6 +50,7 @@
 
 namespace graph_tool
 {
+
 using namespace boost;
 
 // Graph filtering
@@ -623,6 +624,9 @@ struct run_action
         return detail::graph_action<Action,GraphViews,TR1,TR2,TR3,TR4>(g, a);
     }
 };
+
+// returns true if graph filtering was enabled at compile time
+bool graph_filtering_enabled();
 
 } //graph_tool namespace
 

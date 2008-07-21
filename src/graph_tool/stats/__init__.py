@@ -43,31 +43,31 @@ __all__ = ["vertex_hist", "edge_hist", "label_components",
 
 def vertex_hist(g, deg, bins=[1]):
     ret = libgraph_tool_stats.\
-          get_vertex_histogram(g.underlying_graph(), _degree(g, deg), bins)
+          get_vertex_histogram(g._Graph__graph, _degree(g, deg), bins)
     return [array(ret[0]), ret[1]]
 
 def edge_hist(g, eprop, bins=[1]):
     ret = libgraph_tool_stats.\
-          get_edge_histogram(g.underlying_graph(), _prop("e", g, eprop), bins)
+          get_edge_histogram(g._Graph__graph, _prop("e", g, eprop), bins)
     return [array(ret[0]), ret[1]]
 
 def label_components(g, vprop=None):
     if vprop == None:
         vprop = g.new_vertex_property("int32_t")
     libgraph_tool_stats.\
-          label_components(g.underlying_graph(), _prop("v", g, vprop))
+          label_components(g._Graph__graph, _prop("v", g, vprop))
     return _prop("v", g, vprop)
 
 def label_parallel_edges(g, eprop):
     if eprop == None:
         eprop = g.new_edge_property("int32_t")
     libgraph_tool_stats.\
-          label_parallel_edges(g.underlying_graph(), _prop("e", g, eprop))
+          label_parallel_edges(g._Graph__graph, _prop("e", g, eprop))
     return _prop("e", g, eprop)
 
 def label_self_loops(g, eprop):
     if eprop == None:
         eprop = g.new_edge_property("int32_t")
     libgraph_tool_stats.\
-          label_self_loops(g.underlying_graph(), _prop("e", g, eprop))
+          label_self_loops(g._Graph__graph, _prop("e", g, eprop))
     return _prop("e", g, eprop)

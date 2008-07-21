@@ -93,7 +93,7 @@ def inline(g, code, arg_names=[], local_dict=None,
     python::object pg(python::handle<>
                         (python::borrowed((PyObject*)(self___graph))));
     GraphInterface& g = python::extract<GraphInterface&>(pg);
-    RunAction(g, make_action(boost::make_tuple(${args}), return_val));
+    RunAction(g, make_action(tr1::make_tuple(${args}), return_val));
     // support code hash: ${support_hash}
     """).substitute(args=", ".join(["&%s" %a for a in arg_names]),
                     code_hash=code_hash, support_hash=support_hash)
@@ -105,7 +105,7 @@ def inline(g, code, arg_names=[], local_dict=None,
         local_dict = call_frame.f_locals
     if global_dict is None:
         global_dict = call_frame.f_globals
-    local_dict["self___graph"] = g.underlying_graph() # the graph interface
+    local_dict["self___graph"] = g._Graph__graph # the graph interface
 
     # RTLD_GLOBAL needs to be set in dlopen() if we want typeinfo and
     # friends to work properly across DSO boundaries. See

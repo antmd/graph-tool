@@ -52,7 +52,7 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
         uncorrelated = True
     else:
         uncorrelated = False
-    libgraph_tool_generation.gen_random_graph(g.underlying_graph(), N,
+    libgraph_tool_generation.gen_random_graph(g._Graph__graph, N,
                                               deg_sampler, deg_corr,
                                               uncorrelated, not parallel,
                                               not self_loops, not directed,
