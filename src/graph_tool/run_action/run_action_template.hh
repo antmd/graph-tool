@@ -18,9 +18,7 @@
 #include <list>
 #include <tr1/unordered_set>
 #include <tr1/unordered_map>
-#include <boost/tuple/tuple.hpp>
-#include <boost/type_traits.hpp>
-#include <boost/python.hpp>
+#include <tr1/tuple>
 #include "graph.hh"
 #include "graph_filtering.hh"
 #include "graph_properties.hh"
@@ -29,7 +27,6 @@
 #include <boost/lambda/bind.hpp>
 
 using namespace boost;
-using namespace boost::tuples;
 using namespace std;
 using namespace graph_tool;
 
@@ -56,6 +53,22 @@ struct prop_bind_t
         typedef vector_property_map<val_t,IndexMap> type;
     };
 };
+
+// utility template function to extract the correct property map
+template <class PropertyMap>
+PropertyMap get_prop(py::object& map)
+{
+    try
+    {
+        python::object pmap =
+            python::object(map).attr("_PropertyMap__map").attr("get_map")();
+        return any_cast<PropertyMap>(python::extract<boost::any>(pmap)());
+    }
+    catch (bad_any_cast&)
+    {
+        throw GraphException("could not convert property map as requested");
+    }
+}
 
 // the action function object
 template <class Args>

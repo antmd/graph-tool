@@ -63,8 +63,8 @@ def inline(g, code, arg_names=[], local_dict=None,
 
     # each term on the expansion will properly unwrap a tuple pointer value
     # to a reference with the appropriate name and type
-    exp_term = """typename boost::remove_pointer<typename element<%d,Args>::type>::type& %s =
-                          *get<%d>(_args);"""
+    exp_term = """typename boost::remove_pointer<typename tr1::tuple_element<%d,Args>::type>::type& %s =
+                          *tr1::get<%d>(_args);"""
     arg_expansion = "\n".join([ exp_term % (i,arg_names[i],i) for i in \
                                 xrange(0, len(arg_names))])
 
