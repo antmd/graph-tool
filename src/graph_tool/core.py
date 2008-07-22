@@ -55,7 +55,7 @@ def _prop(t, g, prop):
         try:
             pmap = g.properties[(t,prop)]
         except KeyError:
-            raise GraphError("no internal %s property named: %d" %\
+            raise GraphError("no internal %s property named: %s" %\
                              ("vertex" if t == "v" else \
                               ("edge" if t == "e" else "graph"),prop))
     else:
@@ -214,10 +214,33 @@ class Graph(object):
             for k,v in g.__properties.iteritems():
                 new_p = self.new_property(v.key_type(), v.value_type())
                 self.copy_property(v, new_p, g)
-                self.properties[(v.key_type(),k)] = new_p
+                self.properties[k] = new_p
             self.__stashed_filter_state = [g.__filter_state]
-            if libcore.graph_filtering_enabled():
-                self.pop_filter()
+            v_filt, v_rev = g.__filter_state["vertex_filter"]
+            if v_filt != None:
+                if v_filt not in g.vertex_properties.values():
+                    new_filt = self.new_vertex_property("bool")
+                    self.copy_property(v_filt, new_filt)
+
+                else:
+                    for k,v in g.vertex_properties.iteritems():
+                        if v == v_filt:
+                            new_filt = self.vertex_properties[k]
+                self.__stashed_filter_state[0]["vertex_filter"] = (new_filt,
+                                                                   v_rev)
+            e_filt, e_rev = g.__filter_state["edge_filter"]
+            if e_filt != None:
+                if e_filt not in g.edge_properties.values():
+                    new_filt = self.new_edge_property("bool")
+                    self.copy_property(e_filt, new_filt)
+
+                else:
+                    for k,v in g.edge_properties.iteritems():
+                        if v == e_filt:
+                            new_filt = self.edge_properties[k]
+                self.__stashed_filter_state[0]["edge_filter"] = (new_filt,
+                                                                 e_rev)
+            self.pop_filter()
 
     @_handle_exceptions
     def copy(self):
@@ -427,11 +450,11 @@ class Graph(object):
             g.stash_filter()
         self.stash_filter()
         if src.key_type() == "v":
-            self.__graph.CopyVertexProperty(g.__graph, src._PropertyMap__map,
-                                            tgt._PropertyMap__map)
+            self.__graph.CopyVertexProperty(g.__graph, _prop("v", g, src),
+                                            _prop("v", g, tgt))
         elif src.key_type() == "e":
-            self.__graph.CopyEdgeProperty(g.__graph, src._PropertyMap__map,
-                                          tgt._PropertyMap__map)
+            self.__graph.CopyEdgeProperty(g.__graph, _prop("e", g, src),
+                                            _prop("e", g, tgt))
         else:
             tgt[self] = src[g]
         self.pop_filter()
@@ -565,21 +588,22 @@ class Graph(object):
         """Remove all vertices of the graph which are currently being filtered
         out, and return to the unfiltered state"""
         self.__graph.PurgeVertices()
-        self.__graph.SetVertexFilterProperty('')
+        self.__graph.SetVertexFilterProperty(None)
 
     @_handle_exceptions
     def purge_edges(self):
         """Remove all edges of the graph which are currently being filtered out,
         and return to the unfiltered state"""
         self.__graph.PurgeEdges()
-        self.__graph.SetEdgeFilterProperty('')
+        self.__graph.SetEdgeFilterProperty(None)
 
     @_handle_exceptions
     def stash_filter(self):
         """Stash current filter state and recover unfiltered graph"""
         self.__stashed_filter_state.append(self.__filter_state)
-        self.set_vertex_filter("")
-        self.set_edge_filter("")
+        if libcore.graph_filtering_enabled():
+            self.set_vertex_filter(None)
+            self.set_edge_filter(None)
         self.directed()
         self.set_reversed(False)
 
@@ -587,10 +611,11 @@ class Graph(object):
     def pop_filter(self):
         """Pop last stashed filter state"""
         state = self.__stashed_filter_state.pop()
-        self.set_vertex_filter(state["vertex_filter"][0],
-                               state["vertex_filter"][1])
-        self.set_edge_filter(state["edge_filter"][0],
-                             state["edge_filter"][1])
+        if libcore.graph_filtering_enabled():
+            self.set_vertex_filter(state["vertex_filter"][0],
+                                   state["vertex_filter"][1])
+            self.set_edge_filter(state["edge_filter"][0],
+                                 state["edge_filter"][1])
         self.set_directed(state["directed"])
         self.set_reversed(state["reversed"])
 

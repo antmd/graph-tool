@@ -66,18 +66,10 @@ struct graph_copy
     }
 };
 
-typedef graph_tool::detail::get_all_graph_views
-    ::apply<graph_tool::detail::scalar_pairs,
-            mpl::bool_<false>,
-            mpl::bool_<true>,
-            mpl::bool_<false>,
-            mpl::bool_<true>,
-            mpl::bool_<true> >::type graph_views;
-
 // copy constructor
 GraphInterface::GraphInterface(const GraphInterface& gi)
     :_mg(),
-     _reversed(false),
+     _reversed(gi._reversed),
      _directed(gi._directed),
      _vertex_index(get(vertex_index,_mg)),
      _edge_index(get(edge_index_t(),_mg)),
@@ -88,15 +80,11 @@ GraphInterface::GraphInterface(const GraphInterface& gi)
      _edge_filter_invert(false),
      _edge_filter_active(false)
 {
-    typedef mpl::transform<detail::all_graph_views,
-                           mpl::quote1<add_pointer> >::type all_graph_views;
 
-    run_action<>()(*this, bind<void>(graph_copy(), _1, _2,
-                                     _vertex_index,
-                                     gi._vertex_index,
-                                     _edge_index,
-                                     gi._edge_index),
-                   all_graph_views())(gi.GetGraphView());
+    graph_copy()(&_mg, &gi._mg, _vertex_index,
+                 gi._vertex_index, _edge_index,
+                 gi._edge_index);
+    // filters will be copied in python
 }
 
 //
@@ -156,7 +144,11 @@ struct convert
     {
         T1 operator()(const string& v) const
         {
-            return lexical_cast<Type1>(v);
+            //uint8_t is not char, it is bool!
+            if (is_same<T1, uint8_t>::value)
+                return convert<T1,int>()(lexical_cast<int>(v));
+            else
+                return lexical_cast<Type1>(v);
         }
     };
 
@@ -165,7 +157,11 @@ struct convert
     {
         string operator()(const T2& v) const
         {
-            return lexical_cast<string>(v);
+            //uint8_t is not char, it is bool!
+            if (is_same<T2, uint8_t>::value)
+                return lexical_cast<string>(convert<int,T2>()(v));
+            else
+                return lexical_cast<string>(v);
         }
     };
 
@@ -205,7 +201,7 @@ struct copy_property
 {
     template <class Graph, class PropertySrc,
               class PropertyTgt>
-    void operator()(Graph* tgtp, boost::any srcp, PropertySrc src_map,
+    void operator()(const Graph* tgtp, const Graph* srcp, PropertySrc src_map,
                     PropertyTgt dst_map) const
     {
         typedef typename property_traits<PropertySrc>::value_type val_src;
@@ -213,8 +209,8 @@ struct copy_property
 
         try
         {
-            Graph& tgt = *tgtp;
-            Graph& src = *any_cast<Graph*>(srcp);
+            const Graph& tgt = *tgtp;
+            const Graph& src = *srcp;
             convert<val_tgt,val_src> c;
             typename IteratorSel::template apply<Graph>::type vs, vs_end;
             typename IteratorSel::template apply<Graph>::type vt, vt_end;
@@ -269,19 +265,17 @@ struct vertex_selector
     }
 };
 
+typedef mpl::vector<GraphInterface::multigraph_t> unfiltered;
+
 void GraphInterface::CopyVertexProperty(const GraphInterface& src,
                                         boost::any prop_src,
                                         boost::any prop_tgt)
 {
-    typedef property_map_types::apply<mpl::vector<string,vector<string> >,
-                                      GraphInterface::edge_index_map_t,
-                                      mpl::bool_<false> >::type
-        edge_properties;
     typedef edge_properties writable_edge_properties;
 
-    run_action<graph_views>()
+    run_action<unfiltered>()
         (*this, bind<void>(copy_property<vertex_selector>(),
-                           _1, src.GetGraphView(),  _2, _3),
+                           _1, &src._mg,  _2, _3),
          vertex_properties(), writable_vertex_properties())
         (prop_src, prop_tgt);
 }
@@ -290,15 +284,11 @@ void GraphInterface::CopyEdgeProperty(const GraphInterface& src,
                                       boost::any prop_src,
                                       boost::any prop_tgt)
 {
-    typedef property_map_types::apply<mpl::vector<double>,
-                                      GraphInterface::edge_index_map_t,
-                                      mpl::bool_<false> >::type
-        edge_properties;
     typedef edge_properties writable_edge_properties;
 
-    run_action<graph_views>()
+    run_action<unfiltered>()
         (*this, bind<void>(copy_property<edge_selector>(),
-                           _1, src.GetGraphView(), _2, _3),
+                           _1, &src._mg, _2, _3),
          edge_properties(), writable_edge_properties())
         (prop_src, prop_tgt);
 }
