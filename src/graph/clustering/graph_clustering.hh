@@ -112,7 +112,7 @@ struct get_global_clustering
         c_err = 0.0;
 
         #pragma omp parallel for default(shared) private(i,temp) \
-            schedule(dynamic) reduction(+|c_err)
+            schedule(dynamic)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -122,6 +122,7 @@ struct get_global_clustering
             temp = get_triangles(v, g);
             double cl = double(triangles - temp.first)/(n - temp.second);
 
+            #pragma omp atomic
             c_err += (c - cl)*(c - cl);
         }
         c_err = sqrt(c_err);
