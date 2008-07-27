@@ -521,8 +521,21 @@ struct gen_random_graph
                     continue;
                 }
 
-                uniform_int<size_t> source_sample(0, i-1);
+                // We need to check if all previous sources are not all equal to
+                // the first one. In that case, we should just discard this one
+                // and keep going.
+                int j;
+                for (j = i-1; j >= 0; --j)
+                    if (!(sources[j] == source))
+                        break;
+                if (j < 0)
+                {
+                    i--;
+                    continue; // just try again
+                }
+
                 size_t s_index;
+                uniform_int<size_t> source_sample(0, j);
                 // keep trying: we don't want the same source again, and no
                 // sources with zero out-degree (which can happen when the graph
                 // is undirected, when they're orphaned after a removed edge)
