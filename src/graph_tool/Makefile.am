@@ -34,3 +34,7 @@ graph_tool_statsdir = $(pythondir)/graph_tool/stats
 graph_tool_clustering_PYTHON = \
     clustering/__init__.py
 graph_tool_clusteringdir = $(pythondir)/graph_tool/clustering
+
+graph_tool_draw_PYTHON = \
+    draw/__init__.py
+graph_tool_drawdir = $(pythondir)/graph_tool/draw
