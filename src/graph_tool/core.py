@@ -40,7 +40,7 @@ import io # sets up libcore io routines
 
 import os, os.path, re, struct, fcntl, termios, gzip, bz2, string,\
        textwrap, time, signal, traceback, shutil, time, math, inspect, \
-       functools, types
+       functools, types, weakref
 from StringIO import StringIO
 from decorators import _wraps, _require, _attrs, _handle_exceptions, _limit_args
 
@@ -130,16 +130,22 @@ class PropertyMap(object):
     """Property Map class"""
     def __init__(self, pmap, g, key_type, key_trans = None):
         self.__map = pmap
-        self.__g = g
+        self.__g = weakref.ref(g)
         self.__key_type = key_type
         self.__key_trans = key_trans if key_trans != None else lambda k: k
         self.__register_map()
 
     def __register_map(self):
-        self.__g._Graph__known_properties.append((self.key_type(), self.__map))
+        if self.__g() == None:
+            return
+        self.__g()._Graph__known_properties.append((self.key_type(),
+                                                    weakref.ref(self.__map)))
     def __unregister_map(self):
-        i = self.__g._Graph__known_properties.index((self.key_type(), self.__map))
-        del self.__g._Graph__known_properties[i]
+        if self.__g() == None:
+            return
+        i = self.__g()._Graph__known_properties.index((self.key_type(),
+                                                       weakref.ref(self.__map)))
+        del self.__g()._Graph__known_properties[i]
 
     def __del__(self):
         self.__unregister_map()
@@ -152,7 +158,7 @@ class PropertyMap(object):
 
     def get_graph(self):
         """Get the graph to which the map refers"""
-        return self.__g
+        return self.__g()
 
     def key_type(self):
         """The key type of the map. Either 'g', 'v' or 'e'"""
@@ -241,6 +247,11 @@ class Graph(object):
                 self.__stashed_filter_state[0]["edge_filter"] = (new_filt,
                                                                  e_rev)
             self.pop_filter()
+        # internal index maps
+        self.__vertex_index = \
+                 PropertyMap(libcore.get_vertex_index(self.__graph), self, "v")
+        self.__edge_index = \
+                 PropertyMap(libcore.get_edge_index(self.__graph), self, "e")
 
     @_handle_exceptions
     def copy(self):
@@ -277,8 +288,9 @@ class Graph(object):
         k = vertex.in_degree() + vertex.out_degree()
         index = self.vertex_index[vertex]
         for pmap in self.__known_properties:
-            if pmap[0] == "v":
-                self.__graph.ShiftVertexProperty(pmap[1].get_map(), index)
+            if pmap[0] == "v" and pmap[1]() != None and \
+                   pmap[1]() != self.__vertex_index._PropertyMap__map:
+                self.__graph.ShiftVertexProperty(pmap[1]().get_map(), index)
         self.__graph.RemoveVertex(vertex)
 
     @_handle_exceptions
@@ -389,11 +401,11 @@ class Graph(object):
     # index properties
 
     def _get_vertex_index(self):
-        return PropertyMap(libcore.get_vertex_index(self.__graph), self, "v")
+        return self.__vertex_index
     vertex_index = property(_get_vertex_index, doc="Vertex index map")
 
     def _get_edge_index(self):
-        return PropertyMap(libcore.get_edge_index(self.__graph), self, "v")
+        return self.__edge_index
     edge_index = property(_get_edge_index, doc="Edge index map")
 
     # Property map creation
