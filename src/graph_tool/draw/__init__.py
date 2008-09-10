@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys,os
+import sys,os,time
 import matplotlib.cm
 import matplotlib.colors
 from .. core import _degree, _prop, PropertyMap
@@ -28,7 +28,7 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
                mode="ipsep", penwidth=1.0, eweight=None, ewidth=None, gprops={},
                vprops={}, eprops={}, vcolor=None, ecolor=None,
                vcmap=matplotlib.cm.jet, vnorm=True, ecmap=matplotlib.cm.jet,
-               enorm=True, output=None, output_format=None):
+               enorm=True, output=None, output_format=None, seed=0):
     """Draw a graph using graphviz."""
 
     if g.is_directed():
@@ -39,11 +39,14 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
     # main graph properties
     gv.setv(gvg,"outputorder", "edgesfirst")
     gv.setv(gvg,"mode", mode)
-    if overlap == "false" and layout == "neato" and mode == "ipsep":
-        overlap = "ipsep"
-    if overlap:
-        gv.setv(gvg,"overlap", "true")
-    elif isinstance(overlap,str):
+    if overlap == False:
+        if layout == "neato" and mode == "ipsep":
+            overlap = "ipsep"
+        else:
+            overlap = "false"
+    else:
+        overlap = "true"
+    if isinstance(overlap,str):
         gv.setv(gvg,"overlap", overlap)
     if splines:
         gv.setv(gvg,"splines", "true")
@@ -51,9 +54,10 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
     gv.setv(gvg,"size", "%f,%f" % (size[0]/2.54,size[0]/2.54)) # centimeters
     if maxiter != None:
         gv.setv(gvg,"maxiter", str(maxiter))
+    gv.setv(gvg,"start", str(seed if seed > 0 else time.time()))
 
     # apply all user supplied properties
-    for k,val in vprops:
+    for k,val in gprops.iteritems():
         if isinstance(val, PropertyMap):
             gv.setv(gvg, k, str(val[g]))
         else:
@@ -107,7 +111,7 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
             gv.setv(n, "pin", str(pin))
 
         # apply all user supplied properties
-        for k,val in vprops:
+        for k,val in vprops.iteritems():
             if isinstance(val, PropertyMap):
                 gv.setv(n, k, str(val[v]))
             else:
@@ -141,7 +145,7 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
                 gv.setv(ge, "penwidth", str(ewidth))
 
         # apply all user supplied properties
-        for k,v in eprops:
+        for k,v in eprops.iteritems():
             if isinstance(v, PropertyMap):
                 gv.setv(ge, k, str(v[e]))
             else:
