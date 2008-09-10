@@ -56,10 +56,11 @@ def inline(g, code, arg_names=[], local_dict=None,
     props = ""
     for d in ["vertex", "edge", "graph"]:
         for t in core.value_types():
-            props += ("typedef typename %s_prop_t::template as<%s >::type" + \
+            props += (("typedef typename %s_prop_t::template as<%s >::type" + \
                       " %sprop_%s_t;\n") % \
                       (d,t,d[0],t.replace(" ","_").replace("::","_")\
-                       .replace("<","_").replace(">","_"))
+                       .replace("<","_").replace(">","_"))).\
+                       replace("__","_")
 
     # each term on the expansion will properly unwrap a tuple pointer value
     # to a reference with the appropriate name and type
