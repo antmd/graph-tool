@@ -37,6 +37,16 @@ cxxflags = libgraph_tool_core.mod_info().cxxflags + " -I%s" % inc_prefix
 # this is the code template which defines the action function object
 support_template = open(prefix + "/run_action/run_action_template.hh").read()
 
+# property map types
+props = ""
+for d in ["vertex", "edge", "graph"]:
+    for t in core.value_types():
+        props += (("typedef typename %s_prop_t::template as<%s >::type" + \
+                   " %sprop_%s_t;\n") % \
+                  (d,t,d[0],t.replace(" ","_").replace("::","_")\
+                   .replace("<","_").replace(">","_"))).\
+                   replace("__","_")
+
 def inline(g, code, arg_names=[], local_dict=None,
            global_dict=None, force=0, compiler="gcc", verbose=0,
            auto_downcast=1, support_code="", libraries=[],
@@ -49,18 +59,7 @@ def inline(g, code, arg_names=[], local_dict=None,
     # we need to have different template names for each actions, to avoid
     # strange RTTI issues. We'll therefore append an md5 hash of the code (plus
     # grah_tool version string) to each action's name
-    import hashlib
     code_hash = hashlib.md5(code + core.__version__).hexdigest()
-
-    # property map types
-    props = ""
-    for d in ["vertex", "edge", "graph"]:
-        for t in core.value_types():
-            props += (("typedef typename %s_prop_t::template as<%s >::type" + \
-                      " %sprop_%s_t;\n") % \
-                      (d,t,d[0],t.replace(" ","_").replace("::","_")\
-                       .replace("<","_").replace(">","_"))).\
-                       replace("__","_")
 
     # each term on the expansion will properly unwrap a tuple pointer value
     # to a reference with the appropriate name and type
