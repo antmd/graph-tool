@@ -39,8 +39,8 @@ __URL__="http://graph-tool.forked.de"
 
 from . core import  __version__, Graph, GraphError, Vector_bool, \
      Vector_int32_t, Vector_int64_t, Vector_double, Vector_long_double,\
-     Vector_string, value_types
+     Vector_string, value_types, load_graph
 
 __all__ = ["Graph", "GraphError", "Vector_bool", "Vector_int32_t",
            "Vector_int64_t", "Vector_double", "Vector_long_double",
-           "Vector_string", "value_types"]
+           "Vector_string", "value_types", "load_graph"]

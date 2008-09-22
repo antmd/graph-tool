@@ -671,6 +671,12 @@ class Graph(object):
             self.set_edge_filter(state["edge_filt"][0],
                                  state["edge_filt"][1])
 
+def load_graph(filename, format="auto"):
+    """Load a graph from file"""
+    g = Graph()
+    g.load(filename, format=format)
+    return g
+
 def value_types():
     """Return a list of possible properties value types"""
     return libcore.get_property_types()
