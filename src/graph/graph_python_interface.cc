@@ -162,13 +162,13 @@ struct add_new_edge
     template <class Graph, class EdgeIndexMap>
     void operator()(Graph* gp, const GraphInterface& gi, const PythonVertex& s,
                     const PythonVertex& t, EdgeIndexMap edge_index,
-                    python::object& new_e) const
+                    size_t new_index, python::object& new_e) const
     {
         Graph& g = *gp;
         typename graph_traits<Graph>::edge_descriptor e =
             add_edge(s.GetDescriptor(), t.GetDescriptor(), g).first;
         new_e = python::object(PythonEdge<Graph>(gi, e));
-        edge_index[e] = num_edges(*gp) - 1;
+        edge_index[e] = new_index;
     }
 };
 
@@ -179,10 +179,20 @@ python::object GraphInterface::AddEdge(const python::object& s,
     PythonVertex& tgt = python::extract<PythonVertex&>(t);
     src.CheckValid();
     tgt.CheckValid();
+    size_t new_index;
+    if (_free_indexes.empty())
+    {
+        new_index = num_edges(_mg);
+    }
+    else
+    {
+        new_index = _free_indexes.back();
+        _free_indexes.pop_back();
+    }
     python::object new_e;
     run_action<>()(*this, lambda::bind<void>(add_new_edge(), lambda::_1,
                                              lambda::var(*this), src, tgt,
-                                             _edge_index,
+                                             _edge_index, new_index,
                                              lambda::var(new_e)))();
     return new_e;
 }
@@ -213,6 +223,8 @@ void GraphInterface::RemoveEdge(const python::object& e)
                                       lambda::var(found)))();
     if (!found)
         throw GraphException("invalid edge descriptor");
+    if (_edge_index[de] != num_edges(_mg) - 1)
+        _free_indexes.push_back(_edge_index[de]);
     remove_edge(de, _mg);
 }
 

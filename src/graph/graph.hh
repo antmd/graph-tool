@@ -185,6 +185,8 @@ private:
 
     // edge index map
     edge_index_map_t _edge_index;
+    vector<size_t> _free_indexes; // indexes of deleted edges to be used up for
+                                  // new edges to avoid needless fragmentation
 
     // graph index map
     graph_index_map_t _graph_index;

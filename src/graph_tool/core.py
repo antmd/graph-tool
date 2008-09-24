@@ -283,7 +283,7 @@ class Graph(object):
         return self.__graph.AddVertex()
 
     @_handle_exceptions
-    def remove_vertex(self, vertex, reindex_edges=True):
+    def remove_vertex(self, vertex):
         """Remove a vertex from the graph"""
         k = vertex.in_degree() + vertex.out_degree()
         index = self.vertex_index[vertex]
