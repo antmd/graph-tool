@@ -32,16 +32,17 @@ using namespace boost::lambda;
 using namespace graph_tool;
 
 
-void graph_correlations_imp1(const GraphInterface& g, python::object& hist,
-                             python::object& ret_bins,
-                             boost::any deg1, boost::any deg2,
-                             boost::any weight,
-                             const array<vector<long double>,2>& bins)
+void graph_avg_correlations_imp1(const GraphInterface& g, python::object& avg,
+                                 python::object& dev,
+                                 python::object& ret_bins,
+                                 boost::any deg1, boost::any deg2,
+                                 boost::any weight,
+                                 const vector<long double>& bins)
 {
     typedef DynamicPropertyMapWrap<long double, GraphInterface::edge_t>
         wrapped_weight_t;
-    run_action<>()(g, get_correlation_histogram<GetNeighboursPairs>
-                   (hist, bins, ret_bins),
+    run_action<>()(g, get_avg_correlation<GetNeighboursPairs>
+                   (avg, dev, bins, ret_bins),
                    all_selectors(), all_selectors(),
                    mpl::vector<wrapped_weight_t>())
         (deg1, deg2, weight);

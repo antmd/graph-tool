@@ -38,8 +38,8 @@ sys.setdlopenflags(_orig_dlopen_flags) # reset it to normal case to avoid
 from .. core import _degree, _prop
 from numpy import *
 
-__all__ = ["assortativity", "scalar_assortativity",
-           "corr_hist", "combined_corr_hist", "avg_neighbour_corr"]
+__all__ = ["assortativity", "scalar_assortativity", "corr_hist",
+           "combined_corr_hist", "avg_neighbour_corr", "avg_combined_corr"]
 
 def assortativity(g, deg):
     return libgraph_tool_correlations.\
@@ -50,53 +50,32 @@ def scalar_assortativity(g, deg):
            scalar_assortativity_coefficient(g._Graph__graph,
                                             _degree(g, deg))
 
-def corr_hist(g, deg1, deg2, bins=[[1],[1]], weight=None):
+def corr_hist(g, deg1, deg2, bins=[[1],[1]], weight=None, float_count=True):
     ret = libgraph_tool_correlations.\
           vertex_correlation_histogram(g._Graph__graph, _degree(g, deg1),
                                        _degree(g, deg2), _prop("e", g, weight),
                                        bins[0], bins[1])
-    return [ret[0], [ret[1][0], ret[1][1]]]
+    return [array(ret[0], dtype="float64") if float_count else ret[0],
+            [ret[1][0], ret[1][1]]]
 
-def combined_corr_hist(g, deg1, deg2, bins=[[1],[1]]):
+def combined_corr_hist(g, deg1, deg2, bins=[[1],[1]], float_count=True):
     ret = libgraph_tool_correlations.\
           vertex_combined_correlation_histogram(g._Graph__graph,
                                                 _degree(g, deg1),
                                                 _degree(g, deg2),
                                                 bins[0], bins[1])
-    return [ret[0], [ret[1][0], ret[1][1]]]
+    return [array(ret[0], dtype="float64") if float_count else ret[0],
+            [ret[1][0], ret[1][1]]]
 
-def avg_neighbour_corr(g, deg1, deg2, bins=[[1],[1]], weight=None):
-    ret = corr_hist(g, deg1, deg2, bins, weight)
-    xbins = ret[1][0]
-    ybins = ret[1][1]
-    counts = ret[0]
-    avg = empty((counts.shape[0]))
-    dev = empty((counts.shape[0]))
-    mask = empty((counts.shape[0]), dtype=dtype('bool'))
-    n_masked = 0
-    for i in xrange(0, len(ret[0])):
-        N = counts[i,:].sum()
-        if N > 0:
-            avg[i] = average(ybins, weights=counts[i,:])
-            dev[i] = sqrt(average((ybins-avg[i])**2,
-                                  weights=counts[i,:]))/sqrt(N)
-            mask[i] = False
-        else:
-            mask[i] = True
-            n_masked += 1
-    if n_masked > 0: # remove empty bins
-        navg = empty(len(avg) - n_masked)
-        ndev = empty(len(dev) - n_masked)
-        nxbins = empty(len(xbins) - n_masked)
-        cum = 0
-        for i in xrange(0, len(avg)):
-            if not mask[i]:
-                navg[i-cum] = avg[i]
-                ndev[i-cum] = dev[i]
-                nxbins[i-cum] = xbins[i]
-            else:
-                cum += 1
-        avg = navg
-        dev = ndev
-        xbins = nxbins
-    return [avg, dev, xbins]
+def avg_neighbour_corr(g, deg1, deg2, bins=[1], weight=None):
+    ret = libgraph_tool_correlations.\
+          vertex_avg_correlation(g._Graph__graph, _degree(g, deg1),
+                                 _degree(g, deg2), _prop("e", g, weight),
+                                 bins)
+    return [ret[0], ret[1], ret[2][0]]
+
+def avg_combined_corr(g, deg1, deg2, bins=[1]):
+    ret = libgraph_tool_correlations.\
+          vertex_avg_combined_correlation(g._Graph__graph, _degree(g, deg1),
+                                          _degree(g, deg2), bins)
+    return [ret[0], ret[1], ret[2][0]]

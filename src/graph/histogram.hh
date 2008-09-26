@@ -46,6 +46,7 @@ public:
 
     typedef boost::mpl::int_<Dim> dim;
     typedef CountType count_type;
+    typedef ValueType value_type;
 
     // floating point type to calculate the mean
     typedef typename boost::mpl::if_<boost::is_floating_point<ValueType>,
@@ -138,6 +139,7 @@ template <class Histogram>
 class SharedHistogram: public Histogram
 {
 public:
+
     SharedHistogram(Histogram &hist): Histogram(hist), _sum(&hist) {}
     ~SharedHistogram()
     {

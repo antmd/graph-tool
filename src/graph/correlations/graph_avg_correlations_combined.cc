@@ -18,32 +18,44 @@
 #include "graph_filtering.hh"
 
 #include <boost/lambda/bind.hpp>
+#include <boost/python.hpp>
 
 #include "graph.hh"
-#include "histogram.hh"
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
 
 #include "graph_correlations.hh"
+
+#include <iostream>
 
 using namespace std;
 using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
 
+typedef ConstantPropertyMap<int,GraphInterface::edge_t> dummy_weight;
 
-void graph_correlations_imp1(const GraphInterface& g, python::object& hist,
-                             python::object& ret_bins,
-                             boost::any deg1, boost::any deg2,
-                             boost::any weight,
-                             const array<vector<long double>,2>& bins)
+python::object
+get_vertex_avg_combined_correlation(const GraphInterface& gi,
+                                    GraphInterface::deg_t deg1,
+                                    GraphInterface::deg_t deg2,
+                                    const vector<long double>& bins)
 {
-    typedef DynamicPropertyMapWrap<long double, GraphInterface::edge_t>
-        wrapped_weight_t;
-    run_action<>()(g, get_correlation_histogram<GetNeighboursPairs>
-                   (hist, bins, ret_bins),
+    python::object avg, dev;
+    python::object ret_bins;
+
+    run_action<>()(gi, get_avg_correlation<GetCombinedPair>
+                   (avg, dev, bins, ret_bins),
                    all_selectors(), all_selectors(),
-                   mpl::vector<wrapped_weight_t>())
-        (deg1, deg2, weight);
+                   mpl::vector<dummy_weight>())
+        (degree_selector(deg1), degree_selector(deg2), dummy_weight());
+    return python::make_tuple(avg, dev, ret_bins);
 }
 
+using namespace boost::python;
+
+void export_avg_combined_correlations()
+{
+    def("vertex_avg_combined_correlation",
+        &get_vertex_avg_combined_correlation);
+}

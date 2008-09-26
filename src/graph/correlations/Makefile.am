@@ -17,6 +17,9 @@ libgraph_tool_correlations_la_SOURCES = \
     graph_assortativity.cc \
     graph_correlations.cc \
     graph_correlations_imp1.cc \
+    graph_avg_correlations.cc \
+    graph_avg_correlations_imp1.cc \
+    graph_avg_correlations_combined.cc \
     graph_correlations_combined.cc \
     graph_correlations_bind.cc
 
