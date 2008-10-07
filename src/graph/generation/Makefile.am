@@ -1,8 +1,8 @@
 ## Process this file with automake to produce Makefile.in
 
 AM_CPPFLAGS =\
-    -I. -I.. \
-    -I../../boost-workaround \
+    -I$(srcdir)/.. \
+    -I$(srcdir)/../../boost-workaround \
     -DHAVE_CONFIG_H
 
 AM_CXXFLAGS =\
