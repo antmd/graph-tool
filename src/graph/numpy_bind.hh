@@ -48,6 +48,7 @@ typedef mpl::map<
     mpl::pair<uint32_t, mpl::int_<NPY_UINT32> >,
     mpl::pair<int32_t, mpl::int_<NPY_INT32> >,
     mpl::pair<int64_t, mpl::int_<NPY_INT64> >,
+    mpl::pair<uint64_t, mpl::int_<NPY_UINT64> >,
     mpl::pair<double,  mpl::int_<NPY_DOUBLE> >,
     mpl::pair<long double, mpl::int_<NPY_LONGDOUBLE> >,
     mpl::pair<string, mpl::int_<NPY_STRING> > // not really used
