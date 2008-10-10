@@ -308,7 +308,7 @@ struct get_avg_correlation
 
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i) \
-            firstprivate(s_hist) schedule(dynamic)
+            firstprivate(s_sum, s_sum2, s_count) schedule(dynamic)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
