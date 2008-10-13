@@ -163,7 +163,12 @@ CPPFLAGS="$CPPFLAGS $PYTHON_CPPFLAGS"
 dnl Checks for header files.
 
 dnl numpy
-NUMPY_DIR="${PYLIBDIR}/numpy/core/include/numpy"
+NUMPY_DIR="${PYLIBDIR}/numpy"
+AC_ARG_WITH([numpy], [AC_HELP_STRING([--with-numpy=DIR],
+                     [directory where numpy is installed
+                      [default=${PYLIBDIR}/numpy] ])],
+        NUMPY_DIR=$withval)
+NUMPY_DIR="${NUMPY_DIR}/core/include/numpy"
 AC_CHECK_HEADER([${NUMPY_DIR}/arrayobject.h],
                 [CPPFLAGS="$CPPFLAGS -I$NUMPY_DIR"],
                 [AC_MSG_ERROR([Numpy extension header not found])],
@@ -171,7 +176,10 @@ AC_CHECK_HEADER([${NUMPY_DIR}/arrayobject.h],
 
 dnl scipy
 SCIPY_DIR="${PYLIBDIR}/scipy"
-
+AC_ARG_WITH([scipy], [AC_HELP_STRING([--with-scipy=DIR],
+                     [scipy install directory
+                      [default=${PYLIBDIR}/scipy] ])],
+        SCIPY_DIR=$withval)
 AC_CHECK_HEADER([${SCIPY_DIR}/weave/scxx/object.h],
                 [AC_DEFINE([HAVE_SCIPY], [1], [using scipy's weave])]
                 [CPPFLAGS="$CPPFLAGS -I$SCIPY_DIR"])
