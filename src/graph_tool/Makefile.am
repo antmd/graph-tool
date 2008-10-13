@@ -4,7 +4,9 @@ graph_tool_PYTHON = \
     __init__.py \
     core.py \
     decorators.py \
-    io.py
+    io.py \
+    all.py
+
 graph_tooldir = $(pythondir)/graph_tool
 
 graph_tool_run_action_PYTHON = \
@@ -38,3 +40,7 @@ graph_tool_clusteringdir = $(pythondir)/graph_tool/clustering
 graph_tool_draw_PYTHON = \
     draw/__init__.py
 graph_tool_drawdir = $(pythondir)/graph_tool/draw
+
+graph_tool_util_PYTHON = \
+    util/__init__.py
+graph_tool_utildir = $(pythondir)/graph_tool/util
