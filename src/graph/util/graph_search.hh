@@ -84,8 +84,7 @@ struct find_vertices
         range.second = python::extract<value_type>(prange[1]);
 
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) \
-            firstprivate(s_vertices) schedule(dynamic)
+        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -94,8 +93,11 @@ struct find_vertices
             value_type val = deg(v, g);
             if (val >= range.first && val <= range.second)
             {
-                #pragma omp atomic
-                ret.append(PythonVertex(gi, v));
+                PythonVertex pv(gi, v);
+                {
+                    #pragma omp critical
+                    ret.append(pv);
+                }
             }
         }
     }
@@ -119,8 +121,7 @@ struct find_edges
         tr1::unordered_set<size_t> edge_set;
 
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) \
-            firstprivate(s_vertices) schedule(dynamic)
+        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -140,8 +141,11 @@ struct find_edges
                 value_type val = get(prop, *e);
                 if (val >= range.first && val <= range.second)
                 {
-                    #pragma omp atomic
-                    ret.append(PythonEdge<Graph>(gi, *e));
+                    PythonEdge<Graph> pe(gi, *e);
+                    {
+                        #pragma omp critical
+                        ret.append(pe);
+                    }
                 }
             }
         }
