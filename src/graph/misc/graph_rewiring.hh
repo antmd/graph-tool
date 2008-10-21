@@ -30,8 +30,6 @@ namespace graph_tool
 using namespace std;
 using namespace boost;
 
-typedef boost::mt19937 rng_t;
-
 // this will get the source of an edge for directed graphs and the target for
 // undirected graphs, i.e. "the source of an in-edge"
 struct source_in
@@ -231,14 +229,13 @@ template <template <class Graph, class EdgeIndexMap> class RewireStrategy>
 struct graph_rewire
 {
     template <class Graph, class EdgeIndexMap>
-    void operator()(Graph* gp, EdgeIndexMap edge_index, size_t seed,
+    void operator()(Graph* gp, EdgeIndexMap edge_index, rng_t& rng,
                     bool self_loops, bool parallel_edges) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
 
         Graph& g = *gp;
-        rng_t rng(static_cast<rng_t::result_type>(seed));
 
         if (!self_loops)
         {

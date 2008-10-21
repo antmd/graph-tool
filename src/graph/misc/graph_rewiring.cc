@@ -19,29 +19,33 @@
 
 #include "graph.hh"
 #include "graph_filtering.hh"
+
+#include <boost/random.hpp>
+typedef boost::mt19937 rng_t;
+
 #include "graph_rewiring.hh"
 
 using namespace graph_tool;
 using namespace boost;
 using namespace boost::lambda;
 
-void GraphInterface::RandomRewire(string strat, bool self_loops,
-                                  bool parallel_edges, size_t seed)
+void random_rewire(GraphInterface& gi, string strat, bool self_loops,
+                   bool parallel_edges, size_t seed)
 {
-    bool reversed = GetReversed();
-    SetReversed(false);
+    rng_t rng(seed);
 
+    GraphInterface::edge_index_map_t edge_index =
+        any_cast<GraphInterface::edge_index_map_t>(gi.GetEdgeIndex());
     if (strat == "uncorrelated")
-        run_action<detail::never_reversed>()
-            (*this, bind<void>(graph_rewire<RandomRewireStrategy>(),
-                               _1, _edge_index, seed, self_loops,
-                               parallel_edges))();
+        run_action<graph_tool::detail::never_reversed>()
+            (gi, bind<void>(graph_rewire<RandomRewireStrategy>(),
+                            _1, edge_index, ref(rng), self_loops,
+                            parallel_edges))();
     else if (strat == "correlated")
-        run_action<detail::never_reversed>()
-            (*this, bind<void>(graph_rewire<CorrelatedRewireStrategy>(),
-                               _1, _edge_index, seed, self_loops,
-                               parallel_edges))();
+        run_action<graph_tool::detail::never_reversed>()
+            (gi, bind<void>(graph_rewire<CorrelatedRewireStrategy>(),
+                            _1, edge_index, ref(rng), self_loops,
+                            parallel_edges))();
     else
         throw GraphException("invalid random rewire stategy: " + strat);
-    SetReversed(reversed);
 }

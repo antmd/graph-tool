@@ -41,5 +41,7 @@ from graph_tool.clustering import *
 import graph_tool.clustering
 from graph_tool.run_action import *
 graph_tool.run_action
+from graph_tool.misc import *
+import graph_tool.misc
 from graph_tool.util import *
 import graph_tool.util

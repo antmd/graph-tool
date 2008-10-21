@@ -44,3 +44,7 @@ graph_tool_drawdir = $(pythondir)/graph_tool/draw
 graph_tool_util_PYTHON = \
     util/__init__.py
 graph_tool_utildir = $(pythondir)/graph_tool/util
+
+graph_tool_misc_PYTHON = \
+    misc/__init__.py
+graph_tool_miscdir = $(pythondir)/graph_tool/misc
