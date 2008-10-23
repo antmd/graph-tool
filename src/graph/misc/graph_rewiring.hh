@@ -363,24 +363,25 @@ make_random_permutation_iterator(RandomAccessIterator first,
 // this is the mother class for edge-based rewire strategies
 // it contains the common loop for finding edges to swap, so different
 // strategies need only to specify where to sample the edges from.
-template<class Graph, class EdgeIndexMap>
-class EdgeBasedRewireStrategy
+template <class Graph, class EdgeIndexMap, class RewireStrategy>
+class RewireStrategyBase
 {
 public:
     typedef typename graph_traits<Graph>::edge_descriptor edge_t;
     typedef typename EdgeIndexMap::value_type index_t;
+    typedef random_number_generator<rng_t, size_t> random_t;
 
-    EdgeBasedRewireStrategy (const Graph& g, EdgeIndexMap edge_index,
-                              rng_t& rng)
-        : _g(g), _edge_is_new(edge_index), random(rng) {}
+    RewireStrategyBase(const Graph& g, EdgeIndexMap edge_index, rng_t& rng)
+        : _g(g), _edge_is_new(edge_index), _random(rng) {}
 
     template<class EdgesType>
     pair<edge_t, edge_t> operator()(const edge_t& e, const EdgesType& edges,
                                     bool self_loops, bool parallel_edges)
     {
         // where should we sample the edges from
-        vector<index_t> *edges_source, *edges_target;
-        get_edges(e, &edges_source, &edges_target);
+        vector<index_t>* edges_source=0, *edges_target=0;
+        static_cast<RewireStrategy*>(this)->get_edges(e, edges_source,
+                                                      edges_target);
 
         //try randomly drawn pairs of edges until one satisfies all the
         //consistency checks
@@ -390,7 +391,7 @@ public:
             <typename vector<index_t>::iterator, random_t> random_edge_iter;
 
         random_edge_iter esi(edges_source->begin(), edges_source->end(),
-                             random);
+                             _random);
         for (; esi != edges_source->end() && !found; ++esi)
         {
             es = edges[*esi];
@@ -401,7 +402,7 @@ public:
             }
 
             random_edge_iter eti(edges_target->begin(), edges_target->end(),
-                                 random);
+                                 _random);
             for (; eti != edges_target->end() && !found; ++eti)
             {
                 et = edges[*eti];
@@ -413,8 +414,8 @@ public:
                 }
                 if (!parallel_edges) // reject parallel edges if not allowed
                 {
-                    if (swap_edge_triad::parallel_check(e, es, et,
-                                                        _edge_is_new, _g))
+                    if (swap_edge_triad::parallel_check(e, es, et, _edge_is_new,
+                                                        _g))
                         continue;
                 }
                 found = true;
@@ -427,54 +428,57 @@ public:
         return make_pair(es, et);
     }
 
-    virtual void get_edges(const edge_t& e, vector<index_t>** edges_source,
-                   vector<index_t>** edges_target) = 0;
-
-    virtual ~EdgeBasedRewireStrategy() {}
-
 private:
     const Graph& _g;
     vector_property_map<bool, EdgeIndexMap> _edge_is_new;
-    typedef random_number_generator<rng_t, size_t> random_t;
-    random_t random;
+    random_t _random;
 };
 
 // this will rewire the edges so that the combined (in, out) degree distribution
 // will be the same, but all the rest is random
 template <class Graph, class EdgeIndexMap>
-class RandomRewireStrategy
-    : public EdgeBasedRewireStrategy<Graph,EdgeIndexMap>
+class RandomRewireStrategy:
+    public RewireStrategyBase<Graph, EdgeIndexMap,
+                              RandomRewireStrategy<Graph, EdgeIndexMap> >
 {
 public:
+    typedef RewireStrategyBase<Graph, EdgeIndexMap,
+                               RandomRewireStrategy<Graph, EdgeIndexMap> >
+        base_t;
+
+    typedef Graph graph_t;
+    typedef EdgeIndexMap edge_index_t;
+
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
     typedef typename graph_traits<Graph>::edge_descriptor edge_t;
     typedef typename EdgeIndexMap::value_type index_t;
 
-    RandomRewireStrategy (const Graph& g, EdgeIndexMap edge_index,
-                              rng_t& rng)
-        : EdgeBasedRewireStrategy<Graph,EdgeIndexMap>(g, edge_index, rng), _g(g)
+    RandomRewireStrategy(const Graph& g, EdgeIndexMap edge_index,
+                         rng_t& rng)
+        : base_t(g, edge_index, rng)
     {
-        int i, N = num_vertices(_g);
+        int i, N = num_vertices(g);
         for (i = 0; i < N; ++i)
         {
-            vertex_t v = vertex(i, _g);
+            vertex_t v = vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
             typename graph_traits<Graph>::out_edge_iterator e_i, e_i_end;
-            for (tie(e_i, e_i_end) = out_edges(v, _g); e_i != e_i_end; ++e_i)
+            for (tie(e_i, e_i_end) = out_edges(v, g); e_i != e_i_end; ++e_i)
             {
                 _all_edges.push_back(edge_index[*e_i]);
             }
         }
     }
-    void get_edges(const edge_t& e, vector<index_t>** edges_source,
-                   vector<index_t>** edges_target)
+
+    void get_edges(const edge_t& e, vector<index_t>*& edges_source,
+                   vector<index_t>*& edges_target)
     {
-        *edges_source = &_all_edges;
-        *edges_target = &_all_edges;
+        edges_source = &_all_edges;
+        edges_target = &_all_edges;
     }
+
 private:
-    const Graph& _g;
     vector<index_t> _all_edges;
 };
 
@@ -482,17 +486,25 @@ private:
 // this will rewire the edges so that the (in,out) degree distributions and the
 // (in,out)->(in,out) correlations will be the same, but all the rest is random
 template <class Graph, class EdgeIndexMap>
-class CorrelatedRewireStrategy
-    : public EdgeBasedRewireStrategy<Graph,EdgeIndexMap>
+class CorrelatedRewireStrategy:
+    public RewireStrategyBase<Graph, EdgeIndexMap,
+                              CorrelatedRewireStrategy<Graph, EdgeIndexMap> >
 {
 public:
+    typedef RewireStrategyBase<Graph, EdgeIndexMap,
+                               CorrelatedRewireStrategy<Graph, EdgeIndexMap> >
+        base_t;
+
+    typedef Graph graph_t;
+    typedef EdgeIndexMap edge_index_t;
+
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
     typedef typename graph_traits<Graph>::edge_descriptor edge_t;
     typedef typename EdgeIndexMap::value_type index_t;
 
     CorrelatedRewireStrategy (const Graph& g, EdgeIndexMap edge_index,
                               rng_t& rng)
-        : EdgeBasedRewireStrategy<Graph,EdgeIndexMap>(g, edge_index, rng), _g(g)
+        : base_t(g, edge_index, rng), _g(g)
     {
         int i, N = num_vertices(_g);
         for (i = 0; i < N; ++i)
@@ -505,7 +517,7 @@ public:
             {
                 _edges_source_by
                     [make_pair(in_degreeS()(source(*e_i, _g), _g),
-                                  out_degree(source(*e_i, _g), _g))]
+                               out_degree(source(*e_i, _g), _g))]
                     .push_back(edge_index[*e_i]);
                 _edges_target_by
                     [make_pair(in_degreeS()(target_in()(*e_i, _g), _g),
@@ -514,21 +526,25 @@ public:
             }
         }
     }
-    void get_edges(const edge_t& e, vector<index_t>** edges_source,
-                   vector<index_t>** edges_target)
+
+    void get_edges(const edge_t& e, vector<index_t>*& edges_source,
+                   vector<index_t>*& edges_target)
     {
-        *edges_source =
+        edges_source =
             &_edges_source_by[make_pair(in_degreeS()(source(e, _g), _g),
                                         out_degree(source(e, _g), _g))];
-        *edges_target =
+        edges_target =
             &_edges_target_by[make_pair(in_degreeS()(target_in()(e, _g), _g),
                                         out_degree(target_in()(e, _g), _g))];
     }
+
 private:
-    const Graph& _g;
     typedef tr1::unordered_map<pair<size_t, size_t>, vector<index_t>,
-                            hash<pair<size_t, size_t> > > edges_by_end_deg_t;
+                               hash<pair<size_t, size_t> > > edges_by_end_deg_t;
     edges_by_end_deg_t _edges_source_by, _edges_target_by;
+
+protected:
+    const Graph& _g;
 };
 
 } // graph_tool namespace
