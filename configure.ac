@@ -22,6 +22,7 @@ AC_CONFIG_SRCDIR(src)
 AM_INIT_AUTOMAKE
 AM_PROG_CC_C_O
 AM_CONFIG_HEADER(config.h)
+AC_CONFIG_MACRO_DIR([m4])
 
 AC_ISC_POSIX
 AC_SUBST(CXXFLAGS,$CXXFLAGS)
@@ -241,6 +242,28 @@ AC_DEFINE_UNQUOTED([COPYRIGHT],
 # git information
 AC_DEFINE([GIT_COMMIT], "esyscmd(git show | head -n 1 | sed 's/commit //' |  grep -o -e '.\{8\}' | head -n 1 |tr -d '\n')", [git HEAD commit hash])
 AC_DEFINE([GIT_COMMIT_DATE], "esyscmd(git log -1 | head -n 3 | grep 'Date:' | sed s/'Date:   '// | tr -d '\n')", [git HEAD commit date])
+
+# set some automake variables
+
+# CPP flags for submodules
+[MOD_CPPFLAGS="-I\$(srcdir) -I\$(srcdir)/.. -I\$(srcdir)/../boost-workaround \
+-DHAVE_CONFIG_H"]
+AC_SUBST(MOD_CPPFLAGS)
+
+# default directory for submodules
+[MOD_DIR="${pythondir}/graph_tool"]
+AC_SUBST(MOD_DIR)
+
+# default LIBADD flags for submodules
+[MOD_LIBADD="${PYTHON_LDFLAGS} ${BOOST_LDFLAGS} ${OPENMP_LDFLAGS}\
+-lboost_python  -lboost_iostreams -lexpat"]
+AC_SUBST(MOD_LIBADD)
+
+# needed for typeinfo objects to work across DSO boundaries.
+# see http://gcc.gnu.org/faq.html#dso
+[MOD_LDFLAGS="-module  -avoid-version  -export-dynamic  -no-undefined\
+-Wl,-E"]
+AC_SUBST(MOD_LDFLAGS)
 
 AC_OUTPUT([
 Makefile
