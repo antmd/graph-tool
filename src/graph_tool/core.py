@@ -16,29 +16,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys
-# RTLD_GLOBAL needs to be set in dlopen() if we want typeinfo and friends to
-# work properly across DSO boundaries. See http://gcc.gnu.org/faq.html#dso
-
-# The "except" is because the dl module raises a system error on ia64 and x86_64
-# systems because "int" and addresses are different sizes.
-try:
-    from dl import RTLD_LAZY, RTLD_NOW, RTLD_GLOBAL
-except ImportError:
-    RTLD_LAZY = 1
-    RTLD_NOW = 2
-    RTLD_GLOBAL = 256
-_orig_dlopen_flags = sys.getdlopenflags()
-
-sys.setdlopenflags(RTLD_LAZY|RTLD_GLOBAL)
-import libgraph_tool_core as libcore
-sys.setdlopenflags(_orig_dlopen_flags) # reset it to normal case to avoid
-                                       # unnecessary symbol collision
+from dl_import import *
+dl_import("import libgraph_tool_core as libcore")
 __version__ = libcore.mod_info().version
 
 import io # sets up libcore io routines
 
-import os, os.path, re, struct, fcntl, termios, gzip, bz2, string,\
+import sys, os, os.path, re, struct, fcntl, termios, gzip, bz2, string,\
        textwrap, time, signal, traceback, shutil, time, math, inspect, \
        functools, types, weakref
 from StringIO import StringIO
