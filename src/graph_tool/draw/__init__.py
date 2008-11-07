@@ -28,7 +28,8 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
                mode="ipsep", penwidth=1.0, eweight=None, ewidth=None, gprops={},
                vprops={}, eprops={}, vcolor=None, ecolor=None,
                vcmap=matplotlib.cm.jet, vnorm=True, ecmap=matplotlib.cm.jet,
-               enorm=True, output=None, output_format=None, seed=0):
+               enorm=True, output="", output_format="auto", returngv=False,
+               seed=0):
     """Draw a graph using graphviz."""
 
     if g.is_directed():
@@ -51,7 +52,7 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
     if splines:
         gv.setv(gvg,"splines", "true")
     gv.setv(gvg,"ratio", str(ratio))
-    gv.setv(gvg,"size", "%f,%f" % (size[0]/2.54,size[0]/2.54)) # centimeters
+    gv.setv(gvg,"size", "%f,%f" % (size[0]/2.54,size[1]/2.54)) # centimeters
     if maxiter != None:
         gv.setv(gvg,"maxiter", str(maxiter))
     gv.setv(gvg,"start", str(seed if seed > 0 else time.time()))
@@ -70,14 +71,13 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
             c = vcolor[v]
             minmax[0] = min(c,minmax[0])
             minmax[1] = max(c,minmax[1])
-        print minmax
         if vnorm:
             vnorm = matplotlib.colors.normalize(vmin=minmax[0], vmax=minmax[1])
 
     if ecolor != None and not isinstance(ecolor, str):
         minmax = [float("inf"), -float("inf")]
         for e in g.edges():
-            c = ecolor[v]
+            c = ecolor[e]
             minmax[0] = min(c,minmax[0])
             minmax[1] = max(c,minmax[1])
         if enorm:
@@ -162,11 +162,12 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
         p = p.split(",")
         pos[0][g.vertex(n)] = float(p[0])
         pos[1][g.vertex(n)] = float(p[1])
-    if output == None:
-        output = ""
-        output_format = "xlib"
-    elif output_format == None:
-        outout_format = output.split(".")[-1]
+
+    if output_format == "auto":
+        if output == "":
+            output_format = "xlib"
+        else:
+            outout_format = output.split(".")[-1]
 
     # if using xlib we need to fork the process, otherwise good ol' graphviz
     # will call exit() when the window is closed
@@ -178,5 +179,9 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
         os.wait()
     else:
         gv.render(gvg, output_format, output)
-    gv.rm(gvg)
-    return pos
+
+    if returngv:
+        return pos, gv
+    else:
+        gv.rm(gvg)
+        return pos
