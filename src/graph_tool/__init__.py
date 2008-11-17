@@ -931,7 +931,7 @@ class Graph(object):
         accepted in place of degree"""
         return self.__graph.GetAssortativityCoefficient(_degree(degree))
 
-    @_attrs(opt_group=__groups[-1])
+    @_attrs(opt_group=__groups[-1], has_output=True)
     @_handle_exceptions
     @_lazy_load
     def scalar_assortativity_coefficient(self, degree):
