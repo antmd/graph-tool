@@ -150,7 +150,7 @@ def _main():
             """this parses the command line argument in 'arg' and calls the
             underlying function"""
             # Parameter regexp
-            p = re.compile(r"((('[^']*')|(\"[^\"']*\"))|([^\|]+)|(\B)|(^(?=[^$]))(?=\||$))")
+            p = re.compile(r"(('[^']+')|(\"[^\"']+\")|([^\|]+))(?=\||$)")
             if arg == None:
                 arg = ""
             values = [x[0].strip() for x in p.findall(arg)]
@@ -174,9 +174,9 @@ def _main():
             # parse suboptions
             subopt_list = {}
             if self.subopts != None and len(values) > len(self.positional):
-                p = re.compile(r"([^, '\"]+|[^, ]+'[^']*'|[^, ]+\"[^\"]*\")(?:, |$)")
+                p = re.compile(r"([^, '\"]+|[^, ]+'[^']*'|[^, ]+\"[^\"]*\")(?:,|$)")
                 subopt_list = dict([ (x.split("=", 1)[0].strip(),
-                                      x.split("=", 1)[1].strip()) \
+                                      x.split("=", 1)[1].strip().strip('"').strip("'")) \
                                      for x in p.findall(values[-1]) \
                                      if "=" in x])
                 for k, v in subopt_list.iteritems():
