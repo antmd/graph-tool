@@ -670,11 +670,17 @@ private:
     unordered_map<size_t,unordered_map<size_t,double> > _NNks;
 };
 
+enum comm_corr_t
+{
+    ERDOS_REYNI,
+    UNCORRELATED,
+    CORRELATED
+};
 
 struct get_communities_selector
 {
-    get_communities_selector(GraphInterface::comm_corr_t corr):_corr(corr) {}
-    GraphInterface::comm_corr_t _corr;
+    get_communities_selector(comm_corr_t corr):_corr(corr) {}
+    comm_corr_t _corr;
 
     template <class Graph, class WeightMap, class CommunityMap>
     void operator()(const Graph* gp, WeightMap weights, CommunityMap s, double gamma,
@@ -686,15 +692,15 @@ struct get_communities_selector
 
         switch (_corr)
         {
-        case GraphInterface::ERDOS_REYNI:
+        case ERDOS_REYNI:
             get_communities<NNKSErdosReyni>()(g, weights, s, gamma, n_iter,
                                               Tinterval, Nspins, seed, verbose);
             break;
-        case GraphInterface::UNCORRELATED:
+        case UNCORRELATED:
             get_communities<NNKSUncorr>()(g, weights, s, gamma, n_iter,
                                           Tinterval, Nspins, seed, verbose);
             break;
-        case GraphInterface::CORRELATED:
+        case CORRELATED:
             get_communities<NNKSCorr>()(g, weights, s, gamma, n_iter,
                                         Tinterval, Nspins, seed, verbose);
             break;

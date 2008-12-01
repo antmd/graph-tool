@@ -22,125 +22,98 @@
 
 #include <boost/lambda/bind.hpp>
 #include <boost/mpl/push_back.hpp>
+#include <boost/python.hpp>
 
 #include "graph_community.hh"
 
 using namespace std;
 using namespace boost;
 using namespace boost::lambda;
+
 using namespace graph_tool;
 
-void GraphInterface::GetCommunityStructure(double gamma, comm_corr_t corr,
-                                           size_t n_iter, double Tmin,
-                                           double Tmax, size_t Nspins,
-                                           size_t seed, bool verbose,
-                                           string history_file, string weight,
-                                           string property)
+
+void community_structure(GraphInterface& g, double gamma, string corr_name,
+                         size_t n_iter, double Tmin, double Tmax, size_t Nspins,
+                         bool new_spins, size_t seed, bool verbose, string history_file,
+                         boost::any weight, boost::any property)
 {
+    using boost::lambda::bind;
+    using boost::lambda::_1;
+    using boost::lambda::_2;
+    using boost::lambda::_3;
+
     typedef property_map_types::apply<mpl::vector<int32_t,int64_t>,
-                                      vertex_index_map_t,
+                                      GraphInterface::vertex_index_map_t,
                                       mpl::bool_<false> >::type
         allowed_spin_properties;
 
-    boost::any vertex_prop;
-    bool new_spins;
-    try
-    {
-        find_property_map(_properties, property, typeid(vertex_t));
-        vertex_prop = prop(property, _vertex_index, _properties);
-        if (!belongs<allowed_spin_properties>()(vertex_prop))
-            throw GraphException("vertex property " + property +
-                                 " is not of integer type int32_t or int64_t");
-        new_spins = false;
-    }
-    catch (property_not_found)
-    {
-        typedef vector_property_map<int32_t,vertex_index_map_t> comm_map_t;
-        comm_map_t comm_map(_vertex_index);
-        _properties.property(property, comm_map);
-        vertex_prop = comm_map;
-        new_spins = true;
-    }
+    if (!belongs<allowed_spin_properties>()(property))
+        throw GraphException("vertex property is not of integer type int32_t "
+                             "or int64_t");
 
-    boost::any edge_prop;
-    typedef DynamicPropertyMapWrap<double,edge_t> weight_map_t;
-    typedef ConstantPropertyMap<double,edge_t> no_weight_map_t;
+    typedef DynamicPropertyMapWrap<double,GraphInterface::edge_t> weight_map_t;
+    typedef ConstantPropertyMap<double,GraphInterface::edge_t> no_weight_map_t;
     typedef mpl::vector<weight_map_t,no_weight_map_t> weight_properties;
 
-    if(weight != "")
-    {
-        try
-        {
-            weight_map_t wrap(find_property_map(_properties, weight,
-                                                typeid(edge_t)));
-            edge_prop = wrap;
-        }
-        catch (property_not_found)
-        {
-            throw GraphException("edge property " + weight + " not found");
-        }
-    }
+    if (weight.empty())
+        weight = no_weight_map_t(1.0);
     else
-    {
-        edge_prop = no_weight_map_t(1.0);
-    }
+        weight = weight_map_t(weight, edge_scalar_properties());
 
-    bool directed = _directed;
-    _directed = false;
-    try
-    {
-        run_action<detail::never_directed>()
-            (*this, bind<void>(get_communities_selector(corr),
-                               _1, _2, _3, gamma, n_iter,
-                               make_pair(Tmin, Tmax),
-                               make_pair(Nspins, new_spins),
-                               seed, make_pair(verbose,history_file)),
-             weight_properties(), allowed_spin_properties())
-            (edge_prop, vertex_prop);
-        }
-    catch (property_not_found& e)
-    {
-        _directed = directed;
-        throw GraphException("error getting scalar property: " +
-                             string(e.what()));
-    }
-    _directed = directed;
+    comm_corr_t corr;
+    if (corr_name ==  "erdos")
+        corr = ERDOS_REYNI;
+    else if (corr_name == "uncorrelated")
+        corr = UNCORRELATED;
+    else if (corr_name == "correlated")
+        corr = CORRELATED;
+    else
+        throw GraphException("invalid correlation type: " + corr_name);
+
+    bool directed = g.GetDirected();
+    g.SetDirected(false);
+    run_action<graph_tool::detail::never_directed>()
+        (g, bind<void>(get_communities_selector(corr),
+                       _1, _2, _3, gamma, n_iter,
+                       make_pair(Tmin, Tmax),
+                       make_pair(Nspins, new_spins),
+                       seed, make_pair(verbose,history_file)),
+         weight_properties(), allowed_spin_properties())
+        (weight, property);
+    g.SetDirected(directed);
 }
 
 
-double GraphInterface::GetModularity(string weight, string property)
+double modularity(GraphInterface& g, boost::any weight, boost::any property)
 {
+    using boost::lambda::bind;
+    using boost::lambda::_1;
+    using boost::lambda::_2;
+    using boost::lambda::_3;
+
     double modularity = 0;
 
-    boost::any vertex_prop = prop(property, _vertex_index, _properties);
+    typedef ConstantPropertyMap<int32_t,GraphInterface::edge_t> weight_map_t;
 
-    boost::any edge_prop;
-    typedef ConstantPropertyMap<int32_t,edge_t> weight_map_t;
+    if(weight.empty())
+        weight = weight_map_t(1);
 
-    if(weight != "")
-        edge_prop = prop(weight, _edge_index, _properties);
-    else
-        edge_prop = weight_map_t(1);
-
-    typedef mpl::push_back<edge_scalar_properties, weight_map_t>::type
-        weight_properties;
-
-    bool directed = _directed;
-    _directed = false;
-    try
-    {
-        run_action<detail::never_directed>()
-            (*this, bind<void>(get_modularity(), _1, _2, _3, var(modularity)),
-             weight_properties(), vertex_scalar_properties())
-            (edge_prop, vertex_prop);
-    }
-    catch (property_not_found& e)
-    {
-        _directed = directed;
-        throw GraphException("error getting scalar property: " +
-                             string(e.what()));
-    }
-    _directed = directed;
+    bool directed = g.GetDirected();
+    g.SetDirected(false);
+    run_action<graph_tool::detail::never_directed>()
+        (g, bind<void>(get_modularity(), _1, _2, _3, var(modularity)),
+         edge_scalar_properties(), vertex_scalar_properties())
+        (weight, property);
+    g.SetDirected(directed);
 
     return modularity;
+}
+
+using namespace boost::python;
+
+BOOST_PYTHON_MODULE(libgraph_tool_community)
+{
+    def("community_structure", &community_structure);
+    def("modularity", &modularity);
 }
