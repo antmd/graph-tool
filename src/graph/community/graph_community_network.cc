@@ -15,49 +15,69 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-
 #include "graph_filtering.hh"
 #include "graph.hh"
-#include "histogram.hh"
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
 
-
-#include <boost/lambda/bind.hpp>
-#include <tr1/unordered_set>
-#include <iostream>
-#include <iomanip>
+//#include <boost/lambda/bind.hpp>
+#include <boost/bind.hpp>
+#include <boost/bind/placeholders.hpp>
+#include <boost/mpl/push_back.hpp>
+#include <boost/python.hpp>
 
 #include "graph_community_network.hh"
 
 using namespace std;
 using namespace boost;
-using namespace boost::lambda;
+
 using namespace graph_tool;
 
-void GraphInterface::GetCommunityNetwork(string property, string size_property,
-                                         string out_file, string format) const
+
+void community_network(GraphInterface& gi, GraphInterface& cgi,
+                       boost::any community_property, boost::any vertex_count,
+                       boost::any edge_count, boost::any weight)
 {
+    // using boost::lambda::bind;
+    // using boost::lambda::_1;
+    // using boost::lambda::_2;
+    // using boost::lambda::_3;
+    // using boost::lambda::_4;
+
+    typedef DynamicPropertyMapWrap<double,GraphInterface::edge_t> weight_map_t;
+    typedef ConstantPropertyMap<double,GraphInterface::edge_t> no_weight_map_t;
+    typedef mpl::vector<weight_map_t,no_weight_map_t> weight_properties;
+
+    if (weight.empty())
+        weight = no_weight_map_t(1.0);
+    else
+        weight = weight_map_t(weight, edge_scalar_properties());
+
+    typedef vector_property_map<int32_t,GraphInterface::vertex_index_map_t>
+        vcount_t;
+    vcount_t vcount(gi.GetVertexIndex());
     try
     {
-        boost::any vertex_prop = prop(property, _vertex_index, _properties);
-
-        dynamic_properties_copy edge_properties;
-        for (typeof(_properties.begin()) iter = _properties.begin();
-             iter != _properties.end(); ++iter)
-            if (iter->second->key() == typeid(edge_t))
-                edge_properties.insert(iter->first,
-                                       auto_ptr<dynamic_property_map>
-                                           (iter->second));
-
-        run_action<>()(*this,
-                       bind<void>(get_community_network(), _1, _2, property,
-                                  size_property, var(edge_properties),
-                                  out_file, format), vertex_scalar_properties())
-            (vertex_prop);
+        vcount = any_cast<vcount_t>(vertex_count);
     }
-    catch (property_not_found)
+    catch (bad_any_cast&)
     {
-        throw GraphException("edge property " + property + " not found");
+        throw GraphException("invalid vertex count property");
     }
+
+    typedef property_map_types::apply<mpl::vector<int32_t,double>,
+                                      GraphInterface::edge_index_map_t,
+                                      mpl::bool_<false> >::type
+        ecount_properties;
+
+    if (!belongs<ecount_properties>()(edge_count))
+        throw GraphException("invalid edge count property");
+
+     run_action<>()(gi, bind<void>(get_community_network(), _1,
+                                          &cgi.GetGraph(), cgi.GetVertexIndex(),
+                                          cgi.GetEdgeIndex(), _2,
+                                          _3, vcount, _4),
+                   vertex_properties(), weight_properties(),
+                   ecount_properties())
+        (community_property, weight, edge_count);
 }

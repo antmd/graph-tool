@@ -19,10 +19,10 @@
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_community")
 
-from .. core import _degree, _prop
+from .. core import _degree, _prop, Graph, libcore
 import random, sys
 
-__all__ = ["community_structure", "modularity"]
+__all__ = ["community_structure", "modularity", "community_network"]
 
 
 def community_structure(g, gamma=1.0, corr="erdos", spins=None,
@@ -46,3 +46,21 @@ def community_structure(g, gamma=1.0, corr="erdos", spins=None,
 def modularity(g):
     c = libgraph_tool_clustering.global_clustering(g._Graph__graph)
     return c
+
+def community_network(g, prop, weight=None):
+    gp = Graph()
+    vcount = g.new_vertex_property("int32_t")
+    if weight != None:
+        ecount = g.new_edge_property("double")
+        weight = _prop("e", g, weight)
+    else:
+        ecount = g.new_edge_property("int32_t")
+        weight = libcore.any()
+    libgraph_tool_community.community_network(g._Graph__graph,
+                                              gp._Graph__graph,
+                                              _prop("v", g, prop),
+                                              _prop("v", g, vcount),
+                                              _prop("e", g, ecount),
+                                              weight)
+    return gp, vcount, ecount
+

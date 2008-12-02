@@ -15,4 +15,5 @@ libgraph_tool_community_la_LIBADD = $(MOD_LIBADD)
 libgraph_tool_community_la_LDFLAGS = $(MOD_LDFLAGS)
 
 libgraph_tool_community_la_SOURCES = \
-    graph_community.cc
+    graph_community.cc \
+    graph_community_network.cc

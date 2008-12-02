@@ -22,14 +22,6 @@
 #include <iostream>
 #include <iomanip>
 
-#include <boost/graph/graphviz.hpp>
-#include <boost/graph/graphml.hpp>
-#include <boost/algorithm/string.hpp>
-#include <boost/iostreams/filtering_stream.hpp>
-#include <boost/iostreams/filter/gzip.hpp>
-#include <boost/iostreams/filter/bzip2.hpp>
-#include <boost/iostreams/device/file.hpp>
-
 namespace graph_tool
 {
 
@@ -40,178 +32,78 @@ using namespace boost;
 
 struct get_community_network
 {
-    template <class Graph, class CommunityMap>
-    void operator()(const Graph* gp, CommunityMap s, string property,
-                    string size_property, dynamic_properties& edge_properties,
-                    string file, string format) const
+    template <class Graph, class CommunityGraph, class CommunityMap,
+              class WeightMap, class EdgeIndex, class VertexIndex,
+              class VertexProperty, class EdgeProperty>
+    void operator()(const Graph* gp, CommunityGraph* cgp,
+                    VertexIndex cvertex_index, EdgeIndex cedge_index,
+                    CommunityMap s_map, WeightMap weight,
+                    VertexProperty vertex_count, EdgeProperty edge_count) const
     {
         const Graph& g = *gp;
+        CommunityGraph& cg = *cgp;
 
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
+        typedef typename graph_traits<CommunityGraph>::vertex_descriptor
+            cvertex_t;
+        typedef typename graph_traits<CommunityGraph>::edge_descriptor
+            cedge_t;
+        typedef typename boost::property_traits<CommunityMap>::value_type
+            s_type;
 
-        tr1::unordered_map
-            <typename boost::property_traits<CommunityMap>::value_type, size_t>
+        tr1::unordered_map<s_type, vector<vertex_t>, boost::hash<s_type> >
             comms;
-
         typename graph_traits<Graph>::vertex_iterator v, v_end;
         for (tie(v, v_end) = vertices(g); v != v_end; ++v)
-            comms[get(s, *v)]++;
+            comms[get(s_map, *v)].push_back(*v);
 
-        typedef boost::property<edge_index_t, size_t> EdgeProperty;
-
-        typedef typename graph_traits<Graph>::directed_category
-            directed_category;
-        typedef typename mpl::if_<typename is_convertible<directed_category,
-                                                          directed_tag>::type,
-                                  bidirectionalS,
-                                  undirectedS>::type directed_selector;
-
-        typedef adjacency_list <vecS, // edges
-                                vecS, // vertices
-                                directed_selector,
-                                no_property,
-                                EdgeProperty > comm_graph_t;
-
-        comm_graph_t comm_graph;
-
-        typedef typename property_map<comm_graph_t, vertex_index_t>::type
-            comm_vertex_index_map_t;
-        comm_vertex_index_map_t
-            comm_vertex_index(get(vertex_index, comm_graph));
-
-        vector_property_map<typename property_traits<CommunityMap>::value_type,
-                            comm_vertex_index_map_t>
-            comm_map(comm_vertex_index);
-        vector_property_map<size_t, comm_vertex_index_map_t>
-            comm_size_map(comm_vertex_index);
-        tr1::unordered_map
-            <typename property_traits<CommunityMap>::value_type,
-            typename graph_traits<comm_graph_t>::vertex_descriptor>
-            comm_vertex_map;
+        // create vertices
+        tr1::unordered_map<s_type, cvertex_t, boost::hash<s_type> >
+            comm_vertices;
         for (typeof(comms.begin()) iter = comms.begin(); iter != comms.end();
              ++iter)
         {
-            comm_vertex_map[iter->first] = add_vertex(comm_graph);
-            comm_map[comm_vertex_map[iter->first]] = iter->first;
-            if (size_property != "")
-                comm_size_map[comm_vertex_map[iter->first]] = iter->second;
+            cvertex_t v = add_vertex(cg);
+            vertex_count[v] = iter->second.size();
+            comm_vertices[iter->first] = v;
         }
 
-        dynamic_properties dp;
-        dp.property(property, comm_map);
-        if (size_property != "")
-            dp.property(size_property, comm_size_map);
-
-        typedef typename property_map<comm_graph_t,edge_index_t>::type
-            comm_edge_index_map_t;
-        comm_edge_index_map_t comm_edge_index(get(edge_index_t(), comm_graph));
-
-        typedef HashedDescriptorMap<comm_edge_index_map_t, edge_t> edge_map_t;
-        edge_map_t edge_map(comm_edge_index);
-
-        size_t e_index = 0;
-        typename graph_traits<Graph>::edge_iterator e, e_end;
-        for (tie(e, e_end) = edges(g); e != e_end; ++e)
+        // create edges
+        tr1::unordered_map<pair<size_t, size_t>,
+                           cedge_t, boost::hash<pair<size_t, size_t> > >
+            comm_edges;
+        for (typeof(comms.begin()) iter = comms.begin(); iter != comms.end();
+             ++iter)
         {
-            typename graph_traits<comm_graph_t>::edge_descriptor edge;
-            edge  = add_edge(comm_vertex_map[get(s,source(*e, g))],
-                             comm_vertex_map[get(s,target(*e, g))],
-                             comm_graph).first;
-            edge_map[edge] = *e;
-            comm_edge_index[edge] = e_index++;
-        }
 
-        for (typeof(edge_properties.begin()) iter = edge_properties.begin();
-             iter != edge_properties.end(); ++iter)
-            dp.insert(iter->first,
-                      auto_ptr<dynamic_property_map>
-                          (new dynamic_property_map_wrap<edge_map_t>
-                           (edge_map, *iter->second)));
-
-        bool graphviz = false;
-        if (format == "")
-            graphviz = ends_with(file,".dot") || ends_with(file,".dot.gz") ||
-                ends_with(file,".dot.bz2");
-        else if (format == "dot")
-            graphviz = true;
-        else if (format != "xml")
-            throw GraphException("error writing to file '" + file +
-                                 "': requested invalid format '" +
-                                 format + "'");
-        try
-        {
-            iostreams::filtering_stream<iostreams::output> stream;
-            ofstream file_stream;
-            if (file == "-")
-                stream.push(cout);
-            else
+            cvertex_t cs = comm_vertices[iter->first];
+            for (size_t i = 0; i < iter->second.size(); ++i)
             {
-                file_stream.open(file.c_str(), ios_base::out |
-                                 ios_base::binary);
-                file_stream.exceptions(ios_base::badbit | ios_base::failbit);
-                if (ends_with(file,".gz"))
-                    stream.push(iostreams::gzip_compressor());
-                if (ends_with(file,".bz2"))
-                    stream.push(iostreams::bzip2_compressor());
-                stream.push(file_stream);
+                vertex_t s = iter->second[i];
+                typename graph_traits<Graph>::out_edge_iterator e, e_end;
+                for (tie(e, e_end) = out_edges(s, g); e != e_end; ++e)
+                {
+                    vertex_t t = target(*e, g);
+                    cvertex_t ct = comm_vertices[get(s_map, t)];
+                    if (ct == cs) // self-loops are pointless
+                        continue;
+                    cedge_t ce;
+                    if (comm_edges.find(make_pair(cs, ct)) != comm_edges.end())
+                        ce = comm_edges[make_pair(cs, ct)];
+                    else if (!is_directed::apply<Graph>::type::value &&
+                             comm_edges.find(make_pair(ct, cs)) != comm_edges.end())
+                        ce = comm_edges[make_pair(ct, cs)];
+                    else
+                    {
+                        ce = add_edge(cs,ct,cg).first;
+                        comm_edges[make_pair(cs, ct)] = ce;
+                    }
+                    edge_count[ce] += get(weight, *e);
+                }
             }
-            stream.exceptions(ios_base::badbit | ios_base::failbit);
-
-            if (graphviz)
-            {
-                dp.property("vertex_id", comm_vertex_index);
-                write_graphviz(stream, comm_graph, dp, string("vertex_id"));
-            }
-            else
-            {
-                write_graphml(stream, comm_graph, comm_vertex_index, dp, true);
-            }
-            stream.reset();
-        }
-        catch (ios_base::failure &e)
-        {
-            throw GraphException("error writing to file '" + file + "':" +
-                                 e.what());
         }
     }
-
-    template <class EdgeMap>
-    class dynamic_property_map_wrap: public dynamic_property_map
-    {
-    public:
-        dynamic_property_map_wrap(EdgeMap& edge_map, dynamic_property_map& dm):
-            _edge_map(edge_map), _dm(dm) {}
-        any get(const any& key)
-        {
-            return _dm.get(_edge_map[any_cast<key_t>(key)]);
-        }
-
-        string get_string(const any& key)
-        {
-            return _dm.get_string(_edge_map[any_cast<key_t>(key)]);
-        }
-
-        void put(const any& key, const any& value)
-        {
-            return _dm.put(_edge_map[any_cast<key_t>(key)], value);
-        }
-
-        const type_info& key() const
-        {
-            return typeid(key_t);
-        }
-
-        const type_info& value() const
-        {
-            return _dm.value();
-        }
-    private:
-        EdgeMap& _edge_map;
-        typedef typename property_traits<EdgeMap>::key_type key_t;
-        dynamic_property_map& _dm;
-    };
-
 };
 
 } // graph_tool namespace

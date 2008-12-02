@@ -112,8 +112,15 @@ double modularity(GraphInterface& g, boost::any weight, boost::any property)
 
 using namespace boost::python;
 
+
+extern void community_network(GraphInterface& gi, GraphInterface& cgi,
+                              boost::any community_property,
+                              boost::any vertex_count,
+                              boost::any edge_count, boost::any weight);
+
 BOOST_PYTHON_MODULE(libgraph_tool_community)
 {
     def("community_structure", &community_structure);
     def("modularity", &modularity);
+    def("community_network", &community_network);
 }
