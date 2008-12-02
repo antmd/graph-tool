@@ -322,6 +322,10 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
         .def("CopyVertexProperty", &GraphInterface::CopyVertexProperty)
         .def("CopyEdgeProperty", &GraphInterface::CopyEdgeProperty);
 
+    class_<GraphInterface::vertex_index_map_t>("vertex_index_map", no_init);
+    class_<GraphInterface::edge_index_map_t>("edge_index_map", no_init);
+    class_<GraphInterface::graph_index_map_t>("graph_index_map", no_init);
+
     enum_<GraphInterface::degree_t>("Degree")
         .value("In", GraphInterface::IN_DEGREE)
         .value("Out", GraphInterface::OUT_DEGREE)

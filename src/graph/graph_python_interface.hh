@@ -455,17 +455,8 @@ struct new_property_map
 };
 
 template <class IndexMap>
-python::object new_property(const string& type, boost::any imap)
+python::object new_property(const string& type, IndexMap index_map)
 {
-    IndexMap index_map;
-    try
-    {
-        index_map = any_cast<IndexMap>(imap);
-    }
-    catch (bad_any_cast&)
-    {
-        throw GraphException("Invalid index map");
-    }
     python::object prop;
     bool found = false;
     mpl::for_each<value_types>(lambda::bind<void>(new_property_map(),

@@ -299,14 +299,14 @@ PythonPropertyMap<GraphInterface::vertex_index_map_t>
 get_vertex_index(GraphInterface& g)
 {
     return PythonPropertyMap<GraphInterface::vertex_index_map_t>
-        (any_cast<GraphInterface::vertex_index_map_t>(g.GetVertexIndex()));
+        (g.GetVertexIndex());
 }
 
 PythonPropertyMap<GraphInterface::edge_index_map_t>
 get_edge_index(GraphInterface& g)
 {
     return PythonPropertyMap<GraphInterface::edge_index_map_t>
-        (any_cast<GraphInterface::edge_index_map_t>(g.GetEdgeIndex()));
+        (g.GetEdgeIndex());
 }
 
 // register everything

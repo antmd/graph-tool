@@ -147,9 +147,12 @@ public:
     typedef property_map<multigraph_t,edge_index_t>::type edge_index_map_t;
     typedef ConstantPropertyMap<size_t,graph_property_tag> graph_index_map_t;
 
-    boost::any GetVertexIndex() {return _vertex_index;}
-    boost::any GetEdgeIndex() {return _edge_index;}
-    boost::any GetGraphIndex() {return graph_index_map_t(0);}
+    // internal access
+
+    multigraph_t& GetGraph() {return _mg;}
+    vertex_index_map_t GetVertexIndex() {return _vertex_index;}
+    edge_index_map_t   GetEdgeIndex()   {return _edge_index;}
+    graph_index_map_t  GetGraphIndex()  {return graph_index_map_t(0);}
 
 private:
     // Gets the encapsulated graph view. See graph_filtering.cc for details
