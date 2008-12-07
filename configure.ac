@@ -36,7 +36,7 @@ AC_PROG_LIBTOOL
 AC_PROG_INSTALL
 
 dnl turn on warnings
-CPPFLAGS="$CPPFLAGS -Wall"
+[CPPFLAGS="${CPPFLAGS} -Wall"]
 
 dnl Checks for options
 
@@ -47,13 +47,13 @@ AC_ARG_ENABLE([debug], [AC_HELP_STRING([--enable-debug@<:@=full@:>@],
         [compile debug information [default=yes] ])],
         [AC_MSG_RESULT(yes)]
         [AC_DEFINE([DEBUG], 1, [compile debug info])]
-        [CXXFLAGS=" $CXXFLAGS -ggdb3 "],
+        [CXXFLAGS=" ${CXXFLAGS} -ggdb3 "],
         [AC_MSG_RESULT(no)]
         )
 
 dnl set template depth and hidden visibility
 
-[CXXFLAGS="$CXXFLAGS -ftemplate-depth-150 "]
+[CXXFLAGS="${CXXFLAGS} -ftemplate-depth-150"]
 
 AC_MSG_CHECKING(whether to enable function inlining...)
 
@@ -62,7 +62,7 @@ AC_ARG_ENABLE([inline], [AC_HELP_STRING([--disable-inline],
         if test $enableval = no; then
            [AC_MSG_RESULT(no)]
            [AC_DEFINE([NO_INLINE], 1, [disable function inlining])]
-           [CXXFLAGS="$CXXFLAGS -fno-inline -fno-default-inline"]
+           [CXXFLAGS="${CXXFLAGS} -fno-inline -fno-default-inline"]
            NO_INLINE=yes
         else
            [AC_MSG_RESULT(yes)]
@@ -81,7 +81,7 @@ AC_ARG_ENABLE([optimization], [AC_HELP_STRING([--disable-optimization],
         [AC_MSG_RESULT(no)]
         ,
         [AC_MSG_RESULT(yes)]
-        [CXXFLAGS="$CXXFLAGS -O99"]
+        [CXXFLAGS="${CXXFLAGS} -O99"]
         )
 
 AC_MSG_CHECKING(whether to enable hidden visibility...)
@@ -91,7 +91,7 @@ AC_ARG_ENABLE([visibility], [AC_HELP_STRING([--disable-visibility],
         [AC_MSG_RESULT(no)]
         ,
         [AC_MSG_RESULT(yes)]
-        [CXXFLAGS="$CXXFLAGS -fvisibility=hidden -fvisibility-inlines-hidden"]
+        [CXXFLAGS="${CXXFLAGS} -fvisibility=hidden -fvisibility-inlines-hidden"]
         )
 
 
@@ -117,14 +117,14 @@ AC_ARG_ENABLE([openmp], [AC_HELP_STRING([--enable-openmp],
            [AC_MSG_RESULT(yes)]
            [AC_DEFINE([USING_OPENMP], 1, [using openmp])]
            USING_OPENMP=yes
-           [CXXFLAGS="$CXXFLAGS -fopenmp"]
+           [CXXFLAGS="${CXXFLAGS} -fopenmp"]
            [OPENMP_LDFLAGS=" -lgomp "]
         fi
         ,
         [AC_MSG_RESULT(no)]
         [AC_DEFINE([USING_OPENMP], 0, [using openmp])]
         USING_OPENMP=no
-        [CXXFLAGS="$CXXFLAGS -Wno-unknown-pragmas"]
+        [CXXFLAGS="${CXXFLAGS} -Wno-unknown-pragmas"]
         [OPENMP_LDFLAGS=""]
         )
 AC_SUBST(OPENMP_LDFLAGS)
@@ -146,7 +146,7 @@ AC_CHECK_LIB(bz2,main)
 
 dnl boost
 AX_BOOST([1.33.1])
-CPPFLAGS="$CPPFLAGS $BOOST_CPPFLAGS"
+[CPPFLAGS="${CPPFLAGS} ${BOOST_CPPFLAGS}"]
 
 dnl AX_BOOST_PYTHON
 
@@ -154,12 +154,11 @@ dnl expat
 AC_CHECK_LIB(expat,main)
 
 dnl python
+[TEMP_CPPFLAGS="${CPPFLAGS}"]
 AM_PATH_PYTHON([2.5])
 AC_PYTHON_DEVEL(>= '2.5')
-PYLIBDIR=`eval echo $pythondir`
-
-#update compiler flags
-CPPFLAGS="$CPPFLAGS $PYTHON_CPPFLAGS"
+[PYLIBDIR=`eval echo $pythondir`]
+[CPPFLAGS="${TEMP_CPPFLAGS} ${CPPFLAGS} ${PYTHON_CPPFLAGS}"]
 
 dnl Checks for header files.
 
@@ -171,19 +170,19 @@ AC_ARG_WITH([numpy], [AC_HELP_STRING([--with-numpy=DIR],
         NUMPY_DIR=$withval)
 NUMPY_DIR="${NUMPY_DIR}/core/include/numpy"
 AC_CHECK_HEADER([${NUMPY_DIR}/arrayobject.h],
-                [CPPFLAGS="$CPPFLAGS -I$NUMPY_DIR"],
+                [CPPFLAGS="${CPPFLAGS} -I${NUMPY_DIR}"],
                 [AC_MSG_ERROR([Numpy extension header not found])],
                 [#include "Python.h"])
 
 dnl scipy
-SCIPY_DIR="${PYLIBDIR}/scipy"
+[SCIPY_DIR="${PYLIBDIR}/scipy"]
 AC_ARG_WITH([scipy], [AC_HELP_STRING([--with-scipy=DIR],
                      [scipy install directory
                       [default=${PYLIBDIR}/scipy] ])],
-        SCIPY_DIR=$withval)
+            [SCIPY_DIR=$withval])
 AC_CHECK_HEADER([${SCIPY_DIR}/weave/scxx/object.h],
                 [AC_DEFINE([HAVE_SCIPY], [1], [using scipy's weave])]
-                [CPPFLAGS="$CPPFLAGS -I$SCIPY_DIR"])
+                [CPPFLAGS="${CPPFLAGS} -I${SCIPY_DIR}"])
 
 dnl expat
 AC_CHECK_HEADER([expat.h],
@@ -244,6 +243,12 @@ AC_DEFINE([GIT_COMMIT], "esyscmd(git show | head -n 1 | sed 's/commit //' |  gre
 AC_DEFINE([GIT_COMMIT_DATE], "esyscmd(git log -1 | head -n 3 | grep 'Date:' | sed s/'Date:   '// | tr -d '\n')", [git HEAD commit date])
 
 # set some automake variables
+
+# global CPP flags
+AC_SUBST(CPPFLAGS)
+
+# global CXX flags
+AC_SUBST(CXXFLAGS)
 
 # CPP flags for submodules
 [MOD_CPPFLAGS="-I\$(srcdir) -I\$(srcdir)/.. -I\$(srcdir)/../boost-workaround \

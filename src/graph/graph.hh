@@ -215,7 +215,7 @@ private:
 // things go wrong
 
 #pragma GCC visibility push(default)
-class GraphException : public exception
+class GraphException : public std::exception
 {
     string _error;
 public:
