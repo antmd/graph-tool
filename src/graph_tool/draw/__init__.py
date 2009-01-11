@@ -121,7 +121,8 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
         ge = gv.edge(nodes[g.vertex_index[e.source()]],
                      nodes[g.vertex_index[e.target()]])
         gv.setv(ge, "arrowsize", "0.3")
-        gv.setv(ge, "arrowhead", "vee")
+        if g.is_directed():
+            gv.setv(ge, "arrowhead", "vee")
         # apply color
         if ecolor != None:
             if isinstance(ecolor,str):
