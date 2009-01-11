@@ -20,7 +20,7 @@ from .. dl_import import dl_import
 dl_import("import libgraph_tool_generation")
 
 from .. core import Graph
-import random
+import sys, random
 
 __all__ = ["random_graph"]
 
