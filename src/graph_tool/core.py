@@ -111,7 +111,7 @@ def _parse_range(range):
 ################################################################################
 
 class PropertyMap(object):
-    """Property Map class"""
+    """Property map class"""
     def __init__(self, pmap, g, key_type, key_trans = None):
         self.__map = pmap
         self.__g = weakref.ref(g)
@@ -141,7 +141,7 @@ class PropertyMap(object):
         self.__map[self.__key_trans(k)] = v
 
     def get_graph(self):
-        """Get the graph to which the map refers"""
+        """Get the graph class to which the map refers"""
         return self.__g()
 
     def key_type(self):
@@ -185,7 +185,13 @@ from libgraph_tool_core import Vertex, Edge, GraphError,\
      new_graph_property
 
 class Graph(object):
-    """The main graph type"""
+    """This class encapsulates either a directed multigraph (default) or an
+    undirected multigraph, with optional internal edge, vertex or graph
+    properties.
+
+    ...
+
+    """
 
     def __init__(self, g = None):
         self.__properties = {}
@@ -239,36 +245,53 @@ class Graph(object):
 
     @_handle_exceptions
     def copy(self):
-        """Returns a deep copy of self"""
-        new_graph = Graph(self)
-        return new_graph
+        """Returns a deep copy of self. All internal property maps are also
+        copied."""
+        return Graph(self)
 
     # Graph access
     # ============
 
     @_handle_exceptions
     def vertices(self):
-        """Return iterator over the vertices"""
+        """Return an iterator over the vertices
+
+        Examples
+        --------
+
+        >>> g = gt.Graph()
+        >>> vlist = g.add_vertex(5)
+        >>> vlist2 = []
+        >>> for v in g.vertices():
+        ...     vlist2.append(v)
+        ...
+        >>> assert(vlist == vlist2)
+
+        """
         return self.__graph.Vertices()
 
     @_handle_exceptions
     def vertex(self, i):
-        """Return the i-th vertex from the graph"""
+        """Return the i-th vertex from the graph."""
         return self.__graph.Vertex(int(i))
 
     @_handle_exceptions
     def edges(self):
-        """Return iterator over the edges"""
+        """Return iterator over the edges."""
         return self.__graph.Edges()
 
     @_handle_exceptions
-    def add_vertex(self):
-        """Add a new vertex to the graph, and return it"""
-        return self.__graph.AddVertex()
+    def add_vertex(self, n=1):
+        """Add a vertices to the graph, and return it. If n > 1, n vertices are
+        inserted and a list is returned."""
+        if n == 1:
+            return self.__graph.AddVertex()
+        else:
+            return [self.__graph.AddVertex() for i in xrange(0,n)]
 
     @_handle_exceptions
     def remove_vertex(self, vertex):
-        """Remove a vertex from the graph"""
+        """Remove a vertex from the graph."""
         k = vertex.in_degree() + vertex.out_degree()
         index = self.vertex_index[vertex]
         for pmap in self.__known_properties:
@@ -280,22 +303,22 @@ class Graph(object):
     @_handle_exceptions
     def add_edge(self, source, target):
         """Add a new edge from 'source' to 'target' to the graph, and return
-        it"""
+        it."""
         return self.__graph.AddEdge(source, target)
 
     @_handle_exceptions
     def remove_edge(self, edge):
-        """Remove an edge from the graph"""
+        """Remove an edge from the graph."""
         self.__graph.RemoveEdge(edge)
 
     @_handle_exceptions
     def clear(self):
-        """Remove all vertices and edges from the graph"""
+        """Remove all vertices and edges from the graph."""
         self.__graph.Clear()
 
     @_handle_exceptions
     def clear_edges(self):
-        """Remove all edges from the graph"""
+        """Remove all edges from the graph."""
         self.__graph.ClearEdges()
 
     # Internal property maps
@@ -325,7 +348,18 @@ class Graph(object):
         del self.__properties[(t,k)]
 
     properties = property(__get_properties,
-                          doc="Dictionary of internal properties")
+                          doc=
+    """Dictionary of internal properties. Keys must always be a tuple, where the
+    first element if a string from the set {'v', 'e', 'g'}, representing a
+    vertex, edge or graph property, and the second element is the name of the
+    property map.
+
+    Examples
+    --------
+    >>> g = gt.Graph()
+    >>> g.properties[("e", "foo")] = g.new_edge_property("vector<double>")
+    >>> del g.properties[("e", "foo")]
+    """)
 
     def __get_specific_properties(self, t):
         props = dict([(k[1],v) for k,v in self.__properties.iteritems() \
@@ -363,7 +397,22 @@ class Graph(object):
 
     @_handle_exceptions
     def list_properties(self):
-        """List all internal properties"""
+        """List all internal properties for convenience.
+
+        Examples
+        --------
+        >>> g = gt.Graph()
+        >>> g.properties[("e", "foo")] = g.new_edge_property("vector<double>")
+        >>> g.vertex_properties["foo"] = g.new_vertex_property("double")
+        >>> g.vertex_properties["bar"] = g.new_vertex_property("python::object")
+        >>> g.graph_properties["gnat"] = g.new_graph_property("string")
+        >>> g.list_properties()
+        gnat           (graph)   (type: string, val: hi there!)
+        bar            (vertex)  (type: python::object)
+        foo            (vertex)  (type: double)
+        foo            (edge)    (type: vector<double>)
+        """
+
         if len(self.__properties) == 0:
             return
         w = max([len(x[0]) for x in self.__properties.keys()]) + 4
@@ -386,18 +435,20 @@ class Graph(object):
 
     def _get_vertex_index(self):
         return self.__vertex_index
-    vertex_index = property(_get_vertex_index, doc="Vertex index map")
+    vertex_index = property(_get_vertex_index,
+                            doc="Vertex index map. This map is immutable.")
 
     def _get_edge_index(self):
         return self.__edge_index
-    edge_index = property(_get_edge_index, doc="Edge index map")
+    edge_index = property(_get_edge_index, doc="Edge index map.")
 
     # Property map creation
 
     @_handle_exceptions
     def new_property(self, key_type, type):
         """Create a new (uninitialized) vertex property map of key type
-        'key_type', value type 'type', and return it"""
+        `key_type` (``v``, ``e`` or ``g``), value type ``type``, and return it.
+        """
         if key_type == "v" or key_type == "vertex":
             return self.new_vertex_property(type)
         if key_type == "e" or key_type == "edge":
@@ -408,34 +459,38 @@ class Graph(object):
 
     @_handle_exceptions
     def new_vertex_property(self, type):
-        """Create a new (uninitialized) vertex property map of type 'type', and
-        return it"""
+        """Create a new (uninitialized) vertex property map of type `type`, and
+        return it."""
         return PropertyMap(new_vertex_property(type,
                                                self.__graph.GetVertexIndex()),
                            self, "v")
 
     @_handle_exceptions
     def new_edge_property(self, type):
-        """Create a new (uninitialized) edge property map of type 'type', and
-        return it"""
+        """Create a new (uninitialized) edge property map of type `type`, and
+        return it."""
         return PropertyMap(new_edge_property(type, self.__graph.GetEdgeIndex()),
                            self, "e")
 
     @_handle_exceptions
-    def new_graph_property(self, type):
-        """Create a new (uninitialized) graph property map of type 'type', and
-        return it"""
-        return PropertyMap(new_graph_property(type,
+    def new_graph_property(self, type, val=None):
+        """Create a new graph property map of type `type`, and return it. If
+        `val` is not None, the property is initialized to its value."""
+        prop = PropertyMap(new_graph_property(type,
                                               self.__graph.GetGraphIndex()),
                            self, "g", lambda k: k.__graph)
+        if val != None:
+            prop[self] = val
+        return prop
 
     # property map copying
     @_handle_exceptions
     @_require("src", PropertyMap)
     @_require("tgt", PropertyMap)
     def copy_property(self, src, tgt, g=None):
-        """Copy contents of src property to tgt property. Parameter g specifices
-        the (identical) source graph to copy properties from (defaults to self)
+        """Copy contents of `src` property to `tgt` property. The optional
+        parameter g specifices the (identical) source graph to copy properties
+        from (defaults to self).
         """
         if src.key_type() != tgt.key_type():
             raise GraphError("source and target properties must have the same" +

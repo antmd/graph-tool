@@ -17,15 +17,15 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-``clustering``
---------------
+``graph_tool.clustering`` - Clustering coefficients
+---------------------------------------------------
 
 Provides algorithms for calculation of clustering coefficients,
 aka. transitivity.
 """
 
 from .. dl_import import dl_import
-dl_import("import libgraph_tool_clustering")
+dl_import("import libgraph_tool_clustering as _gt")
 
 from .. core import _degree, _prop
 from numpy import *
@@ -101,8 +101,7 @@ def local_clustering(g, prop=None, undirected=False):
     if g.directed() and undirected:
         g.set_directed(False)
     try:
-        libgraph_tool_clustering.\
-            extended_clustering(g._Graph__graph,
+       _gt.extended_clustering(g._Graph__graph,
                                 [_prop("v", g, prop)])
     finally:
         if was_directed and undirected:
@@ -153,7 +152,7 @@ def global_clustering(g):
        SIAM Review, vol. 45, pp. 167-256, 2003
     """
 
-    c = libgraph_tool_clustering.global_clustering(g._Graph__graph)
+    c =_gt.global_clustering(g._Graph__graph)
     return c
 
 def extended_clustering(g, props=None, max_depth=3, undirected=False):
@@ -236,9 +235,8 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
         for i in xrange(0, max_depth):
             props.append(g.new_vertex_property("double"))
     try:
-        libgraph_tool_clustering.\
-            extended_clustering(g._Graph__graph,
-                                [_prop("v", g, p) for p in props])
+       _gt.extended_clustering(g._Graph__graph,
+                               [_prop("v", g, p) for p in props])
     finally:
         if was_directed and undirected:
             g.set_directed(True)
