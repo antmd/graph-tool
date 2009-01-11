@@ -22,8 +22,8 @@ dl_import("import libgraph_tool_stats")
 from .. core import _degree, _prop
 from numpy import *
 
-__all__ = ["vertex_hist", "edge_hist", "label_components",
-           "label_parallel_edges",  "label_self_loops"]
+__all__ = ["vertex_hist", "edge_hist", "vertex_average", "edge_average",
+           "label_components", "label_parallel_edges",  "label_self_loops"]
 
 def vertex_hist(g, deg, bins=[1], float_count=True):
     ret = libgraph_tool_stats.\
@@ -34,6 +34,16 @@ def edge_hist(g, eprop, bins=[1], float_count=True):
     ret = libgraph_tool_stats.\
           get_edge_histogram(g._Graph__graph, _prop("e", g, eprop), bins)
     return [array(ret[0], dtype="float64") if float_count else ret[0], ret[1]]
+
+def vertex_average(g, deg):
+    ret = libgraph_tool_stats.\
+          get_vertex_average(g._Graph__graph, _degree(g, deg))
+    return ret
+
+def edge_average(g, eprop):
+    ret = libgraph_tool_stats.\
+          get_edge_average(g._Graph__graph, _prop("e", g, eprop))
+    return ret
 
 def label_components(g, vprop=None):
     if vprop == None:
