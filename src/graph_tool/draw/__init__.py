@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys,os,time
+import sys, os, os.path, time
 import matplotlib.cm
 import matplotlib.colors
 from .. core import _degree, _prop, PropertyMap
@@ -25,12 +25,20 @@ import gv
 
 def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
                maxiter=None, ratio="fill", overlap=False, splines=False,
-               mode="ipsep", penwidth=1.0, eweight=None, ewidth=None, gprops={},
-               vprops={}, eprops={}, vcolor=None, ecolor=None,
+               mode="major", vsize=0.1, penwidth=1.0, eweight=None, ewidth=None,
+               gprops={}, vprops={}, eprops={}, vcolor=None, ecolor=None,
                vcmap=matplotlib.cm.jet, vnorm=True, ecmap=matplotlib.cm.jet,
                enorm=True, output="", output_format="auto", returngv=False,
-               seed=0):
+               fork=True, seed=0):
     """Draw a graph using graphviz."""
+
+    if output != "":
+        output = os.path.expanduser(output)
+        # check opening file for writing, since graphview will bork if it is not
+        # possible to open file
+        if os.path.dirname(output) != "" and \
+               not os.access(os.path.dirname(output), os.W_OK):
+            raise IOError("cannot write to " + os.path.dirname(output))
 
     if g.is_directed():
         gvg = gv.digraph("G")
@@ -89,9 +97,31 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
     # add nodes
     for v in g.vertices():
         n = gv.node(gvg,str(g.vertex_index[v]))
-        gv.setv(n, "width", "0.1")
-        gv.setv(n, "height", "0.1")
-        gv.setv(n, "height", "0.1")
+        if type(vsize) != tuple:
+            vw = vh = vsize
+        else:
+            vw, vh = vsize
+        if type(vw) == PropertyMap:
+            vw = vw[v]
+        if type(vh) == PropertyMap:
+            vh = vh[v]
+
+        if type(vw) == str and vw == "in":
+            vw = v.in_degree()
+        if type(vw) == str and vw == "out":
+            vw = v.out_degree()
+        if type(vw) == str and vw == "total":
+            vw = v.in_degree() + v.out_degree()
+
+        if type(vh) == str and vh == "in":
+            vh = v.in_degree()
+        if type(vh) == str and vh == "out":
+            vh = v.out_degree()
+        if type(vh) == str and vh == "total":
+            vh = v.in_degree() + v.out_degree()
+
+        gv.setv(n, "width", "%g" % vw)
+        gv.setv(n, "height", "%g" % vh)
         gv.setv(n, "style", "filled")
         gv.setv(n, "color", "black")
         # apply color
@@ -168,7 +198,7 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
         if output == "":
             output_format = "xlib"
         else:
-            outout_format = output.split(".")[-1]
+            output_format = output.split(".")[-1]
 
     # if using xlib we need to fork the process, otherwise good ol' graphviz
     # will call exit() when the window is closed
@@ -177,7 +207,8 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
         if pid == 0:
             gv.render(gvg, output_format, output)
             sys.exit(1) # since we forked, it's good to be sure
-        os.wait()
+        if not fork:
+            os.wait()
     else:
         gv.render(gvg, output_format, output)
 
