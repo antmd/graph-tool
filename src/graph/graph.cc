@@ -88,6 +88,8 @@ void GraphInterface::Clear()
 
 void GraphInterface::ClearEdges()
 {
-    //
+    graph_traits<multigraph_t>::vertex_iterator v, v_end;
+    for (tie(v, v_end) = vertices(_mg); v != v_end; ++v)
+        clear_vertex(*v, _mg);
 }
 
