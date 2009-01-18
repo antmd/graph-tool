@@ -66,7 +66,8 @@ struct export_vertex_property_map
                  return_policy())
             .def("__setitem__", &pmap_t::template SetValue<PythonVertex>)
             .def("get_map", &pmap_t::GetMap)
-            .def("get_dynamic_map", &pmap_t::GetDynamicMap);
+            .def("get_dynamic_map", &pmap_t::GetDynamicMap)
+            .def("get_array", &pmap_t::GetArray);
     }
 
     string _name;

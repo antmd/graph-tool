@@ -16,9 +16,9 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "graph.hh"
+#define NUMPY_EXPORT
 #include "graph_python_interface.hh"
 #include "graph_util.hh"
-#define NUMPY_EXPORT
 #include "numpy_bind.hh"
 
 #include <boost/python.hpp>

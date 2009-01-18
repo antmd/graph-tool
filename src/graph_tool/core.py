@@ -152,6 +152,26 @@ class PropertyMap(object):
         """The value type of the map"""
         return self.__map.value_type()
 
+    def get_array(self):
+        """Get an array with property values
+
+        .. WARNING::
+
+           The returned array does not own the data, which belongs to the
+           property map. Therefore, the returned array cannot have a longer
+           lifespan than the property map itself! Futhermore, if the graph
+           changes, it may leave the pointer to the data in the array dangling!
+           Do *not* store the array if the graph is to be modified, or the
+           original property map deleted; *store a copy instead*!
+        """
+        if self.__key_type == 'v':
+            n = self.__g().num_vertices()
+        elif self.__key_type == 'e':
+            n = self.__g().num_edges()
+        else:
+            n = 1
+        return self.__map.get_array(n)
+
 class PropertyDict(dict):
     """Wrapper for the dict of vertex, graph or edge properties, which sets the
     value on the property map when changed in the dict."""
