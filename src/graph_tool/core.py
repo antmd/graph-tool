@@ -549,6 +549,7 @@ class Graph(object):
         """Load graph from 'filename' (which can also be a file-like
         object). The format is guessed from the file name, or can be specified
         by 'format', which can be either 'xml' or 'dot'."""
+        filename = os.path.expanduser(filename)
         if format == 'auto' and isinstance(filename, str):
             if filename.endswith(".xml") or filename.endswith(".xml.gz") or \
                    filename.endswith(".xml.bz2"):
@@ -577,6 +578,7 @@ class Graph(object):
     def save(self, filename, format="auto"):
         """Save graph to file. The format is guessed from the 'file' name, or
         can be specified by 'format', which can be either 'xml' or 'dot'."""
+        filename = os.path.expanduser(filename)
         if format == 'auto' and isinstance(filename, str):
             if filename.endswith(".xml") or filename.endswith(".xml.gz") or \
                    filename.endswith(".xml.bz2"):
