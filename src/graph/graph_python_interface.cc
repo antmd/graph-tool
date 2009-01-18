@@ -228,6 +228,48 @@ void GraphInterface::RemoveEdge(const python::object& e)
     remove_edge(de, _mg);
 }
 
+struct get_degree_map
+{
+    template <class Graph, class DegreeMap, class DegS>
+    void operator()(const Graph* gp, DegreeMap deg_map, DegS deg) const
+    {
+        const Graph& g = *gp;
+        int i, N = num_vertices(g);
+        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
+        for (i = 0; i < N; ++i)
+        {
+            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+            deg_map[v] = deg(v, g);
+        }
+    }
+};
+
+python::object GraphInterface::DegreeMap(string deg) const
+{
+    typedef property_map_type::apply<double,
+                                     GraphInterface::vertex_index_map_t>::type
+        map_t;
+
+    map_t deg_map(_vertex_index);
+    deg_map.reserve(num_vertices(_mg));
+
+    if (deg == "in")
+        run_action<>()(*this,
+                       lambda::bind<void>(get_degree_map(), lambda::_1,
+                                          deg_map, in_degreeS()))();
+    else if (deg == "out")
+        run_action<>()(*this,
+                       lambda::bind<void>(get_degree_map(), lambda::_1,
+                                          deg_map, out_degreeS()))();
+    else if (deg == "total")
+        run_action<>()(*this,
+                       lambda::bind<void>(get_degree_map(), lambda::_1,
+                                          deg_map, total_degreeS()))();
+    return python::object(PythonPropertyMap<map_t>(deg_map));
+}
+
 //
 // Below are the functions with will properly register all the types to python,
 // for every filter, type, etc.

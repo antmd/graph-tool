@@ -532,6 +532,15 @@ class Graph(object):
         if g != self:
             g.pop_filter()
 
+    # degree property map
+    @_handle_exceptions
+    @_limit_args({"deg":["in","out","total"]})
+    def degree_property_map(self, deg):
+        """Create and return a vertex property map containing the degree type
+        given by `deg`"""
+        return PropertyMap(self.__graph.DegreeMap(deg), self, "v")
+
+
     # I/O operations
     # ==============
 

@@ -116,6 +116,8 @@ public:
     python::object AddEdge(const python::object& s, const python::object& t);
     void           RemoveEdge(const python::object& e);
 
+    python::object DegreeMap(string deg) const;
+
     // used for graph properties
     graph_property_tag GetDescriptor() const { return graph_property_tag(); }
     bool CheckValid() const {return true;}
