@@ -248,8 +248,8 @@ struct get_communities
 
                 // choose the new energy
                 double E = numeric_limits<double>::max();
-                if (prob_mod_count == 0 &&
-                    !modified_energies.empty() ||
+                if ((prob_mod_count == 0 &&
+                     !modified_energies.empty()) ||
                     steepest_descent)
                 {
                     // Temperature too low! The computer precision is not enough
