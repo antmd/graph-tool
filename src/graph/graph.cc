@@ -77,7 +77,7 @@ size_t GraphInterface::GetNumberOfEdges() const
     if (IsEdgeFilterActive() || IsVertexFilterActive())
         run_action<>()(*this, var(n)=bind<size_t>(HardNumEdges(),_1))();
     else
-        run_action<>()(*this, var(n)=bind<size_t>(SoftNumEdges(),_1))();
+        n = _nedges;
     return n;
 }
 

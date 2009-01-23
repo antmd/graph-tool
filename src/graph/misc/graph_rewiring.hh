@@ -21,6 +21,7 @@
 #include <tr1/unordered_set>
 #include <boost/random.hpp>
 #include <boost/functional/hash.hpp>
+#include <boost/vector_property_map.hpp>
 
 #include "graph.hh"
 #include "graph_filtering.hh"

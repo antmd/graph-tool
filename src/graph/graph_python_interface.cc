@@ -194,6 +194,8 @@ python::object GraphInterface::AddEdge(const python::object& s,
                                              lambda::var(*this), src, tgt,
                                              _edge_index, new_index,
                                              lambda::var(new_e)))();
+    _nedges++;
+    _max_edge_index = max(_max_edge_index, new_index);
     return new_e;
 }
 
@@ -223,9 +225,12 @@ void GraphInterface::RemoveEdge(const python::object& e)
                                       lambda::var(found)))();
     if (!found)
         throw GraphException("invalid edge descriptor");
-    if (_edge_index[de] != num_edges(_mg) - 1)
+    if (_edge_index[de] != _nedges - 1)
         _free_indexes.push_back(_edge_index[de]);
+    else
+        _max_edge_index = (_nedges > 1) ? _nedges - 2 : 0;
     remove_edge(de, _mg);
+    _nedges--;
 }
 
 struct get_degree_map

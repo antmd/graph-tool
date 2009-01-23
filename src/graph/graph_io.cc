@@ -241,7 +241,8 @@ struct get_python_property
     void operator()(ValueType, IndexMap, dynamic_property_map* map,
                     python::object& pmap) const
     {
-        typedef vector_property_map<ValueType, IndexMap> map_t;
+        typedef typename property_map_type::apply<ValueType, IndexMap>::type
+            map_t;
         try
         {
             pmap = python::object
@@ -280,10 +281,12 @@ struct check_value_type
     {
         try
         {
-            vector_property_map<ValueType, IndexMap> vector_map(_index_map);
+            typedef typename property_map_type::apply<ValueType, IndexMap>::type
+                map_t;
+            map_t vector_map(_index_map);
             vector_map[_key] = any_cast<ValueType>(_value);
-            _map = new boost::detail::dynamic_property_map_adaptor
-                <vector_property_map<ValueType, IndexMap> >(vector_map);
+            _map = new boost::detail::dynamic_property_map_adaptor<map_t>
+                (vector_map);
         }
         catch (bad_any_cast) {}
     }
@@ -469,7 +472,7 @@ void build_stream
 
 
 python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
-                                          string format)
+                                           string format)
 {
     bool graphviz = false;
     if (format == "dot")
@@ -515,6 +518,7 @@ python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
             else
                 read_graphml(stream, ug, dp);
         }
+        _nedges = num_edges(_mg);
 
         python::dict vprops, eprops, gprops;
         for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)

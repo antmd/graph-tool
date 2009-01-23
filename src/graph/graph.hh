@@ -21,7 +21,7 @@
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
 
-#include <boost/vector_property_map.hpp>
+#include "fast_vector_property_map.hh"
 #include <boost/dynamic_property_map.hpp>
 #include <boost/lambda/lambda.hpp>
 #include <boost/lambda/bind.hpp>
@@ -178,6 +178,10 @@ private:
     // this is the main graph
     multigraph_t _mg;
 
+    // keep track of the number of edges, since num_edges() is O(V) in
+    // adjacency_list... :-(
+    size_t _nedges;
+
     // this will hold an instance of the graph views at run time
     vector<boost::any> _graph_views;
 
@@ -192,18 +196,20 @@ private:
     edge_index_map_t _edge_index;
     vector<size_t> _free_indexes; // indexes of deleted edges to be used up for
                                   // new edges to avoid needless fragmentation
+    size_t _max_edge_index; // needed for property map bounds
 
     // graph index map
     graph_index_map_t _graph_index;
 
     // vertex filter
-    typedef vector_property_map<uint8_t,vertex_index_map_t> vertex_filter_t;
+    typedef unchecked_fast_vector_property_map<uint8_t,vertex_index_map_t>
+        vertex_filter_t;
     vertex_filter_t _vertex_filter_map;
     bool _vertex_filter_invert;
     bool _vertex_filter_active;
 
     // edge filter
-    typedef vector_property_map<uint8_t,edge_index_map_t> edge_filter_t;
+    typedef unchecked_fast_vector_property_map<uint8_t,edge_index_map_t> edge_filter_t;
     edge_filter_t _edge_filter_map;
     bool _edge_filter_invert;
     bool _edge_filter_active;

@@ -26,7 +26,7 @@
 
 #include <boost/property_map.hpp>
 #include <boost/dynamic_property_map.hpp>
-#include <boost/vector_property_map.hpp>
+#include "fast_vector_property_map.hh"
 #include <boost/functional/hash.hpp>
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/for_each.hpp>
@@ -99,7 +99,7 @@ struct property_map_type
     template <class ValueType, class IndexMap>
     struct apply
     {
-        typedef vector_property_map<ValueType,IndexMap> type;
+        typedef fast_vector_property_map<ValueType,IndexMap> type;
     };
 };
 

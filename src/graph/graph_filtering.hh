@@ -307,7 +307,8 @@ struct get_all_pairs
 template <class Scalar, class IndexMap>
 struct get_property_map_type
 {
-    typedef typename property_map_type::apply<Scalar, IndexMap>::type type;
+    typedef typename property_map_type::apply<Scalar, IndexMap>
+        ::type::unchecked_t type;
 };
 
 template <class IndexMap>
@@ -492,7 +493,66 @@ BOOST_MPL_ASSERT_RELATION(n_views::value, == , mpl::int_<3>::value);
 
 // run_action() implementation
 // ===========================
-//
+
+// wrap action to be called, to deal with property maps, i.e., return version
+// with no bounds checking.
+
+template <class Action>
+struct action_wrap
+{
+    action_wrap(Action a, size_t max_v, size_t max_e)
+        : _a(a), _max_v(max_v), _max_e(max_e) {}
+
+    template <class Type>
+    typename fast_vector_property_map
+        <Type,GraphInterface::vertex_index_map_t>::unchecked_t
+    uncheck(fast_vector_property_map
+            <Type,GraphInterface::vertex_index_map_t> a) const
+    {
+        return a.get_unchecked(_max_v);
+    }
+
+    template <class Type>
+    typename fast_vector_property_map
+        <Type,GraphInterface::edge_index_map_t>::unchecked_t
+    uncheck(fast_vector_property_map
+            <Type,GraphInterface::edge_index_map_t> a) const
+    {
+        return a.get_unchecked(_max_e);
+    }
+
+    template <class Type>
+    scalarS<typename Type::unchecked_t>
+    uncheck(scalarS<Type> a) const
+    {
+        return scalarS<typename Type::unchecked_t>(uncheck(a._pmap));
+    }
+
+    //no op
+    template <class Type>
+    Type uncheck(Type a) const { return a; }
+
+    void operator()() const {};
+    template <class T1> void operator()(const T1& a1) const { _a(uncheck(a1)); }
+    template <class T1, class T2>
+    void operator()(const T1& a1, const T2& a2) const
+    { _a(a1, uncheck(a2)); }
+    template <class T1, class T2, class T3>
+    void operator()(const T1& a1, const T2& a2, const T3& a3) const
+    { _a(a1, uncheck(a2), uncheck(a3));}
+    template <class T1, class T2, class T3, class T4>
+    void operator()(const T1& a1, const T2& a2, const T3& a3, const T4& a4)
+        const
+    { _a(a1, uncheck(a2), uncheck(a3), uncheck(a4)); }
+    template <class T1, class T2, class T3, class T4, class T5>
+    void operator()(const T1& a1, const T2& a2, const T3& a3, const T4& a4,
+                    const T5& a5) const
+    { _a(a1, uncheck(a2), uncheck(a3), uncheck(a4), uncheck(a5)); }
+
+    Action _a;
+    size_t _max_v, _max_e;
+};
+
 // this functor encapsulates another functor Action, which takes a pointer to a
 // graph view as first argument
 template <class Action, class GraphViews, class TR1, class TR2, class TR3,
@@ -502,7 +562,8 @@ struct graph_action
     struct graph_view_pointers:
         mpl::transform<GraphViews, mpl::quote1<add_pointer> >::type {};
 
-    graph_action(const GraphInterface& g, Action a): _g(g), _a(a) {}
+    graph_action(const GraphInterface& g, Action a)
+        : _g(g), _a(a, num_vertices(g._mg), g._max_edge_index + 1) {}
 
     void operator()() const
     {
@@ -581,9 +642,10 @@ struct graph_action
     }
 
     const GraphInterface &_g;
-    Action _a;
+    action_wrap<Action> _a;
 };
 } // details namespace
+
 
 // all definitions of run_action with different arity
 template <class GraphViews = detail::all_graph_views>

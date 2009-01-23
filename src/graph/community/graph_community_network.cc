@@ -38,12 +38,6 @@ void community_network(GraphInterface& gi, GraphInterface& cgi,
                        boost::any community_property, boost::any vertex_count,
                        boost::any edge_count, boost::any weight)
 {
-    // using boost::lambda::bind;
-    // using boost::lambda::_1;
-    // using boost::lambda::_2;
-    // using boost::lambda::_3;
-    // using boost::lambda::_4;
-
     typedef DynamicPropertyMapWrap<double,GraphInterface::edge_t> weight_map_t;
     typedef ConstantPropertyMap<double,GraphInterface::edge_t> no_weight_map_t;
     typedef mpl::vector<weight_map_t,no_weight_map_t> weight_properties;
@@ -53,7 +47,8 @@ void community_network(GraphInterface& gi, GraphInterface& cgi,
     else
         weight = weight_map_t(weight, edge_scalar_properties());
 
-    typedef vector_property_map<int32_t,GraphInterface::vertex_index_map_t>
+    typedef property_map_type::apply<int32_t,
+                                     GraphInterface::vertex_index_map_t>::type
         vcount_t;
     vcount_t vcount(gi.GetVertexIndex());
     try

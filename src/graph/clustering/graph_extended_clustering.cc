@@ -33,12 +33,13 @@ using namespace graph_tool;
 template <class PropertySequence>
 struct prop_vector
 {
-    boost::any operator()(const vector<boost::any>& props) const
+    boost::any operator()(const vector<boost::any>& props, size_t size) const
     {
         boost::any prop_vec;
         mpl::for_each<PropertySequence>
             (lambda::bind<void>(get_prop_vector(), lambda::_1,
-                                lambda::var(props), lambda::var(prop_vec)));
+                                lambda::var(props), lambda::var(prop_vec),
+                                size));
         return prop_vec;
     }
 
@@ -46,16 +47,17 @@ struct prop_vector
     {
         template <class Property>
         void operator()(Property, const vector<boost::any>& props,
-                        boost::any& prop_vec) const
+                        boost::any& prop_vec, size_t size) const
         {
             if (typeid(Property) == props[0].type())
             {
                 try
                 {
-                    vector<Property> vec;
+                    vector<typename Property::unchecked_t> vec;
                     vec.resize(props.size());
                     for (size_t i = 0; i < props.size(); ++i)
-                        vec[i] = any_cast<Property>(props[i]);
+                        vec[i] =
+                            any_cast<Property>(props[i]).get_unchecked(size);
                     prop_vec = vec;
                 }
                 catch (bad_any_cast){}
@@ -70,7 +72,7 @@ struct get_property_vector_type
     template <class Property>
     struct apply
     {
-        typedef vector<Property> type;
+        typedef vector<typename Property::unchecked_t> type;
     };
 };
 
@@ -80,7 +82,9 @@ void extended_clustering(GraphInterface& g, python::list props)
     for (size_t i = 0; i < cmaps.size(); ++i)
         cmaps[i] = python::extract<boost::any>(props[i])();
 
-    boost::any vprop = prop_vector<vertex_scalar_properties>()(cmaps);
+    boost::any vprop =
+        prop_vector<writable_vertex_scalar_properties>()
+        (cmaps, num_vertices(g.GetGraph()));
     if (vprop.empty())
         throw GraphException("all vertex properties must be of the same"
                              " floating point type");

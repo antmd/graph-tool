@@ -125,12 +125,14 @@ boost::any check_directed(const Graph &g, bool reverse, bool directed,
 template <class Graph, class EdgeFilter, class VertexFilter>
 boost::any
 check_filtered(const Graph &g, const EdgeFilter& edge_filter,
-               const bool& e_invert, bool e_active,
+               const bool& e_invert, bool e_active, size_t max_eindex,
                const VertexFilter& vertex_filter, const bool& v_invert,
                bool v_active, vector<boost::any>& graph_views, bool reverse,
                bool directed)
 {
 #ifndef NO_GRAPH_FILTERING
+    edge_filter.reserve(max_eindex);
+    vertex_filter.reserve(num_vertices(g));
     MaskFilter<EdgeFilter> e_filter(edge_filter, e_invert);
     MaskFilter<VertexFilter> v_filter(vertex_filter, v_invert);
 
@@ -184,7 +186,7 @@ boost::any GraphInterface::GetGraphView() const
 
     boost::any graph =
         check_filtered(_mg, _edge_filter_map, _edge_filter_invert,
-                       _edge_filter_active, _vertex_filter_map,
+                       _edge_filter_active, _max_edge_index, _vertex_filter_map,
                        _vertex_filter_invert, _vertex_filter_active,
                        const_cast<vector<boost::any>&>(_graph_views),
                        _reversed, _directed);
@@ -270,7 +272,8 @@ void GraphInterface::SetVertexFilterProperty(boost::any property, bool invert)
 
     try
     {
-        _vertex_filter_map = any_cast<vertex_filter_t>(property);
+        _vertex_filter_map =
+            any_cast<vertex_filter_t::vmap_t>(property).get_unchecked();
         _vertex_filter_invert = invert;
         _vertex_filter_active = true;
     }
@@ -288,7 +291,8 @@ void GraphInterface::SetEdgeFilterProperty(boost::any property, bool invert)
 
     try
     {
-        _edge_filter_map = any_cast<edge_filter_t>(property);
+        _edge_filter_map =
+            any_cast<edge_filter_t::vmap_t>(property).get_unchecked();
         _edge_filter_invert = invert;
         _edge_filter_active = true;
     }

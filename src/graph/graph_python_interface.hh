@@ -469,7 +469,8 @@ struct new_property_map
         size_t i = mpl::find<value_types,ValueType>::type::pos::value;
         if (type_name == type_names[i])
         {
-            typedef vector_property_map<ValueType, IndexMap> map_t;
+            typedef typename property_map_type::apply<ValueType, IndexMap>::type
+                map_t;
             map_t prop(index);
             new_prop = python::object(PythonPropertyMap<map_t>(prop));
             found = true;
