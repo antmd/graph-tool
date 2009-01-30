@@ -84,7 +84,7 @@ python::object wrap_vector_not_owned(vector<ValueType>& vec)
 {
     PyArrayObject* ndarray;
     int val_type = mpl::at<numpy_types,ValueType>::type::value;
-    int size = vec.size();
+    npy_intp size = vec.size();
     if (vec.empty())
         ndarray = (PyArrayObject*) PyArray_SimpleNew(1, &size, val_type);
     else
