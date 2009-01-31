@@ -91,14 +91,14 @@ AC_ARG_ENABLE([optimization], [AC_HELP_STRING([--disable-optimization],
         [CXXFLAGS="${CXXFLAGS} -O99"]
         )
 
-AC_MSG_CHECKING(whether to enable hidden visibility...)
+AC_MSG_CHECKING(whether to enable symbol visibility manipulation...)
 
 AC_ARG_ENABLE([visibility], [AC_HELP_STRING([--disable-visibility],
-        [disable hidden visibility [default=enabled] ])],
+        [disable symbol visibility manipulation [default=enabled] ])],
         [AC_MSG_RESULT(no)]
         ,
         [AC_MSG_RESULT(yes)]
-        [CXXFLAGS="${CXXFLAGS} -fvisibility=hidden -fvisibility-inlines-hidden"]
+        [CXXFLAGS="${CXXFLAGS} -fvisibility=default -fvisibility-inlines-hidden"]
         )
 
 

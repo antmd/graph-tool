@@ -106,7 +106,6 @@ using namespace boost;
 // appropriate graph view type and ValueType being 'double' and val = 42.0.
 
 // Whenever no implementation is called, the following exception is thrown
-#pragma GCC visibility push(default)
 class ActionNotFound: public GraphException
 {
 public:
@@ -119,7 +118,6 @@ private:
     const type_info& _action;
     vector<const type_info*> _args;
 };
-#pragma GCC visibility pop
 
 namespace detail
 {
@@ -496,7 +494,6 @@ BOOST_MPL_ASSERT_RELATION(n_views::value, == , mpl::int_<3>::value);
 
 // wrap action to be called, to deal with property maps, i.e., return version
 // with no bounds checking.
-
 template <class Action>
 struct action_wrap
 {

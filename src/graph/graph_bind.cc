@@ -363,3 +363,4 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
         .add_property("install_prefix", &LibInfo::GetInstallPrefix)
         .add_property("python_dir", &LibInfo::GetPythonDir);
 }
+

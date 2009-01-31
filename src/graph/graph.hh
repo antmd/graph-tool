@@ -51,9 +51,6 @@ template <class Action, class GraphViews,
 struct graph_action;
 }
 
-// default visibility is necessary for related typeinfo objects to work across
-// DSO boundaries
-#pragma GCC visibility push(default)
 class GraphInterface
 {
 public:
@@ -214,7 +211,6 @@ private:
     bool _edge_filter_invert;
     bool _edge_filter_active;
 };
-#pragma GCC visibility pop
 
 // Exceptions
 // ==========
@@ -222,7 +218,6 @@ private:
 // This is the main exception which will be thrown the outside world, when
 // things go wrong
 
-#pragma GCC visibility push(default)
 class GraphException : public std::exception
 {
     string _error;
@@ -233,7 +228,6 @@ public:
 protected:
     virtual void SetError(const string& error) {_error = error;}
 };
-#pragma GCC visibility pop
 
 } //namespace graph_tool
 

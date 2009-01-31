@@ -27,7 +27,6 @@ namespace boost
 {
 namespace mpl
 {
-
 // The following is a implementation of a nested for_each loop, which runs a
 // given Action functor for each combination of its arguments, given by the type
 // ranges, as such:
@@ -326,7 +325,6 @@ struct selected_types
     bool& _found;
     any _a1, _a2, _a3, _a4, _a5;
 };
-
 
 } // mpl namespace
 } // boost namespace
