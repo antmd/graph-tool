@@ -15,10 +15,7 @@ AM_CXXFLAGS =\
 AM_CFLAGS=$(AM_CXXFLAGS)
 
 libgraph_tool_coredir = $(pythondir)/graph_tool
-
 libgraph_tool_core_LTLIBRARIES = libgraph_tool_core.la
-
-libgraph_tool_core_la_includedir = $(pythondir)/graph_tool/include
 
 libgraph_tool_core_la_SOURCES = \
     graph_bind.cc \
@@ -35,6 +32,7 @@ libgraph_tool_core_la_SOURCES = \
     ../boost-workaround/boost/graph/filtered_graph.hpp\
     ../boost-workaround/boost/graph/graphml.hpp
 
+libgraph_tool_core_la_includedir = $(pythondir)/graph_tool/include
 libgraph_tool_core_la_include_HEADERS = \
     graph_adaptor.hh \
     graph_filtering.hh \
@@ -50,33 +48,7 @@ libgraph_tool_core_la_include_HEADERS = \
     numpy_bind.hh \
     ../../config.h
 
-# leave out precompiled headers for now, since it doesn't seem to help much
-# BUILT_SOURCES = \
-#     graph_filtering.hh.gch
+libgraph_tool_core_la_LIBADD = $(MOD_LIBADD)
+libgraph_tool_core_la_LDFLAGS = $(MOD_LDFLAGS)
 
-# ## Header precompilation
-# ## FIXME: need a better way to convince libtool to let us do this.
-# $(libgraph_tool_la_include_HEADERS):
-
-# $(BUILT_SOURCES):
-# 	$(CXXCOMPILE) $(CXXFLAGS) $(AM_CXXFLAGS) $(AM_CPPFLAGS) -fPIC -DPIC -x c++-header `basename $@ .gch`
-# mostlyclean-local:
-# 	-rm -f *.gch
-
-libgraph_tool_core_la_LIBADD = \
-    $(PYTHON_LDFLAGS) \
-    $(BOOST_LDFLAGS) \
-    $(OPENMP_LDFLAGS) \
-    -lboost_python \
-    -lboost_iostreams \
-    -lexpat
-
-# needed for typeinfo objects to work across DSO boundaries.
-# see http://gcc.gnu.org/faq.html#dso
-libgraph_tool_core_la_LDFLAGS = \
-    -module \
-    -avoid-version \
-    -export-dynamic \
-    -no-undefined \
-    -Wl,-E
 

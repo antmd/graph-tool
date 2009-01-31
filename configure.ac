@@ -35,6 +35,13 @@ AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
 AC_PROG_INSTALL
 
+# ugly, dirty, smelly hack to force libtool to link to libstc++ before anything
+# else, to avoid strange exception-related segfaults in
+# __cxa_allocate_exception() see:
+# http://www.nabble.com/preventing-boost::python::throw_error_already_set-td20958723.html
+libtool=`cat libtool | sed "s/-nostdlib/-nostdlib -lstdc++/"`
+echo "$libtool" > libtool
+
 dnl turn on warnings
 [CPPFLAGS="${CPPFLAGS} -Wall"]
 
@@ -144,26 +151,33 @@ AC_CHECK_LIB(m,main)
 dnl bzip2 compression library
 AC_CHECK_LIB(bz2,main)
 
-dnl boost
-AX_BOOST([1.33.1])
-[CPPFLAGS="${CPPFLAGS} ${BOOST_CPPFLAGS}"]
-
-dnl AX_BOOST_PYTHON
-
 dnl expat
 AC_CHECK_LIB(expat,main)
 
 dnl python
 [TEMP_CPPFLAGS="${CPPFLAGS}"]
 AM_PATH_PYTHON([2.5])
-AC_PYTHON_DEVEL(>= '2.5')
-[PYLIBDIR=`eval echo $pythondir`]
-[CPPFLAGS="${TEMP_CPPFLAGS} ${CPPFLAGS} ${PYTHON_CPPFLAGS}"]
+AC_PYTHON_DEVEL([2.5])
+[CPPFLAGS="${CPPFLAGS} ${PYTHON_CPPFLAGS}"]
+[LDFLAGS="${LDFLAGS} ${PYTHON_LDFLAGS}"]
+
+dnl boost
+AX_BOOST_BASE([1.33.1])
+AX_BOOST_PYTHON
+if test "$BOOST_PYTHON_LIB" = ""; then
+   AC_MSG_ERROR([No usable boost::python found])
+fi
+AX_BOOST_IOSTREAMS
+if test "$BOOST_IOSTREAMS_LIB" = ""; then
+   AC_MSG_ERROR([No usable boost::iostreams found])
+fi
+[CPPFLAGS="${CPPFLAGS} ${BOOST_CPPFLAGS}"]
 
 dnl Checks for header files.
 
 dnl numpy
-NUMPY_DIR="${PYLIBDIR}/numpy"
+AC_PYTHON_MODULE(numpy, fatal)
+NUMPY_DIR="${PYTHON_SITE_PKG}/numpy"
 AC_ARG_WITH([numpy], [AC_HELP_STRING([--with-numpy=DIR],
                      [directory where numpy is installed
                       [default=${PYLIBDIR}/numpy] ])],
@@ -175,14 +189,16 @@ AC_CHECK_HEADER([${NUMPY_DIR}/arrayobject.h],
                 [#include "Python.h"])
 
 dnl scipy
-[SCIPY_DIR="${PYLIBDIR}/scipy"]
+AC_PYTHON_MODULE(scipy, fatal)
+[SCIPY_DIR="${PYTHON_SITE_PKG}/scipy"]
 AC_ARG_WITH([scipy], [AC_HELP_STRING([--with-scipy=DIR],
                      [scipy install directory
                       [default=${PYLIBDIR}/scipy] ])],
             [SCIPY_DIR=$withval])
 AC_CHECK_HEADER([${SCIPY_DIR}/weave/scxx/object.h],
                 [AC_DEFINE([HAVE_SCIPY], [1], [using scipy's weave])]
-                [CPPFLAGS="${CPPFLAGS} -I${SCIPY_DIR}"])
+                [CPPFLAGS="${CPPFLAGS} -I${SCIPY_DIR}"],
+                [AC_MSG_ERROR([Scipy weave/scxx header not found])])
 
 dnl expat
 AC_CHECK_HEADER([expat.h],
@@ -260,8 +276,8 @@ AC_SUBST(MOD_CPPFLAGS)
 AC_SUBST(MOD_DIR)
 
 # default LIBADD flags for submodules
-[MOD_LIBADD="${PYTHON_LDFLAGS} ${BOOST_LDFLAGS} ${OPENMP_LDFLAGS}\
--lboost_python  -lboost_iostreams -lexpat"]
+[MOD_LIBADD="${PYTHON_LDFLAGS} ${BOOST_IOSTREAMS_LIB} -l${BOOST_PYTHON_LIB} \
+${OPENMP_LDFLAGS} -lexpat"]
 AC_SUBST(MOD_LIBADD)
 
 # needed for typeinfo objects to work across DSO boundaries.

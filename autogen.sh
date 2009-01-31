@@ -19,9 +19,9 @@ if test -z "$AUTOGEN_SUBDIR_MODE"; then
     fi
 fi
 
-aclocal || exit $?
+aclocal -I m4 || exit $?
 autoheader || exit $?
-libtoolize -i || exit $?
+libtoolize -f || exit $?
 automake --add-missing --copy || exit $?
 autoconf || exit $?
 
