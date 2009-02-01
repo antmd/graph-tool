@@ -40,6 +40,8 @@ GraphInterface::GraphInterface()
      _directed(true),
      _vertex_index(get(vertex_index,_mg)),
      _edge_index(get(edge_index_t(),_mg)),
+     _max_edge_index(0),
+     _nedges(0),
      _graph_index(0),
      _vertex_filter_map(_vertex_index),
      _vertex_filter_invert(false),

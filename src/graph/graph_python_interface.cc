@@ -160,17 +160,32 @@ void GraphInterface::RemoveVertex(const python::object& v)
 struct add_new_edge
 {
     template <class Graph, class EdgeIndexMap>
-    void operator()(Graph* gp, const GraphInterface& gi, const PythonVertex& s,
+    void operator()(Graph* gp, GraphInterface& gi, const PythonVertex& s,
                     const PythonVertex& t, EdgeIndexMap edge_index,
-                    size_t new_index, python::object& new_e) const
+                    python::object& new_e) const
     {
         Graph& g = *gp;
         typename graph_traits<Graph>::edge_descriptor e =
             add_edge(s.GetDescriptor(), t.GetDescriptor(), g).first;
         new_e = python::object(PythonEdge<Graph>(gi, e));
-        edge_index[e] = new_index;
+        gi.AddEdgeIndex(e);
     }
 };
+
+void GraphInterface::AddEdgeIndex(const edge_t& e)
+{
+    if (!_free_indexes.empty())
+    {
+        _edge_index[e] = _free_indexes.front();
+        _free_indexes.pop_front();
+    }
+    else
+    {
+        _edge_index[e] = _nedges;
+        _max_edge_index = _nedges;
+    }
+    _nedges++;
+}
 
 python::object GraphInterface::AddEdge(const python::object& s,
                                        const python::object& t)
@@ -179,23 +194,11 @@ python::object GraphInterface::AddEdge(const python::object& s,
     PythonVertex& tgt = python::extract<PythonVertex&>(t);
     src.CheckValid();
     tgt.CheckValid();
-    size_t new_index;
-    if (_free_indexes.empty())
-    {
-        new_index = num_edges(_mg);
-    }
-    else
-    {
-        new_index = _free_indexes.back();
-        _free_indexes.pop_back();
-    }
     python::object new_e;
     run_action<>()(*this, lambda::bind<void>(add_new_edge(), lambda::_1,
                                              lambda::var(*this), src, tgt,
-                                             _edge_index, new_index,
+                                             _edge_index,
                                              lambda::var(new_e)))();
-    _nedges++;
-    _max_edge_index = max(_max_edge_index, new_index);
     return new_e;
 }
 
@@ -225,12 +228,39 @@ void GraphInterface::RemoveEdge(const python::object& e)
                                       lambda::var(found)))();
     if (!found)
         throw GraphException("invalid edge descriptor");
-    if (_edge_index[de] != _nedges - 1)
-        _free_indexes.push_back(_edge_index[de]);
+    RemoveEdgeIndex(de);
+}
+
+void GraphInterface::RemoveEdgeIndex(const edge_t& e)
+{
+    size_t index = _edge_index[e];
+    if (index == _max_edge_index)
+    {
+        if (_max_edge_index - 1 == _free_indexes.back())
+        {
+            if (_max_edge_index > 0)
+                _max_edge_index--;
+            while (_max_edge_index == _free_indexes.back())
+            {
+                _free_indexes.pop_back();
+                if (_max_edge_index > 0)
+                    _max_edge_index--;
+            }
+        }
+        else
+        {
+            if (_max_edge_index > 0)
+                _max_edge_index--;
+        }
+    }
     else
-        _max_edge_index = (_nedges > 1) ? _nedges - 2 : 0;
-    remove_edge(de, _mg);
+    {
+        typeof(_free_indexes.begin()) pos =
+                lower_bound(_free_indexes.begin(), _free_indexes.end(), index);
+        _free_indexes.insert(pos, index);
+    }
     _nedges--;
+    remove_edge(e, _mg);
 }
 
 struct get_degree_map

@@ -131,15 +131,17 @@ check_filtered(const Graph &g, const EdgeFilter& edge_filter,
                bool directed)
 {
 #ifndef NO_GRAPH_FILTERING
-    edge_filter.reserve(max_eindex);
-    vertex_filter.reserve(num_vertices(g));
     MaskFilter<EdgeFilter> e_filter(edge_filter, e_invert);
     MaskFilter<VertexFilter> v_filter(vertex_filter, v_invert);
 
     if (e_active)
     {
+        if (max_eindex > 0)
+            edge_filter.reserve(max_eindex+1);
         if (v_active)
         {
+            if (num_vertices(g) > 0)
+                vertex_filter.reserve(num_vertices(g));
             typedef filtered_graph<Graph, MaskFilter<EdgeFilter>,
                                    MaskFilter<VertexFilter> > fg_t;
             fg_t init(g, e_filter, v_filter);
@@ -162,6 +164,8 @@ check_filtered(const Graph &g, const EdgeFilter& edge_filter,
     {
         if (v_active)
         {
+            if (num_vertices(g) > 0)
+                vertex_filter.reserve(num_vertices(g));
             typedef filtered_graph<Graph, keep_all,
                                    MaskFilter<VertexFilter> > fg_t;
             fg_t init(g, keep_all(), v_filter);
@@ -211,6 +215,9 @@ void GraphInterface::ReIndexEdges()
     for (tie(v, v_end) = vertices(_mg); v != v_end; ++v)
         for (tie(e, e_end) = out_edges(*v, _mg); e != e_end; ++e)
             _edge_index[*e] = index++;
+    _max_edge_index =  (index > 0) ? index - 1 : 0;
+    _nedges = index;
+    _free_indexes.clear();
 }
 
 // this will definitively remove all the edges from the graph, which are being
@@ -231,10 +238,9 @@ void GraphInterface::PurgeEdges()
                 deleted_edges.push_back(*e);
         for (typeof(deleted_edges.begin()) iter = deleted_edges.begin();
              iter != deleted_edges.end(); ++iter)
-            remove_edge(*iter, _mg);
+            RemoveEdgeIndex(*iter);
         deleted_edges.clear();
     }
-    ReIndexEdges();
 }
 
 

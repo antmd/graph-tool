@@ -18,6 +18,8 @@
 #ifndef GRAPH_HH
 #define GRAPH_HH
 
+#include <deque>
+
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
 
@@ -153,6 +155,9 @@ public:
     edge_index_map_t   GetEdgeIndex()   {return _edge_index;}
     graph_index_map_t  GetGraphIndex()  {return graph_index_map_t(0);}
 
+    void           AddEdgeIndex(const edge_t& e);
+    void           RemoveEdgeIndex(const edge_t& e);
+
 private:
     // Gets the encapsulated graph view. See graph_filtering.cc for details
     boost::any GetGraphView() const;
@@ -191,9 +196,10 @@ private:
 
     // edge index map
     edge_index_map_t _edge_index;
-    vector<size_t> _free_indexes; // indexes of deleted edges to be used up for
-                                  // new edges to avoid needless fragmentation
-    size_t _max_edge_index; // needed for property map bounds
+    deque<size_t> _free_indexes; // indexes of deleted edges to be used up for
+                                 // new edges to avoid very large indexes, and
+                                 // property map memory usage
+    size_t _max_edge_index;
 
     // graph index map
     graph_index_map_t _graph_index;
