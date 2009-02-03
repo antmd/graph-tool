@@ -158,19 +158,16 @@ public:
     void           AddEdgeIndex(const edge_t& e);
     void           RemoveEdgeIndex(const edge_t& e);
 
-private:
     // Gets the encapsulated graph view. See graph_filtering.cc for details
     boost::any GetGraphView() const;
+
+private:
 
     // Generic graph_action functor. See graph_filtering.hh for details.
     template <class Action,
               class TR1=boost::mpl::vector<>, class TR2=boost::mpl::vector<>,
               class TR3=boost::mpl::vector<>, class TR4=boost::mpl::vector<> >
     friend struct detail::graph_action;
-
-    // Arbitrary code execution
-    template <class Action>
-    friend void RunAction(GraphInterface& g, const Action& a);
 
     // python interface
     friend class PythonVertex;

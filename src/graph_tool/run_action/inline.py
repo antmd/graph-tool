@@ -15,9 +15,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys, string, hashlib, os.path
+import sys, string, hashlib, os.path, re
 from .. import core
 from .. import libgraph_tool_core
+import numpy
 
 try:
     import scipy.weave
@@ -35,31 +36,39 @@ inc_prefix = prefix + "/include"
 cxxflags = libgraph_tool_core.mod_info().cxxflags + " -I%s" % inc_prefix
 
 # this is the code template which defines the action function object
-support_template = open(prefix + "/run_action/run_action_template.hh").read()
+support_template = open(prefix + "/run_action/run_action_support.hh").read()
+code_template = open(prefix + "/run_action/run_action_template.hh").read()
 
 # property map types
-props = ""
+props = """
+typedef GraphInterface::vertex_index_map_t vertex_index_t;
+typedef GraphInterface::edge_index_map_t edge_index_t;
+typedef prop_bind_t<GraphInterface::vertex_index_map_t> vertex_prop_t;
+typedef prop_bind_t<GraphInterface::edge_index_map_t> edge_prop_t;
+typedef prop_bind_t<ConstantPropertyMap<size_t,graph_property_tag> > graph_prop_t;
+"""
+
+def clean_prop_type(t):
+    return t.replace(" ","_").replace("::","_")\
+           .replace("<","_").replace(">","_").\
+           replace("__","_")
+
 for d in ["vertex", "edge", "graph"]:
     for t in core.value_types():
-        props += (("typedef typename %s_prop_t::template as<%s >::type" + \
-                   " %sprop_%s_t;\n") % \
-                  (d,t,d[0],t.replace(" ","_").replace("::","_")\
-                   .replace("<","_").replace(">","_"))).\
-                   replace("__","_")
+        props += "typedef %s_prop_t::as<%s >::type %sprop_%s_t;\n" % \
+                 (d,t,d[0],clean_prop_type(t))
 
-def inline(g, code, arg_names=[], local_dict=None,
+def get_graph_type(g):
+    return libgraph_tool_core.get_graph_type(g._Graph__graph)
+
+def inline(code, arg_names=[], local_dict=None,
            global_dict=None, force=0, compiler="gcc", verbose=0,
            auto_downcast=1, support_code="", libraries=[],
            library_dirs=[], extra_compile_args=[],
            runtime_library_dirs=[], extra_objects=[],
-           extra_link_args=[], mask_ret=[]):
+           extra_link_args=[], mask_ret=[], debug=False):
     """Compile (if necessary) and run the C++ action specified by 'code',
     using weave."""
-
-    # we need to have different template names for each actions, to avoid
-    # strange RTTI issues. We'll therefore append an md5 hash of the code (plus
-    # grah_tool version string) to each action's name
-    code_hash = hashlib.md5(code + core.__version__).hexdigest()
 
     # each term on the expansion will properly unwrap a tuple pointer value
     # to a reference with the appropriate name and type
@@ -68,36 +77,6 @@ def inline(g, code, arg_names=[], local_dict=None,
     arg_expansion = "\n".join([ exp_term % (i,arg_names[i],i) for i in \
                                 xrange(0, len(arg_names))])
 
-    # handle returned values
-    return_vals = ""
-    for arg in arg_names:
-        if arg not in mask_ret:
-            return_vals += 'return_vals["%s"] = %s;\n' % (arg, arg)
-
-    support_template = string.Template(globals()["support_template"])
-
-    support_code += support_template.substitute(code_hash=code_hash,
-                                                property_map_types=props,
-                                                arg_expansion=arg_expansion,
-                                                code=code,
-                                                return_vals = return_vals)
-
-    # insert a hash value of the support_code into the code below, to force
-    # recompilation when support_code (and module version) changes
-    support_hash = hashlib.md5(support_code + core.__version__).hexdigest()
-
-    # the actual inline code will just call g.RunAction() on the underlying
-    # GraphInterface instance. The inline arguments will be packed into a
-    # tuple of pointers.
-    code = string.Template(r"""
-    python::object pg(python::handle<>
-                        (python::borrowed((PyObject*)(self___graph))));
-    GraphInterface& g = python::extract<GraphInterface&>(pg);
-    RunAction(g, make_action(tr1::make_tuple(${args}), return_val));
-    // support code hash: ${support_hash}
-    """).substitute(args=", ".join(["&%s" %a for a in arg_names]),
-                    code_hash=code_hash, support_hash=support_hash)
-
     # we need to get the locals and globals of the _calling_ function. Thus, we
     # need to go deeper into the call stack
     call_frame = sys._getframe(1)
@@ -105,7 +84,108 @@ def inline(g, code, arg_names=[], local_dict=None,
         local_dict = call_frame.f_locals
     if global_dict is None:
         global_dict = call_frame.f_globals
-    local_dict["self___graph"] = g._Graph__graph # the graph interface
+
+    # convert variables to boost::python::object, except some known convertible
+    # types
+    arg_def = props
+    arg_conv = ""
+    arg_alias = []
+    alias_dict = {}
+    for arg in arg_names:
+        if arg not in local_dict.keys() and arg not in global_dict.keys():
+            raise ValueError("undefined variable: "+ arg)
+        if arg in local_dict.keys():
+            arg_val = local_dict[arg]
+        else:
+            arg_val = global_dict[arg]
+        if issubclass(type(arg_val), core.Graph):
+            alias = "__gt__" + arg
+            gi = "__gt__" + arg + "__gi"
+            graph_type = get_graph_type(arg_val)
+            gi_val = arg_val._Graph__graph
+            arg_def += "typedef GraphWrap<%s > %s_graph_t;\n" % (graph_type, arg);
+            arg_def += "GraphInterface& %s = python::extract<GraphInterface&>(%s);\n" %\
+                        (gi, alias)
+            arg_def += "%s_graph_t %s = graph_wrap(*boost::any_cast<%s*>(%s.GetGraphView()), %s);\n" % \
+                        (arg, arg, graph_type, gi, gi)
+            arg_alias.append(alias)
+            alias_dict[alias] = gi_val
+        elif type(arg_val) == core.PropertyMap:
+            alias = "__gt__" + arg
+            if arg_val == arg_val.get_graph().vertex_index:
+                prop_name = "GraphInterface::vertex_index_map_t"
+            elif arg_val == arg_val.get_graph().edge_index:
+                prop_name = "GraphInterface::edge_index_map_t"
+            else:
+                prop_name = "%sprop_%s_t" % \
+                            (arg_val.key_type(),
+                             clean_prop_type(arg_val.value_type()))
+            arg_def  += "%s %s;\n" % (prop_name, arg)
+            arg_conv += "%s = get_prop<%s>(%s);\n" % \
+                        (arg, prop_name, alias)
+            arg_alias.append(alias)
+            alias_dict[alias] = arg_val
+        elif type(arg_val) not in [int, bool, float, string, numpy.ndarray]:
+            alias = "__gt__" + arg
+            obj_type = "python::object"
+            if type(arg_val) == list:
+                obj_type = "python::list"
+            elif type(arg_val) == dict:
+                obj_type = "python::dict"
+            elif type(arg_val) == tuple:
+                obj_type = "python::tuple"
+            arg_def += "%s %s;\n" % (obj_type, arg)
+            arg_conv += "%s = %s(python::object(python::handle<>" % (arg, obj_type) + \
+                        "(python::borrowed((PyObject*)(%s)))));\n" % alias
+            arg_alias.append(alias)
+            alias_dict[alias] = arg_val
+        elif type(arg_val) == bool:
+            #weave is dumb with bools
+            alias = "__gt__" + arg
+            arg_def += "bool %s;\n" % arg;
+            arg_conv += "%s = python::extract<bool>(python::object(python::handle<>" % arg + \
+                        "(python::borrowed((PyObject*)(%s)))));\n" % alias
+            arg_alias.append(alias)
+            alias_dict[alias] = arg_val
+        else:
+            arg_alias.append(arg)
+            if arg in local_dict.keys():
+                alias_dict[arg] = local_dict[arg]
+            else:
+                alias_dict[arg] = global_dict[arg]
+
+    # handle returned values
+    return_vals = ""
+    for arg in arg_names:
+        if arg in local_dict.keys():
+            arg_val = local_dict[arg]
+        else:
+            arg_val = global_dict[arg]
+        if arg not in mask_ret and \
+               type(arg_val) not in [numpy.ndarray, core.PropertyMap] and \
+               not issubclass(type(arg_val), core.Graph):
+            return_vals += 'return_vals["%s"] = %s;\n' % (arg, arg)
+
+    support_code += globals()["support_template"]
+
+    # set debug flag and disable optimization in debug mode
+    compile_args = [cxxflags] + extra_compile_args
+    if debug:
+        compile_args = [re.sub("-O[^ ]*", "", x) for x in compile_args] + ["-g"]
+
+    # insert a hash value into the code below, to force recompilation when
+    # support_code (and module version) changes
+    support_hash = hashlib.md5(support_code + code + \
+                               " ".join(libraries + library_dirs +
+                                        [cxxflags] + \
+                                        extra_compile_args +\
+                                        extra_objects + \
+                                        extra_link_args) + \
+                               core.__version__).hexdigest()
+    code += "\n// support code hash: " + support_hash
+    inline_code = string.Template(globals()["code_template"]).\
+                  substitute(var_defs=arg_def, var_extract=arg_conv,
+                             code=code, return_vals=return_vals)
 
     # RTLD_GLOBAL needs to be set in dlopen() if we want typeinfo and
     # friends to work properly across DSO boundaries. See
@@ -115,18 +195,17 @@ def inline(g, code, arg_names=[], local_dict=None,
 
     # call weave and pass all the updated kw arguments
     ret_vals = \
-             scipy.weave.inline(code, ["self___graph"] + arg_names, force=force,
-                                local_dict=local_dict, global_dict=global_dict,
+             scipy.weave.inline(inline_code, arg_alias, force=force,
+                                local_dict=alias_dict, global_dict=global_dict,
                                 compiler=compiler, verbose=verbose,
                                 auto_downcast=auto_downcast,
                                 support_code=support_code,
                                 libraries=libraries,
                                 library_dirs=sys.path + library_dirs,
-                                extra_compile_args=[cxxflags] + \
-                                        extra_compile_args,
+                                extra_compile_args=compile_args,
                                 runtime_library_dirs=runtime_library_dirs,
                                 extra_objects=extra_objects,
-                                extra_link_args=extra_link_args)
+                                extra_link_args=["-Wl,-E "] + extra_link_args)
     # check if exception was thrown
     if ret_vals["__exception_thrown"]:
         libgraph_tool_core.raise_error(ret_vals["__exception_error"])
@@ -135,4 +214,11 @@ def inline(g, code, arg_names=[], local_dict=None,
         del ret_vals["__exception_error"]
     sys.setdlopenflags(orig_dlopen_flags) # reset dlopen to normal case to
                                           # avoid unnecessary symbol collision
+    # set return vals
+    for arg in arg_names:
+        if ret_vals.has_key(arg):
+            if local_dict.has_key(arg):
+                local_dict[arg] = ret_vals[arg]
+            else:
+                global_dict[arg] = ret_vals[arg]
     return ret_vals

@@ -13,7 +13,9 @@ graph_tooldir = $(MOD_DIR)
 graph_tool_run_action_PYTHON = \
     run_action/__init__.py \
     run_action/inline.py \
+    run_action/run_action_support.hh \
     run_action/run_action_template.hh
+
 graph_tool_run_actiondir = $(MOD_DIR)/run_action
 
 graph_tool_test_PYTHON = \

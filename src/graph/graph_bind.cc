@@ -270,6 +270,24 @@ python::list get_property_types()
     return plist;
 }
 
+struct graph_type_name
+{
+    template <class Graph>
+    void operator()(const Graph* gp, string& name) const
+    {
+        using python::detail::gcc_demangle;
+        name = string(gcc_demangle(typeid(Graph).name()));
+    }
+};
+
+string get_graph_type(GraphInterface& g)
+{
+    string name;
+    run_action<>()(g, lambda::bind<void>(graph_type_name(), lambda::_1,
+                                         lambda::var(name)))();
+    return name;
+}
+
 BOOST_PYTHON_MODULE(libgraph_tool_core)
 {
     // numpy
@@ -362,5 +380,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
         .add_property("cxxflags", &LibInfo::GetCXXFLAGS)
         .add_property("install_prefix", &LibInfo::GetInstallPrefix)
         .add_property("python_dir", &LibInfo::GetPythonDir);
+
+    def("get_graph_type", &get_graph_type);
 }
 

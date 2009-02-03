@@ -35,6 +35,7 @@ libgraph_tool_core_la_SOURCES = \
 libgraph_tool_core_la_includedir = $(pythondir)/graph_tool/include
 libgraph_tool_core_la_include_HEADERS = \
     graph_adaptor.hh \
+    graph_wrap.hh \
     graph_filtering.hh \
     graph.hh \
     graph_properties.hh \
