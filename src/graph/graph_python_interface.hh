@@ -432,12 +432,15 @@ public:
     python::object GetArray(size_t size)
     {
         typedef typename mpl::or_<
-           is_same<PropertyMap,
-                   GraphInterface::vertex_index_map_t>,
-           typename mpl::not_<typename mpl::has_key<numpy_types,
-                                                    value_type>::type>::type>
-            ::type is_vector_map;
-        return get_array(_pmap, size, is_vector_map());
+              typename mpl::or_<
+                   is_same<PropertyMap,
+                           GraphInterface::vertex_index_map_t>,
+                   is_same<PropertyMap,
+                           GraphInterface::edge_index_map_t> >::type,
+              typename mpl::not_<
+                  typename mpl::has_key<numpy_types, value_type>::type >
+            ::type>::type isnt_vector_map;
+        return get_array(_pmap, size, isnt_vector_map());
     }
 
     python::object get_array(PropertyMap pmap, size_t size, mpl::bool_<false>)

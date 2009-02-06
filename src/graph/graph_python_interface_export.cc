@@ -131,7 +131,8 @@ struct export_edge_property_map
         pclass.def("__hash__", &pmap_t::GetHash)
             .def("value_type", &pmap_t::GetType)
             .def("get_map", &pmap_t::GetMap)
-            .def("get_dynamic_map", &pmap_t::GetDynamicMap);
+            .def("get_dynamic_map", &pmap_t::GetDynamicMap)
+            .def("get_array", &pmap_t::GetArray);
 
 
         typedef mpl::transform<graph_tool::detail::all_graph_views,
@@ -173,7 +174,8 @@ struct export_graph_property_map
                  return_policy())
             .def("__setitem__", &pmap_t::template SetValue<GraphInterface>)
             .def("get_map", &pmap_t::GetMap)
-            .def("get_dynamic_map", &pmap_t::GetDynamicMap);
+            .def("get_dynamic_map", &pmap_t::GetDynamicMap)
+            .def("get_array", &pmap_t::GetArray);
     }
 
     string _name;

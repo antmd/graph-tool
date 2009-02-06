@@ -50,8 +50,7 @@ typedef mpl::map<
     mpl::pair<int64_t, mpl::int_<NPY_INT64> >,
     mpl::pair<uint64_t, mpl::int_<NPY_UINT64> >,
     mpl::pair<double,  mpl::int_<NPY_DOUBLE> >,
-    mpl::pair<long double, mpl::int_<NPY_LONGDOUBLE> >,
-    mpl::pair<string, mpl::int_<NPY_STRING> > // not really used
+    mpl::pair<long double, mpl::int_<NPY_LONGDOUBLE> >
     > numpy_types;
 
 template <class ValueType>
