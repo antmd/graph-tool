@@ -20,15 +20,15 @@ from .. dl_import import dl_import
 dl_import("import libgraph_tool_generation")
 
 from .. core import Graph
-import sys, random
+import sys, numpy
 
 __all__ = ["random_graph"]
 
 def random_graph(N, deg_sampler, deg_corr=None, directed=True,
                  parallel=False, self_loops=False,
                  seed=0, verbose=False):
-    if seed != 0:
-        seed = random.randint(0, sys.maxint)
+    if seed == 0:
+        seed = numpy.random.randint(0, sys.maxint)
     g = Graph()
     if deg_corr == None:
         uncorrelated = True
