@@ -32,7 +32,7 @@ using namespace boost::lambda;
 void random_rewire(GraphInterface& gi, string strat, bool self_loops,
                    bool parallel_edges, size_t seed)
 {
-    rng_t rng((uint32_t) seed);
+    rng_t rng(static_cast<rng_t::result_type>(seed));
 
     GraphInterface::edge_index_map_t edge_index =
         any_cast<GraphInterface::edge_index_map_t>(gi.GetEdgeIndex());
