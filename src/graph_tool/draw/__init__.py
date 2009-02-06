@@ -63,7 +63,11 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
     gv.setv(gvg,"size", "%f,%f" % (size[0]/2.54,size[1]/2.54)) # centimeters
     if maxiter != None:
         gv.setv(gvg,"maxiter", str(maxiter))
-    gv.setv(gvg,"start", str(seed if seed > 0 else time.time()))
+    if seed != 0:
+        if type(seed) == int:
+            gv.setv(gvg, "start", "%d" % seed)
+        else:
+            gv.setv(gvg, "start", seed)
 
     # apply all user supplied properties
     for k,val in gprops.iteritems():
