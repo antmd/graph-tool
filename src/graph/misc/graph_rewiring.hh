@@ -25,6 +25,7 @@
 
 #include "graph.hh"
 #include "graph_filtering.hh"
+#include "graph_util.hh"
 
 namespace graph_tool
 {
@@ -39,9 +40,7 @@ struct source_in
     typename graph_traits<Graph>::vertex_descriptor
     operator()(typename graph_traits<Graph>::edge_descriptor e, const Graph& g)
     {
-        return get_source(e, g, typename is_convertible
-                          <typename graph_traits<Graph>::directed_category,
-                           directed_tag>::type());
+        return get_source(e, g, typename is_directed::apply<Graph>::type());
     }
 
     template <class Graph>
@@ -69,9 +68,7 @@ struct target_in
     typename graph_traits<Graph>::vertex_descriptor
     operator()(typename graph_traits<Graph>::edge_descriptor e, const Graph& g)
     {
-        return get_target(e, g, typename is_convertible
-                          <typename graph_traits<Graph>::directed_category,
-                           directed_tag>::type());
+        return get_target(e, g, typename is_directed::apply<Graph>::type());
     }
 
     template <class Graph>
@@ -139,16 +136,16 @@ struct swap_edge_triad
 
         if (edge_is_new[se] && (ns == s) && (nt == se_t))
             return true; // e is parallel to se after swap
-        if (edge_is_new[te] && (te_s == ns) && (nt == t) )
+        if (edge_is_new[te] && (te_s == ns) && (nt == t))
             return true; // e is parallel to te after swap
         if (edge_is_new[te] && edge_is_new[se] && (te != se) &&
              (s == te_s) && (t == se_t))
             return true; // se is parallel to te after swap
-        if (is_adjacent_in_new(ns,  nt, se, te, edge_is_new, g))
+        if (is_adjacent_in_new(ns,  nt, edge_is_new, g))
             return true; // e would clash with an existing (new) edge
-        if (is_adjacent_in_new(te_s, t, se, te, edge_is_new, g))
+        if (is_adjacent_in_new(te_s, t, edge_is_new, g))
             return true; // te would clash with an existing (new) edge
-        if (is_adjacent_in_new(s, se_t, se, te, edge_is_new, g))
+        if (is_adjacent_in_new(s, se_t, edge_is_new, g))
             return true; // se would clash with an existing (new) edge
         return false; // the coast is clear - hooray!
     }
@@ -159,15 +156,12 @@ struct swap_edge_triad
     static bool is_adjacent_in_new
         (typename graph_traits<Graph>::vertex_descriptor u,
          typename graph_traits<Graph>::vertex_descriptor v,
-         typename graph_traits<Graph>::edge_descriptor e1,
-         typename graph_traits<Graph>::edge_descriptor e2,
          EdgeIsNew edge_is_new, const Graph& g)
     {
         typename graph_traits<Graph>::out_edge_iterator e, e_end;
         for (tie(e, e_end) = out_edges(u, g); e != e_end; ++e)
         {
-            if (target(*e,g) == v && edge_is_new[*e] &&
-                (*e != e1) && (*e != e2))
+            if (target(*e,g) == v && edge_is_new[*e])
                 return true;
         }
         return false;
@@ -292,24 +286,27 @@ struct graph_rewire
         RewireStrategy<Graph, EdgeIndexMap> rewire(g, edge_index, rng);
 
         vector<edge_t> edges(num_edges(g));
-        int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
-        for (i = 0; i < N; ++i)
+        vector<bool> is_edge(num_edges(g), false);
+        typename graph_traits<Graph>::edge_iterator e, e_end;
+        for (tie(e, e_end) = boost::edges(g); e != e_end; ++e)
         {
-            vertex_t v = vertex(i, g);
-            if (v == graph_traits<Graph>::null_vertex())
-                continue;
-            typename graph_traits<Graph>::out_edge_iterator e, e_end;
-            for (tie(e, e_end) = out_edges(v, g); e != e_end; ++e)
-                edges[edge_index[*e]] = *e;
+            if (edge_index[*e] >= edges.size())
+            {
+                edges.resize(edge_index[*e] + 1);
+                is_edge.resize(edge_index[*e] + 1, false);
+            }
+            edges[edge_index[*e]] = *e;
+            is_edge[edge_index[*e]] = true;
         }
 
         // for each edge simultaneously rewire its source and target
-        for (i = 0; i < int(edges.size()); ++i)
+        for (size_t i = 0; i < int(edges.size()); ++i)
         {
+            if (!is_edge[i])
+                continue;
             typename graph_traits<Graph>::edge_descriptor e = edges[i];
             typename graph_traits<Graph>::edge_descriptor se, te;
-            tie(se, te) = rewire(e, edges, self_loops, parallel_edges);
+            tie(se, te) = rewire(e, edges, is_edge, self_loops, parallel_edges);
             swap_edge_triad()(e, se, te, edges, edge_index, g);
         }
     }
@@ -322,7 +319,7 @@ class random_permutation_iterator
 {
 public:
     random_permutation_iterator(RandomAccessIterator first,
-                                RandomAccessIterator last, RNG& rng )
+                                RandomAccessIterator last, RNG& rng)
         : _i(first), _last(last), _rng(rng)
     {
         std::iter_swap(_i, _i + _rng(_last - _i));
@@ -377,6 +374,7 @@ public:
 
     template<class EdgesType>
     pair<edge_t, edge_t> operator()(const edge_t& e, const EdgesType& edges,
+                                    vector<bool>& is_edge,
                                     bool self_loops, bool parallel_edges)
     {
         // where should we sample the edges from
@@ -395,6 +393,8 @@ public:
                              _random);
         for (; esi != edges_source->end() && !found; ++esi)
         {
+            if (!is_edge[*esi])
+                continue;
             es = edges[*esi];
             if(!self_loops) // reject self-loops if not allowed
             {
@@ -406,6 +406,8 @@ public:
                                  _random);
             for (; eti != edges_target->end() && !found; ++eti)
             {
+                if (!is_edge[*eti])
+                    continue;
                 et = edges[*eti];
                 if (!self_loops) // reject self-loops if not allowed
                 {
@@ -425,7 +427,7 @@ public:
         if (!found)
             throw GraphException("Couldn't find random pair of edges to swap"
                                  "... This is a bug.");
-        _edge_is_new[e]=true;
+        _edge_is_new[e] = true;
         return make_pair(es, et);
     }
 
