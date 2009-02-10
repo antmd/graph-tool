@@ -236,19 +236,13 @@ void GraphInterface::RemoveEdgeIndex(const edge_t& e)
     size_t index = _edge_index[e];
     if (index == _max_edge_index)
     {
-        if (_max_edge_index - 1 == _free_indexes.back())
+        if (_max_edge_index > 0)
+            _max_edge_index--;
+
+        while (!_free_indexes.empty() &&
+               _max_edge_index == _free_indexes.back())
         {
-            if (_max_edge_index > 0)
-                _max_edge_index--;
-            while (_max_edge_index == _free_indexes.back())
-            {
-                _free_indexes.pop_back();
-                if (_max_edge_index > 0)
-                    _max_edge_index--;
-            }
-        }
-        else
-        {
+            _free_indexes.pop_back();
             if (_max_edge_index > 0)
                 _max_edge_index--;
         }

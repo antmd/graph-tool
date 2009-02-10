@@ -195,7 +195,7 @@ template <class Graph>
 inline void remove_edge(typename graph_traits<GraphWrap<Graph> >::edge_descriptor e,
                         GraphWrap<Graph>& g)
 {
-    g._gi.RemoveEdge(e);
+    g._gi.RemoveEdgeIndex(e);
 }
 
 template <class Graph>
