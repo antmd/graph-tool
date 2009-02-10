@@ -473,7 +473,7 @@ struct always_reversed:
                                mpl::bool_<false>,mpl::bool_<true> >::type {};
 
 struct never_reversed:
-    get_all_graph_views::apply<scalar_pairs,mpl::bool_<true>,
+    get_all_graph_views::apply<scalar_pairs,mpl::bool_<false>,
                                mpl::bool_<false>,mpl::bool_<false>,
                                mpl::bool_<true> >::type {};
 struct never_filtered:
