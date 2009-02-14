@@ -293,6 +293,7 @@ src/graph/Makefile
 src/graph/correlations/Makefile
 src/graph/generation/Makefile
 src/graph/stats/Makefile
+src/graph/centrality/Makefile
 src/graph/clustering/Makefile
 src/graph/community/Makefile
 src/graph/util/Makefile

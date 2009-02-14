@@ -40,6 +40,10 @@ graph_tool_clustering_PYTHON = \
     clustering/__init__.py
 graph_tool_clusteringdir = $(MOD_DIR)/clustering
 
+graph_tool_centrality_PYTHON = \
+    centrality/__init__.py
+graph_tool_centralitydir = $(MOD_DIR)/centrality
+
 graph_tool_community_PYTHON = \
     community/__init__.py
 graph_tool_communitydir = $(MOD_DIR)/community

@@ -29,6 +29,8 @@ from graph_tool import *
 import graph_tool
 from graph_tool.correlations import *
 import graph_tool.correlations
+from graph_tool.centrality import *
+import graph_tool.centrality
 from graph_tool.draw import *
 import graph_tool.draw
 from graph_tool.stats import *
