@@ -202,14 +202,14 @@ private:
     graph_index_map_t _graph_index;
 
     // vertex filter
-    typedef unchecked_fast_vector_property_map<uint8_t,vertex_index_map_t>
+    typedef unchecked_vector_property_map<uint8_t,vertex_index_map_t>
         vertex_filter_t;
     vertex_filter_t _vertex_filter_map;
     bool _vertex_filter_invert;
     bool _vertex_filter_active;
 
     // edge filter
-    typedef unchecked_fast_vector_property_map<uint8_t,edge_index_map_t> edge_filter_t;
+    typedef unchecked_vector_property_map<uint8_t,edge_index_map_t> edge_filter_t;
     edge_filter_t _edge_filter_map;
     bool _edge_filter_invert;
     bool _edge_filter_active;

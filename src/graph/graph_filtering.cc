@@ -279,7 +279,7 @@ void GraphInterface::SetVertexFilterProperty(boost::any property, bool invert)
     try
     {
         _vertex_filter_map =
-            any_cast<vertex_filter_t::vmap_t>(property).get_unchecked();
+            any_cast<vertex_filter_t::checked_t>(property).get_unchecked();
         _vertex_filter_invert = invert;
         _vertex_filter_active = true;
     }
@@ -298,7 +298,7 @@ void GraphInterface::SetEdgeFilterProperty(boost::any property, bool invert)
     try
     {
         _edge_filter_map =
-            any_cast<edge_filter_t::vmap_t>(property).get_unchecked();
+            any_cast<edge_filter_t::checked_t>(property).get_unchecked();
         _edge_filter_invert = invert;
         _edge_filter_active = true;
     }

@@ -99,7 +99,7 @@ struct property_map_type
     template <class ValueType, class IndexMap>
     struct apply
     {
-        typedef fast_vector_property_map<ValueType,IndexMap> type;
+        typedef checked_vector_property_map<ValueType,IndexMap> type;
     };
 };
 

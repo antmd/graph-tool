@@ -501,18 +501,18 @@ struct action_wrap
         : _a(a), _max_v(max_v), _max_e(max_e) {}
 
     template <class Type>
-    typename fast_vector_property_map
+    typename checked_vector_property_map
         <Type,GraphInterface::vertex_index_map_t>::unchecked_t
-    uncheck(fast_vector_property_map
+    uncheck(checked_vector_property_map
             <Type,GraphInterface::vertex_index_map_t> a) const
     {
         return a.get_unchecked(_max_v);
     }
 
     template <class Type>
-    typename fast_vector_property_map
+    typename checked_vector_property_map
         <Type,GraphInterface::edge_index_map_t>::unchecked_t
-    uncheck(fast_vector_property_map
+    uncheck(checked_vector_property_map
             <Type,GraphInterface::edge_index_map_t> a) const
     {
         return a.get_unchecked(_max_e);

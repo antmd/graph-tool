@@ -39,14 +39,14 @@
 namespace boost {
 
 template<typename T, typename IndexMap>
-class unchecked_fast_vector_property_map;
+class unchecked_vector_property_map;
 
 template<typename T, typename IndexMap = identity_property_map>
-class fast_vector_property_map
+class checked_vector_property_map
     : public boost::put_get_helper<
               typename std::iterator_traits<
                   typename std::vector<T>::iterator >::reference,
-              fast_vector_property_map<T, IndexMap> >
+              checked_vector_property_map<T, IndexMap> >
 {
 public:
     typedef typename property_traits<IndexMap>::key_type  key_type;
@@ -56,20 +56,21 @@ public:
     typedef boost::lvalue_property_map_tag category;
 
     template<typename Type, typename Index>
-    friend class unchecked_fast_vector_property_map;
+    friend class unchecked_vector_property_map;
 
-    typedef unchecked_fast_vector_property_map<T, IndexMap> unchecked_t;
+    typedef unchecked_vector_property_map<T, IndexMap> unchecked_t;
     typedef IndexMap index_map_t;
-    typedef fast_vector_property_map<T,IndexMap> self_t;
+    typedef checked_vector_property_map<T,IndexMap> self_t;
 
-    fast_vector_property_map(const IndexMap& index = IndexMap())
-        : store(new std::vector<T>()), index(index)
-    {}
+    checked_vector_property_map(const IndexMap& index = IndexMap())
+        : store(new std::vector<T>()), index(index) {}
 
-    fast_vector_property_map(unsigned initial_size,
-                             const IndexMap& index = IndexMap())
-        : store(new std::vector<T>(initial_size)), index(index)
-    {}
+    checked_vector_property_map(unsigned initial_size,
+                                const IndexMap& index = IndexMap())
+        : store(new std::vector<T>(initial_size)), index(index) {}
+
+    checked_vector_property_map(const unchecked_t& map)
+        : checked_vector_property_map(map.get_checked()) {}
 
     typename std::vector<T>::iterator storage_begin()
     {
@@ -93,6 +94,7 @@ public:
 
     void reserve(size_t size) const
     {
+        #pragma omp critical
         if (store->size() < size)
             store->resize(size);
     }
@@ -129,11 +131,11 @@ protected:
 };
 
 template<typename T, typename IndexMap = identity_property_map>
-class unchecked_fast_vector_property_map
+class unchecked_vector_property_map
     : public boost::put_get_helper<
                 typename std::iterator_traits<
                     typename std::vector<T>::iterator >::reference,
-                unchecked_fast_vector_property_map<T, IndexMap> >
+                unchecked_vector_property_map<T, IndexMap> >
 {
 public:
     typedef typename property_traits<IndexMap>::key_type  key_type;
@@ -142,35 +144,51 @@ public:
         typename std::vector<T>::iterator >::reference reference;
     typedef boost::lvalue_property_map_tag category;
 
-    typedef fast_vector_property_map<T, IndexMap> vmap_t;
+    typedef checked_vector_property_map<T, IndexMap> checked_t;
 
-    unchecked_fast_vector_property_map(const vmap_t& vmap = vmap_t(),
-                                       size_t size = 0)
-        : _vmap(vmap)
+    unchecked_vector_property_map(const checked_t& checked = checked_t(),
+                                  size_t size = 0)
+        : _checked(checked)
     {
-        if (size > 0 && _vmap.store->size() < size)
-            _vmap.store->resize(size);
+        if (size > 0 && _checked.store->size() < size)
+            _checked.store->resize(size);
     }
 
-    void reserve(size_t size) const { _vmap.reserve(size); }
+    unchecked_vector_property_map(const IndexMap& index_map,
+                                  size_t size = 0)
+    {
+        *this = unchecked_vector_property_map(checked_t(index_map), size);
+    }
+
+    void reserve(size_t size) const { _checked.reserve(size); }
 
     reference operator[](const key_type& v) const
     {
         typename property_traits<IndexMap>::value_type i =
-            get(_vmap.index, v);
-        return (*_vmap.store)[i];
+            get(_checked.index, v);
+        return (*_checked.store)[i];
     }
 
-private:
+    std::vector<T>& get_storage() const { return _checked.get_storage(); }
 
-    vmap_t _vmap;
+    checked_t get_checked() {return _checked;}
+
+private:
+    checked_t _checked;
 };
 
 template<typename T, typename IndexMap>
-fast_vector_property_map<T, IndexMap>
-make_fast_vector_property_map(IndexMap index)
+checked_vector_property_map<T, IndexMap>
+make_checked_vector_property_map(IndexMap index)
 {
-    return fast_vector_property_map<T, IndexMap>(index);
+    return checked_vector_property_map<T, IndexMap>(index);
+}
+
+template<typename T, typename IndexMap>
+unchecked_vector_property_map<T, IndexMap>
+make_unchecked_vector_property_map(IndexMap index)
+{
+    return unchecked_vector_property_map<T, IndexMap>(index);
 }
 
 }
