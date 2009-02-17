@@ -750,3 +750,37 @@ def load_graph(filename, format="auto"):
 def value_types():
     """Return a list of possible properties value types"""
     return libcore.get_property_types()
+
+# Vertex and Edge Types
+# =====================
+from libgraph_tool_core import Vertex, Edge
+
+def _out_neighbours(self):
+    """Return an iterator over the out-neighbours"""
+    for e in self.out_edges():
+        yield e.target()
+Vertex.out_neighbours = _out_neighbours
+
+def _in_neighbours(self):
+    """Return an iterator over the in-neighbours"""
+    for e in self.in_edges():
+        yield e.source()
+Vertex.in_neighbours = _in_neighbours
+
+def _all_edges(self):
+    """Return an iterator over all edges (both in or out)"""
+    for e in self.out_edges():
+        yield e
+    for e in self.in_edges():
+        yield e
+Vertex.all_edges = _all_edges
+
+def _all_neighbours(self):
+    """Return an iterator over all neighbours (both in or out)"""
+    for v in self.out_neighbours():
+        yield v
+    for v in self.in_neighbours():
+        yield v
+Vertex.all_neighbours = _all_neighbours
+
+
