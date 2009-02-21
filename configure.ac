@@ -35,13 +35,6 @@ AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
 AC_PROG_INSTALL
 
-# ugly, dirty, smelly hack to force libtool to link to libstc++ before anything
-# else, to avoid strange exception-related segfaults in
-# __cxa_allocate_exception() see:
-# http://www.nabble.com/preventing-boost::python::throw_error_already_set-td20958723.html
-libtool=`cat libtool | sed "s/-nostdlib/-nostdlib -lstdc++/"`
-echo "$libtool" > libtool
-
 dnl turn on warnings
 [CPPFLAGS="${CPPFLAGS} -Wall"]
 
@@ -301,3 +294,11 @@ src/graph/misc/Makefile
 src/graph_tool/Makefile
 ])
 
+# ugly, dirty, smelly hack to force libtool to link to libstc++ before anything
+# else, to avoid strange exception-related segfaults in
+# __cxa_allocate_exception() see:
+# http://www.nabble.com/preventing-boost::python::throw_error_already_set-td20958723.html
+# http://wiki.fifengine.de/Segfault_in_cxa_allocate_exception
+AC_MSG_NOTICE([Modifying libtool to correctly link libstdc++ before anything else...])
+libtool=`cat libtool | sed "s/-nostdlib/-nostdlib -lstdc++/g"`
+echo "$libtool" > libtool
