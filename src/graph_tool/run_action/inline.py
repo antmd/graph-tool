@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys, string, hashlib, os.path, re
+import sys, string, hashlib, os.path, re, glob
 from .. import core
 from .. import libgraph_tool_core
 import numpy
@@ -38,6 +38,11 @@ cxxflags = libgraph_tool_core.mod_info().cxxflags + " -I%s" % inc_prefix
 # this is the code template which defines the action function object
 support_template = open(prefix + "/run_action/run_action_support.hh").read()
 code_template = open(prefix + "/run_action/run_action_template.hh").read()
+
+# hash all the headers to force recompilation if code changes
+headers_hash = ""
+for inc in glob.glob(inc_prefix + "/*"):
+    headers_hash = hashlib.md5(headers_hash + open(inc).read()).hexdigest()
 
 # property map types
 props = """
@@ -181,7 +186,7 @@ def inline(code, arg_names=[], local_dict=None,
                                         extra_compile_args +\
                                         extra_objects + \
                                         extra_link_args) + \
-                               core.__version__).hexdigest()
+                               headers_hash + core.__version__).hexdigest()
     code += "\n// support code hash: " + support_hash
     inline_code = string.Template(globals()["code_template"]).\
                   substitute(var_defs=arg_def, var_extract=arg_conv,
