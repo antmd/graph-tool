@@ -318,6 +318,7 @@ class Graph(object):
             if pmap[0] == "v" and pmap[1]() != None and \
                    pmap[1]() != self.__vertex_index._PropertyMap__map:
                 self.__graph.ShiftVertexProperty(pmap[1]().get_map(), index)
+        self.clear_vertex(vertex)
         self.__graph.RemoveVertex(vertex)
 
     @_handle_exceptions
@@ -329,6 +330,15 @@ class Graph(object):
             v = self.vertex(N - i - 1)
             if predicate(v):
                 self.remove_vertex(v)
+
+    @_handle_exceptions
+    def clear_vertex(self, vertex):
+        """Removes all in and out-edges from the given vertex."""
+        del_es = []
+        for e in vertex.all_edges():
+            del_es.append(e)
+        for e in del_es:
+            self.remove_edge(e)
 
     @_handle_exceptions
     def add_edge(self, source, target):
