@@ -321,6 +321,16 @@ class Graph(object):
         self.__graph.RemoveVertex(vertex)
 
     @_handle_exceptions
+    def remove_vertex_if(self, predicate):
+        """Remove all the vertices from the graph for which predicate(v)
+        evaluates to True."""
+        N = self.num_vertices()
+        for i in xrange(0, N):
+            v = self.vertex(N - i - 1)
+            if predicate(v):
+                self.remove_vertex(v)
+
+    @_handle_exceptions
     def add_edge(self, source, target):
         """Add a new edge from 'source' to 'target' to the graph, and return
         it."""
@@ -330,6 +340,18 @@ class Graph(object):
     def remove_edge(self, edge):
         """Remove an edge from the graph."""
         self.__graph.RemoveEdge(edge)
+
+    @_handle_exceptions
+    def remove_edge_if(self, predicate):
+        """Remove all the edges from the graph for which predicate(e) evaluates
+        to True."""
+        for v in self.vertices():
+            del_es = []
+            for e in v.out_edges():
+                if predicate(e):
+                    del_es.append(e)
+            for e in del_es:
+                self.remove_edge(e)
 
     @_handle_exceptions
     def clear(self):
