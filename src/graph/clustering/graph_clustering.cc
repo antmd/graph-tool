@@ -56,10 +56,14 @@ void local_clustering(GraphInterface& g, boost::any prop)
 using namespace boost::python;
 
 void extended_clustering(GraphInterface& g, python::list props);
+void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
+                python::list hist, python::list p, bool comp_iso,
+                bool fill_list, size_t seed);
 
 BOOST_PYTHON_MODULE(libgraph_tool_clustering)
 {
     def("global_clustering", &global_clustering);
     def("local_clustering", &local_clustering);
     def("extended_clustering", &extended_clustering);
+    def("get_motifs", &get_motifs);
 }

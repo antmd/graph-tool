@@ -27,10 +27,13 @@ aka. transitivity.
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_clustering as _gt")
 
-from .. core import _degree, _prop
+from .. core import _degree, _prop, Graph
+from .. misc import isomorphism
 from numpy import *
+import sys
 
-__all__ = ["local_clustering", "global_clustering", "extended_clustering"]
+__all__ = ["local_clustering", "global_clustering", "extended_clustering",
+           "motifs"]
 
 def local_clustering(g, prop=None, undirected=False):
     r"""
@@ -57,6 +60,7 @@ def local_clustering(g, prop=None, undirected=False):
     --------
     global_clustering: global clustering coefficient
     extended_clustering: extended (generalized) clustering coefficient
+    motifs: motif counting
 
     Notes
     -----
@@ -126,6 +130,7 @@ def global_clustering(g):
     --------
     local_clustering: local clustering coefficient
     extended_clustering: extended (generalized) clustering coefficient
+    motifs: motif counting
 
     Notes
     -----
@@ -182,6 +187,7 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
     --------
     local_clustering: local clustering coefficient
     global_clustering: global clustering coefficient
+    motifs: motif counting
 
     Notes
     -----
@@ -241,3 +247,128 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
         if was_directed and undirected:
             g.set_directed(True)
     return props
+
+
+def motifs(g, k, p=1.0, motifs=None, undirected=None, seed=0):
+    r"""
+    Count the occurrence of k-size subgraphs (motifs). A tuple with two lists is
+    returned: the list of motifs found, and the list with their respective
+    counts.
+
+    Parameters
+    ----------
+    g : Graph
+        Graph to be used.
+    k : int
+        number of vertices of the motifs
+    p : float or float list, optional (default: 1.0)
+        uniform fraction of the motifs to be sampled. If a float list is
+        provided, it will be used as the fraction at each depth
+        :math:`[1,\dots,k]` in the algorithm. See [wernicke_efficient_2006]_ for
+        more details.
+    motifs : list of Graph objects, optional
+        If supplied, the algorithms will only search for the motifs in this list
+        (or isomorphisms thereof)
+    undirected : bool, optional
+        Treat the graph as *undirected*, if graph is directed
+        (this option has no effect if the graph is undirected).
+    seed : int, optional (default: 0)
+        Seed for the random number generator. It the value is 0, a random seed
+        is used.
+
+    Returns
+    -------
+    motifs : list of Graph objects
+        List of motifs of size k found in the Graph. Graphs are grouped
+        according to their isomorphism class, and only one of each class appears
+        in this list. The list is sorted according to in-degree sequence,
+        out-degree-sequence, and number of edges (in this order).
+    counts : list of ints
+        The number of times the respective motif in the motifs list was counted
+
+    See Also
+    --------
+    local_clustering: local clustering coefficient
+    global_clustering: global clustering coefficient
+    extended_clustering: extended (generalized) clustering coefficient
+
+    Notes
+    -----
+    This functions implements the ESU and RAND-ESU algorithms described in
+    [wernicke_efficient_2006]_.
+
+    If enabled during compilation, this algorithm runs in parallel.
+
+    Examples
+    --------
+    >>> g = gt.random_graph(1000, lambda: (5,5), seed=42)
+    >>> motifs, counts = gt.motifs(g, 4)
+    >>> print len(motifs)
+    19
+    >>> print counts
+    [1499, 203, 1881, 1022, 8, 7, 5, 18, 6, 10, 4, 14, 10, 3, 9, 6, 15, 5, 27]
+
+    References
+    ----------
+    .. [wernicke_efficient_2006] S. Wernicke, "Efficient detection of network
+       motifs", IEEE/ACM Transactions on Computational Biology and
+       Bioinformatics (TCBB), Volume 3, Issue 4, Pages 347-359, 2006.
+    """
+
+    if seed == 0:
+        seed = random.randint(0, sys.maxint)
+
+    sub_list = []
+    directed_motifs = g.is_directed() if undirected == None else not undirected
+
+    if motifs != None:
+        directed_motifs = motifs[0].is_directed()
+        for m in motifs:
+            if m.is_directed() != directed_motifs:
+                raise ValueError("all motif graphs must be either directed or undirected")
+            if m.num_vertices() != k:
+                raise ValueError("all motifs must have the same number of vertices: " + k)
+            sub_list.append(m._Graph__graph)
+
+    if type(p) == float:
+        pd = [1.0]*(k-1)
+        pd.append(p)
+    if type(p) == list:
+        pd = [float(x) for x in p]
+
+    hist = []
+    was_directed = g.is_directed()
+    if g.is_directed() and not directed_motifs:
+        g.set_directed(False)
+    try:
+       _gt.get_motifs(g._Graph__graph, k, sub_list, hist, pd,
+                      True, len(sub_list) == 0,
+                      seed)
+    finally:
+        if was_directed and not directed_motifs:
+            g.set_directed(True)
+
+    # assemble graphs
+    temp = []
+    for m in sub_list:
+        mg = Graph()
+        mg._Graph__graph = m
+        temp.append(mg)
+    sub_list = temp
+
+    list_hist = zip(sub_list, hist)
+    # sort according to in-degree sequence
+    list_hist.sort(lambda x,y: cmp(sorted([v.in_degree() for v in x[0].vertices()]),
+                                   sorted([v.in_degree() for v in y[0].vertices()])))
+
+    # sort according to out-degree sequence
+    list_hist.sort(lambda x,y: cmp(sorted([v.out_degree() for v in x[0].vertices()]),
+                                   sorted([v.out_degree() for v in y[0].vertices()])))
+
+    # sort according to ascending number of edges
+    list_hist.sort(lambda x,y: cmp(x[0].num_edges(), y[0].num_edges()))
+
+    sub_list = [x[0] for x in list_hist]
+    hist = [x[1] for x in list_hist]
+
+    return sub_list, hist
