@@ -25,6 +25,7 @@
 #include <boost/property_map.hpp>
 #include <boost/graph/named_function_params.hpp>
 #include <algorithm>
+#include <boost/vector_property_map.hpp>
 
 namespace boost {
 

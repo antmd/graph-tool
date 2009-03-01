@@ -260,7 +260,7 @@ AC_SUBST(CPPFLAGS)
 AC_SUBST(CXXFLAGS)
 
 # CPP flags for submodules
-[MOD_CPPFLAGS="-I\$(srcdir) -I\$(srcdir)/.. -I\$(srcdir)/../boost-workaround \
+[MOD_CPPFLAGS="-I\$(srcdir) -I\$(srcdir)/.. -I\$(srcdir)/../../boost-workaround \
 -DHAVE_CONFIG_H"]
 AC_SUBST(MOD_CPPFLAGS)
 
