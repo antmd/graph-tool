@@ -16,7 +16,8 @@ libgraph_tool_misc_la_LDFLAGS = $(MOD_LDFLAGS)
 
 libgraph_tool_misc_la_SOURCES = \
     graph_rewiring.cc \
-    graph_misc.cc
+    graph_misc.cc \
+    graph_isomorphism.cc
 
 libgraph_tool_misc_la_include_HEADERS = \
     graph_rewiring.hh
