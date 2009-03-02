@@ -756,26 +756,32 @@ class Graph(object):
 
     def __getstate__(self):
         state = dict()
-        state["vertex_filt"] = self.get_vertex_filter()
-        self.reset_vertex_filter()
-        state["edge_filt"] = self.get_edge_filter()
-        self.reset_edge_filter()
         sio = StringIO()
+        if libcore.graph_filtering_enabled():
+            if self.get_vertex_filter()[0] != None:
+                self.vertex_properties["_Graph__pickle__vfilter"] = \
+                    self.get_vertex_filter()[0]
+                state["vfilter"] = self.get_vertex_filter()[1]
+            if self.get_edge_filter()[0] != None:
+                self.edge_properties["_Graph__pickle__efilter"] = \
+                    self.get_edge_filter()[0]
+                state["efilter"] = self.get_edge_filter()[1]
         self.save(sio, "xml")
         state["blob"] = sio.getvalue()
         return state
+
     def __setstate__(self, state):
         self.__init__()
         blob = state["blob"]
         if blob != "":
             sio = StringIO(blob)
             self.load(sio, "xml")
-        if state["vertex_filt"] != None:
-            self.set_vertex_filter(state["vertex_filt"][0],
-                                   state["vertex_filt"][1])
-        if state["edge_filt"] != None:
-            self.set_edge_filter(state["edge_filt"][0],
-                                 state["edge_filt"][1])
+        if state.has_key("vfilt"):
+            vprop = self.vertex_properties["_Graph__pickle__vfilter"]
+            self.set_vertex_filter(vprop, state["vfilt"])
+        if state.has_key("efilt"):
+            eprop = self.edge_properties["_Graph__pickle__efilter"]
+            self.set_edge_filter(vprop, state["efilt"])
 
 def load_graph(filename, format="auto"):
     """Load a graph from file"""
