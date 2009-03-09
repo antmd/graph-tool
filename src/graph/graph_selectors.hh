@@ -295,7 +295,7 @@ struct all_edges_iteratorS
     static std::pair<type,type> get_edges(vertex_descriptor v,
                                           const Graph& g)
     {
-        return get_all_edges<Graph,is_directed>::all_edges(v, g);
+        return get_all_edges<Graph,is_directed>::get_edges(v, g);
     }
 };
 
