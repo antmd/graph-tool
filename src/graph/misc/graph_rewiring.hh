@@ -143,9 +143,9 @@ struct swap_edge_triad
             return true; // se is parallel to te after swap
         if (is_adjacent_in_new(ns,  nt, edge_is_new, g))
             return true; // e would clash with an existing (new) edge
-        if (is_adjacent_in_new(te_s, t, edge_is_new, g))
+        if (edge_is_new[te] && is_adjacent_in_new(te_s, t, edge_is_new, g))
             return true; // te would clash with an existing (new) edge
-        if (is_adjacent_in_new(s, se_t, edge_is_new, g))
+        if (edge_is_new[se] && is_adjacent_in_new(s, se_t, edge_is_new, g))
             return true; // se would clash with an existing (new) edge
         return false; // the coast is clear - hooray!
     }
@@ -161,7 +161,7 @@ struct swap_edge_triad
         typename graph_traits<Graph>::out_edge_iterator e, e_end;
         for (tie(e, e_end) = out_edges(u, g); e != e_end; ++e)
         {
-            if (target(*e,g) == v && edge_is_new[*e])
+            if (edge_is_new[*e] && target(*e,g) == v)
                 return true;
         }
         return false;
@@ -224,8 +224,7 @@ template <template <class Graph, class EdgeIndexMap> class RewireStrategy>
 struct graph_rewire
 {
     template <class Graph, class EdgeIndexMap>
-    void operator()(Graph g, // reference is wrapped inside
-                    EdgeIndexMap edge_index, rng_t& rng,
+    void operator()(Graph& g, EdgeIndexMap edge_index, rng_t& rng,
                     bool self_loops, bool parallel_edges) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
@@ -327,6 +326,7 @@ public:
     {
         return *_i;
     }
+
     random_permutation_iterator& operator++()
     {
         ++_i;
@@ -334,10 +334,12 @@ public:
             std::iter_swap(_i, _i + _rng(_last - _i));
         return *this;
     }
+
     bool operator==(const RandomAccessIterator& i)
     {
         return _i == i;
     }
+
     bool operator!=(const RandomAccessIterator& i)
     {
         return _i != i;
@@ -416,8 +418,7 @@ public:
                 }
                 if (!parallel_edges) // reject parallel edges if not allowed
                 {
-                    if (swap_edge_triad::parallel_check(e, es, et, _edge_is_new,
-                                                        _g))
+                    if (swap_edge_triad::parallel_check(e, es, et, _edge_is_new, _g))
                         continue;
                 }
                 found = true;
@@ -459,29 +460,22 @@ public:
                          rng_t& rng)
         : base_t(g, edge_index, rng)
     {
-        int i, N = num_vertices(g);
-        for (i = 0; i < N; ++i)
-        {
-            vertex_t v = vertex(i, g);
-            if (v == graph_traits<Graph>::null_vertex())
-                continue;
-            typename graph_traits<Graph>::out_edge_iterator e_i, e_i_end;
-            for (tie(e_i, e_i_end) = out_edges(v, g); e_i != e_i_end; ++e_i)
-            {
-                _all_edges.push_back(edge_index[*e_i]);
-            }
-        }
+        typename graph_traits<Graph>::edge_iterator e_i, e_i_end;
+        for (tie(e_i, e_i_end) = edges(g); e_i != e_i_end; ++e_i)
+            _all_edges.push_back(edge_index[*e_i]);
+        _all_edges2 = _all_edges;
     }
 
     void get_edges(const edge_t& e, vector<index_t>*& edges_source,
                    vector<index_t>*& edges_target)
     {
         edges_source = &_all_edges;
-        edges_target = &_all_edges;
+        edges_target = &_all_edges2;
     }
 
 private:
     vector<index_t> _all_edges;
+    vector<index_t> _all_edges2;
 };
 
 
@@ -532,18 +526,32 @@ public:
     void get_edges(const edge_t& e, vector<index_t>*& edges_source,
                    vector<index_t>*& edges_target)
     {
-        edges_source =
-            &_edges_source_by[make_pair(in_degreeS()(source(e, _g), _g),
-                                        out_degree(source(e, _g), _g))];
-        edges_target =
-            &_edges_target_by[make_pair(in_degreeS()(target_in()(e, _g), _g),
-                                        out_degree(target_in()(e, _g), _g))];
+        pair<size_t, size_t> deg_source =
+            make_pair(in_degreeS()(source(e, _g), _g),
+                      out_degree(source(e, _g), _g));
+        edges_source = &_edges_source_by[deg_source];
+
+        pair<size_t, size_t> deg_target =
+            make_pair(in_degreeS()(target_in()(e, _g), _g),
+                      out_degree(target_in()(e, _g), _g));
+
+        // make sure both vectors are always different
+        if (deg_target != deg_source)
+        {
+            edges_target = &_edges_target_by[deg_target];
+        }
+        else
+        {
+            temp = _edges_target_by[deg_target];
+            edges_target = &temp;
+        }
     }
 
 private:
     typedef tr1::unordered_map<pair<size_t, size_t>, vector<index_t>,
                                hash<pair<size_t, size_t> > > edges_by_end_deg_t;
     edges_by_end_deg_t _edges_source_by, _edges_target_by;
+    vector<size_t> temp;
 
 protected:
     const Graph& _g;
