@@ -47,7 +47,7 @@ using namespace boost;
 namespace detail
 {
 // Generic graph_action functor. See graph_filtering.hh for details.
-template <class Action, class GraphViews,
+template <class Action, class GraphViews, class Wrap = mpl::false_,
           class TR1=boost::mpl::vector<>, class TR2=boost::mpl::vector<>,
           class TR3=boost::mpl::vector<>, class TR4=boost::mpl::vector<> >
 struct graph_action;
@@ -77,8 +77,8 @@ public:
     // Basic manipulation
     //
 
-    size_t GetNumberOfVertices() const;
-    size_t GetNumberOfEdges() const;
+    size_t GetNumberOfVertices();
+    size_t GetNumberOfEdges();
     void SetDirected(bool directed) {_directed = directed;}
     bool GetDirected() {return _directed;}
     void SetReversed(bool reversed) {_reversed = reversed;}

@@ -567,7 +567,7 @@ string graphviz_insert_index(dynamic_properties& dp, IndexMap index_map,
 struct write_to_file
 {
     template <class Graph, class IndexMap>
-    void operator()(ostream& stream, Graph* g, IndexMap index_map,
+    void operator()(ostream& stream, Graph& g, IndexMap index_map,
                     dynamic_properties& dp, bool graphviz) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
@@ -575,11 +575,11 @@ struct write_to_file
         if (graphviz)
         {
             string name = graphviz_insert_index(dp, index_map, false);
-            write_graphviz(stream, *g, dp, name);
+            write_graphviz(stream, g, dp, name);
         }
         else
         {
-            write_graphml(stream, *g, index_map, dp, true);
+            write_graphml(stream, g, index_map, dp, true);
         }
 
     }
@@ -588,23 +588,23 @@ struct write_to_file
 struct write_to_file_fake_undir: public write_to_file
 {
     template <class Graph, class IndexMap>
-    void operator()(ostream& stream, Graph* g, IndexMap index_map,
+    void operator()(ostream& stream, Graph& g, IndexMap index_map,
                     dynamic_properties& dp, bool graphviz) const
     {
         typedef typename Graph::original_graph_t graph_t;
-        FakeUndirGraph<graph_t> ug(*g);
-        write_to_file(*this)(stream, &ug, index_map, dp, graphviz);
+        FakeUndirGraph<graph_t> ug(g);
+        write_to_file(*this)(stream, ug, index_map, dp, graphviz);
     }
 };
 
 struct generate_index
 {
     template <class Graph, class IndexMap>
-    void operator()(Graph* g, IndexMap index_map) const
+    void operator()(Graph& g, IndexMap index_map) const
     {
         size_t n = 0;
         typename graph_traits<Graph>::vertex_iterator v, v_end;
-        for( tie(v, v_end) = vertices(*g); v != v_end; ++v)
+        for( tie(v, v_end) = vertices(g); v != v_end; ++v)
             index_map[*v] = n++;
     }
 };

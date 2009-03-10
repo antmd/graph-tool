@@ -113,10 +113,9 @@ void collect_targets(Vertex v, Graph& g, Targets& t, undirected_tag)
 struct get_extended_clustering
 {
     template <class Graph, class IndexMap, class ClusteringMap>
-    void operator()(const Graph* gp, IndexMap vertex_index,
+    void operator()(const Graph& g, IndexMap vertex_index,
                     vector<ClusteringMap> cmaps) const
     {
-        const Graph& g = *gp;
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
         int i, N = num_vertices(g);

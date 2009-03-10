@@ -69,9 +69,9 @@ void community_network(GraphInterface& gi, GraphInterface& cgi,
         throw GraphException("invalid edge count property");
 
      run_action<>()(gi, bind<void>(get_community_network(), _1,
-                                          &cgi.GetGraph(), cgi.GetVertexIndex(),
-                                          cgi.GetEdgeIndex(), _2,
-                                          _3, vcount, _4),
+                                   ref(cgi.GetGraph()), cgi.GetVertexIndex(),
+                                   cgi.GetEdgeIndex(), _2,
+                                   _3, vcount, _4),
                    vertex_properties(), weight_properties(),
                    ecount_properties())
         (community_property, weight, edge_count);

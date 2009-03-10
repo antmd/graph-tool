@@ -41,14 +41,14 @@ struct append_to_list
 {
 
     template <class Graph>
-    void operator()(Graph* gp, boost::any& list) const
+    void operator()(Graph& g, boost::any& list) const
     {
         typedef typename mpl::if_<typename is_directed::apply<Graph>::type,
                                   d_graph_t,
                                   u_graph_t>::type graph_t;
         vector<graph_t>& glist = any_cast<vector<graph_t>&>(list);
         glist.push_back(graph_t());
-        copy_graph(*gp, glist.back(), vertex_copy(null_copy()).
+        copy_graph(g, glist.back(), vertex_copy(null_copy()).
                    edge_copy(null_copy()));
     }
 };
@@ -56,7 +56,7 @@ struct append_to_list
 struct retrieve_from_list
 {
     template <class Graph>
-    void operator()(Graph* gp, boost::any& list, bool& done) const
+    void operator()(Graph& g, boost::any& list, bool& done) const
     {
         typedef typename mpl::if_<typename is_directed::apply<Graph>::type,
                                   d_graph_t,
@@ -67,7 +67,7 @@ struct retrieve_from_list
             done = true;
             return;
         }
-        copy_graph(glist.back(), *gp, edge_copy(null_copy()));
+        copy_graph(glist.back(), g, edge_copy(null_copy()));
         glist.pop_back();
     }
 };

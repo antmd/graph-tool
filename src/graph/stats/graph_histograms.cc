@@ -27,7 +27,7 @@ using namespace graph_tool;
 
 // this will return the vertex histogram of degrees or scalar properties
 python::object
-get_vertex_histogram(const GraphInterface& gi, GraphInterface::deg_t deg,
+get_vertex_histogram(GraphInterface& gi, GraphInterface::deg_t deg,
                      const vector<long double>& bins)
 {
     python::object hist;

@@ -35,14 +35,11 @@ struct get_community_network
     template <class Graph, class CommunityGraph, class CommunityMap,
               class WeightMap, class EdgeIndex, class VertexIndex,
               class VertexProperty, class EdgeProperty>
-    void operator()(const Graph* gp, CommunityGraph* cgp,
+    void operator()(const Graph& g, CommunityGraph& cg,
                     VertexIndex cvertex_index, EdgeIndex cedge_index,
                     CommunityMap s_map, WeightMap weight,
                     VertexProperty vertex_count, EdgeProperty edge_count) const
     {
-        const Graph& g = *gp;
-        CommunityGraph& cg = *cgp;
-
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
         typedef typename graph_traits<CommunityGraph>::vertex_descriptor

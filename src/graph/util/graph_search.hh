@@ -73,11 +73,9 @@ bool operator<=(const vector<string>& v1, const vector<string>& v2)
 struct find_vertices
 {
     template <class Graph, class DegreeSelector>
-    void operator()(Graph* gp, const GraphInterface& gi, DegreeSelector deg,
+    void operator()(Graph& g, GraphInterface& gi, DegreeSelector deg,
                     python::tuple& prange, python::list& ret) const
     {
-        Graph& g = *gp;
-
         typedef typename DegreeSelector::value_type value_type;
         pair<value_type,value_type> range;
         range.first = python::extract<value_type>(prange[0]);
@@ -107,12 +105,10 @@ struct find_vertices
 struct find_edges
 {
     template <class Graph, class EdgeIndex, class EdgeProperty>
-    void operator()(Graph* gp, const GraphInterface& gi, EdgeIndex eindex,
+    void operator()(Graph& g, GraphInterface& gi, EdgeIndex eindex,
                     EdgeProperty prop, python::tuple& prange, python::list& ret)
         const
     {
-        Graph& g = *gp;
-
         typedef typename property_traits<EdgeProperty>::value_type value_type;
         pair<value_type,value_type> range;
         range.first = python::extract<value_type>(prange[0]);

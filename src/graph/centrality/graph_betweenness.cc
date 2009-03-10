@@ -66,28 +66,28 @@ void normalize_betweenness(const Graph& g,
 struct get_betweenness
 {
     template <class Graph, class EdgeBetweenness, class VertexBetweenness>
-    void operator()(Graph* gp,
+    void operator()(Graph& g,
                     GraphInterface::vertex_index_map_t index_map,
                     EdgeBetweenness edge_betweenness,
                     VertexBetweenness vertex_betweenness,
                     bool normalize, size_t n) const
     {
         vector<vector<typename graph_traits<Graph>::edge_descriptor> >
-            incoming_map(num_vertices(*gp));
-        vector<size_t> distance_map(num_vertices(*gp));
+            incoming_map(num_vertices(g));
+        vector<size_t> distance_map(num_vertices(g));
         vector<typename property_traits<VertexBetweenness>::value_type>
-            dependency_map(num_vertices(*gp));
-        vector<size_t> path_count_map(num_vertices(*gp));
+            dependency_map(num_vertices(g));
+        vector<size_t> path_count_map(num_vertices(g));
 
         brandes_betweenness_centrality
-            (*gp, vertex_betweenness, edge_betweenness,
+            (g, vertex_betweenness, edge_betweenness,
              make_iterator_property_map(incoming_map.begin(), index_map),
              make_iterator_property_map(distance_map.begin(), index_map),
              make_iterator_property_map(dependency_map.begin(), index_map),
              make_iterator_property_map(path_count_map.begin(), index_map),
              index_map);
         if (normalize)
-            normalize_betweenness(*gp, edge_betweenness, vertex_betweenness, n);
+            normalize_betweenness(g, edge_betweenness, vertex_betweenness, n);
     }
 };
 
@@ -95,29 +95,29 @@ struct get_weighted_betweenness
 {
     template <class Graph, class EdgeBetweenness, class VertexBetweenness,
               class VertexIndexMap>
-        void operator()(Graph* gp, VertexIndexMap vertex_index,
+        void operator()(Graph& g, VertexIndexMap vertex_index,
                         EdgeBetweenness edge_betweenness,
                         VertexBetweenness vertex_betweenness,
                         boost::any weight_map, bool normalize,
                         size_t n) const
     {
         vector<vector<typename graph_traits<Graph>::edge_descriptor> >
-            incoming_map(num_vertices(*gp));
+            incoming_map(num_vertices(g));
         vector<typename property_traits<EdgeBetweenness>::value_type>
-            distance_map(num_vertices(*gp));
+            distance_map(num_vertices(g));
         vector<typename property_traits<VertexBetweenness>::value_type>
-            dependency_map(num_vertices(*gp));
-        vector<size_t> path_count_map(num_vertices(*gp));
+            dependency_map(num_vertices(g));
+        vector<size_t> path_count_map(num_vertices(g));
 
         brandes_betweenness_centrality
-            (*gp, vertex_betweenness, edge_betweenness,
+            (g, vertex_betweenness, edge_betweenness,
              make_iterator_property_map(incoming_map.begin(), vertex_index),
              make_iterator_property_map(distance_map.begin(), vertex_index),
              make_iterator_property_map(dependency_map.begin(), vertex_index),
              make_iterator_property_map(path_count_map.begin(), vertex_index),
              vertex_index, any_cast<EdgeBetweenness>(weight_map));
         if (normalize)
-            normalize_betweenness(*gp, edge_betweenness, vertex_betweenness, n);
+            normalize_betweenness(g, edge_betweenness, vertex_betweenness, n);
     }
 };
 
@@ -158,10 +158,10 @@ void betweenness(GraphInterface& g, boost::any weight,
 struct get_central_point_dominance
 {
     template <class Graph, class VertexBetweenness>
-    void operator()(Graph* g, VertexBetweenness vertex_betweenness, double& c)
+    void operator()(Graph& g, VertexBetweenness vertex_betweenness, double& c)
         const
     {
-        c = central_point_dominance(*g, vertex_betweenness);
+        c = central_point_dominance(g, vertex_betweenness);
     }
 };
 

@@ -273,7 +273,7 @@ python::list get_property_types()
 struct graph_type_name
 {
     template <class Graph>
-    void operator()(const Graph* gp, string& name) const
+    void operator()(const Graph& g, string& name) const
     {
         using python::detail::gcc_demangle;
         name = string(gcc_demangle(typeid(Graph).name()));

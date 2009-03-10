@@ -96,10 +96,8 @@ struct get_histogram
         : _hist(hist), _bins(bins), _ret_bins(ret_bins) {}
 
     template <class Graph, class DegreeSelector>
-    void operator()(Graph* gp, DegreeSelector deg) const
+    void operator()(Graph& g, DegreeSelector deg) const
     {
-        Graph& g = *gp;
-
         typedef typename DegreeSelector::value_type value_type;
         typedef Histogram<value_type, size_t, 1> hist_t;
 

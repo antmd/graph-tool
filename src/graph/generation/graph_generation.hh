@@ -424,13 +424,12 @@ struct gen_random_graph
     gen_random_graph(size_t N): _N(N) {}
 
     template <class Graph, class DegSample, class CorrDegSample>
-    void operator()(Graph* gp, DegSample& deg_sample,
+    void operator()(Graph& g, DegSample& deg_sample,
                     CorrDegSample& deg_corr_sample, bool no_parallel,
                     bool no_self_loops, bool undirected,
                     size_t seed, bool verbose)
         const
     {
-        Graph& g = *gp;
         size_t N = _N;
         typename property_map<Graph,vertex_index_t>::type vertex_index =
             get(vertex_index_t(), g);

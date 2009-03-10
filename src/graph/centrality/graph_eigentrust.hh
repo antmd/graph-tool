@@ -31,12 +31,10 @@ struct get_eigentrust
 {
     template <class Graph, class VertexIndex, class EdgeIndex, class TrustMap,
               class InferredTrustMap>
-    void operator()(Graph* gp, VertexIndex vertex_index,
+    void operator()(Graph& g, VertexIndex vertex_index,
                     EdgeIndex edge_index, TrustMap c, InferredTrustMap t,
-                    double epslon, size_t max_iter)
-        const
+                    double epslon, size_t max_iter) const
     {
-        Graph& g = *gp;
         typedef typename property_traits<TrustMap>::value_type c_type;
         typedef typename property_traits<InferredTrustMap>::value_type t_type;
 

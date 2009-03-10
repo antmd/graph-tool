@@ -46,6 +46,7 @@
 #include "graph_adaptor.hh"
 #include "graph_selectors.hh"
 #include "graph_util.hh"
+#include "graph_wrap.hh"
 #include "mpl_nested_loop.hh"
 
 namespace graph_tool
@@ -494,11 +495,11 @@ BOOST_MPL_ASSERT_RELATION(n_views::value, == , mpl::int_<3>::value);
 
 // wrap action to be called, to deal with property maps, i.e., return version
 // with no bounds checking.
-template <class Action>
+template <class Action, class Wrap>
 struct action_wrap
 {
-    action_wrap(Action a, size_t max_v, size_t max_e)
-        : _a(a), _max_v(max_v), _max_e(max_e) {}
+    action_wrap(Action a, GraphInterface& g, size_t max_v, size_t max_e)
+        : _a(a), _g(g), _max_v(max_v), _max_e(max_e) {}
 
     template <class Type>
     typename checked_vector_property_map
@@ -529,38 +530,51 @@ struct action_wrap
     template <class Type>
     Type uncheck(Type a) const { return a; }
 
+    template <class Graph>
+    GraphWrap<Graph> wrap(Graph* g, mpl::true_) const
+    {
+        return graph_wrap(*g, _g);
+    }
+
+    template <class Graph>
+    Graph& wrap(Graph* g, mpl::false_) const
+    {
+        return *g;
+    }
+
     void operator()() const {};
-    template <class T1> void operator()(const T1& a1) const { _a(uncheck(a1)); }
+    template <class T1> void operator()(const T1& a1) const { _a(wrap(a1, Wrap())); }
     template <class T1, class T2>
     void operator()(const T1& a1, const T2& a2) const
-    { _a(a1, uncheck(a2)); }
+    { _a(wrap(a1,Wrap()), uncheck(a2)); }
     template <class T1, class T2, class T3>
     void operator()(const T1& a1, const T2& a2, const T3& a3) const
-    { _a(a1, uncheck(a2), uncheck(a3));}
+    { _a(wrap(a1,Wrap()), uncheck(a2), uncheck(a3));}
     template <class T1, class T2, class T3, class T4>
     void operator()(const T1& a1, const T2& a2, const T3& a3, const T4& a4)
         const
-    { _a(a1, uncheck(a2), uncheck(a3), uncheck(a4)); }
+    { _a(wrap(a1,Wrap()), uncheck(a2), uncheck(a3), uncheck(a4)); }
     template <class T1, class T2, class T3, class T4, class T5>
     void operator()(const T1& a1, const T2& a2, const T3& a3, const T4& a4,
                     const T5& a5) const
-    { _a(a1, uncheck(a2), uncheck(a3), uncheck(a4), uncheck(a5)); }
+    { _a(wrap(a1,Wrap()), uncheck(a2), uncheck(a3), uncheck(a4), uncheck(a5)); }
 
     Action _a;
+    reference_wrapper<GraphInterface> _g;
     size_t _max_v, _max_e;
 };
 
 // this functor encapsulates another functor Action, which takes a pointer to a
 // graph view as first argument
-template <class Action, class GraphViews, class TR1, class TR2, class TR3,
-          class TR4 >
+template <class Action, class GraphViews, class Wrap, class TR1, class TR2,
+          class TR3, class TR4 >
 struct graph_action
 {
     struct graph_view_pointers:
         mpl::transform<GraphViews, mpl::quote1<add_pointer> >::type {};
 
-    graph_action(const GraphInterface& g, Action a)
-        : _g(g), _a(a, num_vertices(g._mg), g._max_edge_index + 1) {}
+    graph_action(GraphInterface& g, Action a)
+        : _g(g), _a(a, g, num_vertices(g._mg), g._max_edge_index + 1) {}
 
     void operator()() const
     {
@@ -639,48 +653,48 @@ struct graph_action
     }
 
     const GraphInterface &_g;
-    action_wrap<Action> _a;
+    action_wrap<Action, Wrap> _a;
 };
 } // details namespace
 
 
 // all definitions of run_action with different arity
-template <class GraphViews = detail::all_graph_views>
+template <class GraphViews = detail::all_graph_views, class Wrap = mpl::false_>
 struct run_action
 {
     template <class Action>
-    detail::graph_action<Action,GraphViews>
-    operator()(const GraphInterface &g, Action a)
+    detail::graph_action<Action,GraphViews,Wrap>
+    operator()(GraphInterface &g, Action a)
     {
-        return detail::graph_action<Action,GraphViews>(g, a);
+        return detail::graph_action<Action,GraphViews,Wrap>(g, a);
     }
 
     template <class Action, class TR1>
-    detail::graph_action<Action,GraphViews,TR1>
-    operator()(const GraphInterface &g, Action a, TR1)
+    detail::graph_action<Action,GraphViews,Wrap,TR1>
+    operator()(GraphInterface &g, Action a, TR1)
     {
-        return detail::graph_action<Action,GraphViews,TR1>(g, a);
+        return detail::graph_action<Action,GraphViews,Wrap,TR1>(g, a);
     }
 
     template <class Action, class TR1, class TR2>
-    detail::graph_action<Action,GraphViews,TR1,TR2>
-    operator()(const GraphInterface &g, Action a, TR1, TR2)
+    detail::graph_action<Action,GraphViews,Wrap,TR1,TR2>
+    operator()(GraphInterface &g, Action a, TR1, TR2)
     {
-        return detail::graph_action<Action,GraphViews,TR1,TR2>(g, a);
+        return detail::graph_action<Action,GraphViews,Wrap,TR1,TR2>(g, a);
     }
 
     template <class Action, class TR1, class TR2, class TR3>
-    detail::graph_action<Action,GraphViews,TR1,TR2,TR3>
-    operator()(const GraphInterface &g, Action a, TR1, TR2, TR3)
+    detail::graph_action<Action,GraphViews,Wrap,TR1,TR2,TR3>
+    operator()(GraphInterface &g, Action a, TR1, TR2, TR3)
     {
-        return detail::graph_action<Action,GraphViews,TR1,TR2,TR3>(g, a);
+        return detail::graph_action<Action,GraphViews,Wrap,TR1,TR2,TR3>(g, a);
     }
 
     template <class Action, class TR1, class TR2, class TR3, class TR4>
-    detail::graph_action<Action,GraphViews,TR1,TR2,TR3,TR4>
-    operator()(const GraphInterface &g, Action a, TR1, TR2, TR3, TR4)
+    detail::graph_action<Action,GraphViews,Wrap,TR1,TR2,TR3,TR4>
+    operator()(GraphInterface &g, Action a, TR1, TR2, TR3, TR4)
     {
-        return detail::graph_action<Action,GraphViews,TR1,TR2,TR3,TR4>(g, a);
+        return detail::graph_action<Action,GraphViews,Wrap,TR1,TR2,TR3,TR4>(g, a);
     }
 };
 

@@ -53,7 +53,7 @@ bool has_val(vector<Value>& v, const Value& val)
 }
 
 template <class Graph, class Sampler>
-void get_subgraphs(Graph g, typename graph_traits<Graph>::vertex_descriptor v,
+void get_subgraphs(Graph& g, typename graph_traits<Graph>::vertex_descriptor v,
                    size_t n,
                    vector<vector<typename graph_traits<Graph>::vertex_descriptor> >& subgraphs,
                    Sampler sampler)
@@ -264,13 +264,10 @@ struct wrap_undirected
 struct get_all_motifs
 {
     template <class Graph, class Sampler>
-    void operator()(Graph* gp, size_t k, boost::any& list,
+    void operator()(Graph& g, size_t k, boost::any& list,
                     vector<size_t>& hist, Sampler sampler, double p,
-                    bool comp_iso, bool fill_list, rng_t& rng)
-        const
+                    bool comp_iso, bool fill_list, rng_t& rng) const
     {
-        Graph& g = *gp;
-
         typedef typename mpl::if_<typename is_directed::apply<Graph>::type,
                                   d_graph_t,
                                   u_graph_t>::type graph_sg_t;

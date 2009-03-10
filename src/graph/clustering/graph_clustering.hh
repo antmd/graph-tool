@@ -86,9 +86,8 @@ get_triangles(typename graph_traits<Graph>::vertex_descriptor v, const Graph &g)
 struct get_global_clustering
 {
     template <class Graph>
-    void operator()(const Graph* gp, double& c, double& c_err) const
+    void operator()(const Graph& g, double& c, double& c_err) const
     {
-        const Graph& g = *gp;
         size_t triangles = 0, n = 0;
         pair<size_t, size_t> temp;
 
@@ -133,9 +132,8 @@ struct get_global_clustering
 struct set_clustering_to_property
 {
     template <class Graph, class ClustMap>
-    void operator()(const Graph* gp, ClustMap clust_map) const
+    void operator()(const Graph& g, ClustMap clust_map) const
     {
-        const Graph& g = *gp;
         typename get_undirected_graph<Graph>::type ug(g);
         int i, N = num_vertices(g);
 

@@ -30,9 +30,8 @@ using namespace boost;
 struct label_components
 {
     template <class Graph, class CompMap>
-    void operator()(const Graph* gp, CompMap comp_map) const
+    void operator()(const Graph& g, CompMap comp_map) const
     {
-        const Graph& g = *gp;
         typedef typename graph_traits<Graph>::directed_category
             directed_category;
         get_components(g, comp_map,

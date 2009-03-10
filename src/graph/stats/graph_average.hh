@@ -68,10 +68,8 @@ struct get_average
         : _a(a), _dev(dev) {}
 
     template <class Graph, class DegreeSelector>
-    void operator()(Graph* gp, DegreeSelector deg) const
+    void operator()(Graph& g, DegreeSelector deg) const
     {
-        Graph& g = *gp;
-
         typedef typename DegreeSelector::value_type value_type;
         long double a, aa;
         size_t count;

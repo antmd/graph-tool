@@ -35,7 +35,7 @@ using namespace graph_tool;
 
 // implementations spread across different compile units to minimize memory
 // usage during compilation
-void graph_avg_corr_imp1(const GraphInterface& g, python::object& avg,
+void graph_avg_corr_imp1(GraphInterface& g, python::object& avg,
                          python::object& dev, python::object& ret_bins,
                          boost::any deg1, boost::any deg2,
                          boost::any weight,
@@ -45,7 +45,7 @@ void graph_avg_corr_imp1(const GraphInterface& g, python::object& avg,
 typedef ConstantPropertyMap<int,GraphInterface::edge_t> cweight_map_t;
 
 python::object
-get_vertex_avg_correlation(const GraphInterface& gi,
+get_vertex_avg_correlation(GraphInterface& gi,
                            GraphInterface::deg_t deg1,
                            GraphInterface::deg_t deg2,
                            boost::any weight,

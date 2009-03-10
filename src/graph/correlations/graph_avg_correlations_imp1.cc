@@ -32,7 +32,7 @@ using namespace boost::lambda;
 using namespace graph_tool;
 
 
-void graph_avg_correlations_imp1(const GraphInterface& g, python::object& avg,
+void graph_avg_correlations_imp1(GraphInterface& g, python::object& avg,
                                  python::object& dev,
                                  python::object& ret_bins,
                                  boost::any deg1, boost::any deg2,

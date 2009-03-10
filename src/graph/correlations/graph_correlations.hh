@@ -185,10 +185,9 @@ struct get_correlation_histogram
 
     template <class Graph, class DegreeSelector1, class DegreeSelector2,
               class WeightMap>
-    void operator()(Graph* gp, DegreeSelector1 deg1, DegreeSelector2 deg2,
+    void operator()(Graph& g, DegreeSelector1 deg1, DegreeSelector2 deg2,
                     WeightMap weight) const
     {
-        Graph& g = *gp;
         GetDegreePair put_point;
 
         typedef typename DegreeSelector1::value_type type1;
@@ -258,16 +257,15 @@ template <class GetDegreePair>
 struct get_avg_correlation
 {
     get_avg_correlation(python::object& avg, python::object& dev,
-                    const vector<long double>& bins,
-                    python::object& ret_bins)
+                        const vector<long double>& bins,
+                        python::object& ret_bins)
         : _avg(avg), _dev(dev), _bins(bins), _ret_bins(ret_bins) {}
 
     template <class Graph, class DegreeSelector1, class DegreeSelector2,
               class WeightMap>
-    void operator()(Graph* gp, DegreeSelector1 deg1, DegreeSelector2 deg2,
+        void operator()(Graph& g, DegreeSelector1 deg1, DegreeSelector2 deg2,
                     WeightMap weight) const
     {
-        Graph& g = *gp;
         GetDegreePair put_point;
 
         typedef typename DegreeSelector1::value_type type1;

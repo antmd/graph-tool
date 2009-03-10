@@ -26,7 +26,7 @@ using namespace std;
 using namespace graph_tool;
 
 pair<double,double>
-assortativity_coefficient(const GraphInterface& gi,
+assortativity_coefficient(GraphInterface& gi,
                           GraphInterface::deg_t deg)
 {
     using namespace boost::lambda;
@@ -38,7 +38,7 @@ assortativity_coefficient(const GraphInterface& gi,
 }
 
 pair<double,double>
-scalar_assortativity_coefficient(const GraphInterface& gi,
+scalar_assortativity_coefficient(GraphInterface& gi,
                                  GraphInterface::deg_t deg)
 {
     using namespace boost::lambda;

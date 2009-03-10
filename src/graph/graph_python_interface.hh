@@ -48,7 +48,7 @@ template <class Descriptor, class Iterator>
 class PythonIterator
 {
 public:
-    PythonIterator(const GraphInterface& gi, std::pair<Iterator,Iterator> e)
+    PythonIterator(GraphInterface& gi, std::pair<Iterator,Iterator> e)
         : _gi(gi), _e(e) {}
     Descriptor Next()
     {
@@ -59,7 +59,7 @@ public:
         return e;
     }
 private:
-    const GraphInterface& _gi;
+    GraphInterface& _gi;
     std::pair<Iterator,Iterator> _e;
 };
 
@@ -72,7 +72,7 @@ class PythonEdge;
 class PythonVertex
 {
 public:
-    PythonVertex(const GraphInterface& gi, GraphInterface::vertex_t v):
+    PythonVertex(GraphInterface& gi, GraphInterface::vertex_t v):
         _gi(gi), _v(v), _valid(true)
     {
         CheckValid();
@@ -105,11 +105,11 @@ public:
     struct get_degree
     {
         template<class Graph>
-        void operator()(const Graph* gp,
+        void operator()(const Graph& g,
                         typename graph_traits<Graph>::vertex_descriptor v,
                         size_t& deg) const
         {
-            deg = DegSelector()(v, *gp);
+            deg = DegSelector()(v, g);
         }
     };
 
@@ -138,7 +138,7 @@ public:
     struct get_out_edges
     {
         template<class Graph>
-        void operator()(const Graph* gp, const GraphInterface& gi,
+        void operator()(const Graph& g, GraphInterface& gi,
                         typename graph_traits<Graph>::vertex_descriptor v,
                         python::object& iter) const
         {
@@ -146,7 +146,7 @@ public:
                 out_edge_iterator;
             iter = python::object(PythonIterator<PythonEdge<Graph>,
                                                  out_edge_iterator>
-                                  (gi, out_edges(v, *gp)));
+                                  (gi, out_edges(v, g)));
         }
     };
 
@@ -164,7 +164,7 @@ public:
     struct get_in_edges
     {
         template<class Graph>
-        void operator()(const Graph* gp, const GraphInterface& gi,
+        void operator()(const Graph& g, GraphInterface& gi,
                         typename graph_traits<Graph>::vertex_descriptor v,
                         python::object& iter) const
         {
@@ -172,7 +172,7 @@ public:
                 in_edge_iterator;
             iter = python::object
                 (PythonIterator<PythonEdge<Graph>,in_edge_iterator>
-                 (gi, in_edge_iteratorS<Graph>::get_edges(v, *gp)));
+                 (gi, in_edge_iteratorS<Graph>::get_edges(v, g)));
         }
     };
 
@@ -213,7 +213,7 @@ public:
     }
 
 private:
-    const GraphInterface& _gi;
+    GraphInterface& _gi;
     GraphInterface::vertex_t _v;
     bool _valid;
 };
@@ -225,7 +225,7 @@ class PythonEdge
 {
 public:
     typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
-    PythonEdge(const GraphInterface& gi, edge_descriptor e)
+    PythonEdge(GraphInterface& gi, edge_descriptor e)
         : _gi(gi), _e(e), _valid(true)
     {
         CheckValid();
@@ -251,7 +251,7 @@ public:
             throw GraphException("invalid edge descriptor");
     }
 
-    const GraphInterface::edge_t& GetDescriptor() const
+    GraphInterface::edge_t GetDescriptor() const
     {
         return _e;
     }
@@ -259,11 +259,11 @@ public:
     struct get_source
     {
         template<class GraphType>
-        void operator()(const GraphType* gp, const GraphInterface& gi,
+        void operator()(const GraphType& g, GraphInterface& gi,
                         const edge_descriptor& edge, python::object& vertex)
             const
         {
-            vertex = python::object(PythonVertex(gi, source(edge, *gp)));
+            vertex = python::object(PythonVertex(gi, source(edge, g)));
         }
     };
 
@@ -281,11 +281,11 @@ public:
     struct get_target
     {
         template<class GraphType>
-        void operator()(const GraphType* gp, const GraphInterface& gi,
+        void operator()(const GraphType& g, GraphInterface& gi,
                         const edge_descriptor& edge,
                         python::object& vertex) const
         {
-            vertex = python::object(PythonVertex(gi, target(edge, *gp)));
+            vertex = python::object(PythonVertex(gi, target(edge, g)));
         }
     };
 
@@ -327,7 +327,7 @@ public:
     }
 
 private:
-    const GraphInterface& _gi;
+    GraphInterface& _gi;
     edge_descriptor _e;
     bool _valid;
 };

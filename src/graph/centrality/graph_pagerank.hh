@@ -30,11 +30,10 @@ using namespace boost;
 struct get_pagerank
 {
     template <class Graph, class VertexIndex, class RankMap>
-    void operator()(Graph* gp, VertexIndex vertex_index, RankMap rank,
+    void operator()(Graph& g, VertexIndex vertex_index, RankMap rank,
                     double damping, double epslon, size_t max_iter,
                     size_t& iter) const
     {
-        Graph& g = *gp;
         typedef typename property_traits<RankMap>::value_type rank_type;
 
         RankMap r_temp(vertex_index,num_vertices(g));

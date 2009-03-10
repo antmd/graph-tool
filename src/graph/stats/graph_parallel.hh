@@ -27,10 +27,9 @@ using namespace boost;
 struct label_parallel_edges
 {
     template <class Graph, class EdgeIndexMap, class ParallelMap>
-    void operator()(const Graph* gp, EdgeIndexMap edge_index,
+    void operator()(const Graph& g, EdgeIndexMap edge_index,
                     ParallelMap parallel) const
     {
-        const Graph& g = *gp;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
 
         int i, N = num_vertices(g);
@@ -66,10 +65,9 @@ struct label_parallel_edges
 struct label_self_loops
 {
     template <class Graph, class EdgeIndexMap, class SelfMap>
-    void operator()(const Graph* gp, EdgeIndexMap edge_index,
+    void operator()(const Graph& g, EdgeIndexMap edge_index,
                     SelfMap self) const
     {
-        const Graph& g = *gp;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
 
         int i, N = num_vertices(g);

@@ -35,7 +35,7 @@ using namespace graph_tool;
 typedef ConstantPropertyMap<int,GraphInterface::edge_t> dummy_weight;
 
 python::object
-get_vertex_combined_correlation_histogram(const GraphInterface& gi,
+get_vertex_combined_correlation_histogram(GraphInterface& gi,
                                           GraphInterface::deg_t deg1,
                                           GraphInterface::deg_t deg2,
                                           const vector<long double>& xbin,

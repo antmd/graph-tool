@@ -56,11 +56,11 @@ struct is_directed
 struct HardNumVertices
 {
     template <class Graph>
-    size_t operator()(const Graph* g) const
+    size_t operator()(Graph& g) const
     {
         size_t n = 0;
         typename graph_traits<Graph>::vertex_iterator v_iter, v_begin, v_end;
-        tie(v_begin, v_end) = vertices(*g);
+        tie(v_begin, v_end) = vertices(g);
         for (v_iter = v_begin; v_iter != v_end; ++v_iter)
             n++;
         return n;
@@ -72,18 +72,18 @@ struct HardNumVertices
 struct SoftNumVertices
 {
     template <class Graph>
-    size_t operator()(const Graph* g) const { return num_vertices(*g); }
+    size_t operator()(Graph& g) const { return num_vertices(g); }
 };
 
 // This will count "by hand" the number of edges on a graph. Always O(E).
 struct HardNumEdges
 {
     template <class Graph>
-    size_t operator()(const Graph* g) const
+    size_t operator()(Graph& g) const
     {
         size_t n = 0;
         typename graph_traits<Graph>::edge_iterator e_iter, e_begin, e_end;
-        tie(e_begin, e_end) = edges(*g);
+        tie(e_begin, e_end) = edges(g);
         for (e_iter = e_begin; e_iter != e_end; ++e_iter)
             n++;
         return n;
@@ -95,7 +95,7 @@ struct HardNumEdges
 struct SoftNumEdges
 {
     template <class Graph>
-    size_t operator()(const Graph* g) const { return num_edges(*g); }
+    size_t operator()(Graph& g) const { return num_edges(g); }
 };
 
 // computes the out-degree of a graph, ignoring self-edges

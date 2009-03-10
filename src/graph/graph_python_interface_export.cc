@@ -30,7 +30,7 @@ using namespace graph_tool;
 // functions to python
 struct export_vertex_property_map
 {
-    export_vertex_property_map(const string& name, const GraphInterface &gi)
+    export_vertex_property_map(const string& name, GraphInterface &gi)
         : _name(name), _gi(gi) {}
 
     template <class PropertyMap>
@@ -71,12 +71,12 @@ struct export_vertex_property_map
     }
 
     string _name;
-    const GraphInterface& _gi;
+    GraphInterface& _gi;
 };
 
 struct export_edge_property_map
 {
-    export_edge_property_map(const string& name, const GraphInterface &gi)
+    export_edge_property_map(const string& name, GraphInterface &gi)
         : _name(name), _gi(gi) {}
 
     template <class PropertyMap>
@@ -142,12 +142,12 @@ struct export_edge_property_map
     }
 
     string _name;
-    const GraphInterface& _gi;
+    GraphInterface& _gi;
 };
 
 struct export_graph_property_map
 {
-    export_graph_property_map(const string& name, const GraphInterface &gi)
+    export_graph_property_map(const string& name, GraphInterface &gi)
         : _name(name), _gi(gi) {}
 
     template <class PropertyMap>
@@ -179,10 +179,10 @@ struct export_graph_property_map
     }
 
     string _name;
-    const GraphInterface& _gi;
+    GraphInterface& _gi;
 };
 
-void export_python_properties(const GraphInterface& gi)
+void export_python_properties(GraphInterface& gi)
 {
     typedef property_map_types::apply<
         value_types,

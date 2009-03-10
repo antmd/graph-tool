@@ -224,13 +224,12 @@ template <template <class Graph, class EdgeIndexMap> class RewireStrategy>
 struct graph_rewire
 {
     template <class Graph, class EdgeIndexMap>
-    void operator()(Graph* gp, EdgeIndexMap edge_index, rng_t& rng,
+    void operator()(Graph g, // reference is wrapped inside
+                    EdgeIndexMap edge_index, rng_t& rng,
                     bool self_loops, bool parallel_edges) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
-
-        Graph& g = *gp;
 
         if (!self_loops)
         {

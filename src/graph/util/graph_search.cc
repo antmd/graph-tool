@@ -27,7 +27,7 @@ using namespace graph_tool;
 
 // find vertices which match a certain (inclusive) property range
 python::list
-find_vertex_range(const GraphInterface& gi, GraphInterface::deg_t deg,
+find_vertex_range(GraphInterface& gi, GraphInterface::deg_t deg,
                   python::tuple range)
 {
     python::list ret;

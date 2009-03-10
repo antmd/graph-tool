@@ -27,7 +27,7 @@ using namespace graph_tool;
 
 // this will return the vertex average of degrees or scalar properties
 python::object
-get_vertex_average(const GraphInterface& gi, GraphInterface::deg_t deg)
+get_vertex_average(GraphInterface& gi, GraphInterface::deg_t deg)
 {
     long double a, dev;
     run_action<>()(gi, get_average<VertexAverageTraverse>(a,dev),

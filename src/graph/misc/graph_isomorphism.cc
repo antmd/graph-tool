@@ -29,10 +29,10 @@ using namespace boost::lambda;
 struct check_iso
 {
     template <class Graph1, class Graph2, class IsoMap, class VertexIndexMap>
-    void operator()(Graph1* g1, Graph2* g2, IsoMap map, VertexIndexMap index1,
+    void operator()(Graph1& g1, Graph2* g2, IsoMap map, VertexIndexMap index1,
                     VertexIndexMap index2, bool& result) const
     {
-        result = isomorphism(*g1, *g2,isomorphism_map(map).
+        result = isomorphism(g1, *g2, isomorphism_map(map).
                              vertex_index1_map(index1).
                              vertex_index2_map(index2));
     }

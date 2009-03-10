@@ -34,15 +34,12 @@ struct graph_copy
     template <class GraphDst, class GraphSrc, class DstVertexIndexMap,
               class SrcVertexIndexMap,  class DstEdgeIndexMap,
               class SrcEdgeIndexMap>
-    void operator()(GraphDst* dstp, GraphSrc* srcp,
+    void operator()(GraphDst& dst, GraphSrc& src,
                     DstVertexIndexMap dst_vertex_index,
                     SrcVertexIndexMap src_vertex_index,
                     DstEdgeIndexMap dst_edge_index,
                     SrcEdgeIndexMap src_edge_index) const
     {
-        GraphDst& dst = *dstp;
-        GraphSrc& src = *srcp;
-
         vector<size_t> index_map(num_vertices(src));
         typename graph_traits<GraphSrc>::vertex_iterator v, v_end;
         for (tie(v, v_end) = vertices(src); v != v_end; ++v)
@@ -84,7 +81,7 @@ GraphInterface::GraphInterface(const GraphInterface& gi)
      _edge_filter_active(false)
 {
 
-    graph_copy()(&_mg, &gi._mg, _vertex_index,
+    graph_copy()(_mg, gi._mg, _vertex_index,
                  gi._vertex_index, _edge_index,
                  gi._edge_index);
     // filters will be copied in python
@@ -204,7 +201,7 @@ struct copy_property
 {
     template <class Graph, class PropertySrc,
               class PropertyTgt>
-    void operator()(const Graph* tgtp, const Graph* srcp, PropertySrc src_map,
+    void operator()(const Graph& tgt, const Graph& src, PropertySrc src_map,
                     PropertyTgt dst_map) const
     {
         typedef typename property_traits<PropertySrc>::value_type val_src;
@@ -212,8 +209,6 @@ struct copy_property
 
         try
         {
-            const Graph& tgt = *tgtp;
-            const Graph& src = *srcp;
             convert<val_tgt,val_src> c;
             typename IteratorSel::template apply<Graph>::type vs, vs_end;
             typename IteratorSel::template apply<Graph>::type vt, vt_end;
@@ -278,7 +273,7 @@ void GraphInterface::CopyVertexProperty(const GraphInterface& src,
 
     run_action<unfiltered>()
         (*this, bind<void>(copy_property<vertex_selector>(),
-                           _1, &src._mg,  _2, _3),
+                           _1, ref(src._mg),  _2, _3),
          vertex_properties(), writable_vertex_properties())
         (prop_src, prop_tgt);
 }
@@ -291,7 +286,7 @@ void GraphInterface::CopyEdgeProperty(const GraphInterface& src,
 
     run_action<unfiltered>()
         (*this, bind<void>(copy_property<edge_selector>(),
-                           _1, &src._mg, _2, _3),
+                           _1, ref(src._mg), _2, _3),
          edge_properties(), writable_edge_properties())
         (prop_src, prop_tgt);
 }

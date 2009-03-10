@@ -36,12 +36,12 @@ using namespace graph_tool;
 // this is the constructor for the graph interface
 GraphInterface::GraphInterface()
     :_mg(),
+     _nedges(0),
      _reversed(false),
      _directed(true),
      _vertex_index(get(vertex_index,_mg)),
      _edge_index(get(edge_index_t(),_mg)),
      _max_edge_index(0),
-     _nedges(0),
      _graph_index(0),
      _vertex_filter_map(_vertex_index),
      _vertex_filter_invert(false),
@@ -60,7 +60,7 @@ GraphInterface::~GraphInterface()
 
 // this will get the number of vertices, either the "soft" O(1) way, or the hard
 // O(V) way, which is necessary if the graph is filtered
-size_t GraphInterface::GetNumberOfVertices() const
+size_t GraphInterface::GetNumberOfVertices()
 {
     size_t n = 0;
     if (IsVertexFilterActive())
@@ -73,7 +73,7 @@ size_t GraphInterface::GetNumberOfVertices() const
 // this will get the number of edges, either the "soft" O(E) way, or the hard
 // O(E) way, which is necessary if the graph is filtered. Both cases are of
 // linear complexity, since num_edges() is O(E) in Boost's adjacency_list
-size_t GraphInterface::GetNumberOfEdges() const
+size_t GraphInterface::GetNumberOfEdges()
 {
     size_t n = 0;
     if (IsEdgeFilterActive() || IsVertexFilterActive())

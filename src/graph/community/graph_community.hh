@@ -53,7 +53,7 @@ struct get_communities
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
         typedef typename property_traits<WeightMap>::key_type weight_key_t;
 
-        size_t N = HardNumVertices()(&g);
+        size_t N = HardNumVertices()(g);
 
         stringstream out_str;
         ofstream out_file;
@@ -74,7 +74,7 @@ struct get_communities
         boost::uniform_real<double> uniform_p(0.0,1.0);
 
         if (Nspins.first == 0)
-            Nspins.first = HardNumVertices()(&g);
+            Nspins.first = HardNumVertices()(g);
 
         unordered_map<size_t, size_t> Ns; // spin histogram
         // global energy term
@@ -683,13 +683,11 @@ struct get_communities_selector
     comm_corr_t _corr;
 
     template <class Graph, class WeightMap, class CommunityMap>
-    void operator()(const Graph* gp, WeightMap weights, CommunityMap s, double gamma,
+    void operator()(const Graph& g, WeightMap weights, CommunityMap s, double gamma,
                     size_t n_iter, pair<double,double> Tinterval,
                     pair<size_t,bool> Nspins, size_t seed,
                     pair<bool,string> verbose) const
     {
-        const Graph& g = *gp;
-
         switch (_corr)
         {
         case ERDOS_REYNI:
@@ -712,11 +710,10 @@ struct get_communities_selector
 struct get_modularity
 {
     template <class Graph, class WeightMap, class CommunityMap>
-    void operator()(const Graph* gp, WeightMap weights, CommunityMap s,
+    void operator()(const Graph& g, WeightMap weights, CommunityMap s,
                     double& modularity) const
     {
         typedef typename property_traits<WeightMap>::key_type weight_key_t;
-        const Graph& g = *gp;
 
         modularity = 0.0;
         size_t E = 0;

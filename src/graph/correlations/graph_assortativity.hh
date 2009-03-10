@@ -34,10 +34,9 @@ using namespace boost;
 struct get_assortativity_coefficient
 {
     template <class Graph, class DegreeSelector>
-    void operator()(const Graph* gp, DegreeSelector deg, double& r,
+    void operator()(const Graph& g, DegreeSelector deg, double& r,
                     double& r_err) const
     {
-        const Graph& g = *gp;
         typedef typename mpl::if_<typename is_directed::apply<Graph>::type,
                                   size_t, double>::type count_t;
 
@@ -115,11 +114,9 @@ struct get_assortativity_coefficient
 struct get_scalar_assortativity_coefficient
 {
     template <class Graph, class DegreeSelector>
-    void operator()(const Graph* gp, DegreeSelector deg, double& r,
+    void operator()(const Graph& g, DegreeSelector deg, double& r,
                     double& r_err) const
     {
-        const Graph& g = *gp;
-
         typedef typename mpl::if_<typename is_directed::apply<Graph>::type,
                                   size_t, double>::type count_t;
 
