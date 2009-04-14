@@ -106,6 +106,25 @@ def _parse_range(range):
         raise ValueError("invalid value for range: %s: %s " % (range, str(e)))
     return (ran, inc, inverted)
 
+def _type_alias(type_name):
+    alias = {"int8_t":"bool",
+             "boolean":"bool",
+             "int":"int32_t",
+             "long":"int32_t",
+             "long long":"int64_t",
+             "object":"python::object"}
+    if type_name in value_types():
+        return type_name
+    if alias.has_key(type_name):
+        return alias[type_name]
+    ma = re(r"vector<(.*)>").match(type_name)
+    if ma:
+        t = ma.group(1)
+        if alias.has_key(t):
+            return "vector<%s>" % alias[t]
+    raise ValueError("invalid property value type: " + type_name)
+
+
 ################################################################################
 # Property Maps
 ################################################################################
@@ -513,7 +532,7 @@ class Graph(object):
     def new_vertex_property(self, type):
         """Create a new (uninitialized) vertex property map of type `type`, and
         return it."""
-        return PropertyMap(new_vertex_property(type,
+        return PropertyMap(new_vertex_property(_type_alias(type),
                                                self.__graph.GetVertexIndex()),
                            self, "v")
 
@@ -521,14 +540,15 @@ class Graph(object):
     def new_edge_property(self, type):
         """Create a new (uninitialized) edge property map of type `type`, and
         return it."""
-        return PropertyMap(new_edge_property(type, self.__graph.GetEdgeIndex()),
+        return PropertyMap(new_edge_property(_type_alias(type),
+                                             self.__graph.GetEdgeIndex()),
                            self, "e")
 
     @_handle_exceptions
     def new_graph_property(self, type, val=None):
         """Create a new graph property map of type `type`, and return it. If
         `val` is not None, the property is initialized to its value."""
-        prop = PropertyMap(new_graph_property(type,
+        prop = PropertyMap(new_graph_property(_type_alias(type),
                                               self.__graph.GetGraphIndex()),
                            self, "g", lambda k: k.__graph)
         if val != None:
