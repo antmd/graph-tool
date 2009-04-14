@@ -24,7 +24,7 @@ import io # sets up libcore io routines
 
 import sys, os, os.path, re, struct, fcntl, termios, gzip, bz2, string,\
        textwrap, time, signal, traceback, shutil, time, math, inspect, \
-       functools, types, weakref
+       functools, types, weakref, copy
 from StringIO import StringIO
 from decorators import _wraps, _require, _attrs, _handle_exceptions, _limit_args
 
@@ -658,16 +658,6 @@ class Graph(object):
     # ============
 
     @_handle_exceptions
-    def directed(self):
-        """Treat graph as directed (default)."""
-        self.__graph.SetDirected(True)
-
-    @_handle_exceptions
-    def undirected(self):
-        """Treat graph as undirected."""
-        self.__graph.SetDirected(False)
-
-    @_handle_exceptions
     def set_directed(self, is_directed):
         """Set the directedness of the graph"""
         self.__graph.SetDirected(is_directed)
@@ -679,11 +669,6 @@ class Graph(object):
 
     # Reversedness
     # ============
-
-    @_handle_exceptions
-    def reversed(self):
-        """Reverse the direction of the edges."""
-        self.__graph.SetReversed(not self.__graph.GetReversed())
 
     @_handle_exceptions
     def set_reversed(self, is_reversed):
@@ -736,19 +721,47 @@ class Graph(object):
         self.__graph.SetEdgeFilterProperty(None)
 
     @_handle_exceptions
-    def stash_filter(self):
-        """Stash current filter state and recover unfiltered graph"""
+    def stash_filter(self, edge=True, vertex=True,
+                     directed=False, reversed=False, all=False):
+        """Stash current filter state and recover unfiltered graph. The optional
+        keyword arguments specify which type of filter should be stashed."""
         self.__stashed_filter_state.append(self.__filter_state)
         if libcore.graph_filtering_enabled():
-            self.set_vertex_filter(None)
-            self.set_edge_filter(None)
-        self.directed()
-        self.set_reversed(False)
+            if vertex or all:
+                self.set_vertex_filter(None)
+            if edge or all:
+                self.set_edge_filter(None)
+        if directed or all:
+            self.set_directed(True)
+        if reversed or all:
+            self.set_reversed(False)
 
     @_handle_exceptions
-    def pop_filter(self):
-        """Pop last stashed filter state"""
+    def pop_filter(self, edge=True, vertex=True,
+                   directed=False, reversed=False, all=False):
+        """Pop last stashed filter state. The optional keyword arguments specify
+        which type of filter should be recovered."""
         state = self.__stashed_filter_state.pop()
+        if libcore.graph_filtering_enabled():
+            if vertex or all:
+                self.set_vertex_filter(state["vertex_filter"][0],
+                                       state["vertex_filter"][1])
+            if edge or all:
+                self.set_edge_filter(state["edge_filter"][0],
+                                     state["edge_filter"][1])
+        if directed or all:
+            self.set_directed(state["directed"])
+        if reversed or all:
+            self.set_reversed(state["reversed"])
+
+    @_handle_exceptions
+    def get_filter_state(self):
+        """Return a copy of the filter state of the graph."""
+        return copy.copy(self.__filter_state)
+
+    @_handle_exceptions
+    def set_filter_state(self, state):
+        """Set the filter state of the graph."""
         if libcore.graph_filtering_enabled():
             self.set_vertex_filter(state["vertex_filter"][0],
                                    state["vertex_filter"][1])
@@ -756,7 +769,6 @@ class Graph(object):
                                  state["edge_filter"][1])
         self.set_directed(state["directed"])
         self.set_reversed(state["reversed"])
-
 
     # Basic graph statistics
     # ======================
