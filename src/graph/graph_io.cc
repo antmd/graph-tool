@@ -47,10 +47,10 @@ using namespace graph_tool;
 //
 // String representation of individual data types. We have to take care
 // specifically that no information is lost with floating point I/O.
-//
 
 namespace boost
 {
+
 template <>
 string lexical_cast<string,uint8_t>(const uint8_t& val)
 {
@@ -73,7 +73,9 @@ template <>
 string lexical_cast<string,double>(const double& val)
 {
     char* str = 0;
-    asprintf(&str, "%la", val);
+    int retval = asprintf(&str, "%la", val);
+    if (retval == -1)
+        throw bad_lexical_cast();
     std::string ret = str;
     free(str);
     return ret;
@@ -93,7 +95,9 @@ template <>
 string lexical_cast<string,long double>(const long double& val)
 {
     char* str = 0;
-    asprintf(&str, "%La", val);
+    int retval = asprintf(&str, "%La", val);
+    if (retval == -1)
+        throw bad_lexical_cast();
     std::string ret = str;
     free(str);
     return ret;
@@ -108,10 +112,9 @@ long double lexical_cast<long double,string>(const string& val)
         throw bad_lexical_cast();
     return ret;
 }
-
 }
 
-// vector io
+// std::vector<> stream i/o
 namespace std
 {
 // string vectors need special attention, since separators must be properly
@@ -160,7 +163,8 @@ istream& operator>>(istream& in, vector<string>& vec)
     }
     return in;
 }
-}
+} // std namespace
+
 
 //
 // Persistent IO of python::object types. All the magic is done in python,

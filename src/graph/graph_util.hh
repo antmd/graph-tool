@@ -217,10 +217,38 @@ add_vertex(reverse_graph<Graph>& g)
 
 } // namespace boost
 
+
 namespace std
 {
 // STL omission?
 inline bool max(const bool& a, const bool& b) { return a || b; }
+}
+
+//
+// Data type string representation
+// ===============================
+//
+// String representation of individual data types. We have to take care
+// specifically that no information is lost with floating point I/O.
+//
+// These are implemented in graph_io.cc.
+
+namespace boost
+{
+using namespace std;
+
+template <>
+string lexical_cast<string,uint8_t>(const uint8_t& val);
+template <>
+uint8_t lexical_cast<uint8_t,string>(const string& val);
+template <>
+string lexical_cast<string,double>(const double& val);
+template <>
+double lexical_cast<double,string>(const string& val);
+template <>
+string lexical_cast<string,long double>(const long double& val);
+template <>
+long double lexical_cast<long double,string>(const string& val);
 }
 
 // std::vector<> stream i/o
@@ -257,6 +285,8 @@ istream& operator>>(istream& in, vector<Type>& vec)
     return in;
 }
 
+// string vectors need special attention, since separators must be properly
+// escaped.
 template <>
 ostream& operator<<(ostream& out, const vector<string>& vec);
 
