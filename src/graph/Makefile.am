@@ -1,8 +1,10 @@
 ## Process this file with automake to produce Makefile.in
 
+SUBDIRS = generation stats clustering community util misc centrality correlations
+
 AM_CPPFLAGS =\
-    -I. -I.. \
-    -I../boost-workaround \
+    -I$(srcdir)/.. \
+    -I$(srcdir)/../boost-workaround \
     -DHAVE_CONFIG_H
 
 AM_CXXFLAGS =\
@@ -12,67 +14,41 @@ AM_CXXFLAGS =\
 
 AM_CFLAGS=$(AM_CXXFLAGS)
 
-libgraph_tooldir = $(pythondir)/graph_tool
+libgraph_tool_coredir = $(pythondir)/graph_tool
+libgraph_tool_core_LTLIBRARIES = libgraph_tool_core.la
 
-libgraph_tool_LTLIBRARIES = libgraph_tool.la
-
-libgraph_tool_la_includedir = $(pythondir)/graph_tool/include
-
-libgraph_tool_la_SOURCES = \
-    graph.hh\
-    graph.cc\
-    graph_python_interface.cc\
-    graph_properties.cc\
-    graph_correlations.cc\
-    graph_edge_correlations.cc\
-    graph_correlations_combined.cc\
-    graph_correlations_neighbours.cc\
-    graph_assortativity.cc\
-    graph_clustering.cc\
-    graph_extended_clustering.cc\
-    graph_generation.cc\
-    graph_distance.cc\
-    graph_distance_sampled.cc\
-    graph_reciprocity.cc\
-    graph_minimum_spanning_tree.cc\
-    graph_community.cc\
-    graph_community_network.cc\
-    graph_line_graph.cc\
-    graph_betweenness.cc\
-    graph_rewiring.cc\
-    graph_layout.cc\
-    graph_io.cc\
-    graph_bind.cc\
+libgraph_tool_core_la_SOURCES = \
+    graph_bind.cc \
+    graph.cc \
+    graph_copy.cc \
+    graph_filtering.cc \
+    graph_io.cc \
+    graph_properties.cc \
+    graph_python_interface.cc \
+    graph_python_interface_export.cc \
+    graph_selectors.cc \
     graphml.cpp\
     read_graphviz_spirit.cpp\
     ../boost-workaround/boost/graph/filtered_graph.hpp\
-    ../boost-workaround/boost/graph/fruchterman_reingold.hpp\
     ../boost-workaround/boost/graph/graphml.hpp
 
-libgraph_tool_la_include_HEADERS = \
-    graph_adaptor.hh\
-    graph.hh\
-    graph_filtering.hh\
-    graph_python_interface.hh\
-    graph_selectors.hh\
-    graph_properties.hh\
-    shared_map.hh\
-    histogram.hh\
+libgraph_tool_core_la_includedir = $(pythondir)/graph_tool/include
+libgraph_tool_core_la_include_HEADERS = \
+    graph_adaptor.hh \
+    graph_wrap.hh \
+    graph_filtering.hh \
+    graph.hh \
+    graph_properties.hh \
+    graph_python_interface.hh \
+    graph_selectors.hh \
+    graph_util.hh \
+    histogram.hh \
+    mpl_nested_loop.hh \
+    shared_map.hh \
+    fast_vector_property_map.hh \
+    numpy_bind.hh \
     ../../config.h
 
-libgraph_tool_la_LIBADD = \
-    $(PYTHON_LDFLAGS) \
-    $(BOOST_LDFLAGS) \
-    $(OPENMP_LDFLAGS) \
-    -lboost_python \
-    -lboost_iostreams \
-    -lexpat
+libgraph_tool_core_la_LIBADD = $(MOD_LIBADD)
+libgraph_tool_core_la_LDFLAGS = $(MOD_LDFLAGS)
 
-# needed for typeinfo objects to work across DSO boundaries.
-# see http://gcc.gnu.org/faq.html#dso
-libgraph_tool_la_LDFLAGS = \
-    -module \
-    -avoid-version \
-    -export-dynamic \
-    -no-undefined \
-    $(LD_EXPORT_DYNAMIC)

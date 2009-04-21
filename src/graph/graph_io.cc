@@ -15,26 +15,259 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-
-#include <boost/lambda/lambda.hpp>
-#include <boost/lambda/bind.hpp>
-#include <boost/graph/graphviz.hpp>
-
 #include "graph.hh"
-#include "histogram.hh"
 #include "graph_filtering.hh"
 #include "graph_properties.hh"
-#include <boost/graph/graphml.hpp>
+#include "graph_util.hh"
+
+#include <iostream>
 #include <boost/algorithm/string.hpp>
+#include <boost/iostreams/categories.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/filter/bzip2.hpp>
+#include <boost/iostreams/device/file_descriptor.hpp>
 #include <boost/iostreams/device/file.hpp>
+#include <boost/lambda/bind.hpp>
+#include <boost/graph/graphml.hpp>
+#include <boost/graph/graphviz.hpp>
+#include <boost/python/extract.hpp>
+#include <boost/lexical_cast.hpp>
+
+#include "graph_python_interface.hh"
 
 using namespace std;
 using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
+
+//
+// Data type string representation
+// ===============================
+//
+// String representation of individual data types. We have to take care
+// specifically that no information is lost with floating point I/O.
+
+namespace boost
+{
+
+template <>
+string lexical_cast<string,uint8_t>(const uint8_t& val)
+{
+
+    // "chars" should be printed as numbers, since they can be non-printable
+    return lexical_cast<std::string>(int(val));
+}
+
+template <>
+uint8_t lexical_cast<uint8_t,string>(const string& val)
+{
+
+    // "chars" should be printed as numbers, since they can be non-printable
+    return uint8_t(lexical_cast<int>(val));
+}
+
+// double and long double should be printed in hexadecimal format to preserve
+// internal representation
+template <>
+string lexical_cast<string,double>(const double& val)
+{
+    char* str = 0;
+    int retval = asprintf(&str, "%la", val);
+    if (retval == -1)
+        throw bad_lexical_cast();
+    std::string ret = str;
+    free(str);
+    return ret;
+}
+
+template <>
+double lexical_cast<double,string>(const string& val)
+{
+    double ret;
+    int nc = sscanf(val.c_str(), "%la", &ret);
+    if (nc != 1)
+        throw bad_lexical_cast();
+    return ret;
+}
+
+template <>
+string lexical_cast<string,long double>(const long double& val)
+{
+    char* str = 0;
+    int retval = asprintf(&str, "%La", val);
+    if (retval == -1)
+        throw bad_lexical_cast();
+    std::string ret = str;
+    free(str);
+    return ret;
+}
+
+template <>
+long double lexical_cast<long double,string>(const string& val)
+{
+    long double ret;
+    int nc = sscanf(val.c_str(), "%La", &ret);
+    if (nc != 1)
+        throw bad_lexical_cast();
+    return ret;
+}
+}
+
+// std::vector<> stream i/o
+namespace std
+{
+// string vectors need special attention, since separators must be properly
+// escaped.
+template <>
+ostream& operator<<(ostream& out, const vector<string>& vec)
+{
+    for (size_t i = 0; i < vec.size(); ++i)
+    {
+        string s = vec[i];
+        // escape separators
+        boost::replace_all(s, "\\", "\\\\");
+        boost::replace_all(s, ", ", ",\\ ");
+
+        out << s;
+        if (i < vec.size() - 1)
+            out << ", ";
+    }
+    return out;
+}
+
+template <>
+istream& operator>>(istream& in, vector<string>& vec)
+{
+    using namespace boost;
+    using namespace boost::algorithm;
+    using namespace boost::xpressive;
+
+    vec.clear();
+    string data;
+    while (in.good())
+    {
+        string line;
+        getline(in, line);
+        data += line;
+    }
+
+    sregex re = sregex::compile(", ");
+    sregex_token_iterator iter(data.begin(), data.end(), re, -1), end;
+    for (; iter != end; ++iter)
+    {
+        vec.push_back(*iter);
+        // un-escape separators
+        boost::replace_all(vec.back(), ",\\ ", ", ");
+        boost::replace_all(vec.back(), "\\\\", "\\");
+    }
+    return in;
+}
+} // std namespace
+
+
+//
+// Persistent IO of python::object types. All the magic is done in python,
+// through the object_pickler and object_unplickler below
+//
+
+namespace graph_tool
+{
+python::object object_pickler;
+python::object object_unpickler;
+}
+
+namespace boost
+{
+template <>
+string lexical_cast<string,python::object>(const python::object & o)
+{
+    stringstream s;
+    object_pickler(OStream(s), o);
+    return s.str();
+    return "";
+}
+
+template <>
+python::object lexical_cast<python::object,string>(const string& ps)
+{
+    stringstream s(ps);
+    python::object o;
+    o = object_unpickler(IStream(s));
+    return o;
+}
+}
+
+// the following source & sink provide iostream access to python file-like
+// objects
+
+class python_file_device
+{
+public:
+    typedef char                 char_type;
+    typedef iostreams::seekable_device_tag  category;
+
+    python_file_device(python::object file): _file(file) {}
+    std::streamsize read(char* s, std::streamsize n)
+    {
+        python::object pbuf = _file.attr("read")(n);
+        string buf = python::extract<string>(pbuf);
+        for (size_t i = 0; i < buf.size(); ++i)
+            s[i] = buf[i];
+        return buf.size();
+    }
+
+    std::streamsize write(const char* s, std::streamsize n)
+    {
+        string buf(s, s+n);
+        python::object pbuf(buf);
+        _file.attr("write")(pbuf);
+        return n;
+    }
+
+    iostreams::stream_offset seek(iostreams::stream_offset off,
+                                  std::ios_base::seekdir way)
+    {
+        _file.attr("seek")(off, int(way));
+        return python::extract<iostreams::stream_offset>(_file.attr("tell")());
+    }
+
+private:
+    python::object _file;
+};
+
+// Property Maps
+// =============
+
+struct get_python_property
+{
+    template <class ValueType, class IndexMap>
+    void operator()(ValueType, IndexMap, dynamic_property_map* map,
+                    python::object& pmap) const
+    {
+        typedef typename property_map_type::apply<ValueType, IndexMap>::type
+            map_t;
+        try
+        {
+            pmap = python::object
+                (PythonPropertyMap<map_t>
+                 (dynamic_cast
+                  <boost::detail::dynamic_property_map_adaptor<map_t>&>(*map)
+                  .base()));
+        } catch (bad_cast&) {}
+    }
+};
+
+template <class IndexMap>
+python::object find_property_map(dynamic_property_map* map, IndexMap)
+{
+    python::object pmap;
+    mpl::for_each<value_types>(lambda::bind<void>(get_python_property(),
+                                                  lambda::_1,
+                                                  IndexMap(), lambda::var(map),
+                                                  lambda::var(pmap)));
+    return pmap;
+}
 
 // this functor will check whether a value is of a specific type, create a
 // corresponding vector_property_map and add the value to it
@@ -52,10 +285,12 @@ struct check_value_type
     {
         try
         {
-            vector_property_map<ValueType, IndexMap> vector_map(_index_map);
+            typedef typename property_map_type::apply<ValueType, IndexMap>::type
+                map_t;
+            map_t vector_map(_index_map);
             vector_map[_key] = any_cast<ValueType>(_value);
-            _map = new boost::detail::dynamic_property_map_adaptor
-                <vector_property_map<ValueType, IndexMap> >(vector_map);
+            _map = new boost::detail::dynamic_property_map_adaptor<map_t>
+                (vector_map);
         }
         catch (bad_any_cast) {}
     }
@@ -207,35 +442,19 @@ struct graph_traits<FakeUndirGraph<Graph> >
 
 
 //==============================================================================
-// ReadFromFile(file, format)
+// ReadFromFile(file, pfile, format)
 //==============================================================================
 
-
-void GraphInterface::ReadFromFile(string file)
+void build_stream
+    (boost::iostreams::filtering_stream<boost::iostreams::input>& stream,
+     const string& file,  python::object& pfile, std::ifstream& file_stream)
 {
-    bool graphviz = boost::ends_with(file,".dot") ||
-        boost::ends_with(file,".dot.gz") || boost::ends_with(file,".dot.bz2");
-    if (graphviz)
-        ReadFromFile(file, "dot");
+    stream.reset();
+    if (file == "-")
+        stream.push(std::cin);
     else
-        ReadFromFile(file, "xml");
-}
-
-void GraphInterface::ReadFromFile(string file, string format)
-{
-    bool graphviz = false;
-    if (format == "dot")
-        graphviz = true;
-    else if (format != "xml")
-        throw GraphException("error reading from file '" + file +
-                             "': requested invalid format '" + format + "'");
-    try
     {
-        boost::iostreams::filtering_stream<boost::iostreams::input> stream;
-        std::ifstream file_stream;
-        if (file == "-")
-            stream.push(std::cin);
-        else
+        if (pfile == python::object())
         {
             file_stream.open(file.c_str(), std::ios_base::in |
                              std::ios_base::binary);
@@ -246,24 +465,56 @@ void GraphInterface::ReadFromFile(string file, string format)
                 stream.push(boost::iostreams::bzip2_decompressor());
             stream.push(file_stream);
         }
-        stream.exceptions(ios_base::badbit);
+        else
+        {
+            python_file_device src(pfile);
+            stream.push(src);
+        }
+    }
+    stream.exceptions(ios_base::badbit);
+}
 
-        _properties = dynamic_properties();
+
+python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
+                                           string format)
+{
+    bool graphviz = false;
+    if (format == "dot")
+        graphviz = true;
+    else if (format != "xml")
+        throw GraphException("error reading from file '" + file +
+                             "': requested invalid format '" + format + "'");
+    try
+    {
+        boost::iostreams::filtering_stream<boost::iostreams::input>
+            stream;
+        std::ifstream file_stream;
+        build_stream(stream, file, pfile, file_stream);
+
+        create_dynamic_map<vertex_index_map_t,edge_index_map_t>
+            map_creator(_vertex_index, _edge_index);
+        dynamic_properties dp(map_creator);
         _mg.clear();
 
-        dynamic_properties_copy
-            dp(create_dynamic_map<vertex_index_map_t, edge_index_map_t>
-               (_vertex_index, _edge_index));
         GraphEdgeIndexWrap<multigraph_t,edge_index_map_t> wg(_mg, _edge_index);
-        if (_directed)
+        _directed = true;
+        try
         {
             if (graphviz)
                 read_graphviz(stream, wg, dp, "vertex_name");
             else
                 read_graphml(stream, wg, dp);
         }
-        else
+        catch (const undirected_graph_error&)
         {
+            _directed = false;
+            file_stream.close();
+            if (pfile != python::object())
+            {
+                python_file_device src(pfile);
+                src.seek(0, std::ios_base::beg);
+            }
+            build_stream(stream, file, pfile, file_stream);
             FakeUndirGraph<GraphEdgeIndexWrap<multigraph_t,edge_index_map_t> >
                 ug(wg);
             if (graphviz)
@@ -271,8 +522,22 @@ void GraphInterface::ReadFromFile(string file, string format)
             else
                 read_graphml(stream, ug, dp);
         }
+        _nedges = num_edges(_mg);
 
-        _properties = dp;
+        python::dict vprops, eprops, gprops;
+        for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)
+        {
+            if (iter->second->key() == typeid(vertex_t))
+                vprops[iter->first] = find_property_map(iter->second,
+                                                       _vertex_index);
+            else if (iter->second->key() == typeid(edge_t))
+                eprops[iter->first] = find_property_map(iter->second,
+                                                       _edge_index);
+            else
+                gprops[iter->first] = find_property_map(iter->second,
+                                                        _graph_index);
+        }
+        return python::make_tuple(vprops, eprops, gprops);
     }
     catch (ios_base::failure &e)
     {
@@ -281,6 +546,25 @@ void GraphInterface::ReadFromFile(string file, string format)
     }
 
 };
+
+template <class IndexMap>
+string graphviz_insert_index(dynamic_properties& dp, IndexMap index_map,
+                             bool insert = true)
+{
+    typedef GraphInterface::vertex_t vertex_t;
+    bool found = false;
+    for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end();
+        ++iter)
+        if (iter->first == "vertex_name" &&
+            iter->second->key() == typeid(vertex_t))
+            found = true;
+    if (!found && insert)
+        dp.property("vertex_id", index_map);
+    if (found)
+        return "vertex_name";
+    else
+        return "vertex_id";
+}
 
 // writes a graph to a file
 
@@ -294,16 +578,7 @@ struct write_to_file
 
         if (graphviz)
         {
-            string name;
-            try
-            {
-                find_property_map(dp, "vertex_name", typeid(vertex_t));
-                name = "vertex_name";
-            }
-            catch (property_not_found)
-            {
-                name = "vertex_id";
-            }
+            string name = graphviz_insert_index(dp, index_map, false);
             write_graphviz(stream, g, dp, name);
         }
         else
@@ -338,18 +613,8 @@ struct generate_index
     }
 };
 
-
-void GraphInterface::WriteToFile(string file)
-{
-    bool graphviz = boost::ends_with(file,".dot") ||
-        boost::ends_with(file,".dot.gz") || boost::ends_with(file,".dot.bz2");
-    if (graphviz)
-        WriteToFile(file, "dot");
-    else
-        WriteToFile(file, "xml");
-}
-
-void GraphInterface::WriteToFile(string file, string format)
+void GraphInterface::WriteToFile(string file, python::object pfile,
+                                 string format, python::list props)
 {
     bool graphviz = false;
     if (format == "dot")
@@ -365,18 +630,35 @@ void GraphInterface::WriteToFile(string file, string format)
             stream.push(std::cout);
         else
         {
-            file_stream.open(file.c_str(), std::ios_base::out |
-                                           std::ios_base::binary);
-            file_stream.exceptions(ios_base::badbit | ios_base::failbit);
-            if (boost::ends_with(file,".gz"))
-                stream.push(boost::iostreams::gzip_compressor());
-            if (boost::ends_with(file,".bz2"))
-                stream.push(boost::iostreams::bzip2_compressor());
-            stream.push(file_stream);
+            if (pfile == python::object())
+            {
+                file_stream.open(file.c_str(), std::ios_base::out |
+                                 std::ios_base::binary);
+                file_stream.exceptions(ios_base::badbit | ios_base::failbit);
+                if (boost::ends_with(file,".gz"))
+                    stream.push(boost::iostreams::gzip_compressor());
+                if (boost::ends_with(file,".bz2"))
+                    stream.push(boost::iostreams::bzip2_compressor());
+                stream.push(file_stream);
+            }
+            else
+            {
+                python_file_device sink(pfile);
+                stream.push(sink);
+            }
         }
         stream.exceptions(ios_base::badbit | ios_base::failbit);
 
-        dynamic_properties_copy dp = _properties;
+        dynamic_properties dp;
+        for (int i = 0; i < len(props); ++i)
+        {
+            dynamic_property_map* pmap =
+                any_cast<dynamic_property_map*>
+                (python::extract<boost::any>
+                 (props[i][1].attr("get_dynamic_map")()));
+            dp.insert(python::extract<string>(props[i][0]),
+                      auto_ptr<dynamic_property_map>(pmap));
+        }
 
         if (IsVertexFilterActive())
         {
@@ -384,61 +666,45 @@ void GraphInterface::WriteToFile(string file, string format)
             typedef tr1::unordered_map<vertex_t, size_t>  map_t;
             map_t vertex_to_index;
             associative_property_map<map_t> index_map(vertex_to_index);
-            run_action(*this, bind<void>(generate_index(), _1, index_map));
+            run_action<>()(*this, lambda::bind<void>(generate_index(),
+                                                     lambda::_1,
+                                                     index_map))();
             if (graphviz)
-            {
-                try
-                {
-                    find_property_map(dp, "vertex_name", typeid(vertex_t));
-                }
-                catch (property_not_found)
-                {
-                    dp.property("vertex_id", index_map);
-                }
-            }
+                graphviz_insert_index(dp, index_map);
+
             if (GetDirected())
-            {
-                run_action(*this,bind<void>(write_to_file(),
-                                            var(stream), _1, index_map,
-                                            var(dp), graphviz),
-                           reverse_check(), always_directed());
-            }
+                run_action<detail::always_directed>()
+                    (*this, lambda::bind<void>(write_to_file(),
+                                               lambda::var(stream),
+                                               lambda::_1,
+                                               index_map, lambda::var(dp),
+                                               graphviz))();
             else
-            {
-                run_action(*this,bind<void>(write_to_file_fake_undir(),
-                                            var(stream), _1, index_map,
-                                            var(dp), graphviz),
-                           never_reversed(), always_undirected());
-            }
+                run_action<detail::never_directed>()
+                    (*this,lambda::bind<void>(write_to_file_fake_undir(),
+                                              lambda::var(stream),
+                                              lambda::_1, index_map,
+                                              lambda::var(dp), graphviz))();
         }
         else
         {
             if (graphviz)
-            {
-                try
-                {
-                    find_property_map(dp, "vertex_name", typeid(vertex_t));
-                }
-                catch (property_not_found)
-                {
-                    dp.property("vertex_id", _vertex_index);
-                }
-            }
+                graphviz_insert_index(dp, _vertex_index);
 
             if (GetDirected())
-            {
-                run_action(*this,bind<void>(write_to_file(), var(stream),
-                                            _1, _vertex_index, var(dp),
-                                            graphviz),
-                           reverse_check(), always_directed());
-            }
+                run_action<detail::always_directed>()
+                    (*this, lambda::bind<void>(write_to_file(),
+                                               lambda::var(stream),
+                                               lambda::_1, _vertex_index,
+                                               lambda::var(dp),
+                                               graphviz))();
             else
-            {
-                run_action(*this,bind<void>(write_to_file_fake_undir(),
-                                            var(stream), _1, _vertex_index,
-                                            var(dp), graphviz),
-                           never_reversed(), always_undirected());
-            }
+                run_action<detail::never_directed>()
+                    (*this,lambda::bind<void>(write_to_file_fake_undir(),
+                                              lambda::var(stream),
+                                              lambda::_1, _vertex_index,
+                                              lambda::var(dp),
+                                              graphviz))();
         }
         stream.reset();
     }
@@ -447,5 +713,4 @@ void GraphInterface::WriteToFile(string file, string format)
         throw GraphException("error writing to file '" + file + "':" +
                              e.what());
     }
-
 }

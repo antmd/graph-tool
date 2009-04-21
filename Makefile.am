@@ -12,7 +12,7 @@ graphtooldoc_DATA = \
 	TODO
 
 
-EXTRA_DIST = $(graphtooldoc_DATA) 
+EXTRA_DIST = $(graphtooldoc_DATA)
 
 # Copy all the spec files. Of cource, only one is actually used.
 dist-hook:

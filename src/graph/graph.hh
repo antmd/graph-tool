@@ -1,4 +1,3 @@
-
 // graph-tool -- a general graph modification and manipulation thingy
 //
 // Copyright (C) 2007  Tiago de Paula Peixoto <tiago@forked.de>
@@ -19,17 +18,21 @@
 #ifndef GRAPH_HH
 #define GRAPH_HH
 
+#include <deque>
+
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
-#include <boost/vector_property_map.hpp>
+
+#include "fast_vector_property_map.hh"
 #include <boost/dynamic_property_map.hpp>
+#include <boost/lambda/lambda.hpp>
+#include <boost/lambda/bind.hpp>
 #include <boost/variant.hpp>
 #include <boost/python/object.hpp>
 #include <boost/python/dict.hpp>
-#include <boost/lambda/lambda.hpp>
-#include "histogram.hh"
-#include "config.h"
+#include <boost/mpl/vector.hpp>
 #include "graph_properties.hh"
+#include "config.h"
 
 namespace graph_tool
 {
@@ -41,179 +44,89 @@ using namespace boost;
 // the external world will manipulate the graph. All the algorithms should be
 // registered here. This class will be exported to python in graph_bind.hh
 
-// default visibility is necessary for related typeinfo objects to work across
-// DSO boundaries
-#pragma GCC visibility push(default)
+namespace detail
+{
+// Generic graph_action functor. See graph_filtering.hh for details.
+template <class Action, class GraphViews, class Wrap = mpl::false_,
+          class TR1=boost::mpl::vector<>, class TR2=boost::mpl::vector<>,
+          class TR3=boost::mpl::vector<>, class TR4=boost::mpl::vector<> >
+struct graph_action;
+}
+
 class GraphInterface
 {
 public:
     GraphInterface();
+    GraphInterface(const GraphInterface& gi);
     ~GraphInterface();
 
-    // this enum specifies all the different types of degree
-    enum degree_t
+    // useful enums
+
+    typedef enum
     {
         IN_DEGREE,
         OUT_DEGREE,
-        TOTAL_DEGREE, // in + out
-        SCALAR        // scalar vertex property
-    };
+        TOTAL_DEGREE
+    } degree_t;
 
-    typedef variant<degree_t,string> deg_t; // useful when function also expects
-                                            // a scalar vertex property
+    // general "degree" type, i.e., either a degree_t above or a string
+    // representing a scalar vertex property
+    typedef boost::variant<degree_t, boost::any> deg_t;
 
     //
     // Basic manipulation
     //
 
-    size_t GetNumberOfVertices() const;
-    size_t GetNumberOfEdges() const;
+    size_t GetNumberOfVertices();
+    size_t GetNumberOfEdges();
     void SetDirected(bool directed) {_directed = directed;}
-    bool GetDirected() const {return _directed;}
+    bool GetDirected() {return _directed;}
     void SetReversed(bool reversed) {_reversed = reversed;}
-    bool GetReversed() const {return _reversed;}
-
+    bool GetReversed() {return _reversed;}
 
     // graph filtering
-    void SetVertexFilterProperty(string property);
-    void SetVertexFilterRange(pair<double,double> allowed_range,
-                              pair<bool,bool> include, bool invert);
+    void SetVertexFilterProperty(boost::any prop, bool invert);
     bool IsVertexFilterActive() const;
-
-    void SetEdgeFilterProperty(string property);
-    void SetEdgeFilterRange(pair<double,double> allowed_range,
-                            pair<bool,bool> include, bool invert);
+    void SetEdgeFilterProperty(boost::any prop, bool invert);
     bool IsEdgeFilterActive() const;
 
-
     // graph modification
-    void RemoveVertexProperty(string property);
-    void RemoveEdgeProperty(string property);
-    void RemoveGraphProperty(string property);
-    void InsertEdgeIndexProperty(string property);
-    void InsertVertexIndexProperty(string property);
-    void EditVertexProperty(string property, string type, python::object op,
-                            python::object g);
-    void EditEdgeProperty(string property, string type, python::object op,
-                          python::object g);
-    void EditGraphProperty(string property, string type, python::object op,
-                           python::object g);
+    void InsertPropertyMap(string name, boost::any map);
     void ReIndexEdges();
     void PurgeVertices(); // removes filtered vertices
     void PurgeEdges();    // removes filtered edges
-    void RandomRewire(std::string strat, bool self_loops, bool parallel_edges,
-                      size_t seed);
-
-    // i/o
-    void WriteToFile(string s);
-    void WriteToFile(string s, string format);
-    void ReadFromFile(string s);
-    void ReadFromFile(string s, string format);
+    void Clear();
+    void ClearEdges();
+    void ShiftVertexProperty(boost::any map, size_t index) const;
+    void CopyVertexProperty(const GraphInterface& src, boost::any prop_src,
+                            boost::any prop_tgt);
+    void CopyEdgeProperty(const GraphInterface& src, boost::any prop_src,
+                          boost::any prop_tgt);
 
     //
-    // Algorithms
-    // Below are all the algorithms that operate somehow on the graph
-    //
-
-    // basic statistics
-    hist_t GetVertexHistogram(deg_t degree) const;
-    hist_t GetEdgeHistogram(string property) const;
-
-    // correlations
-    hist2d_t   GetCombinedVertexHistogram(deg_t degree1, deg_t degree2) const;
-    avg_corr_t GetAverageCombinedVertexCorrelation(deg_t degree1,
-                                                   deg_t degree2)const;
-    hist2d_t   GetVertexCorrelationHistogram(deg_t degree1, deg_t degree2,
-                                             string weight) const;
-    hist3d_t   GetEdgeVertexCorrelationHistogram(deg_t deg1, string scalar,
-                                                 deg_t deg2) const;
-    avg_corr_t GetAverageNearestNeighboursCorrelation(deg_t origin_degree,
-                                                      deg_t neighbour_degree,
-                                                      string weight) const;
-
-    // vertex mixing
-    pair<double,double> GetAssortativityCoefficient(deg_t deg) const;
-    pair<double,double> GetScalarAssortativityCoefficient(deg_t deg) const;
-
-    // clustering
-    void SetLocalClusteringToProperty(string property);
-    pair<double,double> GetGlobalClustering();
-    void SetExtendedClusteringToProperty(string property_prefix,
-                                         size_t max_depth);
-
-    // other
-    void   LabelComponents(string property);
-    void   LabelParallelEdges(string property);
-    hist_t GetDistanceHistogram(string weight) const;
-    hist_t GetSampledDistanceHistogram(string weight, size_t samples,
-                                       size_t seed) const;
-    double GetReciprocity() const;
-    void   GetMinimumSpanningTree(string weight, string property);
-    void   GetLineGraph(string out_file, string format);
-    void   GetBetweenness(string weight, string edge_betweenness,
-                          string vertex_betweenness);
-    double GetCentralPointDominance(string vertex_betweenness);
-
-    // community structure
-    enum comm_corr_t // null model correlation type
-    {
-        ERDOS_REYNI,
-        UNCORRELATED,
-        CORRELATED
-    };
-
-    void   GetCommunityStructure(double gamma, comm_corr_t corr, size_t n_iter,
-                                 double Tmin, double Tmax, size_t Nseeds,
-                                 size_t seed, bool verbose, string history_file,
-                                 string weight, string property);
-    double GetModularity(string weight, string property);
-    // TODO: this should return a GraphInterface type
-    void   GetCommunityNetwork(string property, string size_property,
-                               string out_file, string format) const;
-
-    // Graph generation
-    void GenerateCorrelatedConfigurationalModel
-        (size_t N, python::object ppjk, python::object pceil_pjk,
-         python::object pinv_ceil_pjk, double ceil_pjk_bound,
-         python::object pcorr, python::object pceil_corr,
-         python::object pinv_ceil_corr, double ceil_corr_bound,
-         bool undirected_corr, size_t seed, bool verbose);
-
-    // graph layout
-    void ComputeGraphLayoutGursoy(string prop, string weight, string topology,
-                                  size_t iter = 0, size_t seed = 4357);
-    void ComputeGraphLayoutSpringBlock(string prop, string weight, string type,
-                                       size_t iter = 0, size_t seed = 4357);
-
     // python interface
+    //
     python::object Vertices() const;
+    python::object Vertex(size_t i) const;
     python::object Edges() const;
 
     python::object AddVertex();
-    void RemoveVertex(python::object v);
-    python::object AddEdge(python::object s, python::object t);
-    void RemoveEdge(python::object e);
+    void           RemoveVertex(const python::object& v);
+    python::object AddEdge(const python::object& s, const python::object& t);
+    void           RemoveEdge(const python::object& e);
 
-    python::dict GetVertexProperties() const;
-    python::dict GetEdgeProperties() const;
-    python::dict GetGraphProperties() const;
+    python::object DegreeMap(string deg) const;
 
     // used for graph properties
     graph_property_tag GetDescriptor() const { return graph_property_tag(); }
+    bool CheckValid() const {return true;}
 
     void ExportPythonInterface() const;
 
-    // signal handling
-    void InitSignalHandling();
-
-    // arbitrary code execution, for run-time code integration
-    template <class Action, class Args>
-    void RunAction(const Action &a, const Args& args)
-    {
-        using namespace boost::lambda;
-        run_action(*this, bind<void>(a, boost::lambda::_1, _vertex_index,
-                                     _edge_index, var(_properties), var(args)));
-    }
+    // I/O
+    void WriteToFile(string s, python::object pf, string format,
+                     python::list properties);
+    python::tuple ReadFromFile(string s, python::object pf, string format);
 
     //
     // Internal types
@@ -231,94 +144,93 @@ public:
     typedef graph_traits<multigraph_t>::vertex_descriptor vertex_t;
     typedef graph_traits<multigraph_t>::edge_descriptor edge_t;
 
+    typedef property_map<multigraph_t,vertex_index_t>::type vertex_index_map_t;
+    typedef property_map<multigraph_t,edge_index_t>::type edge_index_map_t;
+    typedef ConstantPropertyMap<size_t,graph_property_tag> graph_index_map_t;
+
+    // internal access
+
+    multigraph_t& GetGraph() {return _mg;}
+    vertex_index_map_t GetVertexIndex() {return _vertex_index;}
+    edge_index_map_t   GetEdgeIndex()   {return _edge_index;}
+    graph_index_map_t  GetGraphIndex()  {return graph_index_map_t(0);}
+
+    void           AddEdgeIndex(const edge_t& e);
+    void           RemoveEdgeIndex(const edge_t& e);
+
+    // Gets the encapsulated graph view. See graph_filtering.cc for details
+    boost::any GetGraphView() const;
+
 private:
 
-    // The following function is very central to the implementation of the above
-    // member functions. Most of the algorithms are implemented as template
-    // functors, which must be run on the correct version of the graph, i.e.,
-    // filtered, unfiltered, directed, undirected, etc. The functor in question
-    // must be fed to the function below as the "a" variable, which will take
-    // care of business, selection the correct implementation. The ReverseCheck
-    // and DirectedCheck below are utility types which allow for limiting the
-    // implementation generation when you want it to be confined for only
-    // specific graph types. See graph_filtering.hh for details.
+    // Generic graph_action functor. See graph_filtering.hh for details.
+    template <class Action,
+              class TR1=boost::mpl::vector<>, class TR2=boost::mpl::vector<>,
+              class TR3=boost::mpl::vector<>, class TR4=boost::mpl::vector<> >
+    friend struct detail::graph_action;
 
-    template <class GraphInterfaceType, class Action, class ReverseCheck,
-              class DirectedCheck>
-    friend void run_action(GraphInterfaceType &g, Action a,
-                           ReverseCheck, DirectedCheck, bool run_all=false);
-
-    // useful overload for common case where all graph types should be probed
-    template <class GraphInterfaceType, class Action>
-    friend void run_action(GraphInterfaceType &g, Action a);
-
-    friend class scalarS;
+    // python interface
+    friend class PythonVertex;
+    template <class Graph>
+    friend class PythonEdge;
 
     // this is the main graph
     multigraph_t _mg;
+
+    // keep track of the number of edges, since num_edges() is O(V) in
+    // adjacency_list... :-(
+    size_t _nedges;
+
+    // this will hold an instance of the graph views at run time
+    vector<boost::any> _graph_views;
 
     // reverse and directed states
     bool _reversed;
     bool _directed;
 
     // vertex index map
-    typedef property_map<multigraph_t,vertex_index_t>::type vertex_index_map_t;
     vertex_index_map_t _vertex_index;
 
     // edge index map
-    typedef property_map<multigraph_t,edge_index_t>::type edge_index_map_t;
     edge_index_map_t _edge_index;
+    deque<size_t> _free_indexes; // indexes of deleted edges to be used up for
+                                 // new edges to avoid very large indexes, and
+                                 // property map memory usage
+    size_t _max_edge_index;
 
-    // graph properties
-    dynamic_properties _properties;
+    // graph index map
+    graph_index_map_t _graph_index;
 
     // vertex filter
-    string _vertex_filter_property;
-    typedef variant<vector_property_map<double,vertex_index_map_t>,
-                    HashedDescriptorMap<vertex_index_map_t,double>,
-                    vector_property_map<size_t,vertex_index_map_t>,
-                    HashedDescriptorMap<vertex_index_map_t,size_t>,
-                    vertex_index_map_t,
-                    DynamicPropertyMapWrap<double,vertex_t> >
-        vertex_filter_map_t;
-    vertex_filter_map_t _vertex_filter_map;
-    pair<double,double> _vertex_range;
-    pair<bool,bool> _vertex_range_include;
-    bool _vertex_range_invert;
+    typedef unchecked_vector_property_map<uint8_t,vertex_index_map_t>
+        vertex_filter_t;
+    vertex_filter_t _vertex_filter_map;
+    bool _vertex_filter_invert;
+    bool _vertex_filter_active;
 
     // edge filter
-    string _edge_filter_property;
-    typedef variant<vector_property_map<double, edge_index_map_t>,
-                    HashedDescriptorMap<edge_index_map_t, double>,
-                    vector_property_map<size_t, edge_index_map_t>,
-                    HashedDescriptorMap<edge_index_map_t, size_t>,
-                    edge_index_map_t,
-                    DynamicPropertyMapWrap<double,edge_t> >
-        edge_filter_map_t;
-    edge_filter_map_t _edge_filter_map;
-    pair<double,double> _edge_range;
-    pair<bool,bool> _edge_range_include;
-    bool _edge_range_invert;
-
+    typedef unchecked_vector_property_map<uint8_t,edge_index_map_t> edge_filter_t;
+    edge_filter_t _edge_filter_map;
+    bool _edge_filter_invert;
+    bool _edge_filter_active;
 };
-#pragma GCC visibility pop
 
-pair<GraphInterface::degree_t,string>
-get_degree_type(GraphInterface::deg_t degree);
-
+// Exceptions
+// ==========
+//
 // This is the main exception which will be thrown the outside world, when
 // things go wrong
 
-#pragma GCC visibility push(default)
-class GraphException : public exception
+class GraphException : public std::exception
 {
     string _error;
 public:
-    GraphException(string error) {_error = error;}
+    GraphException(const string& error) {_error = error;}
     virtual ~GraphException() throw () {}
     virtual const char * what () const throw () {return _error.c_str();}
+protected:
+    virtual void SetError(const string& error) {_error = error;}
 };
-#pragma GCC visibility pop
 
 } //namespace graph_tool
 

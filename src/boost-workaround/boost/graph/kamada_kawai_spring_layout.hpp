@@ -35,9 +35,9 @@ namespace boost {
     /**
      * Compute the edge length from an edge length. This is trivial.
      */
-    template<typename Graph, typename DistanceMap, typename IndexMap, 
+    template<typename Graph, typename DistanceMap, typename IndexMap,
              typename T>
-    T compute_edge_length(const Graph&, DistanceMap, IndexMap, 
+    T compute_edge_length(const Graph&, DistanceMap, IndexMap,
                           edge_or_side<true, T> length)
     { return length.value; }
 
@@ -46,7 +46,7 @@ namespace boost {
        length. We do this by dividing the side length by the largest
        shortest distance between any two vertices in the graph.
      */
-    template<typename Graph, typename DistanceMap, typename IndexMap, 
+    template<typename Graph, typename DistanceMap, typename IndexMap,
              typename T>
     T
     compute_edge_length(const Graph& g, DistanceMap distance, IndexMap index,
@@ -83,9 +83,9 @@ namespace boost {
         vertex_descriptor;
 
       kamada_kawai_spring_layout_impl(
-        const Graph& g, 
+        const Graph& g,
         PositionMap position,
-        WeightMap weight, 
+        WeightMap weight,
         EdgeOrSideLength edge_or_side_length,
         Done done,
         weight_type spring_constant,
@@ -93,10 +93,10 @@ namespace boost {
         DistanceMatrix distance,
         SpringStrengthMatrix spring_strength,
         PartialDerivativeMap partial_derivatives)
-        : g(g), position(position), weight(weight), 
+        : g(g), position(position), weight(weight),
           edge_or_side_length(edge_or_side_length), done(done),
           spring_constant(spring_constant), index(index), distance(distance),
-          spring_strength(spring_strength), 
+          spring_strength(spring_strength),
           partial_derivatives(partial_derivatives) {}
 
       // Compute contribution of vertex i to the first partial
@@ -113,9 +113,9 @@ namespace boost {
           weight_type x_diff = position[m].x - position[i].x;
           weight_type y_diff = position[m].y - position[i].y;
           weight_type dist = sqrt(x_diff * x_diff + y_diff * y_diff);
-          result.first = spring_strength[get(index, m)][get(index, i)] 
+          result.first = spring_strength[get(index, m)][get(index, i)]
             * (x_diff - distance[get(index, m)][get(index, i)]*x_diff/dist);
-          result.second = spring_strength[get(index, m)][get(index, i)] 
+          result.second = spring_strength[get(index, m)][get(index, i)]
             * (y_diff - distance[get(index, m)][get(index, i)]*y_diff/dist);
         }
 
@@ -123,7 +123,7 @@ namespace boost {
       }
 
       // Compute partial derivatives dE/dx_m and dE/dy_m
-      deriv_type 
+      deriv_type
       compute_partial_derivatives(vertex_descriptor m)
       {
 #ifndef BOOST_NO_STDC_NAMESPACE
@@ -134,7 +134,7 @@ namespace boost {
         weight_type second = 0;
         // TBD: looks like an accumulate to me
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) reduction(+:first) reduction(+:second) schedule(dynamic) 
+        #pragma omp parallel for default(shared) private(i) reduction(+:first) reduction(+:second) schedule(dynamic)
         for (i = 0; i < N; ++i)
         {
           typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -156,15 +156,15 @@ namespace boost {
 #endif // BOOST_NO_STDC_NAMESPACE
 
         // Compute d_{ij} and place it in the distance matrix
-        if (!johnson_all_pairs_shortest_paths(g, distance, index, weight, 
+        if (!johnson_all_pairs_shortest_paths(g, distance, index, weight,
                                               weight_type(0)))
           return false;
 
         // Compute L based on side length (if needed), or retrieve L
-        weight_type edge_length = 
+        weight_type edge_length =
           detail::graph::compute_edge_length(g, distance, index,
                                              edge_or_side_length);
-        
+
         // Compute l_{ij} and k_{ij}
         const weight_type K = spring_constant;
         vertex_iterator ui, end = vertices(g).second;
@@ -180,7 +180,7 @@ namespace boost {
             spring_strength[get(index, *vi)][get(index, *ui)] = K/(dij*dij);
           }
         }
-        
+
         // Compute Delta_i and find max
         vertex_descriptor p = *vertices(g).first;
         weight_type delta_p(0);
@@ -189,7 +189,7 @@ namespace boost {
           deriv_type deriv = compute_partial_derivatives(*ui);
           put(partial_derivatives, *ui, deriv);
 
-          weight_type delta = 
+          weight_type delta =
             sqrt(deriv.first*deriv.first + deriv.second*deriv.second);
 
           if (delta > delta_p) {
@@ -206,7 +206,7 @@ namespace boost {
           // time.
           std::vector<deriv_type> p_partials(num_vertices(g));
           int i, N = num_vertices(g);
-          #pragma omp parallel for default(shared) private(i) schedule(dynamic) 
+          #pragma omp parallel for default(shared) private(i) schedule(dynamic)
           for (i = 0; i < N; ++i)
           {
               typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -219,7 +219,7 @@ namespace boost {
             // Compute the 4 elements of the Jacobian
             weight_type dE_dx_dx = 0, dE_dx_dy = 0, dE_dy_dx = 0, dE_dy_dy = 0;
             N = num_vertices(g);
-            #pragma omp parallel for default(shared) private(i) schedule(dynamic) 
+            #pragma omp parallel for default(shared) private(i) schedule(dynamic)
             for (i = 0; i < N; ++i)
             {
               typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -243,11 +243,11 @@ namespace boost {
             weight_type dE_dx = get(partial_derivatives, p).first;
             weight_type dE_dy = get(partial_derivatives, p).second;
 
-            weight_type delta_x = 
+            weight_type delta_x =
               (dE_dx_dy * dE_dy - dE_dy_dy * dE_dx)
               / (dE_dx_dx * dE_dy_dy - dE_dx_dy * dE_dy_dx);
 
-            weight_type delta_y = 
+            weight_type delta_y =
               (dE_dx_dx * dE_dy - dE_dy_dx * dE_dx)
               / (dE_dy_dx * dE_dx_dy - dE_dx_dx * dE_dy_dy);
 
@@ -260,21 +260,21 @@ namespace boost {
             deriv_type deriv = compute_partial_derivatives(p);
             put(partial_derivatives, p, deriv);
 
-            delta_p = 
+            delta_p =
               sqrt(deriv.first*deriv.first + deriv.second*deriv.second);
           } while (!done(delta_p, p, g, false));
 
           // Select new p by updating each partial derivative and delta
           vertex_descriptor old_p = p;
           N = num_vertices(g);
-          #pragma omp parallel for default(shared) private(i) schedule(dynamic) 
+          #pragma omp parallel for default(shared) private(i) schedule(dynamic)
           for (i = 0; i < N; ++i)
           {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
             deriv_type old_deriv_p = p_partials[get(index, v)];
-            deriv_type old_p_partial = 
+            deriv_type old_p_partial =
               compute_partial_derivative(v, old_p);
             deriv_type deriv = get(partial_derivatives, v);
 
@@ -282,7 +282,7 @@ namespace boost {
             deriv.second += old_p_partial.second - old_deriv_p.second;
 
             put(partial_derivatives, v, deriv);
-            weight_type delta = 
+            weight_type delta =
               sqrt(deriv.first*deriv.first + deriv.second*deriv.second);
 
             #pragma omp critical
@@ -290,7 +290,7 @@ namespace boost {
               if (delta > delta_p) {
                 p = v;
                 delta_p = delta;
-              } 
+              }
             }
           }
         }
@@ -298,9 +298,9 @@ namespace boost {
         return true;
       }
 
-      const Graph& g; 
+      const Graph& g;
       PositionMap position;
-      WeightMap weight; 
+      WeightMap weight;
       EdgeOrSideLength edge_or_side_length;
       Done done;
       weight_type spring_constant;
@@ -312,20 +312,20 @@ namespace boost {
   } } // end namespace detail::graph
 
   /// States that the given quantity is an edge length.
-  template<typename T> 
+  template<typename T>
   inline detail::graph::edge_or_side<true, T>
-  edge_length(T x) 
+  edge_length(T x)
   { return detail::graph::edge_or_side<true, T>(x); }
 
   /// States that the given quantity is a display area side length.
-  template<typename T> 
+  template<typename T>
   inline detail::graph::edge_or_side<false, T>
-  side_length(T x) 
+  side_length(T x)
   { return detail::graph::edge_or_side<false, T>(x); }
 
-  /** 
+  /**
    * \brief Determines when to terminate layout of a particular graph based
-   * on a given relative tolerance. 
+   * on a given relative tolerance.
    */
   template<typename T = double>
   struct layout_tolerance
@@ -335,8 +335,8 @@ namespace boost {
         last_local_energy((std::numeric_limits<T>::max)()) { }
 
     template<typename Graph>
-    bool 
-    operator()(T delta_p, 
+    bool
+    operator()(T delta_p,
                typename boost::graph_traits<Graph>::vertex_descriptor p,
                const Graph& g,
                bool global)
@@ -346,7 +346,7 @@ namespace boost {
           last_energy = delta_p;
           return false;
         }
-          
+
         T diff = last_energy - delta_p;
         if (diff < T(0)) diff = -diff;
         bool done = (delta_p == T(0) || diff / last_energy < tolerance);
@@ -357,7 +357,7 @@ namespace boost {
           last_local_energy = delta_p;
           return delta_p == T(0);
         }
-          
+
         T diff = last_local_energy - delta_p;
         bool done = (delta_p == T(0) || (diff / last_local_energy) < tolerance);
         last_local_energy = delta_p;
@@ -445,11 +445,11 @@ namespace boost {
            typename T, bool EdgeOrSideLength, typename Done,
            typename VertexIndexMap, typename DistanceMatrix,
            typename SpringStrengthMatrix, typename PartialDerivativeMap>
-  bool 
+  bool
   kamada_kawai_spring_layout(
-    const Graph& g, 
+    const Graph& g,
     PositionMap position,
-    WeightMap weight, 
+    WeightMap weight,
     detail::graph::edge_or_side<EdgeOrSideLength, T> edge_or_side_length,
     Done done,
     typename property_traits<WeightMap>::value_type spring_constant,
@@ -464,8 +464,8 @@ namespace boost {
                          >::value));
 
     detail::graph::kamada_kawai_spring_layout_impl<
-      Graph, PositionMap, WeightMap, 
-      detail::graph::edge_or_side<EdgeOrSideLength, T>, Done, VertexIndexMap, 
+      Graph, PositionMap, WeightMap,
+      detail::graph::edge_or_side<EdgeOrSideLength, T>, Done, VertexIndexMap,
       DistanceMatrix, SpringStrengthMatrix, PartialDerivativeMap>
       alg(g, position, weight, edge_or_side_length, done, spring_constant,
           index, distance, spring_strength, partial_derivatives);
@@ -476,13 +476,13 @@ namespace boost {
    * \overload
    */
   template<typename Graph, typename PositionMap, typename WeightMap,
-           typename T, bool EdgeOrSideLength, typename Done, 
+           typename T, bool EdgeOrSideLength, typename Done,
            typename VertexIndexMap>
-  bool 
+  bool
   kamada_kawai_spring_layout(
-    const Graph& g, 
+    const Graph& g,
     PositionMap position,
-    WeightMap weight, 
+    WeightMap weight,
     detail::graph::edge_or_side<EdgeOrSideLength, T> edge_or_side_length,
     Done done,
     typename property_traits<WeightMap>::value_type spring_constant,
@@ -497,7 +497,7 @@ namespace boost {
     std::vector<weight_vec> spring_strength(n, weight_vec(n));
     std::vector<std::pair<weight_type, weight_type> > partial_derivatives(n);
 
-    return 
+    return
       kamada_kawai_spring_layout(
         g, position, weight, edge_or_side_length, done, spring_constant, index,
         distance.begin(),
@@ -511,17 +511,17 @@ namespace boost {
    */
   template<typename Graph, typename PositionMap, typename WeightMap,
            typename T, bool EdgeOrSideLength, typename Done>
-  bool 
+  bool
   kamada_kawai_spring_layout(
-    const Graph& g, 
+    const Graph& g,
     PositionMap position,
-    WeightMap weight, 
+    WeightMap weight,
     detail::graph::edge_or_side<EdgeOrSideLength, T> edge_or_side_length,
     Done done,
     typename property_traits<WeightMap>::value_type spring_constant)
   {
     return kamada_kawai_spring_layout(g, position, weight, edge_or_side_length,
-                                      done, spring_constant, 
+                                      done, spring_constant,
                                       get(vertex_index, g));
   }
 
@@ -530,17 +530,17 @@ namespace boost {
    */
   template<typename Graph, typename PositionMap, typename WeightMap,
            typename T, bool EdgeOrSideLength, typename Done>
-  bool 
+  bool
   kamada_kawai_spring_layout(
-    const Graph& g, 
+    const Graph& g,
     PositionMap position,
-    WeightMap weight, 
+    WeightMap weight,
     detail::graph::edge_or_side<EdgeOrSideLength, T> edge_or_side_length,
     Done done)
   {
     typedef typename property_traits<WeightMap>::value_type weight_type;
     return kamada_kawai_spring_layout(g, position, weight, edge_or_side_length,
-                                      done, weight_type(1)); 
+                                      done, weight_type(1));
   }
 
   /**
@@ -548,17 +548,17 @@ namespace boost {
    */
   template<typename Graph, typename PositionMap, typename WeightMap,
            typename T, bool EdgeOrSideLength>
-  bool 
+  bool
   kamada_kawai_spring_layout(
-    const Graph& g, 
+    const Graph& g,
     PositionMap position,
-    WeightMap weight, 
+    WeightMap weight,
     detail::graph::edge_or_side<EdgeOrSideLength, T> edge_or_side_length)
   {
     typedef typename property_traits<WeightMap>::value_type weight_type;
     return kamada_kawai_spring_layout(g, position, weight, edge_or_side_length,
                                       layout_tolerance<weight_type>(),
-                                      weight_type(1.0), 
+                                      weight_type(1.0),
                                       get(vertex_index, g));
   }
 } // end namespace boost

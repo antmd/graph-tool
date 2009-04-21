@@ -39,7 +39,7 @@ public:
     {
         if (_sum != 0)
         {
-            for (typeof(this->begin()) iter = this->begin(); 
+            for (typeof(this->begin()) iter = this->begin();
                  iter != this->end(); ++iter)
             {
                 #pragma omp critical
