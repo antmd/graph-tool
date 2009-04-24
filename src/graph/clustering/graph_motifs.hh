@@ -52,6 +52,7 @@ bool has_val(vector<Value>& v, const Value& val)
     return *iter == val;
 }
 
+// gets all the subgraphs starting from vertex v and store it in subgraphs.
 template <class Graph, class Sampler>
 void get_subgraphs(Graph& g, typename graph_traits<Graph>::vertex_descriptor v,
                    size_t n,
@@ -137,6 +138,8 @@ void get_subgraphs(Graph& g, typename graph_traits<Graph>::vertex_descriptor v,
     }
 }
 
+// sampling selectors
+
 struct sample_all
 {
     template <class val_type>
@@ -192,6 +195,7 @@ struct sample_some
 };
 
 
+// build the actual induced subgraph from the vertex list
 template <class Graph, class GraphSG>
 void make_subgraph
     (vector<typename graph_traits<Graph>::vertex_descriptor>& vlist,
@@ -217,6 +221,7 @@ void make_subgraph
     }
 }
 
+// compare two graphs for labeled exactness (not isomorphism)
 template <class Graph>
 bool graph_cmp(Graph& g1, Graph& g2)
 {
@@ -247,9 +252,11 @@ bool graph_cmp(Graph& g1, Graph& g2)
     return true;
 }
 
+// short hand for both types of subgraphs
 typedef adjacency_list<vecS,vecS,bidirectionalS> d_graph_t;
 typedef adjacency_list<vecS,vecS,undirectedS> u_graph_t;
 
+// we need this wrap to use the UndirectedAdaptor only on directed graphs
 struct wrap_undirected
 {
     template <class Graph>
@@ -261,6 +268,7 @@ struct wrap_undirected
     };
 };
 
+// gets (or samples) all the subgraphs in graph g
 struct get_all_motifs
 {
     template <class Graph, class Sampler>
@@ -272,6 +280,7 @@ struct get_all_motifs
                                   d_graph_t,
                                   u_graph_t>::type graph_sg_t;
 
+        // the main subgraph lists
         vector<graph_sg_t>& subgraph_list =
             any_cast<vector<graph_sg_t>&>(list);
 
@@ -279,14 +288,18 @@ struct get_all_motifs
         for (size_t i = 0; i < subgraph_list.size(); ++i)
             sub_list[num_edges(subgraph_list[i])].\
                 push_back(make_pair(i,subgraph_list[i]));
+
+        // the subgraph count
         hist.resize(subgraph_list.size());
 
+        // the set of vertices V to be sampled (filled only if p < 1)
         vector<size_t> V;
-        typename graph_traits<Graph>::vertex_iterator v, v_end;
-        for (tie(v, v_end) = vertices(g); v != v_end; ++v)
-            V.push_back(*v);
-        if (p != 1)
+        if (p < 1)
         {
+            typename graph_traits<Graph>::vertex_iterator v, v_end;
+            for (tie(v, v_end) = vertices(g); v != v_end; ++v)
+                V.push_back(*v);
+
             uniform_01<rng_t> random(rng);
             random_number_generator<rng_t> std_random(rng);
             size_t n;
@@ -309,13 +322,16 @@ struct get_all_motifs
         omp_init_lock(&lock);
         #endif
 
-        int i, N = V.size();
-        // #pragma omp parallel for default(shared) private(i)       \
-        //     schedule(dynamic)
+        int i, N = (p < 1) ? V.size() : num_vertices(g);
+        #pragma omp parallel for default(shared) private(i)  schedule(dynamic)
         for (i = 0; i < N; ++i)
         {
-            vector<vector<typename graph_traits<Graph>::vertex_descriptor> > subgraphs;
-            typename graph_traits<Graph>::vertex_descriptor v = V[i];
+            vector<vector<typename graph_traits<Graph>::vertex_descriptor> >
+                subgraphs;
+            typename graph_traits<Graph>::vertex_descriptor v =
+                (p < 1) ? V[i] : vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
 
             typename wrap_undirected::apply<Graph>::type ug(g);
             get_subgraphs(ug, v, k, subgraphs, sampler);
@@ -334,10 +350,17 @@ struct get_all_motifs
                 for (size_t l = 0; l < sub_list[num_edges(sub)].size(); ++l)
                 {
                     graph_sg_t& motif = sub_list[num_edges(sub)][l].second;
-                    if (comp_iso && isomorphism(motif, sub))
-                        found = true;
-                    if (!comp_iso && graph_cmp(motif, sub))
-                        found = true;
+                    if (comp_iso)
+                    {
+                        if (isomorphism(motif, sub))
+                            found = true;
+                    }
+                    else
+                    {
+                        if (graph_cmp(motif, sub))
+                            found = true;
+                    }
+
                     if (found)
                     {
                         #pragma omp critical
