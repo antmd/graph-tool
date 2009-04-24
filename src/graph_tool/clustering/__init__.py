@@ -33,7 +33,7 @@ from numpy import *
 import sys
 
 __all__ = ["local_clustering", "global_clustering", "extended_clustering",
-           "motifs"]
+           "motifs", "motif_significance"]
 
 def local_clustering(g, prop=None, undirected=False):
     r"""
@@ -249,7 +249,7 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
     return props
 
 
-def motifs(g, k, p=1.0, motifs=None, undirected=None, seed=0):
+def motifs(g, k, p=1.0, motif_list=None, undirected=None, seed=0):
     r"""
     Count the occurrence of k-size subgraphs (motifs). A tuple with two lists is
     returned: the list of motifs found, and the list with their respective
@@ -266,7 +266,7 @@ def motifs(g, k, p=1.0, motifs=None, undirected=None, seed=0):
         provided, it will be used as the fraction at each depth
         :math:`[1,\dots,k]` in the algorithm. See [wernicke_efficient_2006]_ for
         more details.
-    motifs : list of Graph objects, optional
+    motif_list : list of Graph objects, optional
         If supplied, the algorithms will only search for the motifs in this list
         (or isomorphisms thereof)
     undirected : bool, optional
@@ -288,6 +288,7 @@ def motifs(g, k, p=1.0, motifs=None, undirected=None, seed=0):
 
     See Also
     --------
+    motif_significance: significance profile of motifs
     local_clustering: local clustering coefficient
     global_clustering: global clustering coefficient
     extended_clustering: extended (generalized) clustering coefficient
@@ -302,11 +303,11 @@ def motifs(g, k, p=1.0, motifs=None, undirected=None, seed=0):
     Examples
     --------
     >>> g = gt.random_graph(1000, lambda: (5,5), seed=42)
-    >>> motifs, counts = gt.motifs(g, 4)
+    >>> motifs, counts = gt.motifs(g, 4, undirected=True))
     >>> print len(motifs)
-    19
+    11
     >>> print counts
-    [1499, 203, 1881, 1022, 8, 7, 5, 18, 6, 10, 4, 14, 10, 3, 9, 6, 15, 5, 27]
+    [115708, 390659, 612, 696, 2872, 1556, 811, 4, 8, 6, 1]
 
     References
     ----------
@@ -321,9 +322,9 @@ def motifs(g, k, p=1.0, motifs=None, undirected=None, seed=0):
     sub_list = []
     directed_motifs = g.is_directed() if undirected == None else not undirected
 
-    if motifs != None:
-        directed_motifs = motifs[0].is_directed()
-        for m in motifs:
+    if motif_list != None:
+        directed_motifs = motif_list[0].is_directed()
+        for m in motif_list:
             if m.is_directed() != directed_motifs:
                 raise ValueError("all motif graphs must be either directed or undirected")
             if m.num_vertices() != k:
@@ -372,3 +373,138 @@ def motifs(g, k, p=1.0, motifs=None, undirected=None, seed=0):
     hist = [x[1] for x in list_hist]
 
     return sub_list, hist
+
+def motif_significance(g, k, n_shuffles=10, p=1.0, motif_list=None,
+                       undirected=None, self_loops=False, parallel_edges=False,
+                       full_output=False, seed=0):
+    r"""
+    Obtain the motif significance profile, for subgraphs with k vertices. A
+    tuple with two lists is returned: the list of motifs found, and their
+    respective z-scores.
+
+    Parameters
+    ----------
+    g : Graph
+        Graph to be used.
+    k : int
+        number of vertices of the motifs
+    n_shuffles : int, optional (default: 10)
+        number of shuffled networks to consider for the z-score
+    p : float or float list, optional (default: 1.0)
+        uniform fraction of the motifs to be sampled. If a float list is
+        provided, it will be used as the fraction at each depth
+        :math:`[1,\dots,k]` in the algorithm. See [wernicke_efficient_2006]_ for
+        more details.
+    motif_list : list of Graph objects, optional
+        If supplied, the algorithms will only search for the motifs in this list
+        (or isomorphisms thereof)
+    undirected : bool, optional
+        Treat the graph as *undirected*, if graph is directed
+        (this option has no effect if the graph is undirected).
+    self_loops : bool, optional (default: False)
+        Whether or not the shuffled graphs are allowed to contain self-loops
+    parallel_edges : bool, optional (default: False)
+        Whether or not the shuffled graphs are allowed to contain parallel
+        edges.
+    full_output : bool, optional (default: False)
+        If set to True, three additional lists are returned: the count
+        of each motif, the average count of each motif in the shuffled networks,
+        and the standard deviation of the average count of each motif in the
+        shuffled networks.
+    seed : int, optional (default: 0)
+        Seed for the random number generator. It the value is 0, a random seed
+        is used.
+
+    Returns
+    -------
+    motifs : list of Graph objects
+        List of motifs of size k found in the Graph. Graphs are grouped
+        according to their isomorphism class, and only one of each class appears
+        in this list. The list is sorted according to in-degree sequence,
+        out-degree-sequence, and number of edges (in this order).
+    z-scores : list of floats
+        The z-score of the respective motives. See below for the definition of
+        a z-score.
+
+    See Also
+    --------
+    motifs: motif counting or sampling
+    local_clustering: local clustering coefficient
+    global_clustering: global clustering coefficient
+    extended_clustering: extended (generalized) clustering coefficient
+
+    Notes
+    -----
+    The z-score :math:`z_i` of motif i is defined as
+
+    .. math::
+         z_i = \frac{N_i - \left<N^s_i\right>}
+         {\sqrt{\left<(N^s_i)^2\right> - \left<N^s_i\right>^2}},
+
+    where :math:`N_i` is the number of times motif $i$ found, and :math:`N^s_i`
+    is the count of the same motif but on a shuffled network. It measures how
+    many standard deviations is each motif count, in respect to a ensemble of
+    randomly shuffled graphs with the same degree sequence.
+
+    The z-scores values are not normalized.
+
+    If enabled during compilation, this algorithm runs in parallel.
+
+    Examples
+    --------
+    >>> g = gt.random_graph(1000, lambda: (5,5), seed=42)
+    >>> motifs, zscores = gt.motif_significance(g, 3)
+    >>> print len(motifs)
+    11
+    >>> print zscores
+    [0.23425857453240315, 0.23849227914686885, 0.46705666396159251, 0.26171196129510765, -0.28131244310816039, -0.29007872608538582, -0.56694670951384085, -0.5, -0.33333333333333337, -0.46852128566581813, -0.5]
+    """
+    from itertools import izip
+    from .. misc import random_rewire, isomorphism
+
+    s_ms, counts = motifs(g, k, p, motif_list, undirected, seed)
+    s_counts = [0]*len(s_ms)
+    s_dev = [0]*len(s_ms)
+
+    # get samples
+    sg = g.copy()
+    for i in xrange(0, n_shuffles):
+        random_rewire(sg, self_loops=self_loops, parallel_edges=parallel_edges)
+        m_temp, count_temp = motifs(sg, k, p, motif_list, undirected, seed)
+        for j in xrange(0, len(m_temp)):
+            found = False
+            for l in xrange(0, len(s_ms)):
+                if isomorphism(s_ms[l], m_temp[j]):
+                    found = True
+                    s_counts[l] += count_temp[j]
+                    s_dev[l] += count_temp[j]**2
+            if not found:
+                s_ms.append(m_temp[j])
+                s_counts.append(count_temp[j])
+                s_dev.append(count_temp[j]**2)
+                counts.append(0)
+
+    s_counts = [ x/float(n_shuffles) for x in s_counts ]
+    s_dev = [ sqrt(x[0]/float(n_shuffles) - x[1]**2) \
+              for x in izip(s_dev,s_counts) ]
+
+    list_hist = zip(s_ms, s_counts, s_dev)
+    # sort according to in-degree sequence
+    list_hist.sort(lambda x,y: cmp(sorted([v.in_degree() for v in x[0].vertices()]),
+                                   sorted([v.in_degree() for v in y[0].vertices()])))
+
+    # sort according to out-degree sequence
+    list_hist.sort(lambda x,y: cmp(sorted([v.out_degree() for v in x[0].vertices()]),
+                                   sorted([v.out_degree() for v in y[0].vertices()])))
+
+    # sort according to ascending number of edges
+    list_hist.sort(lambda x,y: cmp(x[0].num_edges(), y[0].num_edges()))
+
+    s_ms, s_counts, s_dev = zip(*list_hist)
+
+    zscore = [(x[0] - x[1])/x[2] for x in izip(counts, s_counts, s_dev)]
+
+    if full_output:
+        return s_ms, zscore, counts, s_counts, s_dev
+    else:
+        return s_ms, zscore
