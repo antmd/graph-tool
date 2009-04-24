@@ -418,6 +418,11 @@ struct vertex_scalar_selectors:
                    scalar_selector_type>::type {};
 
 struct all_selectors:
+    mpl::transform<vertex_properties,
+                   scalar_selector_type,
+                   mpl::back_inserter<degree_selectors> >::type {};
+
+struct scalar_selectors:
     mpl::transform<vertex_scalar_properties,
                    scalar_selector_type,
                    mpl::back_inserter<degree_selectors> >::type {};

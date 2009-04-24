@@ -75,7 +75,7 @@ get_vertex_correlation_histogram(GraphInterface& gi,
     {
         run_action<>()(gi, get_correlation_histogram<GetNeighboursPairs>
                        (hist, bins, ret_bins),
-                       all_selectors(), all_selectors(),
+                       scalar_selectors(), scalar_selectors(),
                        mpl::vector<cweight_map_t>())
             (degree_selector(deg1), degree_selector(deg2), weight_prop);
     }

@@ -39,7 +39,7 @@ find_vertex_range(GraphInterface& gi, GraphInterface::deg_t deg,
     return ret;
 }
 
-// find vertices which match a certain (inclusive) property range
+// find edges which match a certain (inclusive) property range
 python::list
 find_edge_range(GraphInterface& gi, boost::any eprop,
                 python::tuple range)

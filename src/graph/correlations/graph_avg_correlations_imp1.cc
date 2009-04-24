@@ -43,7 +43,7 @@ void graph_avg_correlations_imp1(GraphInterface& g, python::object& avg,
         wrapped_weight_t;
     run_action<>()(g, get_avg_correlation<GetNeighboursPairs>
                    (avg, dev, bins, ret_bins),
-                   all_selectors(), all_selectors(),
+                   scalar_selectors(), scalar_selectors(),
                    mpl::vector<wrapped_weight_t>())
         (deg1, deg2, weight);
 }

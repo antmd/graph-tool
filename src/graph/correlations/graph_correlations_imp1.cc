@@ -42,7 +42,7 @@ void graph_correlations_imp1(GraphInterface& g, python::object& hist,
         wrapped_weight_t;
     run_action<>()(g, get_correlation_histogram<GetNeighboursPairs>
                    (hist, bins, ret_bins),
-                   all_selectors(), all_selectors(),
+                   scalar_selectors(), scalar_selectors(),
                    mpl::vector<wrapped_weight_t>())
         (deg1, deg2, weight);
 }

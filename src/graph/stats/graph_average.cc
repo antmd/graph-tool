@@ -31,7 +31,7 @@ get_vertex_average(GraphInterface& gi, GraphInterface::deg_t deg)
 {
     long double a, dev;
     run_action<>()(gi, get_average<VertexAverageTraverse>(a,dev),
-                   all_selectors())(degree_selector(deg));
+                   scalar_selectors())(degree_selector(deg));
     return python::make_tuple(a,dev);
 }
 

@@ -46,7 +46,7 @@ get_vertex_avg_combined_correlation(GraphInterface& gi,
 
     run_action<>()(gi, get_avg_correlation<GetCombinedPair>
                    (avg, dev, bins, ret_bins),
-                   all_selectors(), all_selectors(),
+                   scalar_selectors(), scalar_selectors(),
                    mpl::vector<dummy_weight>())
         (degree_selector(deg1), degree_selector(deg2), dummy_weight());
     return python::make_tuple(avg, dev, ret_bins);

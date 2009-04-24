@@ -35,7 +35,7 @@ get_vertex_histogram(GraphInterface& gi, GraphInterface::deg_t deg,
 
     run_action<>()(gi, get_histogram<VertexHistogramFiller>(hist, bins,
                                                             ret_bins),
-                   all_selectors())(degree_selector(deg));
+                   scalar_selectors())(degree_selector(deg));
     return python::make_tuple(hist, ret_bins);
 }
 
