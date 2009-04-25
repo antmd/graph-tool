@@ -721,8 +721,8 @@ class Graph(object):
         self.__graph.SetEdgeFilterProperty(None)
 
     @_handle_exceptions
-    def stash_filter(self, edge=True, vertex=True,
-                     directed=False, reversed=False, all=False):
+    def stash_filter(self, edge=False, vertex=False,
+                     directed=False, reversed=False, all=True):
         """Stash current filter state and recover unfiltered graph. The optional
         keyword arguments specify which type of filter should be stashed."""
         self.__stashed_filter_state.append(self.__filter_state)
@@ -737,7 +737,7 @@ class Graph(object):
             self.set_reversed(False)
 
     @_handle_exceptions
-    def pop_filter(self, edge=True, vertex=True,
+    def pop_filter(self, edge=False, vertex=False,
                    directed=False, reversed=False, all=False):
         """Pop last stashed filter state. The optional keyword arguments specify
         which type of filter should be recovered."""
