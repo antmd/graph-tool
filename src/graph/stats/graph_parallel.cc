@@ -43,10 +43,18 @@ void do_label_self_loops(GraphInterface& gi, boost::any property)
                    edge_scalar_properties())(property);
 }
 
+void do_remove_labeled_edges(GraphInterface& gi, boost::any property)
+{
+    run_action<graph_tool::detail::always_directed_never_reversed>()
+        (gi, bind<void>(remove_labeled_edges(), _1, _2),
+         edge_scalar_properties())(property);
+}
+
 using namespace boost::python;
 
 void export_parallel()
 {
     def("label_parallel_edges", &do_label_parallel_edges);
     def("label_self_loops", &do_label_self_loops);
+    def("remove_labeled_edges", &do_remove_labeled_edges);
 }
