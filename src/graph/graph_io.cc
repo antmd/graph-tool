@@ -523,6 +523,7 @@ python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
                 read_graphml(stream, ug, dp);
         }
         _nedges = num_edges(_mg);
+        _max_edge_index = (_nedges > 0) ? _nedges - 1 : 0;
 
         python::dict vprops, eprops, gprops;
         for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)
