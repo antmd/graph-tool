@@ -101,8 +101,8 @@ def local_clustering(g, prop=None, undirected=False):
 
     if prop == None:
         prop = g.new_vertex_property("double")
-    was_directed = g.directed()
-    if g.directed() and undirected:
+    was_directed = g.is_directed()
+    if g.is_directed() and undirected:
         g.set_directed(False)
     try:
        _gt.extended_clustering(g._Graph__graph,
@@ -233,8 +233,8 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
        topology of networks", arXiv:physics/0605235v4
     """
 
-    was_directed = g.directed()
-    if g.directed() and undirected:
+    was_directed = g.is_directed()
+    if g.is_directed() and undirected:
         g.set_directed(False)
     if props == None:
         props = []
