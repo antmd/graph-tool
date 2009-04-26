@@ -228,8 +228,8 @@ class Graph(object):
     undirected multigraph, with optional internal edge, vertex or graph
     properties.
 
-    ...
-
+    It is implemented as a adjacency list, where both vertex and edge lists are
+    C++ STL vectors.
     """
 
     def __init__(self, g = None):
