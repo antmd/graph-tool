@@ -33,7 +33,7 @@ struct get_eigentrust
               class InferredTrustMap>
     void operator()(Graph& g, VertexIndex vertex_index,
                     EdgeIndex edge_index, TrustMap c, InferredTrustMap t,
-                    double epslon, size_t max_iter) const
+                    double epslon, size_t max_iter, size_t& iter) const
     {
         typedef typename property_traits<TrustMap>::value_type c_type;
         typedef typename property_traits<InferredTrustMap>::value_type t_type;
@@ -88,7 +88,7 @@ struct get_eigentrust
         }
 
         // init inferred trust t
-        int i, N = num_vertices(g);
+        int i, N = num_vertices(g), V = HardNumVertices()(g);
         #pragma omp parallel for default(shared) private(i)     \
                 schedule(dynamic)
         for (i = 0; i < N; ++i)
@@ -96,11 +96,11 @@ struct get_eigentrust
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
-            t[v] = 1.0/N;
+            t[v] = 1.0/V;
         }
 
-        t_type delta = 2*epslon;
-        size_t iter = 0;
+        t_type delta = epslon + 1;
+        iter = 0;
         while (delta >= epslon)
         {
             delta = 0;
@@ -129,6 +129,7 @@ struct get_eigentrust
                 delta += abs(t_temp[v] - t[v]);
             }
             swap(t_temp, t);
+
             ++iter;
             if (max_iter > 0 && iter== max_iter)
                 break;

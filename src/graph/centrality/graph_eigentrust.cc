@@ -28,21 +28,24 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-void eigentrust(GraphInterface& g, boost::any c, boost::any t,
-                double epslon, size_t max_iter)
+size_t eigentrust(GraphInterface& g, boost::any c, boost::any t,
+                  double epslon, size_t max_iter)
 {
     if (!belongs<writable_edge_scalar_properties>()(c))
         throw GraphException("edge property must be writable");
-    if (!belongs<vertex_floating_vector_properties>()(t))
-        throw GraphException("vertex property must be of floating point value type");
+    if (!belongs<vertex_floating_properties>()(t))
+        throw GraphException("vertex property must be of floating point"
+                             " value type");
 
+    size_t iter = 0;
     run_action<>()
         (g, bind<void>
          (get_eigentrust(),
           _1, g.GetVertexIndex(), g.GetEdgeIndex(), _2,
-          _3, epslon, max_iter),
+          _3, epslon, max_iter, ref(iter)),
          writable_edge_scalar_properties(),
          vertex_floating_properties())(c,t);
+    return iter;
 }
 
 void export_eigentrust()
