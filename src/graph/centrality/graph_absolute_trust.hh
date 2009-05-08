@@ -29,13 +29,13 @@ namespace graph_tool
 using namespace std;
 using namespace boost;
 
-struct get_eigentrust
+struct get_absolute_trust
 {
     template <class Graph, class VertexIndex, class EdgeIndex, class TrustMap,
               class InferredTrustMap>
     void operator()(Graph& g, VertexIndex vertex_index, EdgeIndex edge_index,
-                    TrustMap c, InferredTrustMap t, double epslon,
-                    size_t max_iter, rng_t& rng)
+                    int64_t source, TrustMap c, InferredTrustMap t,
+                    double epslon, size_t max_iter, rng_t& rng)
         const
     {
         typedef typename property_traits<TrustMap>::value_type c_type;
@@ -50,10 +50,12 @@ struct get_eigentrust
         // init inferred trust t
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i)     \
-                schedule(dynamic)
-        for (i = 0; i < N; ++i)
+            schedule(dynamic)
+        for (i = (source == -1) ? 0 : source;
+             i < ((source == -1) ? N : source + 1); ++i)
         {
-            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            typename graph_traits<Graph>::vertex_descriptor v =
+                vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
             t[v].resize(N);
@@ -66,10 +68,10 @@ struct get_eigentrust
         while (delta >= epslon)
         {
             delta = 0;
-            int i, N = num_vertices(g);
             #pragma omp parallel for default(shared) private(i)     \
                 schedule(dynamic) reduction(+:delta)
-            for (i = 0; i < N; ++i)
+            for (i = (source == -1) ? 0 : source;
+                 i < ((source == -1) ? N : source + 1); ++i)
             {
                 typename graph_traits<Graph>::vertex_descriptor v =
                     vertex(i, g);
@@ -96,6 +98,8 @@ struct get_eigentrust
                             target(*e,g);
                         if (v_mark[v][vertex_index[t]] <= iter)
                         {
+                            if (c[*e] <= 0)
+                                continue;
                             out_es.push_back(*e);
                             if (out_prob.empty())
                                 out_prob.push_back(c[*e]);
@@ -141,7 +145,8 @@ struct get_eigentrust
 
         #pragma omp parallel for default(shared) private(i)     \
                 schedule(dynamic)
-        for (i = 0; i < N; ++i)
+        for (i = (source == -1) ? 0 : source;
+             i < ((source == -1) ? N : source + 1); ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())

@@ -27,7 +27,7 @@ from .. dl_import import dl_import
 dl_import("import libgraph_tool_centrality")
 
 from .. core import _prop
-import numpy
+import sys, numpy
 
 __all__ = ["pagerank", "betweenness", "central_point_dominance", "eigentrust",
            "absolute_trust"]
@@ -379,10 +379,11 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epslon=1e-6, max_iter=0,
     else:
         return vprop
 
-def absolute_trust(g, trust_map, vprop=None, epslon=0.1, max_iter=None,
-                   seed=None, ret_iter=False)
+def absolute_trust(g, trust_map, source=None, vprop=None, epslon=0.1,
+                   max_iter=None, seed=None, ret_iter=False):
     r"""
-    Samples the absolute trust centrality of each vertex in the graph.
+    Samples the absolute trust centrality of each vertex in the graph, or only
+    for a given source, if one is provided.
 
     Parameters
     ----------
@@ -391,6 +392,9 @@ def absolute_trust(g, trust_map, vprop=None, epslon=0.1, max_iter=None,
     trust_map : ProperyMap
         Edge property map with the values of trust associated with each
         edge. The values must lie in the range [0,1].
+    source : Vertex, optional (default: None)
+        A vertex which is used the as the sole source for gathering trust
+        values, instead of all the vertices in the graph.
     vprop : PropertyMap, optional (default: None)
         Vertex property map where the values of eigentrust must be stored.
     epslon : float, optional (default: 0.1)
@@ -409,6 +413,9 @@ def absolute_trust(g, trust_map, vprop=None, epslon=0.1, max_iter=None,
     A vertex property map containing the absolute trust vector from the
     corresponding vertex to the rest of the network. Each element i of the
     vector is the trust value of the vertex with index i, from the given vertex.
+
+    If the parameter "source" is specified, the values of the property map are
+    scalars, instead of vectors.
 
     See Also
     --------
@@ -464,10 +471,29 @@ def absolute_trust(g, trust_map, vprop=None, epslon=0.1, max_iter=None,
     if seed != 0:
         seed = numpy.random.randint(0, sys.maxint)
     if vprop == None:
+        if source == None:
+            vprop = g.new_vertex_property("vector<double>")
+        else:
+            vprop = g.new_vertex_property("double")
+
+    if source != None:
+        vprop_temp = vprop
         vprop = g.new_vertex_property("vector<double>")
+        source = g.vertex_index[source]
+    else:
+        source = -1
+
+    if max_iter == None:
+        max_iter = 0
+
     ic = libgraph_tool_centrality.\
-            get_absolute_trust(g._Graph__graph, _prop("e", g, trust_map),
-                               _prop("v", g, vprop), epslon, max_iter, seed)
+            get_absolute_trust(g._Graph__graph, source,
+                               _prop("e", g, trust_map), _prop("v", g, vprop),
+                               epslon, max_iter, seed)
+    if source != -1:
+        vprop_temp.get_array()[:] = numpy.array(vprop[g.vertex(source)])
+        vprop = vprop_temp
+
     if ret_iter:
         return vprop, ic
     else:

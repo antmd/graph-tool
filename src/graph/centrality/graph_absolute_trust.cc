@@ -32,8 +32,8 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-void absolute_trust(GraphInterface& g, boost::any c, boost::any t,
-                    double epslon, size_t max_iter, size_t seed)
+void absolute_trust(GraphInterface& g, int64_t source, boost::any c,
+                    boost::any t, double epslon, size_t max_iter, size_t seed)
 {
     rng_t rng(static_cast<rng_t::result_type>(seed));
 
@@ -44,8 +44,8 @@ void absolute_trust(GraphInterface& g, boost::any c, boost::any t,
 
     run_action<>()
         (g, bind<void>
-         (get_eigentrust(),
-          _1, g.GetVertexIndex(), g.GetEdgeIndex(), _2,
+         (get_absolute_trust(),
+          _1, g.GetVertexIndex(), g.GetEdgeIndex(), source, _2,
           _3, epslon, max_iter, ref(rng)),
          edge_floating_properties(),
          vertex_floating_vector_properties())(c,t);
