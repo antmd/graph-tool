@@ -153,6 +153,8 @@ public:
     multigraph_t& GetGraph() {return _mg;}
     vertex_index_map_t GetVertexIndex() {return _vertex_index;}
     edge_index_map_t   GetEdgeIndex()   {return _edge_index;}
+    size_t             GetMaxEdgeIndex(){return _max_edge_index;}
+
     graph_index_map_t  GetGraphIndex()  {return graph_index_map_t(0);}
 
     void           AddEdgeIndex(const edge_t& e);

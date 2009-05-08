@@ -78,7 +78,6 @@ struct get_betweenness
         vector<typename property_traits<VertexBetweenness>::value_type>
             dependency_map(num_vertices(g));
         vector<size_t> path_count_map(num_vertices(g));
-
         brandes_betweenness_centrality
             (g, vertex_betweenness, edge_betweenness,
              make_iterator_property_map(incoming_map.begin(), index_map),
@@ -99,7 +98,7 @@ struct get_weighted_betweenness
                         EdgeBetweenness edge_betweenness,
                         VertexBetweenness vertex_betweenness,
                         boost::any weight_map, bool normalize,
-                        size_t n) const
+                        size_t n, size_t max_eindex) const
     {
         vector<vector<typename graph_traits<Graph>::edge_descriptor> >
             incoming_map(num_vertices(g));
@@ -109,13 +108,16 @@ struct get_weighted_betweenness
             dependency_map(num_vertices(g));
         vector<size_t> path_count_map(num_vertices(g));
 
+        typename EdgeBetweenness::checked_t weight =
+            any_cast<typename EdgeBetweenness::checked_t>(weight_map);
+
         brandes_betweenness_centrality
             (g, vertex_betweenness, edge_betweenness,
              make_iterator_property_map(incoming_map.begin(), vertex_index),
              make_iterator_property_map(distance_map.begin(), vertex_index),
              make_iterator_property_map(dependency_map.begin(), vertex_index),
              make_iterator_property_map(path_count_map.begin(), vertex_index),
-             vertex_index, any_cast<EdgeBetweenness>(weight_map));
+             vertex_index, weight.get_unchecked(max_eindex+1));
         if (normalize)
             normalize_betweenness(g, edge_betweenness, vertex_betweenness, n);
     }
@@ -127,10 +129,12 @@ void betweenness(GraphInterface& g, boost::any weight,
                  bool normalize)
 {
     if (!belongs<edge_floating_properties>()(edge_betweenness))
-        throw GraphException("edge property must be of floating point value type");
+        throw GraphException("edge property must be of floating point value"
+                             " type");
 
     if (!belongs<vertex_floating_properties>()(vertex_betweenness))
-        throw GraphException("vertex property must be of floating point value type");
+        throw GraphException("vertex property must be of floating point value"
+                             " type");
 
     if (!weight.empty())
     {
@@ -138,7 +142,7 @@ void betweenness(GraphInterface& g, boost::any weight,
             (g, lambda::bind<void>
              (get_weighted_betweenness(), lambda::_1, g.GetVertexIndex(),
               lambda::_2, lambda::_3, weight, normalize,
-              g.GetNumberOfVertices()),
+              g.GetNumberOfVertices(), g.GetMaxEdgeIndex()),
              edge_floating_properties(),
              vertex_floating_properties())
             (edge_betweenness, vertex_betweenness);
