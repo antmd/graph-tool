@@ -16,12 +16,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys, os, os.path, time
+import sys, os, os.path, time, warnings
 import matplotlib.cm
 import matplotlib.colors
 from .. core import _degree, _prop, PropertyMap
 from .. decorators import _limit_args
-import gv
+
+try:
+    import gv
+except ImportError:
+    warnings.warn("error importing gv module... graph_draw() will not work.",
+                  ImportWarning)
 
 def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
                maxiter=None, ratio="fill", overlap=False, splines=False,
