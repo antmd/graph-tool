@@ -686,7 +686,11 @@ class Graph(object):
 
     @_handle_exceptions
     def set_vertex_filter(self, property, inverted=False):
-        """Choose vertex boolean filter property"""
+        """Choose vertex boolean filter property. Only the vertices with value
+        different than zero are kept in the filtered graph. If the 'inverted'
+        option is supplied with value 'True', only the vertices with value zero
+        are kept. If the supplied property is 'None', any previous filtering is
+        removed."""
         self.__graph.SetVertexFilterProperty(_prop("v", self, property), inverted)
         self.__filter_state["vertex_filter"] = (property, inverted)
 
@@ -697,7 +701,11 @@ class Graph(object):
 
     @_handle_exceptions
     def set_edge_filter(self, property, inverted=False):
-        """Choose edge boolean property"""
+        """Choose edge boolean filter property. Only the edges with value
+        different than zero are kept in the filtered graph. If the 'inverted'
+        option is supplied with value 'True', only the edges with value zero are
+        kept. If the supplied property is 'None', any previous filtering is
+        removed."""
         self.__graph.SetEdgeFilterProperty(_prop("e", self, property), inverted)
         self.__filter_state["edge_filter"] = (property, inverted)
 
