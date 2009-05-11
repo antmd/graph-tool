@@ -22,7 +22,9 @@
 #include "graph_filtering.hh"
 #include "graph_util.hh"
 
+#include <tr1/unordered_set>
 #include <boost/random/uniform_int.hpp>
+#include <boost/functional/hash.hpp>
 
 namespace graph_tool
 {
@@ -42,7 +44,7 @@ struct get_absolute_trust
         typedef typename property_traits<InferredTrustMap>::value_type
             ::value_type t_type;
 
-        unchecked_vector_property_map<vector<size_t>, VertexIndex>
+        unchecked_vector_property_map<vector<t_type>, VertexIndex>
             t_count(vertex_index, num_vertices(g));
         unchecked_vector_property_map<vector<size_t>, VertexIndex>
             v_mark(vertex_index, num_vertices(g));
@@ -63,16 +65,20 @@ struct get_absolute_trust
             v_mark[v].resize(N,0);
         }
 
-        t_type delta = 2*epslon;
-        size_t iter = 0;
-        while (delta >= epslon)
+        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
+        for (i = (source == -1) ? 0 : source;
+             i < ((source == -1) ? N : source + 1); ++i)
         {
-            delta = 0;
-            #pragma omp parallel for default(shared) private(i)     \
-                schedule(dynamic) reduction(+:delta)
-            for (i = (source == -1) ? 0 : source;
-                 i < ((source == -1) ? N : source + 1); ++i)
+            // walk hash set
+            tr1::unordered_set<size_t> path_set;
+            uniform_int<size_t> random_salt(0, numeric_limits<size_t>::max());
+            size_t salt = random_salt(rng);
+
+            t_type delta = 2*epslon;
+            size_t iter = 0;
+            while (delta >= epslon || iter < 10)
             {
+                delta = 0;
                 typename graph_traits<Graph>::vertex_descriptor v =
                     vertex(i, g);
                 if (v == graph_traits<Graph>::null_vertex())
@@ -81,6 +87,9 @@ struct get_absolute_trust
                 typename graph_traits<Graph>::vertex_descriptor pos = v;
                 t_type pos_t = 1.0;
                 v_mark[v][vertex_index[v]] = iter+1;
+
+                size_t path_hash = salt;
+                hash_combine(path_hash, i);
 
                 // start a self-avoiding walk from vertex v
                 vector<typename graph_traits<Graph>::edge_descriptor> out_es;
@@ -124,23 +133,32 @@ struct get_absolute_trust
                         pos = target(e,g);
                         size_t posi = vertex_index[pos];
 
-                        //update current path trust, and update new vertex
-                        pos_t *= c[e];
-                        t_type old = 0;
-                        if (t_count[v][posi] > 0)
-                            old = t[v][posi]/t_count[v][posi];
-                        t[v][posi] += pos_t;
-                        t_count[v][posi]++;
-                        delta += abs(old - t[v][posi]/t_count[v][posi]);
+                        // get path hash
+                        hash_combine(path_hash, posi);
 
+                        if (path_set.find(path_hash) == path_set.end())
+                        {
+                            path_set.insert(path_hash);
+
+                            //update current path trust, and update new vertex
+                            t_type pweight = pos_t;
+                            pos_t *= c[e];
+                            t_type old = 0;
+                            if (t_count[v][posi] > 0)
+                                old = t[v][posi]/t_count[v][posi];
+                            t[v][posi] += pos_t*pweight;
+                            t_count[v][posi] += pweight;
+                            delta += abs(old - t[v][posi]/t_count[v][posi]);
+
+                        }
                         v_mark[v][posi] = iter+1; // mark vertex
                     }
                 }
                 while (!out_es.empty());
-            }
-            ++iter;
-            if (max_iter > 0 && iter == max_iter)
-                break;
+                ++iter;
+                if (max_iter > 0 && iter == max_iter)
+                    break;
+             }
         }
 
         #pragma omp parallel for default(shared) private(i)     \

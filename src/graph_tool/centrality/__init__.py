@@ -379,7 +379,7 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epslon=1e-6, max_iter=0,
     else:
         return vprop
 
-def absolute_trust(g, trust_map, source=None, vprop=None, epslon=0.1,
+def absolute_trust(g, trust_map, source=None, vprop=None, epslon=0.001,
                    max_iter=None, seed=None, ret_iter=False):
     r"""
     Samples the absolute trust centrality of each vertex in the graph, or only
@@ -397,7 +397,7 @@ def absolute_trust(g, trust_map, source=None, vprop=None, epslon=0.1,
         values, instead of all the vertices in the graph.
     vprop : PropertyMap, optional (default: None)
         Vertex property map where the values of eigentrust must be stored.
-    epslon : float, optional (default: 0.1)
+    epslon : float, optional (default: 0.001)
         Convergence condition. The iteration will stop if the total delta of all
         vertices are below this value.
     max_iter : int, optional (default: None)
@@ -428,12 +428,17 @@ def absolute_trust(g, trust_map, source=None, vprop=None, epslon=0.1,
     The absolute trust between vertices i and j is defined as
 
     .. math:
-        t_{ij} = \frac{1}{|\{i\to j\}|}\sum_{\{i\to j\}}
-                 \prod_{e\in \{i\to j\}}
-                 \frac{c_e^2}{\sum_{w\in\Gamma^+(s(e))}c_{s(e),w}}}
+        t_{ij} = \frac{1}{\sum_{\{i\to j\}}w_{\{i\to j\}}}\sum_{\{i\to j\}}
+                 w_{\{i\to j\}} \prod_{e\in \{i\to j\}}c_e
 
-    where the sum is taken over all paths from i to j (without loops), and
-    :math:`c_e` is the direct trust value associated with edge e.
+    where the sum is taken over all paths from i to j (without loops),
+    :math:`c_e` is the direct trust value associated with edge e, and
+    :math:`w_{\{i\to j\}}` is the weight of a given path, which is defined as
+
+    .. math:
+       w_{\{i\to j\}} = \prod_{e\in \{i\to j\}}\{\delta_{t(e),j}(1-c_e) + c_e\},
+
+    such that the direct trust of the last edge on the path is not considered.
 
     The algorithm progressively samples all possible paths, until the trust
     values converge, and has a topology-dependent complexity.
@@ -447,25 +452,33 @@ def absolute_trust(g, trust_map, source=None, vprop=None, epslon=0.1,
     >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)), seed=42)
     >>> trust = g.new_edge_property("double")
     >>> trust.get_array()[:] = random(g.num_edges())
-    >>> t = absolute_trust(g, trust)
+    >>> t = gt.absolute_trust(g, trust)
     >>> print array(t[g.vertex(10)])
-    [ 0.00452395  0.00358993  0.00520913  0.00151395  0.09479413  0.00431631
-      0.09957709  0.00722076  0.02488298  0.02720262  0.          0.02958085
-      0.05583483  0.00525581  0.02112018  0.00157646  0.02070552  0.01317581
-      0.01565533  0.00568109  0.04568674  0.00202402  0.0024926   0.14040174
-      0.0093484   0.00124116  0.009818    0.039403    0.00787983  0.0130681
-      0.02046159  0.02044219  0.00625258  0.00253353  0.00992648  0.00658357
-      0.00328796  0.05730617  0.00752433  0.00289023  0.          0.01610246
-      0.03151005  0.05449376  0.0195204   0.00296101  0.0187164   0.19553864
-      0.01089019  0.01516855  0.01621888  0.29711525  0.00164373  0.02045437
-      0.01388174  0.00109321  0.03034565  0.00289681  0.06903929  0.02392237
-      0.01491933  0.02128263  0.03091464  0.03457097  0.14454613  0.01821371
-      0.00943718  0.0247563   0.00495901  0.03532278  0.00053465  0.
-      0.00142457  0.03393286  0.0058909   0.01881276  0.00156345  0.00878983
-      0.00832669  0.08389869  0.43991565  0.04075081  0.00323008  0.02823037
-      0.03224312  0.00430044  0.0331929   0.00268128  0.01462425  0.00720545
-      0.06730403  0.02771813  0.03289217  0.01326689  0.06876157  0.02382899
-      0.1502834   0.00980331  0.0086688   0.00495706]
+    [  1.98147630e-01   3.86048721e-01   2.15038631e-01   6.35971261e-01
+       3.70028165e-01   8.24462513e-01   1.87542375e-04   2.40775039e-03
+       6.63467272e-01   1.30124153e-02   0.00000000e+00   2.55161924e-01
+       6.11894792e-01   1.64132684e-01   1.08372073e-01   3.58317237e-01
+       7.05106201e-02   2.48412716e-07   4.28006145e-01   8.59461489e-04
+       0.00000000e+00   0.00000000e+00   7.25301232e-01   1.01773307e-01
+       3.16379391e-01   2.53316731e-01   1.59819436e-08   3.70296181e-01
+       1.57203884e-01   0.00000000e+00   7.87247979e-01   2.18598076e-04
+       5.52859606e-01   1.24994552e-01   4.20286331e-02   4.15065578e-01
+       6.43653877e-01   3.24950468e-01   7.38208378e-01   7.29509079e-08
+       1.93750752e-01   7.65610195e-01   3.36921596e-01   6.57309628e-01
+       9.52773935e-02   8.03124227e-03   1.30578359e-02   6.88776780e-01
+       1.73090783e-04   4.82732890e-01   6.26331031e-12   5.35175859e-01
+       1.47736985e-01   1.11789227e-01   2.73859867e-01   5.64369671e-01
+       4.18831134e-01   1.98422984e-15   3.58564257e-01   1.27871795e-01
+       4.29322288e-01   1.42919207e-05   3.02946673e-01   3.90436999e-01
+       2.89626434e-01   1.34307383e-01   3.11974410e-01   3.70614146e-01
+       5.33011347e-02   3.81536049e-02   1.01675425e-01   1.45882725e-02
+       3.53278685e-02   5.43455032e-03   6.52215036e-01   3.61707159e-01
+       6.08608841e-02   8.96019737e-04   2.60395071e-02   0.00000000e+00
+       1.86921647e-01   2.49218885e-01   8.22384329e-01   6.75209818e-03
+       5.27060698e-01   1.34291381e-02   3.25840921e-13   7.88987646e-02
+       2.20961189e-03   4.97124982e-01   0.00000000e+00   1.00335219e-02
+       5.50608327e-01   1.65947138e-04   0.00000000e+00   1.32775697e-03
+       6.21862966e-01   5.42485152e-01   5.41292375e-08   3.73524878e-01]
     """
 
     if seed != 0:
