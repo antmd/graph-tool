@@ -19,6 +19,8 @@
 #define GRAPH_WRAP_HH
 
 #include <utility>
+#include "graph_util.hh"
+#include "graph_selectors.hh"
 
 // Graph wrapper which takes care of edge index housekeeping
 
