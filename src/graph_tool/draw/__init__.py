@@ -34,7 +34,7 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
                gprops={}, vprops={}, eprops={}, vcolor=None, ecolor=None,
                vcmap=matplotlib.cm.jet, vnorm=True, ecmap=matplotlib.cm.jet,
                enorm=True, output="", output_format="auto", returngv=False,
-               fork=True, seed=0):
+               fork=False, seed=0):
     """Draw a graph using graphviz."""
 
     if output != "":
@@ -88,6 +88,8 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
             c = vcolor[v]
             minmax[0] = min(c,minmax[0])
             minmax[1] = max(c,minmax[1])
+        if minmax[0] == minmax[1]:
+            minmax[1] += 1
         if vnorm:
             vnorm = matplotlib.colors.normalize(vmin=minmax[0], vmax=minmax[1])
 
@@ -97,6 +99,8 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
             c = ecolor[e]
             minmax[0] = min(c,minmax[0])
             minmax[1] = max(c,minmax[1])
+        if minmax[0] == minmax[1]:
+            minmax[1] += 1
         if enorm:
             enorm = matplotlib.colors.normalize(vmin=minmax[0], vmax=minmax[1])
 
@@ -211,12 +215,12 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
 
     # if using xlib we need to fork the process, otherwise good ol' graphviz
     # will call exit() when the window is closed
-    if output_format == "xlib":
+    if output_format == "xlib" or fork:
         pid = os.fork()
         if pid == 0:
             gv.render(gvg, output_format, output)
-            sys.exit(1) # since we forked, it's good to be sure
-        if not fork:
+            os._exit(0) # since we forked, it's good to be sure
+        if output_format != "xlib":
             os.wait()
     else:
         gv.render(gvg, output_format, output)
@@ -225,4 +229,5 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
         return pos, gv
     else:
         gv.rm(gvg)
+        del gvg
         return pos
