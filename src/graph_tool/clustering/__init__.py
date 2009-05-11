@@ -376,7 +376,8 @@ def motifs(g, k, p=1.0, motif_list=None, undirected=None, seed=0):
 
 def motif_significance(g, k, n_shuffles=10, p=1.0, motif_list=None,
                        undirected=None, self_loops=False, parallel_edges=False,
-                       full_output=False, seed=0):
+                       full_output=False, shuffle_strategy="uncorrelated",
+                       seed=0):
     r"""
     Obtain the motif significance profile, for subgraphs with k vertices. A
     tuple with two lists is returned: the list of motifs found, and their
@@ -411,6 +412,9 @@ def motif_significance(g, k, n_shuffles=10, p=1.0, motif_list=None,
         of each motif, the average count of each motif in the shuffled networks,
         and the standard deviation of the average count of each motif in the
         shuffled networks.
+    shuffle_strategy : string, optional (default: "uncorrelated")
+        Shuffle strategy to use. Can be either "correlated" or "uncorrelated".
+        See random_rewire() for details.
     seed : int, optional (default: 0)
         Seed for the random number generator. It the value is 0, a random seed
         is used.
@@ -469,7 +473,8 @@ def motif_significance(g, k, n_shuffles=10, p=1.0, motif_list=None,
     # get samples
     sg = g.copy()
     for i in xrange(0, n_shuffles):
-        random_rewire(sg, self_loops=self_loops, parallel_edges=parallel_edges)
+        random_rewire(sg, shuffle_strategy, self_loops=self_loops,
+                      parallel_edges=parallel_edges)
         m_temp, count_temp = motifs(sg, k, p, motif_list, undirected, seed)
         for j in xrange(0, len(m_temp)):
             found = False
