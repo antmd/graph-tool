@@ -117,7 +117,7 @@ def _type_alias(type_name):
         return type_name
     if alias.has_key(type_name):
         return alias[type_name]
-    ma = re(r"vector<(.*)>").match(type_name)
+    ma = re.compile(r"vector<(.*)>").match(type_name)
     if ma:
         t = ma.group(1)
         if alias.has_key(t):
