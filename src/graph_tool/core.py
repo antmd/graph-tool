@@ -232,7 +232,10 @@ class Graph(object):
     C++ STL vectors.
     """
 
-    def __init__(self, g = None):
+    def __init__(self, g = None, directed=True):
+        """Construct a graph. If 'g' is specified, the graph (and its internal
+        properties) will be copied. The 'directed' parameter specified whether
+        the graph should be directed or undirected."""
         self.__properties = {}
         self.__known_properties = []
         self.__filter_state = {"reversed": False,
@@ -244,6 +247,7 @@ class Graph(object):
 
         if g == None:
             self.__graph = libcore.GraphInterface()
+            self.set_directed(directed)
         else:
             self.__graph = libcore.GraphInterface(g.__graph)
             for k,v in g.__properties.iteritems():
