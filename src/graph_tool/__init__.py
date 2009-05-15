@@ -66,7 +66,7 @@ misc
 stats
    vertex and edge statistics
 util
-   assorted untilities
+   assorted utilities
 
 Utilities
 ---------
@@ -76,6 +76,9 @@ show_config
    Show ``graph_tool`` build configuration
 __version__
    ``graph_tool`` version string
+
+Classes
+-------
 
 """
 

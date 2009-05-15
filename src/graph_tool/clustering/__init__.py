@@ -90,7 +90,7 @@ def local_clustering(g, prop=None, undirected=False):
     >>> g = gt.random_graph(1000, lambda: (5,5), seed=42)
     >>> clust = gt.local_clustering(g)
     >>> print gt.vertex_average(g, clust)
-    (0.0045633333333333333, 0.00041406305209606802)
+    (0.005048478260869565, 0.00043544409486305209)
 
     References
     ----------
@@ -149,7 +149,7 @@ def global_clustering(g):
     --------
     >>> g = gt.random_graph(1000, lambda: (5,5), seed=42)
     >>> print gt.global_clustering(g)
-    (0.0086380072318200073, 0.00044516087903790925)
+    (0.0079235400765494558, 0.00041721619682007839)
 
     References
     ----------
@@ -195,8 +195,8 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
     :math:`d` is defined as
 
     .. math::
-       c^d_i = \frac{\left|\right\{ \{u,v\}; u,v \in N_i | d_{G(V\diagdown
-       \{i\})}(u,v) = d \left\}\right|}{\binom{\left|N_i\right|}{2}},
+       c^d_i = \frac{\left|\right\{ \{u,v\}; u,v \in N_i | d_{G(V\setminus
+       \{i\})}(u,v) = d \left\}\right|}{{\left|N_i\right| \choose 2}},
 
     where :math:`d_G(u,v)` is the shortest distance from vertex :math:`u` to
     :math:`v` in graph :math:`G`, and
@@ -221,11 +221,11 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
     >>> for i in xrange(0, 5):
     ...    print gt.vertex_average(g, clusts[i])
     ...
-    (0.0045633333333333333, 0.00041406305209606802)
-    (0.027705, 0.0010493633929938454)
-    (0.11730666666666667, 0.00201118990760307)
-    (0.41394666666666663, 0.0030157036105470745)
-    (0.41717499999999996, 0.0030272310298907366)
+    (0.005048478260869565, 0.00043544409486305209)
+    (0.025116811594202898, 0.00096935403523205497)
+    (0.11178014492753624, 0.0019836458026216146)
+    (0.40412130434782606, 0.0030616964103718316)
+    (0.43449992753623184, 0.003195885251613022)
 
     References
     ----------
@@ -303,11 +303,11 @@ def motifs(g, k, p=1.0, motif_list=None, undirected=None, seed=0):
     Examples
     --------
     >>> g = gt.random_graph(1000, lambda: (5,5), seed=42)
-    >>> motifs, counts = gt.motifs(g, 4, undirected=True))
+    >>> motifs, counts = gt.motifs(g, 4, undirected=True)
     >>> print len(motifs)
-    11
+    14
     >>> print counts
-    [115708, 390659, 612, 696, 2872, 1556, 811, 4, 8, 6, 1]
+    [114942, 387657, 958, 1089, 2482, 2760, 844, 6, 16, 14, 8, 10, 16, 8]
 
     References
     ----------
@@ -445,7 +445,7 @@ def motif_significance(g, k, n_shuffles=10, p=1.0, motif_list=None,
          z_i = \frac{N_i - \left<N^s_i\right>}
          {\sqrt{\left<(N^s_i)^2\right> - \left<N^s_i\right>^2}},
 
-    where :math:`N_i` is the number of times motif $i$ found, and :math:`N^s_i`
+    where :math:`N_i` is the number of times motif i found, and :math:`N^s_i`
     is the count of the same motif but on a shuffled network. It measures how
     many standard deviations is each motif count, in respect to a ensemble of
     randomly shuffled graphs with the same degree sequence.
@@ -456,12 +456,12 @@ def motif_significance(g, k, n_shuffles=10, p=1.0, motif_list=None,
 
     Examples
     --------
-    >>> g = gt.random_graph(1000, lambda: (5,5), seed=42)
+    >>> g = gt.random_graph(100, lambda: (3,3), seed=42)
     >>> motifs, zscores = gt.motif_significance(g, 3)
     >>> print len(motifs)
-    11
+    10
     >>> print zscores
-    [0.23425857453240315, 0.23849227914686885, 0.46705666396159251, 0.26171196129510765, -0.28131244310816039, -0.29007872608538582, -0.56694670951384085, -0.5, -0.33333333333333337, -0.46852128566581813, -0.5]
+    [-3.9501340809971031, -3.96459679349275, -5.95765904191577, -0.17407765595569785, 3.580195875015368, 3.5906624935876583, 2.2739701341354892, 1.8999999999999999, 0.0, -0.20000000000000001]
     """
     from itertools import izip
     from .. misc import random_rewire, isomorphism
@@ -490,17 +490,21 @@ def motif_significance(g, k, n_shuffles=10, p=1.0, motif_list=None,
                 counts.append(0)
 
     s_counts = [ x/float(n_shuffles) for x in s_counts ]
-    s_dev = [ sqrt(x[0]/float(n_shuffles) - x[1]**2) \
+    s_dev = [ max(sqrt(x[0]/float(n_shuffles) - x[1]**2),1) \
               for x in izip(s_dev,s_counts) ]
 
     list_hist = zip(s_ms, s_counts, s_dev)
     # sort according to in-degree sequence
-    list_hist.sort(lambda x,y: cmp(sorted([v.in_degree() for v in x[0].vertices()]),
-                                   sorted([v.in_degree() for v in y[0].vertices()])))
+    list_hist.sort(lambda x,y: cmp(sorted([v.in_degree()\
+                                           for v in x[0].vertices()]),
+                                   sorted([v.in_degree()\
+                                           for v in y[0].vertices()])))
 
     # sort according to out-degree sequence
-    list_hist.sort(lambda x,y: cmp(sorted([v.out_degree() for v in x[0].vertices()]),
-                                   sorted([v.out_degree() for v in y[0].vertices()])))
+    list_hist.sort(lambda x,y: cmp(sorted([v.out_degree()\
+                                           for v in x[0].vertices()]),
+                                   sorted([v.out_degree()\
+                                           for v in y[0].vertices()])))
 
     # sort according to ascending number of edges
     list_hist.sort(lambda x,y: cmp(x[0].num_edges(), y[0].num_edges()))

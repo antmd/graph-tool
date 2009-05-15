@@ -16,9 +16,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+``graph_tool.draw`` - Graph Drawing
+-----------------------------------
+"""
+
 import sys, os, os.path, time, warnings
-import matplotlib.cm
-import matplotlib.colors
 from .. core import _degree, _prop, PropertyMap
 from .. decorators import _limit_args
 
@@ -27,6 +30,12 @@ try:
 except ImportError:
     warnings.warn("error importing gv module... graph_draw() will not work.",
                   ImportWarning)
+try:
+    import matplotlib.cm
+    import matplotlib.colors
+except ImportError:
+    warnings.warn("error importing matplotlib module... " + \
+                  "graph_draw() will not work.", ImportWarning)
 
 def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
                maxiter=None, ratio="fill", overlap=False, splines=False,

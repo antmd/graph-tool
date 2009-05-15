@@ -67,13 +67,43 @@ def get_graph_type(g):
     return libgraph_tool_core.get_graph_type(g._Graph__graph)
 
 def inline(code, arg_names=[], local_dict=None,
-           global_dict=None, force=0, compiler="gcc", verbose=0,
+           global_dict=None, force=False, compiler="gcc", verbose=False,
            auto_downcast=1, support_code="", libraries=[],
            library_dirs=[], extra_compile_args=[],
            runtime_library_dirs=[], extra_objects=[],
            extra_link_args=[], mask_ret=[], debug=False):
     """Compile (if necessary) and run the C++ action specified by 'code',
-    using weave."""
+    using weave. The (possibly modified) variables in 'arg_names' are returned.
+
+    Parameters
+    ----------
+    code : string
+        C++ code to be used
+    arg_names : list, optional (default: [])
+        List of variables to be passed to the C++ code
+    local_dict : dict, optional (default: None)
+        Dictionary of variables to be used as local scope. If none is specified,
+        the calling functions' local variables are used.
+    global_dict : dict, optional (default: None)
+        Dictionary of variables to be used as global scope. If none is
+        specified, the calling functions' global variables are used.
+    force : bool, optional (default: False)
+        If true, compilation is forced.
+    compiler : string, optional (default: "gcc")
+        The name of compiler to use when compiling.  On windows, it understands
+        'msvc' and 'gcc' as well as all the compiler names understood by
+        distutils.  On Unix, it'll only understand the values understood by
+        distutils.
+
+        On windows, the compiler defaults to the Microsoft C++ compiler.  If
+        this isn't available, it looks for mingw32 (the gcc compiler).
+
+        On Unix, it'll probably use the same compiler that was used when
+        compiling Python. Cygwin's behavior should be similar.
+
+
+    [...]
+    """
 
     # each term on the expansion will properly unwrap a tuple pointer value
     # to a reference with the appropriate name and type
@@ -200,9 +230,9 @@ def inline(code, arg_names=[], local_dict=None,
 
     # call weave and pass all the updated kw arguments
     ret_vals = \
-             scipy.weave.inline(inline_code, arg_alias, force=force,
+             scipy.weave.inline(inline_code, arg_alias, force=int(force),
                                 local_dict=alias_dict, global_dict=global_dict,
-                                compiler=compiler, verbose=verbose,
+                                compiler=compiler, verbose=int(verbose),
                                 auto_downcast=auto_downcast,
                                 support_code=support_code,
                                 libraries=libraries,

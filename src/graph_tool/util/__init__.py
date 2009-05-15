@@ -16,6 +16,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+``graph_tool.util`` - Graph Utilities
+-------------------------------------
+"""
+
+
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_util")
 

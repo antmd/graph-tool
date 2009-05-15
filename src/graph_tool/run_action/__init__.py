@@ -17,8 +17,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
+``graph_tool.run_action`` - Inline C++ code embedding
+-----------------------------------------------------
+
 This module implements support for automatic ad-hoc code embedding into
-graph-tool
+graph-tool.
 """
 
 __all__ = ["inline"]

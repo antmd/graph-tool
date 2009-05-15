@@ -16,6 +16,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+``graph_tool.community`` - Community structure
+----------------------------------------------
+
+This module contains algorithms for the computation of community structure on
+graphs.
+"""
+
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_community")
 

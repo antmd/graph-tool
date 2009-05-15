@@ -224,11 +224,11 @@ from libgraph_tool_core import Vertex, Edge, GraphError,\
      new_graph_property
 
 class Graph(object):
-    """This class encapsulates either a directed multigraph (default) or an
-    undirected multigraph, with optional internal edge, vertex or graph
-    properties.
+    """This class encapsulates either a directed multigraph (default or if
+    ``directed=True``) or an undirected multigraph (if ``directed=False``), with
+    optional internal edge, vertex or graph properties.
 
-    It is implemented as a adjacency list, where both vertex and edge lists are
+    It is implemented as an adjacency list, where both vertex and edge lists are
     C++ STL vectors.
     """
 
@@ -480,7 +480,8 @@ class Graph(object):
         >>> g.properties[("e", "foo")] = g.new_edge_property("vector<double>")
         >>> g.vertex_properties["foo"] = g.new_vertex_property("double")
         >>> g.vertex_properties["bar"] = g.new_vertex_property("python::object")
-        >>> g.graph_properties["gnat"] = g.new_graph_property("string")
+        >>> g.graph_properties["gnat"] = g.new_graph_property("string",\
+                                                              "hi there!")
         >>> g.list_properties()
         gnat           (graph)   (type: string, val: hi there!)
         bar            (vertex)  (type: python::object)
