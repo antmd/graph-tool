@@ -865,4 +865,8 @@ def _all_neighbours(self):
         yield v
 Vertex.all_neighbours = _all_neighbours
 
-
+def _iter(self):
+    """Iterate over the source and target"""
+    for v in [self.source(), self.target()]:
+        yield v
+Edge.__iter__ = _iter

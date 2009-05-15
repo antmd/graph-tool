@@ -402,6 +402,7 @@ void GraphInterface::ExportPythonInterface() const
         .def(python::self == python::self)
         .def(python::self != python::self)
         .def("__str__", &PythonVertex::GetString)
+        .def("__int__", &PythonVertex::GetIndex)
         .def("__hash__", &PythonVertex::GetHash);
 
     set<string> v_iterators;

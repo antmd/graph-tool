@@ -198,6 +198,11 @@ public:
         return hash<size_t>()(_gi._vertex_index[_v]);
     }
 
+    size_t GetIndex() const
+    {
+        return _gi._vertex_index[_v];
+    }
+
     bool operator==(const PythonVertex& other) const
     {
         CheckValid();
