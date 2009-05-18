@@ -18,7 +18,6 @@
 #include "graph_filtering.hh"
 
 #include <boost/python.hpp>
-#include <boost/lambda/bind.hpp>
 
 #include "graph.hh"
 #include "graph_selectors.hh"
@@ -33,7 +32,8 @@ using namespace boost;
 using namespace graph_tool;
 
 void absolute_trust(GraphInterface& g, int64_t source, boost::any c,
-                    boost::any t, double epslon, size_t max_iter, size_t seed)
+                    boost::any t, double epslon, size_t max_iter, bool reversed,
+                    size_t seed)
 {
     rng_t rng(static_cast<rng_t::result_type>(seed));
 
@@ -45,8 +45,8 @@ void absolute_trust(GraphInterface& g, int64_t source, boost::any c,
     run_action<>()
         (g, bind<void>
          (get_absolute_trust(),
-          _1, g.GetVertexIndex(), g.GetEdgeIndex(), source, _2,
-          _3, epslon, max_iter, ref(rng)),
+          _1, g.GetVertexIndex(), source, _2,
+          _3, epslon, max_iter, reversed, ref(rng)),
          edge_floating_properties(),
          vertex_floating_vector_properties())(c,t);
 }

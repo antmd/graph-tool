@@ -33,11 +33,11 @@ using namespace boost;
 
 struct get_absolute_trust
 {
-    template <class Graph, class VertexIndex, class EdgeIndex, class TrustMap,
+    template <class Graph, class VertexIndex, class TrustMap,
               class InferredTrustMap>
-    void operator()(Graph& g, VertexIndex vertex_index, EdgeIndex edge_index,
-                    int64_t source, TrustMap c, InferredTrustMap t,
-                    double epslon, size_t max_iter, rng_t& rng)
+    void operator()(Graph& g, VertexIndex vertex_index, int64_t source,
+                    TrustMap c, InferredTrustMap t, double epslon,
+                    size_t max_iter, bool reversed, rng_t& rng)
         const
     {
         typedef typename property_traits<TrustMap>::value_type c_type;
@@ -86,6 +86,7 @@ struct get_absolute_trust
 
                 typename graph_traits<Graph>::vertex_descriptor pos = v;
                 t_type pos_t = 1.0;
+                t_type pweight = 1.0;
                 v_mark[v][vertex_index[v]] = iter+1;
 
                 size_t path_hash = salt;
@@ -133,24 +134,30 @@ struct get_absolute_trust
                         pos = target(e,g);
                         size_t posi = vertex_index[pos];
 
+                        //update current path trust
+                        pos_t *= c[e];
+
+                        if (reversed && boost::source(e, g) != v)
+                            pweight *= c[e];
+
                         // get path hash
                         hash_combine(path_hash, posi);
-
                         if (path_set.find(path_hash) == path_set.end())
                         {
+                            // if new path, modify vertex trust score
                             path_set.insert(path_hash);
 
-                            //update current path trust, and update new vertex
-                            t_type pweight = pos_t;
-                            pos_t *= c[e];
                             t_type old = 0;
                             if (t_count[v][posi] > 0)
                                 old = t[v][posi]/t_count[v][posi];
                             t[v][posi] += pos_t*pweight;
                             t_count[v][posi] += pweight;
                             delta += abs(old - t[v][posi]/t_count[v][posi]);
-
                         }
+
+                        if (!reversed)
+                            pweight *= c[e];
+
                         v_mark[v][posi] = iter+1; // mark vertex
                     }
                 }
@@ -161,8 +168,7 @@ struct get_absolute_trust
              }
         }
 
-        #pragma omp parallel for default(shared) private(i)     \
-                schedule(dynamic)
+        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
         for (i = (source == -1) ? 0 : source;
              i < ((source == -1) ? N : source + 1); ++i)
         {

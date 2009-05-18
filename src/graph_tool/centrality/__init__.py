@@ -380,7 +380,7 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epslon=1e-6, max_iter=0,
         return vprop
 
 def absolute_trust(g, trust_map, source=None, vprop=None, epslon=0.001,
-                   max_iter=None, seed=None, ret_iter=False):
+                   max_iter=None, reversed=False, seed=None, ret_iter=False):
     r"""
     Samples the absolute trust centrality of each vertex in the graph, or only
     for a given source, if one is provided.
@@ -402,6 +402,10 @@ def absolute_trust(g, trust_map, source=None, vprop=None, epslon=0.001,
         vertices are below this value.
     max_iter : int, optional (default: None)
         If supplied, this will limit the total number of iterations.
+    reversed : bool, optional (default: False)
+        Calculates the "reversed" trust instead: The direction of the edges are
+        inverted, but the path weighting is preserved in the original direction
+        (see Notes below).
     seed : int, optional (default: None)
          The initializing seed for the random number generator. If not supplied
          a different random value will be chosen each time.
@@ -499,10 +503,17 @@ def absolute_trust(g, trust_map, source=None, vprop=None, epslon=0.001,
     if max_iter == None:
         max_iter = 0
 
+    if reversed:
+        g.stash_filter(reversed=True)
+        g.set_reversed(True)
+
     ic = libgraph_tool_centrality.\
             get_absolute_trust(g._Graph__graph, source,
                                _prop("e", g, trust_map), _prop("v", g, vprop),
-                               epslon, max_iter, seed)
+                               epslon, max_iter, reversed, seed)
+    if reversed:
+        g.pop_filter(reversed=True)
+
     if source != -1:
         vprop_temp.get_array()[:] = numpy.array(vprop[g.vertex(source)])
         vprop = vprop_temp
