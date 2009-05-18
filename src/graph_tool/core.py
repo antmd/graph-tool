@@ -737,6 +737,8 @@ class Graph(object):
                      directed=False, reversed=False, all=True):
         """Stash current filter state and recover unfiltered graph. The optional
         keyword arguments specify which type of filter should be stashed."""
+        if edge or vertex or directed or reversed:
+            all = False
         self.__stashed_filter_state.append(self.__filter_state)
         if libcore.graph_filtering_enabled():
             if vertex or all:
@@ -753,6 +755,8 @@ class Graph(object):
                    directed=False, reversed=False, all=False):
         """Pop last stashed filter state. The optional keyword arguments specify
         which type of filter should be recovered."""
+        if edge or vertex or directed or reversed:
+            all = False
         state = self.__stashed_filter_state.pop()
         if libcore.graph_filtering_enabled():
             if vertex or all:
