@@ -108,13 +108,13 @@ struct get_absolute_trust
                             target(*e,g);
                         if (v_mark[v][vertex_index[t]] <= iter)
                         {
-                            if (c[*e] <= 0)
+                            if (c[*e] < 0)
                                 continue;
                             out_es.push_back(*e);
                             if (out_prob.empty())
-                                out_prob.push_back(c[*e]);
+                                out_prob.push_back(c[*e]+0.1);
                             else
-                                out_prob.push_back(out_prob.back()+c[*e]);
+                                out_prob.push_back(out_prob.back()+c[*e]+0.1);
                         }
                     }
                     if (!out_es.empty())
@@ -131,6 +131,8 @@ struct get_absolute_trust
                         e = out_es[lower_bound(out_prob.begin(),
                                                out_prob.end(), u) -
                                    out_prob.begin()];
+
+                        // new position in random walk
                         pos = target(e,g);
                         size_t posi = vertex_index[pos];
 
@@ -157,6 +159,10 @@ struct get_absolute_trust
 
                         if (!reversed)
                             pweight *= c[e];
+
+                        // stop if weight drops to zero
+                        if (pweight == 0)
+                            break;
 
                         v_mark[v][posi] = iter+1; // mark vertex
                     }
