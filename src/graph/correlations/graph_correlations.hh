@@ -263,7 +263,7 @@ struct get_avg_correlation
 
     template <class Graph, class DegreeSelector1, class DegreeSelector2,
               class WeightMap>
-        void operator()(Graph& g, DegreeSelector1 deg1, DegreeSelector2 deg2,
+    void operator()(Graph& g, DegreeSelector1 deg1, DegreeSelector2 deg2,
                     WeightMap weight) const
     {
         GetDegreePair put_point;

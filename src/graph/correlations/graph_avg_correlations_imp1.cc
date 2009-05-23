@@ -31,13 +31,11 @@ using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
 
-
-void graph_avg_correlations_imp1(GraphInterface& g, python::object& avg,
-                                 python::object& dev,
-                                 python::object& ret_bins,
-                                 boost::any deg1, boost::any deg2,
-                                 boost::any weight,
-                                 const vector<long double>& bins)
+void graph_avg_corr_imp1(GraphInterface& g, python::object& avg,
+                         python::object& dev, python::object& ret_bins,
+                         boost::any deg1, boost::any deg2,
+                         boost::any weight,
+                         const vector<long double>& bins)
 {
     typedef DynamicPropertyMapWrap<long double, GraphInterface::edge_t>
         wrapped_weight_t;
