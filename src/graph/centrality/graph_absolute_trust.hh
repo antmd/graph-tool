@@ -23,8 +23,10 @@
 #include "graph_util.hh"
 
 #include <tr1/unordered_set>
-#include <boost/random/uniform_int.hpp>
+#include <tr1/random>
 #include <boost/functional/hash.hpp>
+
+#include <iostream>
 
 namespace graph_tool
 {
@@ -51,8 +53,7 @@ struct get_absolute_trust
 
         // init inferred trust t
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i)     \
-            schedule(dynamic)
+        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
         for (i = (source == -1) ? 0 : source;
              i < ((source == -1) ? N : source + 1); ++i)
         {
@@ -71,7 +72,8 @@ struct get_absolute_trust
         {
             // walk hash set
             tr1::unordered_set<size_t> path_set;
-            uniform_int<size_t> random_salt(0, numeric_limits<size_t>::max());
+            tr1::uniform_int<size_t>
+                random_salt(0, numeric_limits<size_t>::max());
             size_t salt = random_salt(rng);
 
             t_type delta = 2*epslon;
@@ -121,12 +123,14 @@ struct get_absolute_trust
                     {
                         // select edge according to its probability
                         typename graph_traits<Graph>::edge_descriptor e;
-                        uniform_real<t_type> random(0,out_prob.back());
+                        typedef tr1::uniform_real<t_type> dist_t;
+                        tr1::variate_generator<rng_t, dist_t>
+                            random(rng, dist_t(0, out_prob.back()));
 
                         t_type u;
                         {
                             #pragma omp critical
-                            u = random(rng);
+                            u = random();
                         }
                         e = out_es[lower_bound(out_prob.begin(),
                                                out_prob.end(), u) -

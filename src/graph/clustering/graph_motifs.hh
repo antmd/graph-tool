@@ -22,17 +22,17 @@
 #include <omp.h>
 #endif
 
-#include <boost/random.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/graph/copy.hpp>
 #include <boost/graph/isomorphism.hpp>
 #include <tr1/unordered_map>
+#include <tr1/random>
 #include <algorithm>
 
 namespace graph_tool
 {
 
-typedef boost::mt19937 rng_t;
+typedef tr1::mt19937 rng_t;
 
 template <class Value>
 void insert_sorted(vector<Value>& v, const Value& val)
@@ -154,8 +154,9 @@ struct sample_some
     template <class val_type>
     void operator()(vector<val_type>& extend, size_t d)
     {
-        uniform_01<rng_t> random(*_rng);
-        random_number_generator<rng_t> std_random(*_rng);
+        typedef tr1::uniform_real<double> rdist_t;
+        tr1::variate_generator<rng_t, rdist_t> random(*_rng, rdist_t());
+
         double pd = (*_p)[d+1];
         size_t nc = extend.size();
         double u = nc*pd - floor(nc*pd);
@@ -178,12 +179,15 @@ struct sample_some
             return;
         }
 
+        typedef tr1::uniform_int<size_t> idist_t;
         for (size_t i = 0; i < n; ++i)
         {
+            tr1::variate_generator<rng_t, idist_t>
+                random_v(*_rng, idist_t(0, extend.size()-i-1));
             size_t j;
             {
                 #pragma omp critical
-                j = i + std_random(extend.size()-i);
+                j = i + random_v();
             }
             swap(extend[i], extend[j]);
         }
@@ -300,18 +304,22 @@ struct get_all_motifs
             for (tie(v, v_end) = vertices(g); v != v_end; ++v)
                 V.push_back(*v);
 
-            uniform_01<rng_t> random(rng);
-            random_number_generator<rng_t> std_random(rng);
-            size_t n;
+            typedef tr1::uniform_real<double> rdist_t;
+            tr1::variate_generator<rng_t, rdist_t> random(rng, rdist_t());
 
+            size_t n;
             if (random() < p)
                 n = ceil(V.size()*p);
             else
                 n = floor(V.size()*p);
 
+            typedef tr1::uniform_int<size_t> idist_t;
             for (size_t i = 0; i < n; ++i)
             {
-                size_t j = i + std_random(V.size()-i);
+                tr1::variate_generator<rng_t, idist_t>
+                    random_v(rng, idist_t(0, V.size()-i-1));
+
+                size_t j = i + random_v();
                 swap(V[i], V[j]);
             }
             V.resize(n);

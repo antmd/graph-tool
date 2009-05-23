@@ -19,7 +19,8 @@
 #define GRAPH_REWIRING_HH
 
 #include <tr1/unordered_set>
-#include <boost/random.hpp>
+#include <tr1/random>
+#include <boost/random/random_number_generator.hpp> // just the decorator
 #include <boost/functional/hash.hpp>
 #include <boost/vector_property_map.hpp>
 

@@ -26,7 +26,7 @@ using namespace boost;
 using namespace boost::lambda;
 using namespace graph_tool;
 
-typedef boost::mt19937 rng_t;
+typedef tr1::mt19937 rng_t;
 
 class PythonFuncWrap
 {

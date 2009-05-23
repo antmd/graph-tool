@@ -20,8 +20,8 @@
 #include "graph.hh"
 #include "graph_filtering.hh"
 
-#include <boost/random.hpp>
-typedef boost::mt19937 rng_t;
+#include <tr1/random>
+typedef std::tr1::mt19937 rng_t;
 
 #include "graph_rewiring.hh"
 

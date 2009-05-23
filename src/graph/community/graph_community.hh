@@ -18,8 +18,9 @@
 #ifndef GRAPH_COMMUNITY_HH
 #define GRAPH_COMMUNITY_HH
 
-#include <boost/random.hpp>
+#include <tr1/random>
 #include <tr1/unordered_set>
+#include <iostream>
 #include <fstream>
 #include <iomanip>
 
@@ -35,7 +36,7 @@ using namespace boost;
 using std::tr1::unordered_map;
 using std::tr1::unordered_set;
 
-typedef boost::mt19937 rng_t;
+typedef tr1::mt19937 rng_t;
 
 // computes the community structure through a spin glass system with
 // simulated annealing
@@ -71,7 +72,6 @@ struct get_communities
         double Tmax = Tinterval.second;
 
         rng_t rng(static_cast<rng_t::result_type>(seed));
-        boost::uniform_real<double> uniform_p(0.0,1.0);
 
         if (Nspins.first == 0)
             Nspins.first = HardNumVertices()(g);
@@ -81,8 +81,8 @@ struct get_communities
         unordered_map<size_t, map<double, unordered_set<size_t> > > global_term;
 
         // init spins from [0,N-1] and global info
-        uniform_int<size_t> sample_spin(0, Nspins.first-1);
-        unordered_set<size_t> deg_set;
+        tr1::uniform_int<size_t> sample_spin(0, Nspins.first-1);
+        tr1::unordered_set<size_t> deg_set;
         typename graph_traits<Graph>::vertex_iterator v,v_end;
         for (tie(v,v_end) = vertices(g); v != v_end; ++v)
         {
@@ -261,9 +261,13 @@ struct get_communities
                 else
                 {
                     // sample energy according to its probability
-                    uniform_real<long double> prob_sample
-                        (0.0, max(cumm_prob_k.rbegin()->first,
-                                  numeric_limits<long double>::epsilon()));
+                    typedef tr1::uniform_real<double> rdist_t;
+                    tr1::variate_generator<rng_t, rdist_t>
+                        prob_sample(rng,
+                                    rdist_t(0.0,
+                                            max(cumm_prob_k.rbegin()->first,
+                                                numeric_limits<long double>
+                                                ::epsilon())));
                     bool accept = false;
                     while (!accept)
                     {
@@ -271,7 +275,7 @@ struct get_communities
 
                         #pragma omp critical
                         {
-                            upper = cumm_prob_k.upper_bound(prob_sample(rng));
+                            upper = cumm_prob_k.upper_bound(prob_sample());
                         }
 
                         if (upper == cumm_prob_k.end())
@@ -282,7 +286,8 @@ struct get_communities
                 }
 
                 //new spin (randomly chosen amongst those with equal energy)
-                uniform_int<size_t> sample_spin(0,global_term_k[E].size()-1);
+                tr1::uniform_int<size_t>
+                    sample_spin(0, global_term_k[E].size()-1);
                 typeof(global_term_k[E].begin()) iter =
                     global_term_k[E].begin();
 

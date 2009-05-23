@@ -23,15 +23,17 @@
 #include <boost/array.hpp>
 #define BOOST_DISABLE_ASSERTS
 #include <boost/multi_array.hpp>
-#include <boost/random.hpp>
 #include <boost/functional/hash.hpp>
+
+#include <tr1/random>
+#include <iostream>
 
 namespace graph_tool
 {
 using namespace std;
 using namespace boost;
 
-typedef boost::mt19937 rng_t;
+typedef tr1::mt19937 rng_t;
 
 // Graph Generation
 // ================
@@ -104,7 +106,7 @@ public:
 
     ValueType operator()(rng_t& rng, bool remove = true)
     {
-        uniform_int<> sample(0, _candidates.size() - 1);
+        tr1::uniform_int<> sample(0, _candidates.size() - 1);
         int i = sample(rng);
         if (remove)
         {
@@ -211,7 +213,7 @@ public:
         }
 
         // <j> and <k> must be the same. Re-sample random pairs until this holds
-        uniform_int<size_t> vertex_sample(0, _N-1);
+        tr1::uniform_int<size_t> vertex_sample(0, _N-1);
         size_t count = 0;
         while (sum_j != sum_k)
         {
@@ -299,7 +301,7 @@ public:
 
         // sum_k must be an even number (2*num_edges). Re-sample degrees until
         // this holds
-        uniform_int<size_t> vertex_sample(0, _N-1);
+        tr1::uniform_int<size_t> vertex_sample(0, _N-1);
         size_t count = 0;
         while (sum_k % 2 != 0)
         {
@@ -474,7 +476,7 @@ struct gen_random_graph
         // shuffle sources
         for (size_t i = 0; i < sources.size(); ++i)
         {
-            uniform_int<size_t> source_sample(i, sources.size()-1);
+            tr1::uniform_int<size_t> source_sample(i, sources.size()-1);
             swap(sources[i], sources[source_sample(rng)]);
         }
 
@@ -534,7 +536,7 @@ struct gen_random_graph
                 }
 
                 size_t s_index;
-                uniform_int<size_t> source_sample(0, j);
+                tr1::uniform_int<size_t> source_sample(0, j);
                 // keep trying: we don't want the same source again, and no
                 // sources with zero out-degree (which can happen when the graph
                 // is undirected, when they're orphaned after a removed edge)
