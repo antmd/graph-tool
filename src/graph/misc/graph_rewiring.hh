@@ -20,7 +20,6 @@
 
 #include <tr1/unordered_set>
 #include <tr1/random>
-#include <boost/random/random_number_generator.hpp> // just the decorator
 #include <boost/functional/hash.hpp>
 #include <boost/vector_property_map.hpp>
 
@@ -313,7 +312,8 @@ struct graph_rewire
 
 // This will iterate over a random permutation of a random access sequence, by
 // swapping the values of the sequence as it iterates
-template <class RandomAccessIterator, class RNG>
+template <class RandomAccessIterator, class RNG,
+          class RandomDist = tr1::uniform_int<size_t> >
 class random_permutation_iterator
 {
 public:
@@ -321,7 +321,8 @@ public:
                                 RandomAccessIterator last, RNG& rng)
         : _i(first), _last(last), _rng(rng)
     {
-        std::iter_swap(_i, _i + _rng(_last - _i));
+        RandomDist random(0,  _last - _i - 1);
+        std::iter_swap(_i, _i + random(_rng));
     }
     typename RandomAccessIterator::value_type operator*()
     {
@@ -332,7 +333,10 @@ public:
     {
         ++_i;
         if(_i != _last)
-            std::iter_swap(_i, _i + _rng(_last - _i));
+        {
+            RandomDist random(0,  _last - _i - 1);
+            std::iter_swap(_i, _i + random(_rng));
+        }
         return *this;
     }
 
@@ -369,10 +373,10 @@ class RewireStrategyBase
 public:
     typedef typename graph_traits<Graph>::edge_descriptor edge_t;
     typedef typename EdgeIndexMap::value_type index_t;
-    typedef random_number_generator<rng_t, size_t> random_t;
+    typedef tr1::uniform_int<size_t> random_t;
 
     RewireStrategyBase(const Graph& g, EdgeIndexMap edge_index, rng_t& rng)
-        : _g(g), _edge_is_new(edge_index), _random(rng) {}
+        : _g(g), _edge_is_new(edge_index), _rng(rng) {}
 
     template<class EdgesType>
     pair<edge_t, edge_t> operator()(const edge_t& e, const EdgesType& edges,
@@ -389,10 +393,9 @@ public:
         bool found = false;
         edge_t es, et;
         typedef random_permutation_iterator
-            <typename vector<index_t>::iterator, random_t> random_edge_iter;
+            <typename vector<index_t>::iterator, rng_t> random_edge_iter;
 
-        random_edge_iter esi(edges_source->begin(), edges_source->end(),
-                             _random);
+        random_edge_iter esi(edges_source->begin(), edges_source->end(), _rng);
         for (; esi != edges_source->end() && !found; ++esi)
         {
             if (!is_edge[*esi])
@@ -405,7 +408,7 @@ public:
             }
 
             random_edge_iter eti(edges_target->begin(), edges_target->end(),
-                                 _random);
+                                 _rng);
             for (; eti != edges_target->end() && !found; ++eti)
             {
                 if (!is_edge[*eti])
@@ -419,7 +422,8 @@ public:
                 }
                 if (!parallel_edges) // reject parallel edges if not allowed
                 {
-                    if (swap_edge_triad::parallel_check(e, es, et, _edge_is_new, _g))
+                    if (swap_edge_triad::parallel_check(e, es, et, _edge_is_new,
+                                                        _g))
                         continue;
                 }
                 found = true;
@@ -435,7 +439,7 @@ public:
 private:
     const Graph& _g;
     vector_property_map<bool, EdgeIndexMap> _edge_is_new;
-    random_t _random;
+    rng_t& _rng;
 };
 
 // this will rewire the edges so that the combined (in, out) degree distribution
