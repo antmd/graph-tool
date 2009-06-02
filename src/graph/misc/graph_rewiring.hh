@@ -314,16 +314,21 @@ struct graph_rewire
 // swapping the values of the sequence as it iterates
 template <class RandomAccessIterator, class RNG,
           class RandomDist = tr1::uniform_int<size_t> >
-class random_permutation_iterator
+class random_permutation_iterator : public
+    std::iterator<input_iterator_tag, typename RandomAccessIterator::value_type>
 {
 public:
-    random_permutation_iterator(RandomAccessIterator first,
-                                RandomAccessIterator last, RNG& rng)
-        : _i(first), _last(last), _rng(rng)
+    random_permutation_iterator(RandomAccessIterator begin,
+                                RandomAccessIterator end, RNG& rng)
+        : _i(begin), _end(end), _rng(&rng)
     {
-        RandomDist random(0,  _last - _i - 1);
-        std::iter_swap(_i, _i + random(_rng));
+        if(_i != _end)
+        {
+            RandomDist random(0,  _end - _i - 1);
+            std::iter_swap(_i, _i + random(*_rng));
+        }
     }
+
     typename RandomAccessIterator::value_type operator*()
     {
         return *_i;
@@ -332,37 +337,27 @@ public:
     random_permutation_iterator& operator++()
     {
         ++_i;
-        if(_i != _last)
+        if(_i != _end)
         {
-            RandomDist random(0,  _last - _i - 1);
-            std::iter_swap(_i, _i + random(_rng));
+            RandomDist random(0,  _end - _i - 1);
+            std::iter_swap(_i, _i + random(*_rng));
         }
         return *this;
     }
 
-    bool operator==(const RandomAccessIterator& i)
+    bool operator==(const random_permutation_iterator& ri)
     {
-        return _i == i;
+        return _i == ri._i;
     }
 
-    bool operator!=(const RandomAccessIterator& i)
+    bool operator!=(const random_permutation_iterator& ri)
     {
-        return _i != i;
+        return _i != ri._i;
     }
 private:
-    RandomAccessIterator _i, _last;
-    RNG& _rng;
+    RandomAccessIterator _i, _end;
+    RNG* _rng;
 };
-
-// utility function for random_permutation_iterator
-template <class RandomAccessIterator, class RNG>
-inline random_permutation_iterator<RandomAccessIterator,RNG>
-make_random_permutation_iterator(RandomAccessIterator first,
-                                 RandomAccessIterator last, RNG& rng)
-{
-    return random_permutation_iterator<RandomAccessIterator,RNG>(first, last,
-                                                                 rng);
-}
 
 // this is the mother class for edge-based rewire strategies
 // it contains the common loop for finding edges to swap, so different
@@ -373,7 +368,6 @@ class RewireStrategyBase
 public:
     typedef typename graph_traits<Graph>::edge_descriptor edge_t;
     typedef typename EdgeIndexMap::value_type index_t;
-    typedef tr1::uniform_int<size_t> random_t;
 
     RewireStrategyBase(const Graph& g, EdgeIndexMap edge_index, rng_t& rng)
         : _g(g), _edge_is_new(edge_index), _rng(rng) {}
@@ -395,8 +389,11 @@ public:
         typedef random_permutation_iterator
             <typename vector<index_t>::iterator, rng_t> random_edge_iter;
 
-        random_edge_iter esi(edges_source->begin(), edges_source->end(), _rng);
-        for (; esi != edges_source->end() && !found; ++esi)
+        random_edge_iter esi(edges_source->begin(), edges_source->end(),
+                             _rng),
+                         esi_end(edges_source->end(), edges_source->end(),
+                             _rng);
+        for (; esi != esi_end && !found; ++esi)
         {
             if (!is_edge[*esi])
                 continue;
@@ -408,8 +405,10 @@ public:
             }
 
             random_edge_iter eti(edges_target->begin(), edges_target->end(),
+                                 _rng),
+                             eti_end(edges_target->end(), edges_target->end(),
                                  _rng);
-            for (; eti != edges_target->end() && !found; ++eti)
+            for (; eti != eti_end && !found; ++eti)
             {
                 if (!is_edge[*eti])
                     continue;
