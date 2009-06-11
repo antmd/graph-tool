@@ -562,12 +562,19 @@ class Graph(object):
     # property map copying
     @_handle_exceptions
     @_require("src", PropertyMap)
-    @_require("tgt", PropertyMap)
-    def copy_property(self, src, tgt, g=None):
-        """Copy contents of `src` property to `tgt` property. The optional
-        parameter g specifices the (identical) source graph to copy properties
-        from (defaults to self).
+    @_require("tgt", (PropertyMap, type(None)))
+    def copy_property(self, src, tgt=None, g=None):
+        """Copy contents of `src` property to `tgt` property. If `tgt` is None,
+        then a new property map of the same type is created, and returned. The
+        optional parameter g specifices the (identical) source graph to copy
+        properties from (defaults to self).
         """
+        if tgt == None:
+            tgt = self.new_property(src.key_type(), src.value_type())
+            ret = tgt
+        else:
+            ret = None
+
         if src.key_type() != tgt.key_type():
             raise GraphError("source and target properties must have the same" +
                              " key type")
@@ -587,6 +594,7 @@ class Graph(object):
         self.pop_filter()
         if g != self:
             g.pop_filter()
+        return ret
 
     # degree property map
     @_handle_exceptions
