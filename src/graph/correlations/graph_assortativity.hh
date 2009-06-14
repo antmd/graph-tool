@@ -123,12 +123,10 @@ struct get_scalar_assortativity_coefficient
         count_t c = (is_directed::apply<Graph>::type::value) ? 1.0 : 0.5;
         count_t n_edges = 0;
         double e_xy = 0.0;
-        tr1::unordered_map<double,count_t> a, b;
-        SharedMap<tr1::unordered_map<double,count_t> > sa(a), sb(b);
-
+        double a = 0.0, b = 0.0, da = 0.0, db = 0.0;
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) firstprivate(sa,sb)\
-            schedule(dynamic) reduction(+:e_xy, n_edges)
+        #pragma omp parallel for default(shared) private(i) \
+            schedule(dynamic) reduction(+:e_xy,n_edges,a,b,da,db)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -140,32 +138,28 @@ struct get_scalar_assortativity_coefficient
             for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
             {
                 double k2 = deg(target(*e,g),g);
-                sa[k1] += c;
-                sb[k2] += c;
+                a += k1*c;
+                da += k1*k1*c;
+                b += k2*c;
+                db += k2*k2*c;
                 e_xy += k1*k2*c;
                 n_edges += c;
             }
         }
 
-        sa.Gather();
-        sb.Gather();
-
         double t1 = e_xy/n_edges;
-        double avg_a = GetMapMean(a), avg_b = GetMapMean(b);
-        double da = GetMapDeviation(a,avg_a), db = GetMapDeviation(b,avg_b);
+        a /= n_edges;
+        b /= n_edges;
+        double stda = sqrt(da/n_edges - a*a);
+        double stdb = sqrt(db/n_edges - b*b);
 
-        if (da*db > 0)
-            r = (t1 - avg_a*avg_b)/(da*db);
+        if (stda*stdb > 0)
+            r = (t1 - a*b)/(stda*stdb);
         else
-            r = (t1 - avg_a*avg_b);
+            r = (t1 - a*b);
 
         // "jackknife" variance
         r_err = 0.0;
-        double diff_a = 0.0, diff_b = 0.0;
-        for (typeof(a.begin()) iter = a.begin(); iter != a.end(); ++iter)
-            diff_a += (iter->first - avg_a)*iter->second;
-        for (typeof(b.begin()) iter = b.begin(); iter != b.end(); ++iter)
-            diff_b += (iter->first - avg_b)*iter->second;
 
         double err = 0.0;
         #pragma omp parallel for default(shared) private(i) schedule(dynamic)\
@@ -177,22 +171,21 @@ struct get_scalar_assortativity_coefficient
                 continue;
 
             double k1 = deg(v, g);
+            double al = (a*n_edges - k1)/(n_edges-1);
+            double dal = sqrt((da - k1*k1)/(n_edges-1) - al*al);
+
             typename graph_traits<Graph>::out_edge_iterator e, e_end;
             for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
             {
                 double k2 = deg(target(*e, g), g);
+                double bl = (b*n_edges - k2)/(n_edges-1);
+                double dbl = sqrt((db - k2*k2)/(n_edges-1) - bl*bl);
                 double t1l = (e_xy - k1*k2)/(n_edges-1);
-                double avg_al = (avg_a*n_edges - k1)/(n_edges-1);
-                double avg_bl = (avg_b*n_edges - k2)/(n_edges-1);
-                double dal = da - 2*diff_a*(avg_al-avg_a) +
-                    (avg_al-avg_a)*(avg_al-avg_a);
-                double dbl = db - 2*diff_b*(avg_bl-avg_b) +
-                    (avg_bl-avg_b)*(avg_bl-avg_b);
                 double rl;
                 if (dal*dbl > 0)
-                    rl = (t1l - avg_al*avg_bl)/(dal*dbl);
+                    rl = (t1l - al*bl)/(dal*dbl);
                 else
-                    rl = (t1l - avg_al*avg_bl);
+                    rl = (t1l - al*bl);
                 err += (r-rl)*(r-rl)*c;
             }
         }
