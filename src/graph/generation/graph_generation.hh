@@ -28,6 +28,8 @@
 #include <tr1/random>
 #include <iostream>
 
+#include "graph_util.hh"
+
 namespace graph_tool
 {
 using namespace std;
@@ -49,12 +51,9 @@ typedef tr1::mt19937 rng_t;
 //   directed edge exists between two _specific_ vertices of degrees (j,k) and
 //   (j',k')
 //
-// Both these structures are expensive to store, and having them would still
-// mean that rejection sampling would have to be used to generate the graph,
-// which can be quite slow, and unnecessary when the samples are easy to
-// obtain. Therefore what is actually used are two functions, deg_sample() and
-// deg_corr_sample(j,k) which should return a (j,k) degree sample which obeys
-// the above probabilities.
+// What is actually used are two functions, deg_sample() and
+// corr_prob((j1,k1),(j2,k2)) which should return a (j,k) degree sample which
+// obeys the above probabilities, and the given correlation probability.
 //
 // Furthermore we want also to generate _undirected_ graphs, which have the
 // above probabilities changed to P(k) and deg_corr(k) respectively.
@@ -65,7 +64,7 @@ typedef tr1::mt19937 rng_t;
 // desired vertex type, with desired j,k values and the index in the real graph
 struct dvertex_t
 {
-    dvertex_t() {}
+    dvertex_t(): in_degree(0), out_degree(0) {}
     dvertex_t(size_t in, size_t out): in_degree(in), out_degree(out) {}
     dvertex_t(const pair<size_t,size_t>& deg): in_degree(deg.first),
                                                out_degree(deg.second) {}
@@ -73,59 +72,184 @@ struct dvertex_t
     bool operator==(const dvertex_t& other) const {return other.index == index;}
 };
 
+size_t hash_value(const dvertex_t& v)
+{
+    return v.index;
+}
+
+
 // utility class to sample uniformly from a collection of values
 template <class ValueType>
 class Sampler
 {
 public:
-    Sampler() {}
+    Sampler(bool biased=false): _biased(biased) {}
 
     template <class Iterator>
-    Sampler(Iterator iter, Iterator end)
+    Sampler(Iterator iter, Iterator end):
+        _biased(false)
     {
         for(; iter != end; ++iter)
-            _candidates.push_back(*iter);
-    }
-
-    void Insert(const ValueType& v) { _candidates.push_back(v); }
-
-    void Remove(size_t index)
-    {
-        swap(_candidates[index], _candidates.back());
-        _candidates.pop_back();
-    }
-
-    void RemoveLast()
-    {
-        if (_last != _candidates.size())
         {
-            swap(_candidates[_last], _candidates.back());
-            _candidates.pop_back();
+            _candidates.push_back(*iter);
+            _candidates_set.insert(make_pair(*iter, _candidates.size()-1));
+        }
+        assert(!_candidates.empty());
+    }
+
+    void Insert(const ValueType& v, double p = 0.0)
+    {
+        _candidates.push_back(v);
+        _candidates_set.insert(make_pair(v, _candidates.size()-1));
+        if (_biased)
+        {
+            if (_probs.size() > 0)
+                _probs.push_back(_probs.back()+p);
+            else
+                _probs.push_back(p);
+            _erased.push_back(false);
         }
     }
 
-    ValueType operator()(rng_t& rng, bool remove = true)
+    void Remove(const ValueType& v)
     {
-        tr1::uniform_int<> sample(0, _candidates.size() - 1);
-        int i = sample(rng);
-        if (remove)
+        typeof(_candidates_set.begin()) iter, end, temp;
+        tie(iter, end) = _candidates_set.equal_range(v);
+        assert(iter != end);
+
+        if (_biased)
         {
-            swap(_candidates[i], _candidates.back());
-            ValueType ret = _candidates.back();
-            _candidates.pop_back();
-            _last = numeric_limits<size_t>::max();
-            return ret;
+            while(_erased[iter->second])
+            {
+                temp = iter;
+                iter++;
+                _candidates_set.erase(temp);
+                if(iter == end)
+                    break;
+            }
+
+            size_t index = iter->second;
+            _erased[index] = true;
         }
         else
         {
-            _last = i;
+            size_t index = iter->second;
+            temp = _candidates_set.find(_candidates.back());
+            swap(_candidates[index], _candidates.back());
+            _candidates.pop_back();
+            if (!_candidates.empty() && temp != iter)
+            {
+                _candidates_set.erase(temp);
+                _candidates_set.insert(make_pair(_candidates[index], index));
+            }
+        }
+        _candidates_set.erase(iter);
+
+        // if too many elements were erased, we need to make things less sparse
+        if (!_candidates_set.empty() &&
+            _candidates_set.size() < _candidates.size()/2)
+        {
+            for (int i = _probs.size() - 1; i > 0; --i)
+                _probs[i] -= _probs[i-1];
+
+            for (int i = _candidates.size() - 1; i >= 0; --i)
+            {
+                if (_erased[i])
+                {
+                    _candidates.erase(_candidates.begin() + i);
+                    _probs.erase(_probs.begin() + i);
+                }
+            }
+
+            for (size_t i = 1; i < _probs.size(); i++)
+                _probs[i] += _probs[i-1];
+
+            _candidates_set.clear();
+            _erased.resize(_candidates.size());
+            for (size_t i = 0; i < _candidates.size(); i++)
+             {
+                _candidates_set.insert(make_pair(_candidates[i],i));
+                _erased[i] = false;
+            }
+        }
+    }
+
+    ValueType operator()(rng_t& rng, bool remove = false)
+    {
+        if (!_biased)
+        {
+            tr1::uniform_int<> sample(0, _candidates.size() - 1);
+            int i = sample(rng);
+            if (remove)
+            {
+                swap(_candidates[i], _candidates.back());
+                ValueType ret = _candidates.back();
+                _candidates.pop_back();
+                return ret;
+            }
+            else
+            {
+                return _candidates[i];
+            }
+        }
+        else
+        {
+            size_t i;
+
+            if (_probs.back() > 0)
+            {
+                tr1::variate_generator<rng_t, tr1::uniform_real<> >
+                    sample(rng, tr1::uniform_real<>(0.0, _probs.back()));
+                double r = sample();
+                i = lower_bound(_probs.begin(), _probs.end(), r) -
+                    _probs.begin();
+            }
+            else
+            {
+                // all probabilities are zero... sample randomly.
+                tr1::uniform_int<size_t> sample(0, _candidates_set.size()-1);
+                size_t j = sample(rng), count = 0;
+                for (typeof(_candidates_set.begin()) iter =
+                         _candidates_set.begin();
+                     iter != _candidates_set.end(); ++iter)
+                {
+                    if (count == j)
+                    {
+                        i = iter->second;
+                        break;
+                    }
+                    count++;
+                }
+            }
+
+            for (; i < _probs.size(); ++i)
+                if (!_erased[i])
+                    break;
+            if (i == _probs.size())
+                for (i = _probs.size()-1; i < _probs.size(); --i)
+                    if (!_erased[i])
+                        break;
+            if (i >= _probs.size())
+            {
+                size_t n = 0;
+                for (size_t j = 0; j < _erased.size(); ++j)
+                    if (_erased[j])
+                        n++;
+            }
+
+            if (remove)
+                _erased[i] = true;
             return _candidates[i];
         }
     }
 
 private:
+    bool _biased;
     vector<ValueType> _candidates;
-    size_t _last;
+    tr1::unordered_multimap<ValueType, size_t, hash<ValueType> >
+        _candidates_set;
+    vector<double> _probs;
+    vector<bool> _erased;
 };
 
 // used for verbose display
@@ -348,70 +472,153 @@ private:
 // Correlated graph strategy
 //
 
-template <class Deg>
 class CorrelatedStrat
 {
 public:
-    void InsertTarget(const dvertex_t& v, const Deg& deg)
-    {
-        _targets.insert(make_pair(deg, v));
-    }
+    typedef pair<size_t,size_t> deg_t;
+    typedef tr1::unordered_multimap<deg_t, dvertex_t, hash<deg_t> > targets_t;
 
-    template <class CorrSample>
-    dvertex_t GetRandomTarget(const Deg& source_deg, CorrSample& corr_sample,
-                              rng_t& rng)
+    template <class CorrProb>
+    void InsertSource(const dvertex_t& v, CorrProb& corr)
     {
-        // keep sampling until we find a vertex
-        typename targets_t::iterator iter,end;
-        Deg target_deg;
-        do
+        deg_t deg = make_pair(v.in_degree, v.out_degree);
+        if (_sampler.find(deg) == _sampler.end())
         {
-            //choose the target vertex according to correlation
-            target_deg = corr_sample(source_deg);
-            tie(iter, end) = _targets.equal_range(target_deg);
+            _sampler[deg] = Sampler<deg_t>(true);
+            for (typeof(_target_degs.begin()) iter = _target_degs.begin();
+                 iter != _target_degs.end(); ++iter)
+            {
+                typeof(_corr_prob.begin()) prob =
+                     _corr_prob.find(make_pair(deg, *iter));
+                if (prob == _corr_prob.end())
+                    prob = _corr_prob.insert(make_pair(make_pair(deg, *iter),
+                                                       corr(deg, *iter)))
+                        .first;
+                _sampler[deg].Insert(*iter, prob->second);
+            }
         }
-        while (iter == end);
-        // sample random target on the same class
-        Sampler<typename targets_t::iterator> sampler;
-        for(; iter != end; ++iter)
-            sampler.Insert(iter);
-        _last = sampler(rng);
-        return _last->second;
     }
 
-    void RemoveLast() { _targets.erase(_last); }
+    template <class CorrProb>
+    void InsertTarget(const dvertex_t& v, CorrProb& corr)
+    {
+        deg_t deg = make_pair(v.in_degree, v.out_degree);
+        _targets.insert(make_pair(deg, v));
+
+        // if it is a new target degree, include it on all previously included
+        // samplers
+        if (_target_degs.find(deg) == _target_degs.end())
+        {
+            for (typeof(_sampler.begin()) iter = _sampler.begin();
+                 iter != _sampler.end(); ++iter)
+            {
+                typeof(_corr_prob.begin()) prob =
+                     _corr_prob.find(make_pair(iter->first, deg));
+                if (prob == _corr_prob.end())
+                    prob =
+                        _corr_prob.insert(make_pair(make_pair(iter->first, deg),
+                                                    corr(iter->first, deg)))
+                        .first;
+                iter->second.Insert(deg, prob->second);
+            }
+            _target_degs.insert(deg);
+        }
+    }
+
+    dvertex_t GetRandomTarget(const dvertex_t& source, rng_t& rng)
+    {
+        deg_t source_deg = make_pair(source.in_degree, source.out_degree),
+            target_deg;
+
+        //choose the target degree according to correlation
+        target_deg = _sampler[source_deg](rng);
+
+        // sample random target on the same class
+        targets_t::iterator begin, end;
+        tie(begin, end) = _targets.equal_range(target_deg);
+        Sampler<dvertex_t> sampler;
+        for(targets_t::iterator iter = begin; iter != end; ++iter)
+            sampler.Insert(iter->second);
+        dvertex_t v = sampler(rng);
+        return v;
+    }
+
+    void Remove(const dvertex_t& v)
+    {
+        deg_t deg = make_pair(v.in_degree, v.out_degree);
+
+        typeof(_targets.begin()) iter, end;
+        tie(iter, end) = _targets.equal_range(deg);
+        for (; iter != end; ++iter)
+            if (iter->second == v)
+            {
+                Remove(iter);
+                break;
+            }
+    }
+
+    void Remove(const targets_t::iterator& i)
+    {
+        deg_t deg = i->first;
+
+        _targets.erase(i);
+
+        // remove degree from samplers if it no longer corresponds to any target
+        if (_targets.find(deg) == _targets.end())
+        {
+            for (typeof(_sampler.begin()) iter = _sampler.begin();
+                 iter != _sampler.end(); ++iter)
+                iter->second.Remove(deg);
+            _target_degs.erase(deg);
+        }
+    }
 
 private:
-    typedef tr1::unordered_multimap<Deg, dvertex_t, hash<Deg> > targets_t;
+    typedef tr1::unordered_map<pair<deg_t, deg_t>, double,
+                               hash<pair<deg_t, deg_t> > > corr_prob_t;
+    typedef tr1::unordered_map<deg_t, Sampler<deg_t>, hash<deg_t> > sampler_t;
+    typedef tr1::unordered_set<deg_t, hash<deg_t> > deg_set_t;
+
+    corr_prob_t _corr_prob;
     targets_t _targets;
-    typename targets_t::iterator _last;
+    sampler_t _sampler;
+    deg_set_t _target_degs;
 };
 
 //
 // Uncorrelated graph strategy
 //
 
-template <class Deg>
 class UncorrelatedStrat
 {
 public:
-    void InsertTarget(const dvertex_t& v, const Deg& deg)
+    typedef pair<size_t,size_t> deg_t;
+
+    template <class CorrProb>
+    void InsertSource(const dvertex_t& v, CorrProb& corr)
+    {
+    }
+
+    template <class CorrProb>
+    void InsertTarget(const dvertex_t& v, CorrProb& corr)
     {
         _targets.Insert(v);
     }
 
-    template <class CorrSample>
-    dvertex_t GetRandomTarget(const Deg& source_deg, CorrSample& corr_sample,
-                              rng_t& rng)
+    dvertex_t GetRandomTarget(const dvertex_t& source, rng_t& rng)
     {
-        return _targets(rng, false);
+        return _targets(rng);
     }
 
-    void RemoveLast() { _targets.RemoveLast(); }
+    void Remove(const dvertex_t& v)
+    {
+        _targets.Remove(v);
+    }
 
 private:
     Sampler<dvertex_t> _targets;
 };
+
 
 //
 // Main Algorithm
@@ -425,9 +632,9 @@ struct gen_random_graph
 {
     gen_random_graph(size_t N): _N(N) {}
 
-    template <class Graph, class DegSample, class CorrDegSample>
+    template <class Graph, class DegSample, class CorrProb>
     void operator()(Graph& g, DegSample& deg_sample,
-                    CorrDegSample& deg_corr_sample, bool no_parallel,
+                    CorrProb& corr_prob, bool no_parallel,
                     bool no_self_loops, bool undirected,
                     size_t seed, bool verbose)
         const
@@ -438,14 +645,12 @@ struct gen_random_graph
         rng_t rng(static_cast<rng_t::result_type>(seed));
 
         // figure out the necessary strategies
-        typedef typename is_convertible
-            <typename graph_traits<Graph>::directed_category,
-            directed_tag>::type is_directed;
-        typedef typename mpl::if_<is_directed, DirectedStrat,
+        typedef typename mpl::if_<typename is_directed::apply<Graph>::type,
+                                  DirectedStrat,
                                   UndirectedStrat>::type gen_strat_t;
         typedef typename gen_strat_t::deg_t deg_t;
-        typedef typename mpl::if_<IsCorrelated, CorrelatedStrat<deg_t>,
-                                  UncorrelatedStrat<deg_t> >::type corr_strat_t;
+        typedef typename mpl::if_<IsCorrelated, CorrelatedStrat,
+                                  UncorrelatedStrat >::type corr_strat_t;
 
         gen_strat_t gen_strat(N, no_parallel, no_self_loops);
         corr_strat_t corr_strat;
@@ -468,9 +673,9 @@ struct gen_random_graph
         {
             for(size_t k = 0; k < vertices[i].out_degree; ++k)
                 sources.push_back(vertices[i]);
+            corr_strat.InsertSource(vertices[i], corr_prob);
             if (gen_strat.IsTarget(vertices[i]))
-                corr_strat.InsertTarget(vertices[i],
-                                        gen_strat.GetDegree(vertices[i]));
+                corr_strat.InsertTarget(vertices[i], corr_prob);
         }
 
         // shuffle sources
@@ -494,7 +699,8 @@ struct gen_random_graph
 
             // in undirected graphs, there's no difference between source and
             // target
-            if (!is_directed::value && !gen_strat.IsStillTarget(g, source))
+            if (!is_directed::apply<Graph>::type::value &&
+                !gen_strat.IsStillTarget(g, source))
                 continue;
 
             tr1::unordered_set<size_t> old_targets;
@@ -507,8 +713,7 @@ struct gen_random_graph
             }
 
             // get target
-            target = corr_strat.GetRandomTarget(source_deg, deg_corr_sample,
-                                                rng);
+            target = corr_strat.GetRandomTarget(source, rng);
 
             // if unacceptable (because parallel and/or self_loop), throw it
             // back and disconnect a random previous (different) source
@@ -516,7 +721,7 @@ struct gen_random_graph
                                  != old_targets.end())) ||
                 (no_self_loops && (source.index == target.index)))
             {
-                if (i == 0) // just try again
+                if (i < 2) // just try again
                 {
                     i--;
                     continue;
@@ -526,7 +731,7 @@ struct gen_random_graph
                 // the first one. In that case, we should just discard this one
                 // and keep going.
                 int j;
-                for (j = i-1; j >= 0; --j)
+                for (j = i; j >= 0; --j)
                     if (!(sources[j] == source))
                         break;
                 if (j < 0)
@@ -536,7 +741,7 @@ struct gen_random_graph
                 }
 
                 size_t s_index;
-                tr1::uniform_int<size_t> source_sample(0, j);
+                tr1::uniform_int<size_t> source_sample(0, i-1);
                 // keep trying: we don't want the same source again, and no
                 // sources with zero out-degree (which can happen when the graph
                 // is undirected, when they're orphaned after a removed edge)
@@ -550,28 +755,29 @@ struct gen_random_graph
                 dvertex_t rsource = sources[s_index]; // random source
 
                 // get the random edge
+                tr1::uniform_int<size_t>
+                    esample(0, out_degree(vertex(rsource.index, g),g)-1);
+                size_t rei = esample(rng);
                 typename graph_traits<Graph>::out_edge_iterator e, e_end;
                 tie(e, e_end) = out_edges(vertex(rsource.index, g), g);
-                Sampler<typename graph_traits<Graph>::edge_descriptor>
-                    esampler(e, e_end);
-                typename graph_traits<Graph>::edge_descriptor re =
-                    esampler(rng, false); // random edge
+                for(size_t j = 0; j < rei; ++j)
+                    e++;
+                typename graph_traits<Graph>::edge_descriptor re = *e;
 
                 // if edge's target was already full, put it back in target list
                 dvertex_t rtarget =
                     vertices[vertex_index[boost::target(re, g)]];
                 if (!gen_strat.IsStillTarget(g, rtarget))
-                    corr_strat.InsertTarget(rtarget,
-                                            gen_strat.GetDegree(rtarget));
+                    corr_strat.InsertTarget(rtarget, corr_prob);
 
                 // for undirected graphs, we need also to check the source
-                if (!is_directed::value)
+                if (!is_directed::apply<Graph>::type::value)
                 {
                     dvertex_t rsource =
                         vertices[vertex_index[boost::source(re, g)]];
-                    if (!gen_strat.IsStillTarget(g, rsource))
-                        corr_strat.InsertTarget(rsource,
-                                                gen_strat.GetDegree(rsource));
+                    if (!gen_strat.IsStillTarget(g, rsource) &&
+                        !(rsource == rtarget))
+                        corr_strat.InsertTarget(rsource, corr_prob);
                 }
 
                 // remove and swap with previous source and continue from then
@@ -589,7 +795,11 @@ struct gen_random_graph
             // if target received all the edges it should, remove it from target
             // list
             if (!gen_strat.IsStillTarget(g, target))
-                corr_strat.RemoveLast();
+                corr_strat.Remove(target);
+
+            if (!is_directed::apply<Graph>::type::value && !(source == target))
+                if (!gen_strat.IsStillTarget(g, source))
+                    corr_strat.Remove(source);
 
             if (verbose)
                 print_progress(i, E, str);

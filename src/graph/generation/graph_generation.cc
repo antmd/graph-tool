@@ -45,16 +45,11 @@ public:
         return python::extract<size_t>(ret);
     }
 
-    size_t operator()(size_t k) const
+    double operator()(pair<size_t, size_t> deg, pair<size_t, size_t> degl) const
     {
-        python::object ret = _o(k);
-        return python::extract<size_t>(ret);
-    }
-
-    pair<size_t, size_t> operator()(pair<size_t, size_t> deg) const
-    {
-        python::object ret = _o(deg.first, deg.second);
-        return python::extract<pair<size_t,size_t> >(ret);
+        python::object ret = _o(python::make_tuple(deg.first, deg.second),
+                                python::make_tuple(degl.first, degl.second));
+        return python::extract<double>(ret);
     }
 
 private:

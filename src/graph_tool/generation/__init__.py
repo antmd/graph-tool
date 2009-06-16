@@ -29,6 +29,9 @@ import sys, numpy
 
 __all__ = ["random_graph"]
 
+def _corr_wrap(i, j, corr):
+    return corr(i[1], j[1])
+
 def random_graph(N, deg_sampler, deg_corr=None, directed=True,
                  parallel=False, self_loops=False,
                  seed=0, verbose=False):
@@ -39,8 +42,12 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
         uncorrelated = True
     else:
         uncorrelated = False
+    if not directed and deg_corr != None:
+        corr = lambda i,j: _corr_wrap(i, j, deg_corr)
+    else:
+        corr = deg_corr
     libgraph_tool_generation.gen_random_graph(g._Graph__graph, N,
-                                              deg_sampler, deg_corr,
+                                              deg_sampler, corr,
                                               uncorrelated, not parallel,
                                               not self_loops, not directed,
                                               seed, verbose)
