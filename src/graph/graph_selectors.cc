@@ -38,7 +38,7 @@ boost::any graph_tool::degree_selector(GraphInterface::deg_t deg)
     catch (bad_get)
     {
         bool found = false;
-        mpl::for_each<vertex_scalar_properties>
+        mpl::for_each<vertex_properties>
             (bind<void>(get_scalar_selector(), _1, boost::get<boost::any>(deg),
                         var(sel), var(found)));
         if (!found)
