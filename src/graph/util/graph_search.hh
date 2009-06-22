@@ -21,6 +21,12 @@
 
 #include <tr1/unordered_set>
 
+#ifdef USING_OPENMP
+#include <omp.h>
+#include <boost/type_traits.hpp>
+#endif
+
+
 namespace graph_tool
 {
 using namespace std;
@@ -81,8 +87,15 @@ struct find_vertices
         range.first = python::extract<value_type>(prange[0]);
         range.second = python::extract<value_type>(prange[1]);
 
+        #ifdef USING_OPENMP
+        size_t nt = omp_get_num_threads();
+        if (is_convertible<value_type,python::object>::value)
+            nt = 1; // python is not thread-safe
+        #endif
+
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
+        #pragma omp parallel for default(shared) private(i) schedule(dynamic) \
+            num_threads(nt)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -116,8 +129,15 @@ struct find_edges
 
         tr1::unordered_set<size_t> edge_set;
 
+        #ifdef USING_OPENMP
+        size_t nt = omp_get_num_threads();
+        if (is_convertible<value_type,python::object>::value)
+            nt = 1; // python is not thread-safe
+        #endif
+
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
+        #pragma omp parallel for default(shared) private(i) schedule(dynamic) \
+            num_threads(nt)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
