@@ -20,9 +20,13 @@
 
 #include <tr1/random>
 #include <tr1/unordered_set>
+#include <tr1/tuple>
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+
+#define BOOST_DISABLE_ASSERTS
+#include "boost/multi_array.hpp"
 
 #include "graph_util.hh"
 #include "graph_properties.hh"
@@ -44,17 +48,21 @@ typedef tr1::mt19937 rng_t;
 template <template <class G, class CommunityMap> class NNKS>
 struct get_communities
 {
-    template <class Graph, class WeightMap, class CommunityMap>
-    void operator()(const Graph& g, WeightMap weights, CommunityMap s,
-                    double gamma, size_t n_iter, pair<double,double> Tinterval,
-                    pair<size_t,bool> Nspins, size_t seed,
-                    pair<bool,string> verbose) const
+    template <class Graph, class VertexIndex, class WeightMap,
+              class CommunityMap>
+    void operator()(const Graph& g, VertexIndex vertex_index, WeightMap weights,
+                    CommunityMap s, double gamma, size_t n_iter, pair<double,
+                    double> Tinterval, size_t n_spins, size_t seed, pair<bool,
+                    string> verbose) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
         typedef typename property_traits<WeightMap>::key_type weight_key_t;
 
-        size_t N = HardNumVertices()(g);
+        rng_t rng(static_cast<rng_t::result_type>(seed));
+
+        tr1::variate_generator<rng_t, tr1::uniform_real<> >
+            random(rng, tr1::uniform_real<>());
 
         stringstream out_str;
         ofstream out_file;
@@ -71,40 +79,21 @@ struct get_communities
         double Tmin = Tinterval.first;
         double Tmax = Tinterval.second;
 
-        rng_t rng(static_cast<rng_t::result_type>(seed));
-
-        if (Nspins.first == 0)
-            Nspins.first = HardNumVertices()(g);
-
         unordered_map<size_t, size_t> Ns; // spin histogram
-        // global energy term
-        unordered_map<size_t, map<double, unordered_set<size_t> > > global_term;
+        CommunityMap temp_s(vertex_index, num_vertices(g));
 
         // init spins from [0,N-1] and global info
-        tr1::uniform_int<size_t> sample_spin(0, Nspins.first-1);
-        tr1::unordered_set<size_t> deg_set;
+        tr1::uniform_int<size_t> sample_spin(0, n_spins-1);
         typename graph_traits<Graph>::vertex_iterator v,v_end;
         for (tie(v,v_end) = vertices(g); v != v_end; ++v)
         {
-            if (Nspins.second)
-                s[*v] = sample_spin(rng);
+            s[*v] = temp_s[*v] = sample_spin(rng);
             Ns[s[*v]]++;
-            deg_set.insert(out_degree_no_loops(*v, g));
         }
 
         NNKS<Graph,CommunityMap> Nnnks(g, s); // this will retrieve the expected
                                               // number of neighbours with given
-                                              // spin, in funcion of degree
-
-        // setup global energy terms for all degrees and spins
-        vector<size_t> degs;
-        for (typeof(deg_set.begin()) iter = deg_set.begin();
-             iter != deg_set.end(); ++iter)
-            degs.push_back(*iter);
-        for (size_t i = 0; i < degs.size(); ++i)
-            for (size_t sp = 0; sp < Nspins.first; ++sp)
-                global_term[degs[i]][gamma*Nnnks(degs[i],sp)].insert(sp);
-
+                                              // spin, as a function of degree
 
         // define cooling rate so that temperature starts at Tmax at temp_count
         // == 0 and reaches Tmin at temp_count == n_iter - 1
@@ -116,313 +105,98 @@ struct get_communities
         for (size_t temp_count = 0; temp_count < n_iter; ++temp_count)
         {
             double T = Tmax*exp(-cooling_rate*temp_count);
+            double E = 0;
 
-            bool steepest_descent = false; // flags if temperature is too low
-
-            // calculate the cumulative probabilities of each spin energy level
-            unordered_map<size_t, map<long double, pair<double, bool> > >
-                cumm_prob;
-            unordered_map<size_t, unordered_map<double, long double> >
-                energy_to_prob;
-            int i, NK = degs.size();
-#ifdef USING_OPENMP
-            for (i = 0; i < NK; ++i)
-            {
-                cumm_prob[degs[i]];
-                energy_to_prob[degs[i]];
-            }
-#endif //USING_OPENMP
-            #pragma omp parallel for default(shared) private(i)\
-                schedule(dynamic)
-            for (i = 0; i < NK; ++i)
-            {
-                long double prob = 0;
-                for (typeof(global_term[degs[i]].begin()) iter =
-                         global_term[degs[i]].begin();
-                     iter != global_term[degs[i]].end(); ++iter)
-                {
-                    long double M = log(numeric_limits<long double>::max()/
-                                        (Nspins.first*10));
-                    long double this_prob =
-                        exp((long double)(-iter->first - degs[i])/T + M)*
-                        iter->second.size();
-
-                    if (prob + this_prob != prob)
-                    {
-                        prob += this_prob;
-                        cumm_prob[degs[i]][prob] = make_pair(iter->first, true);
-                        energy_to_prob[degs[i]][iter->first] = prob;
-                    }
-                    else
-                    {
-                        energy_to_prob[degs[i]][iter->first] = 0;
-                    }
-                }
-                if (prob == 0.0)
-                {
-                    #pragma omp critical
-                    {
-                        steepest_descent = true;
-                    }
-                }
-            }
-
-            // list of spins which were updated
-            vector<pair<vertex_t,size_t> > spin_update;
-            spin_update.reserve(N);
+            vector<tr1::tuple<size_t, size_t, size_t> > updates;
 
             // sample a new spin for every vertex
-            int NV = num_vertices(g);
-            #pragma omp parallel for default(shared) private(i) \
-                firstprivate(global_term, cumm_prob) schedule(dynamic)
+            int NV = num_vertices(g),i;
+            #pragma omp parallel for default(shared) private(i)\
+                reduction(+:E) schedule(dynamic)
             for (i = 0; i < NV; ++i)
             {
                 vertex_t v = vertex(i, g);
                 if (v == graph_traits<Graph>::null_vertex())
                     continue;
 
-                unordered_map<size_t, double> ns; // number of neighbours with
-                                                  // spin 's' (weighted)
+                size_t new_s;
+                {
+                    #pragma omp critical
+                    new_s = sample_spin(rng);
+                }
+
+                unordered_map<size_t, double> ns; // number of neighbours with a
+                                                  // given spin 's' (weighted)
 
                 // neighborhood spins info
-                typename graph_traits<Graph>::out_edge_iterator e,e_end;
+                typename graph_traits<Graph>::out_edge_iterator e, e_end;
                 for (tie(e,e_end) = out_edges(v,g); e != e_end; ++e)
                 {
-                    vertex_t t = target(*e,g);
+                    vertex_t t = target(*e, g);
                     if (t != v)
                         ns[s[t]] += get(weights, weight_key_t(*e));
                 }
 
-                size_t k = out_degree_no_loops(v,g);
+                size_t k = out_degree_no_loops(v, g);
 
-                map<double,unordered_set<size_t> >& global_term_k =
-                    global_term[k];
-                map<long double,pair<double,bool> >& cumm_prob_k = cumm_prob[k];
+                double curr_e = gamma*Nnnks(k,s[v]) - ns[s[v]];
+                double new_e =  gamma*Nnnks(k,new_s) - ns[new_s];
 
-                // update energy levels with local info
-                unordered_set<double> modified_energies;
-                for (typeof(ns.begin()) iter = ns.begin(); iter != ns.end();
-                     ++iter)
+                if (new_e < curr_e ||
+                    random() < exp(-(new_e - curr_e)/T))
                 {
-                    double old_E = gamma*Nnnks(k, iter->first);
-                    double new_E = old_E - ns[iter->first];
-                    global_term_k[old_E].erase(iter->first);
-                    if (global_term_k[old_E].empty())
-                        global_term_k.erase(old_E);
-                    global_term_k[new_E].insert(iter->first);
-                    modified_energies.insert(old_E);
-                    modified_energies.insert(new_E);
-                }
-
-                // update probabilities
-                size_t prob_mod_count = 0;
-                for (typeof(modified_energies.begin()) iter =
-                         modified_energies.begin();
-                     iter != modified_energies.end(); ++iter)
-                {
-                    if (energy_to_prob[k].find(*iter) !=
-                        energy_to_prob[k].end())
-                        if (energy_to_prob[k][*iter] != 0.0)
-                            cumm_prob_k[energy_to_prob[k][*iter]].second =
-                                false;
-                    if (global_term_k.find(*iter) != global_term_k.end())
+                    temp_s[v] = new_s;
+                    curr_e = new_e;
                     {
-                        long double M = log(numeric_limits<long double>::max()/
-                                            (Nspins.first*10));
-                        long double prob = exp((long double)(-*iter - k)/T + M)*
-                            global_term_k[*iter].size();
-                        if (cumm_prob_k.empty() ||
-                            cumm_prob_k.rbegin()->first + prob !=
-                            cumm_prob_k.rbegin()->first)
-                        {
-                            if (!cumm_prob_k.empty())
-                                prob += cumm_prob_k.rbegin()->first;
-                            cumm_prob_k.insert(cumm_prob_k.end(),
-                                               make_pair(prob,
-                                                         make_pair(*iter,
-                                                                   true)));
-                            prob_mod_count++;
-                        }
+                        #pragma omp critical
+                        updates.push_back(tr1::make_tuple(k, size_t(s[v]),
+                                                          new_s));
+                        Ns[s[v]]--;
+                        Ns[new_s]++;
                     }
-                }
-
-                // choose the new energy
-                double E = numeric_limits<double>::max();
-                if ((prob_mod_count == 0 &&
-                     !modified_energies.empty()) ||
-                    steepest_descent)
-                {
-                    // Temperature too low! The computer precision is not enough
-                    // to calculate the probabilities correctly.  Switch to
-                    // steepest descent mode....
-                    steepest_descent = true;
-                    E = global_term_k.begin()->first;
                 }
                 else
                 {
-                    // sample energy according to its probability
-                    typedef tr1::uniform_real<double> rdist_t;
-                    tr1::variate_generator<rng_t, rdist_t>
-                        prob_sample(rng,
-                                    rdist_t(0.0,
-                                            max(cumm_prob_k.rbegin()->first,
-                                                numeric_limits<long double>
-                                                ::epsilon())));
-                    bool accept = false;
-                    while (!accept)
-                    {
-                        typeof(cumm_prob_k.begin()) upper;
-
-                        #pragma omp critical
-                        {
-                            upper = cumm_prob_k.upper_bound(prob_sample());
-                        }
-
-                        if (upper == cumm_prob_k.end())
-                            upper--;
-                        E = upper->second.first;
-                        accept = upper->second.second;
-                    }
+                    temp_s[v] = s[v];
                 }
-
-                //new spin (randomly chosen amongst those with equal energy)
-                tr1::uniform_int<size_t>
-                    sample_spin(0, global_term_k[E].size()-1);
-                typeof(global_term_k[E].begin()) iter =
-                    global_term_k[E].begin();
-
-                size_t spin_n;
-                #pragma omp critical
-                {
-                    spin_n = sample_spin(rng);
-                }
-                advance(iter, spin_n);
-                int a = *iter;
-
-                // cleanup modified probabilities
-                for (typeof(modified_energies.begin()) iter =
-                         modified_energies.begin();
-                     iter != modified_energies.end(); ++iter)
-                {
-                    if (energy_to_prob[k].find(*iter) !=
-                        energy_to_prob[k].end())
-                        if (energy_to_prob[k][*iter] != 0.0)
-                            cumm_prob_k[energy_to_prob[k][*iter]].second = true;
-                    if (prob_mod_count > 0)
-                    {
-                        cumm_prob_k.erase(cumm_prob_k.rbegin()->first);
-                        prob_mod_count--;
-                    }
-                }
-
-                // cleanup modified energy levels
-                for (typeof(ns.begin()) iter = ns.begin(); iter != ns.end();
-                     ++iter)
-                {
-                    double new_E = gamma*Nnnks(k, iter->first);
-                    double old_E = new_E - ns[iter->first];
-                    global_term_k[old_E].erase(iter->first);
-                    if (global_term_k[old_E].empty())
-                        global_term_k.erase(old_E);
-                    global_term_k[new_E].insert(iter->first);
-                }
-
-                //update global info
-                if (s[v] != a)
-                {
-                    #pragma omp critical
-                    {
-                        spin_update.push_back(make_pair(v, a));
-                    }
-                }
+                E += curr_e;
             }
+            swap(s, temp_s);
 
-            // flip spins and update Nnnks
-            for (size_t u = 0; u < spin_update.size(); ++u)
-            {
-                vertex_t v = spin_update[u].first;
-                size_t k = out_degree_no_loops(v, g);
-                size_t a = spin_update[u].second;
-
-                int i, NK = degs.size();
-                #pragma omp parallel for default(shared) private(i) \
-                    schedule(dynamic)
-                for (i = 0; i < NK; ++i)
-                {
-                    size_t nk = degs[i];
-                    double old_E = gamma*Nnnks(nk,s[v]);
-                    double new_E = gamma*Nnnks(nk,a);
-                    map<double,unordered_set<size_t> >& global_term_k =
-                        global_term[nk];
-                    unordered_set<size_t>& global_term_k_old_E =
-                        global_term_k[old_E];
-                    unordered_set<size_t>& global_term_k_new_E =
-                        global_term_k[new_E];
-                    global_term_k_old_E.erase(s[v]);
-                    if (global_term_k_old_E.empty())
-                        global_term_k.erase(old_E);
-                    global_term_k_new_E.erase(a);
-                    if (global_term_k_new_E.empty())
-                        global_term_k.erase(new_E);
-                }
-
-                Nnnks.Update(k,s[v],a);
-                Ns[s[v]]--;
-                if (Ns[s[v]] == 0)
-                    Ns.erase(s[v]);
-                Ns[a]++;
-
-                #pragma omp parallel for default(shared) private(i) \
-                    schedule(dynamic)
-                for (i = 0; i < NK; ++i)
-                {
-                    size_t nk = degs[i];
-                    map<double,unordered_set<size_t> >& global_term_k =
-                        global_term[nk];
-                    double old_E = gamma*Nnnks(nk,s[v]);
-                    double new_E = gamma*Nnnks(nk,a);
-                    global_term_k[old_E].insert(s[v]);
-                    global_term_k[new_E].insert(a);
-                }
-
-                // update spin
-                s[v] = a;
-            }
+            for (typeof(updates.begin()) iter = updates.begin();
+                 iter != updates.end(); ++iter)
+                Nnnks.Update(tr1::get<0>(*iter), tr1::get<1>(*iter),
+                             tr1::get<2>(*iter));
 
             if (verbose.first)
             {
                 for (size_t j = 0; j < out_str.str().length(); ++j)
                     cout << "\b";
                 out_str.str("");
+                size_t ns = 0;
+                for (typeof(Ns.begin()) iter = Ns.begin(); iter != Ns.end();
+                     ++iter)
+                    if (iter->second > 0)
+                        ns++;
                 out_str << setw(lexical_cast<string>(n_iter).size())
                         << temp_count << " of " << n_iter
                         << " (" << setw(2) << (temp_count+1)*100/n_iter
                         << "%) " << "temperature: " << setw(14)
                         << setprecision(10) << T << " spins: "
-                        << Ns.size() << " energy levels: ";
-                size_t n_energy = 0;
-                for (typeof(global_term.begin()) iter = global_term.begin();
-                     iter != global_term.end(); ++iter)
-                    n_energy += iter->second.size();
-                out_str << setw(lexical_cast<string>
-                                (Nspins.first*degs.size()).size())
-                        << n_energy << "  ";
-                if (steepest_descent)
-                    out_str << " (steepest descent)";
+                        << ns << " energy: " << E;
                 cout << out_str.str() << flush;
             }
             if (verbose.second != "")
             {
                 try
                 {
-                    size_t n_energy = 0;
-                    for (typeof(global_term.begin()) iter =
-                             global_term.begin(); iter != global_term.end();
+                    size_t ns = 0;
+                    for (typeof(Ns.begin()) iter = Ns.begin(); iter != Ns.end();
                          ++iter)
-                        n_energy += iter->second.size();
-                    out_file << temp_count << "\t" << setprecision(10)
-                             << T << "\t" << Ns.size() << "\t" << n_energy
-                             << endl;
+                        if (iter->second > 0)
+                            ns++;
+                    out_file << temp_count << "\t" << setprecision(10) << T
+                             << "\t" << ns << "\t" << E << endl;
                 }
                 catch (ifstream::failure e)
                 {
@@ -432,25 +206,19 @@ struct get_communities
             }
         }
 
-
-        // get final energy
-        double E = 0.0;
-        unordered_map<size_t,vector<vertex_t> > spin_groups;
-        for (tie(v,v_end) = vertices(g); v != v_end; ++v)
+        if (n_iter % 2 != 0)
         {
-            typename graph_traits<Graph>::out_edge_iterator e, e_end;
-            for (tie(e,e_end) = out_edges(*v,g); e != e_end; ++e)
+            int NV = num_vertices(g), i;
+            #pragma omp parallel for default(shared) private(i)\
+                schedule(dynamic)
+            for (i = 0; i < NV; ++i)
             {
-                vertex_t t = target(*e,g);
-                if (s[t] == s[*v])
-                    E -= get(weights, weight_key_t(*e));
+                vertex_t v = vertex(i, g);
+                if (v == graph_traits<Graph>::null_vertex())
+                    continue;
+                temp_s[v] = s[v];
             }
-            E += gamma*Nnnks(out_degree_no_loops(*v,g), s[*v]);
         }
-
-        if (verbose.first)
-            cout << " total energy: " << scientific << setprecision(20)
-                 << E << endl;
 
         // rename spins, starting from zero
         unordered_map<size_t,size_t> spins;
@@ -684,27 +452,31 @@ enum comm_corr_t
 
 struct get_communities_selector
 {
-    get_communities_selector(comm_corr_t corr):_corr(corr) {}
+    get_communities_selector(comm_corr_t corr,
+                             GraphInterface::vertex_index_map_t index)
+        : _corr(corr), _index(index) {}
     comm_corr_t _corr;
+    GraphInterface::vertex_index_map_t _index;
 
     template <class Graph, class WeightMap, class CommunityMap>
-    void operator()(const Graph& g, WeightMap weights, CommunityMap s, double gamma,
-                    size_t n_iter, pair<double,double> Tinterval,
-                    pair<size_t,bool> Nspins, size_t seed,
-                    pair<bool,string> verbose) const
+    void operator()(const Graph& g, WeightMap weights, CommunityMap s,
+                    double gamma, size_t n_iter, pair<double, double> Tinterval,
+                    size_t Nspins, size_t seed, pair<bool, string> verbose)
+        const
     {
         switch (_corr)
         {
         case ERDOS_REYNI:
-            get_communities<NNKSErdosReyni>()(g, weights, s, gamma, n_iter,
-                                              Tinterval, Nspins, seed, verbose);
+            get_communities<NNKSErdosReyni>()(g, _index, weights, s, gamma,
+                                              n_iter, Tinterval, Nspins, seed,
+                                              verbose);
             break;
         case UNCORRELATED:
-            get_communities<NNKSUncorr>()(g, weights, s, gamma, n_iter,
+            get_communities<NNKSUncorr>()(g, _index, weights, s, gamma, n_iter,
                                           Tinterval, Nspins, seed, verbose);
             break;
         case CORRELATED:
-            get_communities<NNKSCorr>()(g, weights, s, gamma, n_iter,
+            get_communities<NNKSCorr>()(g, _index, weights, s, gamma, n_iter,
                                         Tinterval, Nspins, seed, verbose);
             break;
         }

@@ -94,6 +94,7 @@ doctest_global_setup = \
 """
 import graph_tool.all as gt
 from numpy import array
+from math import *
 """
 
 # Options for HTML output

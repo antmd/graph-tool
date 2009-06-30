@@ -35,8 +35,9 @@ using namespace graph_tool;
 
 void community_structure(GraphInterface& g, double gamma, string corr_name,
                          size_t n_iter, double Tmin, double Tmax, size_t Nspins,
-                         bool new_spins, size_t seed, bool verbose, string history_file,
-                         boost::any weight, boost::any property)
+                         bool new_spins, size_t seed, bool verbose,
+                         string history_file, boost::any weight,
+                         boost::any property)
 {
     using boost::lambda::bind;
     using boost::lambda::_1;
@@ -74,10 +75,9 @@ void community_structure(GraphInterface& g, double gamma, string corr_name,
     bool directed = g.GetDirected();
     g.SetDirected(false);
     run_action<graph_tool::detail::never_directed>()
-        (g, bind<void>(get_communities_selector(corr),
+        (g, bind<void>(get_communities_selector(corr, g.GetVertexIndex()),
                        _1, _2, _3, gamma, n_iter,
-                       make_pair(Tmin, Tmax),
-                       make_pair(Nspins, new_spins),
+                       make_pair(Tmin, Tmax), Nspins,
                        seed, make_pair(verbose,history_file)),
          weight_properties(), allowed_spin_properties())
         (weight, property);
@@ -95,6 +95,8 @@ double modularity(GraphInterface& g, boost::any weight, boost::any property)
     double modularity = 0;
 
     typedef ConstantPropertyMap<int32_t,GraphInterface::edge_t> weight_map_t;
+    typedef mpl::push_back<edge_scalar_properties, weight_map_t>::type
+        edge_props_t;
 
     if(weight.empty())
         weight = weight_map_t(1);
@@ -103,7 +105,7 @@ double modularity(GraphInterface& g, boost::any weight, boost::any property)
     g.SetDirected(false);
     run_action<graph_tool::detail::never_directed>()
         (g, bind<void>(get_modularity(), _1, _2, _3, var(modularity)),
-         edge_scalar_properties(), vertex_scalar_properties())
+         edge_props_t(), vertex_scalar_properties())
         (weight, property);
     g.SetDirected(directed);
 
