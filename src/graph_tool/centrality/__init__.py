@@ -391,7 +391,8 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epslon=1e-6, max_iter=0,
         return vprop
 
 def absolute_trust(g, trust_map, source=None, vprop=None, epslon=0.001,
-                   max_iter=None, reversed=False, seed=None, ret_iter=False):
+                   min_iter=100, max_iter=None, reversed=False, seed=None,
+                   ret_iter=False):
     r"""
     Samples the absolute trust centrality of each vertex in the graph, or only
     for a given source, if one is provided.
@@ -411,8 +412,12 @@ def absolute_trust(g, trust_map, source=None, vprop=None, epslon=0.001,
     epslon : float, optional (default: 0.001)
         Convergence condition. The iteration will stop if the total delta of all
         vertices are below this value.
+    min_iter : int, optional (default: 100)
+        If supplied, this will limit the minimal number of iterations (per
+        source vertex).
     max_iter : int, optional (default: None)
-        If supplied, this will limit the total number of iterations.
+        If supplied, this will limit the total number of iterations (per
+        source vertex).
     reversed : bool, optional (default: False)
         Calculates the "reversed" trust instead: The direction of the edges are
         inverted, but the path weighting is preserved in the original direction
@@ -515,7 +520,7 @@ def absolute_trust(g, trust_map, source=None, vprop=None, epslon=0.001,
     ic = libgraph_tool_centrality.\
             get_absolute_trust(g._Graph__graph, source,
                                _prop("e", g, trust_map), _prop("v", g, vprop),
-                               epslon, max_iter, reversed, seed)
+                               epslon, min_iter, max_iter, reversed, seed)
     if reversed:
         g.pop_filter(reversed=True)
 

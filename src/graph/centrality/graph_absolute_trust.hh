@@ -39,12 +39,15 @@ struct get_absolute_trust
               class InferredTrustMap>
     void operator()(Graph& g, VertexIndex vertex_index, int64_t source,
                     TrustMap c, InferredTrustMap t, double epslon,
-                    size_t max_iter, bool reversed, rng_t& rng)
-        const
+                    pair<size_t,size_t> iter_range, bool reversed,
+                    rng_t& rng) const
     {
         typedef typename property_traits<TrustMap>::value_type c_type;
         typedef typename property_traits<InferredTrustMap>::value_type
             ::value_type t_type;
+
+        size_t min_iter = iter_range.first;
+        size_t max_iter = iter_range.second;
 
         unchecked_vector_property_map<vector<t_type>, VertexIndex>
             t_count(vertex_index, num_vertices(g));
@@ -76,9 +79,9 @@ struct get_absolute_trust
                 random_salt(0, numeric_limits<size_t>::max());
             size_t salt = random_salt(rng);
 
-            t_type delta = 2*epslon;
+            t_type delta = epslon + 1;
             size_t iter = 0;
-            while (delta >= epslon || iter < 10)
+            while (delta > epslon || iter < min_iter)
             {
                 delta = 0;
                 typename graph_traits<Graph>::vertex_descriptor v =

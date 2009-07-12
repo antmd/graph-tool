@@ -32,8 +32,8 @@ using namespace boost;
 using namespace graph_tool;
 
 void absolute_trust(GraphInterface& g, int64_t source, boost::any c,
-                    boost::any t, double epslon, size_t max_iter, bool reversed,
-                    size_t seed)
+                    boost::any t, double epslon, size_t min_iter,
+                    size_t max_iter, bool reversed, size_t seed)
 {
     rng_t rng(static_cast<rng_t::result_type>(seed));
 
@@ -42,13 +42,13 @@ void absolute_trust(GraphInterface& g, int64_t source, boost::any c,
     if (!belongs<vertex_floating_vector_properties>()(t))
         throw GraphException("vertex property must be of floating point vector value type");
 
-    run_action<>()
-        (g, bind<void>
-         (get_absolute_trust(),
-          _1, g.GetVertexIndex(), source, _2,
-          _3, epslon, max_iter, reversed, ref(rng)),
-         edge_floating_properties(),
-         vertex_floating_vector_properties())(c,t);
+    run_action<>()(g,
+                   bind<void>(get_absolute_trust(), _1, g.GetVertexIndex(),
+                              source, _2, _3, epslon,
+                              make_pair(min_iter, max_iter), reversed,
+                              ref(rng)),
+                   edge_floating_properties(),
+                   vertex_floating_vector_properties())(c, t);
 }
 
 void export_absolute_trust()
