@@ -17,13 +17,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-``graph_tool.draw`` - Graph Drawing
+``graph_tool.draw`` - Graph drawing
 -----------------------------------
 """
 
 import sys, os, os.path, time, warnings
 from .. core import _degree, _prop, PropertyMap
 from .. decorators import _limit_args
+import numpy.random
 
 try:
     import gv
@@ -37,14 +38,194 @@ except ImportError:
     warnings.warn("error importing matplotlib module... " + \
                   "graph_draw() will not work.", ImportWarning)
 
-def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
-               maxiter=None, ratio="fill", overlap=False, splines=False,
-               mode="major", vsize=0.1, penwidth=1.0, eweight=None, ewidth=None,
-               gprops={}, vprops={}, eprops={}, vcolor=None, ecolor=None,
+def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
+               maxiter=None, ratio= "fill", overlap="prism", sep=None,
+               splines=False, vsize=0.1, penwidth=1.0, elen=None, gprops={},
+               vprops={}, eprops={}, vcolor=None, ecolor=None,
                vcmap=matplotlib.cm.jet, vnorm=True, ecmap=matplotlib.cm.jet,
-               enorm=True, output="", output_format="auto", returngv=False,
+               enorm=True, output= "", output_format= "auto", returngv=False,
                fork=False, seed=0):
-    """Draw a graph using graphviz."""
+    r"""Draw a graph using graphviz.
+
+    Parameters
+    ----------
+    g : Graph
+        Graph to be used.
+    pos : tuple of PropertyMaps (optional, default: None)
+        Vertex property maps containing the x and y coordinates of the vertices.
+    size : tuple of scalars (optional, default: (15,15))
+        Size (in centimeters) of the canvas.
+    pin : bool (default: False)
+        If True, the vertices are not moved from their initial position.
+    layout : string (default: "neato")
+        Layout engine to be used. Possible values are "neato", "fdp", "dot",
+        "circo" and "twopi".
+    maxiter : int (default: None)
+        If specified, limits the maximum number of iterations.
+    ratio : string or float (default: "fill")
+        Sets the aspect ratio (drawing height/drawing width) for the
+        drawing. Note that this is adjusted before the 'size' attribute
+        constraints are enforced.
+
+        If ratio is numeric, it is taken as the desired aspect ratio. Then, if
+        the actual aspect ratio is less than the desired ratio, the drawing
+        height is scaled up to achieve the desired ratio; if the actual ratio is
+        greater than that desired ratio, the drawing width is scaled up.
+
+        If ratio = "fill" and the size attribute is set, node positions are
+        scaled, separately in both x and y, so that the final drawing exactly
+        fills the specified size.
+
+        If ratio = "compress" and the size attribute is set, dot attempts to
+        compress the initial layout to fit in the given size. This achieves a
+        tighter packing of nodes but reduces the balance and symmetry.
+        This feature only works in dot.
+
+        If ratio = "expand", the size attribute is set, and both the width and
+        the height of the graph are less than the value in size, node positions
+        are scaled uniformly until at least one dimension fits size exactly.
+        Note that this is distinct from using size as the desired size, as here
+        the drawing is expanded before edges are generated and all node and text
+        sizes remain unchanged.
+
+        If ratio = "auto", the page attribute is set and the graph cannot be
+        drawn on a single page, then size is set to an ``ideal'' value. In
+        particular, the size in a given dimension will be the smallest integral
+        multiple of the page size in that dimension which is at least half the
+        current size. The two dimensions are then scaled independently to the
+        new size. This feature only works in dot.
+    overlap : bool or string (default: "prism")
+        Determines if and how node overlaps should be removed. Nodes are first
+        enlarged using the sep attribute. If True, overlaps are retained. If
+        the value is "scale", overlaps are removed by uniformly scaling in x and
+        y. If the value is False, node overlaps are removed by a Voronoi-based
+        technique. If the value is "scalexy", x and y are separately scaled to
+        remove overlaps.
+
+        If sfdp is available, one can set overlap to "prism" to use a proximity
+        graph-based algorithm for overlap removal. This is the preferred
+        technique, though "scale" and False can work well with small graphs.
+        This technique starts with a small scaling up, controlled by the
+        overlap_scaling attribute, which can remove a significant portion of the
+        overlap. The prism option also accepts an optional non-negative integer
+        suffix. This can be used to control the number of attempts made at
+        overlap removal. By default, overlap="prism" is equivalent to
+        overlap="prism1000". Setting overlap="prism0" causes only the scaling
+        phase to be run.
+
+        If the value is "compress", the layout will be scaled down as much as
+        possible without introducing any overlaps, obviously assuming there are
+        none to begin with.
+    sep : float (default: None)
+        Specifies margin to leave around nodes when removing node overlap. This
+        guarantees a minimal non-zero distance between nodes.
+    splines : bool (default: False)
+        If True, the edges are drawn as splines and routed around the vertices.
+    vsize : float or PropertyMap (default: 0.1)
+        Default vertex size (width and height).
+    penwidth : float  or PropertyMap (default: 1.0)
+        Specifies the width of the pen, in points, used to draw lines and
+        curves, including the boundaries of edges and clusters. It has no effect
+        on text.
+    elen : float or PropertyMap (default: None)
+        Preferred edge length, in inches.
+    gprops : dict (default: {})
+        Additional graph properties, as a dictionary. The keys are the property
+        names, and the values must be convertible to string.
+    vprops : dict (default: {})
+        Additional vertex properties, as a dictionary. The keys are the property
+        names, and the values must be convertible to string, or vertex property
+        maps, with values convertible to strings.
+    eprops : dict (default: {})
+        Additional edge properties, as a dictionary. The keys are the property
+        names, and the values must be convertible to string, or edge property
+        maps, with values convertible to strings.
+    vcolor : string or PropertyMap (default: None)
+        Drawing color for vertices. If the valued supplied is a property map,
+        the values must be scalar types, whose color values are obtained from
+        the 'vcmap' argument.
+    ecolor : string or PropertyMap (default: None)
+        Drawing color for edges. If the valued supplied is a property map,
+        the values must be scalar types, whose color values are obtained from
+        the 'ecmap' argument.
+    vcmap : matplotlib.colors.Colormap (default: matplotlib.cm.jet)
+        Vertex color map.
+    vnorm : bool (default: True)
+        Normalize vertex color values to the [0,1] range.
+    ecmap : matplotlib.colors.Colormap (default: matplotlib.cm.jet)
+        Edge color map.
+    enorm : bool (default: True)
+        Normalize edge color values to the [0,1] range.
+    output : string (default: "")
+        Output file name.
+    output_format : string (default: "auto")
+        Output file format. Possible values are "auto", "xlib", "ps", "svg",
+        "svgz", "fig", "mif", "hpgl", "pcl", "png", "gif", "dia", "imap",
+        "cmapx". If the value is "auto", the format is guessed from the 'output'
+        parameter, or 'xlib' if it is empty.
+    returngv : bool (default: False)
+        Return the graph object used internally with the gv module.
+    fork : bool (default: False)
+        If true, the program is forked before drawing. This is used as a
+        work-around for a bug in graphviz, where the exit() function is called,
+        which would cause the calling program to end. This is always assumed
+        'True', if output_format = 'xlib'.
+    seed : int (default: 0)
+        Seed for the random number generator. If the value 0, a different random
+        value is used each time.
+
+    Returns
+    -------
+    pos_x : PropertyMap
+        Vertex property map with the x-coordinates of the vertices.
+    pos_y : PropertyMap
+        Vertex property map with the y-coordinates of the vertices.
+    gv : gv.digraph or gv.graph (optional, only if returngv == True)
+        Internally used graphviz graph.
+
+
+    Notes
+    -----
+    This function is a wrapper for the graphviz_ python
+    routines. Extensive additional documentation for the graph, vertex and edge
+    properties is available at: http://www.graphviz.org/doc/info/attrs.html.
+
+
+    Examples
+    --------
+    >>> from numpy.random import seed, zipf
+    >>> seed(42)
+    >>> g = gt.random_graph(1000, lambda: min(zipf(2.4), 40),
+    ...                     lambda i,j: exp(abs(i-j)), directed=False)
+    >>> # extract largest component
+    >>> comp = gt.label_components(g)
+    >>> h = gt.vertex_hist(g, comp)
+    >>> max_comp = h[1][list(h[0]).index(max(h[0]))]
+    >>> g.remove_vertex_if(lambda v: comp[v] != max_comp)
+    >>>
+    >>> deg = g.degree_property_map("out")
+    >>> deg.get_array()[:] = 2*(sqrt(deg.get_array()[:])*0.5 + 0.4)
+    >>> ebet = gt.betweenness(g)[1]
+    >>> ebet.get_array()[:] *= 4000
+    >>> ebet.get_array()[:] += 10
+    >>> gt.graph_draw(g, vsize=deg, vcolor=deg, elen=10, ecolor=ebet,
+    ...               penwidth=ebet, overlap="prism", output="graph-draw.png")
+    (...)
+
+    .. figure:: graph-draw.png
+        :align: center
+
+        Kamada-Kawai force-directed layout of a graph with a power-law degree
+        distribution, and dissortative degree correlation. The vertex size and
+        color indicate the degree, and the edge color and width the edge
+        betweeness centrality.
+
+    References
+    ----------
+    .. _graphviz: http://www.graphviz.org
+
+
+    """
 
     if output != "":
         output = os.path.expanduser(output)
@@ -59,29 +240,34 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
     else:
         gvg = gv.graph("G")
 
+    if pos != None:
+        # copy user-supplied property
+        pos = (g.copy_property(pos[0]), g.copy_property(pos[1]))
+
     # main graph properties
     gv.setv(gvg,"outputorder", "edgesfirst")
-    gv.setv(gvg,"mode", mode)
+    gv.setv(gvg,"mode", "major")
     if overlap == False:
-        if layout == "neato" and mode == "ipsep":
-            overlap = "ipsep"
-        else:
-            overlap = "false"
+        overlap = "false"
     else:
         overlap = "true"
     if isinstance(overlap,str):
         gv.setv(gvg,"overlap", overlap)
+    if sep != None:
+        gv.setv(gvg,"sep", str(sep))
     if splines:
         gv.setv(gvg,"splines", "true")
     gv.setv(gvg,"ratio", str(ratio))
     gv.setv(gvg,"size", "%f,%f" % (size[0]/2.54,size[1]/2.54)) # centimeters
     if maxiter != None:
         gv.setv(gvg,"maxiter", str(maxiter))
-    if seed != 0:
-        if type(seed) == int:
-            gv.setv(gvg, "start", "%d" % seed)
-        else:
-            gv.setv(gvg, "start", seed)
+
+    if seed == 0:
+        seed = numpy.random.randint(sys.maxint)
+    if type(seed) == int:
+        gv.setv(gvg, "start", "%d" % seed)
+    else:
+        gv.setv(gvg, "start", seed)
 
     # apply all user supplied properties
     for k,val in gprops.iteritems():
@@ -183,19 +369,19 @@ def graph_draw(g, pos=None, size=(15,15), pin=False, layout="neato",
                 color = tuple([int(c*255.0) for c in ecmap(enorm(ecolor[e]))])
                 gv.setv(ge, "color", "#%.2x%.2x%.2x%.2x" % color)
 
-        # apply weight
-        if eweight != None:
-            if isinstance(eweight, PropertyMap):
-                gv.setv(ge, "weight", str(eweight[e]))
+        # apply edge length
+        if elen != None:
+            if isinstance(elen, PropertyMap):
+                gv.setv(ge, "len", str(elen[e]))
             else:
-                gv.setv(ge, "weight", str(eweight))
+                gv.setv(ge, "len", str(elen))
 
         # apply width
-        if ewidth != None:
-            if isinstance(ewidth, PropertyMap):
-                gv.setv(ge, "penwidth", str(ewidth[e]))
+        if penwidth != None:
+            if isinstance(penwidth, PropertyMap):
+                gv.setv(ge, "penwidth", str(penwidth[e]))
             else:
-                gv.setv(ge, "penwidth", str(ewidth))
+                gv.setv(ge, "penwidth", str(penwidth))
 
         # apply all user supplied properties
         for k,v in eprops.iteritems():
