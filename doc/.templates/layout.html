@@ -3,3 +3,14 @@
     <li><img src="/gfx/graph-icon.png" alt="logo" style="margin-right: 5px; margin-bottom:-2px;" /><a href="/graph-tool/">Project Homepage</a> &raquo;</li>
     {{ super() }}
 {% endblock %}
+
+{% block extrahead %}
+    <script src="https://ssl.google-analytics.com/urchin.js" type="text/javascript">
+    </script>
+    <script type="text/javascript">
+      _uacct = "UA-248813-2";
+      urchinTracker();
+    </script>
+    {{ super() }}
+{% endblock %}
+
