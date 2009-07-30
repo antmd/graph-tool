@@ -6,7 +6,8 @@
 # This file is execfile()d with the current directory set to its containing dir.
 #
 # The contents of this file are pickled, so don't put values in the namespace
-# that aren't pickleable (module imports are okay, they're removed automatically).
+# that aren't pickleable (module imports are okay, they're removed
+# automatically).
 #
 # All configuration values have a default; values that are commented out
 # serve to show the default.
@@ -91,13 +92,15 @@ pygments_style = 'sphinx'
 # doctest
 
 doctest_global_setup = \
-"""
-import graph_tool.all as gt
+r"""
 from numpy import array
+import scipy
+import scipy.stats
 from math import *
+import graph_tool.all as gt
 """
 
-# Options for HTML output
+# Options for HTML outputs
 # -----------------------
 
 # The style sheet to use for HTML and HTML Help pages. A file of that name
@@ -174,8 +177,8 @@ htmlhelp_basename = 'graph-tooldoc'
 # The font size ('10pt', '11pt' or '12pt').
 #latex_font_size = '10pt'
 
-# Grouping the document tree into LaTeX files. List of tuples
-# (source start file, target name, title, author, document class [howto/manual]).
+# Grouping the document tree into LaTeX files. List of tuples (source start
+# file, target name, title, author, document class [howto/manual]).
 latex_documents = [
   ('index', 'graph-tool.tex', ur'graph-tool Documentation',
    ur'Tiago de Paula Peixoto', 'manual'),
