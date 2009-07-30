@@ -193,6 +193,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
 
     Examples
     --------
+    >>> from numpy import *
     >>> from numpy.random import seed, zipf
     >>> seed(42)
     >>> g = gt.random_graph(1000, lambda: min(zipf(2.4), 40),
