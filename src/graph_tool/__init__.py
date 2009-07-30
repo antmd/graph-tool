@@ -70,8 +70,6 @@ util
 
 Utilities
 ---------
-test
-   Run ``graph_tool`` unittests
 show_config
    Show ``graph_tool`` build configuration
 __version__
@@ -86,6 +84,13 @@ __author__="Tiago de Paula Peixoto <tiago@forked.de>"
 __copyright__="Copyright 2008 Tiago de Paula Peixoto"
 __license__="GPL version 3 or above"
 __URL__="http://graph-tool.forked.de"
+
+# import numpy and scipy before everything to avoid weird segmentation faults
+# depending on the order things are imported.
+
+import numpy
+import scipy
+import scipy.stats
 
 from . core import  __version__, Graph, GraphError, Vector_bool, \
      Vector_int32_t, Vector_int64_t, Vector_double, Vector_long_double,\
