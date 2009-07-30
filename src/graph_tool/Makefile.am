@@ -18,12 +18,6 @@ graph_tool_run_action_PYTHON = \
 
 graph_tool_run_actiondir = $(MOD_DIR)/run_action
 
-graph_tool_test_PYTHON = \
-    test/__init__.py \
-    test/basic.py \
-    test/properties.py
-graph_tool_testdir = $(MOD_DIR)/test
-
 graph_tool_generation_PYTHON = \
     generation/__init__.py
 graph_tool_generationdir = $(MOD_DIR)/generation
