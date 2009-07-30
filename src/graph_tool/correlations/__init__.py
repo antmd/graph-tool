@@ -419,7 +419,7 @@ def avg_neighbour_corr(g, deg_source, deg_target, bins=[1], weight=None):
 
     ret = libgraph_tool_correlations.\
           vertex_avg_correlation(g._Graph__graph, _degree(g, deg_source),
-                                 _degree(g, deg_source), _prop("e", g, weight),
+                                 _degree(g, deg_target), _prop("e", g, weight),
                                  bins)
     return [ret[0], ret[1], ret[2][0]]
 
