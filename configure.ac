@@ -173,9 +173,9 @@ AC_PYTHON_MODULE(numpy, fatal)
 NUMPY_DIR="${PYTHON_SITE_PKG}/numpy"
 AC_ARG_WITH([numpy], [AC_HELP_STRING([--with-numpy=DIR],
                      [directory where numpy is installed
-                      [default=${PYLIBDIR}/numpy] ])],
+                      [default=${PYTHON_SITE_PKG}/numpy] ])],
         NUMPY_DIR=$withval)
-NUMPY_DIR="${NUMPY_DIR}/core/include/numpy"
+[NUMPY_DIR="${NUMPY_DIR}/core/include/numpy"]
 AC_CHECK_HEADER([${NUMPY_DIR}/arrayobject.h],
                 [CPPFLAGS="${CPPFLAGS} -I${NUMPY_DIR}"],
                 [AC_MSG_ERROR([Numpy extension header not found])],
@@ -186,7 +186,7 @@ AC_PYTHON_MODULE(scipy, fatal)
 [SCIPY_DIR="${PYTHON_SITE_PKG}/scipy"]
 AC_ARG_WITH([scipy], [AC_HELP_STRING([--with-scipy=DIR],
                      [scipy install directory
-                      [default=${PYLIBDIR}/scipy] ])],
+                      [default=${PYTHON_SITE_PKG}/scipy] ])],
             [SCIPY_DIR=$withval])
 AC_CHECK_HEADER([${SCIPY_DIR}/weave/scxx/object.h],
                 [AC_DEFINE([HAVE_SCIPY], [1], [using scipy's weave])]
@@ -232,10 +232,11 @@ AC_SUBST(PACKAGE_DOC_DIR)
 
 dnl Subst PYTHON_DIR.
 AC_DEFINE_UNQUOTED([INSTALL_PREFIX],"${prefix}", [python prefix])
-AC_DEFINE_UNQUOTED([PYTHON_DIR], "${PYLIBDIR}", [The directory name for the site-packages subdirectory of the standard Python install tree.])
+AC_DEFINE_UNQUOTED([PYTHON_DIR], "${PYTHON_SITE_PKG}", [The directory name for the site-packages subdirectory of the standard Python install tree.])
 
 AC_DEFINE_UNQUOTED([CXXFLAGS],"${CXXFLAGS}", [c++ compilation options])
 AC_DEFINE_UNQUOTED([CPPFLAGS],"${CPPFLAGS}", [c++ preprocessor compilation options])
+AC_DEFINE_UNQUOTED([LDFLAGS],"${LDFLAGS}", [linker options])
 
 AC_DEFINE_UNQUOTED([PACKAGE_DATA_DIR], "${packageprefix}/${packagedatadir}", [package data dir])
 AC_DEFINE_UNQUOTED([PACKAGE_DOC_DIR], "${packageprefix}/${packagedocdir}", [package doc dir])

@@ -45,9 +45,15 @@ struct LibInfo
     string GetVersion()   const {return VERSION " (commit " GIT_COMMIT
                                         ", " GIT_COMMIT_DATE ")";}
     string GetLicense()   const {return "GPL version 3 or above";}
-    string GetCXXFLAGS()  const {return CXXFLAGS " " CPPFLAGS;}
+    string GetCXXFLAGS()  const {return CPPFLAGS " " CXXFLAGS " " LDFLAGS;}
     string GetInstallPrefix() const {return INSTALL_PREFIX;}
     string GetPythonDir() const {return PYTHON_DIR;}
+    string GetGCCVersion() const
+    {
+        stringstream s;
+        s << __GNUC__ << "." << __GNUC_MINOR__ << "." <<  __GNUC_PATCHLEVEL__;
+        return s.str();
+    }
 };
 
 template <class ValueType>
@@ -288,6 +294,15 @@ string get_graph_type(GraphInterface& g)
     return name;
 }
 
+bool openmp_enabled()
+{
+    #ifdef USING_OPENMP
+    return true;
+    #else
+    return false;
+    #endif
+}
+
 BOOST_PYTHON_MODULE(libgraph_tool_core)
 {
     // numpy
@@ -303,6 +318,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
     class_<boost::any>("any");
 
     def("graph_filtering_enabled", &graph_filtering_enabled);
+    def("openmp_enabled", &openmp_enabled);
 
     mpl::for_each<mpl::push_back<scalar_types,string>::type>(export_vector_types());
 
@@ -379,7 +395,8 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
         .add_property("license", &LibInfo::GetLicense)
         .add_property("cxxflags", &LibInfo::GetCXXFLAGS)
         .add_property("install_prefix", &LibInfo::GetInstallPrefix)
-        .add_property("python_dir", &LibInfo::GetPythonDir);
+        .add_property("python_dir", &LibInfo::GetPythonDir)
+        .add_property("gcc_version", &LibInfo::GetGCCVersion);
 
     def("get_graph_type", &get_graph_type);
 }

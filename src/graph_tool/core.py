@@ -124,6 +124,16 @@ def _type_alias(type_name):
             return "vector<%s>" % alias[t]
     raise ValueError("invalid property value type: " + type_name)
 
+def show_config():
+    info = libcore.mod_info()
+    print "version:", info.version
+    print "gcc version:", info.gcc_version
+    print "compilation flags:", info.cxxflags
+    print "install prefix:", info.install_prefix
+    print "python dir:", info.python_dir
+    print "graph filtering:", libcore.graph_filtering_enabled()
+    print "openmp:", libcore.openmp_enabled()
+    print "uname:", " ".join(os.uname())
 
 ################################################################################
 # Property Maps
