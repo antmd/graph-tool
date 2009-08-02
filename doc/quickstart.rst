@@ -334,5 +334,21 @@ An Example: Building a Price Network
     Nowhere else to go... We found the main hub!
 
 
-.. image:: deg-hist.png
+.. figure:: deg-hist.png
+   :align: center
 
+   In-degree distribution of a price network with 100000 nodes.
+
+We can draw the graph to see some other features of its topology. For that we
+use the :func:`~graph_tool.draw.graph_draw` function.
+
+.. testcode::
+
+   g = load_graph("price.xml.gz")
+   g.remove_vertex_if(lambda v: g.vertex_index[v] >= 1000)
+   gt.graph_draw(g, output="price.png")
+
+.. figure:: price.png
+   :align: center
+
+   First 1000 nodes of a price network.

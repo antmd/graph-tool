@@ -57,9 +57,10 @@ for i in xrange(1, N):
 in_hist = vertex_hist(g, "in")
 
 clf()
-errorbar(in_hist[1], in_hist[0], fmt=".", yerr=sqrt(in_hist[0]))
+errorbar(in_hist[1], in_hist[0], fmt="o", yerr=sqrt(in_hist[0]), label="in")
 gca().set_yscale("log")
 gca().set_xscale("log")
+legend(loc="best")
 xlabel("$k_{in}$")
 ylabel("$P(k_{in})$")
 savefig("deg-hist.png")
