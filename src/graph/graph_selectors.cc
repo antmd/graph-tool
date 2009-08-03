@@ -28,19 +28,20 @@ using namespace boost::lambda;
 boost::any graph_tool::degree_selector(GraphInterface::deg_t deg)
 {
     boost::any sel;
-    try
+
+    GraphInterface::degree_t* d = boost::get<GraphInterface::degree_t>(&deg);
+
+    if (d != 0)
     {
         mpl::for_each<selectors>
-            (bind<void>(get_degree_selector(), _1,
-                        boost::get<GraphInterface::degree_t>(deg),
-                        var(sel)));
+            (bind<void>(get_degree_selector(), _1, *d, var(sel)));
     }
-    catch (bad_get)
+    else
     {
+        boost::any* d = boost::get<boost::any>(&deg);
         bool found = false;
         mpl::for_each<vertex_properties>
-            (bind<void>(get_scalar_selector(), _1, boost::get<boost::any>(deg),
-                        var(sel), var(found)));
+            (bind<void>(get_scalar_selector(), _1, *d, var(sel), var(found)));
         if (!found)
             throw GraphException("invalid degree selector");
     }
