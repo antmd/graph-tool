@@ -73,7 +73,7 @@ python::object wrap_vector_owned(vector<ValueType>& vec)
     }
     ndarray->flags = NPY_ALIGNED | NPY_C_CONTIGUOUS | NPY_OWNDATA |
         NPY_WRITEABLE;
-    handle<> x(borrowed((PyObject*) ndarray));
+    handle<> x((PyObject*) ndarray);
     object o(x);
     return o;
 }
@@ -85,12 +85,12 @@ python::object wrap_vector_not_owned(vector<ValueType>& vec)
     int val_type = mpl::at<numpy_types,ValueType>::type::value;
     npy_intp size = vec.size();
     if (vec.empty())
-        ndarray = (PyArrayObject*) PyArray_SimpleNew(1, &size, val_type);
+        return wrap_vector_owned(vec); // return an _owned_ array of size one.
     else
         ndarray = (PyArrayObject*) PyArray_SimpleNewFromData(1, &size, val_type,
                                                              &vec[0]);
     ndarray->flags = NPY_ALIGNED | NPY_C_CONTIGUOUS | NPY_WRITEABLE;
-    handle<> x(borrowed((PyObject*) ndarray));
+    handle<> x((PyObject*) ndarray);
     object o(x);
     return o;
 }
@@ -108,9 +108,9 @@ python::object wrap_multi_array_owned(multi_array<ValueType,Dim>& array)
     PyArrayObject* ndarray =
         (PyArrayObject*) PyArray_SimpleNewFromData(Dim, shape, val_type,
                                                    new_data);
-//    ndarray->flags = NPY_ALIGNED | NPY_C_CONTIGUOUS | NPY_OWNDATA |
-//        NPY_WRITEABLE;
-    handle<> x(borrowed((PyObject*) ndarray));
+    ndarray->flags = NPY_ALIGNED | NPY_C_CONTIGUOUS | NPY_OWNDATA |
+        NPY_WRITEABLE;
+    handle<> x((PyObject*) ndarray);
     object o(x);
     return o;
 }
@@ -123,7 +123,7 @@ python::object wrap_multi_array_not_owned(multi_array<ValueType,Dim>& array)
         (PyArrayObject*) PyArray_SimpleNewFromData(Dim, array.shape(), val_type,
                                                    array.origin());
     ndarray->flags = NPY_ALIGNED | NPY_C_CONTIGUOUS | NPY_WRITEABLE;
-    handle<> x(borrowed((PyObject*) ndarray));
+    handle<> x((PyObject*) ndarray);
     object o(x);
     return o;
 }
