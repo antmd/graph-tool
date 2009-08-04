@@ -83,7 +83,7 @@ template <class ValueType>
 class Sampler
 {
 public:
-    Sampler(bool biased=false): _biased(biased) {}
+    Sampler(bool biased=false): _biased(biased), _erased_prob(0) {}
 
     template <class Iterator>
     Sampler(Iterator iter, Iterator end):
@@ -130,6 +130,8 @@ public:
 
             size_t index = iter->second;
             _erased[index] = true;
+            _erased_prob += (index > 0) ?
+                _probs[index]-_probs[index-1] : _probs[index];
         }
         else
         {
@@ -145,33 +147,7 @@ public:
         }
         _candidates_set.erase(iter);
 
-        // if too many elements were erased, we need to make things less sparse
-        if (!_candidates_set.empty() &&
-            _candidates_set.size() < _candidates.size()/2)
-        {
-            for (int i = _probs.size() - 1; i > 0; --i)
-                _probs[i] -= _probs[i-1];
-
-            for (int i = _candidates.size() - 1; i >= 0; --i)
-            {
-                if (_erased[i])
-                {
-                    _candidates.erase(_candidates.begin() + i);
-                    _probs.erase(_probs.begin() + i);
-                }
-            }
-
-            for (size_t i = 1; i < _probs.size(); i++)
-                _probs[i] += _probs[i-1];
-
-            _candidates_set.clear();
-            _erased.resize(_candidates.size());
-            for (size_t i = 0; i < _candidates.size(); i++)
-             {
-                _candidates_set.insert(make_pair(_candidates[i],i));
-                _erased[i] = false;
-            }
-        }
+        clean();
     }
 
     ValueType operator()(rng_t& rng, bool remove = false)
@@ -195,51 +171,78 @@ public:
         else
         {
             size_t i;
-
-            if (_probs.back() > 0)
+            do
             {
-                tr1::variate_generator<rng_t, tr1::uniform_real<> >
-                    sample(rng, tr1::uniform_real<>(0.0, _probs.back()));
-                double r = sample();
-                i = lower_bound(_probs.begin(), _probs.end(), r) -
-                    _probs.begin();
-            }
-            else
-            {
-                // all probabilities are zero... sample randomly.
-                tr1::uniform_int<size_t> sample(0, _candidates_set.size()-1);
-                size_t j = sample(rng), count = 0;
-                for (typeof(_candidates_set.begin()) iter =
-                         _candidates_set.begin();
-                     iter != _candidates_set.end(); ++iter)
+                if (_probs.back() > 0)
                 {
-                    if (count == j)
+                    tr1::variate_generator<rng_t&, tr1::uniform_real<> >
+                        sample(rng, tr1::uniform_real<>(0.0, _probs.back()));
+                    double r = sample();
+                    i = upper_bound(_probs.begin(), _probs.end(),r) -
+                        _probs.begin();
+                }
+                else
+                {
+                    // all probabilities are zero... sample randomly.
+                    tr1::uniform_int<size_t>
+                        sample(0, _candidates_set.size()-1);
+                    size_t j = sample(rng), count = 0;
+                    for (typeof(_candidates_set.begin()) iter =
+                             _candidates_set.begin();
+                         iter != _candidates_set.end(); ++iter)
                     {
-                        i = iter->second;
-                        break;
+                        if (count == j)
+                        {
+                            i = iter->second;
+                            break;
+                        }
+                        count++;
                     }
-                    count++;
+                }
+            } while (_erased[i]);
+
+            if (remove)
+            {
+                _erased[i] = true;
+                _erased_prob += (i > 0) ? _probs[i] - _probs[i-1] : _probs[i];
+                clean();
+            }
+
+            return _candidates[i];
+        }
+    }
+
+    void clean()
+    {
+        // if too many elements were erased, we need to make things less sparse
+        if (_biased && !_candidates_set.empty() &&
+            _erased_prob >= _probs.back()/3)
+        {
+            for (int i = _probs.size() - 1; i > 0; --i)
+                _probs[i] -= _probs[i-1];
+
+            for (int i = 0; i < _candidates.size(); ++i)
+            {
+                while (i < _erased.size() && _erased[i])
+                {
+                    swap(_candidates[i], _candidates.back());
+                    _candidates.pop_back();
+
+                    swap(_probs[i], _probs.back());
+                    _probs.pop_back();
+
+                    swap(_erased[i], _erased.back());
+                    _erased.pop_back();
                 }
             }
 
-            for (; i < _probs.size(); ++i)
-                if (!_erased[i])
-                    break;
-            if (i == _probs.size())
-                for (i = _probs.size()-1; i < _probs.size(); --i)
-                    if (!_erased[i])
-                        break;
-            if (i >= _probs.size())
-            {
-                size_t n = 0;
-                for (size_t j = 0; j < _erased.size(); ++j)
-                    if (_erased[j])
-                        n++;
-            }
+            for (size_t i = 1; i < _probs.size(); i++)
+                _probs[i] += _probs[i-1];
 
-            if (remove)
-                _erased[i] = true;
-            return _candidates[i];
+            _candidates_set.clear();
+            for (size_t i = 0; i < _candidates.size(); i++)
+                _candidates_set.insert(make_pair(_candidates[i],i));
+            _erased_prob = 0.0;
         }
     }
 
@@ -249,7 +252,8 @@ private:
     tr1::unordered_multimap<ValueType, size_t, hash<ValueType> >
         _candidates_set;
     vector<double> _probs;
-    vector<bool> _erased;
+    vector<uint8_t> _erased;
+    double _erased_prob;
 };
 
 // used for verbose display

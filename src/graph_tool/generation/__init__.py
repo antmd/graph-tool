@@ -82,8 +82,8 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
 
     The uncorrelated case, the complexity is :math:`O(V+E)`. For the correlated
     case the worst-case complexity is :math:`O(V^2)`, but the typical case has
-    complexity :math:`O(V+N_k^2)`, where :math:`N_k < V` is the number of
-    different degrees sampled (or in,out-degree pairs).
+    complexity :math:`O(V + E\log N_k + N_k^2)`, where :math:`N_k < V` is the
+    number of different degrees sampled (or in,out-degree pairs).
 
     Examples
     --------
@@ -114,7 +114,7 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     >>> g = gt.random_graph(1000, lambda: sample_k(40),
     ...                     lambda i,k: 1.0/(1+abs(i-k)), directed=False)
     >>> gt.scalar_assortativity(g, "out")
-    (0.52810631736984548, 0.012618649197538264)
+    (0.59472179721535989, 0.011919463022240388)
 
     The following samples an in,out-degree pair from the joint distribution:
 
