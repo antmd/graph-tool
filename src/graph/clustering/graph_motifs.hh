@@ -155,7 +155,7 @@ struct sample_some
     void operator()(vector<val_type>& extend, size_t d)
     {
         typedef tr1::uniform_real<double> rdist_t;
-        tr1::variate_generator<rng_t, rdist_t> random(*_rng, rdist_t());
+        tr1::variate_generator<rng_t&, rdist_t> random(*_rng, rdist_t());
 
         double pd = (*_p)[d+1];
         size_t nc = extend.size();
@@ -182,7 +182,7 @@ struct sample_some
         typedef tr1::uniform_int<size_t> idist_t;
         for (size_t i = 0; i < n; ++i)
         {
-            tr1::variate_generator<rng_t, idist_t>
+            tr1::variate_generator<rng_t&, idist_t>
                 random_v(*_rng, idist_t(0, extend.size()-i-1));
             size_t j;
             {
@@ -305,7 +305,7 @@ struct get_all_motifs
                 V.push_back(*v);
 
             typedef tr1::uniform_real<double> rdist_t;
-            tr1::variate_generator<rng_t, rdist_t> random(rng, rdist_t());
+            tr1::variate_generator<rng_t&, rdist_t> random(rng, rdist_t());
 
             size_t n;
             if (random() < p)
@@ -316,7 +316,7 @@ struct get_all_motifs
             typedef tr1::uniform_int<size_t> idist_t;
             for (size_t i = 0; i < n; ++i)
             {
-                tr1::variate_generator<rng_t, idist_t>
+                tr1::variate_generator<rng_t&, idist_t>
                     random_v(rng, idist_t(0, V.size()-i-1));
 
                 size_t j = i + random_v();

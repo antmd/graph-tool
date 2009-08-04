@@ -127,7 +127,7 @@ struct get_absolute_trust
                         // select edge according to its probability
                         typename graph_traits<Graph>::edge_descriptor e;
                         typedef tr1::uniform_real<t_type> dist_t;
-                        tr1::variate_generator<rng_t, dist_t>
+                        tr1::variate_generator<rng_t&, dist_t>
                             random(rng, dist_t(0, out_prob.back()));
 
                         t_type u;

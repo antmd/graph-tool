@@ -90,7 +90,7 @@ def local_clustering(g, prop=None, undirected=False):
     >>> g = gt.random_graph(1000, lambda: (5,5), seed=42)
     >>> clust = gt.local_clustering(g)
     >>> print gt.vertex_average(g, clust)
-    (0.005048478260869565, 0.00043544409486305209)
+    (0.0042016666666666669, 0.00041579094306313759)
 
     References
     ----------
@@ -149,7 +149,7 @@ def global_clustering(g):
     --------
     >>> g = gt.random_graph(1000, lambda: (5,5), seed=42)
     >>> print gt.global_clustering(g)
-    (0.0079235400765494558, 0.00041721619682007839)
+    (0.0083567321834469854, 0.0004417198625120785)
 
     References
     ----------
@@ -221,11 +221,11 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
     >>> for i in xrange(0, 5):
     ...    print gt.vertex_average(g, clusts[i])
     ...
-    (0.005048478260869565, 0.00043544409486305209)
-    (0.025116811594202898, 0.00096935403523205497)
-    (0.11178014492753624, 0.0019836458026216146)
-    (0.40412130434782606, 0.0030616964103718316)
-    (0.43449992753623184, 0.003195885251613022)
+    (0.0042016666666666669, 0.00041579094306313759)
+    (0.02409, 0.00095845344754511225)
+    (0.11065333333333334, 0.0019404812805074933)
+    (0.40180499999999997, 0.0031866048246265693)
+    (0.43999999999999995, 0.0031172994010129269)
 
     References
     ----------
@@ -305,9 +305,9 @@ def motifs(g, k, p=1.0, motif_list=None, undirected=None, seed=0):
     >>> g = gt.random_graph(1000, lambda: (5,5), seed=42)
     >>> motifs, counts = gt.motifs(g, 4, undirected=True)
     >>> print len(motifs)
-    14
+    10
     >>> print counts
-    [114942, 387657, 958, 1089, 2482, 2760, 844, 6, 16, 14, 8, 10, 16, 8]
+    [116138, 392344, 389, 445, 2938, 996, 792, 3, 14, 3]
 
     References
     ----------
@@ -459,12 +459,13 @@ def motif_significance(g, k, n_shuffles=10, p=1.0, motif_list=None,
     >>> g = gt.random_graph(100, lambda: (3,3), seed=42)
     >>> motifs, zscores = gt.motif_significance(g, 3)
     >>> print len(motifs)
-    10
+    11
     >>> print zscores
-    [-3.9501340809971031, -3.96459679349275, -5.95765904191577, -0.17407765595569785, 3.580195875015368, 3.5906624935876583, 2.2739701341354892, 1.8999999999999999, 0.0, -0.20000000000000001]
+    [-2.7573400429260952, -2.7711373148737528, -3.823295048129145, -0.6117752903214978, 2.9524205015061291, 2.9303545260261825, 1.4167427093634908, 1.8999999999999999, -0.29999999999999999, 0.0, -0.20000000000000001]
     """
     from itertools import izip
-    from .. misc import random_rewire, isomorphism
+    from .. misc import isomorphism
+    from .. generation import random_rewire
 
     s_ms, counts = motifs(g, k, p, motif_list, undirected, seed)
     s_counts = [0]*len(s_ms)

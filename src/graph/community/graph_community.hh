@@ -61,7 +61,7 @@ struct get_communities
 
         rng_t rng(static_cast<rng_t::result_type>(seed));
 
-        tr1::variate_generator<rng_t, tr1::uniform_real<> >
+        tr1::variate_generator<rng_t&, tr1::uniform_real<> >
             random(rng, tr1::uniform_real<>());
 
         stringstream out_str;
