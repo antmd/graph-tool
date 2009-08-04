@@ -27,7 +27,7 @@ dl_import("import libgraph_tool_generation")
 from .. core import Graph
 import sys, numpy
 
-__all__ = ["random_graph"]
+__all__ = ["random_graph", "random_rewire"]
 
 def _corr_wrap(i, j, corr):
     return corr(i[1], j[1])
@@ -217,3 +217,18 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
                                               seed, verbose)
     g.set_directed(directed)
     return g
+
+def random_rewire(g, strat="uncorrelated", self_loops = False,
+                  parallel_edges = False, seed = 0):
+    if seed != 0:
+        seed = random.randint(0, sys.maxint)
+    if g.is_reversed():
+        was_reversed = True
+    else:
+        was_reversed = False
+    g.set_reversed(False)
+    libgraph_tool_generation.random_rewire(g._Graph__graph, strat, self_loops,
+                                           parallel_edges, seed)
+    if was_reversed:
+        g.set_reversed(True)
+

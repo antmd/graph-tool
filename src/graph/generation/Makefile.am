@@ -15,7 +15,9 @@ libgraph_tool_generation_la_LIBADD = $(MOD_LIBADD)
 libgraph_tool_generation_la_LDFLAGS = $(MOD_LDFLAGS)
 
 libgraph_tool_generation_la_SOURCES = \
-    graph_generation.cc
+    graph_generation.cc \
+    graph_rewiring.cc
 
 libgraph_tool_generation_la_include_HEADERS = \
-    graph_generation.hh
+    graph_generation.hh \
+    graph_rewiring.hh

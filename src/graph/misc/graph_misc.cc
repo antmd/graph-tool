@@ -22,13 +22,10 @@ using namespace boost;
 using namespace boost::python;
 using namespace graph_tool;
 
-void random_rewire(GraphInterface& gi, string strat, bool self_loops,
-                   bool parallel_edges, size_t seed);
 bool check_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
                        boost::any iso_map);
 
 BOOST_PYTHON_MODULE(libgraph_tool_misc)
 {
-    def("random_rewire", &random_rewire);
     def("check_isomorphism", &check_isomorphism);
 }

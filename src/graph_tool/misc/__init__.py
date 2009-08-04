@@ -26,21 +26,7 @@ dl_import("import libgraph_tool_misc")
 
 from .. core import _prop
 import random, sys
-__all__ = ["random_rewire", "isomorphism"]
-
-def random_rewire(g, strat="uncorrelated", self_loops = False,
-                  parallel_edges = False, seed = 0):
-    if seed != 0:
-        seed = random.randint(0, sys.maxint)
-    if g.is_reversed():
-        was_reversed = True
-    else:
-        was_reversed = False
-    g.set_reversed(False)
-    libgraph_tool_misc.random_rewire(g._Graph__graph, strat, self_loops,
-                                     parallel_edges, seed)
-    if was_reversed:
-        g.set_reversed(True)
+__all__ = ["isomorphism"]
 
 def isomorphism(g1, g2, isomap=None):
     if isomap == None:

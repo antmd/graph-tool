@@ -94,7 +94,13 @@ void generate_random_graph(GraphInterface& gi, size_t N,
     gi.ReIndexEdges();
 }
 
+void random_rewire(GraphInterface& gi, string strat, bool self_loops,
+                   bool parallel_edges, size_t seed);
+
+using namespace boost::python;
+
 BOOST_PYTHON_MODULE(libgraph_tool_generation)
 {
     def("gen_random_graph", &generate_random_graph);
+    def("random_rewire", &random_rewire);
 }
