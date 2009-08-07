@@ -264,7 +264,9 @@ class Graph(object):
                 new_p = self.new_property(v.key_type(), v.value_type())
                 self.copy_property(v, new_p, g)
                 self.properties[k] = new_p
-            self.__stashed_filter_state = [g.__filter_state]
+
+            self.__stashed_filter_state = [self.get_filter_state()]
+
             v_filt, v_rev = g.__filter_state["vertex_filter"]
             if v_filt != None:
                 if v_filt not in g.vertex_properties.values():
@@ -577,7 +579,7 @@ class Graph(object):
     def copy_property(self, src, tgt=None, g=None):
         """Copy contents of `src` property to `tgt` property. If `tgt` is None,
         then a new property map of the same type is created, and returned. The
-        optional parameter g specifices the (identical) source graph to copy
+        optional parameter g specifies the (identical) source graph to copy
         properties from (defaults to self).
         """
         if tgt == None:
@@ -758,7 +760,7 @@ class Graph(object):
         keyword arguments specify which type of filter should be stashed."""
         if edge or vertex or directed or reversed:
             all = False
-        self.__stashed_filter_state.append(self.__filter_state)
+        self.__stashed_filter_state.append(self.get_filter_state())
         if libcore.graph_filtering_enabled():
             if vertex or all:
                 self.set_vertex_filter(None)
@@ -771,7 +773,7 @@ class Graph(object):
 
     @_handle_exceptions
     def pop_filter(self, edge=False, vertex=False,
-                   directed=False, reversed=False, all=False):
+                   directed=False, reversed=False, all=True):
         """Pop last stashed filter state. The optional keyword arguments specify
         which type of filter should be recovered."""
         if edge or vertex or directed or reversed:
@@ -792,6 +794,8 @@ class Graph(object):
     @_handle_exceptions
     def get_filter_state(self):
         """Return a copy of the filter state of the graph."""
+        self.__filter_state["directed"] = self.is_directed()
+        self.__filter_state["reversed"] = self.is_reversed()
         return copy.copy(self.__filter_state)
 
     @_handle_exceptions
