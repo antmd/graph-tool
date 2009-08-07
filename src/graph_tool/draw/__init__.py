@@ -421,6 +421,10 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
     else:
         gv.render(gvg, output_format, output)
 
+    # I don't get this, but it seems necessary
+    pos[0].get_array()[:] /= 100
+    pos[1].get_array()[:] /= 100
+
     if returngv:
         return pos, gv
     else:
