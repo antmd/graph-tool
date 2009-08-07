@@ -197,7 +197,6 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
         :align: center
 
         Average nearest neighbour correlations.
-
     """
     if seed == 0:
         seed = numpy.random.randint(0, sys.maxint)
@@ -218,17 +217,162 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     g.set_directed(directed)
     return g
 
-def random_rewire(g, strat="uncorrelated", self_loops = False,
-                  parallel_edges = False, seed = 0):
+def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
+                  self_loops = False, seed = 0):
+    r"""
+    Shuffled the graph in-place. The degrees (either in or out) of each vertex
+    are always the same, but otherwise the edges are randomly placed. If
+    strat == "correlated", the degree correlations are also maintained: The new
+    source and target of each edge both have the same in and out-degree.
+
+    Parameters
+    ----------
+    g : Graph
+        Graph to be shuffled. The graph will be modified.
+    strat : string (optional, default: "uncorrelated")
+        If strat == "uncorrelated" only the degrees of the vertices will be
+        maintained, nothing else. If strat == "correlated", additionally the new
+        source and target of each edge both have the same in and out-degree.
+    parallel : bool (optional, default: False)
+        If True, parallel edges are allowed.
+    self_loops : bool (optional, default: False)
+        If True, self-loops are allowed.
+    seed : int (optional, default: 0)
+        Seed for the random number generator. If seed == 0, a random value is
+        chosen.
+
+    Returns
+    -------
+    None
+
+    See Also
+    --------
+    random_graph: random graph generation
+
+    Notes
+    -----
+
+    Each edge gets swapped at least once, so the overall complexity is
+    :math:`O(E)`.
+
+    Examples
+    --------
+
+    Some small graphs for visualization.
+
+    >>> from numpy.random import zipf, seed
+    >>> from pylab import *
+    >>> seed(42)
+    >>> g = gt.random_graph(1000, lambda: sample_k(10),
+    ...                     lambda i,j: exp(abs(i-j)), directed=False)
+    >>> gt.graph_draw(g, output="rewire_orig.png")
+    (...)
+    >>> gt.random_rewire(g, "correlated")
+    >>> gt.graph_draw(g, output="rewire_corr.png")
+    (...)
+    >>> gt.random_rewire(g)
+    >>> gt.graph_draw(g, output="rewire_uncorr.png")
+    (...)
+
+
+    .. figure:: rewire_orig.png
+        :align: center
+
+        Original graph. (It is a `ridiculogram <http://www.youtube.com/watch?v=YS-asmU3p_4>`_).
+
+    .. figure:: rewire_corr.png
+        :align: center
+
+        Shuffled graph, with degree correlations.
+
+    .. figure:: rewire_uncorr.png
+        :align: center
+
+        Shuffled graph, without degree correlations.
+
+    We can try some larger graphs to get better statistics.
+
+    >>> clf()
+    >>> g = gt.random_graph(20000, lambda: sample_k(20),
+    ...                     lambda i,j: exp(abs(i-j)), directed=False)
+    >>> corr = gt.avg_neighbour_corr(g, "out", "out")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o", label="original")
+    (...)
+    >>> gt.random_rewire(g, "correlated")
+    >>> corr = gt.avg_neighbour_corr(g, "out", "out")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o", label="correlated")
+    (...)
+    >>> gt.random_rewire(g)
+    >>> corr = gt.avg_neighbour_corr(g, "out", "out")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o", label="uncorrelated")
+    (...)
+    >>> xlabel("$k$")
+    <...>
+    >>> ylabel(r"$\left<k_{nn}\right>$")
+    <...>
+    >>> legend(loc="best")
+    <...>
+    >>> savefig("shuffled-stats.png")
+
+    .. figure:: shuffled-stats.png
+        :align: center
+
+        Average degree correlations for the different shuffled and non-shuffled
+        graphs. The shuffled graph with correlations displays exactly the same
+        correlation as the original graph.
+
+    Now let's do it for a directed graph. See
+    :func:`~graph_tool.generation.random_graph` for more details.
+
+    >>> p = scipy.stats.poisson
+    >>> g = gt.random_graph(20000, lambda: (sample_k(19), sample_k(19)),
+    ...                                     lambda a,b: (p.pmf(a[0],b[1])*
+    ...                                                  p.pmf(a[1],20-b[0])))
+    >>> clf()
+    >>> corr = gt.avg_neighbour_corr(g, "in", "out")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-", label="<out> vs in")
+    (...)
+    >>> corr = gt.avg_neighbour_corr(g, "out", "in")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-", label="<in> vs out")
+    (...)
+    >>> gt.random_rewire(g, "correlated")
+    >>> corr = gt.avg_neighbour_corr(g, "in", "out")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
+    ...          label="<out> vs in, correlated")
+    (...)
+    >>> corr = gt.avg_neighbour_corr(g, "out", "in")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
+    ...          label="<in> vs out, correlated")
+    (...)
+    >>> gt.random_rewire(g, "uncorrelated")
+    >>> corr = gt.avg_neighbour_corr(g, "in", "out")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
+    ...          label="<out> vs in, uncorrelated")
+    (...)
+    >>> corr = gt.avg_neighbour_corr(g, "out", "in")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
+    ...          label="<in> vs out, uncorrelated")
+    (...)
+    >>> legend(loc="best")
+    <...>
+    >>> xlabel("source degree")
+    <...>
+    >>> ylabel("average target degree")
+    <...>
+    >>> savefig("shuffled-deg-corr-dir.png")
+
+    .. figure:: shuffled-deg-corr-dir.png
+        :align: center
+
+        Average degree correlations for the different shuffled and non-shuffled
+        directed graphs. The shuffled graph with correlations displays exactly
+        the same correlation as the original graph.
+    """
+
     if seed != 0:
         seed = random.randint(0, sys.maxint)
-    if g.is_reversed():
-        was_reversed = True
-    else:
-        was_reversed = False
-    g.set_reversed(False)
+
+    g.stash_filter(reversed=True)
     libgraph_tool_generation.random_rewire(g._Graph__graph, strat, self_loops,
                                            parallel_edges, seed)
-    if was_reversed:
-        g.set_reversed(True)
-
+    g.pop_filter(reversed=True)
