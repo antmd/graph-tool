@@ -390,9 +390,8 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epslon=1e-6, max_iter=0,
     else:
         return vprop
 
-def absolute_trust(g, trust_map, source=None, vprop=None, epslon=0.001,
-                   min_iter=100, max_iter=None, reversed=False, seed=None,
-                   ret_iter=False):
+def absolute_trust(g, trust_map, source=None, vprop=None, n_iter=100,
+                   reversed=False, seed=None):
     r"""
     Samples the absolute trust centrality of each vertex in the graph, or only
     for a given source, if one is provided.
@@ -409,15 +408,9 @@ def absolute_trust(g, trust_map, source=None, vprop=None, epslon=0.001,
         values, instead of all the vertices in the graph.
     vprop : PropertyMap, optional (default: None)
         Vertex property map where the values of eigentrust must be stored.
-    epslon : float, optional (default: 0.001)
-        Convergence condition. The iteration will stop if the total delta of all
-        vertices are below this value.
-    min_iter : int, optional (default: 100)
-        If supplied, this will limit the minimal number of iterations (per
-        source vertex).
-    max_iter : int, optional (default: None)
-        If supplied, this will limit the total number of iterations (per
-        source vertex).
+    n_iter : int, optional (default: 100)
+        Number of iterations (independent self-avoiding walks) per source
+        vertex.
     reversed : bool, optional (default: False)
         Calculates the "reversed" trust instead: The direction of the edges are
         inverted, but the path weighting is preserved in the original direction
@@ -425,14 +418,12 @@ def absolute_trust(g, trust_map, source=None, vprop=None, epslon=0.001,
     seed : int, optional (default: None)
          The initializing seed for the random number generator. If not supplied
          a different random value will be chosen each time.
-    ret_iter : bool, optional (default: False)
-        If true, the total number of iterations is also returned.
 
     Returns
     -------
     absolute_trust : PropertyMap
         A vertex property map containing the absolute trust vector from the
-        corresponding vertex to the rest of the network. Each e lement i of the
+        corresponding vertex to the rest of the network. Each element i of the
         vector is the trust value of the vertex with index i, from the given
         vertex.
 
@@ -464,8 +455,14 @@ def absolute_trust(g, trust_map, source=None, vprop=None, epslon=0.001,
 
     such that the direct trust of the last edge on the path is not considered.
 
-    The algorithm progressively samples all possible paths, until the trust
-    values converge, and has a topology-dependent complexity.
+    The algorithm performs only an approximation of the above measure, by doing
+    several self-avoiding random walks per source vertex, and computing the
+    trust for all different paths found. Each complete walk is done by one of
+    three types of biased choices, which govern the probability of following a
+    specific edge: 1. With probability proportional to an edge's trust value;
+    2. With probability proportional to the complement of an edge's trust value
+    :math:`(1-t_{e})`; 3. All edges with equal probability. The parameter
+    "n_iter" controls how many walks of each type are performed.
 
     If enabled during compilation, this algorithm runs in parallel.
 
@@ -478,31 +475,31 @@ def absolute_trust(g, trust_map, source=None, vprop=None, epslon=0.001,
     >>> trust.get_array()[:] = random(g.num_edges())
     >>> t = gt.absolute_trust(g, trust)
     >>> print array(t[g.vertex(10)])
-    [  4.51906352e-01   1.01429943e-01   0.00000000e+00   0.00000000e+00
-       0.00000000e+00   2.44861537e-01   0.00000000e+00   3.02651461e-01
-       0.00000000e+00   1.74730923e-02   0.00000000e+00   4.29689123e-03
-       9.92174035e-04   4.87376703e-02   7.96102941e-06   2.33366853e-01
-       2.54084432e-01   1.21249107e-02   1.68187723e-01   1.63299672e-02
-       3.63286096e-02   7.26969527e-01   2.66379387e-01   2.60306326e-03
-       3.00337293e-04   3.45095945e-02   4.74197414e-02   3.47040393e-01
-       4.15994365e-01   2.58366543e-01   1.98886295e-02   1.84395387e-01
-       3.01526472e-01   4.17581597e-01   5.08199168e-01   2.39325151e-01
-       1.16653396e-01   0.00000000e+00   2.32122209e-01   1.74458369e-01
-       0.00000000e+00   2.28833708e-02   8.40459672e-02   1.13238046e-01
-       1.15211877e-01   1.64368525e-01   5.42106779e-03   8.21849155e-01
-       0.00000000e+00   1.10064601e-01   3.94971607e-01   2.40544425e-01
-       1.81781785e-01   4.27661874e-01   1.96505012e-01   2.22664312e-01
-       1.05942366e-01   1.45053992e-01   3.17854637e-01   0.00000000e+00
-       7.19074080e-02   6.01425735e-02   1.80652580e-01   1.64203118e-06
-       1.51091732e-01   2.15091245e-01   6.59231333e-01   5.29298126e-01
-       3.39640072e-01   2.85420503e-01   0.00000000e+00   0.00000000e+00
-       3.76245906e-01   2.26621429e-02   2.16958451e-01   5.43678807e-01
-       0.00000000e+00   7.01804977e-02   1.50118832e-01   3.44142938e-03
-       3.63454763e-01   2.55747857e-01   1.58862377e-01   4.74257967e-02
-       9.79787266e-02   1.33262415e-01   4.44120403e-01   2.13954368e-02
-       1.65309874e-01   2.22217618e-01   2.80359630e-02   3.78916751e-01
-       9.22800991e-03   2.89978731e-03   9.21281004e-02   0.00000000e+00
-       5.20985973e-01   5.47754676e-02   6.27828075e-01   2.28123051e-01]
+    [  4.34269834e-01   1.84086073e-02   2.71138999e-03   0.00000000e+00
+       0.00000000e+00   2.34151772e-01   0.00000000e+00   2.74629641e-01
+       3.82398108e-02   3.51593064e-03   0.00000000e+00   2.25062582e-03
+       7.34404022e-02   3.02164679e-02   1.10468968e-01   3.36602968e-01
+       1.43712489e-01   1.09583017e-02   9.97860841e-03   6.20179844e-03
+       3.92453395e-03   5.93950226e-01   2.42696614e-01   1.10854185e-02
+       5.30694827e-02   8.71279579e-02   1.71495793e-01   4.53369014e-01
+       4.08880943e-01   2.43222424e-01   2.31048774e-02   1.97243934e-01
+       2.28690841e-02   3.89067069e-01   5.65879939e-01   2.64268559e-01
+       1.02377787e-02   0.00000000e+00   2.24908740e-01   1.37897878e-01
+       0.00000000e+00   3.84890236e-02   1.36013255e-01   1.13238046e-01
+       4.42613337e-02   1.54047730e-01   7.26844315e-04   9.74848849e-01
+       2.01388742e-03   2.98355979e-01   5.06984528e-01   1.99649387e-01
+       2.77657386e-02   4.29460962e-01   1.02848076e-01   4.89428001e-02
+       8.00972222e-02   1.44641703e-01   5.47481542e-02   6.50547255e-01
+       8.27105379e-02   1.39682293e-01   1.53401434e-01   1.86305773e-03
+       1.10090329e-01   1.66675096e-01   6.19209248e-01   4.98140945e-01
+       2.94691587e-01   2.72221755e-01   0.00000000e+00   0.00000000e+00
+       3.26706417e-01   4.91620740e-02   1.97732120e-01   5.43678807e-01
+       3.22718844e-01   3.99852058e-03   1.28240520e-01   5.80458086e-02
+       6.15485883e-04   2.65672284e-01   1.44784379e-01   5.08912552e-02
+       1.02175200e-01   2.88217333e-01   4.58941581e-01   2.21592754e-04
+       2.43926919e-01   2.29463331e-01   2.23860692e-02   3.96450827e-01
+       1.50189446e-01   3.84811442e-02   1.43428384e-01   1.96921016e-02
+       4.77979398e-01   7.78812012e-02   5.56363349e-01   2.12033381e-01]
     """
 
     if seed != 0:
@@ -520,17 +517,14 @@ def absolute_trust(g, trust_map, source=None, vprop=None, epslon=0.001,
     else:
         source = -1
 
-    if max_iter == None:
-        max_iter = 0
-
     if reversed:
         g.stash_filter(reversed=True)
         g.set_reversed(True)
 
-    ic = libgraph_tool_centrality.\
+    libgraph_tool_centrality.\
             get_absolute_trust(g._Graph__graph, source,
                                _prop("e", g, trust_map), _prop("v", g, vprop),
-                               epslon, min_iter, max_iter, reversed, seed)
+                               n_iter, reversed, seed)
     if reversed:
         g.pop_filter(reversed=True)
 
@@ -538,8 +532,5 @@ def absolute_trust(g, trust_map, source=None, vprop=None, epslon=0.001,
         vprop_temp.get_array()[:] = numpy.array(vprop[g.vertex(source)])
         vprop = vprop_temp
 
-    if ret_iter:
-        return vprop, ic
-    else:
-        return vprop
+    return vprop
 
