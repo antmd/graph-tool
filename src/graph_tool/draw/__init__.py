@@ -288,6 +288,8 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
             minmax[1] += 1
         if vnorm:
             vnorm = matplotlib.colors.normalize(vmin=minmax[0], vmax=minmax[1])
+        else:
+            vnorm = lambda x: x
 
     if ecolor != None and not isinstance(ecolor, str):
         minmax = [float("inf"), -float("inf")]
@@ -299,6 +301,8 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
             minmax[1] += 1
         if enorm:
             enorm = matplotlib.colors.normalize(vmin=minmax[0], vmax=minmax[1])
+        else:
+            enorm = lambda x: x
 
     nodes = []
     edges = []
