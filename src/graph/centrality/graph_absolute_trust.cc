@@ -37,9 +37,9 @@ void absolute_trust(GraphInterface& g, int64_t source, boost::any c,
     rng_t rng(static_cast<rng_t::result_type>(seed));
 
     if (!belongs<edge_floating_properties>()(c))
-        throw GraphException("edge property must be of floating point value type");
+        throw ValueException("edge property must be of floating point value type");
     if (!belongs<vertex_floating_vector_properties>()(t))
-        throw GraphException("vertex property must be of floating point vector value type");
+        throw ValueException("vertex property must be of floating point vector value type");
 
     run_action<>()(g,
                    bind<void>(get_absolute_trust(), _1, g.GetVertexIndex(),

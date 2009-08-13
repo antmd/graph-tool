@@ -216,7 +216,7 @@ struct copy_property
             for (tie(vs, vs_end) = IteratorSel::range(src); vs != vs_end; ++vs)
             {
                 if (vt == vt_end)
-                    throw GraphException("Error copying properties: "
+                    throw ValueException("Error copying properties: "
                                          "graphs not identical");
                 dst_map[*vt] = c(src_map[*vs]);
                 ++vt;
@@ -224,7 +224,7 @@ struct copy_property
         }
         catch (bad_lexical_cast&)
         {
-            throw GraphException("property values are not convertible");
+            throw ValueException("property values are not convertible");
         }
     }
 };

@@ -43,7 +43,7 @@ boost::any graph_tool::degree_selector(GraphInterface::deg_t deg)
         mpl::for_each<vertex_properties>
             (bind<void>(get_scalar_selector(), _1, *d, var(sel), var(found)));
         if (!found)
-            throw GraphException("invalid degree selector");
+            throw ValueException("invalid degree selector");
     }
     return sel;
 }

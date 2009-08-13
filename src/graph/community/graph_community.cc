@@ -50,7 +50,7 @@ void community_structure(GraphInterface& g, double gamma, string corr_name,
         allowed_spin_properties;
 
     if (!belongs<allowed_spin_properties>()(property))
-        throw GraphException("vertex property is not of integer type int32_t "
+        throw ValueException("vertex property is not of integer type int32_t "
                              "or int64_t");
 
     typedef DynamicPropertyMapWrap<double,GraphInterface::edge_t> weight_map_t;
@@ -70,7 +70,7 @@ void community_structure(GraphInterface& g, double gamma, string corr_name,
     else if (corr_name == "correlated")
         corr = CORRELATED;
     else
-        throw GraphException("invalid correlation type: " + corr_name);
+        throw ValueException("invalid correlation type: " + corr_name);
 
     bool directed = g.GetDirected();
     g.SetDirected(false);

@@ -92,12 +92,11 @@ import numpy
 import scipy
 import scipy.stats
 
-from . core import  __version__, Graph, GraphError, Vector_bool, \
-     Vector_int32_t, Vector_int64_t, Vector_double, Vector_long_double,\
-     Vector_string, value_types, load_graph, PropertyMap, Vertex, Edge,\
-     show_config
+from . core import  __version__, Graph, Vector_bool, Vector_int32_t, \
+     Vector_int64_t, Vector_double, Vector_long_double, Vector_string, \
+     value_types, load_graph, PropertyMap, Vertex, Edge, show_config
 
-__all__ = ["Graph", "Vertex", "Edge", "GraphError", "Vector_bool",
-           "Vector_int32_t", "Vector_int64_t", "Vector_double",
-           "Vector_long_double", "Vector_string", "value_types", "load_graph",
-           "PropertyMap", "show_config"]
+__all__ = ["Graph", "Vertex", "Edge", "Vector_bool", "Vector_int32_t",
+           "Vector_int64_t", "Vector_double", "Vector_long_double",
+           "Vector_string", "value_types", "load_graph", "PropertyMap",
+           "show_config"]

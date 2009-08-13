@@ -33,7 +33,7 @@ size_t pagerank(GraphInterface& g, boost::any rank, double d, double epslon,
                 size_t max_iter)
 {
     if (!belongs<writable_vertex_scalar_properties>()(rank))
-        throw GraphException("vertex property must be writable");
+        throw ValueException("vertex property must be writable");
 
     size_t iter;
     run_action<>()

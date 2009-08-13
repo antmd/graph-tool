@@ -32,9 +32,9 @@ size_t eigentrust(GraphInterface& g, boost::any c, boost::any t,
                   double epslon, size_t max_iter)
 {
     if (!belongs<writable_edge_scalar_properties>()(c))
-        throw GraphException("edge property must be writable");
+        throw ValueException("edge property must be writable");
     if (!belongs<vertex_floating_properties>()(t))
-        throw GraphException("vertex property must be of floating point"
+        throw ValueException("vertex property must be of floating point"
                              " value type");
 
     size_t iter = 0;

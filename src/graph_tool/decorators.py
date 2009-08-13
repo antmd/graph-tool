@@ -52,17 +52,6 @@ def _attrs(**kwds):
         return f
     return decorate
 
-def _handle_exceptions(func):
-    """Decorator which will catch and properly propagate exceptions raised
-    by GraphInterface in all the methods"""
-    @_wraps(func)
-    def wrap(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except (IOError, RuntimeError), e:
-            libcore.raise_error(str(e))
-    return wrap
-
 def _limit_args(allowed_vals):
     """Decorator which will limit the values of given arguments to a specified
     list of allowed values, and raise TypeError exception if the given value

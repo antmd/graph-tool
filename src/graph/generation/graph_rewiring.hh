@@ -191,7 +191,7 @@ struct graph_rewire
                     has_self_loops = true;
             }
             if (has_self_loops)
-                throw GraphException("Self-loop detected. Can't rewire graph "
+                throw ValueException("Self-loop detected. Can't rewire graph "
                                      "without self-loops if it already contains"
                                      " self-loops!");
         }
@@ -221,7 +221,7 @@ struct graph_rewire
             }
 
             if (has_parallel_edges)
-                throw GraphException("Parallel edge detected. Can't rewire "
+                throw ValueException("Parallel edge detected. Can't rewire "
                                      "graph without parallel edges if it "
                                      "already contains parallel edges!");
         }

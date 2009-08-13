@@ -225,7 +225,7 @@ void GraphInterface::RemoveEdge(const python::object& e)
                                       lambda::var(e), lambda::var(de),
                                       lambda::var(found)))();
     if (!found)
-        throw GraphException("invalid edge descriptor");
+        throw ValueException("invalid edge descriptor");
     RemoveEdgeIndex(de);
 }
 

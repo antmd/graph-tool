@@ -129,11 +129,11 @@ void betweenness(GraphInterface& g, boost::any weight,
                  bool normalize)
 {
     if (!belongs<edge_floating_properties>()(edge_betweenness))
-        throw GraphException("edge property must be of floating point value"
+        throw ValueException("edge property must be of floating point value"
                              " type");
 
     if (!belongs<vertex_floating_properties>()(vertex_betweenness))
-        throw GraphException("vertex property must be of floating point value"
+        throw ValueException("vertex property must be of floating point value"
                              " type");
 
     if (!weight.empty())

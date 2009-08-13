@@ -70,8 +70,8 @@ struct get_communities
         {
             out_file.open(verbose.second.c_str());
             if (!out_file.is_open())
-                throw GraphException("error opening file " + verbose.second +
-                                     " for writing");
+                throw IOException("error opening file " + verbose.second +
+                                  " for writing");
             out_file.exceptions (ifstream::eofbit | ifstream::failbit |
                                  ifstream::badbit);
         }
@@ -200,8 +200,8 @@ struct get_communities
                 }
                 catch (ifstream::failure e)
                 {
-                    throw GraphException("error writing to file " +
-                                         verbose.second + ": " + e.what());
+                    throw IOException("error writing to file " +
+                                      verbose.second + ": " + e.what());
                 }
             }
         }

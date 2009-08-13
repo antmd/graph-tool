@@ -136,21 +136,20 @@ struct export_vector_types
 };
 
 // exception translation
-static PyObject* pyex =
-    PyErr_NewException((char *) "libgraph_tool_core.GraphError",
-                       PyExc_Exception, NULL);
-
-void graph_exception_translator(const GraphException& e)
-{
-    PyObject* message = PyString_FromString(e.what());
-    PyObject_SetAttrString(pyex, "message", message);
-    PyErr_SetString(pyex, e.what());
-}
-
 template <class Exception>
-void translate(const Exception& e)
+void graph_exception_translator(const Exception& e)
 {
-    PyErr_SetString(PyExc_RuntimeError, e.what());
+    PyObject* error;
+    if (is_same<Exception, GraphException>::value)
+        error = PyExc_RuntimeError;
+    if (is_same<Exception, IOException>::value)
+        error = PyExc_IOError;
+    if (is_same<Exception, ValueException>::value)
+        error = PyExc_ValueError;
+
+    PyObject* message = PyString_FromString(e.what());
+    PyObject_SetAttrString(error, "message", message);
+    PyErr_SetString(error, e.what());
 }
 
 void raise_error(const string& msg)
@@ -310,8 +309,12 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
 
     GraphInterface().ExportPythonInterface();
 
-    PyModule_AddObject(python::detail::current_scope, "GraphError", pyex);
-    register_exception_translator<GraphException>(graph_exception_translator);
+    register_exception_translator<GraphException>
+        (graph_exception_translator<GraphException>);
+    register_exception_translator<IOException>
+        (graph_exception_translator<IOException>);
+    register_exception_translator<ValueException>
+        (graph_exception_translator<ValueException>);
 
     def("raise_error", &raise_error);
     def("get_property_types", &get_property_types);

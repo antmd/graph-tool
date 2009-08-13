@@ -93,7 +93,7 @@ public:
     void CheckValid() const
     {
         if (!IsValid())
-            throw GraphException("invalid vertex descriptor");
+            throw ValueException("invalid vertex descriptor");
     }
 
     GraphInterface::vertex_t GetDescriptor() const
@@ -253,7 +253,7 @@ public:
     void CheckValid() const
     {
         if (!_valid)
-            throw GraphException("invalid edge descriptor");
+            throw ValueException("invalid edge descriptor");
     }
 
     GraphInterface::edge_t GetDescriptor() const
@@ -403,7 +403,7 @@ public:
     void set_value(const PythonDescriptor& key, const value_type& val,
                    false_type)
     {
-        throw GraphException("property is read-only");
+        throw ValueException("property is read-only");
     }
 
     size_t GetHash() const
@@ -497,7 +497,7 @@ python::object new_property(const string& type, IndexMap index_map)
                                                   lambda::var(prop),
                                                   lambda::var(found)));
     if (!found)
-        throw GraphException("Invalid property type " + type);
+        throw ValueException("Invalid property type: " + type);
     return prop;
 }
 

@@ -86,7 +86,7 @@ void extended_clustering(GraphInterface& g, python::list props)
         prop_vector<writable_vertex_scalar_properties>()
         (cmaps, num_vertices(g.GetGraph()));
     if (vprop.empty())
-        throw GraphException("all vertex properties must be of the same"
+        throw ValueException("all vertex properties must be of the same"
                              " floating point type");
 
     typedef mpl::transform<writable_vertex_scalar_properties,

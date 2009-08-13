@@ -234,6 +234,19 @@ protected:
     virtual void SetError(const string& error) {_error = error;}
 };
 
+class IOException : public GraphException
+{
+public:
+    IOException(const string& error): GraphException(error) {}
+};
+
+class ValueException : public GraphException
+{
+public:
+    ValueException(const string& error): GraphException(error) {}
+};
+
+
 } //namespace graph_tool
 
 #endif

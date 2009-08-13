@@ -47,5 +47,5 @@ void random_rewire(GraphInterface& gi, string strat, bool self_loops,
                             _1, edge_index, ref(rng), self_loops,
                             parallel_edges))();
     else
-        throw GraphException("invalid random rewire stategy: " + strat);
+        throw ValueException("invalid random rewire strategy: " + strat);
 }

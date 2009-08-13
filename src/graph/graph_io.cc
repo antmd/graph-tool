@@ -482,7 +482,7 @@ python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
     if (format == "dot")
         graphviz = true;
     else if (format != "xml")
-        throw GraphException("error reading from file '" + file +
+        throw ValueException("error reading from file '" + file +
                              "': requested invalid format '" + format + "'");
     try
     {
@@ -542,8 +542,7 @@ python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
     }
     catch (ios_base::failure &e)
     {
-        throw GraphException("error reading from file '" + file + "':" +
-                             e.what());
+        throw IOException("error reading from file '" + file + "':" + e.what());
     }
 
 };
@@ -621,7 +620,7 @@ void GraphInterface::WriteToFile(string file, python::object pfile,
     if (format == "dot")
         graphviz = true;
     else if (format != "xml")
-        throw GraphException("error writing to file '" + file +
+        throw ValueException("error writing to file '" + file +
                              "': requested invalid format '" + format + "'");
     try
     {
@@ -711,7 +710,6 @@ void GraphInterface::WriteToFile(string file, python::object pfile,
     }
     catch (ios_base::failure &e)
     {
-        throw GraphException("error writing to file '" + file + "':" +
-                             e.what());
+        throw IOException("error writing to file '" + file + "':" + e.what());
     }
 }

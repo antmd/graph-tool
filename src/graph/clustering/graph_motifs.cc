@@ -95,7 +95,7 @@ void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
     }
     catch (bad_any_cast&)
     {
-        throw GraphException("All motif graphs must be either directed or "
+        throw ValueException("All motif graphs must be either directed or "
                              "undirected!");
     }
 

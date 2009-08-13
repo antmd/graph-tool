@@ -57,7 +57,7 @@ void community_network(GraphInterface& gi, GraphInterface& cgi,
     }
     catch (bad_any_cast&)
     {
-        throw GraphException("invalid vertex count property");
+        throw ValueException("invalid vertex count property");
     }
 
     typedef property_map_types::apply<mpl::vector<int32_t,double>,
@@ -66,7 +66,7 @@ void community_network(GraphInterface& gi, GraphInterface& cgi,
         ecount_properties;
 
     if (!belongs<ecount_properties>()(edge_count))
-        throw GraphException("invalid edge count property");
+        throw ValueException("invalid edge count property");
 
      run_action<>()(gi, bind<void>(get_community_network(), _1,
                                    ref(cgi.GetGraph()), cgi.GetVertexIndex(),
