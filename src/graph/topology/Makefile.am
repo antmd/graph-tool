@@ -17,6 +17,9 @@ libgraph_tool_topology_la_LDFLAGS = $(MOD_LDFLAGS)
 libgraph_tool_topology_la_SOURCES = \
     graph_topology.cc \
     graph_isomorphism.cc \
-    graph_minimum_spanning_tree.cc
+    graph_minimum_spanning_tree.cc \
+    graph_denominator_tree.cc \
+    graph_topological_sort.cc \
+    graph_transitive_closure.cc
 
 libgraph_tool_topology_la_include_HEADERS =

@@ -31,9 +31,18 @@ bool get_kruskal_spanning_tree(GraphInterface& gi, boost::any weight_map,
 bool get_prim_spanning_tree(GraphInterface& gi, size_t root,
                             boost::any weight_map, boost::any tree_map);
 
+void topological_sort(GraphInterface& gi, vector<int32_t>& sort);
+
+bool denominator_tree(GraphInterface& gi, size_t entry, boost::any pred_map);
+
+void transitive_closure(GraphInterface& gi, GraphInterface& tcgi);
+
 BOOST_PYTHON_MODULE(libgraph_tool_topology)
 {
     def("check_isomorphism", &check_isomorphism);
     def("get_kruskal_spanning_tree", &get_kruskal_spanning_tree);
     def("get_prim_spanning_tree", &get_prim_spanning_tree);
+    def("topological_sort", &topological_sort);
+    def("denominator_tree", &denominator_tree);
+    def("transitive_closure", &transitive_closure);
 }

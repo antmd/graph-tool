@@ -19,7 +19,6 @@
 #include "graph.hh"
 #include "graph_properties.hh"
 
-#include <boost/lambda/bind.hpp>
 #include <boost/graph/kruskal_min_spanning_tree.hpp>
 #include <boost/graph/prim_minimum_spanning_tree.hpp>
 
@@ -55,11 +54,6 @@ struct get_kruskal_min_span_tree
     void operator()(const Graph& g, IndexMap vertex_index, WeightMap weights,
                     TreeMap tree_map) const
     {
-        // typedef vector<typename graph_traits<Graph>::edge_descriptor>
-        //     tree_edges_t;
-        // tree_edges_t tree_edges;
-        // back_insert_iterator<tree_edges_t> tree_inserter(tree_edges);
-
         kruskal_minimum_spanning_tree(g, tree_inserter<TreeMap>(tree_map),
                                       weight_map(weights));
     }
