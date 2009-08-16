@@ -459,6 +459,13 @@ public:
         return python::object();
     }
 
+    bool IsWritable() const
+    {
+        return is_convertible<
+            typename property_traits<PropertyMap>::category,
+            readable_property_map_tag>::value;
+    }
+
 private:
     PropertyMap _pmap; // hold an internal copy, since it's cheap
 };

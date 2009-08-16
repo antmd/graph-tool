@@ -201,6 +201,21 @@ class PropertyMap(object):
             n = 1
         return self.__map.get_array(n)
 
+    def is_writable(self):
+        """Return True if the property is writable."""
+        return self.__map.is_writable()
+
+def _check_prop_writable(prop, name=None):
+    if not prop.is_writable():
+        raise ValueError("property map%s is not writable." %\
+                         ((" '%s'" % name) if name != None else ""))
+
+def _check_prop_scalar(prop, name=None):
+    if prop.value_type() not in ["bool", "int32_t", "int64_t", "unsigned long",
+                                 "double", "long double"]:
+        raise ValueError("property map%s is not of scalar type." %\
+                         ((" '%s'" % name) if name != None else ""))
+
 class PropertyDict(dict):
     """Wrapper for the dict of vertex, graph or edge properties, which sets the
     value on the property map when changed in the dict."""
