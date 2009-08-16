@@ -144,7 +144,7 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr= "erdos",
     <...>
     >>> ylabel("number of communities")
     <...>
-    >>> a = load("community-history1").transpose()
+    >>> a = loadtxt("community-history1").transpose()
     >>> plot(a[0], a[2])
     [...]
     >>> savefig("comm1-hist.png")
@@ -153,7 +153,7 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr= "erdos",
     <...>
     >>> ylabel("number of communities")
     <...>
-    >>> a = load("community-history2").transpose()
+    >>> a = loadtxt("community-history2").transpose()
     >>> plot(a[0], a[2])
     [...]
     >>> savefig("comm2-hist.png")
