@@ -25,7 +25,15 @@ using namespace graph_tool;
 bool check_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
                        boost::any iso_map);
 
+bool get_kruskal_spanning_tree(GraphInterface& gi, boost::any weight_map,
+                               boost::any tree_map);
+
+bool get_prim_spanning_tree(GraphInterface& gi, size_t root,
+                            boost::any weight_map, boost::any tree_map);
+
 BOOST_PYTHON_MODULE(libgraph_tool_topology)
 {
     def("check_isomorphism", &check_isomorphism);
+    def("get_kruskal_spanning_tree", &get_kruskal_spanning_tree);
+    def("get_prim_spanning_tree", &get_prim_spanning_tree);
 }

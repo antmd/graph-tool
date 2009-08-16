@@ -21,6 +21,7 @@
 
 #include <boost/lambda/bind.hpp>
 #include <boost/graph/kruskal_min_spanning_tree.hpp>
+#include <boost/graph/prim_minimum_spanning_tree.hpp>
 
 using namespace std;
 using namespace boost;
@@ -29,69 +30,125 @@ using namespace graph_tool;
 
 struct get_kruskal_min_span_tree
 {
-    template <class Graph, class IndexMap, class WeightMap, class TreePropMap>
-    void operator()(const Graph* gp, IndexMap vertex_index, WeightMap weights,
-                    TreePropMap tree_map) const
+    template <class TreeMap>
+    class tree_inserter
     {
-        const Graph& g = *gp;
-        typedef vector<typename graph_traits<Graph>::edge_descriptor>
-            tree_edges_t;
-        tree_edges_t tree_edges;
-        back_insert_iterator<tree_edges_t> tree_inserter(tree_edges);
+    public:
+        tree_inserter(TreeMap tree_map): _tree_map(tree_map) {}
 
-        kruskal_minimum_spanning_tree(g, tree_inserter, weight_map(weights));
+        tree_inserter& operator++() { return *this; }
+        tree_inserter& operator++(int) { return *this; }
+        tree_inserter& operator*() { return *this; }
 
-        typename graph_traits<Graph>::edge_iterator e, e_end;
-        for(tie(e, e_end) = edges(g); e != e_end; ++e)
-            tree_map[*e] = 0;
-        for(typeof(tree_edges.begin()) te = tree_edges.begin();
-            te != tree_edges.end(); ++te)
-            tree_map[*te] = 1;
+        tree_inserter& operator=
+        (const typename property_traits<TreeMap>::key_type& e)
+        {
+            _tree_map[e] = 1;
+            return *this;
+        }
+
+    private:
+        TreeMap _tree_map;
+    };
+
+    template <class Graph, class IndexMap, class WeightMap, class TreeMap>
+    void operator()(const Graph& g, IndexMap vertex_index, WeightMap weights,
+                    TreeMap tree_map) const
+    {
+        // typedef vector<typename graph_traits<Graph>::edge_descriptor>
+        //     tree_edges_t;
+        // tree_edges_t tree_edges;
+        // back_insert_iterator<tree_edges_t> tree_inserter(tree_edges);
+
+        kruskal_minimum_spanning_tree(g, tree_inserter<TreeMap>(tree_map),
+                                      weight_map(weights));
     }
 };
 
-void GraphInterface::GetMinimumSpanningTree(string weight, string property)
+struct get_prim_min_span_tree
 {
-    boost::any weight_map, tree_map;
+    template <class Graph, class IndexMap, class WeightMap, class TreeMap>
+    void operator()(const Graph& g, size_t root, IndexMap vertex_index,
+                    WeightMap weights, TreeMap tree_map) const
+    {
+        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
+        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
 
-    try
-    {
-        tree_map = prop(property, _edge_index, _properties);
-    }
-    catch (property_not_found)
-    {
-        typedef vector_property_map<bool, edge_index_map_t> tree_map_t;
-        tree_map_t new_tree_map(_edge_index);
-        _properties.property(property, new_tree_map);
-        tree_map = new_tree_map;
-    }
+        unchecked_vector_property_map<vertex_t,IndexMap>
+            pred_map(vertex_index, num_vertices(g));
+        prim_minimum_spanning_tree(g, pred_map,
+                                   root_vertex(vertex(root, g)).
+                                   weight_map(weights).
+                                   vertex_index_map(vertex_index));
 
-    if(weight != "")
-    {
-        try
+        // convert the predecessor map to a tree map, and avoid trouble with
+        // parallel edges
+        int i, N = num_vertices(g);
+        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
+        for (i = 0; i < N; ++i)
         {
-            weight_map = prop(weight, _edge_index, _properties);
-        }
-        catch (property_not_found)
-        {
-            throw GraphException("weight edge property " + weight +
-                                 " not found");
-        }
-    }
-    else
-    {
-        weight_map = ConstantPropertyMap<size_t,edge_t>(1);
-    }
+            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
 
-    bool directed = _directed;
-    _directed = false;
-    typedef mpl::push_back<edge_scalar_properties,
-                           ConstantPropertyMap<size_t,edge_t> >::type
+            vector<edge_t> edges;
+            vector<typename property_traits<WeightMap>::value_type> ws;
+            typename graph_traits<Graph>::out_edge_iterator e, e_end;
+            for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
+            {
+                if (target(*e,g) == pred_map[v])
+                {
+                    edges.push_back(*e);
+                    ws.push_back(weights[*e]);
+                }
+            }
+            if (!edges.empty())
+            {
+                edge_t e = *(edges.begin() +
+                             size_t(min_element(ws.begin(),
+                                                ws.end())-ws.begin()));
+                tree_map[e] = 1;
+            }
+        }
+    }
+};
+
+typedef property_map_types::apply<mpl::vector<uint8_t>,
+                                  GraphInterface::edge_index_map_t,
+                                  mpl::bool_<false> >::type
+    tree_properties;
+
+bool get_kruskal_spanning_tree(GraphInterface& gi, boost::any weight_map,
+                               boost::any tree_map)
+{
+
+    typedef ConstantPropertyMap<size_t,GraphInterface::edge_t> cweight_t;
+
+    if (weight_map.empty())
+        weight_map = cweight_t(1);
+
+    typedef mpl::push_back<edge_scalar_properties, cweight_t>::type
         weight_maps;
-    run_action<detail::never_directed>()
-        (*this, bind<void>(get_kruskal_min_span_tree(), _1, _vertex_index,
-                           _2, _3),
-         weight_maps(), edge_scalar_properties())(weight_map, tree_map);
 
-    _directed = directed;
+    run_action<graph_tool::detail::never_directed>()
+        (gi, bind<void>(get_kruskal_min_span_tree(), _1, gi.GetVertexIndex(),
+                        _2, _3),
+         weight_maps(), edge_scalar_properties())(weight_map, tree_map);
+}
+
+bool get_prim_spanning_tree(GraphInterface& gi, size_t root,
+                            boost::any weight_map, boost::any tree_map)
+{
+    typedef ConstantPropertyMap<size_t,GraphInterface::edge_t> cweight_t;
+
+    if (weight_map.empty())
+        weight_map = cweight_t(1);
+
+    typedef mpl::push_back<writable_edge_scalar_properties, cweight_t>::type
+        weight_maps;
+
+    run_action<graph_tool::detail::never_directed>()
+        (gi, bind<void>(get_prim_min_span_tree(), _1, root, gi.GetVertexIndex(),
+                        _2, _3),
+         weight_maps(), tree_properties())(weight_map, tree_map);
 }

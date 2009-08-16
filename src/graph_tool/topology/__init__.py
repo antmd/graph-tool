@@ -26,7 +26,7 @@ dl_import("import libgraph_tool_topology")
 
 from .. core import _prop
 import random, sys
-__all__ = ["isomorphism"]
+__all__ = ["isomorphism", "min_spanning_tree"]
 
 def isomorphism(g1, g2, isomap=None):
     if isomap == None:
@@ -34,3 +34,24 @@ def isomorphism(g1, g2, isomap=None):
     return libgraph_tool_topology.\
            check_isomorphism(g1._Graph__graph,g2._Graph__graph,
                              _prop("v", g1, isomap))
+
+def min_spanning_tree(g, weights=None, root=None, tree_map=None):
+    if tree_map == None:
+        tree_map = g.new_edge_property("bool")
+    if tree_map.value_type() != "bool":
+        raise ValueError("edge property 'tree_map' must be of value type bool.")
+
+    g.stash_filter(directed=True)
+    g.set_directed(False)
+    if root == None:
+        libgraph_tool_topology.\
+               get_kruskal_spanning_tree(g._Graph__graph,
+                                         _prop("e", g, weights),
+                                         _prop("e", g, tree_map))
+    else:
+        libgraph_tool_topology.\
+               get_prim_spanning_tree(g._Graph__graph, int(root),
+                                      _prop("e", g, weights),
+                                      _prop("e", g, tree_map))
+    g.pop_filter(directed=True)
+    return tree_map
