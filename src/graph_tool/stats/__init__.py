@@ -28,7 +28,8 @@ from .. core import _degree, _prop
 from numpy import *
 
 __all__ = ["vertex_hist", "edge_hist", "vertex_average", "edge_average",
-           "label_components", "label_parallel_edges", "remove_parallel_edges",
+           "label_components", "label_biconnected_components",
+           "label_parallel_edges", "remove_parallel_edges",
            "label_self_loops", "remove_self_loops", "remove_labeled_edges"]
 
 def vertex_hist(g, deg, bins=[1], float_count=True):
@@ -294,6 +295,21 @@ def label_components(g, vprop=None, directed=None):
     if directed != None:
         g.pop_filter(directed=True)
     return vprop
+
+def label_biconnected_components(g, eprop=None, vprop=None):
+
+    if vprop == None:
+        vprop = g.new_vertex_property("bool")
+    if eprop == None:
+        eprop = g.new_edge_property("int32_t")
+
+    g.stash_filter(directed=True)
+    g.set_directed(False)
+    nc = libgraph_tool_stats.\
+          label_biconnected_components(g._Graph__graph, _prop("e", g, eprop),
+                                       _prop("v", g, vprop))
+    g.pop_filter(directed=True)
+    return eprop, vprop, nc
 
 def remove_labeled_edges(g, label):
     g.stash_filter(all=False, directed=True, reversed=True)

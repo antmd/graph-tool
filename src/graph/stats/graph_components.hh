@@ -18,6 +18,7 @@
 
 #include <boost/graph/connected_components.hpp>
 #include <boost/graph/strong_components.hpp>
+#include <boost/graph/biconnected_components.hpp>
 
 namespace graph_tool
 {
@@ -25,8 +26,8 @@ using namespace std;
 using namespace boost;
 
 // this will label the components of a graph to a given vertex property, from
-// [0, number of components - 1]. If the graph is directed the "strong
-// components" are used.
+// [0, number of components - 1]. If the graph is directed the strong
+// components are used.
 struct label_components
 {
     template <class Graph, class CompMap>
@@ -53,6 +54,39 @@ struct label_components
         connected_components(g, comp_map);
     }
 };
+
+struct label_biconnected_components
+{
+    template <class ArtMap>
+    class vertex_inserter
+    {
+    public:
+        vertex_inserter(ArtMap art_map): _art_map(art_map) {}
+
+        vertex_inserter& operator++() { return *this; }
+        vertex_inserter& operator++(int) { return *this; }
+        vertex_inserter& operator*() { return *this; }
+
+        vertex_inserter& operator=
+        (const typename property_traits<ArtMap>::key_type& e)
+        {
+            put(_art_map, e, 1);
+            return *this;
+        }
+
+    private:
+        ArtMap _art_map;
+    };
+
+    template <class Graph, class CompMap, class ArtMap>
+    void operator()(const Graph& g, CompMap comp_map, ArtMap art_map,
+                    size_t& nc) const
+    {
+        nc = biconnected_components(g, comp_map,
+                                    vertex_inserter<ArtMap>(art_map)).first;
+    }
+};
+
 
 } // graph_tool namespace
 

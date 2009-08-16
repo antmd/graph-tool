@@ -26,13 +26,28 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-void do_label_components(GraphInterface& gi, boost::any prop)
+void  do_label_components(GraphInterface& gi, boost::any prop)
 {
     run_action<>()(gi, label_components(),
                    writable_vertex_scalar_properties())(prop);
 }
 
+size_t do_label_biconnected_components(GraphInterface& gi, boost::any comp,
+                                       boost::any art)
+{
+    size_t nc;
+    run_action<graph_tool::detail::never_directed>()
+        (gi, bind<void>(label_biconnected_components(), _1, _2, _3,
+                        ref(nc)),
+         writable_edge_scalar_properties(),
+         writable_vertex_scalar_properties())
+        (comp, art);
+    return nc;
+}
+
 void export_components()
 {
     python::def("label_components", &do_label_components);
+    python::def("label_biconnected_components",
+                &do_label_biconnected_components);
 };
