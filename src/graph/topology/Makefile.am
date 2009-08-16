@@ -20,6 +20,8 @@ libgraph_tool_topology_la_SOURCES = \
     graph_minimum_spanning_tree.cc \
     graph_denominator_tree.cc \
     graph_topological_sort.cc \
-    graph_transitive_closure.cc
+    graph_transitive_closure.cc \
+    graph_components.cc
 
-libgraph_tool_topology_la_include_HEADERS =
+libgraph_tool_topology_la_include_HEADERS = \
+    graph_components.hh

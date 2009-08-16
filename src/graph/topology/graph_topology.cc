@@ -37,6 +37,8 @@ bool denominator_tree(GraphInterface& gi, size_t entry, boost::any pred_map);
 
 void transitive_closure(GraphInterface& gi, GraphInterface& tcgi);
 
+void export_components();
+
 BOOST_PYTHON_MODULE(libgraph_tool_topology)
 {
     def("check_isomorphism", &check_isomorphism);
@@ -45,4 +47,5 @@ BOOST_PYTHON_MODULE(libgraph_tool_topology)
     def("topological_sort", &topological_sort);
     def("denominator_tree", &denominator_tree);
     def("transitive_closure", &transitive_closure);
+    export_components();
 }

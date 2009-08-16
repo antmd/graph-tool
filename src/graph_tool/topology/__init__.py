@@ -31,12 +31,16 @@ __all__ = ["isomorphism", "min_spanning_tree", "denominator_tree",
            "topological_sort", "transitive_closure", "label_components",
            "label_biconnected_components"]
 
-def isomorphism(g1, g2, isomap=None):
-    if isomap == None:
-        isomap = g1.new_vertex_property("int32_t")
-    return libgraph_tool_topology.\
+def isomorphism(g1, g2, isomap=False):
+    imap = g1.new_vertex_property("int32_t")
+    iso = libgraph_tool_topology.\
            check_isomorphism(g1._Graph__graph,g2._Graph__graph,
                              _prop("v", g1, isomap))
+    if isomap:
+        return iso, imap
+    else:
+        return iso
+
 
 def min_spanning_tree(g, weights=None, root=None, tree_map=None):
     if tree_map == None:
@@ -77,8 +81,6 @@ def topological_sort(g):
     libgraph_tool_topology.\
                topological_sort(g._Graph__graph, topological_order)
     return topological_order
-<<<<<<< HEAD
-=======
 
 def transitive_closure(g):
     if not g.is_directed():
@@ -164,4 +166,3 @@ def label_biconnected_components(g, eprop=None, vprop=None):
                                        _prop("v", g, vprop))
     g.pop_filter(directed=True)
     return eprop, vprop, nc
->>>>>>> 3b8ab1b... merge transitive closure

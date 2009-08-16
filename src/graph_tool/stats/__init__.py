@@ -28,7 +28,6 @@ from .. core import _degree, _prop
 from numpy import *
 
 __all__ = ["vertex_hist", "edge_hist", "vertex_average", "edge_average",
-           "label_components", "label_biconnected_components",
            "label_parallel_edges", "remove_parallel_edges",
            "label_self_loops", "remove_self_loops", "remove_labeled_edges"]
 
@@ -242,74 +241,6 @@ def edge_average(g, eprop):
     ret = libgraph_tool_stats.\
           get_edge_average(g._Graph__graph, _prop("e", g, eprop))
     return ret
-
-def label_components(g, vprop=None, directed=None):
-    """
-    Labels the components to which each vertex in the graph belongs. If the
-    graph is directed, it finds the strongly connected components.
-
-    Parameters
-    ----------
-    g : Graph
-        Graph to be used.
-
-    vprop : PropertyMap (optional, default: None)
-        Vertex property to store the component labels. If none is supplied, one
-        is created.
-
-    directed : bool (optional, default:None)
-        Treat graph as directed or not, independently of its actual
-        directionality.
-
-    Returns
-    -------
-    comp : PropertyMap
-        Vertex property map with component labels.
-
-    Notes
-    -----
-    The components are arbitrarily labeled from 0 to N-1, where N is the total
-    number of components.
-
-    The algorithm runs in :math:`O(|V| + |E|)` time.
-
-    Examples
-    --------
-    >>> g = gt.random_graph(100, lambda: (1, 1), seed=42)
-    >>> comp = gt.label_components(g)
-    >>> print comp.get_array()
-    [0 1 2 3 4 0 3 3 4 4 2 3 4 0 3 3 3 3 0 3 2 1 3 0 0 2 2 3 3 3 0 1 2 3 2 3 0
-     1 0 5 5 1 4 2 2 1 0 3 3 3 3 3 3 0 0 3 4 2 3 2 5 5 0 2 1 0 3 2 0 3 3 0 4 3
-     2 6 2 2 1 3 1 1 0 3 0 1 3 0 3 0 2 0 2 2 0 6 1 1 0 2]
-    """
-
-    if directed != None:
-        g.stash_filter(directed=True)
-        g.set_directed(directed)
-
-    if vprop == None:
-        vprop = g.new_vertex_property("int32_t")
-    libgraph_tool_stats.\
-          label_components(g._Graph__graph, _prop("v", g, vprop))
-
-    if directed != None:
-        g.pop_filter(directed=True)
-    return vprop
-
-def label_biconnected_components(g, eprop=None, vprop=None):
-
-    if vprop == None:
-        vprop = g.new_vertex_property("bool")
-    if eprop == None:
-        eprop = g.new_edge_property("int32_t")
-
-    g.stash_filter(directed=True)
-    g.set_directed(False)
-    nc = libgraph_tool_stats.\
-          label_biconnected_components(g._Graph__graph, _prop("e", g, eprop),
-                                       _prop("v", g, vprop))
-    g.pop_filter(directed=True)
-    return eprop, vprop, nc
 
 def remove_labeled_edges(g, label):
     g.stash_filter(all=False, directed=True, reversed=True)

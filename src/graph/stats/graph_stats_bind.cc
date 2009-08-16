@@ -17,14 +17,12 @@
 
 using namespace boost;
 
-void export_components();
 void export_parallel();
 void export_histograms();
 void export_average();
 
 BOOST_PYTHON_MODULE(libgraph_tool_stats)
 {
-    export_components();
     export_parallel();
     export_histograms();
     export_average();
