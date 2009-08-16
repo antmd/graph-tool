@@ -24,10 +24,10 @@
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_generation")
 
-from .. core import Graph
+from .. core import Graph, _check_prop_scalar, _prop
 import sys, numpy
 
-__all__ = ["random_graph", "random_rewire"]
+__all__ = ["random_graph", "random_rewire", "predecessor_tree"]
 
 def _corr_wrap(i, j, corr):
     return corr(i[1], j[1])
@@ -376,3 +376,14 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
     libgraph_tool_generation.random_rewire(g._Graph__graph, strat, self_loops,
                                            parallel_edges, seed)
     g.pop_filter(reversed=True)
+
+def predecessor_tree(g, pred_map):
+    """Return a graph from a list of predecessors given by
+    the 'pred_map' vertex property."""
+
+    _check_prop_scalar(pred_map, "pred_map")
+    pg = Graph()
+    libgraph_tool_generation.predecessor_graph(g._Graph__graph,
+                                               pg._Graph__graph,
+                                               _prop("v", g, pred_map))
+    return pg
