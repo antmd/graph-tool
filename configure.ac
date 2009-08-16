@@ -291,7 +291,7 @@ src/graph/centrality/Makefile
 src/graph/clustering/Makefile
 src/graph/community/Makefile
 src/graph/util/Makefile
-src/graph/misc/Makefile
+src/graph/topology/Makefile
 src/graph_tool/Makefile
 ])
 

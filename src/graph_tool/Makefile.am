@@ -50,6 +50,6 @@ graph_tool_util_PYTHON = \
     util/__init__.py
 graph_tool_utildir = $(MOD_DIR)/util
 
-graph_tool_misc_PYTHON = \
-    misc/__init__.py
-graph_tool_miscdir = $(MOD_DIR)/misc
+graph_tool_topology_PYTHON = \
+    topology/__init__.py
+graph_tool_topologydir = $(MOD_DIR)/topology

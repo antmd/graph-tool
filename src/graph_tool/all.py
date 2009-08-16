@@ -45,7 +45,7 @@ from graph_tool.community import *
 import graph_tool.community
 from graph_tool.run_action import *
 graph_tool.run_action
-from graph_tool.misc import *
-import graph_tool.misc
+from graph_tool.topology import *
+import graph_tool.topology
 from graph_tool.util import *
 import graph_tool.util

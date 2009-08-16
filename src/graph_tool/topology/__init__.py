@@ -17,12 +17,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-``graph_tool.misc`` - Miscellaneous functions
----------------------------------------------
+``graph_tool.topology`` - Topology related functions
+----------------------------------------------------
 """
 
 from .. dl_import import dl_import
-dl_import("import libgraph_tool_misc")
+dl_import("import libgraph_tool_topology")
 
 from .. core import _prop
 import random, sys
@@ -31,6 +31,6 @@ __all__ = ["isomorphism"]
 def isomorphism(g1, g2, isomap=None):
     if isomap == None:
         isomap = g1.new_vertex_property("int32_t")
-    return libgraph_tool_misc.\
+    return libgraph_tool_topology.\
            check_isomorphism(g1._Graph__graph,g2._Graph__graph,
                              _prop("v", g1, isomap))

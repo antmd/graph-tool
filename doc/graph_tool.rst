@@ -12,7 +12,7 @@ Available subpackages
    correlations
    draw
    generation
-   misc
+   topology
    run_action
    stats
    util 

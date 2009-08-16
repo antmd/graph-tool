@@ -25,7 +25,7 @@ using namespace graph_tool;
 bool check_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
                        boost::any iso_map);
 
-BOOST_PYTHON_MODULE(libgraph_tool_misc)
+BOOST_PYTHON_MODULE(libgraph_tool_topology)
 {
     def("check_isomorphism", &check_isomorphism);
 }
