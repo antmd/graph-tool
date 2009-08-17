@@ -30,7 +30,7 @@ dl_import("import libgraph_tool_community")
 from .. core import _degree, _prop, Graph, libcore
 import random, sys
 
-__all__ = ["community_structure", "modularity", "community_network"]
+__all__ = ["community_structure", "modularity", "condensation_graph"]
 
 
 def community_structure(g, n_iter, n_spins, gamma=1.0, corr= "erdos",
@@ -74,7 +74,7 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr= "erdos",
     --------
     community_structure: obtain the community structure
     modularity: calculate the network modularity
-    community_network: network of communities
+    condensation_graph: network of communities
 
     Notes
     -----
@@ -228,7 +228,7 @@ def modularity(g, prop, weight=None):
     --------
     community_structure: obtain the community structure
     modularity: calculate the network modularity
-    community_network: network of communities
+    condensation_graph: network of communities
 
     Notes
     -----
@@ -267,9 +267,10 @@ def modularity(g, prop, weight=None):
                                            _prop("v", g, prop))
     return m
 
-def community_network(g, prop, weight=None):
+def condensation_graph(g, prop, weight=None):
     r"""
-    Obtain the network of communities.
+    Obtain the condensation graph, where each vertex with the same 'prop' value
+    is condensed in one vertex.
 
     Parameters
     ----------
@@ -282,7 +283,7 @@ def community_network(g, prop, weight=None):
 
     Returns
     -------
-    community_network : Graph
+    condensation_graph : Graph
         The community network
     vcount : PropertyMap
         A vertex property map with the vertex count for each community.
@@ -293,13 +294,14 @@ def community_network(g, prop, weight=None):
     --------
     community_structure: obtain the community structure
     modularity: calculate the network modularity
-    community_network: network of communities
+    condensation_graph:  network of communities
 
     Notes
     -----
-    Each vertex in the community network represents one community in the
-    original graph, and the edges represent existent edges between vertices of
-    the respective communities in the original graph.
+    Each vertex in the condensation graph represents one community in the
+    original graph (vertices with the same 'prop' value'), and the edges
+    represent existent edges between vertices of the respective communities in
+    the original graph.
 
     Examples
     --------
@@ -308,7 +310,7 @@ def community_network(g, prop, weight=None):
     >>> seed(42)
     >>> g = gt.random_graph(1000, lambda: poisson(3), directed=False)
     >>> spins = gt.community_structure(g, 10000, 100)
-    >>> ng = gt.community_network(g, spins)
+    >>> ng = gt.condensation_graph(g, spins)
     >>> size = ng[0].new_vertex_property("double")
     >>> size.get_array()[:] = log(ng[1].get_array()+1)
     >>> gt.graph_draw(ng[0], vsize=size, vcolor=size, splines=True,
