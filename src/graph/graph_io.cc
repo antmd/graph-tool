@@ -544,7 +544,10 @@ python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
     {
         throw IOException("error reading from file '" + file + "':" + e.what());
     }
-
+    catch (parse_error &e)
+    {
+        throw IOException("error reading from file '" + file + "':" + e.what());
+    }
 };
 
 template <class IndexMap>
