@@ -53,3 +53,7 @@ graph_tool_utildir = $(MOD_DIR)/util
 graph_tool_topology_PYTHON = \
     topology/__init__.py
 graph_tool_topologydir = $(MOD_DIR)/topology
+
+graph_tool_flow_PYTHON = \
+    flow/__init__.py
+graph_tool_flowdir = $(MOD_DIR)/flow
