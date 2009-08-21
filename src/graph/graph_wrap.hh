@@ -40,6 +40,9 @@ class GraphWrap
     typedef typename Graph::graph_tag graph_tag;
     typedef Graph orig_graph_t;
 
+    typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
+    typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
+
     Graph& _g;
     GraphInterface& _gi;
 };
@@ -52,6 +55,10 @@ GraphWrap<Graph> graph_wrap(Graph& g, GraphInterface& gi)
 
 template <class Graph>
 struct graph_traits<GraphWrap<Graph> >: public graph_traits<Graph> {};
+
+template <class Graph>
+struct graph_traits<const GraphWrap<Graph> >:
+        public graph_traits<const Graph> {};
 
 template <class Graph>
 inline typename graph_traits<GraphWrap<Graph> >::vertex_descriptor
@@ -165,7 +172,7 @@ inline std::pair<typename graph_traits<GraphWrap<Graph> >::edge_descriptor,
                  bool>
 add_edge(typename graph_traits<GraphWrap<Graph> >::vertex_descriptor u,
          typename graph_traits<GraphWrap<Graph> >::vertex_descriptor v,
-         GraphWrap<Graph>& g)
+         GraphWrap<Graph> g)
 {
     std::pair<typename graph_traits<GraphWrap<Graph> >::edge_descriptor, bool>
         retval = add_edge(u, v, g._g);
@@ -176,7 +183,7 @@ add_edge(typename graph_traits<GraphWrap<Graph> >::vertex_descriptor u,
 template <class Graph>
 inline void remove_edge
 (typename graph_traits<GraphWrap<Graph> >::edge_descriptor e,
- GraphWrap<Graph>& g)
+ GraphWrap<Graph> g)
 {
     g._gi.RemoveEdgeIndex(e);
 }
@@ -185,7 +192,7 @@ template <class Graph>
 inline void remove_edge
 (typename graph_traits<GraphWrap<Graph> >::vertex_descriptor u,
  typename graph_traits<GraphWrap<Graph> >::vertex_descriptor v,
- Graph& g)
+ GraphWrap<Graph> g)
 {
     vector<typename graph_traits<GraphWrap<Graph> >::edge_descriptor>
         removed_edges;
@@ -202,7 +209,7 @@ inline void remove_edge
 
 template <class Graph>
 inline typename graph_traits<GraphWrap<Graph> >::vertex_descriptor
-add_vertex(GraphWrap<Graph>& g)
+add_vertex(GraphWrap<Graph> g)
 {
     return add_vertex(g._g);
 }
@@ -210,7 +217,7 @@ add_vertex(GraphWrap<Graph>& g)
 template <class Graph>
 inline void clear_vertex
 (typename graph_traits<GraphWrap<Graph> >::vertex_descriptor u,
- GraphWrap<Graph>& g)
+ GraphWrap<Graph> g)
 {
     typedef GraphWrap<Graph> graph_t;
     vector<typename graph_traits<graph_t>::edge_descriptor> del_es;
@@ -231,7 +238,7 @@ inline void clear_vertex
 template <class Graph>
 inline void remove_vertex
 (typename graph_traits<GraphWrap<Graph> >::vertex_descriptor u,
- GraphWrap<Graph>& g)
+ GraphWrap<Graph> g)
 {
     clear_vertex(u, g);
     remove_vertex(u, g._g);
@@ -241,7 +248,7 @@ template <class Graph, class Predicate>
 inline void
 remove_out_edge_if
 (typename graph_traits<GraphWrap<Graph> >::vertex_descriptor u,
- Predicate predicate, Graph& g)
+ Predicate predicate, GraphWrap<Graph> g)
 {
     vector<typename graph_traits<GraphWrap<Graph> >::edge_descriptor>
         removed_edges;

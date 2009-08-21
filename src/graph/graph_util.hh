@@ -193,6 +193,18 @@ void remove_edge(typename graph_traits
 }
 
 //==============================================================================
+//remove_edge(e, reverse_graph<G>)
+//==============================================================================
+template <class Graph>
+inline
+void remove_edge
+(typename graph_traits<reverse_graph<Graph> >::edge_descriptor e,
+ reverse_graph<Graph>& g)
+{
+    return remove_edge(e,const_cast<Graph&>(g.m_g));
+}
+
+//==============================================================================
 // add_vertex(filtered_graph<G>)
 //==============================================================================
 template <class Graph, class EdgePredicate, class VertexPredicate>
