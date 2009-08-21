@@ -288,8 +288,7 @@ struct graph_type_name
 string get_graph_type(GraphInterface& g)
 {
     string name;
-    run_action<>()(g, lambda::bind<void>(graph_type_name(), lambda::_1,
-                                         lambda::var(name)))();
+    run_action<>()(g, bind<void>(graph_type_name(), _1, ref(name)))();
     return name;
 }
 

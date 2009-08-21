@@ -18,7 +18,6 @@
 #ifndef PYTHON_INTERFACE_HH
 #define PYTHON_INTERFACE_HH
 
-#include <boost/lambda/bind.hpp>
 #include <boost/graph/graph_traits.hpp>
 #include <boost/mpl/logical.hpp>
 #include <boost/functional/hash.hpp>
@@ -117,9 +116,9 @@ public:
     {
         CheckValid();
         size_t in_deg;
-        run_action<>()(_gi,lambda::bind<void>(get_degree<in_degreeS>(),
-                                              lambda::_1, _v,
-                                              lambda::var(in_deg)))();
+        run_action<>()(_gi, bind<void>(get_degree<in_degreeS>(),
+                                       _1, _v,
+                                       ref(in_deg)))();
         return in_deg;
     }
 
@@ -127,9 +126,8 @@ public:
     {
         CheckValid();
         size_t out_deg;
-        run_action<>()(_gi,lambda::bind<void>(get_degree<out_degreeS>(),
-                                              lambda::_1, _v,
-                                              lambda::var(out_deg)))();
+        run_action<>()(_gi, bind<void>(get_degree<out_degreeS>(), _1, _v,
+                                       ref(out_deg)))();
         return out_deg;
     }
 
@@ -155,9 +153,8 @@ public:
     {
         CheckValid();
         python::object iter;
-        run_action<>()(_gi, lambda::bind<void>(get_out_edges(), lambda::_1,
-                                               lambda::var(_gi), _v,
-                                               lambda::var(iter)))();
+        run_action<>()(_gi, bind<void>(get_out_edges(), _1,
+                                       ref(_gi), _v, ref(iter)))();
         return iter;
     }
 
@@ -181,9 +178,8 @@ public:
     {
         CheckValid();
         python::object iter;
-        run_action<>()(_gi, lambda::bind<void>(get_in_edges(), lambda::_1,
-                                               lambda::var(_gi), _v,
-                                               lambda::var(iter)))();
+        run_action<>()(_gi, bind<void>(get_in_edges(), _1, ref(_gi),
+                                       _v, ref(iter)))();
         return iter;
     }
 
@@ -276,10 +272,8 @@ public:
     {
         CheckValid();
         python::object v;
-        run_action<>()(_gi, lambda::bind<void>(get_source(), lambda::_1,
-                                               lambda::var(_gi),
-                                               lambda::var(_e),
-                                               lambda::var(v)))();
+        run_action<>()(_gi, bind<void>(get_source(), _1, ref(_gi), ref(_e),
+                                       ref(v)))();
         return v;
     }
 
@@ -298,10 +292,8 @@ public:
     {
         CheckValid();
         python::object v;
-        run_action<>()(_gi, lambda::bind<void>(get_target(), lambda::_1,
-                                               lambda::var(_gi),
-                                               lambda::var(_e),
-                                               lambda::var(v)))();
+        run_action<>()(_gi, bind<void>(get_target(), _1, ref(_gi), ref(_e),
+                                       ref(v)))();
         return v;
     }
 
@@ -498,11 +490,8 @@ python::object new_property(const string& type, IndexMap index_map)
 {
     python::object prop;
     bool found = false;
-    mpl::for_each<value_types>(lambda::bind<void>(new_property_map(),
-                                                  lambda::_1, index_map,
-                                                  lambda::var(type),
-                                                  lambda::var(prop),
-                                                  lambda::var(found)));
+    mpl::for_each<value_types>(bind<void>(new_property_map(), _1, index_map,
+                                          ref(type), ref(prop), ref(found)));
     if (!found)
         throw ValueException("Invalid property type: " + type);
     return prop;

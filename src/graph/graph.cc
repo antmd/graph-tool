@@ -16,20 +16,16 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include <iostream>
-#include <boost/lambda/lambda.hpp>
-#include <boost/lambda/bind.hpp>
-
-#include <unistd.h>    /* standard unix functions, like getpid()         */
-#include <sys/types.h> /* various type definitions, like pid_t           */
-#include <signal.h>    /* signal name macros, and the signal() prototype */
 
 #include "graph.hh"
 #include "graph_filtering.hh"
 #include "graph_properties.hh"
 
+#include <boost/lambda/lambda.hpp>
+#include <boost/lambda/bind.hpp>
+
 using namespace std;
 using namespace boost;
-using namespace boost::lambda;
 using namespace graph_tool;
 
 
@@ -64,9 +60,11 @@ size_t GraphInterface::GetNumberOfVertices()
 {
     size_t n = 0;
     if (IsVertexFilterActive())
-        run_action<>()(*this, var(n)=bind<size_t>(HardNumVertices(),_1))();
+        run_action<>()(*this, lambda::var(n) =
+                       lambda::bind<size_t>(HardNumVertices(),lambda::_1))();
     else
-        run_action<>()(*this, var(n)=bind<size_t>(SoftNumVertices(),_1))();
+        run_action<>()(*this, lambda::var(n) =
+                       lambda::bind<size_t>(SoftNumVertices(),lambda::_1))();
     return n;
 }
 
@@ -75,9 +73,11 @@ size_t GraphInterface::GetNumberOfVertices()
 // linear complexity, since num_edges() is O(E) in Boost's adjacency_list
 size_t GraphInterface::GetNumberOfEdges()
 {
+    using namespace boost::lambda;
     size_t n = 0;
     if (IsEdgeFilterActive() || IsVertexFilterActive())
-        run_action<>()(*this, var(n)=bind<size_t>(HardNumEdges(),_1))();
+        run_action<>()(*this, lambda::var(n) =
+                       lambda::bind<size_t>(HardNumEdges(),lambda::_1))();
     else
         n = _nedges;
     return n;

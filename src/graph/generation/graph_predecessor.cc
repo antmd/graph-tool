@@ -15,8 +15,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/lambda/bind.hpp>
-
 #include "graph.hh"
 #include "graph_filtering.hh"
 
@@ -24,7 +22,6 @@
 
 using namespace graph_tool;
 using namespace boost;
-using namespace boost::lambda;
 
 void predecessor_graph(GraphInterface& gi, GraphInterface& gpi,
                        boost::any pred_map)

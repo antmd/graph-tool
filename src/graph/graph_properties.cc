@@ -20,12 +20,10 @@
 #include "graph_selectors.hh"
 #include "graph_util.hh"
 
-#include <boost/lambda/bind.hpp>
 #include <boost/mpl/for_each.hpp>
 
 using namespace std;
 using namespace boost;
-using namespace boost::lambda;
 using namespace graph_tool;
 
 namespace graph_tool
@@ -61,8 +59,8 @@ void GraphInterface::ShiftVertexProperty(boost::any prop, size_t index) const
 {
     bool found = false;
     mpl::for_each<writable_vertex_properties>
-        (lambda::bind<void>(shift_vertex_property(), _1, var(_mg),
-                            prop, index, var(found)));
+        (bind<void>(shift_vertex_property(), _1, ref(_mg),
+                    prop, index, ref(found)));
     if (!found)
         throw GraphException("invalid writable property map");
 }

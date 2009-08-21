@@ -23,7 +23,7 @@
 #include <boost/mpl/find.hpp>
 #include <boost/mpl/for_each.hpp>
 #include <boost/python/object.hpp>
-#include <boost/lambda/bind.hpp>
+#include <boost/bind.hpp>
 #include <exception>
 
 namespace boost
@@ -292,11 +292,10 @@ struct get_string
 template <typename ValueTypes, typename Descriptor>
 std::string print_value(dynamic_property_map& pmap, Descriptor v)
 {
-    using namespace boost::lambda;
     std::string val;
     boost::any oval = pmap.get(v);
-    mpl::for_each<ValueTypes>(bind<void>(get_string(), var(oval),
-                                         var(val), _1));
+    mpl::for_each<ValueTypes>(bind<void>(get_string(), ref(oval),
+                                         ref(val), _1));
     return val;
 }
 

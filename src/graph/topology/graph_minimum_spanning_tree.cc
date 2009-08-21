@@ -24,7 +24,6 @@
 
 using namespace std;
 using namespace boost;
-using namespace boost::lambda;
 using namespace graph_tool;
 
 struct get_kruskal_min_span_tree

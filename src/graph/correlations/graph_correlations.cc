@@ -17,7 +17,6 @@
 
 #include "graph_filtering.hh"
 
-#include <boost/lambda/bind.hpp>
 #include <boost/python.hpp>
 
 #include "graph.hh"
@@ -31,7 +30,6 @@
 
 using namespace std;
 using namespace boost;
-using namespace boost::lambda;
 using namespace graph_tool;
 
 // implementations spread across different compile units to minimize memory

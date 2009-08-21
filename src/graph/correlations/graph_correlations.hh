@@ -32,7 +32,6 @@ namespace graph_tool
 {
 using namespace std;
 using namespace boost;
-using namespace boost::lambda;
 
 // get degrees pairs from source and of neighbours
 class GetNeighboursPairs

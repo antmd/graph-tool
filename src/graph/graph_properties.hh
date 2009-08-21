@@ -32,7 +32,7 @@
 #include <boost/mpl/for_each.hpp>
 #include <boost/mpl/transform.hpp>
 #include <boost/mpl/find.hpp>
-#include <boost/lambda/bind.hpp>
+#include <boost/bind.hpp>
 
 #include "graph.hh"
 
@@ -185,20 +185,18 @@ public:
     {
         if (_all_names.empty())
         {
-            using namespace lambda;
             mpl::for_each<TypeSequence>
-                (lambda::bind<void>(get_all_names(), lambda::_1,
-                                    var(_type_names), var(_all_names)));
+                (bind<void>(get_all_names(), _1,
+                            ref(_type_names), ref(_all_names)));
         }
     }
 
     const string& operator()(const type_info& type) const
     {
-        using namespace lambda;
         string* name;
         mpl::for_each<TypeSequence>
-            (lambda::bind<void>(find_name(), lambda::_1, var(type),
-                                var(_all_names), var(name)));
+            (bind<void>(find_name(), _1, ref(type),
+                        ref(_all_names), ref(name)));
         return *name;
     }
 
@@ -262,8 +260,7 @@ public:
     {
         ValueConverter* converter = 0;
         mpl::for_each<PropertyTypes>
-            (lambda::bind<void>(choose_converter(), lambda::_1,
-                                lambda::var(pmap), lambda::var(converter)));
+            (bind<void>(choose_converter(), _1, ref(pmap), ref(converter)));
         if (converter == 0)
             throw bad_lexical_cast();
         else

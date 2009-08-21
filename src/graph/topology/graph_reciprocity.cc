@@ -16,9 +16,6 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 
-#include <boost/lambda/lambda.hpp>
-#include <boost/lambda/bind.hpp>
-
 #include "graph.hh"
 #include "graph_filtering.hh"
 #include "graph_selectors.hh"
@@ -26,7 +23,6 @@
 
 using namespace std;
 using namespace boost;
-using namespace boost::lambda;
 using namespace graph_tool;
 
 struct get_reciprocity

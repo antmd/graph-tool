@@ -22,7 +22,6 @@
 #include <tr1/unordered_set>
 #include <iostream>
 #include <iomanip>
-#include <boost/lambda/bind.hpp>
 #include <boost/graph/graphviz.hpp>
 #include <boost/graph/graphml.hpp>
 #include <boost/algorithm/string.hpp>
@@ -33,7 +32,6 @@
 
 using namespace std;
 using namespace boost;
-using namespace boost::lambda;
 using namespace graph_tool;
 
 // retrieves the line graph

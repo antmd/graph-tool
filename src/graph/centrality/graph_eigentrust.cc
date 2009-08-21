@@ -18,7 +18,6 @@
 #include "graph_filtering.hh"
 
 #include <boost/python.hpp>
-#include <boost/lambda/bind.hpp>
 
 #include "graph.hh"
 #include "graph_selectors.hh"

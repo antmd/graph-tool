@@ -29,10 +29,9 @@ pair<double,double>
 assortativity_coefficient(GraphInterface& gi,
                           GraphInterface::deg_t deg)
 {
-    using namespace boost::lambda;
     double a, a_err;
     run_action<>()(gi,bind<void>(get_assortativity_coefficient(), _1, _2,
-                                 var(a), var(a_err)), scalar_selectors())
+                                 ref(a), ref(a_err)), scalar_selectors())
         (degree_selector(deg));
     return make_pair(a, a_err);
 }
@@ -41,10 +40,9 @@ pair<double,double>
 scalar_assortativity_coefficient(GraphInterface& gi,
                                  GraphInterface::deg_t deg)
 {
-    using namespace boost::lambda;
     double a, a_err;
     run_action<>()(gi, bind<void>(get_scalar_assortativity_coefficient(),
-                                  _1, _2, var(a), var(a_err)),
+                                  _1, _2, ref(a), ref(a_err)),
                    scalar_selectors())
         (degree_selector(deg));
     return make_pair(a, a_err);

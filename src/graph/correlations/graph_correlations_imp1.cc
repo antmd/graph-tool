@@ -17,8 +17,6 @@
 
 #include "graph_filtering.hh"
 
-#include <boost/lambda/bind.hpp>
-
 #include "graph.hh"
 #include "histogram.hh"
 #include "graph_selectors.hh"
@@ -28,7 +26,6 @@
 
 using namespace std;
 using namespace boost;
-using namespace boost::lambda;
 using namespace graph_tool;
 
 

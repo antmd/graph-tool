@@ -32,9 +32,8 @@ find_vertex_range(GraphInterface& gi, GraphInterface::deg_t deg,
 {
     python::list ret;
 
-    run_action<>()(gi, lambda::bind<void>(find_vertices(), lambda::_1,
-                                          lambda::var(gi), lambda::_2,
-                                          lambda::var(range), lambda::var(ret)),
+    run_action<>()(gi, bind<void>(find_vertices(), _1, ref(gi), _2, ref(range),
+                                  ref(ret)),
                    all_selectors())(degree_selector(deg));
     return ret;
 }
@@ -52,10 +51,8 @@ find_edge_range(GraphInterface& gi, boost::any eprop,
 
     GraphInterface::edge_index_map_t eindex =
         any_cast<GraphInterface::edge_index_map_t>(gi.GetEdgeIndex());
-    run_action<>()(gi, lambda::bind<void>(find_edges(), lambda::_1,
-                                          lambda::var(gi), eindex,
-                                          lambda::_2, lambda::var(range),
-                                          lambda::var(ret)),
+    run_action<>()(gi, bind<void>(find_edges(), _1, ref(gi), eindex,
+                                  _2, ref(range), ref(ret)),
                    all_edge_props())(eprop);
     return ret;
 }

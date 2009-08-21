@@ -15,14 +15,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/lambda/bind.hpp>
 #include <boost/variant/get.hpp>
 #include "graph.hh"
 #include "graph_selectors.hh"
 
 using namespace graph_tool;
 using namespace boost;
-using namespace boost::lambda;
 
 // retrieves the appropriate degree selector
 boost::any graph_tool::degree_selector(GraphInterface::deg_t deg)
@@ -34,14 +32,15 @@ boost::any graph_tool::degree_selector(GraphInterface::deg_t deg)
     if (d != 0)
     {
         mpl::for_each<selectors>
-            (bind<void>(get_degree_selector(), _1, *d, var(sel)));
+            (bind<void>(get_degree_selector(), _1, *d, ref(sel)));
     }
     else
     {
         boost::any* d = boost::get<boost::any>(&deg);
         bool found = false;
         mpl::for_each<vertex_properties>
-            (bind<void>(get_scalar_selector(), _1, *d, var(sel), var(found)));
+            (bind<void>(get_scalar_selector(), _1, *d, ref(sel),
+                        ref(found)));
         if (!found)
             throw ValueException("invalid degree selector");
     }

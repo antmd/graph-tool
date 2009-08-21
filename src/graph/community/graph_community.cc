@@ -20,7 +20,6 @@
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
 
-#include <boost/lambda/bind.hpp>
 #include <boost/mpl/push_back.hpp>
 #include <boost/python.hpp>
 
@@ -28,7 +27,6 @@
 
 using namespace std;
 using namespace boost;
-using namespace boost::lambda;
 
 using namespace graph_tool;
 
@@ -39,11 +37,6 @@ void community_structure(GraphInterface& g, double gamma, string corr_name,
                          string history_file, boost::any weight,
                          boost::any property)
 {
-    using boost::lambda::bind;
-    using boost::lambda::_1;
-    using boost::lambda::_2;
-    using boost::lambda::_3;
-
     typedef property_map_types::apply<mpl::vector<int32_t,int64_t>,
                                       GraphInterface::vertex_index_map_t,
                                       mpl::bool_<false> >::type
@@ -87,11 +80,6 @@ void community_structure(GraphInterface& g, double gamma, string corr_name,
 
 double modularity(GraphInterface& g, boost::any weight, boost::any property)
 {
-    using boost::lambda::bind;
-    using boost::lambda::_1;
-    using boost::lambda::_2;
-    using boost::lambda::_3;
-
     double modularity = 0;
 
     typedef ConstantPropertyMap<int32_t,GraphInterface::edge_t> weight_map_t;
@@ -104,7 +92,7 @@ double modularity(GraphInterface& g, boost::any weight, boost::any property)
     bool directed = g.GetDirected();
     g.SetDirected(false);
     run_action<graph_tool::detail::never_directed>()
-        (g, bind<void>(get_modularity(), _1, _2, _3, var(modularity)),
+        (g, bind<void>(get_modularity(), _1, _2, _3, ref(modularity)),
          edge_props_t(), vertex_scalar_properties())
         (weight, property);
     g.SetDirected(directed);

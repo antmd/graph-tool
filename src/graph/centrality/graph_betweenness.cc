@@ -18,7 +18,6 @@
 #include "graph_filtering.hh"
 
 #include <boost/python.hpp>
-#include <boost/lambda/bind.hpp>
 #include <boost/graph/betweenness_centrality.hpp>
 
 #include "graph.hh"
@@ -27,7 +26,6 @@
 
 using namespace std;
 using namespace boost;
-using namespace boost::lambda;
 using namespace graph_tool;
 
 template <class Graph, class EdgeBetweenness, class VertexBetweenness>
@@ -139,9 +137,9 @@ void betweenness(GraphInterface& g, boost::any weight,
     if (!weight.empty())
     {
         run_action<>()
-            (g, lambda::bind<void>
-             (get_weighted_betweenness(), lambda::_1, g.GetVertexIndex(),
-              lambda::_2, lambda::_3, weight, normalize,
+            (g, bind<void>
+             (get_weighted_betweenness(), _1, g.GetVertexIndex(),
+              _2, _3, weight, normalize,
               g.GetNumberOfVertices(), g.GetMaxEdgeIndex()),
              edge_floating_properties(),
              vertex_floating_properties())
@@ -150,9 +148,8 @@ void betweenness(GraphInterface& g, boost::any weight,
     else
     {
         run_action<>()
-            (g, lambda::bind<void>
-             (get_betweenness(), lambda::_1, g.GetVertexIndex(), lambda::_2,
-              lambda::_3, normalize, g.GetNumberOfVertices()),
+            (g, bind<void>(get_betweenness(), _1, g.GetVertexIndex(), _2,
+                           _3, normalize, g.GetNumberOfVertices()),
              edge_floating_properties(),
              vertex_floating_properties())
             (edge_betweenness, vertex_betweenness);
@@ -174,8 +171,8 @@ double central_point(GraphInterface& g,
 {
     double c = 0.0;
     run_action<graph_tool::detail::never_reversed>()
-        (g, lambda::bind<void>(get_central_point_dominance(), lambda::_1,
-                               lambda::_2, var(c)),
+        (g, bind<void>(get_central_point_dominance(), _1,
+                       _2, ref(c)),
          vertex_scalar_properties()) (vertex_betweenness);
     return c;
 }

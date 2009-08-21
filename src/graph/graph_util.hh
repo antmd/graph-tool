@@ -28,7 +28,6 @@
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/xpressive/xpressive.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/lambda/bind.hpp>
 #include <string>
 
 namespace graph_tool

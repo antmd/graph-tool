@@ -28,7 +28,6 @@
 
 using namespace std;
 using namespace boost;
-using namespace boost::lambda;
 using namespace graph_tool;
 
 struct null_copy
@@ -89,8 +88,8 @@ void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
         {
             GraphInterface& sub =
                 python::extract<GraphInterface&>(subgraph_list[i]);
-            run_action<>()(sub, lambda::bind<void>(append_to_list(), lambda::_1,
-                                                   lambda::var(list)))();
+            run_action<>()(sub, bind<void>(append_to_list(), _1,
+                                           ref(list)))();
         }
     }
     catch (bad_any_cast&)
@@ -115,10 +114,8 @@ void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
         sampler = sample_some(plist, rng);
 
     run_action<>()
-        (g, lambda::bind<void>(get_all_motifs(), lambda::_1, k,
-                               lambda::var(list), lambda::var(phist),
-                               lambda::_2, plist[0], comp_iso,
-                               fill_list, lambda::var(rng)),
+        (g, bind<void>(get_all_motifs(), _1, k, ref(list), ref(phist), _2,
+                       plist[0], comp_iso, fill_list, ref(rng)),
          mpl::vector<sample_all,sample_some>())(sampler);
 
     for (size_t i = 0; i < phist.size(); ++i)
@@ -141,8 +138,8 @@ void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
                 mpl::bool_<false>,mpl::bool_<true>,
                 mpl::bool_<true> >::type gviews;
             run_action<gviews>()
-                (sub, lambda::bind<void>(retrieve_from_list(), lambda::_1,
-                                         lambda::var(list), lambda::var(done)))();
+                (sub, bind<void>(retrieve_from_list(), _1,
+                                 ref(list), ref(done)))();
             if (!done)
             {
                 sub.ReIndexEdges();

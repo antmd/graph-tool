@@ -23,7 +23,6 @@
 
 using namespace std;
 using namespace boost;
-using namespace boost::lambda;
 using namespace graph_tool;
 
 typedef tr1::mt19937 rng_t;
@@ -74,22 +73,20 @@ void generate_random_graph(GraphInterface& gi, size_t N,
     if (uncorrelated)
     {
         run_action<graph_views>()
-            (gi, lambda::bind<void>(gen_random_graph<mpl::bool_<false> >(N),
-                                    lambda::_1,
-                                    PythonFuncWrap(deg_sample),
-                                    PythonFuncWrap(corr_deg_sample),
-                                    no_parallel, no_self_loops,
-                                    undirected, seed, verbose))();
+            (gi, bind<void>(gen_random_graph<mpl::bool_<false> >(N), _1,
+                            PythonFuncWrap(deg_sample),
+                            PythonFuncWrap(corr_deg_sample),
+                            no_parallel, no_self_loops,
+                            undirected, seed, verbose))();
     }
     else
     {
         run_action<graph_views>()
-            (gi, lambda::bind<void>(gen_random_graph<mpl::bool_<true> >(N),
-                                    lambda::_1,
-                                    PythonFuncWrap(deg_sample),
-                                    PythonFuncWrap(corr_deg_sample),
-                                    no_parallel, no_self_loops,
-                                    undirected, seed, verbose))();
+            (gi, bind<void>(gen_random_graph<mpl::bool_<true> >(N), _1,
+                            PythonFuncWrap(deg_sample),
+                            PythonFuncWrap(corr_deg_sample),
+                            no_parallel, no_self_loops,
+                            undirected, seed, verbose))();
     }
     gi.ReIndexEdges();
 }

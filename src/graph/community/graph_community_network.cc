@@ -20,7 +20,6 @@
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
 
-//#include <boost/lambda/bind.hpp>
 #include <boost/bind.hpp>
 #include <boost/bind/placeholders.hpp>
 #include <boost/mpl/push_back.hpp>

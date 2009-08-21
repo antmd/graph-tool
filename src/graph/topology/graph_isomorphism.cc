@@ -15,8 +15,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/lambda/bind.hpp>
-
 #include "graph.hh"
 #include "graph_filtering.hh"
 
@@ -24,7 +22,6 @@
 
 using namespace graph_tool;
 using namespace boost;
-using namespace boost::lambda;
 
 struct check_iso
 {
@@ -63,7 +60,7 @@ bool check_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
         run_action<graph_tool::detail::always_directed>()
             (gi1, bind<void>(check_iso(),
                              _1, _2, _3, gi1.GetVertexIndex(),
-                             gi2.GetVertexIndex(), var(result)),
+                             gi2.GetVertexIndex(), ref(result)),
              directed_graph_view_pointers(), vertex_props_t())
             (gi2.GetGraphView(), iso_map);
     }
@@ -72,7 +69,7 @@ bool check_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
         run_action<graph_tool::detail::never_directed>()
             (gi1, bind<void>(check_iso(),
                              _1, _2, _3, gi1.GetVertexIndex(),
-                             gi2.GetVertexIndex(), var(result)),
+                             gi2.GetVertexIndex(), ref(result)),
              undirected_graph_view_pointers(), vertex_props_t())
             (gi2.GetGraphView(), iso_map);
     }

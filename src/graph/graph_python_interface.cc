@@ -20,7 +20,6 @@
 #include "graph_python_interface.hh"
 
 #include <boost/python.hpp>
-#include <boost/lambda/bind.hpp>
 #include <set>
 
 using namespace std;
@@ -44,9 +43,9 @@ GraphInterface::Vertices() const
 {
     python::object iter;
     run_action<>()(const_cast<GraphInterface&>(*this),
-                   lambda::bind<void>(get_vertex_iterator(), lambda::_1,
-                                      lambda::var(const_cast<GraphInterface&>(*this)),
-                                      lambda::var(iter)))();
+                   bind<void>(get_vertex_iterator(), _1,
+                              ref(const_cast<GraphInterface&>(*this)),
+                              ref(iter)))();
     return iter;
 }
 
@@ -89,14 +88,14 @@ GraphInterface::Vertex(size_t i) const
     python::object v;
     if (IsVertexFilterActive())
         run_action<>()(const_cast<GraphInterface&>(*this),
-                       lambda::bind<void>(get_vertex_hard(), lambda::_1,
-                                          lambda::var(const_cast<GraphInterface&>(*this)),
-                                          i, lambda::var(v)))();
+                       bind<void>(get_vertex_hard(), _1,
+                                  ref(const_cast<GraphInterface&>(*this)),
+                                  i, ref(v)))();
     else
         run_action<>()(const_cast<GraphInterface&>(*this),
-                       lambda::bind<void>(get_vertex_soft(), lambda::_1,
-                                          lambda::var(const_cast<GraphInterface&>(*this)), i,
-                                          lambda::var(v)))();
+                       bind<void>(get_vertex_soft(), _1,
+                                  ref(const_cast<GraphInterface&>(*this)), i,
+                                  ref(v)))();
     return v;
 }
 
@@ -117,9 +116,9 @@ GraphInterface::Edges() const
 {
     python::object iter;
     run_action<>()(const_cast<GraphInterface&>(*this),
-                   lambda::bind<void>(get_edge_iterator(), lambda::_1,
-                                      lambda::var(const_cast<GraphInterface&>(*this)),
-                                      lambda::var(iter)))();
+                   bind<void>(get_edge_iterator(), _1,
+                              ref(const_cast<GraphInterface&>(*this)),
+                              ref(iter)))();
     return iter;
 }
 
@@ -193,10 +192,10 @@ python::object GraphInterface::AddEdge(const python::object& s,
     src.CheckValid();
     tgt.CheckValid();
     python::object new_e;
-    run_action<>()(*this, lambda::bind<void>(add_new_edge(), lambda::_1,
-                                             lambda::var(*this), src, tgt,
-                                             _edge_index,
-                                             lambda::var(new_e)))();
+    run_action<>()(*this, bind<void>(add_new_edge(), _1,
+                                     ref(*this), src, tgt,
+                                     _edge_index,
+                                     ref(new_e)))();
     return new_e;
 }
 
@@ -221,9 +220,9 @@ void GraphInterface::RemoveEdge(const python::object& e)
     edge_t de;
     bool found = false;
     run_action<>()(*this,
-                   lambda::bind<void>(get_edge_descriptor(), lambda::_1,
-                                      lambda::var(e), lambda::var(de),
-                                      lambda::var(found)))();
+                   bind<void>(get_edge_descriptor(), _1,
+                              ref(e), ref(de),
+                              ref(found)))();
     if (!found)
         throw ValueException("invalid edge descriptor");
     RemoveEdgeIndex(de);
@@ -283,16 +282,16 @@ python::object GraphInterface::DegreeMap(string deg) const
 
     if (deg == "in")
         run_action<>()(const_cast<GraphInterface&>(*this),
-                       lambda::bind<void>(get_degree_map(), lambda::_1,
-                                          deg_map, in_degreeS()))();
+                       bind<void>(get_degree_map(), _1,
+                                  deg_map, in_degreeS()))();
     else if (deg == "out")
         run_action<>()(const_cast<GraphInterface&>(*this),
-                       lambda::bind<void>(get_degree_map(), lambda::_1,
-                                          deg_map, out_degreeS()))();
+                       bind<void>(get_degree_map(), _1,
+                                  deg_map, out_degreeS()))();
     else if (deg == "total")
         run_action<>()(const_cast<GraphInterface&>(*this),
-                       lambda::bind<void>(get_degree_map(), lambda::_1,
-                                          deg_map, total_degreeS()))();
+                       bind<void>(get_degree_map(), _1,
+                                  deg_map, total_degreeS()))();
     return python::object(PythonPropertyMap<map_t>(deg_map));
 }
 
@@ -408,9 +407,8 @@ void GraphInterface::ExportPythonInterface() const
     set<string> v_iterators;
     typedef mpl::transform<graph_tool::detail::all_graph_views,
                            mpl::quote1<add_pointer> >::type graph_views;
-    mpl::for_each<graph_views>(lambda::bind<void>(export_python_interface(),
-                                                  lambda::_1,
-                                                  lambda::var(v_iterators)));
+    mpl::for_each<graph_views>(bind<void>(export_python_interface(),
+                                          _1,ref(v_iterators)));
     export_python_properties(const_cast<GraphInterface&>(*this));
     def("new_vertex_property",
         &new_property<GraphInterface::vertex_index_map_t>);

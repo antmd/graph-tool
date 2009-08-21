@@ -17,7 +17,6 @@
 
 #include "graph_filtering.hh"
 
-#include <boost/lambda/bind.hpp>
 #include <boost/python.hpp>
 
 #include "graph.hh"
@@ -29,7 +28,6 @@
 
 using namespace std;
 using namespace boost;
-using namespace boost::lambda;
 using namespace graph_tool;
 
 typedef ConstantPropertyMap<int,GraphInterface::edge_t> dummy_weight;

@@ -24,8 +24,7 @@
 #include "graph_filtering.hh"
 #include "graph_properties.hh"
 #include "histogram.hh"
-#include <boost/lambda/lambda.hpp>
-#include <boost/lambda/bind.hpp>
+#include <boost/bind.hpp>
 #include <boost/python.hpp>
 
 using namespace boost;

@@ -15,8 +15,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/lambda/bind.hpp>
-
 #include "graph.hh"
 #include "graph_filtering.hh"
 
@@ -25,9 +23,10 @@ typedef std::tr1::mt19937 rng_t;
 
 #include "graph_rewiring.hh"
 
+#include <boost/bind.hpp>
+
 using namespace graph_tool;
 using namespace boost;
-using namespace boost::lambda;
 
 void random_rewire(GraphInterface& gi, string strat, bool self_loops,
                    bool parallel_edges, size_t seed)

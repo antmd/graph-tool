@@ -26,7 +26,6 @@
 
 using namespace std;
 using namespace boost;
-using namespace boost::lambda;
 using namespace graph_tool;
 
 size_t pagerank(GraphInterface& g, boost::any rank, double d, double epslon,
@@ -37,9 +36,9 @@ size_t pagerank(GraphInterface& g, boost::any rank, double d, double epslon,
 
     size_t iter;
     run_action<>()
-        (g, lambda::bind<void>(get_pagerank(),
-                               lambda::_1, g.GetVertexIndex(),  lambda::_2, d,
-                               epslon, max_iter, lambda::var(iter)),
+        (g, bind<void>(get_pagerank(),
+                       _1, g.GetVertexIndex(),  _2, d,
+                       epslon, max_iter, ref(iter)),
          writable_vertex_scalar_properties())(rank);
     return iter;
 }

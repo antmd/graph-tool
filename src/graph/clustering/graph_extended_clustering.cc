@@ -27,7 +27,6 @@
 
 using namespace std;
 using namespace boost;
-using namespace boost::lambda;
 using namespace graph_tool;
 
 template <class PropertySequence>
@@ -37,9 +36,8 @@ struct prop_vector
     {
         boost::any prop_vec;
         mpl::for_each<PropertySequence>
-            (lambda::bind<void>(get_prop_vector(), lambda::_1,
-                                lambda::var(props), lambda::var(prop_vec),
-                                size));
+            (bind<void>(get_prop_vector(), _1, ref(props), ref(prop_vec),
+                        size));
         return prop_vec;
     }
 
@@ -94,9 +92,9 @@ void extended_clustering(GraphInterface& g, python::list props)
         properties_vector;
 
     run_action<>()
-        (g, lambda::bind<void>(get_extended_clustering(), lambda::_1,
+        (g, bind<void>(get_extended_clustering(), _1,
                                any_cast<GraphInterface::vertex_index_map_t>
-                               (g.GetVertexIndex()), lambda::_2),
+                               (g.GetVertexIndex()), _2),
          properties_vector()) (vprop);
 }
 
