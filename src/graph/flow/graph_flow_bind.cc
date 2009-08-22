@@ -24,6 +24,7 @@ void push_relabel_max_flow(GraphInterface& gi, size_t src, size_t sink,
                            boost::any capacity, boost::any res);
 void kolmogorov_max_flow(GraphInterface& gi, size_t src, size_t sink,
                          boost::any capacity, boost::any res);
+bool max_cardinality_matching(GraphInterface& gi, boost::any match);
 
 #include <boost/python.hpp>
 using namespace boost::python;
@@ -33,4 +34,5 @@ BOOST_PYTHON_MODULE(libgraph_tool_flow)
     def("edmonds_karp_max_flow", &edmonds_karp_max_flow);
     def("push_relabel_max_flow", &push_relabel_max_flow);
     def("kolmogorov_max_flow", &kolmogorov_max_flow);
+    def("max_cardinality_matching", &max_cardinality_matching);
 }

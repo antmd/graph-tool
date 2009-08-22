@@ -26,7 +26,7 @@ dl_import("import libgraph_tool_flow")
 
 from .. core import _prop, _check_prop_scalar, _check_prop_writable
 __all__ = ["edmonds_karp_max_flow", "push_relabel_max_flow",
-           "kolmogorov_max_flow"]
+           "kolmogorov_max_flow", "max_cardinality_matching"]
 
 def edmonds_karp_max_flow(g, source, target, capacity, residual=None):
     _check_prop_scalar(capacity, "capacity")
@@ -66,3 +66,16 @@ def kolmogorov_max_flow(g, source, target, capacity, residual=None):
                                  _prop("e", g, capacity),
                                  _prop("e", g, residual))
     return residual
+
+def max_cardinality_matching(g, match=None):
+    if match == None:
+        match = g.new_edge_property("bool")
+    _check_prop_scalar(match, "match")
+    _check_prop_writable(match, "match")
+
+    g.stash_filter(directed=True)
+    g.set_directed(False)
+    check = libgraph_tool_flow.\
+            max_cardinality_matching(g._Graph__graph, _prop("e", g, match))
+    g.pop_filter(directed=True)
+    return match, check
