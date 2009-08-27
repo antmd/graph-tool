@@ -27,7 +27,7 @@ dl_import("import libgraph_tool_generation")
 from .. core import Graph, _check_prop_scalar, _prop
 import sys, numpy
 
-__all__ = ["random_graph", "random_rewire", "predecessor_tree"]
+__all__ = ["random_graph", "random_rewire", "predecessor_tree", "line_graph"]
 
 def _corr_wrap(i, j, corr):
     return corr(i[1], j[1])
@@ -387,3 +387,13 @@ def predecessor_tree(g, pred_map):
                                                pg._Graph__graph,
                                                _prop("v", g, pred_map))
     return pg
+
+def line_graph(g):
+    lg = Graph(directed=g.is_directed())
+
+    vertex_map = lg.new_vertex_property("int64_t")
+
+    libgraph_tool_generation.line_graph(g._Graph__graph,
+                                        lg._Graph__graph,
+                                        _prop("v", lg, vertex_map))
+    return lg, vertex_map

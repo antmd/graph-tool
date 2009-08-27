@@ -95,6 +95,8 @@ void random_rewire(GraphInterface& gi, string strat, bool self_loops,
                    bool parallel_edges, size_t seed);
 void predecessor_graph(GraphInterface& gi, GraphInterface& gpi,
                        boost::any pred_map);
+void line_graph(GraphInterface& gi, GraphInterface& lgi,
+                boost::any edge_index);
 
 using namespace boost::python;
 
@@ -103,4 +105,5 @@ BOOST_PYTHON_MODULE(libgraph_tool_generation)
     def("gen_random_graph", &generate_random_graph);
     def("random_rewire", &random_rewire);
     def("predecessor_graph", &predecessor_graph);
+    def("line_graph", &line_graph);
 }
