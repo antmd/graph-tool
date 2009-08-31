@@ -17,10 +17,13 @@
 
 #include "graph.hh"
 #include "graph_properties.hh"
+#include "graph_filtering.hh"
 #include "graph_selectors.hh"
 #include "graph_util.hh"
 
 #include <boost/mpl/for_each.hpp>
+
+#include <boost/python/extract.hpp>
 
 using namespace std;
 using namespace boost;
@@ -64,6 +67,5 @@ void GraphInterface::ShiftVertexProperty(boost::any prop, size_t index) const
     if (!found)
         throw GraphException("invalid writable property map");
 }
-
 
 } // graph_tool namespace

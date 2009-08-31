@@ -210,11 +210,103 @@ def _check_prop_writable(prop, name=None):
         raise ValueError("property map%s is not writable." %\
                          ((" '%s'" % name) if name != None else ""))
 
-def _check_prop_scalar(prop, name=None):
-    if prop.value_type() not in ["bool", "int32_t", "int64_t", "unsigned long",
-                                 "double", "long double"]:
-        raise ValueError("property map%s is not of scalar type." %\
-                         ((" '%s'" % name) if name != None else ""))
+def _check_prop_scalar(prop, name=None, floating=False):
+    scalars = ["bool", "int32_t", "int64_t", "unsigned long",
+               "double", "long double"]
+    if floating:
+        scalars = ["double", "long double"]
+
+    if prop.value_type() not in scalars:
+        raise ValueError("property map%s is not of scalar%s type." %\
+                         (((" '%s'" % name) if name != None else ""),
+                          (" floating" if floating else "")))
+
+def _check_prop_vector(prop, name=None, floating=False):
+    scalars = ["bool", "int32_t", "int64_t", "unsigned long",
+               "double", "long double"]
+    if floating:
+        scalars = ["double", "long double"]
+    vals = ["vector<%s>" % v for v in scalars]
+    if prop.value_type() not in vals:
+        raise ValueError("property map%s is not of vector%s type." %\
+                         (((" '%s'" % name) if name != None else ""),
+                          (" floating" if floating else "")))
+
+def group_vector_property(g, props, value_type=None, vprop=None, pos=None):
+    types = set()
+    keys = set()
+    for i,p in enumerate(props):
+        if "vector" in p.value_type():
+            raise ValueError("property map 'props[%d]' is a vector property." %
+                             i)
+        types.add(p.value_type())
+        keys.add(p.key_type())
+    if len(keys) > 1:
+        raise ValueError("'props' must be of the same key type." )
+    k = keys.pop()
+
+    if vprop == None:
+        if value_type == None and len(types) == 1:
+             value_type = types.pop()
+
+        if value_type != None:
+            value_type = "vector<%s>" % value_type
+            if k == 'v':
+                vprop = g.new_vertex_property(value_type)
+            elif k == 'e':
+                vprop = g.new_edge_property(value_type)
+            else:
+                vprop = g.new_graph_property(value_type)
+        else:
+            ValueError("Can't automatically determine property map value" +
+                       " type. Please provide the 'value_type' parameter.")
+    _check_prop_vector(vprop, name="vprop")
+
+    for i,p in enumerate(props):
+        if k != "g":
+            g.stash_filter(directed=True, reversed=True)
+            g.set_directed(True)
+            g.set_reversed(False)
+            libcore.group_vector_property(g._Graph__graph,
+                                          _prop(k, g, vprop),
+                                          _prop(k, g, p),
+                                          i if pos == None else pos[i],
+                                          k == 'e')
+            g.pop_filter(directed=True, reversed=True)
+        else:
+            vprop[g][i if pos == None else pos[i]] = p[g]
+    return vprop
+
+def ungroup_vector_property(g, vprop, pos, props=None):
+    _check_prop_vector(vprop, name="vprop")
+    k = vprop.key_type()
+    value_type = vprop.value_type().split("<")[1].split(">")[0]
+    if props == None:
+        if k == 'v':
+            props = [g.new_vertex_property(value_type) for i in pos]
+        elif k == 'e':
+            props = [g.new_edge_property(value_type) for i in pos]
+        else:
+            props = [g.new_graph_property(value_type) for i in pos]
+
+    for i,p in enumerate(pos):
+        if props[i].key_type() != k:
+            raise ValueError("'props' must be of the same key type as 'vprop'.")
+
+        if k != 'g':
+            g.stash_filter(directed=True, reversed=True)
+            g.set_directed(True)
+            g.set_reversed(False)
+            libcore.ungroup_vector_property(g._Graph__graph,
+                                            _prop(k, g, vprop),
+                                            _prop(k, g, props[i]),
+                                            pos[i], k == 'e')
+            g.pop_filter(directed=True, reversed=True)
+        else:
+            if len(vprop[g]) <= pos[i]:
+                vprop[g].resize(pos[i]+1)
+            props[i][g] = vprop[g][pos[i]]
+    return props
 
 class PropertyDict(dict):
     """Wrapper for the dict of vertex, graph or edge properties, which sets the

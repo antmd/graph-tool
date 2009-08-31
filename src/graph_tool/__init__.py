@@ -94,9 +94,11 @@ import scipy.stats
 
 from . core import  __version__, Graph, Vector_bool, Vector_int32_t, \
      Vector_int64_t, Vector_double, Vector_long_double, Vector_string, \
-     value_types, load_graph, PropertyMap, Vertex, Edge, show_config
+     value_types, load_graph, PropertyMap, Vertex, Edge, \
+     group_vector_property, ungroup_vector_property, show_config
 
 __all__ = ["Graph", "Vertex", "Edge", "Vector_bool", "Vector_int32_t",
            "Vector_int64_t", "Vector_double", "Vector_long_double",
            "Vector_string", "value_types", "load_graph", "PropertyMap",
+           "group_vector_property", "ungroup_vector_property",
            "show_config"]

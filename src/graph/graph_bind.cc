@@ -301,6 +301,11 @@ bool openmp_enabled()
     #endif
 }
 
+void ungroup_vector_property(GraphInterface& g, boost::any vector_prop,
+                             boost::any prop, size_t pos, bool edge);
+void group_vector_property(GraphInterface& g, boost::any vector_prop,
+                           boost::any prop, size_t pos, bool edge);
+
 BOOST_PYTHON_MODULE(libgraph_tool_core)
 {
     // numpy
@@ -388,6 +393,9 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
         def("Flush", &OStream::Flush);
     def("set_pickler", &set_pickler);
     def("set_unpickler", &set_unpickler);
+
+    def("group_vector_property", &group_vector_property);
+    def("ungroup_vector_property", &ungroup_vector_property);
 
     class_<LibInfo>("mod_info")
         .add_property("name", &LibInfo::GetName)
