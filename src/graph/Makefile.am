@@ -1,6 +1,6 @@
 ## Process this file with automake to produce Makefile.in
 
-SUBDIRS = generation stats clustering community util topology centrality correlations flow
+SUBDIRS = generation stats clustering community util topology centrality correlations flow layout
 
 AM_CPPFLAGS =\
     -I$(srcdir)/.. \
@@ -24,6 +24,8 @@ libgraph_tool_core_la_SOURCES = \
     graph_filtering.cc \
     graph_io.cc \
     graph_properties.cc \
+    graph_properties_group.cc \
+    graph_properties_ungroup.cc \
     graph_python_interface.cc \
     graph_python_interface_export.cc \
     graph_selectors.cc \
@@ -39,6 +41,7 @@ libgraph_tool_core_la_include_HEADERS = \
     graph_filtering.hh \
     graph.hh \
     graph_properties.hh \
+    graph_properties_group.hh \
     graph_python_interface.hh \
     graph_selectors.hh \
     graph_util.hh \

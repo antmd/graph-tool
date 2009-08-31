@@ -22,9 +22,15 @@
 """
 
 import sys, os, os.path, time, warnings
-from .. core import _degree, _prop, PropertyMap
+from .. core import _degree, _prop, PropertyMap, _check_prop_vector,\
+     _check_prop_scalar, _check_prop_writable, group_vector_property,\
+     ungroup_vector_property
 from .. decorators import _limit_args
 import numpy.random
+from numpy import *
+
+from .. dl_import import dl_import
+dl_import("import libgraph_tool_layout")
 
 try:
     import gv
@@ -37,6 +43,8 @@ try:
 except ImportError:
     warnings.warn("error importing matplotlib module... " + \
                   "graph_draw() will not work.", ImportWarning)
+
+__all__ = ["graph_draw", "arf_layout", "random_layout"]
 
 def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
                maxiter=None, ratio= "fill", overlap="prism", sep=None,
@@ -59,7 +67,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
         If True, the vertices are not moved from their initial position.
     layout : string (default: "neato")
         Layout engine to be used. Possible values are "neato", "fdp", "dot",
-        "circo" and "twopi".
+        "circo", "twopi" and "arf".
     maxiter : int (default: None)
         If specified, limits the maximum number of iterations.
     ratio : string or float (default: "fill")
@@ -241,9 +249,17 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
     else:
         gvg = gv.graph("G")
 
+    if layout == "arf":
+        layout = "neato"
+        pos = arf_layout(g, pos=pos)
+        pin = True
+
     if pos != None:
         # copy user-supplied property
-        pos = (g.copy_property(pos[0]), g.copy_property(pos[1]))
+        if isinstance(pos, PropertyMap):
+            pos = ungroup_vector_property(g, pos, [0,1])
+        else:
+            pos = (g.copy_property(pos[0]), g.copy_property(pos[1]))
 
     # main graph properties
     gv.setv(gvg,"outputorder", "edgesfirst")
@@ -429,9 +445,44 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
     pos[0].get_array()[:] /= 100
     pos[1].get_array()[:] /= 100
 
+    pos = group_vector_property(g, pos)
+
     if returngv:
         return pos, gv
     else:
         gv.rm(gvg)
         del gvg
         return pos
+
+def random_layout(g, shape=None, pos=None, dim=2):
+    if pos == None:
+        pos = [g.new_vertex_property("double") for i in xrange(dim)]
+
+    if isinstance(pos, PropertyMap) and "vector" in pos.value_type():
+        pos = ungroup_vector_property(pos)
+
+    if shape == None:
+        shape = (sqrt(g.num_vertices()), sqrt(g.num_vertices()))
+
+    for i in xrange(dim):
+        _check_prop_scalar(pos[i], name="pos[%d]" % i)
+        _check_prop_writable(pos[i], name="pos[%d]" % i)
+        a = pos[i].get_array()
+        a[:] = numpy.random.random(len(a))*shape[i]
+
+    pos = group_vector_property(g, pos)
+    return pos
+
+def arf_layout(g, weight=None, d=0.1, a=10, dt=0.001, epsilon=1e-6,
+               max_iter=1000, pos=None, dim=2):
+    if pos == None:
+        pos = random_layout(g, dim=dim)
+    _check_prop_vector(pos, name="pos", floating=True)
+
+    g.stash_filter(directed=True)
+    g.set_directed(False)
+    libgraph_tool_layout.arf_layout(g._Graph__graph, _prop("v", g, pos),
+                                    _prop("e", g, weight), d, a, dt, max_iter,
+                                    epsilon, dim)
+    g.pop_filter()
+    return pos
