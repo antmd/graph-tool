@@ -28,7 +28,9 @@ from .. dl_import import dl_import
 dl_import("import libgraph_tool_clustering as _gt")
 
 from .. core import _degree, _prop, Graph
-from .. misc import isomorphism
+from .. topology import isomorphism
+from .. generation import random_rewire
+from itertools import izip
 from numpy import *
 import sys
 
@@ -463,9 +465,6 @@ def motif_significance(g, k, n_shuffles=10, p=1.0, motif_list=None,
     >>> print zscores
     [-2.7573400429260952, -2.7711373148737528, -3.823295048129145, -0.6117752903214978, 2.9524205015061291, 2.9303545260261825, 1.4167427093634908, 1.8999999999999999, -0.29999999999999999, 0.0, -0.20000000000000001]
     """
-    from itertools import izip
-    from .. misc import isomorphism
-    from .. generation import random_rewire
 
     s_ms, counts = motifs(g, k, p, motif_list, undirected, seed)
     s_counts = [0]*len(s_ms)
