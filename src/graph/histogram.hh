@@ -55,14 +55,23 @@ public:
     Histogram(const boost::array<std::vector<ValueType>, Dim>& bins,
               const boost::array<std::pair<ValueType,ValueType>,Dim>&
               data_range)
-        : _bins(bins), _data_range(data_range)
+        : _bins(bins), _data_range(data_range), _grow(Dim, false)
     {
         bin_t new_shape;
         for (size_t j = 0; j < Dim; ++j)
             if (_bins[j].size() == 1) // constant bin width
             {
-                new_shape[j] = floor((_data_range[j].second -
-                                      _data_range[j].first)/_bins[j][0]) + 1;
+                if (_data_range[j].first == _data_range[j].second)
+                {
+                    _grow[j] = true;
+                    new_shape[j] == 1;
+                }
+                else
+                {
+                    new_shape[j] = floor((_data_range[j].second -
+                                          _data_range[j].first) /
+                                         _bins[j][0]) + 1;
+                }
             }
             else
             {
@@ -79,6 +88,15 @@ public:
             if (_bins[i].size() == 1) // constant bin width
             {
                 bin[i] = (v[i] - _data_range[i].first)/_bins[i][0];
+                if (_grow[i] && (bin[i] >= _counts.shape()[i]))
+                {
+                    boost::array<size_t, Dim> new_shape;
+                    for (size_t j = 0; j <  Dim; ++j)
+                        new_shape[j] = _counts.shape()[j];
+                    new_shape[i] = bin[i]+1;
+                    _counts.resize(new_shape);
+                    _data_range[i].second = max(v[i], _data_range[i].second);
+                }
             }
             else // arbitrary bins. do a binary search
             {
@@ -127,6 +145,7 @@ protected:
     boost::multi_array<CountType,Dim> _counts;
     boost::array<std::vector<ValueType>, Dim> _bins;
     boost::array<std::pair<ValueType,ValueType>,Dim> _data_range;
+    std::vector<bool> _grow;
 };
 
 

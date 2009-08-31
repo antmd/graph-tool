@@ -76,11 +76,11 @@ public:
     void operator()(Graph& g, typename graph_traits<Graph>::vertex_descriptor v,
                     EdgeProperty& eprop, Hist& hist)
     {
+        typename Hist::point_t p;
         typename graph_traits<Graph>::out_edge_iterator e, e_begin, e_end;
         tie(e_begin,e_end) = out_edges(v,g);
         for(e = e_begin; e != e_end; ++e)
         {
-            typename Hist::point_t p;
             p[0] = eprop[*e];
             hist.PutValue(p);
         }
@@ -137,11 +137,19 @@ struct get_histogram
         // find the data range
         pair<value_type,value_type> range;
 
-        typename graph_traits<Graph>::vertex_iterator vi,vi_end;
-        range.first = boost::numeric::bounds<value_type>::highest();
-        range.second = boost::numeric::bounds<value_type>::lowest();
-        for (tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
-            filler.UpdateRange(g, *vi, deg, range);
+        if (bins.size() == 1)
+        {
+            typename graph_traits<Graph>::vertex_iterator vi,vi_end;
+            range.first = boost::numeric::bounds<value_type>::highest();
+            range.second = boost::numeric::bounds<value_type>::lowest();
+            for (tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
+                filler.UpdateRange(g, *vi, deg, range);
+        }
+        else
+        {
+            range.first = bins.front();
+            range.second = bins.back();
+        }
 
         boost::array<pair<value_type, value_type>, 1> data_range;
         data_range[0] = range;

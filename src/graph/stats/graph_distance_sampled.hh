@@ -18,92 +18,133 @@
 #ifndef GRAPH_DISTANCE_SAMPLED_HH
 #define GRAPH_DISTANCE_SAMPLED_HH
 
-#include <tr1/unordered_set>
 #include <boost/graph/breadth_first_search.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
-#include <boost/random.hpp>
+
+#include <boost/python/object.hpp>
+#include <boost/python/list.hpp>
+#include <boost/python/extract.hpp>
+
+#include <tr1/random>
+
+#include "histogram.hh"
+#include "numpy_bind.hh"
 
 namespace graph_tool
 {
 using namespace std;
 using namespace boost;
 
-typedef boost::mt19937 rng_t;
-
-// retrieves the histogram of sampled vertex-vertex distances
+// retrieves the sampled vertex-vertex distance histogram
 
 struct no_weightS {};
 
-struct get_sampled_distances
+template <class Map>
+struct get_val_type
+{
+    typedef typename property_traits<Map>::value_type type;
+};
+
+template <>
+struct get_val_type<no_weightS>
+{
+    typedef size_t type;
+};
+
+struct get_sampled_distance_histogram
 {
 
-    template <class Graph, class IndexMap, class WeightMap, class Hist>
-    void operator()(const Graph* gp, IndexMap index_map, WeightMap weights,
-                    Hist& hist, size_t samples, size_t seed) const
+    template <class Graph, class VertexIndex, class WeightMap, class RNG>
+    void operator()(const Graph& g, VertexIndex vertex_index, WeightMap weights,
+                    size_t n_samples, const vector<long double>& obins,
+                    python::object& phist, RNG& rng) const
     {
-        const Graph& g = *gp;
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
-        // select get_sum_vertex_dists based on the existence of weights
+        // select get_vertex_dists based on the existence of weights
         typedef typename mpl::if_<is_same<WeightMap, no_weightS>,
-                                       get_dists_bfs,
+                                  get_dists_bfs,
                                   get_dists_djk>::type get_vertex_dists_t;
+
+
+        // distance type
+        typedef typename get_val_type<WeightMap>::type val_type;
+        typedef Histogram<val_type, size_t, 1> hist_t;
+
+        array<vector<val_type>,1> bins;
+        bins[0].resize(obins.size());
+        for (size_t i = 0; i < obins.size(); ++i)
+            bins[0][i] = obins[i];
+
+        // only used for constant-sized bins
+        boost::array<pair<val_type, val_type>, 1> data_range;
+        data_range[0].first = data_range[0].second = 0;
+
+        hist_t hist(bins, data_range);
+        SharedHistogram<hist_t> s_hist(hist);
+
+        vector<vertex_t> sources;
+        sources.reserve(num_vertices(g));
+        int i;
+        for (i = 0; i < num_vertices(g); ++i)
+            if (vertex(i,g) != graph_traits<Graph>::null_vertex())
+                sources.push_back(vertex(i,g));
+        n_samples = min(n_samples, sources.size());
+
+        typename hist_t::point_t point;
         get_vertex_dists_t get_vertex_dists;
-
-        tr1::unordered_map<size_t,vertex_t> descriptors;
-
-        typename graph_traits<Graph>::vertex_iterator v, v_end;
-        int i = 0, N = 0;
-        for(tie(v, v_end) = vertices(g); v != v_end; ++v,++i)
+        #pragma omp parallel for default(shared) private(i,point) \
+            firstprivate(s_hist) schedule(dynamic)
+        for (i = 0; i < int(n_samples); ++i)
         {
-            descriptors[i] = *v;
-            N++;
-        }
-
-        rng_t rng(static_cast<rng_t::result_type>(seed));
-        uniform_int<size_t> sampler(0,descriptors.size()-1);
-
-        #pragma omp parallel for default(shared) private(i,v,v_end)
-        for(i=0; i < int(samples); ++i)
-        {
-            typedef HashedDescriptorMap<IndexMap,double> dist_map_t;
-            dist_map_t dist_map(index_map);
-
-            for(tie(v, v_end) = vertices(g); v != v_end; ++v)
-                dist_map[*v] = numeric_limits<double>::max();
-            vertex_t s,t;
-
-            #pragma omp critical
+            vertex_t v;
             {
-                s = descriptors[sampler(rng)];
-                do
+                #pragma omp critical
+                tr1::uniform_int<size_t> randint(0, sources.size()-1);
+                size_t i = randint(rng);
+                v = sources[i];
+                swap(sources[i], sources.back());
+                sources.pop_back();
+            }
+
+            unchecked_vector_property_map<val_type,VertexIndex>
+                dist_map(vertex_index, num_vertices(g));
+
+            for (size_t j = 0; j < num_vertices(g); ++j)
+            {
+                if (vertex(i,g) != graph_traits<Graph>::null_vertex())
+                    dist_map[vertex(j,g)] =  numeric_limits<val_type>::max();
+            }
+
+            dist_map[v] = 0;
+            get_vertex_dists(g, v, vertex_index, dist_map, weights);
+
+            typename graph_traits<Graph>::vertex_iterator v2, v_end;
+            for (tie(v2, v_end) = vertices(g); v2 != v_end; ++v2)
+                if (*v2 != v &&
+                    dist_map[*v2] != numeric_limits<val_type>::max())
                 {
-                    t = descriptors[sampler(rng)];
+                    point[0] = dist_map[*v2];
+                    s_hist.PutValue(point);
                 }
-                while (t == s && N != 1);
-            }
-
-            dist_map[s] = 0.0;
-            get_vertex_dists(g, s, index_map, dist_map, weights);
-            if (dist_map[t] != numeric_limits<double>::max() &&
-                dist_map[t] != 0.0)
-            {
-                #pragma omp atomic
-                hist[dist_map[t]]++;
-            }
         }
+        s_hist.Gather();
 
+        python::list ret;
+        ret.append(wrap_multi_array_owned<size_t,1>(hist.GetArray()));
+        ret.append(wrap_vector_owned<val_type>(hist.GetBins()[0]));
+        phist = ret;
     }
 
     // weighted version. Use dijkstra_shortest_paths()
     struct get_dists_djk
     {
-        template <class Graph, class Vertex, class IndexMap, class DistanceMap,
-                  class WeightMap>
-        void operator()(const Graph& g, Vertex s, IndexMap index_map,
+        template <class Graph, class Vertex, class VertexIndex,
+                  class DistanceMap, class WeightMap>
+        void operator()(const Graph& g, Vertex s, VertexIndex vertex_index,
                         DistanceMap dist_map, WeightMap weights) const
         {
-            dijkstra_shortest_paths(g, s, vertex_index_map(index_map).
+            dijkstra_shortest_paths(g, s, vertex_index_map(vertex_index).
                                     weight_map(weights).distance_map(dist_map));
         }
     };
@@ -111,19 +152,27 @@ struct get_sampled_distances
     // unweighted version. Use BFS.
     struct get_dists_bfs
     {
-        template <class Graph, class Vertex, class IndexMap, class DistanceMap>
-        void operator()(const Graph& g, Vertex s, IndexMap index_map,
+        template <class Graph, class Vertex, class VertexIndex,
+                  class DistanceMap>
+        void operator()(const Graph& g, Vertex s, VertexIndex vertex_index,
                         DistanceMap dist_map, no_weightS) const
         {
-            breadth_first_search(g, s,
-                                 visitor(make_bfs_visitor
-                                         (record_distances(dist_map,
-                                                           on_tree_edge()))));
+            typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
+            typedef tr1::unordered_map<vertex_t,default_color_type,
+                                       DescriptorHash<VertexIndex> > cmap_t;
+            cmap_t cmap(0, DescriptorHash<VertexIndex>(vertex_index));
+            InitializedPropertyMap<cmap_t>
+                color_map(cmap, color_traits<default_color_type>::white());
+
+            breadth_first_visit(g, s,
+                                visitor(make_bfs_visitor
+                                        (record_distances(dist_map,
+                                                          on_tree_edge()))).
+                                color_map(color_map));
         }
     };
-
 };
 
-} // graph_tool namespace
+} // boost namespace
 
 #endif // GRAPH_DISTANCE_SAMPLED_HH

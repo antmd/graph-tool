@@ -26,10 +26,13 @@ dl_import("import libgraph_tool_stats")
 
 from .. core import _degree, _prop
 from numpy import *
+import numpy
+import sys
 
 __all__ = ["vertex_hist", "edge_hist", "vertex_average", "edge_average",
            "label_parallel_edges", "remove_parallel_edges",
-           "label_self_loops", "remove_self_loops", "remove_labeled_edges"]
+           "label_self_loops", "remove_self_loops", "remove_labeled_edges",
+           "distance_histogram", "sampled_distance_histogram"]
 
 def vertex_hist(g, deg, bins=[1], float_count=True):
     """
@@ -270,3 +273,16 @@ def remove_self_loops(g):
     eprop = label_self_loops(g)
     remove_labeled_edges(g, eprop)
 
+def distance_histogram(g, weights=None, bins=[1], float_count=True):
+    ret = libgraph_tool_stats.\
+            distance_histogram(g._Graph__graph, _prop("e", g, weights), bins)
+    return [array(ret[0], dtype="float64") if float_count else ret[0], ret[1]]
+
+def sampled_distance_histogram(g, n_samples, weights=None, bins=[1],
+                               float_count=True, seed=0):
+    if seed == 0:
+        seed = numpy.random.randint(0, sys.maxint)
+    ret = libgraph_tool_stats.\
+            sampled_distance_histogram(g._Graph__graph, _prop("e", g, weights),
+                                       bins, n_samples, seed)
+    return [array(ret[0], dtype="float64") if float_count else ret[0], ret[1]]

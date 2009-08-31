@@ -20,10 +20,14 @@ using namespace boost;
 void export_parallel();
 void export_histograms();
 void export_average();
+void export_distance();
+void export_sampled_distance();
 
 BOOST_PYTHON_MODULE(libgraph_tool_stats)
 {
     export_parallel();
     export_histograms();
     export_average();
+    export_distance();
+    export_sampled_distance();
 }

@@ -24,34 +24,34 @@
 
 using namespace std;
 using namespace boost;
-using namespace boost::lambda;
 using namespace graph_tool;
 
-hist_t GraphInterface::GetDistanceHistogram(string weight) const
-{
-    hist_t hist;
+typedef Histogram<size_t, size_t, 1> hist_t;
 
-    if (weight == "")
+python::object distance_histogram(GraphInterface& gi, boost::any weight,
+                                  const vector<long double>& bins)
+{
+    python::object ret;
+
+    if (weight.empty())
     {
-        run_action<>()(*this,
+        run_action<>()(gi,
                        bind<void>(get_distance_histogram(), _1,
-                                  _vertex_index, no_weightS(), var(hist)))();
+                                  gi.GetVertexIndex(), no_weightS(),
+                                  ref(bins), ref(ret)))();
     }
     else
     {
-        try
-        {
-            run_action<>()(*this,
-                           bind<void>(get_distance_histogram(), _1,
-                                      _vertex_index, _2, var(hist)),
-                           edge_scalar_properties())
-                (prop(weight, _edge_index, _properties));
-        }
-        catch (property_not_found& e)
-        {
-            throw GraphException("error getting edge scalar property: " +
-                                 string(e.what()));
-        }
+        run_action<>()(gi,
+                       bind<void>(get_distance_histogram(), _1,
+                                  gi.GetVertexIndex(), _2,
+                                  ref(bins), ref(ret)),
+                           edge_scalar_properties())(weight);
     }
-    return hist;
+    return ret;
+}
+
+void export_distance()
+{
+    python::def("distance_histogram", &distance_histogram);
 }

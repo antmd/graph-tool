@@ -17,46 +17,46 @@
 
 #include "graph_filtering.hh"
 #include "graph.hh"
-#include "histogram.hh"
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
 
-#include <boost/lambda/bind.hpp>
-
 #include "graph_distance_sampled.hh"
+
+typedef std::tr1::mt19937 rng_t;
 
 using namespace std;
 using namespace boost;
-using namespace boost::lambda;
 using namespace graph_tool;
 
-hist_t
-GraphInterface::GetSampledDistanceHistogram(string weight, size_t samples,
-                                            size_t seed) const
-{
-    hist_t hist;
+typedef Histogram<size_t, size_t, 1> hist_t;
 
-    if (weight == "")
+python::object sampled_distance_histogram(GraphInterface& gi, boost::any weight,
+                                          const vector<long double>& bins,
+                                          size_t n_samples, size_t seed)
+{
+    rng_t rng(static_cast<rng_t::result_type>(seed));
+
+    python::object ret;
+
+    if (weight.empty())
     {
-        run_action<>()(*this, bind<void>(get_sampled_distances(), _1,
-                                         _vertex_index, no_weightS(), var(hist),
-                                         samples, seed))();
+        run_action<>()(gi,
+                       bind<void>(get_sampled_distance_histogram(), _1,
+                                  gi.GetVertexIndex(), no_weightS(), n_samples,
+                                  ref(bins), ref(ret), ref(rng)))();
     }
     else
     {
-        try
-        {
-            run_action<>()(*this,
-                           bind<void>(get_sampled_distances(), _1,
-                                      _vertex_index, _2, var(hist), samples,
-                                      seed), edge_scalar_properties())
-                (prop(weight, _edge_index, _properties));
-        }
-        catch (property_not_found& e)
-        {
-            throw GraphException("error getting scalar property: " +
-                                 string(e.what()));
-        }
+        run_action<>()(gi,
+                       bind<void>(get_sampled_distance_histogram(), _1,
+                                  gi.GetVertexIndex(), _2, n_samples,
+                                  ref(bins), ref(ret), ref(rng)),
+                           edge_scalar_properties())(weight);
     }
-    return hist;
+    return ret;
+}
+
+void export_sampled_distance()
+{
+    python::def("sampled_distance_histogram", &sampled_distance_histogram);
 }

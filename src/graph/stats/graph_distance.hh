@@ -18,9 +18,15 @@
 #ifndef GRAPH_DISTANCE_HH
 #define GRAPH_DISTANCE_HH
 
-#include <tr1/unordered_set>
 #include <boost/graph/breadth_first_search.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
+
+#include <boost/python/object.hpp>
+#include <boost/python/list.hpp>
+#include <boost/python/extract.hpp>
+
+#include "histogram.hh"
+#include "numpy_bind.hh"
 
 namespace graph_tool
 {
@@ -31,59 +37,97 @@ using namespace boost;
 
 struct no_weightS {};
 
+template <class Map>
+struct get_val_type
+{
+    typedef typename property_traits<Map>::value_type type;
+};
+
+template <>
+struct get_val_type<no_weightS>
+{
+    typedef size_t type;
+};
+
 struct get_distance_histogram
 {
 
-    template <class Graph, class IndexMap, class WeightMap, class Hist>
-    void operator()(const Graph *gp, IndexMap index_map, WeightMap weights,
-                    Hist& hist) const
+    template <class Graph, class VertexIndex, class WeightMap>
+    void operator()(const Graph& g, VertexIndex vertex_index, WeightMap weights,
+                    const vector<long double>& obins, python::object& phist)
+        const
     {
-        const Graph& g = *gp;
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
         // select get_vertex_dists based on the existence of weights
         typedef typename mpl::if_<is_same<WeightMap, no_weightS>,
-                                       get_dists_bfs,
+                                  get_dists_bfs,
                                   get_dists_djk>::type get_vertex_dists_t;
 
+        // distance type
+        typedef typename get_val_type<WeightMap>::type val_type;
+        typedef Histogram<val_type, size_t, 1> hist_t;
+
+        array<vector<val_type>,1> bins;
+        bins[0].resize(obins.size());
+        for (size_t i = 0; i < obins.size(); ++i)
+            bins[0][i] = obins[i];
+
+        // only used for constant-sized bins
+        boost::array<pair<val_type, val_type>, 1> data_range;
+        data_range[0].first = data_range[0].second = 0;
+
+        hist_t hist(bins, data_range);
+        SharedHistogram<hist_t> s_hist(hist);
+
+        typename hist_t::point_t point;
         get_vertex_dists_t get_vertex_dists;
         int i, N = num_vertices(g);
-
-        #pragma omp parallel for default(shared) private(i)
+        #pragma omp parallel for default(shared) private(i,point) \
+            firstprivate(s_hist) schedule(dynamic)
         for (i = 0; i < N; ++i)
         {
             vertex_t v = vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
-            typedef tr1::unordered_map<vertex_t,double,
-                                       DescriptorHash<IndexMap> > dmap_t;
-            dmap_t dmap(0, DescriptorHash<IndexMap>(index_map));
-            InitializedPropertyMap<dmap_t>
-                dist_map(dmap, numeric_limits<double>::max());
+            unchecked_vector_property_map<val_type,VertexIndex>
+                dist_map(vertex_index, num_vertices(g));
 
-            dist_map[v] = 0.0;
-            get_vertex_dists(g, v, index_map, dist_map, weights);
+            for (size_t j = 0; j < N; ++j)
+            {
+                if (vertex(i,g) != graph_traits<Graph>::null_vertex())
+                    dist_map[vertex(j,g)] =  numeric_limits<val_type>::max();
+            }
+
+            dist_map[v] = 0;
+            get_vertex_dists(g, v, vertex_index, dist_map, weights);
 
             typename graph_traits<Graph>::vertex_iterator v2, v_end;
             for (tie(v2, v_end) = vertices(g); v2 != v_end; ++v2)
-                if (*v2 != v && dist_map[*v2] != numeric_limits<double>::max())
+                if (*v2 != v &&
+                    dist_map[*v2] != numeric_limits<val_type>::max())
                 {
-                    double dist = dist_map[*v2];
-                    #pragma omp atomic
-                    hist[dist]++;
+                    point[0] = dist_map[*v2];
+                    s_hist.PutValue(point);
                 }
         }
+        s_hist.Gather();
+
+        python::list ret;
+        ret.append(wrap_multi_array_owned<size_t,1>(hist.GetArray()));
+        ret.append(wrap_vector_owned<val_type>(hist.GetBins()[0]));
+        phist = ret;
     }
 
     // weighted version. Use dijkstra_shortest_paths()
     struct get_dists_djk
     {
-        template <class Graph, class Vertex, class IndexMap, class DistanceMap,
-                  class WeightMap>
-        void operator()(const Graph& g, Vertex s, IndexMap index_map,
+        template <class Graph, class Vertex, class VertexIndex,
+                  class DistanceMap, class WeightMap>
+        void operator()(const Graph& g, Vertex s, VertexIndex vertex_index,
                         DistanceMap dist_map, WeightMap weights) const
         {
-            dijkstra_shortest_paths(g, s, vertex_index_map(index_map).
+            dijkstra_shortest_paths(g, s, vertex_index_map(vertex_index).
                                     weight_map(weights).distance_map(dist_map));
         }
     };
@@ -91,14 +135,15 @@ struct get_distance_histogram
     // unweighted version. Use BFS.
     struct get_dists_bfs
     {
-        template <class Graph, class Vertex, class IndexMap, class DistanceMap>
-        void operator()(const Graph& g, Vertex s, IndexMap index_map,
+        template <class Graph, class Vertex, class VertexIndex,
+                  class DistanceMap>
+        void operator()(const Graph& g, Vertex s, VertexIndex vertex_index,
                         DistanceMap dist_map, no_weightS) const
         {
             typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
             typedef tr1::unordered_map<vertex_t,default_color_type,
-                                       DescriptorHash<IndexMap> > cmap_t;
-            cmap_t cmap(0, DescriptorHash<IndexMap>(index_map));
+                                       DescriptorHash<VertexIndex> > cmap_t;
+            cmap_t cmap(0, DescriptorHash<VertexIndex>(vertex_index));
             InitializedPropertyMap<cmap_t>
                 color_map(cmap, color_traits<default_color_type>::white());
 
