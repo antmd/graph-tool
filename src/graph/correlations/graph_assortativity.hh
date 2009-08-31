@@ -20,7 +20,6 @@
 
 #include <tr1/unordered_set>
 #include "shared_map.hh"
-#include "histogram.hh"
 #include "graph_util.hh"
 
 namespace graph_tool

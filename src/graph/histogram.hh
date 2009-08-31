@@ -55,28 +55,11 @@ public:
     Histogram(const boost::array<std::vector<ValueType>, Dim>& bins,
               const boost::array<std::pair<ValueType,ValueType>,Dim>&
               data_range)
-        : _bins(bins), _data_range(data_range), _grow(Dim, false)
+        : _bins(bins), _data_range(data_range)
     {
         bin_t new_shape;
         for (size_t j = 0; j < Dim; ++j)
-            if (_bins[j].size() == 1) // constant bin width
-            {
-                if (_data_range[j].first == _data_range[j].second)
-                {
-                    _grow[j] = true;
-                    new_shape[j] == 1;
-                }
-                else
-                {
-                    new_shape[j] = floor((_data_range[j].second -
-                                          _data_range[j].first) /
-                                         _bins[j][0]) + 1;
-                }
-            }
-            else
-            {
-                new_shape[j] = _bins[j].size();
-            }
+            new_shape[j] = _bins[j].size();
         _counts.resize(new_shape);
     }
 
@@ -88,14 +71,15 @@ public:
             if (_bins[i].size() == 1) // constant bin width
             {
                 bin[i] = (v[i] - _data_range[i].first)/_bins[i][0];
-                if (_grow[i] && (bin[i] >= _counts.shape()[i]))
+                if (bin[i] >= _counts.shape()[i])
                 {
                     boost::array<size_t, Dim> new_shape;
-                    for (size_t j = 0; j <  Dim; ++j)
+                    for (size_t j = 0; j < Dim; ++j)
                         new_shape[j] = _counts.shape()[j];
-                    new_shape[i] = bin[i]+1;
+                    new_shape[i] = bin[i] + 1;
                     _counts.resize(new_shape);
-                    _data_range[i].second = max(v[i], _data_range[i].second);
+                    if (v[i] > _data_range[i].second)
+                        _data_range[i].second = v[i];
                 }
             }
             else // arbitrary bins. do a binary search
@@ -111,7 +95,7 @@ public:
                 {
                     bin[i] = iter - bins.begin();
                     if (bin[i] == 0)
-                        return; // falls off from fist bin
+                        return; // falls off from fist bin, do not count
                     else
                        --bin[i];
                 }
@@ -122,6 +106,10 @@ public:
 
     boost::multi_array<CountType,Dim>& GetArray() { return _counts; }
 
+    boost::array<std::pair<ValueType,ValueType>,Dim>& GetDataRange()
+    { return _data_range; }
+
+
     boost::array<std::vector<ValueType>, Dim> GetBins()
     {
         boost::array<std::vector<ValueType>, Dim> bins;
@@ -130,9 +118,7 @@ public:
             {
                 for (ValueType i = _data_range[j].first;
                      i <= _data_range[j].second; i += _bins[j][0])
-                {
                     bins[j].push_back(i);
-                }
             }
             else
             {
@@ -145,7 +131,6 @@ protected:
     boost::multi_array<CountType,Dim> _counts;
     boost::array<std::vector<ValueType>, Dim> _bins;
     boost::array<std::pair<ValueType,ValueType>,Dim> _data_range;
-    std::vector<bool> _grow;
 };
 
 
@@ -172,12 +157,20 @@ public:
             #pragma omp critical
             {
                 typename Histogram::bin_t shape;
-                for (size_t i = 0; i < shape.size(); ++i)
-                    shape[i] = this->_counts.shape()[i];
+                for (size_t i = 0; i <  this->_counts.num_dimensions(); ++i)
+                    shape[i] = max(this->_counts.shape()[i],
+                                   _sum->GetArray().shape()[i]);
                 _sum->GetArray().resize(shape);
                 for (size_t i = 0; i < this->_counts.num_elements(); ++i)
-                {
                     _sum->GetArray().data()[i] += this->_counts.data()[i];
+                for (size_t i = 0; i <  Histogram::dim::value; ++i)
+                {
+                    _sum->GetDataRange()[i].first =
+                        min(this->_data_range[i].first,
+                            _sum->GetDataRange()[i].first);
+                    _sum->GetDataRange()[i].second =
+                        max(this->_data_range[i].second,
+                            _sum->GetDataRange()[i].second);
                 }
             }
             _sum = 0;

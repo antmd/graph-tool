@@ -205,19 +205,24 @@ struct get_correlation_histogram
         // find the data range
         pair<type1,type1> range1;
         pair<type2,type2> range2;
-        typename graph_traits<Graph>::vertex_iterator vi,vi_end;
-        range1.first = boost::numeric::bounds<type1>::highest();
-        range1.second = boost::numeric::bounds<type1>::lowest();
-        range2.first = boost::numeric::bounds<type2>::highest();
-        range2.second = boost::numeric::bounds<type2>::lowest();
-        for (tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
+        range1.first = range1.second = bins[0][0];
+        range2.first = range2.second = bins[1][0];
+        if (bins[0].size() == 1 || bins[1].size() == 1)
         {
-            type1 v1 = deg1(*vi, g);
-            type2 v2 = deg2(*vi, g);
-            range1.first = min(range1.first, v1);
-            range1.second = max(range1.second, v1);
-            range2.first = min(range2.first, v2);
-            range2.second = max(range2.second, v2);
+            typename graph_traits<Graph>::vertex_iterator vi,vi_end;
+            range1.first = boost::numeric::bounds<type1>::highest();
+            range1.second = boost::numeric::bounds<type1>::lowest();
+            range2.first = boost::numeric::bounds<type2>::highest();
+            range2.second = boost::numeric::bounds<type2>::lowest();
+            for (tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
+            {
+                type1 v1 = deg1(*vi, g);
+                type2 v2 = deg2(*vi, g);
+                range1.first = min(range1.first, v1);
+                range1.second = max(range1.second, v1);
+                range2.first = min(range2.first, v2);
+                range2.second = max(range2.second, v2);
+            }
         }
 
         boost::array<pair<val_type, val_type>, 2> data_range;
@@ -285,14 +290,18 @@ struct get_avg_correlation
 
         // find the data range
         array<pair<val_type,val_type>,1> data_range;
-        typename graph_traits<Graph>::vertex_iterator vi,vi_end;
-        data_range[0].first = boost::numeric::bounds<type1>::highest();
-        data_range[0].second = boost::numeric::bounds<type1>::lowest();
-        for (tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
+        data_range[0].first = data_range[0].second = _bins[0];
+        if (bins.size() == 1)
         {
-            val_type v1 = deg1(*vi, g);
-            data_range[0].first = min(data_range[0].first, v1);
-            data_range[0].second = max(data_range[0].second, v1);
+            typename graph_traits<Graph>::vertex_iterator vi, vi_end;
+            data_range[0].first = boost::numeric::bounds<type1>::highest();
+            data_range[0].second = boost::numeric::bounds<type1>::lowest();
+            for (tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
+            {
+                val_type v1 = deg1(*vi, g);
+                data_range[0].first = min(data_range[0].first, v1);
+                data_range[0].second = max(data_range[0].second, v1);
+            }
         }
 
         sum_t sum(bins, data_range);
@@ -317,7 +326,7 @@ struct get_avg_correlation
         s_sum2.Gather();
         s_count.Gather();
 
-        for (size_t i = 0; i < s_sum.GetArray().size(); ++i)
+        for (size_t i = 0; i < sum.GetArray().size(); ++i)
         {
             sum.GetArray()[i] /= count.GetArray()[i];
             sum2.GetArray()[i] =
