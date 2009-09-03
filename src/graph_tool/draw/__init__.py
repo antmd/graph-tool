@@ -170,7 +170,8 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
         Output file format. Possible values are "auto", "xlib", "ps", "svg",
         "svgz", "fig", "mif", "hpgl", "pcl", "png", "gif", "dia", "imap",
         "cmapx". If the value is "auto", the format is guessed from the 'output'
-        parameter, or 'xlib' if it is empty.
+        parameter, or 'xlib' if it is empty. If the value is None, no output is
+        produced.
     returngv : bool (default: False)
         Return the graph object used internally with the gv module.
     fork : bool (default: False)
@@ -236,9 +237,9 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
 
     """
 
-    if output != "":
+    if output != "" and output != None:
         output = os.path.expanduser(output)
-        # check opening file for writing, since graphview will bork if it is not
+        # check opening file for writing, since graphviz will bork if it is not
         # possible to open file
         if os.path.dirname(output) != "" and \
                not os.access(os.path.dirname(output), os.W_OK):
@@ -426,7 +427,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
     if output_format == "auto":
         if output == "":
             output_format = "xlib"
-        else:
+        elif output != None:
             output_format = output.split(".")[-1]
 
     # if using xlib we need to fork the process, otherwise good ol' graphviz
@@ -438,7 +439,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
             os._exit(0) # since we forked, it's good to be sure
         if output_format != "xlib":
             os.wait()
-    else:
+    elif output != None:
         gv.render(gvg, output_format, output)
 
     # I don't get this, but it seems necessary
