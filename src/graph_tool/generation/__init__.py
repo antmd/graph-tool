@@ -265,14 +265,14 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
     >>> seed(42)
     >>> g = gt.random_graph(1000, lambda: sample_k(10),
     ...                     lambda i,j: exp(abs(i-j)), directed=False)
-    >>> gt.graph_draw(g, output="rewire_orig.png")
-    (...)
+    >>> gt.graph_draw(g, layout="arf", output="rewire_orig.png")
+    <...>
     >>> gt.random_rewire(g, "correlated")
-    >>> gt.graph_draw(g, output="rewire_corr.png")
-    (...)
+    >>> gt.graph_draw(g, layout="arf", output="rewire_corr.png")
+    <...>
     >>> gt.random_rewire(g)
-    >>> gt.graph_draw(g, output="rewire_uncorr.png")
-    (...)
+    >>> gt.graph_draw(g, layout="arf", output="rewire_uncorr.png")
+    <...>
 
 
     .. figure:: rewire_orig.png

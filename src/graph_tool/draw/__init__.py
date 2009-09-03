@@ -220,7 +220,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
     >>> ebet.get_array()[:] += 10
     >>> gt.graph_draw(g, vsize=deg, vcolor=deg, elen=10, ecolor=ebet,
     ...               penwidth=ebet, overlap="prism", output="graph-draw.png")
-    (...)
+    <...>
 
     .. figure:: graph-draw.png
         :align: center

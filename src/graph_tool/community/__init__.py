@@ -132,13 +132,13 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr= "erdos",
     ...                                history_file="community-history1")
     >>> gt.graph_draw(g, pos=pos, pin=True, vsize=0.3, vcolor=spins,
     ...               output="comm1.png")
-    (...)
+    <...>
     >>> spins = gt.community_structure(g, 10000, 40, t_range=(5, 0.1),
     ...                                gamma=2.5,
     ...                                history_file="community-history2")
     >>> gt.graph_draw(g, pos=pos, pin=True, vsize=0.3, vcolor=spins,
     ...               output="comm2.png")
-    (...)
+    <...>
     >>> clf()
     >>> xlabel("iterations")
     <...>
@@ -316,7 +316,7 @@ def condensation_graph(g, prop, weight=None):
     >>> gt.graph_draw(ng[0], vsize=size, vcolor=size, splines=True,
     ...               eprops={"len":20, "penwidth":10}, vprops={"penwidth":10},
     ...               output="comm-network.png")
-    (...)
+    <...>
 
     .. figure:: comm-network.png
         :align: center
