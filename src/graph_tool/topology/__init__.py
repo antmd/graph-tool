@@ -35,7 +35,7 @@ def isomorphism(g1, g2, isomap=False):
     imap = g1.new_vertex_property("int32_t")
     iso = libgraph_tool_topology.\
            check_isomorphism(g1._Graph__graph,g2._Graph__graph,
-                             _prop("v", g1, isomap))
+                             _prop("v", g1, imap))
     if isomap:
         return iso, imap
     else:
