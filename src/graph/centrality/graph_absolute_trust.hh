@@ -78,7 +78,11 @@ struct get_absolute_trust
             tr1::unordered_set<size_t> path_set;
             tr1::uniform_int<size_t>
                 random_salt(0, numeric_limits<size_t>::max());
-            size_t salt = random_salt(rng);
+            size_t salt;
+            {
+                #pragma omp critical
+                salt = random_salt(rng);
+            }
 
             for (size_t bias = 0; bias < 3; ++bias)
                 for (size_t iter = 0; iter < n_iter; ++iter)
@@ -133,7 +137,7 @@ struct get_absolute_trust
                         {
                             // select edge according to its probability
                             typename graph_traits<Graph>::edge_descriptor e;
-                            if (bias != 1)
+                            if (!out_prob.empty() && out_prob.back() > 0)
                             {
                                 typedef tr1::uniform_real<t_type> dist_t;
                                 tr1::variate_generator<rng_t&, dist_t>
