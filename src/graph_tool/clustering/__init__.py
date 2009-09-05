@@ -376,7 +376,7 @@ def motifs(g, k, p=1.0, motif_list=None, undirected=None, seed=0):
 
     return sub_list, hist
 
-def motif_significance(g, k, n_shuffles=10, p=1.0, motif_list=None,
+def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
                        undirected=None, self_loops=False, parallel_edges=False,
                        full_output=False, shuffle_strategy="uncorrelated",
                        seed=0):
@@ -391,7 +391,7 @@ def motif_significance(g, k, n_shuffles=10, p=1.0, motif_list=None,
         Graph to be used.
     k : int
         number of vertices of the motifs
-    n_shuffles : int, optional (default: 10)
+    n_shuffles : int, optional (default: 100)
         number of shuffled networks to consider for the z-score
     p : float or float list, optional (default: 1.0)
         uniform fraction of the motifs to be sampled. If a float list is
@@ -458,12 +458,12 @@ def motif_significance(g, k, n_shuffles=10, p=1.0, motif_list=None,
 
     Examples
     --------
-    >>> g = gt.random_graph(100, lambda: (3,3), seed=42)
+    >>> g = gt.random_graph(100, lambda: 3, seed=10)
     >>> motifs, zscores = gt.motif_significance(g, 3)
     >>> print len(motifs)
     11
     >>> print zscores
-    [-2.7573400429260952, -2.7711373148737528, -3.823295048129145, -0.6117752903214978, 2.9524205015061291, 2.9303545260261825, 1.4167427093634908, 1.8999999999999999, -0.29999999999999999, 0.0, -0.20000000000000001]
+    [0.99252511282153089, 0.99338956784734667, 1.4783772887933557, 1.3527251395635047, -1.3544301877234366, -1.3559964630331622, -1.1963658331614413, -0.20999999999999999, -0.16, -0.37, -0.13]
     """
 
     s_ms, counts = motifs(g, k, p, motif_list, undirected, seed)
