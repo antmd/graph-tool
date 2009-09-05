@@ -182,7 +182,7 @@ class PropertyMap(object):
         return self.__map.value_type()
 
     def get_array(self):
-        """Get an array with property values
+        """Get an array with property values.
 
         .. WARNING::
 
@@ -200,6 +200,17 @@ class PropertyMap(object):
         else:
             n = 1
         return self.__map.get_array(n)
+
+    def __get_array(self):
+        return self.get_array()[:]
+
+    def __set_array(self, v):
+        self.get_array()[:] = v
+
+    a = property(__get_array, __set_array,
+                 doc=r"""Shortcut to the :meth:`~PropertyMap.get_array` method
+                 as a property. A view to the array is returned, instead of the
+                 array, for convenience.""")
 
     def is_writable(self):
         """Return True if the property is writable."""
