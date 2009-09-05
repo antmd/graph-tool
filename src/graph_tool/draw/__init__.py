@@ -129,12 +129,15 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
         guarantees a minimal non-zero distance between nodes.
     splines : bool (default: False)
         If True, the edges are drawn as splines and routed around the vertices.
-    vsize : float or PropertyMap (default: 0.1)
-        Default vertex size (width and height).
-    penwidth : float  or PropertyMap (default: 1.0)
+    vsize : float, PropertyMap, or tuple (default: 0.1)
+        Default vertex size (width and height). If a tuple is specified, the
+        first value should be a property map, and the second is a scale factor.
+    penwidth : float, PropertyMap or tuple (default: 1.0)
         Specifies the width of the pen, in points, used to draw lines and
         curves, including the boundaries of edges and clusters. It has no effect
-        on text.
+        on text. Default vertex size (width and height). If a tuple is
+        specified, the first value should be a property map, and the second is a
+        scale factor.
     elen : float or PropertyMap (default: None)
         Preferred edge length, in inches.
     gprops : dict (default: {})
@@ -262,6 +265,18 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
         else:
             pos = (g.copy_property(pos[0]), g.copy_property(pos[1]))
 
+    if type(vsize) == tuple:
+        s = g.new_vertex_property("double")
+        g.copy_property(vsize[0], s)
+        s.a *= vsize[1]
+        vsize = s
+
+    if type(penwidth) == tuple:
+        s = g.new_vertex_property("double")
+        g.copy_property(penwidth[0], s)
+        s.a *= penwidth[1]
+        penwidth = s
+
     # main graph properties
     gv.setv(gvg,"outputorder", "edgesfirst")
     gv.setv(gvg,"mode", "major")
@@ -327,28 +342,11 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
     # add nodes
     for v in g.vertices():
         n = gv.node(gvg,str(g.vertex_index[v]))
-        if type(vsize) != tuple:
-            vw = vh = vsize
+
+        if type(vsize) == PropertyMap:
+            vw = vh = vsize[v]
         else:
-            vw, vh = vsize
-        if type(vw) == PropertyMap:
-            vw = vw[v]
-        if type(vh) == PropertyMap:
-            vh = vh[v]
-
-        if type(vw) == str and vw == "in":
-            vw = v.in_degree()
-        if type(vw) == str and vw == "out":
-            vw = v.out_degree()
-        if type(vw) == str and vw == "total":
-            vw = v.in_degree() + v.out_degree()
-
-        if type(vh) == str and vh == "in":
-            vh = v.in_degree()
-        if type(vh) == str and vh == "out":
-            vh = v.out_degree()
-        if type(vh) == str and vh == "total":
-            vh = v.in_degree() + v.out_degree()
+            vw = vh = vsize
 
         gv.setv(n, "width", "%g" % vw)
         gv.setv(n, "height", "%g" % vh)
