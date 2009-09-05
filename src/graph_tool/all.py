@@ -49,5 +49,7 @@ from graph_tool.topology import *
 import graph_tool.topology
 from graph_tool.flow import *
 import graph_tool.flow
+from graph_tool.spectral import *
+import graph_tool.spectral
 from graph_tool.util import *
 import graph_tool.util

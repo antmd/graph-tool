@@ -57,3 +57,7 @@ graph_tool_topologydir = $(MOD_DIR)/topology
 graph_tool_flow_PYTHON = \
     flow/__init__.py
 graph_tool_flowdir = $(MOD_DIR)/flow
+
+graph_tool_spectral_PYTHON = \
+    spectral/__init__.py
+graph_tool_spectraldir = $(MOD_DIR)/spectral
