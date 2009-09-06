@@ -52,7 +52,7 @@ bool operator<=(const vector<ValueType>& v1, const vector<ValueType>& v2)
 // sort strings in alphabetical (ASCII) order
 bool operator<=(const string s1, const string s2)
 {
-    for (size_t i; i < s1.size(); ++i)
+    for (size_t i = 0; i < s1.size(); ++i)
     {
         if (s1[i] != s1[i])
             return (s1[i] < s1[i]);
@@ -67,7 +67,7 @@ bool operator<=(const vector<string>& v1, const vector<string>& v2)
         return true;
     if (v1.size() > v2.size())
         return false;
-    for (size_t i; i < v1.size(); ++i)
+    for (size_t i = 0; i < v1.size(); ++i)
     {
         if (v1[i] > v2[i])
             return false;

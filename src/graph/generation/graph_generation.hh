@@ -218,10 +218,10 @@ public:
         if (_biased && !_candidates_set.empty() &&
             _erased_prob >= _probs.back()/3)
         {
-            for (int i = _probs.size() - 1; i > 0; --i)
+            for (int i = int(_probs.size()) - 1; i > 0; --i)
                 _probs[i] -= _probs[i-1];
 
-            for (int i = 0; i < _candidates.size(); ++i)
+            for (size_t i = 0; i < _candidates.size(); ++i)
             {
                 while (i < _erased.size() && _erased[i])
                 {
@@ -699,7 +699,6 @@ struct gen_random_graph
         for (int i = 0; i < int(sources.size()); ++i)
         {
             dvertex_t source = sources[i], target;
-            deg_t source_deg = gen_strat.GetDegree(source);
 
             // in undirected graphs, there's no difference between source and
             // target

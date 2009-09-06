@@ -37,7 +37,7 @@ typename mpl::if_<
     double, int>::type
 min(const T1& v1, const T2& v2)
 {
-    if (v1 <= v2)
+    if (v1 <= T1(v2))
         return v1;
     else
         return v2;

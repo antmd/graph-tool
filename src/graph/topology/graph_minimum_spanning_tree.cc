@@ -111,7 +111,7 @@ typedef property_map_types::apply<mpl::vector<uint8_t>,
                                   mpl::bool_<false> >::type
     tree_properties;
 
-bool get_kruskal_spanning_tree(GraphInterface& gi, boost::any weight_map,
+void get_kruskal_spanning_tree(GraphInterface& gi, boost::any weight_map,
                                boost::any tree_map)
 {
 
@@ -129,7 +129,7 @@ bool get_kruskal_spanning_tree(GraphInterface& gi, boost::any weight_map,
          weight_maps(), edge_scalar_properties())(weight_map, tree_map);
 }
 
-bool get_prim_spanning_tree(GraphInterface& gi, size_t root,
+void get_prim_spanning_tree(GraphInterface& gi, size_t root,
                             boost::any weight_map, boost::any tree_map)
 {
     typedef ConstantPropertyMap<size_t,GraphInterface::edge_t> cweight_t;

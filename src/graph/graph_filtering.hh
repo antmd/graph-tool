@@ -91,7 +91,7 @@ using namespace boost;
 // struct my_algorithm
 // {
 //     template <class Graph, class ValueType>
-//     void operator()(Graph* g, ValueType val) const
+//     void operator()(Graph& g, ValueType val) const
 //     {
 //         ... do something ...
 //     }
@@ -99,9 +99,10 @@ using namespace boost;
 //
 // ...
 //
+// GraphInterface g;
 // typedef mpl::vector<int, double, string> value_types;
 // double foo = 42.0;
-// run_action(*this, my_algorithm(), value_types)(boost::any(foo));
+// run_action(g, my_algorithm(), value_types)(boost::any(foo));
 //
 // The above line will run my_algorithm::operator() with Graph being the
 // appropriate graph view type and ValueType being 'double' and val = 42.0.

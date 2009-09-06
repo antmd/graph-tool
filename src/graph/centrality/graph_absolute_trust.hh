@@ -206,7 +206,7 @@ struct get_absolute_trust
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
-            for (size_t j = 0; j < N; ++j)
+            for (size_t j = 0; j < size_t(N); ++j)
                 if (t_count[v][j] > 0)
                     t[v][j] /= t_count[v][j];
         }

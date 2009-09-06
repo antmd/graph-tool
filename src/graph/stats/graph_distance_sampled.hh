@@ -86,7 +86,7 @@ struct get_sampled_distance_histogram
         vector<vertex_t> sources;
         sources.reserve(num_vertices(g));
         int i;
-        for (i = 0; i < num_vertices(g); ++i)
+        for (i = 0; i < int(num_vertices(g)); ++i)
             if (vertex(i,g) != graph_traits<Graph>::null_vertex())
                 sources.push_back(vertex(i,g));
         n_samples = min(n_samples, sources.size());

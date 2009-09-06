@@ -25,15 +25,15 @@ using namespace graph_tool;
 bool check_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
                        boost::any iso_map);
 
-bool get_kruskal_spanning_tree(GraphInterface& gi, boost::any weight_map,
+void get_kruskal_spanning_tree(GraphInterface& gi, boost::any weight_map,
                                boost::any tree_map);
 
-bool get_prim_spanning_tree(GraphInterface& gi, size_t root,
+void get_prim_spanning_tree(GraphInterface& gi, size_t root,
                             boost::any weight_map, boost::any tree_map);
 
 void topological_sort(GraphInterface& gi, vector<int32_t>& sort);
 
-bool denominator_tree(GraphInterface& gi, size_t entry, boost::any pred_map);
+void denominator_tree(GraphInterface& gi, size_t entry, boost::any pred_map);
 
 void transitive_closure(GraphInterface& gi, GraphInterface& tcgi);
 

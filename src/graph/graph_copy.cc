@@ -63,13 +63,13 @@ struct graph_copy
 // copy constructor
 GraphInterface::GraphInterface(const GraphInterface& gi)
     :_mg(),
+     _nedges(gi._nedges),
      _reversed(gi._reversed),
      _directed(gi._directed),
      _vertex_index(get(vertex_index,_mg)),
      _edge_index(get(edge_index_t(),_mg)),
-     _max_edge_index(gi._max_edge_index),
-     _nedges(gi._nedges),
      _free_indexes(gi._free_indexes),
+     _max_edge_index(gi._max_edge_index),
      _vertex_filter_map(_vertex_index),
      _vertex_filter_invert(false),
      _vertex_filter_active(false),

@@ -93,7 +93,7 @@ struct get_distance_histogram
             unchecked_vector_property_map<val_type,VertexIndex>
                 dist_map(vertex_index, num_vertices(g));
 
-            for (size_t j = 0; j < N; ++j)
+            for (size_t j = 0; j < size_t(N); ++j)
             {
                 if (vertex(i,g) != graph_traits<Graph>::null_vertex())
                     dist_map[vertex(j,g)] =  numeric_limits<val_type>::max();

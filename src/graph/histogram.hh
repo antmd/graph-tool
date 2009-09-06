@@ -163,7 +163,7 @@ public:
                 _sum->GetArray().resize(shape);
                 for (size_t i = 0; i < this->_counts.num_elements(); ++i)
                     _sum->GetArray().data()[i] += this->_counts.data()[i];
-                for (size_t i = 0; i <  Histogram::dim::value; ++i)
+                for (size_t i = 0; i < size_t(Histogram::dim::value); ++i)
                 {
                     _sum->GetDataRange()[i].first =
                         min(this->_data_range[i].first,

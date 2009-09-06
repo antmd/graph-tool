@@ -39,7 +39,7 @@ typedef property_map_types::apply<mpl::vector<int32_t>,
                                   mpl::bool_<false> >::type
     pred_properties;
 
-bool denominator_tree(GraphInterface& gi, size_t entry, boost::any pred_map)
+void denominator_tree(GraphInterface& gi, size_t entry, boost::any pred_map)
 {
     run_action<graph_tool::detail::always_directed>()
         (gi, bind<void>(get_denominator_tree(), _1, entry, _2),

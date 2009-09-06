@@ -84,7 +84,7 @@ void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
         list = vector<u_graph_t>();
     try
     {
-        for (size_t i = 0; i < python::len(subgraph_list); ++i)
+        for (int i = 0; i < python::len(subgraph_list); ++i)
         {
             GraphInterface& sub =
                 python::extract<GraphInterface&>(subgraph_list[i]);
@@ -101,7 +101,7 @@ void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
     vector<size_t> phist;
     vector<double> plist;
     double total = 1;
-    for (size_t i = 0; i < python::len(p); ++i)
+    for (int i = 0; i < python::len(p); ++i)
     {
         plist.push_back(python::extract<double>(p[i]));
         total *= plist[i];
@@ -123,7 +123,7 @@ void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
 
     if (fill_list)
     {
-        for (size_t i = 0; i < python::len(subgraph_list); ++i)
+        for (int i = 0; i < python::len(subgraph_list); ++i)
             subgraph_list.pop();
 
         bool done = false;

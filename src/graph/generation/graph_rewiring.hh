@@ -243,7 +243,7 @@ struct graph_rewire
         }
 
         // for each edge simultaneously rewire its source and target
-        for (size_t i = 0; i < int(edges.size()); ++i)
+        for (size_t i = 0; i < edges.size(); ++i)
         {
             if (!is_edge[i])
                 continue;
@@ -336,7 +336,7 @@ public:
         //try randomly drawn pairs of edges until one satisfies all the
         //consistency checks
         bool found = false;
-        edge_t es, et;
+        edge_t es = e, et = e;
         typedef random_permutation_iterator
             <typename vector<index_t>::iterator, rng_t> random_edge_iter;
 
