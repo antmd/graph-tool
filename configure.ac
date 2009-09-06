@@ -37,7 +37,7 @@ AC_PROG_LIBTOOL
 AC_PROG_INSTALL
 
 dnl turn on warnings
-[CPPFLAGS="${CPPFLAGS} -Wall"]
+[CXXFLAGS="${CXXFLAGS} -Wall"]
 
 dnl Checks for options
 
