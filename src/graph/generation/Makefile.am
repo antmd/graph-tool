@@ -30,4 +30,5 @@ libgraph_tool_generation_la_SOURCES = \
 libgraph_tool_generation_la_include_HEADERS = \
     graph_generation.hh \
     graph_rewiring.hh \
+    graph_predecessor.hh \
     graph_union.hh
