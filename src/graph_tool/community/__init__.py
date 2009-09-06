@@ -51,7 +51,7 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr= "erdos",
     gamma : float (optional, default: 1.0)
         The :math:`\gamma` parameter of the hamiltonian.
     corr : string (optional, default: "erdos")
-        Type of correlation to be assumed: Either "erdos", "random" and
+        Type of correlation to be assumed: Either "erdos", "uncorrelated" and
         "correlated".
     spins : PropertyMap
         Vertex property maps to store the spin variables. If this is specified,
@@ -96,7 +96,7 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr= "erdos",
     :math:`\gamma`, it's possible also to find sub-communities.
 
     It is possible to select three policies for choosing :math:`p_{ij}` and thus
-    choosing the null model: "random" selects a Erdos-Reyni random graph,
+    choosing the null model: "erdos" selects a Erdos-Reyni random graph,
     "uncorrelated" selects an arbitrary random graph with no vertex-vertex
     correlations, and "correlated" selects a random graph with average
     correlation taken from the graph itself. Optionally a weight property
