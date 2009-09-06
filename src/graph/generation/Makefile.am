@@ -18,9 +18,16 @@ libgraph_tool_generation_la_SOURCES = \
     graph_generation.cc \
     graph_rewiring.cc \
     graph_predecessor.cc \
-    graph_line_graph.cc
+    graph_line_graph.cc \
+    graph_union.cc \
+    graph_union_vprop.cc \
+    graph_union_eprop.cc
+
+
+
 
 
 libgraph_tool_generation_la_include_HEADERS = \
     graph_generation.hh \
-    graph_rewiring.hh
+    graph_rewiring.hh \
+    graph_union.hh

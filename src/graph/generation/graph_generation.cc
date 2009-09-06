@@ -97,6 +97,13 @@ void predecessor_graph(GraphInterface& gi, GraphInterface& gpi,
                        boost::any pred_map);
 void line_graph(GraphInterface& gi, GraphInterface& lgi,
                 boost::any edge_index);
+python::tuple graph_union(GraphInterface& ugi, GraphInterface& gi);
+void vertex_property_union(GraphInterface& ugi, GraphInterface& gi,
+                           boost::any p_vprop, boost::any p_eprop,
+                           boost::any uprop, boost::any prop);
+void edge_property_union(GraphInterface& ugi, GraphInterface& gi,
+                         boost::any p_vprop, boost::any p_eprop,
+                         boost::any uprop, boost::any prop);
 
 using namespace boost::python;
 
@@ -106,4 +113,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_generation)
     def("random_rewire", &random_rewire);
     def("predecessor_graph", &predecessor_graph);
     def("line_graph", &line_graph);
+    def("graph_union", &graph_union);
+    def("vertex_property_union", &vertex_property_union);
+    def("edge_property_union", &edge_property_union);
 }

@@ -27,7 +27,8 @@ dl_import("import libgraph_tool_generation")
 from .. core import Graph, _check_prop_scalar, _prop
 import sys, numpy
 
-__all__ = ["random_graph", "random_rewire", "predecessor_tree", "line_graph"]
+__all__ = ["random_graph", "random_rewire", "predecessor_tree", "line_graph",
+           "graph_union"]
 
 def _corr_wrap(i, j, corr):
     return corr(i[1], j[1])
@@ -397,3 +398,43 @@ def line_graph(g):
                                         lg._Graph__graph,
                                         _prop("v", lg, vertex_map))
     return lg, vertex_map
+
+def graph_union(g1, g2, props=[], include=False):
+    if not include:
+        g1 = Graph(g1)
+    g1.stash_filter(directed=True)
+    g1.set_directed(True)
+    g2.stash_filter(directed=True)
+    g2.set_directed(True)
+    n_props = []
+
+    try:
+        vmap, emap = libgraph_tool_generation.graph_union(g1._Graph__graph,
+                                                          g2._Graph__graph)
+        for p in props:
+            p1, p2 = p
+            if not include:
+                p1 = g1.copy_property(p1)
+            if p2.value_type() != p1.value_type():
+                p2 = g2.copy_property(p2, value_type=p1.value_type())
+            if p1.key_type() == 'v':
+                libgraph_tool_generation.\
+                      vertex_property_union(g1._Graph__graph, g2._Graph__graph,
+                                            vmap, emap,
+                                            _prop(p1.key_type(), g1, p1),
+                                            _prop(p2.key_type(), g2, p2))
+            else:
+                libgraph_tool_generation.\
+                      edge_property_union(g1._Graph__graph, g2._Graph__graph,
+                                          vmap, emap,
+                                          _prop(p1.key_type(), g1, p1),
+                                          _prop(p2.key_type(), g2, p2))
+            n_props.append(p1)
+    finally:
+        g1.pop_filter(directed=True)
+        g2.pop_filter(directed=True)
+
+    if len(n_props) > 0:
+        return g1, n_props
+    else:
+        return g1
