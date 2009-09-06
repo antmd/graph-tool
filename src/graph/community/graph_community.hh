@@ -140,10 +140,15 @@ struct get_communities
                 size_t k = out_degree_no_loops(v, g);
 
                 double curr_e = gamma*Nnnks(k,s[v]) - ns[s[v]];
-                double new_e =  gamma*Nnnks(k,new_s) - ns[new_s];
+                double new_e = gamma*Nnnks(k,new_s) - ns[new_s];
 
-                if (new_e < curr_e ||
-                    random() < exp(-(new_e - curr_e)/T))
+                double r;
+                {
+                    #pragma omp critical
+                    r = random();
+                }
+
+                if (new_e < curr_e || r < exp(-(new_e - curr_e)/T))
                 {
                     temp_s[v] = new_s;
                     curr_e = new_e;
