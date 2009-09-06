@@ -668,14 +668,17 @@ class Graph(object):
     # property map copying
     @_require("src", PropertyMap)
     @_require("tgt", (PropertyMap, type(None)))
-    def copy_property(self, src, tgt=None, g=None):
+    def copy_property(self, src, tgt=None, value_type=None, g=None):
         """Copy contents of `src` property to `tgt` property. If `tgt` is None,
-        then a new property map of the same type is created, and returned. The
-        optional parameter g specifies the (identical) source graph to copy
-        properties from (defaults to self).
+        then a new property map of the same type (or with the type given by the
+        optional `value_type` parameter) is created, and returned. The optional
+        parameter g specifies the (identical) source graph to copy properties
+        from (defaults to self).
         """
         if tgt == None:
-            tgt = self.new_property(src.key_type(), src.value_type())
+            tgt = self.new_property(src.key_type(),
+                                    (src.value_type()
+                                     if value_type == None else value_type))
             ret = tgt
         else:
             ret = None
