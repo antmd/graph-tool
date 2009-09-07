@@ -59,7 +59,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
     ----------
     g : Graph
         Graph to be used.
-    pos : tuple of PropertyMaps (optional, default: None)
+    pos : PropertyMap or tuple of PropertyMaps (optional, default: None)
         Vertex property maps containing the x and y coordinates of the vertices.
     size : tuple of scalars (optional, default: (15,15))
         Size (in centimeters) of the canvas.
@@ -188,17 +188,15 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
 
     Returns
     -------
-    pos_x : PropertyMap
-        Vertex property map with the x-coordinates of the vertices.
-    pos_y : PropertyMap
-        Vertex property map with the y-coordinates of the vertices.
+    pos : PropertyMap
+        Vector vertex property map with the x and y coordinates of the vertices.
     gv : gv.digraph or gv.graph (optional, only if returngv == True)
         Internally used graphviz graph.
 
 
     Notes
     -----
-    This function is a wrapper for the graphviz_ python
+    This function is a wrapper for the [graphviz] python
     routines. Extensive additional documentation for the graph, vertex and edge
     properties is available at: http://www.graphviz.org/doc/info/attrs.html.
 
@@ -235,8 +233,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
 
     References
     ----------
-    .. _graphviz: http://www.graphviz.org
-
+    .. [graphviz] http://www.graphviz.org
 
     """
 
@@ -454,6 +451,30 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
         return pos
 
 def random_layout(g, shape=None, pos=None, dim=2):
+    r"""Performs a random layout of the graph.
+
+    Parameters
+    ----------
+    g : Graph
+        Graph to be used.
+    shape : tuple (optional, default: None)
+        Rectangular shape of the bounding area. If None, a square of linear size
+        :math:`\sqrt{N}` is used.
+    pos : PropertyMap (optional, default: None)
+        Vector vertex property maps where the coordinates should be stored.
+    dim : int (optional, default: 2)
+        Number of coordinates per vertex.
+
+    Returns
+    -------
+    pos : A vector vertex property map
+        Vertex property map with the coordinates of the vertices.
+
+    Notes
+    -----
+    This algorithm has complexity :math:`O(V)`.
+    """
+
     if pos == None:
         pos = [g.new_vertex_property("double") for i in xrange(dim)]
 
@@ -461,7 +482,7 @@ def random_layout(g, shape=None, pos=None, dim=2):
         pos = ungroup_vector_property(pos)
 
     if shape == None:
-        shape = (sqrt(g.num_vertices()), sqrt(g.num_vertices()))
+        shape = [sqrt(g.num_vertices())]*dim
 
     for i in xrange(dim):
         _check_prop_scalar(pos[i], name="pos[%d]" % i)
@@ -474,6 +495,65 @@ def random_layout(g, shape=None, pos=None, dim=2):
 
 def arf_layout(g, weight=None, d=0.1, a=10, dt=0.001, epsilon=1e-6,
                max_iter=1000, pos=None, dim=2):
+    r"""Calculate the ARF spring-block layout of the graph.
+
+    Parameters
+    ----------
+    g : Graph
+        Graph to be used.
+    weight : PropertyMap (optional, default: None)
+        An edge property map with the respective weights.
+    d : float (optional, default: 0.1)
+        Opposing force between vertices.
+    a : float (optional, default: 10)
+        Attracting force between adjacent vertices.
+    dt : float (optional, default: 0.001)
+        Iteration step size.
+    epsilon : float (optional, default: 1e-6)
+        Convergence criterion.
+    max_iter : int (optional, default: 1000)
+        Maximum number of iterations. If this value is 0, it runs until
+        convergence.
+    pos : PropertyMap (optional, default: None)
+        Vector vertex property maps where the coordinates should be stored.
+    dim : int (optional, default: 2)
+        Number of coordinates per vertex.
+
+    Returns
+    -------
+    pos : A vector vertex property map
+        Vertex property map with the coordinates of the vertices.
+
+    Notes
+    -----
+    This algorithm is defined in [geipel_self-organization_2007]_, and has
+    complexity :math:`O(V^2)`.
+
+    Examples
+    --------
+    >>> from numpy.random import seed, zipf
+    >>> seed(42)
+    >>> g = gt.random_graph(100, lambda: 3, directed=False)
+    >>> t = gt.min_spanning_tree(g)
+    >>> g.set_edge_filter(t)
+    >>> pos = gt.graph_draw(g, output=None) # initial configuration
+    >>> pos = gt.arf_layout(g, pos=pos, max_iter=0)
+    >>> gt.graph_draw(g, pos=pos, pin=True, output="graph-draw-arf.png")
+    <...>
+
+    .. figure:: graph-draw-arf.png
+        :align: center
+
+        ARF layout of a minimum spanning tree of a random graph.
+
+    References
+    ----------
+    .. [geipel_self-organization_2007] Markus M. Geipel, "Self-Organization
+       applied to Dynamic Network Layout" , International Journal of Modern
+       Physics C vol. 18, no. 10 (2007), pp. 1537-1549, arXiv:0704.1748v5
+    .. _arf: http://www.sg.ethz.ch/research/graphlayout
+    """
+
     if pos == None:
         pos = random_layout(g, dim=dim)
     _check_prop_vector(pos, name="pos", floating=True)

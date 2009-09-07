@@ -29,6 +29,57 @@ import scipy.sparse
 __all__ = ["adjacency", "laplacian", "incidence"]
 
 def adjacency(g, sparse=True, weight=None):
+    r"""Return the adjacency matrix of the graph.
+
+    Parameters
+    ----------
+    g : Graph
+        Graph to be used.
+    sparse : bool (optional, default: True)
+        Build a :mod:`~scipy.sparse` matrix.
+    weight : PropertyMap (optional, default: True)
+        Edge property map with the edge weights.
+
+    Returns
+    -------
+    a : matrix
+        The adjacency matrix.
+
+    Notes
+    -----
+    The adjacency matrix is defined as
+
+    .. math::
+
+        a_{i,j} =
+        \begin{cases}
+            1 & \text{if } v_i \text{ is adjacent to } v_j, \\
+            0 & \text{otherwise}
+        \end{cases}
+
+    In the case of weighted edges, the value 1 is replaced the weight of the
+    respective edge.
+
+    Examples
+    --------
+    >>> from numpy.random import seed, random
+    >>> seed(42)
+    >>> g = gt.random_graph(100, lambda: (10,10))
+    >>> m = gt.adjacency(g)
+    >>> print m.todense()
+    [[ 0.  0.  0. ...,  1.  0.  0.]
+     [ 0.  0.  0. ...,  0.  0.  0.]
+     [ 1.  0.  0. ...,  0.  0.  0.]
+     ..., 
+     [ 0.  0.  0. ...,  0.  1.  0.]
+     [ 0.  0.  0. ...,  0.  0.  0.]
+     [ 0.  0.  0. ...,  0.  0.  0.]]
+
+    References
+    ----------
+    .. [wikipedia_adjacency] http://en.wikipedia.org/wiki/Adjacency_matrix
+    """
+
     if g.get_vertex_filter()[0] != None:
         index = g.new_vertex_property("int64_t")
         for i,v in enumerate(g.vertices()):
@@ -67,6 +118,74 @@ def _get_deg(v, deg, weight):
 
 @_limit_args({"deg":["total", "in", "out"]})
 def laplacian(g, deg="total", normalized=True, sparse=True, weight=None):
+    r"""Return the Laplacian matrix of the graph.
+
+    Parameters
+    ----------
+    g : Graph
+        Graph to be used.
+    deg : str (optional, default: "total")
+        Degree to be used, in case of a directed graph.
+    normalized : bool (optional, default: True)
+        Whether to compute the normalized Laplacian.
+    sparse : bool (optional, default: True)
+        Build a :mod:`~scipy.sparse` matrix.
+    weight : PropertyMap (optional, default: True)
+        Edge property map with the edge weights.
+
+    Returns
+    -------
+    l : matrix
+        The Laplacian matrix.
+
+    Notes
+    -----
+    The Laplacian matrix is defined as
+
+    .. math::
+
+        \ell_{i,j} =
+        \begin{cases}
+        \Gamma(v_i) & \text{if } i = j \\
+        -1          & \text{if } i \neq j \text{ and } v_i \text{ is adjacent to } v_j \\
+        0           & \text{otherwise}.
+        \end{cases}
+
+    Where :math:`\Gamma(v_i)` is the degree of vertex :math:`v_i`. The
+    normalized version is
+
+    .. math::
+
+        \ell_{i,j} =
+        \begin{cases}
+        1         & \text{ if } i = j \text{ and } \Gamma(v_i) \neq 0 \\
+       -\frac{1}{\sqrt{\Gamma(v_i)\Gamma(v_j)}} & \text{ if } i \neq j \text{ and } v_i \text{ is adjacent to } v_j \\
+        0         & \text{otherwise}.
+        \end{cases}
+
+    In the case of weighted edges, the value 1 is replaced the weight of the
+    respective edge.
+
+    Examples
+    --------
+    >>> from numpy.random import seed, random
+    >>> seed(42)
+    >>> g = gt.random_graph(100, lambda: (10,10))
+    >>> m = gt.laplacian(g)
+    >>> print m.todense()
+    [[ 1.    0.    0.   ...,  0.05  0.    0.  ]
+     [ 0.    1.    0.   ...,  0.    0.    0.  ]
+     [ 0.05  0.    1.   ...,  0.    0.    0.  ]
+     ..., 
+     [ 0.    0.    0.   ...,  1.    0.05  0.  ]
+     [ 0.    0.    0.   ...,  0.    1.    0.  ]
+     [ 0.    0.    0.   ...,  0.    0.    1.  ]]
+
+    References
+    ----------
+    .. [wikipedia_laplacian] http://en.wikipedia.org/wiki/Laplacian_matrix
+    """
+
     if g.get_vertex_filter()[0] != None:
         index = g.new_vertex_property("int64_t")
         for i,v in enumerate(g.vertices()):
@@ -96,6 +215,63 @@ def laplacian(g, deg="total", normalized=True, sparse=True, weight=None):
     return m
 
 def incidence(g, sparse=True):
+    r"""Return the incidence matrix of the graph.
+
+    Parameters
+    ----------
+    g : Graph
+        Graph to be used.
+    sparse : bool (optional, default: True)
+        Build a :mod:`~scipy.sparse` matrix.
+
+    Returns
+    -------
+    a : matrix
+        The adjacency matrix.
+
+    Notes
+    -----
+    For undirected graphs, the incidence matrix is defined as
+
+    .. math::
+
+        b_{i,j} =
+        \begin{cases}
+            1 & \text{if vertex } v_i \text{and edge } e_j \text{ are incident}, \\
+            0 & \text{otherwise}
+        \end{cases}
+
+    For directed graphs, the definition is
+
+    .. math::
+
+        b_{i,j} =
+        \begin{cases}
+            1 & \text{if edge } e_j \text{ enters vertex } v_i, \\
+            -1 & \text{if edge } e_j \text{ leaves vertex } v_i, \\
+            0 & \text{otherwise}
+        \end{cases}
+
+    Examples
+    --------
+    >>> from numpy.random import seed, random
+    >>> seed(42)
+    >>> g = gt.random_graph(100, lambda: (2,2))
+    >>> m = gt.incidence(g)
+    >>> print m.todense()
+    [[ 0.  0.  0. ...,  0.  0.  0.]
+     [ 0.  0.  0. ...,  0.  0.  0.]
+     [ 0.  0.  0. ...,  1.  0.  0.]
+     ..., 
+     [ 0.  0.  0. ...,  0.  0.  0.]
+     [ 0.  0.  0. ...,  0.  0.  0.]
+     [ 0.  0.  0. ...,  0.  0.  0.]]
+
+    References
+    ----------
+    .. [wikipedia_incidence] http://en.wikipedia.org/wiki/Incidence_matrix
+    """
+
     if g.get_vertex_filter()[0] != None:
         index = g.new_vertex_property("int64_t")
         for i,v in enumerate(g.vertices()):

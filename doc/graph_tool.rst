@@ -14,6 +14,7 @@ Available subpackages
    generation
    topology
    flow
-   run_action
+   spectral
    stats
+   run_action
    util 
