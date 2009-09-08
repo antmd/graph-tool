@@ -30,7 +30,9 @@ dl_import("import libgraph_tool_clustering as _gt")
 from .. core import _degree, _prop, Graph
 from .. topology import isomorphism
 from .. generation import random_rewire
+from .. stats import vertex_hist
 from itertools import izip
+from collections import defaultdict
 from numpy import *
 import sys
 
@@ -251,7 +253,7 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
     return props
 
 
-def motifs(g, k, p=1.0, motif_list=None, undirected=None, seed=0):
+def motifs(g, k, p=1.0, motif_list=None, undirected=None):
     r"""
     Count the occurrence of k-size subgraphs (motifs). A tuple with two lists is
     returned: the list of motifs found, and the list with their respective
@@ -263,20 +265,17 @@ def motifs(g, k, p=1.0, motif_list=None, undirected=None, seed=0):
         Graph to be used.
     k : int
         number of vertices of the motifs
-    p : float or float list, optional (default: 1.0)
+    p : float or float list (optional, default: 1.0)
         uniform fraction of the motifs to be sampled. If a float list is
         provided, it will be used as the fraction at each depth
         :math:`[1,\dots,k]` in the algorithm. See [wernicke_efficient_2006]_ for
         more details.
     motif_list : list of Graph objects, optional
         If supplied, the algorithms will only search for the motifs in this list
-        (or isomorphisms thereof)
+        (or isomorphisms)
     undirected : bool, optional
         Treat the graph as *undirected*, if graph is directed
         (this option has no effect if the graph is undirected).
-    seed : int, optional (default: 0)
-        Seed for the random number generator. It the value is 0, a random seed
-        is used.
 
     Returns
     -------
@@ -318,8 +317,7 @@ def motifs(g, k, p=1.0, motif_list=None, undirected=None, seed=0):
        Bioinformatics (TCBB), Volume 3, Issue 4, Pages 347-359, 2006.
     """
 
-    if seed == 0:
-        seed = random.randint(0, sys.maxint)
+    seed = random.randint(0, sys.maxint)
 
     sub_list = []
     directed_motifs = g.is_directed() if undirected == None else not undirected
@@ -376,10 +374,23 @@ def motifs(g, k, p=1.0, motif_list=None, undirected=None, seed=0):
 
     return sub_list, hist
 
+def _graph_sig(g):
+    """return the graph signature, i.e., the in and out degree distribution as
+    concatenated as a tuple."""
+    bins = range(0, g.num_vertices()+1)
+    in_dist = vertex_hist(g, "in", bins = bins if g.is_directed() else [0],
+                          float_count=False)
+    out_dist = vertex_hist(g, "out", bins = bins, float_count=False)
+    sig = tuple([(in_dist[1][i],in_dist[0][i]) for \
+                 i in xrange(len(in_dist[0]))] +
+                [(out_dist[1][i],out_dist[0][i]) for\
+                 i in xrange(len(out_dist[0]))])
+    return sig
+
 def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
-                       undirected=None, self_loops=False, parallel_edges=False,
-                       full_output=False, shuffle_strategy="uncorrelated",
-                       seed=0):
+                       threshold=0, undirected=None, self_loops=False,
+                       parallel_edges=False, full_output=False,
+                       shuffle_strategy= "uncorrelated"):
     r"""
     Obtain the motif significance profile, for subgraphs with k vertices. A
     tuple with two lists is returned: the list of motifs found, and their
@@ -391,35 +402,34 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
         Graph to be used.
     k : int
         number of vertices of the motifs
-    n_shuffles : int, optional (default: 100)
+    n_shuffles : int (optional, default: 100)
         number of shuffled networks to consider for the z-score
-    p : float or float list, optional (default: 1.0)
+    p : float or float list (optional, default: 1.0)
         uniform fraction of the motifs to be sampled. If a float list is
         provided, it will be used as the fraction at each depth
         :math:`[1,\dots,k]` in the algorithm. See [wernicke_efficient_2006]_ for
         more details.
-    motif_list : list of Graph objects, optional
+    motif_list : list of Graph objects (optional, default: None)
         If supplied, the algorithms will only search for the motifs in this list
-        (or isomorphisms thereof)
-    undirected : bool, optional
+        (isomorphisms)
+    threshold : int (optional, default: 0)
+        If a given motif count is below this level, it is not considered.
+    undirected : bool (optional, default: None)
         Treat the graph as *undirected*, if graph is directed
         (this option has no effect if the graph is undirected).
-    self_loops : bool, optional (default: False)
+    self_loops : bool (optional, default: False)
         Whether or not the shuffled graphs are allowed to contain self-loops
-    parallel_edges : bool, optional (default: False)
+    parallel_edges : bool (optional, default: False)
         Whether or not the shuffled graphs are allowed to contain parallel
         edges.
-    full_output : bool, optional (default: False)
+    full_output : bool (optional, default: False)
         If set to True, three additional lists are returned: the count
         of each motif, the average count of each motif in the shuffled networks,
         and the standard deviation of the average count of each motif in the
         shuffled networks.
-    shuffle_strategy : string, optional (default: "uncorrelated")
+    shuffle_strategy : string (optional, default: "uncorrelated")
         Shuffle strategy to use. Can be either "correlated" or "uncorrelated".
         See random_rewire() for details.
-    seed : int, optional (default: 0)
-        Seed for the random number generator. It the value is 0, a random seed
-        is used.
 
     Returns
     -------
@@ -458,6 +468,8 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
 
     Examples
     --------
+    >>> from numpy import random
+    >>> random.seed(42)
     >>> g = gt.random_graph(100, lambda: (3,3), seed=10)
     >>> motifs, zscores = gt.motif_significance(g, 3)
     >>> print len(motifs)
@@ -466,19 +478,31 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
     [1.6197267471265697, 1.6271265351937325, 0.99350347553112339, -1.4729502635694927, -1.1004922497513825, -1.1181853811005562, 0.92339606894139736, -0.11, -0.10000000000000001, -0.28999999999999998, -0.22, -0.01]
     """
 
-    s_ms, counts = motifs(g, k, p, motif_list, undirected, seed)
+    s_ms, counts = motifs(g, k, p, motif_list, undirected)
+    if threshold > 0:
+        s_ms, counts = zip(*[x for x in zip(s_ms, counts) if x[1] > threshold])
+        s_ms = list(s_ms)
+        counts = list(counts)
     s_counts = [0]*len(s_ms)
     s_dev = [0]*len(s_ms)
+
+    # group subgraphs by number of edges
+    m_e = defaultdict(lambda: [])
+    for i in xrange(len(s_ms)):
+        m_e[_graph_sig(s_ms[i])].append(i)
 
     # get samples
     sg = g.copy()
     for i in xrange(0, n_shuffles):
         random_rewire(sg, shuffle_strategy, self_loops=self_loops,
                       parallel_edges=parallel_edges)
-        m_temp, count_temp = motifs(sg, k, p, motif_list, undirected, seed)
+        m_temp, count_temp = motifs(sg, k, p, motif_list, undirected)
+        if threshold > 0:
+            m_temp, count_temp = zip(*[x for x in zip(m_temp, count_temp) \
+                                       if x[1] > threshold])
         for j in xrange(0, len(m_temp)):
             found = False
-            for l in xrange(0, len(s_ms)):
+            for l in m_e[_graph_sig(m_temp[j])]:
                 if isomorphism(s_ms[l], m_temp[j]):
                     found = True
                     s_counts[l] += count_temp[j]
@@ -488,6 +512,7 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
                 s_counts.append(count_temp[j])
                 s_dev.append(count_temp[j]**2)
                 counts.append(0)
+                m_e[_graph_sig(m_temp[j])].append(len(s_ms)-1)
 
     s_counts = [ x/float(n_shuffles) for x in s_counts ]
     s_dev = [ max(sqrt(x[0]/float(n_shuffles) - x[1]**2),1) \

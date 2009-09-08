@@ -272,6 +272,23 @@ struct wrap_undirected
     };
 };
 
+// get the signature of the graph: concatenated out + in degree histograms
+template <class Graph>
+void get_sig(Graph& g, vector<size_t>& sig)
+{
+    size_t N = num_vertices(g) + 1;
+    sig.resize(is_directed::apply<Graph>::type::value ? 2*N : N);
+    for (size_t i = 0; i < sig.size(); ++i)
+        sig[i] = 0;
+    typename graph_traits<Graph>::vertex_iterator v, v_end;
+    for (tie(v, v_end) = vertices(g); v != v_end; ++v)
+    {
+        sig[out_degree(*v,g)]++;
+        if(is_directed::apply<Graph>::type::value)
+            sig[in_degreeS()(*v,g)+N]++;
+    }
+}
+
 // gets (or samples) all the subgraphs in graph g
 struct get_all_motifs
 {
@@ -288,13 +305,23 @@ struct get_all_motifs
         vector<graph_sg_t>& subgraph_list =
             any_cast<vector<graph_sg_t>&>(list);
 
-        tr1::unordered_map<size_t, vector<pair<size_t, graph_sg_t> > > sub_list;
+        // this hashes subgraphs according to their signature
+        tr1::unordered_map<vector<size_t>,
+                           vector<pair<size_t, graph_sg_t> >,
+                           hash<vector<size_t> > > sub_list;
+        vector<size_t> sig; // current signature
+
         for (size_t i = 0; i < subgraph_list.size(); ++i)
-            sub_list[num_edges(subgraph_list[i])].\
-                push_back(make_pair(i,subgraph_list[i]));
+        {
+            get_sig(subgraph_list[i], sig);
+            sub_list[sig].push_back(make_pair(i,subgraph_list[i]));
+        }
 
         // the subgraph count
         hist.resize(subgraph_list.size());
+
+        typedef tr1::uniform_real<double> rdist_t;
+        tr1::variate_generator<rng_t&, rdist_t> random(rng, rdist_t());
 
         // the set of vertices V to be sampled (filled only if p < 1)
         vector<size_t> V;
@@ -303,9 +330,6 @@ struct get_all_motifs
             typename graph_traits<Graph>::vertex_iterator v, v_end;
             for (tie(v, v_end) = vertices(g); v != v_end; ++v)
                 V.push_back(*v);
-
-            typedef tr1::uniform_real<double> rdist_t;
-            tr1::variate_generator<rng_t&, rdist_t> random(rng, rdist_t());
 
             size_t n;
             if (random() < p)
@@ -331,7 +355,8 @@ struct get_all_motifs
         #endif
 
         int i, N = (p < 1) ? V.size() : num_vertices(g);
-        #pragma omp parallel for default(shared) private(i)  schedule(dynamic)
+        #pragma omp parallel for default(shared) private(i, sig) \
+            schedule(dynamic)
         for (i = 0; i < N; ++i)
         {
             vector<vector<typename graph_traits<Graph>::vertex_descriptor> >
@@ -348,16 +373,26 @@ struct get_all_motifs
             {
                 graph_sg_t sub;
                 make_subgraph(subgraphs[j], g, sub);
+                get_sig(sub, sig);
 
                 #ifdef USING_OPENMP
                 if (fill_list)
                     omp_set_lock(&lock);
                 #endif
 
-                bool found = false;
-                for (size_t l = 0; l < sub_list[num_edges(sub)].size(); ++l)
+                typeof(sub_list.begin()) iter = sub_list.find(sig);
+                if(iter == sub_list.end())
                 {
-                    graph_sg_t& motif = sub_list[num_edges(sub)][l].second;
+                    if (!fill_list)
+                        continue; // avoid inserting an element in sub_list
+                    sub_list[sig] = vector<pair<size_t,graph_sg_t> >();
+                }
+
+                bool found = false;
+                vector<pair<size_t, graph_sg_t> >& sl = sub_list[sig];
+                for (size_t l = 0; l < sl.size(); ++l)
+                {
+                    graph_sg_t& motif = sl[l].second;
                     if (comp_iso)
                     {
                         if (isomorphism(motif, sub))
@@ -368,11 +403,10 @@ struct get_all_motifs
                         if (graph_cmp(motif, sub))
                             found = true;
                     }
-
                     if (found)
                     {
                         #pragma omp critical
-                        hist[sub_list[num_edges(sub)][l].first]++;
+                        hist[sl[l].first]++;
                         break;
                     }
                 }
@@ -380,9 +414,8 @@ struct get_all_motifs
                 if (found == false && fill_list)
                 {
                     subgraph_list.push_back(sub);
-                    sub_list[num_edges(sub)].
-                        push_back(make_pair(subgraph_list.size()-1,sub));
-                    hist.push_back(1);
+                    sl.push_back(make_pair(subgraph_list.size()-1,sub));
+                        hist.push_back(1);
                 }
 
                 #ifdef USING_OPENMP
