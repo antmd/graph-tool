@@ -26,25 +26,30 @@ from .. dl_import import dl_import
 dl_import("import libgraph_tool_util")
 
 from .. core import _degree, _prop
+import weakref
 
 __all__ = ["find_vertex", "find_vertex_range", "find_edge", "find_edge_range"]
 
 def find_vertex(g, deg, match):
     ret = libgraph_tool_util.\
-          find_vertex_range(g._Graph__graph, _degree(g, deg), (match, match))
+          find_vertex_range(weakref.ref(g._Graph__graph), _degree(g, deg),
+                            (match, match))
     return ret
 
 def find_vertex_range(g, deg, range):
     ret = libgraph_tool_util.\
-          find_vertex_range(g._Graph__graph, _degree(g, deg), range)
+          find_vertex_range(weakref.ref(g._Graph__graph), _degree(g, deg),
+                            range)
     return ret
 
 def find_edge(g, prop, match):
     ret = libgraph_tool_util.\
-          find_edge_range(g._Graph__graph, _prop("e", g, prop), (match, match))
+          find_edge_range(weakref.ref(g._Graph__graph), _prop("e", g, prop),
+                          (match, match))
     return ret
 
 def find_edge_range(g, prop, range):
     ret = libgraph_tool_util.\
-          find_edge_range(g._Graph__graph, _prop("e", g, prop), range)
+          find_edge_range(weakref.ref(g._Graph__graph), _prop("e", g, prop),
+                          range)
     return ret

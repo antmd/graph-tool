@@ -30,9 +30,6 @@ using namespace graph_tool;
 // functions to python
 struct export_vertex_property_map
 {
-    export_vertex_property_map(const string& name, GraphInterface &gi)
-        : _name(name), _gi(gi) {}
-
     template <class PropertyMap>
     void operator()(PropertyMap) const
     {
@@ -50,7 +47,7 @@ struct export_vertex_property_map
             type_name =
                 type_names[mpl::find<value_types,typename pmap_t::value_type>
                            ::type::pos::value];
-        string class_name = _name + "<" + type_name + ">";
+        string class_name = "VertexPropertyMap<" + type_name + ">";
 
         typedef typename mpl::if_<
             typename return_reference::apply<typename pmap_t::value_type>::type,
@@ -70,16 +67,10 @@ struct export_vertex_property_map
             .def("get_array", &pmap_t::GetArray)
             .def("is_writable", &pmap_t::IsWritable);
     }
-
-    string _name;
-    GraphInterface& _gi;
 };
 
 struct export_edge_property_map
 {
-    export_edge_property_map(const string& name, GraphInterface &gi)
-        : _name(name), _gi(gi) {}
-
     template <class PropertyMap>
     struct export_access
     {
@@ -125,7 +116,7 @@ struct export_edge_property_map
             type_name =
                 type_names[mpl::find<value_types,typename pmap_t::value_type>
                            ::type::pos::value];
-        string class_name = _name + "<" + type_name + ">";
+        string class_name = "EdgePropertyMap<" + type_name + ">";
 
         python::class_<pmap_t> pclass(class_name.c_str(),
                                       python::no_init);
@@ -142,16 +133,10 @@ struct export_edge_property_map
 
         mpl::for_each<graph_views>(export_access<PropertyMap>(pclass));
     }
-
-    string _name;
-    GraphInterface& _gi;
 };
 
 struct export_graph_property_map
 {
-    export_graph_property_map(const string& name, GraphInterface &gi)
-        : _name(name), _gi(gi) {}
-
     template <class PropertyMap>
     void operator()(PropertyMap) const
     {
@@ -160,7 +145,7 @@ struct export_graph_property_map
         string type_name =
             type_names[mpl::find<value_types,
                        typename pmap_t::value_type>::type::pos::value];
-        string class_name = _name + "<" + type_name + ">";
+        string class_name = "GraphPropertyMap<" + type_name + ">";
 
         typedef typename mpl::if_<
             typename return_reference::apply<typename pmap_t::value_type>::type,
@@ -180,32 +165,27 @@ struct export_graph_property_map
             .def("get_array", &pmap_t::GetArray)
             .def("is_writable", &pmap_t::IsWritable);
     }
-
-    string _name;
-    GraphInterface& _gi;
 };
 
-void export_python_properties(GraphInterface& gi)
+void export_python_properties()
 {
     typedef property_map_types::apply<
-        value_types,
-        GraphInterface::vertex_index_map_t,
-        mpl::bool_<true>
+            value_types,
+            GraphInterface::vertex_index_map_t,
+            mpl::bool_<true>
         >::type vertex_property_maps;
     typedef property_map_types::apply<
-        value_types,
-        GraphInterface::edge_index_map_t,
-        mpl::bool_<true>
+            value_types,
+            GraphInterface::edge_index_map_t,
+            mpl::bool_<true>
         >::type edge_property_maps;
     typedef property_map_types::apply<
-        value_types,
-        ConstantPropertyMap<size_t,graph_property_tag>,
-        mpl::bool_<false>
+            value_types,
+            ConstantPropertyMap<size_t,graph_property_tag>,
+            mpl::bool_<false>
         >::type graph_property_maps;
-    mpl::for_each<vertex_property_maps>
-        (export_vertex_property_map("VertexPropertyMap", gi));
-    mpl::for_each<edge_property_maps>
-        (export_edge_property_map("EdgePropertyMap", gi));
-    mpl::for_each<graph_property_maps>
-        (export_graph_property_map("GraphPropertyMap", gi));
+
+    mpl::for_each<vertex_property_maps>(export_vertex_property_map());
+    mpl::for_each<edge_property_maps>(export_edge_property_map());
+    mpl::for_each<graph_property_maps>(export_graph_property_map());
 }

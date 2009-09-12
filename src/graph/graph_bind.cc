@@ -305,13 +305,14 @@ void ungroup_vector_property(GraphInterface& g, boost::any vector_prop,
                              boost::any prop, size_t pos, bool edge);
 void group_vector_property(GraphInterface& g, boost::any vector_prop,
                            boost::any prop, size_t pos, bool edge);
+void export_python_interface();
 
 BOOST_PYTHON_MODULE(libgraph_tool_core)
 {
     // numpy
     import_array();
 
-    GraphInterface().ExportPythonInterface();
+    export_python_interface();
 
     register_exception_translator<GraphException>
         (graph_exception_translator<GraphException>);
@@ -348,13 +349,6 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
         .def("ShiftVertexProperty",  &GraphInterface::ShiftVertexProperty)
         .def("WriteToFile", &GraphInterface::WriteToFile)
         .def("ReadFromFile",&GraphInterface::ReadFromFile)
-        .def("Vertices", &GraphInterface::Vertices)
-        .def("Vertex", &GraphInterface::Vertex)
-        .def("Edges", &GraphInterface::Edges)
-        .def("AddVertex", &GraphInterface::AddVertex)
-        .def("AddEdge", &GraphInterface::AddEdge)
-        .def("RemoveVertex", &GraphInterface::RemoveVertex)
-        .def("RemoveEdge", &GraphInterface::RemoveEdge)
         .def("DegreeMap", &GraphInterface::DegreeMap)
         .def("Clear", &GraphInterface::Clear)
         .def("ClearEdges", &GraphInterface::ClearEdges)

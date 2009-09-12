@@ -169,6 +169,23 @@ class PropertyMap(object):
     def __setitem__(self, k, v):
         self.__map[self.__key_trans(k)] = v
 
+    def __repr__(self):
+        # provide some more useful information
+        if self.key_type() == "e":
+            k = "Edge"
+        elif self.key_type()  == "v":
+            k = "Vertex"
+        else:
+            k = "Graph"
+        g = self.__g()
+        if g == None:
+            g = "a non-existent graph"
+        else:
+            g = "Graph 0x%x" % id(g)
+        return ("<PropertyMap object with key type '%s' and value type '%s',"
+                + " for %s, at 0x%x>") % (k, self.value_type(), g, id(self))
+
+
     def get_graph(self):
         """Get the graph class to which the map refers"""
         return self.__g()
@@ -193,12 +210,14 @@ class PropertyMap(object):
            Do *not* store the array if the graph is to be modified, or the
            original property map deleted; *store a copy instead*!
         """
+        self.__g().stash_filter(edge=True, vertex=True)
         if self.__key_type == 'v':
             n = self.__g().num_vertices()
         elif self.__key_type == 'e':
             n = self.__g().num_edges()
         else:
             n = 1
+        self.__g().pop_filter(edge=True, vertex=True)
         return self.__map.get_array(n)
 
     def __get_array(self):
@@ -420,6 +439,21 @@ class Graph(object):
         copied."""
         return Graph(self)
 
+    def __repr__(self):
+        # provide some more useful information
+        d = "directed" if self.is_directed() else "undirected"
+        fr = ", reversed" if self.is_reversed() and self.is_directed() else ""
+        f = ""
+        if self.get_edge_filter()[0] != None:
+            f += ", edges filtered by %s" % (str(self.get_edge_filter()))
+        if self.get_vertex_filter()[0] != None:
+            f += ", vertices filtered by %s" % (str(self.get_vertex_filter()))
+        n = self.num_vertices()
+        e = self.num_edges()
+        return "<Graph object, %s%s, with %d %s and %d edge%s,%s at 0x%x>"\
+               % (d, fr, n, "vertex" if n == 1 else "vertices", e,
+                  "" if e == 1 else "s", f, id(self))
+
     # Graph access
     # ============
 
@@ -438,23 +472,24 @@ class Graph(object):
         >>> assert(vlist == vlist2)
 
         """
-        return self.__graph.Vertices()
+        return libcore.get_vertices(weakref.ref(self.__graph))
 
     def vertex(self, i):
         """Return the i-th vertex from the graph."""
-        return self.__graph.Vertex(int(i))
+        return libcore.get_vertex(weakref.ref(self.__graph),int(i))
 
     def edges(self):
         """Return iterator over the edges."""
-        return self.__graph.Edges()
+        return libcore.get_edges(weakref.ref(self.__graph))
 
     def add_vertex(self, n=1):
         """Add a vertices to the graph, and return it. If n > 1, n vertices are
         inserted and a list is returned."""
+        vlist = [libcore.add_vertex(weakref.ref(self.__graph)) \
+                 for i in xrange(0,n)]
         if n == 1:
-            return self.__graph.AddVertex()
-        else:
-            return [self.__graph.AddVertex() for i in xrange(0,n)]
+            return vlist[0]
+        return vlist
 
     def remove_vertex(self, vertex):
         """Remove a vertex from the graph."""
@@ -465,7 +500,7 @@ class Graph(object):
                    pmap[1]() != self.__vertex_index._PropertyMap__map:
                 self.__graph.ShiftVertexProperty(pmap[1]().get_map(), index)
         self.clear_vertex(vertex)
-        self.__graph.RemoveVertex(vertex)
+        libcore.remove_vertex(self.__graph, vertex)
 
     def remove_vertex_if(self, predicate):
         """Remove all the vertices from the graph for which predicate(v)
@@ -487,11 +522,11 @@ class Graph(object):
     def add_edge(self, source, target):
         """Add a new edge from 'source' to 'target' to the graph, and return
         it."""
-        return self.__graph.AddEdge(source, target)
+        return libcore.add_edge(weakref.ref(self.__graph), source, target)
 
     def remove_edge(self, edge):
         """Remove an edge from the graph."""
-        self.__graph.RemoveEdge(edge)
+        return libcore.remove_edge(self.__graph, edge)
 
     def remove_edge_if(self, predicate):
         """Remove all the edges from the graph for which predicate(e) evaluates
@@ -970,8 +1005,43 @@ def _all_neighbours(self):
         yield v
 Vertex.all_neighbours = _all_neighbours
 
-def _iter(self):
+def _vertex_repr(self):
+    if not self.is_valid():
+        return "<invalid Vertex object at 0x%x>" % (id(self))
+    return "<Vertex object with index '%d' at 0x%x>" % (int(self), id(self))
+Vertex.__repr__ = _vertex_repr
+
+def _edge_iter(self):
     """Iterate over the source and target"""
     for v in [self.source(), self.target()]:
         yield v
-Edge.__iter__ = _iter
+
+def _edge_repr(self):
+    if not self.is_valid():
+        return "<invalid Edge object at 0x%x>" % (id(self))
+
+    return ("<Edge object with source '%d' and target '%d'"+
+            " at 0x%x>") % (int(self.source()), int(self.target()), id(self))
+
+# There are several edge classes... me must cycle through them all to modify
+# them.
+for directed in [True, False]:
+    for reversed in [True, False]:
+        for e_filtered in [True,False]:
+            for v_filtered in [True,False]:
+                g = Graph(directed=directed)
+                g.set_reversed(reversed)
+                v = g.add_vertex()
+                g.add_edge(v,v)
+                if e_filtered:
+                    e_filter = g.new_edge_property("bool")
+                    e_filter.a = [1]
+                    g.set_edge_filter(e_filter)
+                if v_filtered:
+                    v_filter = g.new_vertex_property("bool")
+                    v_filter.a = [1]
+                    g.set_vertex_filter(e_filter)
+                e = g.edges().next()
+                e.__class__.__repr__ = _edge_repr
+                e.__class__.__iter__ = _edge_iter
+del g, v, e

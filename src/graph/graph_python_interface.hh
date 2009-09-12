@@ -47,18 +47,21 @@ template <class Descriptor, class Iterator>
 class PythonIterator
 {
 public:
-    PythonIterator(GraphInterface& gi, std::pair<Iterator,Iterator> e)
-        : _gi(gi), _e(e) {}
+    PythonIterator(const python::object& g, std::pair<Iterator,Iterator> e)
+        : _g(g), _e(e) {}
     Descriptor Next()
     {
         if (_e.first == _e.second)
             python::objects::stop_iteration_error();
-        Descriptor e(_gi, *_e.first);
+        if (_g() == python::object())
+            throw GraphException("The corresponding graph object has been"
+                                 " deleted during iteration!");
+        Descriptor e(_g, *_e.first);
         ++_e.first;
         return e;
     }
 private:
-    GraphInterface& _gi;
+    python::object _g;
     std::pair<Iterator,Iterator> _e;
 };
 
@@ -71,17 +74,20 @@ class PythonEdge;
 class PythonVertex
 {
 public:
-    PythonVertex(GraphInterface& gi, GraphInterface::vertex_t v):
-        _gi(gi), _v(v), _valid(true)
+    PythonVertex(const python::object& g, GraphInterface::vertex_t v):
+        _g(g), _v(v), _valid(true)
     {
         CheckValid();
     }
 
     bool IsValid() const
     {
+        if (_g().ptr() == Py_None)
+            return false;
+        GraphInterface& gi = python::extract<GraphInterface&>(_g());
         return _valid &&
             (_v != graph_traits<GraphInterface::multigraph_t>::null_vertex()) &&
-            (_v < num_vertices(_gi._mg));
+            (_v < num_vertices(gi._mg));
     }
 
     void SetValid(bool valid)
@@ -115,19 +121,21 @@ public:
     size_t GetInDegree() const
     {
         CheckValid();
+        GraphInterface& gi = python::extract<GraphInterface&>(_g());
         size_t in_deg;
-        run_action<>()(_gi, bind<void>(get_degree<in_degreeS>(),
-                                       _1, _v,
-                                       ref(in_deg)))();
+        run_action<>()(gi, bind<void>(get_degree<in_degreeS>(),
+                                      _1, _v,
+                                      ref(in_deg)))();
         return in_deg;
     }
 
     size_t GetOutDegree() const
     {
         CheckValid();
+        GraphInterface& gi = python::extract<GraphInterface&>(_g());
         size_t out_deg;
-        run_action<>()(_gi, bind<void>(get_degree<out_degreeS>(), _1, _v,
-                                       ref(out_deg)))();
+        run_action<>()(gi, bind<void>(get_degree<out_degreeS>(), _1, _v,
+                                      ref(out_deg)))();
         return out_deg;
     }
 
@@ -136,7 +144,7 @@ public:
     struct get_out_edges
     {
         template<class Graph>
-        void operator()(const Graph& g, GraphInterface& gi,
+        void operator()(const Graph& g, const python::object& pg,
                         typename graph_traits<Graph>::vertex_descriptor v,
                         python::object& iter) const
         {
@@ -144,7 +152,7 @@ public:
                 out_edge_iterator;
             iter = python::object(PythonIterator<PythonEdge<Graph>,
                                                  out_edge_iterator>
-                                  (gi, out_edges(v, g)));
+                                  (pg, out_edges(v, g)));
         }
     };
 
@@ -152,16 +160,17 @@ public:
     OutEdges() const
     {
         CheckValid();
+        GraphInterface& gi = python::extract<GraphInterface&>(_g());
         python::object iter;
-        run_action<>()(_gi, bind<void>(get_out_edges(), _1,
-                                       ref(_gi), _v, ref(iter)))();
+        run_action<>()(gi, bind<void>(get_out_edges(), _1,
+                                      ref(_g), _v, ref(iter)))();
         return iter;
     }
 
     struct get_in_edges
     {
         template<class Graph>
-        void operator()(const Graph& g, GraphInterface& gi,
+        void operator()(const Graph& g, const python::object& pg,
                         typename graph_traits<Graph>::vertex_descriptor v,
                         python::object& iter) const
         {
@@ -169,7 +178,7 @@ public:
                 in_edge_iterator;
             iter = python::object
                 (PythonIterator<PythonEdge<Graph>,in_edge_iterator>
-                 (gi, in_edge_iteratorS<Graph>::get_edges(v, g)));
+                 (pg, in_edge_iteratorS<Graph>::get_edges(v, g)));
         }
     };
 
@@ -177,9 +186,10 @@ public:
     InEdges() const
     {
         CheckValid();
+        GraphInterface& gi = python::extract<GraphInterface&>(_g());
         python::object iter;
-        run_action<>()(_gi, bind<void>(get_in_edges(), _1, ref(_gi),
-                                       _v, ref(iter)))();
+        run_action<>()(gi, bind<void>(get_in_edges(), _1, ref(_g), _v,
+                                      ref(iter)))();
         return iter;
     }
 
@@ -191,12 +201,14 @@ public:
 
     size_t GetHash() const
     {
-        return hash<size_t>()(_gi._vertex_index[_v]);
+        return hash<size_t>()(_v);
     }
 
     size_t GetIndex() const
     {
-        return _gi._vertex_index[_v];
+        CheckValid();
+        GraphInterface& gi = python::extract<GraphInterface&>(_g());
+        return gi._vertex_index[_v];
     }
 
     bool operator==(const PythonVertex& other) const
@@ -214,7 +226,7 @@ public:
     }
 
 private:
-    GraphInterface& _gi;
+    python::object _g;
     GraphInterface::vertex_t _v;
     bool _valid;
 };
@@ -226,19 +238,22 @@ class PythonEdge
 {
 public:
     typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
-    PythonEdge(GraphInterface& gi, edge_descriptor e)
-        : _gi(gi), _e(e), _valid(true)
+    PythonEdge(const python::object& g, edge_descriptor e)
+        : _g(g), _e(e), _valid(true)
     {
         CheckValid();
     }
 
     bool IsValid() const
     {
+        if (_g().ptr() == Py_None)
+            return false;
+        GraphInterface& gi = python::extract<GraphInterface&>(_g());
         return _valid &&
-            (_gi._vertex_index[target(_e, _gi._mg)] < num_vertices(_gi._mg)) &&
-            (_gi._vertex_index[source(_e, _gi._mg)] < num_vertices(_gi._mg)) &&
-            (target(_e, _gi._mg) != graph_traits<Graph>::null_vertex()) &&
-            (source(_e, _gi._mg) != graph_traits<Graph>::null_vertex());
+            (gi._vertex_index[target(_e, gi._mg)] < num_vertices(gi._mg)) &&
+            (gi._vertex_index[source(_e, gi._mg)] < num_vertices(gi._mg)) &&
+            (target(_e, gi._mg) != graph_traits<Graph>::null_vertex()) &&
+            (source(_e, gi._mg) != graph_traits<Graph>::null_vertex());
     }
 
     void SetValid(bool valid)
@@ -260,46 +275,47 @@ public:
     struct get_source
     {
         template<class GraphType>
-        void operator()(const GraphType& g, GraphInterface& gi,
+        void operator()(const GraphType& g, const python::object& pg,
                         const edge_descriptor& edge, python::object& vertex)
             const
         {
-            vertex = python::object(PythonVertex(gi, source(edge, g)));
+            vertex = python::object(PythonVertex(pg, source(edge, g)));
         }
     };
 
     python::object GetSource() const
     {
         CheckValid();
+        GraphInterface& gi = python::extract<GraphInterface&>(_g());
         python::object v;
-        run_action<>()(_gi, bind<void>(get_source(), _1, ref(_gi), ref(_e),
-                                       ref(v)))();
+        run_action<>()(gi, bind<void>(get_source(), _1, ref(_g), ref(_e),
+                                      ref(v)))();
         return v;
     }
 
     struct get_target
     {
         template<class GraphType>
-        void operator()(const GraphType& g, GraphInterface& gi,
-                        const edge_descriptor& edge,
-                        python::object& vertex) const
+        void operator()(const GraphType& g, const python::object& pg,
+                        const edge_descriptor& edge, python::object& vertex)
+            const
         {
-            vertex = python::object(PythonVertex(gi, target(edge, g)));
+            vertex = python::object(PythonVertex(pg, target(edge, g)));
         }
     };
 
     python::object GetTarget() const
     {
         CheckValid();
+        GraphInterface& gi = python::extract<GraphInterface&>(_g());
         python::object v;
-        run_action<>()(_gi, bind<void>(get_target(), _1, ref(_gi), ref(_e),
-                                       ref(v)))();
+        run_action<>()(gi, bind<void>(get_target(), _1, ref(_g), ref(_e),
+                                      ref(v)))();
         return v;
     }
 
     std::string GetString() const
     {
-        CheckValid();
         PythonVertex src = python::extract<PythonVertex>(GetSource());
         PythonVertex tgt = python::extract<PythonVertex>(GetTarget());
         return "(" + src.GetString() + "," + tgt.GetString() + ")";
@@ -308,23 +324,26 @@ public:
     size_t GetHash() const
     {
         CheckValid();
-        return hash<size_t>()(_gi._edge_index[_e]);
+        GraphInterface& gi = python::extract<GraphInterface&>(_g());
+        return hash<size_t>()(gi._edge_index[_e]);
     }
 
     bool operator==(const PythonEdge& other) const
     {
         CheckValid();
+        other.CheckValid();
         return other._e == _e;
     }
 
     bool operator!=(const PythonEdge& other) const
     {
         CheckValid();
+        other.CheckValid();
         return other._e != _e;
     }
 
 private:
-    GraphInterface& _gi;
+    python::object _g;
     edge_descriptor _e;
     bool _valid;
 };

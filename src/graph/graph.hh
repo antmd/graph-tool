@@ -104,22 +104,11 @@ public:
     //
     // python interface
     //
-    python::object Vertices() const;
-    python::object Vertex(size_t i) const;
-    python::object Edges() const;
-
-    python::object AddVertex();
-    void           RemoveVertex(const python::object& v);
-    python::object AddEdge(const python::object& s, const python::object& t);
-    void           RemoveEdge(const python::object& e);
-
     python::object DegreeMap(string deg) const;
 
     // used for graph properties
     graph_property_tag GetDescriptor() const { return graph_property_tag(); }
     bool CheckValid() const {return true;}
-
-    void ExportPythonInterface() const;
 
     // I/O
     void WriteToFile(string s, python::object pf, string format,

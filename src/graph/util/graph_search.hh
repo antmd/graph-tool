@@ -79,7 +79,7 @@ bool operator<=(const vector<string>& v1, const vector<string>& v2)
 struct find_vertices
 {
     template <class Graph, class DegreeSelector>
-    void operator()(Graph& g, GraphInterface& gi, DegreeSelector deg,
+    void operator()(Graph& g, const python::object& pg, DegreeSelector deg,
                     python::tuple& prange, python::list& ret) const
     {
         typedef typename DegreeSelector::value_type value_type;
@@ -104,7 +104,7 @@ struct find_vertices
             value_type val = deg(v, g);
             if (val >= range.first && val <= range.second)
             {
-                PythonVertex pv(gi, v);
+                PythonVertex pv(pg, v);
                 {
                     #pragma omp critical
                     ret.append(pv);
@@ -118,7 +118,7 @@ struct find_vertices
 struct find_edges
 {
     template <class Graph, class EdgeIndex, class EdgeProperty>
-    void operator()(Graph& g, GraphInterface& gi, EdgeIndex eindex,
+    void operator()(Graph& g, const python::object& pg, EdgeIndex eindex,
                     EdgeProperty prop, python::tuple& prange, python::list& ret)
         const
     {
@@ -157,7 +157,7 @@ struct find_edges
                 value_type val = get(prop, *e);
                 if (val >= range.first && val <= range.second)
                 {
-                    PythonEdge<Graph> pe(gi, *e);
+                    PythonEdge<Graph> pe(pg, *e);
                     {
                         #pragma omp critical
                         ret.append(pe);
