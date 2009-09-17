@@ -22,9 +22,6 @@
 #include "graph.hh"
 #include "graph_selectors.hh"
 
-#include <tr1/random>
-typedef std::tr1::mt19937 rng_t;
-
 #include "graph_absolute_trust.hh"
 
 using namespace std;
@@ -32,10 +29,8 @@ using namespace boost;
 using namespace graph_tool;
 
 void absolute_trust(GraphInterface& g, int64_t source, boost::any c,
-                    boost::any t, size_t iter, bool reversed, size_t seed)
+                    boost::any t, size_t n_paths, double epsilon, bool reversed)
 {
-    rng_t rng(static_cast<rng_t::result_type>(seed));
-
     if (!belongs<edge_floating_properties>()(c))
         throw ValueException("edge property must be of floating point value type");
     if (!belongs<vertex_floating_vector_properties>()(t))
@@ -43,8 +38,7 @@ void absolute_trust(GraphInterface& g, int64_t source, boost::any c,
 
     run_action<>()(g,
                    bind<void>(get_absolute_trust(), _1, g.GetVertexIndex(),
-                              source, _2, _3, iter, reversed,
-                              ref(rng)),
+                              source, _2, _3, n_paths, epsilon, reversed),
                    edge_floating_properties(),
                    vertex_floating_vector_properties())(c, t);
 }

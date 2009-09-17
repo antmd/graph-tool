@@ -23,8 +23,10 @@
 #include "graph_util.hh"
 
 #include <tr1/unordered_set>
-#include <tr1/random>
-#include <boost/functional/hash.hpp>
+#include <tr1/tuple>
+#include <algorithm>
+
+#include "minmax.hh"
 
 #include <iostream>
 
@@ -32,183 +34,151 @@ namespace graph_tool
 {
 using namespace std;
 using namespace boost;
+using std::tr1::get;
+using std::tr1::tuple;
+
+template <class Path>
+struct path_cmp
+{
+    path_cmp(vector<Path>& paths): _paths(paths) {}
+    vector<Path>& _paths;
+
+    typedef size_t first_argument_type;
+    typedef size_t second_argument_type;
+    typedef bool result_type;
+    inline bool operator()(size_t a, size_t b)
+    {
+        if (get<0>(_paths[a]).first == get<0>(_paths[b]).first)
+            return get<1>(_paths[a]).size() > get<1>(_paths[b]).size();
+        return get<0>(_paths[a]).first < get<0>(_paths[b]).first;
+    }
+};
 
 struct get_absolute_trust
 {
     template <class Graph, class VertexIndex, class TrustMap,
               class InferredTrustMap>
     void operator()(Graph& g, VertexIndex vertex_index, int64_t source,
-                    TrustMap c, InferredTrustMap t, size_t n_iter,
-                    bool reversed, rng_t& rng) const
+                    TrustMap c, InferredTrustMap t, size_t n_paths,
+                    double epsilon, bool reversed) const
     {
+        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         typedef typename property_traits<TrustMap>::value_type c_type;
         typedef typename property_traits<InferredTrustMap>::value_type
             ::value_type t_type;
 
-        unchecked_vector_property_map<vector<t_type>, VertexIndex>
-            t_count(vertex_index, num_vertices(g));
-        unchecked_vector_property_map<vector<size_t>, VertexIndex>
-            v_mark(vertex_index, num_vertices(g));
+        typedef tuple<pair<t_type, t_type>, tr1::unordered_set<vertex_t>,
+                      size_t > path_t;
 
-        // init inferred trust t
+        double delta = epsilon+1;
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i) schedule(dynamic)
         for (i = (source == -1) ? 0 : source;
              i < ((source == -1) ? N : source + 1); ++i)
         {
-            typename graph_traits<Graph>::vertex_descriptor v =
-                vertex(i, g);
-            if (v == graph_traits<Graph>::null_vertex())
-                continue;
-            t[v].resize(N);
-            t_count[v].resize(N,0);
-            v_mark[v].resize(N,0);
-        }
-
-        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
-        for (i = (source == -1) ? 0 : source;
-             i < ((source == -1) ? N : source + 1); ++i)
-        {
-            typename graph_traits<Graph>::vertex_descriptor v =
-                vertex(i, g);
+            vertex_t v = vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
 
-            // walk hash set
-            tr1::unordered_set<size_t> path_set;
-            tr1::uniform_int<size_t>
-                random_salt(0, numeric_limits<size_t>::max());
-            size_t salt;
+            // path priority queue
+            vector<path_t> paths(1);
+            vector<size_t> free_indexes;
+            typedef double_priority_queue<size_t, path_cmp<path_t> > queue_t;
+            queue_t queue = queue_t(path_cmp<path_t>(paths));
+
+            get<0>(paths.back()).first = get<0>(paths.back()).second = 1;
+            get<1>(paths.back()).insert(v);
+            get<2>(paths.back()) = vertex_index[v];
+            queue.push(0);
+
+            t[v].resize(num_vertices(g));
+            unchecked_vector_property_map<t_type, VertexIndex>
+                sum_weight(vertex_index, num_vertices(g));
+
+            size_t count = 1;
+            while (!queue.empty())
             {
-                #pragma omp critical
-                salt = random_salt(rng);
-            }
+                size_t pi = queue.top();
+                queue.pop_top();
+                vertex_t w = vertex(get<2>(paths[pi]), g);
 
-            for (size_t bias = 0; bias < 3; ++bias)
-                for (size_t iter = 0; iter < n_iter; ++iter)
+                typename graph_traits<Graph>::out_edge_iterator e, e_end;
+                for (tie(e, e_end) = out_edges(w, g); e != e_end; ++e)
                 {
-                    typename graph_traits<Graph>::vertex_descriptor pos = v;
-                    t_type pos_t = 1.0;
-                    t_type pweight = 1.0;
-                    v_mark[v][vertex_index[v]] = bias*n_iter + iter + 1;
-
-                    size_t path_hash = salt;
-                    hash_combine(path_hash, i);
-
-                    // start a self-avoiding walk from vertex v
-                    vector<typename graph_traits<Graph>::edge_descriptor>
-                        out_es;
-                    vector<t_type> out_prob;
-                    do
+                    vertex_t a = target(*e, g);
+                    // no loops
+                    if (get<1>(paths[pi]).find(a) == get<1>(paths[pi]).end())
                     {
-                        out_es.clear();
-                        out_prob.clear();
-
-                        // obtain list of candidate edges to follow
-                        typename graph_traits<Graph>::out_edge_iterator e,
-                            e_end;
-                        for (tie(e, e_end) = out_edges(pos, g); e != e_end; ++e)
+                        // new path;  only follow non-zero paths
+                        t_type old = (sum_weight[a] > 0) ?
+                            t[v][a]/sum_weight[a] : 0;
+                        if (c[*e] > 0 || (reversed &&
+                                          get<1>(paths[pi]).size() == 1))
                         {
-                            typename graph_traits<Graph>::vertex_descriptor t =
-                                target(*e,g);
-                            if (v_mark[v][vertex_index[t]] <
-                                bias*n_iter + iter + 1)
+                            size_t npi;
+                            if (free_indexes.empty())
                             {
-                                if (c[*e] < 0 || c[*e] > 1)
-                                    continue;
-                                out_es.push_back(*e);
-
-                                if (bias != 1)
-                                {
-                                    double prob = c[*e];
-                                    if (bias == 2)
-                                        prob = 1.0 - prob;
-
-                                    if (out_prob.empty())
-                                        out_prob.push_back(prob);
-                                    else
-                                        out_prob.push_back(out_prob.back() +
-                                                           prob);
-                                }
-                            }
-                        }
-
-                        if (!out_es.empty())
-                        {
-                            // select edge according to its probability
-                            typename graph_traits<Graph>::edge_descriptor e;
-                            if (!out_prob.empty() && out_prob.back() > 0)
-                            {
-                                typedef tr1::uniform_real<t_type> dist_t;
-                                tr1::variate_generator<rng_t&, dist_t>
-                                    random(rng, dist_t(0, out_prob.back()));
-
-                                t_type u;
-                                {
-                                    #pragma omp critical
-                                    u = random();
-                                }
-                                e = out_es[upper_bound(out_prob.begin(),
-                                                       out_prob.end(), u) -
-                                           out_prob.begin()];
+                                paths.push_back(paths[pi]); // clone last path
+                                npi = paths.size()-1;
                             }
                             else
                             {
-                                tr1::uniform_int<size_t>
-                                    random(0, out_es.size()-1);
-                                #pragma omp critical
-                                e = out_es[random(rng)];
+                                npi = free_indexes.back();
+                                free_indexes.pop_back();
+                                paths[npi] = paths[pi];
                             }
 
-                            // new position in random walk
-                            pos = target(e,g);
-                            size_t posi = vertex_index[pos];
-
-                            // update current path trust
-                            pos_t *= c[e];
-
-                            if (reversed && boost::source(e, g) != v)
-                                pweight *= c[e];
-
-                            // get path hash
-                            hash_combine(path_hash, posi);
-                            if (path_set.find(path_hash) == path_set.end())
-                            {
-                                // if new path, modify vertex trust score
-                                path_set.insert(path_hash);
-
-                                t_type old = 0;
-                                if (t_count[v][posi] > 0)
-                                    old = t[v][posi]/t_count[v][posi];
-                                t[v][posi] += pos_t*pweight;
-                                t_count[v][posi] += pweight;
-                            }
-
+                            path_t& np = paths[npi];
                             if (!reversed)
-                                pweight *= c[e];
+                            {
+                                get<0>(np).second = get<0>(np).first;
+                                get<0>(np).first *= c[*e];
+                            }
+                            else
+                            {
+                                if (get<1>(np).size() > 1)
+                                    get<0>(np).second *= c[*e];
+                                get<0>(np).first *= c[*e];
+                            }
+                            get<1>(np).insert(a);
+                            get<2>(np) = vertex_index[a];
 
-                            // stop if weight drops to zero
-                            if (pweight == 0)
-                                break;
-
-                            // mark vertex
-                            v_mark[v][posi] = bias*n_iter + iter + 1;
+                            t[v][a] += get<0>(np).first*get<0>(np).second;
+                            sum_weight[a] += get<0>(np).second;
+                            queue.push(npi);
+                            if (n_paths > 0 && queue.size() > n_paths)
+                            {
+                                size_t bi = queue.bottom();
+                                queue.pop_bottom();
+                                free_indexes.push_back(bi);
+                            }
                         }
+                        else
+                        {
+                            sum_weight[a] +=  get<0>(paths[pi]).first;
+                        }
+                        if (sum_weight[a] > 0)
+                            delta += abs(old-t[v][a]/sum_weight[a]);
                     }
-                    while (!out_es.empty());
                 }
-        }
+                free_indexes.push_back(pi);
 
-        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
-        for (i = (source == -1) ? 0 : source;
-             i < ((source == -1) ? N : source + 1); ++i)
-        {
-            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
-            if (v == graph_traits<Graph>::null_vertex())
-                continue;
-            for (size_t j = 0; j < size_t(N); ++j)
-                if (t_count[v][j] > 0)
-                    t[v][j] /= t_count[v][j];
+                if ((count % N) == 0)
+                {
+                    if (delta < epsilon)
+                        break;
+                    else
+                        delta = 0;
+                }
+                count++;
+            }
+
+            typename graph_traits<Graph>::vertex_iterator w, w_end;
+            for (tie(w, w_end) = vertices(g); w != w_end; ++w)
+            {
+                if (sum_weight[*w] > 0)
+                    t[v][*w] /= sum_weight[*w];
+            }
         }
     }
 };

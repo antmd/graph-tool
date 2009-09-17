@@ -390,10 +390,10 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epslon=1e-6, max_iter=0,
     else:
         return vprop
 
-def absolute_trust(g, trust_map, source=None, vprop=None, n_iter=100,
-                   reversed=False, seed=None):
+def absolute_trust(g, trust_map, source=None, vprop=None, epsilon=1e-6,
+                   n_paths=100000, reversed=False):
     r"""
-    Samples the absolute trust centrality of each vertex in the graph, or only
+    Calculate the absolute trust centrality of each vertex in the graph, or only
     for a given source, if one is provided.
 
     Parameters
@@ -408,16 +408,15 @@ def absolute_trust(g, trust_map, source=None, vprop=None, n_iter=100,
         values, instead of all the vertices in the graph.
     vprop : PropertyMap, optional (default: None)
         Vertex property map where the values of eigentrust must be stored.
-    n_iter : int, optional (default: 100)
-        Number of iterations (independent self-avoiding walks) per source
-        vertex.
+    epsilon : float, optional (default: 1e-6)
+        Convergence criterion for the algorithm. If the summed difference of
+        trust values drops below this value, the algorithm stops.
+    n_paths : int, optimal (default: 100000)
+        Maximum number of paths to keep following at any given time.
     reversed : bool, optional (default: False)
         Calculates the "reversed" trust instead: The direction of the edges are
         inverted, but the path weighting is preserved in the original direction
         (see Notes below).
-    seed : int, optional (default: None)
-         The initializing seed for the random number generator. If not supplied
-         a different random value will be chosen each time.
 
     Returns
     -------
@@ -455,14 +454,11 @@ def absolute_trust(g, trust_map, source=None, vprop=None, n_iter=100,
 
     such that the direct trust of the last edge on the path is not considered.
 
-    The algorithm performs only an approximation of the above measure, by doing
-    several self-avoiding random walks per source vertex, and computing the
-    trust for all different paths found. Each complete walk is done by one of
-    three types of biased choices, which govern the probability of following a
-    specific edge: 1. With probability proportional to an edge's trust value;
-    2. With probability proportional to the complement of an edge's trust value
-    :math:`(1-t_{e})`; 3. All edges with equal probability. The parameter
-    "n_iter" controls how many walks of each type are performed.
+    The algorithm measures the absolute trust by following all vertex-disjoint
+    paths, and keeping them on a priority queue. Each iteration the path with
+    maximum weight is augmented, and the new paths pushed into the queue. The
+    algorithm stops when all paths are consumed, or when the trust values are
+    not making any progress, according to the epsilon parameter.
 
     If enabled during compilation, this algorithm runs in parallel.
 
@@ -470,40 +466,38 @@ def absolute_trust(g, trust_map, source=None, vprop=None, n_iter=100,
     --------
     >>> from numpy.random import poisson, random, seed
     >>> seed(42)
-    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)), seed=42)
+    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
     >>> trust = g.new_edge_property("double")
     >>> trust.get_array()[:] = random(g.num_edges())
-    >>> t = gt.absolute_trust(g, trust)
-    >>> print array(t[g.vertex(10)])
-    [  4.34269834e-01   1.84086073e-02   2.71138999e-03   0.00000000e+00
-       0.00000000e+00   2.34151772e-01   0.00000000e+00   2.74629641e-01
-       3.82398108e-02   3.51593064e-03   0.00000000e+00   2.25062582e-03
-       7.34404022e-02   3.02164679e-02   1.10468968e-01   3.36602968e-01
-       1.43712489e-01   1.09583017e-02   9.97860841e-03   6.20179844e-03
-       3.92453395e-03   5.93950226e-01   2.42696614e-01   1.10854185e-02
-       5.30694827e-02   8.71279579e-02   1.71495793e-01   4.53369014e-01
-       4.08880943e-01   2.43222424e-01   2.31048774e-02   1.97243934e-01
-       2.28690841e-02   3.89067069e-01   5.65879939e-01   2.64268559e-01
-       1.02377787e-02   0.00000000e+00   2.24908740e-01   1.37897878e-01
-       0.00000000e+00   3.84890236e-02   1.36013255e-01   1.13238046e-01
-       4.42613337e-02   1.54047730e-01   7.26844315e-04   9.74848849e-01
-       2.01388742e-03   2.98355979e-01   5.06984528e-01   1.99649387e-01
-       2.77657386e-02   4.29460962e-01   1.02848076e-01   4.89428001e-02
-       8.00972222e-02   1.44641703e-01   5.47481542e-02   6.50547255e-01
-       8.27105379e-02   1.39682293e-01   1.53401434e-01   1.86305773e-03
-       1.10090329e-01   1.66675096e-01   6.19209248e-01   4.98140945e-01
-       2.94691587e-01   2.72221755e-01   0.00000000e+00   0.00000000e+00
-       3.26706417e-01   4.91620740e-02   1.97732120e-01   5.43678807e-01
-       3.22718844e-01   3.99852058e-03   1.28240520e-01   5.80458086e-02
-       6.15485883e-04   2.65672284e-01   1.44784379e-01   5.08912552e-02
-       1.02175200e-01   2.88217333e-01   4.58941581e-01   2.21592754e-04
-       2.43926919e-01   2.29463331e-01   2.23860692e-02   3.96450827e-01
-       1.50189446e-01   3.84811442e-02   1.43428384e-01   1.96921016e-02
-       4.77979398e-01   7.78812012e-02   5.56363349e-01   2.12033381e-01]
+    >>> t = gt.absolute_trust(g, trust, source=g.vertex(0))
+    >>> print t.a
+    [  0.00000000e+00   5.14258135e-02   5.71266121e-03   5.72445966e-04
+       0.00000000e+00   8.40870736e-03   5.26183548e-03   1.17886060e-03
+       6.01506397e-04   1.29831325e-03   1.45797971e-03   3.21480292e-04
+       1.71096778e-03   2.74688614e-03   4.62071739e-03   8.09703326e-04
+       0.00000000e+00   2.32699564e-03   1.26410922e-03   2.39985303e-03
+       5.82052160e-03   2.76647806e-03   6.63350769e-03   2.20195841e-03
+       1.29581958e-04   5.18096899e-03   1.92592209e-03   1.81210154e-03
+       1.45646324e-03   3.43043712e-03   2.45289182e-02   4.32648258e-03
+       9.89190855e-04   1.45417521e-03   0.00000000e+00   9.99423350e-04
+       7.88399750e-05   0.00000000e+00   3.03832976e-03   8.55065176e-03
+       0.00000000e+00   4.55137037e-03   3.81341021e-03   1.19730767e-03
+       7.18323777e-04   4.09318494e-03   4.00794452e-04   1.09034564e-02
+       9.79985323e-04   1.33199924e-03   3.50390276e-03   9.94522820e-04
+       1.58366908e-03   1.67022801e-03   2.66247928e-03   9.99978606e-04
+       5.60094151e-03   1.75052181e-03   4.69095413e-03   4.66550013e-04
+       1.61261048e-03   4.64164507e-03   1.29879335e-02   1.21931927e-03
+       1.03114062e-03   2.38873202e-01   4.40785917e-03   2.05076506e-03
+       1.67546702e-03   1.24570365e-01   0.00000000e+00   5.72146010e-04
+       2.44438711e-03   2.92452098e-03   2.12275007e-04   7.39329792e-04
+       2.62264044e-01   3.34209850e-04   1.37313498e-03   1.54652980e-03
+       3.93973002e-04   5.35530090e-04   7.35038003e-04   1.89651401e-03
+       5.90688369e-03   2.40109219e-03   1.98770683e-03   1.13007595e-04
+       6.62879127e-03   2.50902780e-02   2.25743105e-03   3.42120043e-03
+       4.94039204e-04   5.57933981e-03   2.84245886e-03   2.50370261e-03
+       9.67803400e-03   8.03776616e-02   1.31993888e-03   2.41471529e-03]
     """
 
-    if seed != 0:
-        seed = numpy.random.randint(0, sys.maxint)
     if vprop == None:
         if source == None:
             vprop = g.new_vertex_property("vector<double>")
@@ -524,7 +518,7 @@ def absolute_trust(g, trust_map, source=None, vprop=None, n_iter=100,
     libgraph_tool_centrality.\
             get_absolute_trust(g._Graph__graph, source,
                                _prop("e", g, trust_map), _prop("v", g, vprop),
-                               n_iter, reversed, seed)
+                               n_paths, epsilon, reversed)
     if reversed:
         g.pop_filter(reversed=True)
 
