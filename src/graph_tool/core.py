@@ -221,7 +221,10 @@ class PropertyMap(object):
         return self.__map.get_array(n)
 
     def __get_array(self):
-        return self.get_array()[:]
+        if self.get_array() != None:
+            return self.get_array()[:]
+        else:
+            return None
 
     def __set_array(self, v):
         self.get_array()[:] = v
