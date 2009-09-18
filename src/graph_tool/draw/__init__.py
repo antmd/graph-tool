@@ -269,7 +269,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
         vsize = s
 
     if type(penwidth) == tuple:
-        s = g.new_vertex_property("double")
+        s = g.new_edge_property("double")
         g.copy_property(penwidth[0], s)
         s.a *= penwidth[1]
         penwidth = s
@@ -409,7 +409,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
         edges.append(ge)
 
     gv.layout(gvg, layout)
-    gv.render(gvg, "dot", "/dev/null") # retrieve postitions
+    gv.render(gvg, "dot", "/dev/null") # retrieve positions
 
     if pos == None:
         pos = (g.new_vertex_property("double"), g.new_vertex_property("double"))
