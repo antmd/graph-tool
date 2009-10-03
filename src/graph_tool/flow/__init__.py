@@ -19,6 +19,20 @@
 """
 ``graph_tool.flow`` - Maximum flow algorithms
 ---------------------------------------------
+
+Summary
++++++++
+
+.. autosummary::
+   :nosignatures:
+
+   edmonds_karp_max_flow
+   push_relabel_max_flow
+   kolmogorov_max_flow
+   max_cardinality_matching
+
+Contents
+++++++++
 """
 
 from .. dl_import import dl_import
@@ -29,31 +43,32 @@ __all__ = ["edmonds_karp_max_flow", "push_relabel_max_flow",
            "kolmogorov_max_flow", "max_cardinality_matching"]
 
 def edmonds_karp_max_flow(g, source, target, capacity, residual=None):
-    r"""Calculate maximum flow on the graph with Edmonds-Karp algorithm.
+    r"""
+    Calculate maximum flow on the graph with Edmonds-Karp algorithm.
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
     source : Vertex
         The source vertex.
     target : Vertex
         The target (or "sink") vertex.
-    capacity : PropertyMap
+    capacity : :class:`~graph_tool.PropertyMap`
         Edge property map with the edge capacities.
-    residual : PropertyMap (optional, default: none)
+    residual : :class:`~graph_tool.PropertyMap` (optional, default: none)
         Edge property map where the residuals should be stored.
 
     Returns
     -------
-    residual : PropertyMap
+    residual : :class:`~graph_tool.PropertyMap`
         Edge property map with the residual capacities (capacity - flow).
 
     Notes
     -----
-    The algorithm is due to [edmonds_theoretical_1972]_, though we are using the
-    variation called the ``labeling algorithm'' described in
-    [ravindra_network_1993]_.
+    The algorithm is due to [edmonds-theoretical-1972]_, though we are using the
+    variation called the "labeling algorithm" described in
+    [ravindra-network-1993]_.
 
     This algorithm provides a very simple and easy to implement solution to the
     maximum flow problem. However, there are several reasons why this algorithm
@@ -111,11 +126,11 @@ def edmonds_karp_max_flow(g, source, target, capacity, residual=None):
 
     References
     ----------
-    .. [boost_edmonds_karp] http://www.boost.org/libs/graph/doc/edmonds_karp_max_flow.html
-    .. [edmonds_theoretical_1972] Jack Edmonds and Richard M. Karp, "Theoretical
+    .. [boost-edmonds-karp] http://www.boost.org/libs/graph/doc/edmonds_karp_max_flow.html
+    .. [edmonds-theoretical-1972] Jack Edmonds and Richard M. Karp, "Theoretical
        improvements in the algorithmic efficiency for network flow problems.
        Journal of the ACM", 1972 19:248-264
-    .. [ravindra_network_1993] Ravindra K. Ahuja and Thomas L. Magnanti and
+    .. [ravindra-network-1993] Ravindra K. Ahuja and Thomas L. Magnanti and
        James B. Orlin,"Network Flows: Theory, Algorithms, and Applications".
        Prentice Hall, 1993.
     """
@@ -133,29 +148,30 @@ def edmonds_karp_max_flow(g, source, target, capacity, residual=None):
     return residual
 
 def push_relabel_max_flow(g, source, target, capacity, residual=None):
-    r"""Calculate maximum flow on the graph with push-relabel algorithm.
+    r"""
+    Calculate maximum flow on the graph with push-relabel algorithm.
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
     source : Vertex
         The source vertex.
     target : Vertex
         The target (or "sink") vertex.
-    capacity : PropertyMap
+    capacity : :class:`~graph_tool.PropertyMap`
         Edge property map with the edge capacities.
-    residual : PropertyMap (optional, default: none)
+    residual : :class:`~graph_tool.PropertyMap` (optional, default: none)
         Edge property map where the residuals should be stored.
 
     Returns
     -------
-    residual : PropertyMap
+    residual : :class:`~graph_tool.PropertyMap`
         Edge property map with the residual capacities (capacity - flow).
 
     Notes
     -----
-    The algorithm is defined in [goldberg_new_1985]_. The complexity is
+    The algorithm is defined in [goldberg-new-1985]_. The complexity is
     :math:`O(V^3)`.
 
     Examples
@@ -204,8 +220,8 @@ def push_relabel_max_flow(g, source, target, capacity, residual=None):
 
     References
     ----------
-    .. [boost_push_relabel] http://www.boost.org/libs/graph/doc/push_relabel_max_flow.html
-    .. [goldberg_new_1985] A. V. Goldberg, "A New Max-Flow Algorithm",  MIT
+    .. [boost-push-relabel] http://www.boost.org/libs/graph/doc/push_relabel_max_flow.html
+    .. [goldberg-new-1985] A. V. Goldberg, "A New Max-Flow Algorithm",  MIT
        Tehnical report MIT/LCS/TM-291, 1985.
     """
 
@@ -226,31 +242,31 @@ def kolmogorov_max_flow(g, source, target, capacity, residual=None):
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
     source : Vertex
         The source vertex.
     target : Vertex
         The target (or "sink") vertex.
-    capacity : PropertyMap
+    capacity : :class:`~graph_tool.PropertyMap`
         Edge property map with the edge capacities.
-    residual : PropertyMap (optional, default: none)
+    residual : :class:`~graph_tool.PropertyMap` (optional, default: none)
         Edge property map where the residuals should be stored.
 
     Returns
     -------
-    residual : PropertyMap
+    residual : :class:`~graph_tool.PropertyMap`
         Edge property map with the residual capacities (capacity - flow).
 
     Notes
     -----
 
-    The algorithm is defined in [kolmogorov_graph_2003]_ and
-    [boykov_experimental_2004]_. The worst case complexity is
+    The algorithm is defined in [kolmogorov-graph-2003]_ and
+    [boykov-experimental-2004]_. The worst case complexity is
     :math:`O(EV^2|C|)`, where :math:`|C|` is the minimum cut (but typically
     perfomrs much better).
 
-    For a more detailed description, see [boost_kolmogorov]_.
+    For a more detailed description, see [boost-kolmogorov]_.
 
     Examples
     --------
@@ -298,11 +314,11 @@ def kolmogorov_max_flow(g, source, target, capacity, residual=None):
 
     References
     ----------
-    .. [boost_kolmogorov] http://www.boost.org/libs/graph/doc/kolmogorov_max_flow.html
-    .. [kolmogorov_graph_2003] Vladimir Kolmogorov, "Graph Based Algorithms for
+    .. [boost-kolmogorov] http://www.boost.org/libs/graph/doc/kolmogorov_max_flow.html
+    .. [kolmogorov-graph-2003] Vladimir Kolmogorov, "Graph Based Algorithms for
        Scene Reconstruction from Two or More Views", PhD thesis, Cornell
         University, September 2003.
-    .. [boykov_experimental_2004] Yuri Boykov and Vladimir Kolmogorov, "An
+    .. [boykov-experimental-2004] Yuri Boykov and Vladimir Kolmogorov, "An
        Experimental Comparison of Min-Cut/Max-Flow Algorithms for Energy
        Minimization", Vision In IEEE Transactions on Pattern Analysis and
        Machine Intelligence, vol. 26, no. 9, pp. 1124-1137, Sept. 2004.
@@ -324,14 +340,14 @@ def max_cardinality_matching(g, match=None):
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
-    match : PropertyMap (optional, default: none)
+    match : :class:`~graph_tool.PropertyMap` (optional, default: none)
         Edge property map where the matching will be specified.
 
     Returns
     -------
-    match : PropertyMap
+    match : :class:`~graph_tool.PropertyMap`
         Boolean edge property map where the matching is specified.
     is_maximal : bool
         True if the matching is indeed maximal, or False otherwise.
@@ -342,7 +358,7 @@ def max_cardinality_matching(g, match=None):
     share a common vertex. A *maximum cardinality matching* has maximum size
     over all matchings in the graph.
 
-    For a more detailed description, see [boost_max_matching]_.
+    For a more detailed description, see [boost-max-matching]_.
 
     Examples
     --------
@@ -362,7 +378,7 @@ def max_cardinality_matching(g, match=None):
 
     References
     ----------
-    .. [boost_max_matching] http://www.boost.org/libs/graph/doc/maximum_matching.html
+    .. [boost-max-matching] http://www.boost.org/libs/graph/doc/maximum_matching.html
     """
     if match == None:
         match = g.new_edge_property("bool")

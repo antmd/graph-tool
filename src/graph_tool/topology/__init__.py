@@ -19,6 +19,23 @@
 """
 ``graph_tool.topology`` - Topology related functions
 ----------------------------------------------------
+
+Summary
++++++++
+
+.. autosummary::
+   :nosignatures:
+
+   isomorphism
+   min_spanning_tree
+   dominator_tree
+   topological_sort
+   transitive_closure
+   label_components
+   label_biconnected_components
+
+Contents
+++++++++
 """
 
 from .. dl_import import dl_import
@@ -26,12 +43,16 @@ dl_import("import libgraph_tool_topology")
 
 from .. core import _prop, Vector_int32_t, _check_prop_writable, \
      _check_prop_scalar, Graph
-import random, sys
-__all__ = ["isomorphism", "min_spanning_tree", "denominator_tree",
+import random, sys, numpy
+__all__ = ["isomorphism", "min_spanning_tree", "dominator_tree",
            "topological_sort", "transitive_closure", "label_components",
            "label_biconnected_components"]
 
 def isomorphism(g1, g2, isomap=False):
+    """Check whether two graphs are isomorphisms. If `isomap` is True, a vertex
+    :class:`~graph_tool.PropertyMap` with the isomorphism mapping is returned as
+    well.
+    """
     imap = g1.new_vertex_property("int32_t")
     iso = libgraph_tool_topology.\
            check_isomorphism(g1._Graph__graph,g2._Graph__graph,
@@ -43,6 +64,65 @@ def isomorphism(g1, g2, isomap=False):
 
 
 def min_spanning_tree(g, weights=None, root=None, tree_map=None):
+    """
+    Return the minimum spanning tree of a given graph.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    weights : :class:`~graph_tool.PropertyMap` (optional, default: None)
+        The edge weights. If provided, the minimum spanning tree will minimize
+        the edge weights.
+    root : :class:`~graph_tool.Vertex` (optional, default: None)
+        Root of the minimum spanning tree. It this is provided, Prim's algorithm
+        is used. Otherwise, Kruskal's algorithm is used.
+    tree_map : :class:`~graph_tool.PropertyMap` (optional, default: None)
+        If provided, the edge tree map will be written in this property map.
+
+    Returns
+    -------
+    tree_map : :class:`~graph_tool.PropertyMap`
+        Edge property map with mark the tree edges: 1 for tree edge, 0
+        otherwise.
+
+    Notes
+    -----
+    The algorithm runs with :math:`O(E\log E)` complexity, or :math:`O(E\log V)`
+    if `root` is specified.
+
+    Examples
+    --------
+    >>> from numpy.random import seed
+    >>> seed(42)
+    >>> g = gt.random_graph(100, lambda: (5, 5))
+    >>> tree = gt.min_spanning_tree(g)
+    >>> print tree.a
+    [0 0 0 0 1 0 0 0 0 0 0 0 0 1 1 0 0 0 0 1 1 0 0 0 0 0 0 0 0 1 1 1 0 0 1 0 0
+     0 1 1 0 0 0 1 1 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 1 1 0 0 0 0
+     0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0
+     0 0 0 1 0 0 0 0 1 0 0 0 0 0 1 0 0 0 1 0 0 0 0 1 0 0 0 1 1 0 0 0 0 1 0 0 0
+     0 1 0 0 0 0 0 0 0 0 1 1 0 0 0 0 1 0 0 1 1 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1
+     0 0 0 1 0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 1 0 0 0 0 1 0 0 0 1 1 0 0 0 0 1 0 0
+     0 0 0 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+     1 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0
+     0 0 1 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0 0 0 0 0 0 0 0 0 1 1 0 0 0 0 1 0 0 0
+     0 1 1 0 0 0 0 0 0 0 0 1 0 0 0 1 1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 1
+     0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 1 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0
+     0 0 1 0 1 0 0 0 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 1 0 0 1 1 0 0 0 0 1 0 0 0 1
+     1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0
+     0 0 0 1 0 0 0 1 1 0 0 0 0 1 0 0 0 1 1]
+
+    References
+    ----------
+    .. [kruskal-shortest-1956] J. B. Kruskal.  "On the shortest spanning subtree
+       of a graph and the traveling salesman problem",  In Proceedings of the
+       American Mathematical Sofiety, volume 7, pages 48-50, 1956.
+    .. [prim-shortest-1957] R. Prim.  "Shortest connection networks and some
+       generalizations",  Bell System Technical Journal, 36:1389-1401, 1957.
+    .. [boost-mst] http://www.boost.org/libs/graph/doc/graph_theory_review.html#sec:minimum-spanning-tree
+    .. [mst-wiki] http://en.wikipedia.org/wiki/Minimum_spanning_tree
+    """
     if tree_map == None:
         tree_map = g.new_edge_property("bool")
     if tree_map.value_type() != "bool":
@@ -95,7 +175,7 @@ def dominator_tree(g, root, dom_map=None):
     >>> g = gt.random_graph(100, lambda: (2, 2))
     >>> tree = gt.min_spanning_tree(g)
     >>> g.set_edge_filter(tree)
-    >>> root = [v for v in g.vertices() if v.in-degree() == 0]
+    >>> root = [v for v in g.vertices() if v.in_degree() == 0]
     >>> dom = gt.dominator_tree(g, root[0])
     >>> print dom.a
     [ 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
@@ -105,7 +185,7 @@ def dominator_tree(g, root, dom_map=None):
 
     References
     ----------
-    .. [dominator-bgl] http://www.boost.org/doc/libs/graph/doc/lengauer_tarjan_dominator.htm
+    .. [dominator-bgl] http://www.boost.org/libs/graph/doc/lengauer_tarjan_dominator.htm
 
     """
     if dom_map == None:
@@ -147,7 +227,7 @@ def topological_sort(g):
 
     References
     ----------
-    .. [topological-boost] http://www.boost.org/doc/libs/graph/doc/topological_sort.html
+    .. [topological-boost] http://www.boost.org/libs/graph/doc/topological_sort.html
     .. [topological-wiki] http://en.wikipedia.org/wiki/Topological_sorting
 
     """
@@ -178,7 +258,7 @@ def transitive_closure(g):
 
     References
     ----------
-    .. [transitive-boost] http://www.boost.org/doc/libs/graph/doc/transitive_closure.html
+    .. [transitive-boost] http://www.boost.org/libs/graph/doc/transitive_closure.html
     .. [transitive-wiki] http://en.wikipedia.org/wiki/Transitive_closure
 
     """
@@ -192,15 +272,15 @@ def transitive_closure(g):
 
 def label_components(g, vprop=None, directed=None):
     """
-    Labels the components to which each vertex in the graph belongs. If the
+    Label the components to which each vertex in the graph belongs. If the
     graph is directed, it finds the strongly connected components.
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
 
-    vprop : PropertyMap (optional, default: None)
+    vprop : :class:`~graph_tool.PropertyMap` (optional, default: None)
         Vertex property to store the component labels. If none is supplied, one
         is created.
 
@@ -210,7 +290,7 @@ def label_components(g, vprop=None, directed=None):
 
     Returns
     -------
-    comp : PropertyMap
+    comp : :class:`~graph_tool.PropertyMap`
         Vertex property map with component labels.
 
     Notes
@@ -218,16 +298,18 @@ def label_components(g, vprop=None, directed=None):
     The components are arbitrarily labeled from 0 to N-1, where N is the total
     number of components.
 
-    The algorithm runs in :math:`O(|V| + |E|)` time.
+    The algorithm runs in :math:`O(V + E)` time.
 
     Examples
     --------
-    >>> g = gt.random_graph(100, lambda: (1, 1), seed=42)
+    >>> from numpy.random import seed
+    >>> seed(43)
+    >>> g = gt.random_graph(100, lambda: (1, 1))
     >>> comp = gt.label_components(g)
     >>> print comp.get_array()
-    [0 1 2 3 4 0 3 3 4 4 2 3 4 0 3 3 3 3 0 3 2 1 3 0 0 2 2 3 3 3 0 1 2 3 2 3 0
-     1 0 5 5 1 4 2 2 1 0 3 3 3 3 3 3 0 0 3 4 2 3 2 5 5 0 2 1 0 3 2 0 3 3 0 4 3
-     2 6 2 2 1 3 1 1 0 3 0 1 3 0 3 0 2 0 2 2 0 6 1 1 0 2]
+    [0 1 1 1 0 2 1 1 3 0 1 2 1 2 4 2 2 1 2 1 0 3 1 1 2 0 2 2 1 4 0 0 0 4 0 1 2
+     1 0 4 2 2 0 2 1 0 0 1 2 0 1 2 2 2 1 2 0 1 1 2 1 2 2 1 2 1 1 2 0 0 1 2 1 0
+     1 1 1 2 2 2 2 1 0 1 0 2 0 4 2 2 2 2 0 0 0 0 1 2 2 3]
     """
 
     if vprop == None:
@@ -248,6 +330,69 @@ def label_components(g, vprop=None, directed=None):
     return vprop
 
 def label_biconnected_components(g, eprop=None, vprop=None):
+    """
+    Label the edges of biconnected components, and the vertices which are
+    articulation points.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+
+    eprop : :class:`~graph_tool.PropertyMap` (optional, default: None)
+        Edge property to label the biconnected components.
+
+    vprop : :class:`~graph_tool.PropertyMap` (optional, default: None)
+        Vertex property to mark the articulation points. If none is supplied,
+        one is created.
+
+
+    Returns
+    -------
+    bicomp : :class:`~graph_tool.PropertyMap`
+        Edge property map with the biconnected component labels.
+    articulation : :class:`~graph_tool.PropertyMap`
+        Boolean vertex property map which has value 1 for each vertex which is
+        an articulation point, and zero otherwise.
+    nc : int
+        Number of biconnected components.
+
+    Notes
+    -----
+
+    A connected graph is biconnected if the removal of any single vertex (and
+    all edges incident on that vertex) can not disconnect the graph. More
+    generally, the biconnected components of a graph are the maximal subsets of
+    vertices such that the removal of a vertex from a particular component will
+    not disconnect the component. Unlike connected components, vertices may
+    belong to multiple biconnected components: those vertices that belong to
+    more than one biconnected component are called "articulation points" or,
+    equivalently, "cut vertices". Articulation points are vertices whose removal
+    would increase the number of connected components in the graph. Thus, a
+    graph without articulation points is biconnected. Vertices can be present in
+    multiple biconnected components, but each edge can only be contained in a
+    single biconnected component.
+
+    The algorithm runs in :math:`O(V + E)` time.
+
+    Examples
+    --------
+    >>> from numpy.random import seed
+    >>> seed(42)
+    >>> g = gt.random_graph(100, lambda: 2, directed=False)
+    >>> comp, art, nc = gt.label_biconnected_components(g)
+    >>> print comp.a
+    [0 0 1 0 0 0 1 2 0 0 1 3 0 0 1 1 0 0 0 0 0 1 0 0 0 0 0 1 0 1 1 0 0 0 2 2 3
+     1 0 0 0 1 0 0 1 1 0 1 1 0 0 0 0 0 0 1 3 1 1 1 1 0 0 0 0 0 0 0 1 0 0 1 1 0
+     0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 1 1 1 0 0]
+    >>> print art.a
+    [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+     0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+     0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+    >>> print nc
+    4
+
+    """
 
     if vprop == None:
         vprop = g.new_vertex_property("bool")
@@ -260,9 +405,11 @@ def label_biconnected_components(g, eprop=None, vprop=None):
     _check_prop_scalar(eprop, name="eprop")
 
     g.stash_filter(directed=True)
-    g.set_directed(False)
-    nc = libgraph_tool_topology.\
-          label_biconnected_components(g._Graph__graph, _prop("e", g, eprop),
-                                       _prop("v", g, vprop))
-    g.pop_filter(directed=True)
+    try:
+        g.set_directed(False)
+        nc = libgraph_tool_topology.\
+             label_biconnected_components(g._Graph__graph, _prop("e", g, eprop),
+                                          _prop("v", g, vprop))
+    finally:
+        g.pop_filter(directed=True)
     return eprop, vprop, nc

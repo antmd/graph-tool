@@ -1,0 +1,28 @@
+@import url("default.css");
+
+table.docutils td {
+    padding-left: 0.5em;
+}
+
+/* stupid workaround to hide ugly c++ signature stuff from sphinx*/
+dl.method dl.last {
+    visibility: collapse;
+    height: 0px;
+    width: 0px;
+}
+
+div.align-center {
+    text-align: center;
+}
+
+div.float-left {
+    float: left;
+}
+
+div.float-right {
+    float: right;
+}
+
+p.rubric {
+   clear: both;
+}

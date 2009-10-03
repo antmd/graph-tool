@@ -191,9 +191,9 @@ and :meth:`~graph_tool.Vertex.in_neighbours` respectively.
 Property maps
 -------------
 
-Property maps are a way of associating additional to the vertices, edges or to
-the graph itself. There are thus three types of property maps: vertex, edge and
-graph. All of them are instances of the same class,
+Property maps are a way of associating additional information to the vertices,
+edges or to the graph itself. There are thus three types of property maps:
+vertex, edge and graph. All of them are instances of the same class,
 :class:`~graph_tool.PropertyMap`. Each property map has an associated *value
 type*, which must be chosen from the predefined set:
 
@@ -310,8 +310,17 @@ Graph classes can also be pickled with the :mod:`pickle` module.
 An Example: Building a Price Network
 ------------------------------------
 
+A Price network is the first known model of a "scale-free" graph, invented in
+1976 by `de Solla Price
+<http://en.wikipedia.org/wiki/Derek_J._de_Solla_Price>`_. It is defined
+dynamically, and at each time step a new vertex is added to the graph, and
+connected to an old vertex, with probability proportional to its in-degree. The
+following program implements this construction method using ``graph-tool``.
+
 .. literalinclude:: price.py
    :linenos:
+
+The following is what should happen when the program is run.
 
 .. testcode::
    :hide:
@@ -333,6 +342,9 @@ An Example: Building a Price Network
     vertex: 0 in-degree: 210 out-degree: 0 age: 0
     Nowhere else to go... We found the main hub!
 
+This is the degree distribution, with 100000 nodes. If you want to really see a
+power law, try to increase the number of vertices to something like :math:`10^6`
+or :math:`10^7`.
 
 .. figure:: deg-hist.png
    :align: center
@@ -346,9 +358,130 @@ use the :func:`~graph_tool.draw.graph_draw` function.
 
    g = load_graph("price.xml.gz")
    g.remove_vertex_if(lambda v: g.vertex_index[v] >= 1000)
-   gt.graph_draw(g, output="price.png")
+   graph_draw(g, size=(10,10), layout="arf", output="price.png")
 
 .. figure:: price.png
    :align: center
 
    First 1000 nodes of a price network.
+
+Graph filtering
+---------------
+
+One of the very nice features from ``graph-tool`` is the "on-the-fly" filtering
+of edges and/or vertices. Filtering means the temporary masking of
+vertices/edges, which are not really removed, and can be easily
+recovered. Vertices or edges which are to be filtered should be marked with a
+:class:`~graph_tool.PropertyMap` with value type ``bool``, and then set with
+:meth:`~graph_tool.Graph.set_vertex_filter` or
+:meth:`~graph_tool.Graph.set_edge_filter` methods. By default, vertex or edges
+with value "1" are `kept` in the graphs, and those with value "0" are filtered
+out. This behaviour can be modified with the ``inverted`` parameter of the
+respective functions. All manipulation functions and algorithms will work as if
+the marked edges or vertices were removed from the graph, with minimum overhead.
+
+Here is an example which obtains the minimum spanning tree of a graph, using
+edge filtering.
+
+.. testcode::
+   :hide:
+
+   seed(42)
+
+.. testcode::
+
+   g = random_graph(100, lambda: (poisson(4), poisson(4)))
+   tree = min_spanning_tree(g)
+   graph_draw(g, size=(8,8), ecolor=tree, output="min_tree.png")
+
+The ``tree`` property map has a bool type, with value "1" if the edge belongs to
+the tree, and "0" otherwise. Below is an image of the original graph, with the
+marked edges.
+
+.. figure:: min_tree.png
+   :align: center
+
+We can now filter out the edges which don't belong to the minimum spanning tree.
+
+.. testcode::
+
+    g.set_edge_filter(tree)
+    graph_draw(g, size=(8,8), layout="arf", output="min_tree_filtered.png")
+
+This is how the graph looks when filtered:
+
+.. figure:: min_tree_filtered.png
+   :align: center
+
+Everything should work transparently on the filtered graph, simply as if the
+masked edges were removed.
+
+.. testcode::
+
+    pr = pagerank(g)
+    print pr.a
+
+Which outputs the following.
+
+.. testoutput::
+
+    [ 1.21896533  0.2         0.28        0.36        0.28        0.2         0.2
+      0.2         0.2         0.44        0.2         0.53813333  0.344       0.2
+      0.52        0.4752      0.53066667  0.2         0.85066667  0.2
+      0.37813333  0.28        2.65013333  0.78133333  0.2         0.2         0.28
+      0.2         0.2         0.2         0.2         0.2         0.2         0.2
+      0.2         0.41333333  0.2         0.2         0.25333333  0.2
+      0.41333333  0.2         0.76        0.2         0.2         1.27370667
+      0.36        0.2         0.2         0.28        0.36        0.6         0.2
+      1.17517227  0.40266667  0.2         0.44533333  1.016       0.424       0.28
+      0.2         0.2         0.44        0.6         0.2         0.2         0.44
+      0.2         0.2         0.28        0.25333333  0.25333333  0.28        0.2
+      1.24213333  0.2         0.40266667  0.28        0.36        0.2         0.2
+      0.2         0.2         0.54133333  0.2         0.5552      0.2         0.44
+      0.44        0.2         0.2         0.28        0.2         0.6         0.2
+      0.44        0.2         0.28        0.344       0.472     ]
+
+The original graph can be recovered by setting the edge filter to ``None``.
+
+.. testcode::
+
+    g.set_edge_filter(None)
+    pr = pagerank(g)
+    print pr.a
+
+Which outputs the following.
+
+.. testoutput::
+
+    [ 0.39689941  0.2         1.38764556  0.31699172  0.66893137  0.80523725
+      0.67802789  0.40784401  0.29361908  1.22559931  0.750107    1.02862225
+      0.6472381   0.78447305  0.54791497  0.73210888  1.00329801  0.43209786
+      1.20758525  0.95797897  0.97106576  0.38080744  2.35690886  1.35609636
+      1.04694293  0.47676748  0.870367    0.9034519   0.60360189  0.24
+      0.35010316  0.81055356  0.59406634  0.68903488  0.3701726   0.50917786
+      0.819167    0.31490118  0.67404843  0.74766878  1.25501188  0.2
+      1.97251855  0.77583825  0.62509331  0.55088128  0.41242224  0.70903083
+      0.5918624   0.92565929  2.1083913   0.99864279  0.47676748  0.30583984
+      0.45919658  0.3551633   2.58583616  1.07020892  0.44358295  0.75860401
+      0.51277849  0.54073371  0.79816833  1.52121868  0.93996758  0.25077432
+      0.48392002  0.7181324   0.4789649   1.88431987  0.42763893  0.82713964
+      1.0133979   0.8693855   1.94140631  0.39321364  1.27413606  3.16059924
+      1.32889816  0.89569002  0.27990067  0.64233367  0.89888256  1.24365097
+      0.56000105  1.1805301   0.76991724  1.3304796   1.04003837  1.50556425
+      0.39110528  0.2762828   0.2         1.57628517  1.38463963  1.03787805
+      0.81171454  0.95811153  0.5728202   1.26472067]
+
+Everything works in analogous fashion with vertex filtering.
+
+.. note::
+
+    It is important to emphasize that the filtering functionality does not add
+    any overhead when the graph is not being filtered. In this case, the
+    algorithms run just as fast as if the filtering functionality didn't exist.
+
+Additionally, the graph can also have its edges reversed with the
+:meth:`~graph_tool.Graph.set_reversed` method. This is also an :math:`O(1)`
+operation, which does not really modify the graph.
+
+As mentioned previously, the directedness of the graph can also be changed
+"on-the-fly" with the :meth:`~graph_tool.Graph.set_directed` method.

@@ -22,6 +22,17 @@
 
 This module implements support for automatic ad-hoc code embedding into
 graph-tool.
+
+Summary
++++++++
+
+.. autosummary::
+   :nosignatures:
+
+   inline
+
+Contents
+++++++++
 """
 
 __all__ = ["inline"]

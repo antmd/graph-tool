@@ -22,6 +22,21 @@
 
 Provides algorithms for calculation of clustering coefficients,
 aka. transitivity.
+
+Summary
++++++++
+
+.. autosummary::
+   :nosignatures:
+
+   local_clustering
+   global_clustering
+   extended_clustering
+   motifs
+   motif_significance
+
+Contents
+++++++++
 """
 
 from .. dl_import import dl_import
@@ -34,6 +49,7 @@ from .. stats import vertex_hist
 from itertools import izip
 from collections import defaultdict
 from numpy import *
+from numpy import random
 import sys
 
 __all__ = ["local_clustering", "global_clustering", "extended_clustering",
@@ -46,9 +62,9 @@ def local_clustering(g, prop=None, undirected=False):
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
-    prop : PropertyMap or string, optional
+    prop : :class:`~graph_tool.PropertyMap` or string, optional
         Vertex property map where results will be stored. If specified, this
         parameter will also be the return value.
     undirected : bool, optional
@@ -57,7 +73,7 @@ def local_clustering(g, prop=None, undirected=False):
 
     Returns
     -------
-    prop : PropertyMap
+    prop : :class:`~graph_tool.PropertyMap`
         Vertex property containing the clustering coefficients.
 
     See Also
@@ -68,7 +84,8 @@ def local_clustering(g, prop=None, undirected=False):
 
     Notes
     -----
-    The local clustering coefficient [1]_ :math:`c_i` is defined as
+    The local clustering coefficient [watts-collective-1998]_ :math:`c_i` is
+    defined as
 
     .. math::
        c_i = \frac{|\{e_{jk}\}|}{k_i(k_i-1)} :\, v_j,v_k \in N_i,\, e_{jk} \in E
@@ -91,15 +108,17 @@ def local_clustering(g, prop=None, undirected=False):
 
     Examples
     --------
-    >>> g = gt.random_graph(1000, lambda: (5,5), seed=42)
+    >>> from numpy.random import seed
+    >>> seed(42)
+    >>> g = gt.random_graph(1000, lambda: (5,5))
     >>> clust = gt.local_clustering(g)
     >>> print gt.vertex_average(g, clust)
-    (0.0042016666666666669, 0.00041579094306313759)
+    (0.0054000000000000003, 0.00046091213913282869)
 
     References
     ----------
-    .. [1] D. J. Watts and Steven Strogatz, "Collective dynamics of
-       'small-world' networks", Nature, vol. 393, pp 440-442, 1998.
+    .. [watts-collective-1998] D. J. Watts and Steven Strogatz, "Collective
+        dynamics of 'small-world' networks", Nature, vol. 393, pp 440-442, 1998.
        doi:10.1038/30918
     """
 
@@ -122,7 +141,7 @@ def global_clustering(g):
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
 
     Returns
@@ -138,7 +157,8 @@ def global_clustering(g):
 
     Notes
     -----
-    The global clustering coefficient [1]_ :math:`c` is defined as
+    The global clustering coefficient [newman-structure-2003]_ :math:`c` is
+    defined as
 
     .. math::
        c = 3 \times \frac{\text{number of triangles}}
@@ -151,14 +171,16 @@ def global_clustering(g):
 
     Examples
     --------
-    >>> g = gt.random_graph(1000, lambda: (5,5), seed=42)
+    >>> from numpy.random import seed
+    >>> seed(42)
+    >>> g = gt.random_graph(1000, lambda: (5,5))
     >>> print gt.global_clustering(g)
-    (0.0083567321834469854, 0.0004417198625120785)
+    (0.0091250670960815895, 0.00044046497971164271)
 
     References
     ----------
-    .. [1] M. E. J. Newman, "The structure and function of complex networks",
-       SIAM Review, vol. 45, pp. 167-256, 2003
+    .. [newman-structure-2003] M. E. J. Newman, "The structure and function of
+       complex networks", SIAM Review, vol. 45, pp. 167-256, 2003
     """
 
     c =_gt.global_clustering(g._Graph__graph)
@@ -171,9 +193,9 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
-    props : list of PropertyMap objects, optional
+    props : list of :class:`~graph_tool.PropertyMap` objects, optional
         list of vertex property maps where results will be stored. If specified,
         this parameter will also be the return value.
     max_depth : int, optional
@@ -184,7 +206,7 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
 
     Returns
     -------
-    prop : list of PropertyMap objects
+    prop : list of :class:`~graph_tool.PropertyMap` objects
         List of vertex properties containing the clustering coefficients.
 
     See Also
@@ -195,8 +217,8 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
 
     Notes
     -----
-    The definition of the extended clustering coefficient :math:`c^d_i` of order
-    :math:`d` is defined as
+    The extended clustering coefficient :math:`c^d_i` of order :math:`d` is
+    defined as
 
     .. math::
        c^d_i = \frac{\left|\right\{ \{u,v\}; u,v \in N_i | d_{G(V\setminus
@@ -212,29 +234,31 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
     definition, we have that the traditional local clustering coefficient is
     recovered for :math:`d=1`, i.e., :math:`c^1_i = c_i`.
 
-    The implemented algorithm runs in :math:`O(|V|\left<
-    k\right>^{2+\text{max_depth}})` worst time, where :math:`\left< k\right>` is
-    the average out-degree.
+    The implemented algorithm runs in
+    :math:`O(|V|\left<k\right>^{2+\text{max\_depth}})` worst time, where
+    :math:`\left< k\right>` is the average out-degree.
 
     If enabled during compilation, this algorithm runs in parallel.
 
     Examples
     --------
-    >>> g = gt.random_graph(1000, lambda: (5,5), seed=42)
+    >>> from numpy.random import seed
+    >>> seed(42)
+    >>> g = gt.random_graph(1000, lambda: (5,5))
     >>> clusts = gt.extended_clustering(g, max_depth=5)
     >>> for i in xrange(0, 5):
     ...    print gt.vertex_average(g, clusts[i])
     ...
-    (0.0042016666666666669, 0.00041579094306313759)
-    (0.02409, 0.00095845344754511225)
-    (0.11065333333333334, 0.0019404812805074933)
-    (0.40180499999999997, 0.0031866048246265693)
-    (0.43999999999999995, 0.0031172994010129269)
+    (0.0054000000000000003, 0.00046091213913282869)
+    (0.027353333333333334, 0.0010353156469835125)
+    (0.11857833333333334, 0.002002602051082541)
+    (0.40064, 0.0030508380196631575)
+    (0.42819166666666664, 0.0030905005774865082)
 
     References
     ----------
-    .. [1] A. H. Abdo, A. P. S. de Moura, "Clustering as a measure of the local
-       topology of networks", arXiv:physics/0605235v4
+    .. [abdo-clustering] A. H. Abdo, A. P. S. de Moura, "Clustering as a
+       measure of the local topology of networks", arXiv:physics/0605235v4
     """
 
     was_directed = g.is_directed()
@@ -261,16 +285,16 @@ def motifs(g, k, p=1.0, motif_list=None, undirected=None):
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
     k : int
         number of vertices of the motifs
     p : float or float list (optional, default: 1.0)
         uniform fraction of the motifs to be sampled. If a float list is
         provided, it will be used as the fraction at each depth
-        :math:`[1,\dots,k]` in the algorithm. See [wernicke_efficient_2006]_ for
+        :math:`[1,\dots,k]` in the algorithm. See [wernicke-efficient-2006]_ for
         more details.
-    motif_list : list of Graph objects, optional
+    motif_list : list of :class:`~graph_tool.Graph` objects, optional
         If supplied, the algorithms will only search for the motifs in this list
         (or isomorphisms)
     undirected : bool, optional
@@ -279,7 +303,7 @@ def motifs(g, k, p=1.0, motif_list=None, undirected=None):
 
     Returns
     -------
-    motifs : list of Graph objects
+    motifs : list of :class:`~graph_tool.Graph` objects
         List of motifs of size k found in the Graph. Graphs are grouped
         according to their isomorphism class, and only one of each class appears
         in this list. The list is sorted according to in-degree sequence,
@@ -297,22 +321,24 @@ def motifs(g, k, p=1.0, motif_list=None, undirected=None):
     Notes
     -----
     This functions implements the ESU and RAND-ESU algorithms described in
-    [wernicke_efficient_2006]_.
+    [wernicke-efficient-2006]_.
 
     If enabled during compilation, this algorithm runs in parallel.
 
     Examples
     --------
-    >>> g = gt.random_graph(1000, lambda: (5,5), seed=42)
+    >>> from numpy.random import seed
+    >>> seed(42)
+    >>> g = gt.random_graph(1000, lambda: (5,5))
     >>> motifs, counts = gt.motifs(g, 4, undirected=True)
     >>> print len(motifs)
-    10
+    13
     >>> print counts
-    [116138, 392344, 389, 445, 2938, 996, 792, 3, 14, 3]
+    [114750, 387884, 875, 1004, 2254, 3162, 770, 14, 8, 7, 16, 2, 5]
 
     References
     ----------
-    .. [wernicke_efficient_2006] S. Wernicke, "Efficient detection of network
+    .. [wernicke-efficient-2006] S. Wernicke, "Efficient detection of network
        motifs", IEEE/ACM Transactions on Computational Biology and
        Bioinformatics (TCBB), Volume 3, Issue 4, Pages 347-359, 2006.
     """
@@ -398,7 +424,7 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
     k : int
         number of vertices of the motifs
@@ -407,9 +433,9 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
     p : float or float list (optional, default: 1.0)
         uniform fraction of the motifs to be sampled. If a float list is
         provided, it will be used as the fraction at each depth
-        :math:`[1,\dots,k]` in the algorithm. See [wernicke_efficient_2006]_ for
+        :math:`[1,\dots,k]` in the algorithm. See [wernicke-efficient-2006]_ for
         more details.
-    motif_list : list of Graph objects (optional, default: None)
+    motif_list : list of :class:`~graph_tool.Graph` objects (optional, default: None)
         If supplied, the algorithms will only search for the motifs in this list
         (isomorphisms)
     threshold : int (optional, default: 0)
@@ -433,7 +459,7 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
 
     Returns
     -------
-    motifs : list of Graph objects
+    motifs : list of :class:`~graph_tool.Graph` objects
         List of motifs of size k found in the Graph. Graphs are grouped
         according to their isomorphism class, and only one of each class appears
         in this list. The list is sorted according to in-degree sequence,
@@ -469,13 +495,13 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
     Examples
     --------
     >>> from numpy import random
-    >>> random.seed(42)
-    >>> g = gt.random_graph(100, lambda: (3,3), seed=10)
+    >>> random.seed(10)
+    >>> g = gt.random_graph(100, lambda: (3,3))
     >>> motifs, zscores = gt.motif_significance(g, 3)
     >>> print len(motifs)
-    12
+    11
     >>> print zscores
-    [1.6197267471265697, 1.6271265351937325, 0.99350347553112339, -1.4729502635694927, -1.1004922497513825, -1.1181853811005562, 0.92339606894139736, -0.11, -0.10000000000000001, -0.28999999999999998, -0.22, -0.01]
+    [-0.44792287521793828, -0.44849469953471233, -0.12780221806490794, 0.11231267421795425, 0.55559062898180811, 0.55359702531968369, -0.56824732989514348, -0.070000000000000007, -0.070000000000000007, -0.44, -0.12]
     """
 
     s_ms, counts = motifs(g, k, p, motif_list, undirected)

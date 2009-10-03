@@ -61,7 +61,7 @@ def clean_prop_type(t):
 for d in ["vertex", "edge", "graph"]:
     for t in core.value_types():
         props += "typedef %s_prop_t::as<%s >::type %sprop_%s_t;\n" % \
-                 (d,t,d[0],clean_prop_type(t))
+                 (d,t.replace("bool","uint8_t"),d[0],clean_prop_type(t))
 
 def get_graph_type(g):
     return libgraph_tool_core.get_graph_type(g._Graph__graph)
@@ -72,37 +72,44 @@ def inline(code, arg_names=[], local_dict=None,
            library_dirs=[], extra_compile_args=[],
            runtime_library_dirs=[], extra_objects=[],
            extra_link_args=[], mask_ret=[], debug=False):
-    """Compile (if necessary) and run the C++ action specified by 'code',
-    using weave. The (possibly modified) variables in 'arg_names' are returned.
+    """Compile (if necessary) and run the C++ code specified by 'code', using
+    :mod:`~scipy.weave`. The (possibly modified) variables in 'arg_names' are
+    returned.
 
-    Parameters
+    See :func:`scipy.weave.inline` for detailed parameter documentation.
+
+    Notes
+    -----
+    Graphs and property maps are automatically converted to appropriate [Boost]_
+    graph types. For convenience, the graph types are automatically typedef'd to
+    `${name}_graph_t`, where ${name} is the graph's variable name passed to
+    `arg_names`. Property map types are typedef'd to `vprop_${val_type}_t`,
+    `eprop_${val_type}_t` or `gprop_${val_type}_t`, for vertex, edge or graph
+    properties, where ${val_type} specifies the value type (e.g. int, bool,
+    double, etc.). In the case of vector types, the "<" and ">" symbols are
+    replaced by underscores ("_").
+
+    Examples
+    --------
+    >>> from numpy.random import seed
+    >>> seed(42)
+    >>> g = gt.random_graph(100, lambda: (3, 3))
+    >>> nv = 0
+    >>> ret = gt.inline("nv = num_vertices(g);", ['g', 'nv'])
+    >>> print ret["nv"]
+    100
+    >>> prop = g.new_vertex_property("vector<double>")
+    >>> prop[g.vertex(0)] = [1.0, 4.2]
+    >>> val = 0.0
+    >>> ret = gt.inline("val = prop[vertex(0,g)][1];", ['g', 'prop', 'val'])
+    >>> print ret["val"]
+    4.2
+
+    References
     ----------
-    code : string
-        C++ code to be used
-    arg_names : list, optional (default: [])
-        List of variables to be passed to the C++ code
-    local_dict : dict, optional (default: None)
-        Dictionary of variables to be used as local scope. If none is specified,
-        the calling functions' local variables are used.
-    global_dict : dict, optional (default: None)
-        Dictionary of variables to be used as global scope. If none is
-        specified, the calling functions' global variables are used.
-    force : bool, optional (default: False)
-        If true, compilation is forced.
-    compiler : string, optional (default: "gcc")
-        The name of compiler to use when compiling.  On windows, it understands
-        'msvc' and 'gcc' as well as all the compiler names understood by
-        distutils.  On Unix, it'll only understand the values understood by
-        distutils.
+    .. [Boost] http://www.boost.org/libs/graph/doc/table_of_contents.html
+    .. [Weave] http://www.scipy.org/Weave
 
-        On windows, the compiler defaults to the Microsoft C++ compiler.  If
-        this isn't available, it looks for mingw32 (the gcc compiler).
-
-        On Unix, it'll probably use the same compiler that was used when
-        compiling Python. Cygwin's behavior should be similar.
-
-
-    [...]
     """
 
     # each term on the expansion will properly unwrap a tuple pointer value

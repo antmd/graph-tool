@@ -189,8 +189,8 @@ def get_autosummary(names, state, no_signatures=False):
     table = nodes.table('')
     group = nodes.tgroup('', cols=2)
     table.append(group)
-    group.append(nodes.colspec('', colwidth=30))
-    group.append(nodes.colspec('', colwidth=70))
+    group.append(nodes.colspec('', colwidth=45))
+    group.append(nodes.colspec('', colwidth=55))
     body = nodes.tbody('')
     group.append(body)
 

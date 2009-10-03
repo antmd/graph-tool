@@ -5,6 +5,7 @@ Available subpackages
 =====================
 
 .. toctree::
+   :maxdepth: 1
 
    centrality
    clustering

@@ -22,6 +22,19 @@
 
 This module contains algorithms for the computation of community structure on
 graphs.
+
+Summary
++++++++
+
+.. autosummary::
+   :nosignatures:
+
+   community_structure
+   modularity
+   condensation_graph
+
+Contents
+++++++++
 """
 
 from .. dl_import import dl_import
@@ -35,14 +48,14 @@ __all__ = ["community_structure", "modularity", "condensation_graph"]
 
 def community_structure(g, n_iter, n_spins, gamma=1.0, corr= "erdos",
                         spins=None, weight=None, t_range=(100.0, 0.01),
-                        verbose=False, history_file=None, seed=0):
+                        verbose=False, history_file=None):
     r"""
     Obtain the community structure for the given graph, used a Potts model
     approach.
 
     Parameters
     ----------
-    g : Graph
+    g :  :class:`~graph_tool.Graph`
         Graph to be used.
     n_iter : int
         Number of iterations.
@@ -53,10 +66,10 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr= "erdos",
     corr : string (optional, default: "erdos")
         Type of correlation to be assumed: Either "erdos", "uncorrelated" and
         "correlated".
-    spins : PropertyMap
+    spins : :class:`~graph_tool.PropertyMap`
         Vertex property maps to store the spin variables. If this is specified,
         the values will not be initialized to a random value.
-    weight : PropertyMap (optional, default: None)
+    weight : :class:`~graph_tool.PropertyMap` (optional, default: None)
         Edge property map with the optional edge weights.
     t_range : tuple of floats (optional, default: (100.0, 0.01))
         Temperature range.
@@ -67,7 +80,7 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr= "erdos",
 
     Returns
     -------
-    spins : PropertyMap
+    spins : :class:`~graph_tool.PropertyMap`
         Vertex property map with the spin values.
 
     See Also
@@ -79,7 +92,7 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr= "erdos",
     Notes
     -----
     The method of community detection covered here is an implementation of what
-    was proposed in [reichard_statistical_2006]_. It
+    was proposed in [reichard-statistical-2006]_. It
     consists of a `simulated annealing`_ algorithm which tries to minimize the
     following hamiltonian:
 
@@ -92,7 +105,7 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr= "erdos",
     which reduces the problem of community detection to finding the ground
     states of a Potts spin-glass model. It can be shown that minimizing this
     hamiltonan, with :math:`\gamma=1`, is equivalent to maximizing
-    Newman's modularity ([newman_modularity_2006]_). By increasing the parameter
+    Newman's modularity ([newman-modularity-2006]_). By increasing the parameter
     :math:`\gamma`, it's possible also to find sub-communities.
 
     It is possible to select three policies for choosing :math:`p_{ij}` and thus
@@ -131,13 +144,13 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr= "erdos",
     >>> spins = gt.community_structure(g, 10000, 20, t_range=(5, 0.1),
     ...                                history_file="community-history1")
     >>> gt.graph_draw(g, pos=pos, pin=True, vsize=0.3, vcolor=spins,
-    ...               output="comm1.png")
+    ...               output="comm1.png", size=(10,10))
     <...>
     >>> spins = gt.community_structure(g, 10000, 40, t_range=(5, 0.1),
     ...                                gamma=2.5,
     ...                                history_file="community-history2")
     >>> gt.graph_draw(g, pos=pos, pin=True, vsize=0.3, vcolor=spins,
-    ...               output="comm2.png")
+    ...               output="comm2.png", size=(10,10))
     <...>
     >>> clf()
     >>> xlabel("iterations")
@@ -158,32 +171,24 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr= "erdos",
     [...]
     >>> savefig("comm2-hist.png")
 
-    .. figure:: comm1.png
-        :align: center
 
-        Community structure with :math:`\gamma=1`.
+    The community structure with :math:`\gamma=1`:
 
-    .. figure:: comm1-hist.png
-        :align: center
+    .. image:: comm1.png
+    .. image:: comm1-hist.png
 
-        Algorithm evolution with :math:`\gamma=1`
+    The community structure with :math:`\gamma=2.5`:
 
-    .. figure:: comm2.png
-        :align: center
+    .. image:: comm2.png
+    .. image:: comm2-hist.png
 
-        Community structure with :math:`\gamma=2.5`.
-
-    .. figure:: comm2-hist.png
-        :align: center
-
-        Algorithm evolution with :math:`\gamma=2.5`
 
     References
     ----------
-    .. [reichard_statistical_2006] Joerg Reichardt and Stefan Bornholdt,
+    .. [reichard-statistical-2006] Joerg Reichardt and Stefan Bornholdt,
        "Statistical Mechanics of Community Detection", Phys. Rev. E 74 (2006)
        016110, arXiv:cond-mat/0603718
-    .. [newman_modularity_2006] M. E. J. Newman, "Modularity and community
+    .. [newman-modularity-2006] M. E. J. Newman, "Modularity and community
        structure in networks", Proc. Natl. Acad. Sci. USA 103, 8577-8582 (2006),
        arXiv:physics/0602124
     .. _simulated annealing: http://en.wikipedia.org/wiki/Simulated_annealing
@@ -196,8 +201,7 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr= "erdos",
         new_spins = False
     if history_file == None:
         history_file = ""
-    if seed != 0:
-        seed = random.randint(0, sys.maxint)
+    seed = random.randint(0, sys.maxint)
     libgraph_tool_community.community_structure(g._Graph__graph, gamma, corr,
                                                 n_iter, t_range[1], t_range[0],
                                                 n_spins, new_spins, seed,
@@ -212,11 +216,11 @@ def modularity(g, prop, weight=None):
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
-    prop : PropertyMap
+    prop : :class:`~graph_tool.PropertyMap`
         Vertex property map with the community partition.
-    weight : PropertyMap (optional, default: None)
+    weight : :class:`~graph_tool.PropertyMap` (optional, default: None)
         Edge property map with the optional edge weights.
 
     Returns
@@ -234,7 +238,7 @@ def modularity(g, prop, weight=None):
     -----
 
     Given a specific graph partition specified by `prop`, Newman's modularity
-    ([newman_modularity_2006]_) is defined by:
+    [newman-modularity-2006]_ is defined by:
 
     .. math::
 
@@ -257,7 +261,7 @@ def modularity(g, prop, weight=None):
 
     References
     ----------
-    .. [newman_modularity_2006] M. E. J. Newman, "Modularity and community
+    .. [newman-modularity-2006] M. E. J. Newman, "Modularity and community
        structure in networks", Proc. Natl. Acad. Sci. USA 103, 8577-8582 (2006),
        arXiv:physics/0602124
     """
@@ -274,20 +278,20 @@ def condensation_graph(g, prop, weight=None):
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
-    prop : PropertyMap
+    prop : :class:`~graph_tool.PropertyMap`
         Vertex property map with the community partition.
-    weight : PropertyMap (optional, default: None)
+    weight : :class:`~graph_tool.PropertyMap` (optional, default: None)
         Edge property map with the optional edge weights.
 
     Returns
     -------
-    condensation_graph : Graph
+    condensation_graph : :class:`~graph_tool.Graph`
         The community network
-    vcount : PropertyMap
+    vcount : :class:`~graph_tool.PropertyMap`
         A vertex property map with the vertex count for each community.
-    ecount : PropertyMap
+    ecount : :class:`~graph_tool.PropertyMap`
         An edge property map with the inter-community edge count for each edge.
 
     See Also
@@ -312,10 +316,10 @@ def condensation_graph(g, prop, weight=None):
     >>> spins = gt.community_structure(g, 10000, 100)
     >>> ng = gt.condensation_graph(g, spins)
     >>> size = ng[0].new_vertex_property("double")
-    >>> size.get_array()[:] = log(ng[1].get_array()+1)
+    >>> size.a = log(ng[1].a+1)
     >>> gt.graph_draw(ng[0], vsize=size, vcolor=size, splines=True,
     ...               eprops={"len":20, "penwidth":10}, vprops={"penwidth":10},
-    ...               output="comm-network.png")
+    ...               output="comm-network.png", size=(10,10))
     <...>
 
     .. figure:: comm-network.png

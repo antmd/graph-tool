@@ -8,12 +8,13 @@ Welcome to graph-tool's documentation!
 Contents:
 
 .. toctree::
+   :maxdepth: 3
    :glob:
 
    quickstart
    modules
 
-Indices and tables
+Indexes and tables
 ==================
 
 * :ref:`genindex`

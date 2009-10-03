@@ -19,6 +19,22 @@
 """
 ``graph_tool.correlations`` - Correlations
 ------------------------------------------
+
+Summary
++++++++
+
+.. autosummary::
+   :nosignatures:
+
+   assortativity
+   scalar_assortativity
+   corr_hist
+   combined_corr_hist
+   avg_neighbour_corr
+   avg_combined_corr
+
+Contents
+++++++++
 """
 
 
@@ -37,9 +53,9 @@ def assortativity(g, deg):
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
-    deg : string or PropertyMap
+    deg : string or :class:`~graph_tool.PropertyMap`
         degree type ("in", "out" or "total") or vertex property map, which
         specifies the vertex types.
 
@@ -59,7 +75,7 @@ def assortativity(g, deg):
 
     Notes
     -----
-    The assortativity coefficient [newman_mixing_2003]_ tells in a concise
+    The assortativity coefficient [newman-mixing-2003]_ tells in a concise
     fashion how vertices of different types are preferentially connected amongst
     themselves, and is defined by
 
@@ -93,7 +109,7 @@ def assortativity(g, deg):
 
     References
     ----------
-    .. [newman_mixing_2003] M. E. J. Newman, "Mixing patterns in networks",
+    .. [newman-mixing-2003] M. E. J. Newman, "Mixing patterns in networks",
         Phys. Rev. E 67, 026126 (2003)
     .. _jackknife method: http://en.wikipedia.org/wiki/Resampling_%28statistics%29#Jackknife
 
@@ -107,9 +123,9 @@ def scalar_assortativity(g, deg):
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
-    deg : string or PropertyMap
+    deg : string or :class:`~graph_tool.PropertyMap`
         degree type ("in", "out" or "total") or vertex property map, which
         specifies the vertex types.
 
@@ -129,8 +145,7 @@ def scalar_assortativity(g, deg):
 
     Notes
     -----
-
-    The scalar assortativity coefficient [newman_mixing_2003]_ tells in a
+    The scalar assortativity coefficient [newman-mixing-2003]_ tells in a
     concise fashion how vertices of different types are preferentially connected
     amongst themselves, and is defined by
 
@@ -162,13 +177,13 @@ def scalar_assortativity(g, deg):
     (-0.45583464361842779, 0.010751070629208364)
     >>> g = gt.random_graph(1000, lambda: sample_k(40),
     ...                     lambda i,k: 1.0/(1+abs(i-k)),
-    ...                     directed=False, seed=42)
+    ...                     directed=False)
     >>> gt.scalar_assortativity(g, "out")
-    (0.58790674914799046, 0.011773357057290077)
+    (0.59350810559389722, 0.011785797817251774)
 
     References
     ----------
-    .. [newman_mixing_2003] M. E. J. Newman, "Mixing patterns in networks",
+    .. [newman-mixing-2003] M. E. J. Newman, "Mixing patterns in networks",
         Phys. Rev. E 67, 026126 (2003)
     .. _jackknife method: http://en.wikipedia.org/wiki/Resampling_%28statistics%29#Jackknife
     """
@@ -183,12 +198,12 @@ def corr_hist(g, deg_source, deg_target, bins=[[1], [1]], weight=None,
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
-    deg_source : string or PropertyMap
+    deg_source : string or :class:`~graph_tool.PropertyMap`
         degree type ("in", "out" or "total") or vertex property map for the
         source vertex.
-    deg_target : string or PropertyMap
+    deg_target : string or :class:`~graph_tool.PropertyMap`
         degree type ("in", "out" or "total") or vertex property map for the
         target vertex.
     bins : list of lists (optional, default: [[1], [1]])
@@ -204,11 +219,11 @@ def corr_hist(g, deg_source, deg_target, bins=[[1], [1]], weight=None,
 
     Returns
     -------
-    bin_counts : ndarray
+    bin_counts : :class:`~numpy.ndarray`
         Two-dimensional array with the bin counts.
-    source_bins : ndarray
+    source_bins : :class:`~numpy.ndarray`
         Source degree bins
-    target_bins : ndarray
+    target_bins : :class:`~numpy.ndarray`
         Target degree bins
 
 
@@ -246,15 +261,20 @@ def corr_hist(g, deg_source, deg_target, bins=[[1], [1]], weight=None,
     ...                     directed=False)
     >>> h = gt.corr_hist(g, "out", "out")
     >>> clf()
-    >>> xlabel("source deg")
+    >>> xlabel("source out-degree")
     <...>
-    >>> ylabel("target deg")
+    >>> ylabel("target out-degree")
     <...>
     >>> imshow(h[0], interpolation="nearest")
     <...>
+    >>> colorbar()
+    <...>
     >>> savefig("corr.png")
 
-    .. image:: corr.png
+    .. figure:: corr.png
+        :align: center
+
+        Out/out-degree correlation histogram.
     """
 
     ret = libgraph_tool_correlations.\
@@ -270,11 +290,11 @@ def combined_corr_hist(g, deg1, deg2, bins=[[1],[1]], float_count=True):
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
-    deg1 : string or PropertyMap
+    deg1 : string or :class:`~graph_tool.PropertyMap`
         first degree type ("in", "out" or "total") or vertex property map.
-    deg2 : string or PropertyMap
+    deg2 : string or :class:`~graph_tool.PropertyMap`
         second degree type ("in", "out" or "total") or vertex property map.
     bins : list of lists (optional, default: [[1], [1]])
         A list of bins to be used for the first and second degrees. If any list
@@ -287,11 +307,11 @@ def combined_corr_hist(g, deg1, deg2, bins=[[1],[1]], float_count=True):
 
     Returns
     -------
-    bin_counts : ndarray
+    bin_counts : :class:`~numpy.ndarray`
         Two-dimensional array with the bin counts.
-    first_bins : ndarray
+    first_bins : :class:`~numpy.ndarray`
         First degree bins
-    second_bins : ndarray
+    second_bins : :class:`~numpy.ndarray`
         Second degree bins
 
     Notes
@@ -323,15 +343,21 @@ def combined_corr_hist(g, deg1, deg2, bins=[[1],[1]], float_count=True):
     >>> g = gt.random_graph(10000, lambda: sample_k(40))
     >>> h = gt.combined_corr_hist(g, "in", "out")
     >>> clf()
-    >>> xlabel("first deg")
+    >>> xlabel("in-degree")
     <...>
-    >>> ylabel("second deg")
+    >>> ylabel("out-degree")
     <...>
     >>> imshow(h[0], interpolation="nearest")
     <...>
+    >>> colorbar()
+    <...>
     >>> savefig("combined_corr.png")
 
-    .. image:: combined_corr.png
+    .. figure:: combined_corr.png
+        :align: center
+
+        Combined in/out-degree correlation histogram.
+
     """
     ret = libgraph_tool_correlations.\
           vertex_combined_correlation_histogram(g._Graph__graph,
@@ -347,12 +373,12 @@ def avg_neighbour_corr(g, deg_source, deg_target, bins=[1], weight=None):
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
-    deg_source : string or PropertyMap
+    deg_source : string or :class:`~graph_tool.PropertyMap`
         degree type ("in", "out" or "total") or vertex property map for the
         source vertex.
-    deg_target : string or PropertyMap
+    deg_target : string or :class:`~graph_tool.PropertyMap`
         degree type ("in", "out" or "total") or vertex property map for the
         target vertex.
     bins : list (optional, default: [1])
@@ -363,13 +389,13 @@ def avg_neighbour_corr(g, deg_source, deg_target, bins=[1], weight=None):
 
     Returns
     -------
-    bin_avg : ndarray
+    bin_avg : :class:`~numpy.ndarray`
         Array with the deg_target average for the get_source bins.
-    bin_dev : ndarray
+    bin_dev : :class:`~numpy.ndarray`
         Array with the standard deviation of the deg_target average for the
         get_source bins.
-    bins : ndarray
-        Source degree bins
+    bins : :class:`~numpy.ndarray`
+        Source degree bins,
 
 
     See Also
@@ -406,15 +432,18 @@ def avg_neighbour_corr(g, deg_source, deg_target, bins=[1], weight=None):
     ...                     directed=False)
     >>> h = gt.avg_neighbour_corr(g, "out", "out")
     >>> clf()
-    >>> xlabel("source deg")
+    >>> xlabel("source out-degree")
     <...>
-    >>> ylabel("target deg")
+    >>> ylabel("target out-degree")
     <...>
-    >>> errorbar(h[2], h[0], yerr=h[1])
+    >>> errorbar(h[2], h[0], yerr=h[1], fmt="o")
     (...)
     >>> savefig("avg_corr.png")
 
-    .. image:: avg_corr.png
+    .. figure:: avg_corr.png
+        :align: center
+
+        Average out/out degree correlation.
     """
 
     ret = libgraph_tool_correlations.\
@@ -429,11 +458,11 @@ def avg_combined_corr(g, deg1, deg2, bins=[1]):
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
-    deg1 : string or PropertyMap
+    deg1 : string or :class:`~graph_tool.PropertyMap`
         first degree type ("in", "out" or "total") or vertex property map.
-    deg2 : string or PropertyMap
+    deg2 : string or :class:`~graph_tool.PropertyMap`
         second degree type ("in", "out" or "total") or vertex property map.
     bins : list (optional, default: [1])
         A list of bins to be used for the first degrees. If the list
@@ -442,11 +471,11 @@ def avg_combined_corr(g, deg1, deg2, bins=[1]):
 
     Returns
     -------
-    bin_avg : ndarray
+    bin_avg : :class:`~numpy.ndarray`
         Array with the deg2 average for the deg1 bins.
-    bin_dev : ndarray
+    bin_dev : :class:`~numpy.ndarray`
         Array with the standard deviation of the deg2 average for the deg1 bins.
-    bins : ndarray
+    bins : :class:`~numpy.ndarray`
         The deg1 bins.
 
     Notes
@@ -479,15 +508,18 @@ def avg_combined_corr(g, deg1, deg2, bins=[1]):
     >>> g = gt.random_graph(10000, lambda: sample_k(40))
     >>> h = gt.avg_combined_corr(g, "in", "out")
     >>> clf()
-    >>> xlabel("first deg")
+    >>> xlabel("in-degree")
     <...>
-    >>> ylabel("second deg")
+    >>> ylabel("out-degree")
     <...>
-    >>> errorbar(h[2], h[0], yerr=h[1])
+    >>> errorbar(h[2], h[0], yerr=h[1], fmt="o")
     (...)
     >>> savefig("combined_avg_corr.png")
 
-    .. image:: combined_avg_corr.png
+    .. figure:: combined_avg_corr.png
+        :align: center
+
+        Average combined in/out-degree correlation.
     """
 
     ret = libgraph_tool_correlations.\

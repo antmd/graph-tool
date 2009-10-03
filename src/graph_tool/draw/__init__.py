@@ -19,6 +19,19 @@
 """
 ``graph_tool.draw`` - Graph drawing
 -----------------------------------
+
+Summary
++++++++
+
+.. autosummary::
+   :nosignatures:
+
+   graph_draw
+   arf_layout
+   random_layout
+
+Contents
+++++++++
 """
 
 import sys, os, os.path, time, warnings
@@ -97,7 +110,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
         sizes remain unchanged.
 
         If ratio = "auto", the page attribute is set and the graph cannot be
-        drawn on a single page, then size is set to an ``ideal'' value. In
+        drawn on a single page, then size is set to an "ideal" value. In
         particular, the size in a given dimension will be the smallest integral
         multiple of the page size in that dimension which is at least half the
         current size. The two dimensions are then scaled independently to the
@@ -526,7 +539,7 @@ def arf_layout(g, weight=None, d=0.1, a=10, dt=0.001, epsilon=1e-6,
 
     Notes
     -----
-    This algorithm is defined in [geipel_self-organization_2007]_, and has
+    This algorithm is defined in [geipel-self-organization-2007]_, and has
     complexity :math:`O(V^2)`.
 
     Examples
@@ -548,20 +561,25 @@ def arf_layout(g, weight=None, d=0.1, a=10, dt=0.001, epsilon=1e-6,
 
     References
     ----------
-    .. [geipel_self-organization_2007] Markus M. Geipel, "Self-Organization
+    .. [geipel-self-organization-2007] Markus M. Geipel, "Self-Organization
        applied to Dynamic Network Layout" , International Journal of Modern
        Physics C vol. 18, no. 10 (2007), pp. 1537-1549, arXiv:0704.1748v5
     .. _arf: http://www.sg.ethz.ch/research/graphlayout
     """
 
     if pos == None:
-        pos = random_layout(g, dim=dim)
+        if dim != 2:
+            pos = random_layout(g, dim=dim)
+        else:
+            pos = graph_draw(g, output=None)
     _check_prop_vector(pos, name="pos", floating=True)
 
     g.stash_filter(directed=True)
-    g.set_directed(False)
-    libgraph_tool_layout.arf_layout(g._Graph__graph, _prop("v", g, pos),
-                                    _prop("e", g, weight), d, a, dt, max_iter,
-                                    epsilon, dim)
-    g.pop_filter()
+    try:
+        g.set_directed(False)
+        libgraph_tool_layout.arf_layout(g._Graph__graph, _prop("v", g, pos),
+                                        _prop("e", g, weight), d, a, dt,
+                                        max_iter, epsilon, dim)
+    finally:
+        g.pop_filter(directed=True)
     return pos

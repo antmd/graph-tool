@@ -17,15 +17,30 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-``graph_tool.generation`` - Random Graph Generation
+``graph_tool.generation`` - Random graph generation
 ---------------------------------------------------
+
+Summary
++++++++
+
+.. autosummary::
+   :nosignatures:
+
+   random_graph
+   random_rewire
+   predecessor_tree
+   line_graph
+   graph_union
+
+Contents
+++++++++
 """
 
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_generation")
 
 from .. core import Graph, _check_prop_scalar, _prop
-import sys, numpy
+import sys, numpy, numpy.random
 
 __all__ = ["random_graph", "random_rewire", "predecessor_tree", "line_graph",
            "graph_union"]
@@ -34,8 +49,7 @@ def _corr_wrap(i, j, corr):
     return corr(i[1], j[1])
 
 def random_graph(N, deg_sampler, deg_corr=None, directed=True,
-                 parallel=False, self_loops=False,
-                 seed=0, verbose=False):
+                 parallel=False, self_loops=False, verbose=False):
     r"""
     Generate a random graph, with a given degree distribution and correlation.
 
@@ -62,13 +76,10 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
         If True, parallel edges are allowed.
     self_loops : bool (optional, default: False)
         If True, self-loops are allowed.
-    seed : int (optional, default: 0)
-        Seed for the random number generator. If seed=0, a random value is
-        chosen.
 
     Returns
     -------
-    random_graph : Graph
+    random_graph : :class:`~graph_tool.Graph`
         The generated graph.
 
     See Also
@@ -143,9 +154,9 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     <...>
     >>> colorbar()
     <...>
-    >>> xlabel("in degree")
+    >>> xlabel("in-degree")
     <...>
-    >>> ylabel("out degree")
+    >>> ylabel("out-degree")
     <...>
     >>> savefig("combined-deg-hist.png")
 
@@ -175,16 +186,20 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
 
     >>> clf()
     >>> corr = gt.avg_neighbour_corr(g, "in", "in")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-", label="<in> vs in")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
+    ...         label=r"$\left<\text{in}\right>$ vs in")
     (...)
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-", label="<out> vs in")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
+    ...         label=r"$\left<\text{out}\right>$ vs in")
     (...)
     >>> corr = gt.avg_neighbour_corr(g, "out", "in")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-", label="<in> vs out")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
+    ...          label=r"$\left<\text{in}\right>$ vs out")
     (...)
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-", label="<out> vs out")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
+    ...          label=r"$\left<\text{out}\right>$ vs out")
     (...)
     >>> legend(loc="best")
     <...>
@@ -199,8 +214,7 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
 
         Average nearest neighbour correlations.
     """
-    if seed == 0:
-        seed = numpy.random.randint(0, sys.maxint)
+    seed = numpy.random.randint(0, sys.maxint)
     g = Graph()
     if deg_corr == None:
         uncorrelated = True
@@ -219,16 +233,16 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     return g
 
 def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
-                  self_loops = False, seed = 0):
+                  self_loops = False):
     r"""
-    Shuffled the graph in-place. The degrees (either in or out) of each vertex
+    Shuffle the graph in-place. The degrees (either in or out) of each vertex
     are always the same, but otherwise the edges are randomly placed. If
     strat == "correlated", the degree correlations are also maintained: The new
     source and target of each edge both have the same in and out-degree.
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be shuffled. The graph will be modified.
     strat : string (optional, default: "uncorrelated")
         If strat == "uncorrelated" only the degrees of the vertices will be
@@ -238,9 +252,6 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
         If True, parallel edges are allowed.
     self_loops : bool (optional, default: False)
         If True, self-loops are allowed.
-    seed : int (optional, default: 0)
-        Seed for the random number generator. If seed == 0, a random value is
-        chosen.
 
     Returns
     -------
@@ -266,30 +277,23 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
     >>> seed(42)
     >>> g = gt.random_graph(1000, lambda: sample_k(10),
     ...                     lambda i,j: exp(abs(i-j)), directed=False)
-    >>> gt.graph_draw(g, layout="arf", output="rewire_orig.png")
+    >>> gt.graph_draw(g, layout="arf", output="rewire_orig.png", size=(6,6))
     <...>
     >>> gt.random_rewire(g, "correlated")
-    >>> gt.graph_draw(g, layout="arf", output="rewire_corr.png")
+    >>> gt.graph_draw(g, layout="arf", output="rewire_corr.png", size=(6,6))
     <...>
     >>> gt.random_rewire(g)
-    >>> gt.graph_draw(g, layout="arf", output="rewire_uncorr.png")
+    >>> gt.graph_draw(g, layout="arf", output="rewire_uncorr.png", size=(6,6))
     <...>
 
+    Some `ridiculograms <http://www.youtube.com/watch?v=YS-asmU3p_4>`_ :
 
-    .. figure:: rewire_orig.png
-        :align: center
+    .. image:: rewire_orig.png
+    .. image:: rewire_corr.png
+    .. image:: rewire_uncorr.png
 
-        Original graph. (It is a `ridiculogram <http://www.youtube.com/watch?v=YS-asmU3p_4>`_).
-
-    .. figure:: rewire_corr.png
-        :align: center
-
-        Shuffled graph, with degree correlations.
-
-    .. figure:: rewire_uncorr.png
-        :align: center
-
-        Shuffled graph, without degree correlations.
+    *Left:* Original graph; *Middle:* Shuffled graph, with degree
+    correlations; *Right:* Shuffled graph, without degree correlations.
 
     We can try some larger graphs to get better statistics.
 
@@ -297,15 +301,15 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
     >>> g = gt.random_graph(20000, lambda: sample_k(20),
     ...                     lambda i,j: exp(abs(i-j)), directed=False)
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o", label="original")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-", label="original")
     (...)
     >>> gt.random_rewire(g, "correlated")
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o", label="correlated")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-", label="correlated")
     (...)
     >>> gt.random_rewire(g)
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o", label="uncorrelated")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-", label="uncorrelated")
     (...)
     >>> xlabel("$k$")
     <...>
@@ -331,28 +335,30 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
     ...                                                  p.pmf(a[1],20-b[0])))
     >>> clf()
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-", label="<out> vs in")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
+    ...          label=r"$\left<\text{o}\right>$ vs i")
     (...)
     >>> corr = gt.avg_neighbour_corr(g, "out", "in")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-", label="<in> vs out")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
+    ...          label=r"$\left<\text{i}\right>$ vs o")
     (...)
     >>> gt.random_rewire(g, "correlated")
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
     >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
-    ...          label="<out> vs in, correlated")
+    ...          label=r"$\left<\text{o}\right>$ vs i, corr.")
     (...)
     >>> corr = gt.avg_neighbour_corr(g, "out", "in")
     >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
-    ...          label="<in> vs out, correlated")
+    ...          label=r"$\left<\text{i}\right>$ vs o, corr.")
     (...)
     >>> gt.random_rewire(g, "uncorrelated")
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
     >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
-    ...          label="<out> vs in, uncorrelated")
+    ...          label=r"$\left<\text{o}\right>$ vs i, uncorr.")
     (...)
     >>> corr = gt.avg_neighbour_corr(g, "out", "in")
     >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
-    ...          label="<in> vs out, uncorrelated")
+    ...          label=r"$\left<\text{i}\right>$ vs o, uncorr.")
     (...)
     >>> legend(loc="best")
     <...>
@@ -370,8 +376,7 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
         the same correlation as the original graph.
     """
 
-    if seed != 0:
-        seed = random.randint(0, sys.maxint)
+    seed = numpy.random.randint(0, sys.maxint)
 
     g.stash_filter(reversed=True)
     libgraph_tool_generation.random_rewire(g._Graph__graph, strat, self_loops,
@@ -390,6 +395,26 @@ def predecessor_tree(g, pred_map):
     return pg
 
 def line_graph(g):
+    """Return the line graph of the given graph `g`.
+
+    Notes
+    -----
+    Given an undirected graph G, its line graph L(G) is a graph such that
+
+        * each vertex of L(G) represents an edge of G; and
+        * two vertices of L(G) are adjacent if and only if their corresponding
+          edges share a common endpoint ("are adjacent") in G.
+
+    For a directed graph, the second criterion becomes:
+
+       * Two vertices representing directed edges from u to v and from w to x in
+         G are connected by an edge from uv to wx in the line digraph when v =
+         w.
+
+    References
+    ----------
+    .. [line-wiki] http://en.wikipedia.org/wiki/Line_graph
+    """
     lg = Graph(directed=g.is_directed())
 
     vertex_map = lg.new_vertex_property("int64_t")
@@ -400,6 +425,32 @@ def line_graph(g):
     return lg, vertex_map
 
 def graph_union(g1, g2, props=[], include=False):
+    """Return the union of graphs g1 and g2, composed of all edges and vertices
+    of g1 and g2, without overlap.
+
+    Parameters
+    ----------
+    g1 : :class:`~graph_tool.Graph`
+       First graph in the union.
+    g2 : :class:`~graph_tool.Graph`
+       Second graph in the union.
+    props : list of tuples of :class:`~graph_tool.PropertyMap` (optional, default: [])
+       Each element in this list must be a tuple of two PropertyMap objects. The
+       first element must be a property of `g1`, and the second of `g2`. The
+       values of the property maps are propagated into the union graph, and
+       returned.
+    include : bool (optional, default: False)
+       If true, graph `g2` is inserted into `g1` which is modified. If false, a
+       new graph is created, and both graphs remain unmodified.
+
+    Returns
+    -------
+    ug : :class:`~graph_tool.Graph`
+        The union graph
+    props : list of :class:`~graph_tool.PropertyMap` objects
+        List of propagated properties.  This is only returned if `props` is not
+        empty.
+    """
     if not include:
         g1 = Graph(g1)
     g1.stash_filter(directed=True)

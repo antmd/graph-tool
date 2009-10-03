@@ -49,34 +49,21 @@ Use the built-in ``help`` function to view a function's docstring::
 
    >>> help(gt.Graph)
 
-Available subpackages
----------------------
-clustering
-   clustering (aka. transitivity)
-community
-   community detection
-correlations
-   vertex and edge correlations
-draw
-   Graph drawing using graphviz
-generation
-   random graph generation
-misc
-   miscenalenous algorithms
-stats
-   vertex and edge statistics
-util
-   assorted utilities
-
-Utilities
----------
-show_config
-   Show ``graph_tool`` build configuration
-__version__
-   ``graph_tool`` version string
-
 Classes
 -------
+
+.. autosummary::
+   :nosignatures:
+
+   Graph
+   Vertex
+   Edge
+   PropertyMap
+   load_graph
+   group_vector_property
+   ungroup_vector_property
+   value_types
+   show_config
 
 """
 

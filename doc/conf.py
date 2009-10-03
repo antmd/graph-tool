@@ -26,7 +26,7 @@ sys.path.append(os.path.abspath('.'))
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest',
               'sphinx.ext.intersphinx', 'sphinx.ext.jsmath',
-              'sphinxext.numpydoc']
+              'sphinxext.numpydoc', 'sphinxext.autosummary']
 
 jsmath_path = "jsMath/easy/load.js"
 
@@ -94,6 +94,38 @@ pygments_style = 'sphinx'
 
 doctest_global_setup = \
 r"""
+from matplotlib import rc
+from matplotlib import rcParams
+
+font_size=12
+rcParams["figure.figsize"] = (4,3)
+rcParams["font.family"] = "serif"
+rcParams["font.serif"] = ["Palatino"]
+rcParams["font.size"] = font_size
+rcParams["axes.labelsize"] = font_size
+rcParams["xtick.labelsize"] = font_size
+rcParams["ytick.labelsize"] = font_size
+rcParams["legend.numpoints"] = 1
+rcParams["legend.fontsize"] = "small"
+rcParams["lines.markersize"] = 4
+rcParams["figure.subplot.right"] = 0.95
+rcParams["figure.subplot.top"] = 0.95
+rcParams["figure.subplot.right"] = 0.95
+rcParams["figure.subplot.top"] = 0.95
+rcParams["figure.subplot.left"] = 0.2
+rcParams["figure.subplot.bottom"] = 0.2
+
+rcParams["text.usetex"] = True
+
+rcParams["ps.usedistiller"] = "xpdf"
+rcParams["pdf.compression"] = 9
+rcParams["ps.useafm"] = True
+rcParams["path.simplify"] = True
+rcParams["text.latex.preamble"] = [#"\usepackage{times}",
+                                   "\usepackage{euler}",
+                                   "\usepackage{amssymb}",
+                                   "\usepackage{amsmath}"]
+
 from numpy import array
 import scipy
 import scipy.stats
@@ -107,7 +139,10 @@ import graph_tool.all as gt
 # The style sheet to use for HTML and HTML Help pages. A file of that name
 # must exist either in Sphinx' static/ path, or in one of the custom paths
 # given in html_static_path.
-html_style = 'default.css'
+# html_style = 'default.css'
+
+html_theme = "gt_theme"
+html_theme_path = ["."]
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -132,11 +167,11 @@ html_static_path = ['.static']
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
-#html_last_updated_fmt = '%b %d, %Y'
+html_last_updated_fmt = '%b %d, %Y'
 
 # If true, SmartyPants will be used to convert quotes and dashes to
 # typographically correct entities.
-#html_use_smartypants = True
+html_use_smartypants = True
 
 # Custom sidebar templates, maps document names to template names.
 #html_sidebars = {}
@@ -172,35 +207,20 @@ htmlhelp_basename = 'graph-tooldoc'
 # Options for LaTeX output
 # ------------------------
 
-# The paper size ('letter' or 'a4').
-#latex_paper_size = 'letter'
-
-# The font size ('10pt', '11pt' or '12pt').
-#latex_font_size = '10pt'
-
 # Grouping the document tree into LaTeX files. List of tuples (source start
 # file, target name, title, author, document class [howto/manual]).
 latex_documents = [
-  ('index', 'graph-tool.tex', ur'graph-tool Documentation',
+  ('index', 'graph-tool.tex', ur'graph-tool documentation',
    ur'Tiago de Paula Peixoto', 'manual'),
 ]
 
-# The name of an image file (relative to this directory) to place at the top of
-# the title page.
-#latex_logo = None
+#latex_logo = "graph-draw.png"
 
-# For "manual" documents, if this is true, then toplevel headings are parts,
-# not chapters.
-#latex_use_parts = False
+latex_elements = {
+    'papersize' : "a4paper",
+    'fontpkg' : r"\usepackage{palatino}\usepackage{eulervm}"
+}
 
-# Additional stuff for the LaTeX preamble.
-#latex_preamble = ''
-
-# Documents to append as an appendix to all manuals.
-#latex_appendices = []
-
-# If false, no module index is generated.
-#latex_use_modindex = True
 
 
 # Example configuration for intersphinx: refer to the Python standard library.

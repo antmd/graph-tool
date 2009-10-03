@@ -21,6 +21,21 @@
 -----------------------------------------------
 
 This module includes centrality-related algorithms.
+
+Summary
++++++++
+
+.. autosummary::
+   :nosignatures:
+
+   pagerank
+   betweenness
+   central_point_dominance
+   eigentrust
+   absolute_trust
+
+Contents
+++++++++
 """
 
 from .. dl_import import dl_import
@@ -39,11 +54,11 @@ def pagerank(g, damping=0.8, prop=None, epslon=1e-6, max_iter=None,
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
     damping : float, optional (default: 0.8)
         Damping factor.
-    prop : ProperyMap, optional (default: None)
+    prop : :class:`~graph_tool.PropertyMap`, optional (default: None)
         Vertex property map to store the PageRank values.
     epslon : float, optional (default: 1e-6)
         Convergence condition. The iteration will stop if the total delta of all
@@ -55,7 +70,8 @@ def pagerank(g, damping=0.8, prop=None, epslon=1e-6, max_iter=None,
 
     Returns
     -------
-    pagerank : A vertex property map containing the PageRank values.
+    pagerank : :class:`~graph_tool.PropertyMap`
+        A vertex property map containing the PageRank values.
 
     See Also
     --------
@@ -65,7 +81,7 @@ def pagerank(g, damping=0.8, prop=None, epslon=1e-6, max_iter=None,
 
     Notes
     -----
-    The value of PageRank [pagerank_wikipedia]_ of vertex v :math:`PR(v)` is
+    The value of PageRank [pagerank-wikipedia]_ of vertex v :math:`PR(v)` is
     given interactively by the relation:
 
     .. math::
@@ -86,31 +102,31 @@ def pagerank(g, damping=0.8, prop=None, epslon=1e-6, max_iter=None,
     --------
     >>> from numpy.random import poisson, seed
     >>> seed(42)
-    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)), seed=42)
+    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
     >>> pr = gt.pagerank(g)
     >>> print pr.get_array()
-    [ 1.01514315  0.60117439  0.32514372  0.28        0.2         1.54971179
-      0.28        1.0236911   0.33123536  0.4778296   0.62078363  1.25377064
-      0.49213262  1.70011842  0.30671734  0.56424761  0.86810689  1.68765055
-      0.49551575  0.72837655  0.39240949  1.43802363  0.51563806  0.41983927
-      0.37857787  0.45875573  0.97033399  0.38531927  0.54001665  0.89328562
-      0.52122532  0.94064256  1.39911631  0.64663655  1.23521006  0.71722741
-      0.59460778  0.2         0.63239854  1.86292923  0.2         0.31277737
-      0.74650027  0.32415672  0.47975325  1.11611173  0.53433883  0.63352435
-      0.23822967  0.93151021  0.5440643   0.69188579  0.97489471  0.51216733
-      1.31721331  1.32808547  0.39894203  0.50384137  0.75225633  0.28220146
-      1.10818407  0.58685184  1.26437262  0.67929902  0.69678112  1.34428502
-      0.61651094  0.43008378  0.7905129   1.35318411  0.2         0.2
-      1.6584374   0.98009079  0.27200222  0.3413639   0.23822967  0.27963213
-      1.22498499  0.34097559  0.50749002  1.21145838  0.50430676  0.50218939
-      0.74232491  0.5335867   0.27254191  0.36031317  0.65344358  0.96712961
-      0.53252883  0.86479464  0.59958851  0.82703737  0.68722079  0.52036384
-      0.65299724  0.42291513  0.81729152  1.7586996 ]
+    [ 0.99988081  0.39997616  0.80428057  0.43237369  0.2         0.75830329
+      0.41447482  1.56621542  0.30841665  0.86432715  0.79374139  0.54573086
+      0.89372179  0.93590145  0.25159724  1.12033843  0.2         0.98486039
+      0.28191404  0.88133806  0.31166878  1.73878838  0.6903469   0.94100349
+      0.25159724  0.32248278  1.03788472  0.58022932  0.35009064  0.94542317
+      0.85751934  0.69608227  1.11373543  1.13477707  0.2         0.71559888
+      0.30461189  0.2         1.02871995  1.14657561  0.2         0.25031945
+      0.51841423  0.44709022  0.75239816  0.76551737  0.25638281  1.51657252
+      0.30841665  0.59707408  0.34179258  1.0590272   2.16427996  0.51196274
+      1.2264604   1.71578696  0.85838961  0.41931136  0.96797602  0.61882367
+      1.07826603  0.2984934   1.1305187   0.75006564  0.48066231  1.61759314
+      0.73870051  1.08374044  0.38258693  0.98112013  0.2         0.25590818
+      1.17500568  1.2288973   0.29613246  1.45937444  0.39997616  1.18311783
+      0.67063807  0.39229458  0.72314004  0.88473325  0.32859279  0.40656244
+      0.51754349  0.5315028   0.55196274  0.2335463   1.56357203  0.91464458
+      0.46999727  1.06779933  0.4852867   0.48933035  0.58997931  0.52883683
+      0.79385874  0.59244805  0.99896399  1.0470592 ]
 
     References
     ----------
-    .. [pagerank_wikipedia] http://en.wikipedia.org/wiki/Pagerank
-    .. [lawrence_pagerank_1998] P. Lawrence, B. Sergey, M. Rajeev, W. Terry,
+    .. [pagerank-wikipedia] http://en.wikipedia.org/wiki/Pagerank
+    .. [lawrence-pagerank-1998] P. Lawrence, B. Sergey, M. Rajeev, W. Terry,
        "The pagerank citation ranking: Bringing order to the web", Technical
        report, Stanford University, 1998
     """
@@ -133,13 +149,13 @@ def betweenness(g, vprop=None, eprop=None, weight=None, norm=True):
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
-    vprop : ProperyMap, optional (default: None)
+    vprop : :class:`~graph_tool.PropertyMap`, optional (default: None)
         Vertex property map to store the vertex betweenness values.
-    eprop : ProperyMap, optional (default: None)
+    eprop : :class:`~graph_tool.PropertyMap`, optional (default: None)
         Edge property map to store the edge betweenness values.
-    weight : ProperyMap, optional (default: None)
+    weight : :class:`~graph_tool.PropertyMap`, optional (default: None)
         Edge property map corresponding to the weight value of each edge.
     norm : bool, optional (default: True)
         Whether or not the betweenness values should be normalized.
@@ -173,7 +189,7 @@ def betweenness(g, vprop=None, eprop=None, weight=None, norm=True):
     through the number of pairs of vertices not including v, which is
     :math:`(n-1)(n-2)/2`.
 
-    The algorithm used here is defined in [brandes_faster_2001]_, and has a
+    The algorithm used here is defined in [brandes-faster-2001]_, and has a
     complexity of :math:`O(VE)` for unweighted graphs and :math:`O(VE + V(V+E)
     \log V)` for weighted graphs. The space complexity is :math:`O(VE)`.
 
@@ -183,31 +199,31 @@ def betweenness(g, vprop=None, eprop=None, weight=None, norm=True):
     --------
     >>> from numpy.random import poisson, seed
     >>> seed(42)
-    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)), seed=42)
+    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
     >>> vb, eb = gt.betweenness(g)
     >>> print vb.get_array()
-    [ 0.03536033  0.03251351  0.00813873  0.00496977  0.          0.08339989
-      0.00948258  0.05751528  0.00236377  0.00868464  0.04443961  0.04691023
-      0.01768388  0.          0.01130552  0.01277964  0.04223144  0.05040177
-      0.01202611  0.0012722   0.00828095  0.11598601  0.01864867  0.01412404
-      0.03343004  0.01772387  0.04780278  0.01351748  0.03616999  0.09074218
-      0.          0.          0.03901368  0.02526396  0.07471888  0.00219886
-      0.          0.          0.01062083  0.07973799  0.          0.01410051
-      0.02025676  0.          0.00988767  0.07519014  0.          0.06380861
-      0.          0.01954769  0.04576145  0.04151243  0.          0.04198926
-      0.0462918   0.07353227  0.00606605  0.02597097  0.02566416  0.00196642
-      0.06240786  0.02996611  0.03252566  0.01451141  0.05149852  0.
-      0.03582571  0.04600123  0.03776439  0.03326425  0.          0.
-      0.11568858  0.01361223  0.00515358  0.007151    0.00241302  0.00271168
-      0.01780978  0.01867583  0.02020758  0.01254292  0.00054971  0.00698211
-      0.02359226  0.0385241   0.00157871  0.00576513  0.04173662  0.03233332
-      0.0208791   0.02286212  0.04366053  0.03701801  0.02142117  0.03099565
-      0.02555676  0.03365458  0.03542124  0.06174975]
+    [ 0.06129648  0.02004734  0.04305659  0.01071136  0.          0.0252028
+      0.00679622  0.06981881  0.00541371  0.02462107  0.05328111  0.0107051
+      0.05981227  0.          0.01315561  0.00131498  0.          0.01883264
+      0.01663386  0.03195175  0.01942617  0.13693745  0.01378875  0.00962001
+      0.01325009  0.04685362  0.03839758  0.03395201  0.02160984  0.01727593
+      0.0478231   0.          0.03826993  0.05124999  0.          0.
+      0.00705917  0.          0.02190356  0.04505211  0.          0.00676419
+      0.00110802  0.00169839  0.08733666  0.10546473  0.          0.12058932
+      0.          0.00907921  0.02182859  0.08865455  0.          0.0418017
+      0.03500162  0.07492683  0.03856307  0.04300598  0.02173347  0.00488363
+      0.03739852  0.01113193  0.04386369  0.02994719  0.03383728  0.
+      0.09230395  0.05449223  0.02507715  0.04944675  0.          0.00215935
+      0.04371057  0.01749238  0.00104315  0.04688928  0.00444627  0.0178016
+      0.01358585  0.02193068  0.03184527  0.05640358  0.00214389  0.03922583
+      0.02195544  0.02613584  0.02246488  0.00066481  0.0755375   0.03142692
+      0.04533332  0.03188087  0.04227853  0.03926328  0.00810412  0.02888085
+      0.0455241   0.01373183  0.07029039  0.04382892]
 
     References
     ----------
-    .. [betweenness_wikipedia] http://en.wikipedia.org/wiki/Centrality#Betweenness_centrality
-    .. [brandes_faster_2001] U. Brandes, "A faster algorithm for betweenness
+    .. [betweenness-wikipedia] http://en.wikipedia.org/wiki/Centrality#Betweenness_centrality
+    .. [brandes-faster-2001] U. Brandes, "A faster algorithm for betweenness
        centrality",  Journal of Mathematical Sociology, 2001
     """
     if vprop == None:
@@ -230,9 +246,9 @@ def central_point_dominance(g, betweenness):
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
-    betweenness : ProperyMap
+    betweenness : :class:`~graph_tool.PropertyMap`
         Vertex property map with the betweenness centrality values. The values
         must be normalized.
 
@@ -248,7 +264,7 @@ def central_point_dominance(g, betweenness):
     Notes
     -----
     Let :math:`v^*` be the vertex with the largest relative betweenness
-    centrality; then, the central point dominance [freeman_set_1977]_ is defined
+    centrality; then, the central point dominance [freeman-set-1977]_ is defined
     as:
 
     .. math::
@@ -264,14 +280,14 @@ def central_point_dominance(g, betweenness):
     --------
     >>> from numpy.random import poisson, seed
     >>> seed(42)
-    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)), seed=42)
+    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
     >>> vb, eb = gt.betweenness(g)
     >>> print gt.central_point_dominance(g, vb)
-    0.0902382147799
+    0.108411171667
 
     References
     ----------
-    .. [freeman_set_1977] Linton C. Freeman, "A Set of Measures of Centrality
+    .. [freeman-set-1977] Linton C. Freeman, "A Set of Measures of Centrality
        Based on Betweenness", Sociometry, Vol. 40, No. 1,  pp. 35-41 (1977)
     """
 
@@ -287,9 +303,9 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epslon=1e-6, max_iter=0,
 
     Parameters
     ----------
-    g : Graphs
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
-    trust_map : ProperyMap
+    trust_map : :class:`~graph_tool.PropertyMap`
         Edge property map with the values of trust associated with each
         edge. The values must not lie in the range [0,1].
     vprop : PropertyMap, optional (default: None)
@@ -316,7 +332,7 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epslon=1e-6, max_iter=0,
 
     Notes
     -----
-    The eigentrust _[kamvar_eigentrust_2003] values :math:`t_i` correspond the
+    The eigentrust [kamvar-eigentrust-2003]_ values :math:`t_i` correspond the
     following limit
 
     .. math::
@@ -338,40 +354,40 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epslon=1e-6, max_iter=0,
     --------
     >>> from numpy.random import poisson, random, seed
     >>> seed(42)
-    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)), seed=42)
+    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
     >>> trust = g.new_edge_property("double")
     >>> trust.get_array()[:] = random(g.num_edges())*42
     >>> t = gt.eigentrust(g, trust, norm=True)
     >>> print t.get_array()
-    [  1.86170852e-02   3.54163528e-03   6.09712602e-04   0.00000000e+00
-       0.00000000e+00   3.49545179e-02   0.00000000e+00   2.59814288e-02
-       8.41396546e-04   4.78599541e-03   1.01228999e-02   1.43178181e-02
-       2.24766294e-03   1.80046830e-02   3.55639433e-03   4.24974765e-03
-       1.11631004e-02   3.12332820e-02   6.70174456e-03   1.09689726e-02
-       5.42202976e-03   2.51547994e-02   6.87197775e-03   3.90316493e-03
-       2.81858126e-03   6.26514036e-03   1.12322993e-02   4.35905749e-03
-       1.86938930e-02   1.93055029e-02   3.25522183e-03   9.48081499e-03
-       1.84882500e-02   8.17367673e-03   4.02113149e-02   1.07092572e-02
-       1.02184616e-02   0.00000000e+00   4.21126174e-03   3.97005433e-02
-       0.00000000e+00   6.23025347e-04   1.92797472e-02   5.22705075e-04
-       4.07751175e-03   2.11704089e-02   7.49484415e-03   8.10935540e-03
-       9.47352873e-05   1.74518912e-02   1.18865927e-02   8.49808309e-03
-       8.07449129e-03   6.04464513e-03   1.31497182e-02   1.61277706e-02
-       3.45965628e-03   9.28003800e-03   5.81189874e-03   2.67273946e-03
-       1.33359267e-02   3.99664807e-03   1.45641237e-02   2.06551771e-03
-       1.89334085e-02   2.44376969e-02   7.44521415e-03   6.35266998e-03
-       9.90439343e-03   2.61315207e-02   0.00000000e+00   0.00000000e+00
-       4.08351424e-02   1.21805039e-02   3.45041723e-03   1.84601840e-03
-       1.09623699e-03   2.37115682e-03   1.70221593e-02   4.57709422e-03
-       4.21193747e-03   2.26493986e-02   3.92636239e-03   2.42441556e-03
-       7.41276227e-03   7.01899189e-03   3.30982461e-03   4.18470116e-04
-       8.46801514e-03   9.05050341e-03   5.09784610e-03   3.20304076e-02
-       6.71276214e-03   5.26109355e-03   5.29170118e-03   3.46248974e-03
-       1.10436337e-02   2.20158077e-03   1.26859707e-02   2.25728004e-02]
+    [  1.78295032e-02   1.10159977e-03   8.27504534e-03   3.34579667e-03
+       0.00000000e+00   9.28795883e-03   7.56225537e-03   2.03772288e-02
+       6.87447577e-04   8.87085111e-03   2.84707349e-03   2.55095571e-03
+       7.65302351e-03   5.06044724e-02   3.98617107e-04   1.02897822e-02
+       0.00000000e+00   6.76980749e-03   6.91342330e-04   1.13998018e-02
+       1.91846222e-03   3.74940757e-02   8.65907932e-03   5.76596060e-03
+       1.11786939e-05   8.20855949e-04   9.45056085e-03   1.76099276e-02
+       2.67746802e-03   1.03182164e-02   1.80748361e-02   8.49781556e-03
+       7.89442825e-03   1.11838761e-02   0.00000000e+00   4.37095317e-03
+       2.50451228e-05   0.00000000e+00   6.04054677e-03   1.51361293e-02
+       0.00000000e+00   1.62557422e-04   1.02859153e-03   3.38079641e-03
+       3.06115271e-03   2.96226918e-03   7.40021010e-05   1.64096932e-02
+       1.12026631e-03   3.33521569e-03   1.77214999e-03   6.62472745e-03
+       3.17014482e-02   1.93793538e-03   5.24056364e-02   4.04200200e-02
+       2.96053927e-02   2.06294202e-03   2.93045979e-02   1.87688605e-03
+       1.13962350e-02   6.94033709e-03   1.57347756e-02   3.97987237e-03
+       1.15994824e-03   1.81252731e-02   2.06848985e-02   3.73314296e-03
+       1.27163202e-03   1.08081901e-02   0.00000000e+00   2.25590063e-04
+       8.55970439e-03   4.15387826e-02   8.61792076e-05   6.48435253e-02
+       5.61799591e-03   4.69096686e-02   4.24627753e-03   9.16721227e-04
+       4.86522362e-03   4.42735866e-03   5.50595265e-04   3.12087221e-03
+       8.75442087e-03   4.25588041e-03   2.91851609e-03   1.80331544e-06
+       2.89281502e-02   1.75099401e-02   1.14704807e-02   3.30940821e-02
+       2.84005465e-03   4.92435108e-03   4.34713976e-03   2.72336599e-03
+       9.37679329e-03   8.64912360e-03   3.96113432e-03   1.07637051e-02]
 
     References
     ----------
-    .. [kamvar_eigentrust_2003] S. D. Kamvar, M. T. Schlosser, H. Garcia-Molina
+    .. [kamvar-eigentrust-2003] S. D. Kamvar, M. T. Schlosser, H. Garcia-Molina
        "The eigentrust algorithm for reputation management in p2p networks",
        Proceedings of the 12th international conference on World Wide Web,
        Pages: 640 - 651, 2003
@@ -398,15 +414,15 @@ def absolute_trust(g, trust_map, source=None, vprop=None, epsilon=1e-6,
 
     Parameters
     ----------
-    g : Graphs
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
-    trust_map : ProperyMap
+    trust_map : :class:`~graph_tool.PropertyMap`
         Edge property map with the values of trust associated with each
         edge. The values must lie in the range [0,1].
     source : Vertex, optional (default: None)
         A vertex which is used the as the sole source for gathering trust
         values, instead of all the vertices in the graph.
-    vprop : PropertyMap, optional (default: None)
+    vprop : :class:`~graph_tool.PropertyMap`, optional (default: None)
         Vertex property map where the values of eigentrust must be stored.
     epsilon : float, optional (default: 1e-6)
         Convergence criterion for the algorithm. If the summed difference of
@@ -420,7 +436,7 @@ def absolute_trust(g, trust_map, source=None, vprop=None, epsilon=1e-6,
 
     Returns
     -------
-    absolute_trust : PropertyMap
+    absolute_trust : :class:`~graph_tool.PropertyMap`
         A vertex property map containing the absolute trust vector from the
         corresponding vertex to the rest of the network. Each element i of the
         vector is the trust value of the vertex with index i, from the given
@@ -496,6 +512,7 @@ def absolute_trust(g, trust_map, source=None, vprop=None, epsilon=1e-6,
        6.62879127e-03   2.50902780e-02   2.25743105e-03   3.42120043e-03
        4.94039204e-04   5.57933981e-03   2.84245886e-03   2.50370261e-03
        9.67803400e-03   8.03776616e-02   1.31993888e-03   2.41471529e-03]
+
     """
 
     if vprop == None:
@@ -513,17 +530,22 @@ def absolute_trust(g, trust_map, source=None, vprop=None, epsilon=1e-6,
 
     if reversed:
         g.stash_filter(reversed=True)
-        g.set_reversed(True)
 
-    libgraph_tool_centrality.\
-            get_absolute_trust(g._Graph__graph, source,
-                               _prop("e", g, trust_map), _prop("v", g, vprop),
-                               n_paths, epsilon, reversed)
-    if reversed:
-        g.pop_filter(reversed=True)
+    try:
+        if reversed:
+            g.set_reversed(True)
+
+        libgraph_tool_centrality.\
+                get_absolute_trust(g._Graph__graph, source,
+                                   _prop("e", g, trust_map),
+                                   _prop("v", g, vprop), n_paths, epsilon,
+                                   reversed)
+    finally:
+        if reversed:
+            g.pop_filter(reversed=True)
 
     if source != -1:
-        vprop_temp.get_array()[:] = numpy.array(vprop[g.vertex(source)])
+        vprop_temp.a = numpy.array(vprop[g.vertex(source)])
         vprop = vprop_temp
 
     return vprop

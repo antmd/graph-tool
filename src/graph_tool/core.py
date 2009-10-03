@@ -33,8 +33,8 @@ from decorators import _wraps, _require, _attrs, _limit_args
 ################################################################################
 
 def _prop(t, g, prop):
-    """Returns either a property map, or an internal vertex property map with a
-    given name"""
+    """Return either a property map, or an internal vertex property map with a
+    given name."""
     if type(prop) == str:
         try:
             pmap = g.properties[(t,prop)]
@@ -51,7 +51,7 @@ def _prop(t, g, prop):
 
 def _degree(g, name):
     """Retrieve the degree type from string, or returns the corresponding
-    property map"""
+    property map."""
     deg = name
     if name == "in-degree" or name == "in":
         deg = libcore.Degree.In
@@ -62,49 +62,6 @@ def _degree(g, name):
     else:
         deg = _prop("v", g, deg)
     return deg
-
-def _parse_range(range):
-    """Parse a range in the form 'lower[*] upper[*]' (where an '*' indicates
-    a closed boundary) or 'comp val', where 'comp' is [==|=|!=|>=|<=|>|<].
-    """
-    try:
-        rcomp = re.compile(r"(>|<|>=|<=|==|=|!=)\s*([^=<>!]+)")
-        rrange = re.compile(r"([^\*]+)(\*?)\s+([^\*]+)(\*?)")
-        inverted = False
-        if rcomp.match(range):
-            comp = rcomp.match(range).group(1)
-            thres = rcomp.match(range).group(2)
-            thres = float(thres)
-            if "<" in comp:
-                ran = (float('-Inf'), thres)
-                if "=" in comp:
-                    inc = (False, True)
-                else:
-                    inc = (False, False)
-            elif ">" in comp:
-                ran = (thres, float('Inf'))
-                if "=" in comp:
-                    inc = (True, False)
-                else:
-                    inc = (False, False)
-            elif comp == "==" or comp == "=" or comp == "!=":
-                ran = (thres, thres)
-                inc = (True, True)
-                if comp == "!=":
-                    inverted = True
-        elif rrange.match(range):
-            m = rrange.match(range)
-            r1 = float(m.group(1))
-            i1 = "*" in m.group(2)
-            r2 = float(m.group(3))
-            i2 = "*" in m.group(4)
-            ran = (r1, r2)
-            inc = (i1, i2)
-        else:
-            raise ValueError("invalid value for range: " + range)
-    except (ValueError, TypeError), e:
-        raise ValueError("invalid value for range: %s: %s " % (range, str(e)))
-    return (ran, inc, inverted)
 
 def _type_alias(type_name):
     alias = {"int8_t":"bool",
@@ -125,6 +82,7 @@ def _type_alias(type_name):
     raise ValueError("invalid property value type: " + type_name)
 
 def show_config():
+    """Show ``graph_tool`` build configuration."""
     info = libcore.mod_info()
     print "version:", info.version
     print "gcc version:", info.gcc_version
@@ -140,7 +98,7 @@ def show_config():
 ################################################################################
 
 class PropertyMap(object):
-    """Property map class"""
+    """Property map class."""
     def __init__(self, pmap, g, key_type, key_trans = None):
         self.__map = pmap
         self.__g = weakref.ref(g)
@@ -187,15 +145,15 @@ class PropertyMap(object):
 
 
     def get_graph(self):
-        """Get the graph class to which the map refers"""
+        """Get the graph class to which the map refers."""
         return self.__g()
 
     def key_type(self):
-        """The key type of the map. Either 'g', 'v' or 'e'"""
+        """Return the key type of the map. Either 'g', 'v' or 'e'."""
         return self.__key_type
 
     def value_type(self):
-        """The value type of the map"""
+        """Return the value type of the map."""
         return self.__map.value_type()
 
     def get_array(self):
@@ -266,6 +224,29 @@ def _check_prop_vector(prop, name=None, floating=False):
                           (" floating" if floating else "")))
 
 def group_vector_property(g, props, value_type=None, vprop=None, pos=None):
+    """Group list of properties ``props`` into a vector property map of the same
+    type.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to which the property maps belong.
+    props : list of :class:`~graph_tool.PropertyMap`
+        Properties to be grouped.
+    value_type : string (optional, default: None)
+        If supplied, defines the value type of the grouped property.
+    vprop : :class:`~graph_tool.PropertyMap` (optional, default: None)
+        If supplied, the properties are grouped into this property map.
+    pos : list of ints (optional, default: None)
+        If supplied, should contain a list of indexes where each corresponding
+        element of ``props`` should be inserted.
+
+    Returns
+    -------
+    vprop : :class:`~graph_tool.PropertyMap`
+       A vector property map with the grouped values of each property map in
+       ``props``.
+    """
     types = set()
     keys = set()
     for i,p in enumerate(props):
@@ -311,6 +292,28 @@ def group_vector_property(g, props, value_type=None, vprop=None, pos=None):
     return vprop
 
 def ungroup_vector_property(g, vprop, pos, props=None):
+    """Ungroup vector property map ``vprop`` into a list of individual property
+    maps.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to which the property map belong.
+    vprop : :class:`~graph_tool.PropertyMap`
+        Vector property map to be ungrouped.
+    pos : list of ints (optional, default: None)
+        If supplied, should contain a list of indexes where each corresponding
+        element of ``vprop`` should be inserted into the ``props`` list.
+    props : list of :class:`~graph_tool.PropertyMap`  (optional, default: None)
+        If supplied, should contain a list of property maps to which ``vprop``
+        should be ungroupped.
+
+    Returns
+    -------
+    props : list of :class:`~graph_tool.PropertyMap`
+       A list of property maps with the ungrouped values of ``vprop``.
+    """
+
     _check_prop_vector(vprop, name="vprop")
     k = vprop.key_type()
     value_type = vprop.value_type().split("<")[1].split(">")[0]
@@ -382,8 +385,8 @@ class Graph(object):
     """
 
     def __init__(self, g = None, directed=True):
-        """Construct a graph. If 'g' is specified, the graph (and its internal
-        properties) will be copied. The 'directed' parameter specified whether
+        """Construct a graph. If ``g`` is specified, the graph (and its internal
+        properties) will be copied. The ``directed`` parameter specifies whether
         the graph should be directed or undirected."""
         self.__properties = {}
         self.__known_properties = []
@@ -438,7 +441,7 @@ class Graph(object):
                  PropertyMap(libcore.get_edge_index(self.__graph), self, "e")
 
     def copy(self):
-        """Returns a deep copy of self. All internal property maps are also
+        """Return a deep copy of self. All internal property maps are also
         copied."""
         return Graph(self)
 
@@ -461,11 +464,10 @@ class Graph(object):
     # ============
 
     def vertices(self):
-        """Return an iterator over the vertices
+        """Return an iterator over the vertices.
 
         Examples
         --------
-
         >>> g = gt.Graph()
         >>> vlist = g.add_vertex(5)
         >>> vlist2 = []
@@ -482,12 +484,12 @@ class Graph(object):
         return libcore.get_vertex(weakref.ref(self.__graph),int(i))
 
     def edges(self):
-        """Return iterator over the edges."""
+        """Return an iterator over the edges."""
         return libcore.get_edges(weakref.ref(self.__graph))
 
     def add_vertex(self, n=1):
-        """Add a vertices to the graph, and return it. If n > 1, n vertices are
-        inserted and a list is returned."""
+        """Add a vertex to the graph, and return it. If ``n > 1``, ``n``
+        vertices are inserted and a list is returned."""
         vlist = [libcore.add_vertex(weakref.ref(self.__graph)) \
                  for i in xrange(0,n)]
         if n == 1:
@@ -506,8 +508,8 @@ class Graph(object):
         libcore.remove_vertex(self.__graph, vertex)
 
     def remove_vertex_if(self, predicate):
-        """Remove all the vertices from the graph for which predicate(v)
-        evaluates to True."""
+        """Remove all the vertices from the graph for which ``predicate(v)``
+        evaluates to ``True``. """
         N = self.num_vertices()
         for i in xrange(0, N):
             v = self.vertex(N - i - 1)
@@ -515,7 +517,7 @@ class Graph(object):
                 self.remove_vertex(v)
 
     def clear_vertex(self, vertex):
-        """Removes all in and out-edges from the given vertex."""
+        """Remove all in and out-edges from the given vertex."""
         del_es = []
         for e in vertex.all_edges():
             del_es.append(e)
@@ -523,7 +525,7 @@ class Graph(object):
             self.remove_edge(e)
 
     def add_edge(self, source, target):
-        """Add a new edge from 'source' to 'target' to the graph, and return
+        """Add a new edge from ``source`` to ``target`` to the graph, and return
         it."""
         return libcore.add_edge(weakref.ref(self.__graph), source, target)
 
@@ -532,8 +534,8 @@ class Graph(object):
         return libcore.remove_edge(self.__graph, edge)
 
     def remove_edge_if(self, predicate):
-        """Remove all the edges from the graph for which predicate(e) evaluates
-        to True."""
+        """Remove all edges from the graph, for which ``predicate(e)`` evaluates
+        to ``True``."""
         for v in self.vertices():
             del_es = []
             for e in v.out_edges():
@@ -619,7 +621,7 @@ class Graph(object):
                                  doc="Dictionary of graph properties")
 
     def list_properties(self):
-        """List all internal properties for convenience.
+        """List all internal properties.
 
         Examples
         --------
@@ -627,8 +629,7 @@ class Graph(object):
         >>> g.properties[("e", "foo")] = g.new_edge_property("vector<double>")
         >>> g.vertex_properties["foo"] = g.new_vertex_property("double")
         >>> g.vertex_properties["bar"] = g.new_vertex_property("python::object")
-        >>> g.graph_properties["gnat"] = g.new_graph_property("string",\
-                                                              "hi there!")
+        >>> g.graph_properties["gnat"] = g.new_graph_property("string", "hi there!")
         >>> g.list_properties()
         gnat           (graph)   (type: string, val: hi there!)
         bar            (vertex)  (type: python::object)
@@ -669,7 +670,8 @@ class Graph(object):
 
     def new_property(self, key_type, type):
         """Create a new (uninitialized) vertex property map of key type
-        `key_type` (``v``, ``e`` or ``g``), value type ``type``, and return it.
+        ``key_type`` (``v``, ``e`` or ``g``), value type ``type``, and return
+        it.
         """
         if key_type == "v" or key_type == "vertex":
             return self.new_vertex_property(type)
@@ -680,22 +682,22 @@ class Graph(object):
         raise ValueError("unknown key type: " + key_type)
 
     def new_vertex_property(self, type):
-        """Create a new (uninitialized) vertex property map of type `type`, and
-        return it."""
+        """Create a new (uninitialized) vertex property map of type ``type``,
+        and return it."""
         return PropertyMap(new_vertex_property(_type_alias(type),
                                                self.__graph.GetVertexIndex()),
                            self, "v")
 
     def new_edge_property(self, type):
-        """Create a new (uninitialized) edge property map of type `type`, and
+        """Create a new (uninitialized) edge property map of type ``type``, and
         return it."""
         return PropertyMap(new_edge_property(_type_alias(type),
                                              self.__graph.GetEdgeIndex()),
                            self, "e")
 
     def new_graph_property(self, type, val=None):
-        """Create a new graph property map of type `type`, and return it. If
-        `val` is not None, the property is initialized to its value."""
+        """Create a new graph property map of type ``type``, and return it. If
+        ``val`` is not None, the property is initialized to its value. """
         prop = PropertyMap(new_graph_property(_type_alias(type),
                                               self.__graph.GetGraphIndex()),
                            self, "g", lambda k: k.__graph)
@@ -707,11 +709,11 @@ class Graph(object):
     @_require("src", PropertyMap)
     @_require("tgt", (PropertyMap, type(None)))
     def copy_property(self, src, tgt=None, value_type=None, g=None):
-        """Copy contents of `src` property to `tgt` property. If `tgt` is None,
-        then a new property map of the same type (or with the type given by the
-        optional `value_type` parameter) is created, and returned. The optional
-        parameter g specifies the (identical) source graph to copy properties
-        from (defaults to self).
+        """Copy contents of ``src`` property to ``tgt`` property. If ``tgt`` is
+        None, then a new property map of the same type (or with the type given
+        by the optional ``value_type`` parameter) is created, and returned. The
+        optional parameter g specifies the (identical) source graph to copy
+        properties from (defaults to self).
         """
         if tgt == None:
             tgt = self.new_property(src.key_type(),
@@ -746,7 +748,7 @@ class Graph(object):
     @_limit_args({"deg":["in","out","total"]})
     def degree_property_map(self, deg):
         """Create and return a vertex property map containing the degree type
-        given by `deg`"""
+        given by ``deg``."""
         return PropertyMap(self.__graph.DegreeMap(deg), self, "v")
 
 
@@ -754,10 +756,10 @@ class Graph(object):
     # ==============
 
     def load(self, filename, format="auto"):
-        """Load graph from 'filename' (which can also be a file-like
-        object). The format is guessed from the file name, or can be specified
-        by 'format', which can be either 'xml' or 'dot'. Alternatively, filename
-        can be file-like object."""
+        """Load graph from ``filename`` (which can be either a string or a
+        file-like object). The format is guessed from ``filename``, or can be
+        specified by ``format``, which can be either "xml" or "dot"."""
+
         if type(filename) == str:
             filename = os.path.expanduser(filename)
         if format == 'auto' and isinstance(filename, str):
@@ -784,9 +786,10 @@ class Graph(object):
                                                       lambda k: k.__graph)
 
     def save(self, filename, format="auto"):
-        """Save graph to file. The format is guessed from the 'file' name, or
-        can be specified by 'format', which can be either 'xml' or
-        'dot'. Alternatively, filename can be file-like object."""
+        """Save graph to ``filename`` (which can be either a string or a
+        file-like object). The format is guessed from the ``filename``, or can
+        be specified by ``format``, which can be either "xml" or "dot"."""
+
         if type(filename) == str:
             filename = os.path.expanduser(filename)
         if format == 'auto' and isinstance(filename, str):
@@ -811,23 +814,24 @@ class Graph(object):
     # ============
 
     def set_directed(self, is_directed):
-        """Set the directedness of the graph"""
+        """Set the directedness of the graph."""
         self.__graph.SetDirected(is_directed)
 
     def is_directed(self):
-        """Get the directedness of the graph"""
+        """Get the directedness of the graph."""
         return self.__graph.GetDirected()
 
     # Reversedness
     # ============
 
     def set_reversed(self, is_reversed):
-        """Reverse the direction of the edges, if 'reversed' is True, or
+        """Reverse the direction of the edges, if ``reversed`` is ``True``, or
         maintain the original direction otherwise."""
         self.__graph.SetReversed(is_reversed)
 
     def is_reversed(self):
-        """Return 'True' if the edges are reversed, and 'False' otherwise."""
+        """Return ``True`` if the edges are reversed, and ``False`` otherwise.
+        """
         return self.__graph.GetReversed()
 
     # Filtering
@@ -835,46 +839,51 @@ class Graph(object):
 
     def set_vertex_filter(self, property, inverted=False):
         """Choose vertex boolean filter property. Only the vertices with value
-        different than zero are kept in the filtered graph. If the 'inverted'
-        option is supplied with value 'True', only the vertices with value zero
-        are kept. If the supplied property is 'None', any previous filtering is
-        removed."""
-        self.__graph.SetVertexFilterProperty(_prop("v", self, property), inverted)
+        different than zero are kept in the filtered graph. If the ``inverted``
+        option is supplied with value ``True``, only the vertices with value
+        zero are kept. If the supplied property is ``None``, any previous
+        filtering is removed."""
+
+        self.__graph.SetVertexFilterProperty(_prop("v", self, property),
+                                             inverted)
         self.__filter_state["vertex_filter"] = (property, inverted)
 
     def get_vertex_filter(self):
-        """Get the vertex filter property and whether or not it is inverted"""
+        """Return a tuple with the vertex filter property and bool value
+        indicating whether or not it is inverted."""
         return self.__filter_state["vertex_filter"]
 
     def set_edge_filter(self, property, inverted=False):
         """Choose edge boolean filter property. Only the edges with value
-        different than zero are kept in the filtered graph. If the 'inverted'
-        option is supplied with value 'True', only the edges with value zero are
-        kept. If the supplied property is 'None', any previous filtering is
-        removed."""
+        different than zero are kept in the filtered graph. If the ``inverted``
+        option is supplied with value ``True``, only the edges with value zero
+        are kept. If the supplied property is ``None``, any previous filtering
+        is removed."""
         self.__graph.SetEdgeFilterProperty(_prop("e", self, property), inverted)
         self.__filter_state["edge_filter"] = (property, inverted)
 
     def get_edge_filter(self):
-        """Get the edge filter property and whether or not it is inverted"""
+        """Return a tuple with the edge filter property and bool value
+        indicating whether or not it is inverted."""
         return self.__filter_state["edge_filter"]
 
     def purge_vertices(self):
         """Remove all vertices of the graph which are currently being filtered
-        out, and return to the unfiltered state"""
+        out, and return it to the unfiltered state."""
         self.__graph.PurgeVertices()
         self.__graph.SetVertexFilterProperty(None)
 
     def purge_edges(self):
         """Remove all edges of the graph which are currently being filtered out,
-        and return to the unfiltered state"""
+        and return it to the unfiltered state."""
         self.__graph.PurgeEdges()
         self.__graph.SetEdgeFilterProperty(None)
 
-    def stash_filter(self, edge=False, vertex=False,
-                     directed=False, reversed=False, all=True):
-        """Stash current filter state and recover unfiltered graph. The optional
-        keyword arguments specify which type of filter should be stashed."""
+    def stash_filter(self, edge=False, vertex=False, directed=False,
+                     reversed=False, all=True):
+        """Stash current filter state and set the graph to its unfiltered
+        state. The optional keyword arguments specify which type of filter
+        should be stashed."""
         if edge or vertex or directed or reversed:
             all = False
         self.__stashed_filter_state.append(self.get_filter_state())
@@ -931,7 +940,7 @@ class Graph(object):
         return self.__graph.GetNumberOfVertices()
 
     def num_edges(self):
-        """Get the number of edges"""
+        """Get the number of edges."""
         return self.__graph.GetNumberOfEdges()
 
     # Pickling support
@@ -967,13 +976,15 @@ class Graph(object):
             self.set_edge_filter(vprop, state["efilt"])
 
 def load_graph(filename, format="auto"):
-    """Load a graph from file"""
+    """Load a graph from ``filename`` (which can be either a string or a
+        file-like object). The format is guessed from ``filename``, or can be
+        specified by ``format``, which can be either"xml" or "dot"."""
     g = Graph()
     g.load(filename, format=format)
     return g
 
 def value_types():
-    """Return a list of possible properties value types"""
+    """Return a list of possible properties value types."""
     return libcore.get_property_types()
 
 # Vertex and Edge Types
@@ -981,19 +992,19 @@ def value_types():
 from libgraph_tool_core import Vertex, Edge
 
 def _out_neighbours(self):
-    """Return an iterator over the out-neighbours"""
+    """Return an iterator over the out-neighbours."""
     for e in self.out_edges():
         yield e.target()
 Vertex.out_neighbours = _out_neighbours
 
 def _in_neighbours(self):
-    """Return an iterator over the in-neighbours"""
+    """Return an iterator over the in-neighbours."""
     for e in self.in_edges():
         yield e.source()
 Vertex.in_neighbours = _in_neighbours
 
 def _all_edges(self):
-    """Return an iterator over all edges (both in or out)"""
+    """Return an iterator over all edges (both in or out)."""
     for e in self.out_edges():
         yield e
     for e in self.in_edges():
@@ -1001,7 +1012,7 @@ def _all_edges(self):
 Vertex.all_edges = _all_edges
 
 def _all_neighbours(self):
-    """Return an iterator over all neighbours (both in or out)"""
+    """Return an iterator over all neighbours (both in or out)."""
     for v in self.out_neighbours():
         yield v
     for v in self.in_neighbours():

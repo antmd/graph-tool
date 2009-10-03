@@ -19,6 +19,19 @@
 """
 ``graph_tool.spectral`` - Spectral properties
 ---------------------------------------------
+
+Summary
++++++++
+
+.. autosummary::
+   :nosignatures:
+
+   adjacency
+   laplacian
+   incidence
+
+Contents
+++++++++
 """
 
 from .. core import _degree, _prop, Graph, _limit_args
@@ -77,7 +90,7 @@ def adjacency(g, sparse=True, weight=None):
 
     References
     ----------
-    .. [wikipedia_adjacency] http://en.wikipedia.org/wiki/Adjacency_matrix
+    .. [wikipedia-adjacency] http://en.wikipedia.org/wiki/Adjacency_matrix
     """
 
     if g.get_vertex_filter()[0] != None:
@@ -183,7 +196,7 @@ def laplacian(g, deg="total", normalized=True, sparse=True, weight=None):
 
     References
     ----------
-    .. [wikipedia_laplacian] http://en.wikipedia.org/wiki/Laplacian_matrix
+    .. [wikipedia-laplacian] http://en.wikipedia.org/wiki/Laplacian_matrix
     """
 
     if g.get_vertex_filter()[0] != None:
@@ -269,7 +282,7 @@ def incidence(g, sparse=True):
 
     References
     ----------
-    .. [wikipedia_incidence] http://en.wikipedia.org/wiki/Incidence_matrix
+    .. [wikipedia-incidence] http://en.wikipedia.org/wiki/Incidence_matrix
     """
 
     if g.get_vertex_filter()[0] != None:
