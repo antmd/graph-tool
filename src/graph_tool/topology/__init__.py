@@ -63,26 +63,126 @@ def min_spanning_tree(g, weights=None, root=None, tree_map=None):
     g.pop_filter(directed=True)
     return tree_map
 
-def denominator_tree(g, root, pred_map=None):
-    if pred_map == None:
-        pred_map = g.new_vertex_property("int32_t")
-    if pred_map.value_type() != "int32_t":
-        raise ValueError("vertex property 'pred_map' must be of value type" +
+def dominator_tree(g, root, dom_map=None):
+    """Return a vertex property map the dominator vertices for each vertex.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    root : :class:`~graph_tool.Vertex`
+        The root vertex.
+    dom_map : :class:`~graph_tool.PropertyMap` (optional, default: None)
+        If provided, the dominator map will be written in this property map.
+
+    Returns
+    -------
+    dom_map : :class:`~graph_tool.PropertyMap`
+        The dominator map. It contains for each vertex, the index of its
+        dominator vertex.
+
+    Notes
+    -----
+    A vertex u dominates a vertex v, if every path of directed graph from the
+    entry to v must go through u.
+
+    The algorithm runs with :math:`O((V+E)\log (V+E))` complexity.
+
+    Examples
+    --------
+    >>> from numpy.random import seed
+    >>> seed(42)
+    >>> g = gt.random_graph(100, lambda: (2, 2))
+    >>> tree = gt.min_spanning_tree(g)
+    >>> g.set_edge_filter(tree)
+    >>> root = [v for v in g.vertices() if v.in-degree() == 0]
+    >>> dom = gt.dominator_tree(g, root[0])
+    >>> print dom.a
+    [ 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+      0 74  0  0  0 65  0  0  0 99  0  0  0  0  0  0  0  0 52  0  0  0  0  0 43
+      0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 43  0  0  0  0  0  0  0  0  5
+      0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 37]
+
+    References
+    ----------
+    .. [dominator-bgl] http://www.boost.org/doc/libs/graph/doc/lengauer_tarjan_dominator.htm
+
+    """
+    if dom_map == None:
+        dom_map = g.new_vertex_property("int32_t")
+    if dom_map.value_type() != "int32_t":
+        raise ValueError("vertex property 'dom_map' must be of value type" +
                          " int32_t.")
     if not g.is_directed():
-        raise ValueError("denominator tree requires a directed graph.")
+        raise ValueError("dominator tree requires a directed graph.")
     libgraph_tool_topology.\
-               denominator_tree(g._Graph__graph, int(root),
-                                _prop("v", g, pred_map))
-    return pred_map
+               dominator_tree(g._Graph__graph, int(root),
+                              _prop("v", g, dom_map))
+    return dom_map
 
 def topological_sort(g):
+    """
+    Return the topological sort of the given graph. It is returned as an array
+    of vertex indexes, in the sort order.
+
+    Notes
+    -----
+    The topological sort algorithm creates a linear ordering of the vertices
+    such that if edge (u,v) appears in the graph, then v comes before u in the
+    ordering. The graph must be a directed acyclic graph (DAG).
+
+    The time complexity is :math:`O(V + E)`.
+
+    Examples
+    --------
+    >>> from numpy.random import seed
+    >>> seed(42)
+    >>> g = gt.random_graph(30, lambda: (3, 3))
+    >>> tree = gt.min_spanning_tree(g)
+    >>> g.set_edge_filter(tree)
+    >>> sort = gt.topological_sort(g)
+    >>> print sort
+    [21 12 28  1 13 23 25  0 19 22  2  3  4  6  9  5  7 26  8 29 16 10 11 17 14
+     15 18 20 24 27]
+
+    References
+    ----------
+    .. [topological-boost] http://www.boost.org/doc/libs/graph/doc/topological_sort.html
+    .. [topological-wiki] http://en.wikipedia.org/wiki/Topological_sorting
+
+    """
+
     topological_order = Vector_int32_t()
     libgraph_tool_topology.\
                topological_sort(g._Graph__graph, topological_order)
-    return topological_order
+    return numpy.array(topological_order)
 
 def transitive_closure(g):
+    """Return the transitive closure graph of g.
+
+    Notes
+    -----
+    The transitive closure of a graph G = (V,E) is a graph G* = (V,E*) such that
+    E* contains an edge (u,v) if and only if G contains a path (of at least one
+    edge) from u to v. The transitive_closure() function transforms the input
+    graph g into the transitive closure graph tc.
+
+    The time complexity (worst-case) is :math:`O(VE)`.
+
+    Examples
+    --------
+    >>> from numpy.random import seed
+    >>> seed(42)
+    >>> g = gt.random_graph(30, lambda: (3, 3))
+    >>> tc = gt.transitive_closure(g)
+
+    References
+    ----------
+    .. [transitive-boost] http://www.boost.org/doc/libs/graph/doc/transitive_closure.html
+    .. [transitive-wiki] http://en.wikipedia.org/wiki/Transitive_closure
+
+    """
+
     if not g.is_directed():
         raise ValueError("graph must be directed for transitive closure.")
     tg = Graph()

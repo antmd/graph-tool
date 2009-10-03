@@ -25,7 +25,7 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-struct get_denominator_tree
+struct get_dominator_tree
 {
     template <class Graph, class PredMap>
     void operator()(const Graph& g, size_t entry, PredMap pred_map) const
@@ -39,10 +39,10 @@ typedef property_map_types::apply<mpl::vector<int32_t>,
                                   mpl::bool_<false> >::type
     pred_properties;
 
-void denominator_tree(GraphInterface& gi, size_t entry, boost::any pred_map)
+void dominator_tree(GraphInterface& gi, size_t entry, boost::any pred_map)
 {
     run_action<graph_tool::detail::always_directed>()
-        (gi, bind<void>(get_denominator_tree(), _1, entry, _2),
+        (gi, bind<void>(get_dominator_tree(), _1, entry, _2),
          pred_properties())(pred_map);
 }
 
