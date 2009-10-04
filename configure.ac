@@ -3,8 +3,8 @@ dnl Process this file with autoconf to produce a configure script.
 dnl graph-tool package version number
 dnl An odd micro number indicates in-progress development.
 dnl An even micro number indicates a released version.
-m4_define(graph_tool_version_major, 1)
-m4_define(graph_tool_version_minor, 9)
+m4_define(graph_tool_version_major, 2)
+m4_define(graph_tool_version_minor, 0)
 m4_define(graph_tool_version_micro, 0)
 
 AC_INIT([graph-tool],
