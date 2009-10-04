@@ -1,11 +1,12 @@
-graph-tool -- a general graph measurement and manipulation thingy
-=================================================================
+graph-tool -- a general graph measurement and manipulation python module
+=========================================================================
 
-This is graph-tool, a program which contains general graph
-measurements algorithms, such as degree or properties distributions,
-degree or properties correlations, clustering, graph filtering, graph
-layout, and more, as well as a random graph generation routine. For
-more information and documentation, please take a look at the website
+This is graph-tool, a python module which contains general graph
+measurements data structures andalgorithms, such as degree or
+properties distributions, degree or properties correlations,
+clustering, graph filtering, graph layout, and more, as well as a
+random graph generation routine. For more information and
+documentation, please take a look at the website
 http://graph-tool.forked.de.
 
 graph-tool is free software, you can redistribute it and/or modify it under
@@ -27,11 +28,11 @@ Installation
 graph-tool follows the standard GNU installation procedure.  Please consult
 the INSTALL file in this distribution for more detailed instructions.
 
-Note that recent versions of GCC (4.0 or above) are required for
+Note that recent versions of GCC (4.4 or above) are required for
 compilation, and due to the usage of template metaprogramming
 techniques in the program, relatively large amounts of RAM
 are required during compilation. You have been warned! For this
-reason, pre-compiled binaries are available in the website.
+reason, pre-compiled packages are available in the website.
 
 More information about graph-tool
 ==================================
