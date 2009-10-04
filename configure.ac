@@ -165,6 +165,10 @@ AX_BOOST_IOSTREAMS
 if test "$BOOST_IOSTREAMS_LIB" = ""; then
    AC_MSG_ERROR([No usable boost::iostreams found])
 fi
+AX_BOOST_REGEX
+if test "$BOOST_REGEX_LIB" = ""; then
+   AC_MSG_ERROR([No usable boost::regex found])
+fi
 [CPPFLAGS="${CPPFLAGS} ${BOOST_CPPFLAGS}"]
 
 dnl Checks for header files.
@@ -272,7 +276,7 @@ AC_SUBST(MOD_DIR)
 
 # default LIBADD flags for submodules
 [MOD_LIBADD="${PYTHON_LDFLAGS} ${BOOST_IOSTREAMS_LIB} -l${BOOST_PYTHON_LIB} \
-${OPENMP_LDFLAGS} -lexpat"]
+${BOOST_REGEX_LIB} ${OPENMP_LDFLAGS} -lexpat"]
 AC_SUBST(MOD_LIBADD)
 
 # needed for typeinfo objects to work across DSO boundaries.

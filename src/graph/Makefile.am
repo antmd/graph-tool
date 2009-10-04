@@ -36,6 +36,10 @@ libgraph_tool_core_la_SOURCES = \
     ../boost-workaround/boost/graph/graphml.hpp\
     ../boost-workaround/boost/graph/betweenness_centrality.hpp\
     ../boost-workaround/boost/graph/copy.hpp\
+    ../boost-workaround/boost/graph/overloading.hpp\
+    ../boost-workaround/boost/graph/graphviz.hpp\
+    ../boost-workaround/boost/graph/detail/read_graphviz_new.hpp\
+    ../boost-workaround/boost/graph/detail/read_graphviz_spirit.hpp\
     ../boost-workaround/boost/graph/isomorphism.hpp\
     ../boost-workaround/boost/graph/fruchterman_reingold.hpp\
     ../boost-workaround/boost/graph/kamada_kawai_spring_layout.hpp
