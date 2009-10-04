@@ -19,7 +19,6 @@ libgraph_tool_clustering_la_SOURCES = \
     graph_extended_clustering.cc \
     graph_motifs.cc
 
-
 libgraph_tool_clustering_la_include_HEADERS = \
     graph_clustering.hh \
     graph_extended_clustering.hh \

@@ -31,8 +31,14 @@ libgraph_tool_core_la_SOURCES = \
     graph_selectors.cc \
     graphml.cpp\
     read_graphviz_spirit.cpp\
+    read_graphviz_new.cpp\
     ../boost-workaround/boost/graph/filtered_graph.hpp\
-    ../boost-workaround/boost/graph/graphml.hpp
+    ../boost-workaround/boost/graph/graphml.hpp\
+    ../boost-workaround/boost/graph/betweenness_centrality.hpp\
+    ../boost-workaround/boost/graph/copy.hpp\
+    ../boost-workaround/boost/graph/isomorphism.hpp\
+    ../boost-workaround/boost/graph/fruchterman_reingold.hpp\
+    ../boost-workaround/boost/graph/kamada_kawai_spring_layout.hpp
 
 libgraph_tool_core_la_includedir = $(pythondir)/graph_tool/include
 libgraph_tool_core_la_include_HEADERS = \

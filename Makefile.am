@@ -9,8 +9,8 @@ graphtooldoc_DATA = \
 	AUTHORS\
 	INSTALL\
 	NEWS\
-	TODO
-
+	TODO\
+	src/boost-workaround/LICENSE_1_0.txt
 
 EXTRA_DIST = $(graphtooldoc_DATA)
 

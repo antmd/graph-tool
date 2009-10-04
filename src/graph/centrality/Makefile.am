@@ -21,4 +21,8 @@ libgraph_tool_centrality_la_SOURCES = \
     graph_absolute_trust.cc \
     graph_centrality_bind.cc
 
-libgraph_tool_centrality_la_include_HEADERS =
+libgraph_tool_centrality_la_include_HEADERS = \
+    graph_pagerank.hh \
+    graph_eigentrust.hh \
+    graph_absolute_trust.hh \
+    minmax.hh
