@@ -57,7 +57,6 @@ public:
 
     void pop_bottom()
     {
-        return;
         swap(_queue.front(), _queue.back());
         _queue.pop_back();
         if (!_queue.empty())
