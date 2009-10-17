@@ -286,6 +286,8 @@ istream& operator>>(istream& in, vector<Type>& vec)
     vec.clear();
     string data;
     getline(in, data);
+    if (data == "")
+        return in; // empty strings are OK
     vector<string> split_data;
     split(split_data, data, is_any_of(","));
     for (size_t i = 0; i < split_data.size(); ++i)
