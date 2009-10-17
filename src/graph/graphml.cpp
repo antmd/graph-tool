@@ -13,18 +13,20 @@
 #include <expat.h>
 #include <boost/graph/graphml.hpp>
 #include <boost/algorithm/string/replace.hpp>
+#include <boost/archive/iterators/xml_escape.hpp>
+#include <boost/archive/iterators/ostream_iterator.hpp>
 
 using namespace boost;
 namespace boost
 {
 std::string protect_xml_string(const std::string& os)
 {
-    using namespace boost::algorithm;
-    std::string s(os);
-    replace_all(s, "&", "&amp;");
-    replace_all(s, "<", "&lt;");
-    replace_all(s, ">", "&gt;");
-    return s;
+    using namespace boost::archive::iterators;
+    std::stringstream s;
+    std::copy(xml_escape<const char*>(os.c_str()),
+              xml_escape<const char*>(os.c_str()+os.size()),
+              ostream_iterator<char>(s));
+    return s.str();
 }
 }
 
