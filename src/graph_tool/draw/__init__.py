@@ -346,7 +346,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
         else:
             enorm = lambda x: x
 
-    nodes = []
+    nodes = {}
     edges = []
 
     # add nodes
@@ -384,7 +384,8 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
                 gv.setv(n, k, str(val[v]))
             else:
                 gv.setv(n, k, str(val))
-        nodes.append(n)
+        nodes[g.vertex_index[v]] = n
+
     for e in g.edges():
         ge = gv.edge(nodes[g.vertex_index[e.source()]],
                      nodes[g.vertex_index[e.target()]])
@@ -419,15 +420,15 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
                 gv.setv(ge, k, str(v[e]))
             else:
                 gv.setv(ge, k, str(v))
-        edges.append(ge)
+
 
     gv.layout(gvg, layout)
     gv.render(gvg, "dot", "/dev/null") # retrieve positions
 
     if pos == None:
         pos = (g.new_vertex_property("double"), g.new_vertex_property("double"))
-    for n in xrange(0, len(nodes)):
-        p = gv.getv(nodes[n], "pos")
+    for n, n_gv in nodes.iteritems():
+        p = gv.getv(n_gv, "pos")
         p = p.split(",")
         pos[0][g.vertex(n)] = float(p[0])
         pos[1][g.vertex(n)] = float(p[1])
