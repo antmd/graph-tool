@@ -150,6 +150,9 @@ istream& operator>>(istream& in, vector<string>& vec)
         data += line;
     }
 
+    if (data == "")
+        return in; // empty string is OK
+
     sregex re = sregex::compile(", ");
     sregex_token_iterator iter(data.begin(), data.end(), re, -1), end;
     for (; iter != end; ++iter)
@@ -161,6 +164,7 @@ istream& operator>>(istream& in, vector<string>& vec)
     }
     return in;
 }
+
 } // std namespace
 
 

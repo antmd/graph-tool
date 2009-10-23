@@ -376,12 +376,13 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
     {
         if (i->second->key() == typeid(graph_property_tag))
         {
+            std::string val = protect_xml_string
+                (print_value<value_types>(*i->second, graph_property_tag()));
+            if (val.empty())
+                continue;
             out << "   <data key=\""
                 << protect_xml_string(graph_key_ids[i->first]) << "\">"
-                << protect_xml_string
-                (print_value<value_types>(*i->second,
-                                          graph_property_tag()))
-                << "</data>\n";
+                << val << "</data>\n";
         }
     }
 
@@ -398,11 +399,13 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
         {
             if (i->second->key() == typeid(vertex_descriptor))
             {
+                std::string val = protect_xml_string
+                    (print_value<value_types>(*i->second, *v));
+                if (val.empty())
+                    continue;
                 out << "      <data key=\""
                     << protect_xml_string(vertex_key_ids[i->first]) << "\">"
-                    << protect_xml_string
-                    (print_value<value_types>(*i->second, *v))
-                    << "</data>\n";
+                    << val << "</data>\n";
             }
         }
         out << "    </node>\n";
@@ -424,11 +427,13 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
         {
             if (i->second->key() == typeid(edge_descriptor))
             {
+                std::string val = protect_xml_string
+                    (print_value<value_types>(*i->second, *e));
+                if (val.empty())
+                    continue;
                 out << "      <data key=\""
                     << protect_xml_string(edge_key_ids[i->first]) << "\">"
-                    << protect_xml_string
-                    (print_value<value_types>(*i->second, *e))
-                    << "</data>\n";
+                    << val << "</data>\n";
             }
         }
         out << "    </edge>\n";
