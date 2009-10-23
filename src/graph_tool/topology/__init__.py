@@ -26,6 +26,7 @@ Summary
 .. autosummary::
    :nosignatures:
 
+   shortest_distance
    isomorphism
    min_spanning_tree
    dominator_tree
@@ -42,11 +43,11 @@ from .. dl_import import dl_import
 dl_import("import libgraph_tool_topology")
 
 from .. core import _prop, Vector_int32_t, _check_prop_writable, \
-     _check_prop_scalar, Graph
+     _check_prop_scalar,  _check_prop_vector, Graph
 import random, sys, numpy
 __all__ = ["isomorphism", "min_spanning_tree", "dominator_tree",
            "topological_sort", "transitive_closure", "label_components",
-           "label_biconnected_components"]
+           "label_biconnected_components", "shortest_distance"]
 
 def isomorphism(g1, g2, isomap=False):
     """Check whether two graphs are isomorphisms. If `isomap` is True, a vertex
@@ -413,3 +414,149 @@ def label_biconnected_components(g, eprop=None, vprop=None):
     finally:
         g.pop_filter(directed=True)
     return eprop, vprop, nc
+
+def shortest_distance(g, source=None, weights=None, max_dist=None,
+                      directed=None, dense=False, dist_map=None):
+    """
+    Calculate the distance of all vertices from a given source, or the all pairs
+    shortest paths, if the source is not specified.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    source : :class:`~graph_tool.Vertex` (optional, default: None)
+        Vertex source of the search. If unspecified, the all pairs shortest
+        distances are computed.
+    weights : :class:`~graph_tool.PropertyMap` (optional, default: None)
+        The edge weights. If provided, the minimum spanning tree will minimize
+        the edge weights.
+    max_dist : scalar value (optional, default: None)
+        If specified, this limits the maximum distance of the vertices
+        are searched. This parameter has no effect if source == None.
+    directed : bool (optional, default:None)
+        Treat graph as directed or not, independently of its actual
+        directionality.
+    dense : bool (optional, default: False)
+        If true, and source == None, the Floyd-Warshall algorithm is used,
+        otherwise the Johnson algorithm is used. If source != None, this option
+        has no effect.
+    dist_map : :class:`~graph_tool.PropertyMap` (optional, default: None)
+        Vertex property to store the distances. If none is supplied, one
+        is created.
+
+    Returns
+    -------
+    dist_map : :class:`~graph_tool.PropertyMap`
+        Vertex property map with the distances from source. If source is 'None',
+        it will have a vector value type, with the distances to every vertex.
+
+    Notes
+    -----
+
+    If a source is given, the distances are calculated with a breadth-first
+    search (BFS) or Dijkstra's algorithm [dijkstra]_, if weights are given. If
+    source is not given, the distances are calculated with Johnson's algorithm
+    [johnson-apsp]_. If dense=True, the Floyd-Warshall algorithm
+    [floyd-warshall-apsp]_ is used instead.
+
+    If source is specified, the algorithm runs in :math:`O(V + E)` time, or
+    :math:`O(V \log V)` if weights are given. If source is not specified, it
+    runs in :math:`O(VE\log V)` time, or :math:`O(V^3)` if dense == True.
+
+    Examples
+    --------
+    >>> from numpy.random import seed, poisson
+    >>> seed(42)
+    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
+    >>> dist = gt.shortest_distance(g, source=g.vertex(0))
+    >>> print dist.get_array()
+    [         0          2 2147483647          4 2147483647          6
+              4          4          3          4          4          5
+              5          2          4          5          5          5
+              4          4          6          6 2147483647          5
+              4          4          4          6          4          4
+              5          5          3          3          4          4
+              2          3          3          4 2147483647 2147483647
+              4          4          3          3          1          5
+              5          4          5          2          4          4
+              4          1          3          2          3          4
+              3          5          5          1          3 2147483647
+              5          5          5          4          3 2147483647
+              3          2          3          3          3          5
+              4          4          4          3          5 2147483647
+              5          6          4          5          3          5
+              5          4          5          4          1          6
+              4          3          3          4]
+    >>> dist = gt.shortest_distance(g)
+    >>> print array(dist[g.vertex(0)])
+    [         0          2 2147483647          4 2147483647          6
+              4          4          3          4          4          5
+              5          2          4          5          5          5
+              4          4          6          6 2147483647          5
+              4          4          4          6          4          4
+              5          5          3          3          4          4
+              2          3          3          4 2147483647 2147483647
+              4          4          3          3          1          5
+              5          4          5          2          4          4
+              4          1          3          2          3          4
+              3          5          5          1          3 2147483647
+              5          5          5          4          3 2147483647
+              3          2          3          3          3          5
+              4          4          4          3          5 2147483647
+              5          6          4          5          3          5
+              5          4          5          4          1          6
+              4          3          3          4]
+
+
+    References
+    ----------
+    .. [bfs] Edward Moore, "The shortest path through a maze", International
+       Symposium on the Theory of Switching (1959), Harvard University
+       Press;http://www.boost.org/libs/graph/doc/breadth_first_search.html
+    .. [dijkstra] E. Dijkstra, "A note on two problems in connexion with
+       graphs." Numerische Mathematik, 1:269-271, 1959.
+       http://www.boost.org/libs/graph/doc/dijkstra_shortest_paths.html
+    .. [johnson-apsp] http://www.boost.org/libs/graph/doc/johnson_all_pairs_shortest.html
+    .. [floyd-warshall-apsp] http://www.boost.org/libs/graph/doc/floyd_warshall_shortest.html
+    """
+
+    if weights == None:
+        dist_type = 'int32_t'
+    else:
+        dist_type = weights.value_type()
+
+    if dist_map == None:
+        if source != None:
+            dist_map = g.new_vertex_property(dist_type)
+        else:
+            dist_map = g.new_vertex_property("vector<%s>" % dist_type)
+
+    _check_prop_writable(dist_map, name="dist_map")
+    if source != None:
+        _check_prop_scalar(dist_map, name="dist_map")
+    else:
+        _check_prop_vector(dist_map, name="dist_map")
+
+    if max_dist == None:
+        max_dist = 0
+
+    if directed != None:
+        g.stash_filter(directed=True)
+        g.set_directed(directed)
+
+    try:
+        if source != None:
+            libgraph_tool_topology.get_dists(g._Graph__graph, int(source),
+                                             _prop("v", g, dist_map),
+                                             _prop("e", g, weights),
+                                             float(max_dist))
+        else:
+            libgraph_tool_topology.get_all_dists(g._Graph__graph,
+                                                 _prop("v", g, dist_map),
+                                                 _prop("e", g, weights), dense)
+
+    finally:
+        if directed != None:
+            g.pop_filter(directed=True)
+    return dist_map

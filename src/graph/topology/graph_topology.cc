@@ -24,20 +24,16 @@ using namespace graph_tool;
 
 bool check_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
                        boost::any iso_map);
-
 void get_kruskal_spanning_tree(GraphInterface& gi, boost::any weight_map,
                                boost::any tree_map);
-
 void get_prim_spanning_tree(GraphInterface& gi, size_t root,
                             boost::any weight_map, boost::any tree_map);
-
 void topological_sort(GraphInterface& gi, vector<int32_t>& sort);
-
 void dominator_tree(GraphInterface& gi, size_t entry, boost::any pred_map);
-
 void transitive_closure(GraphInterface& gi, GraphInterface& tcgi);
-
 void export_components();
+void export_dists();
+void export_all_dists();
 
 BOOST_PYTHON_MODULE(libgraph_tool_topology)
 {
@@ -48,4 +44,6 @@ BOOST_PYTHON_MODULE(libgraph_tool_topology)
     def("dominator_tree", &dominator_tree);
     def("transitive_closure", &transitive_closure);
     export_components();
+    export_dists();
+    export_all_dists();
 }
