@@ -26,8 +26,12 @@ except ImportError:
     raise libgraph_tool_core.raise_error\
           ("You need to have scipy installed to use 'run_action'.")
 
+
+# sys.path can be dirty and in unicode! :-p
+sys_path = [str(d) for d in sys.path if os.path.isdir(d)]
+
 prefix = None
-for d in [d + "/graph_tool" for d in sys.path]:
+for d in [p + "/graph_tool" for p in sys_path]:
     if os.path.exists(d):
         prefix = d
         break
@@ -243,7 +247,7 @@ def inline(code, arg_names=[], local_dict=None,
                                 auto_downcast=auto_downcast,
                                 support_code=support_code,
                                 libraries=libraries,
-                                library_dirs=sys.path + library_dirs,
+                                library_dirs=sys_path + library_dirs,
                                 extra_compile_args=compile_args,
                                 runtime_library_dirs=runtime_library_dirs,
                                 extra_objects=extra_objects,
