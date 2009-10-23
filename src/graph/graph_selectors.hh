@@ -370,11 +370,13 @@ typedef property_map_types::apply<floating_types,
     vertex_floating_properties;
 
 typedef property_map_types::apply<scalar_vector_types,
-                                  GraphInterface::vertex_index_map_t>::type
+                                  GraphInterface::vertex_index_map_t,
+                                  mpl::bool_<false> >::type
     vertex_scalar_vector_properties;
 
 typedef property_map_types::apply<integer_vector_types,
-                                  GraphInterface::vertex_index_map_t>::type
+                                  GraphInterface::vertex_index_map_t,
+                                  mpl::bool_<false> >::type
     vertex_integer_vector_properties;
 
 typedef property_map_types::apply<floating_vector_types,
@@ -401,11 +403,13 @@ typedef property_map_types::apply<floating_types,
     edge_floating_properties;
 
 typedef property_map_types::apply<scalar_vector_types,
-                                  GraphInterface::edge_index_map_t>::type
+                                  GraphInterface::edge_index_map_t,
+                                  mpl::bool_<false> >::type
     edge_scalar_vector_properties;
 
 typedef property_map_types::apply<integer_vector_types,
-                                  GraphInterface::edge_index_map_t>::type
+                                  GraphInterface::edge_index_map_t,
+                                  mpl::bool_<false> >::type
     edge_integer_vector_properties;
 
 typedef property_map_types::apply<floating_vector_types,
