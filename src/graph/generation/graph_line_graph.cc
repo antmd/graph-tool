@@ -22,8 +22,6 @@
 #include <tr1/unordered_set>
 #include <iostream>
 #include <iomanip>
-#include <boost/graph/graphviz.hpp>
-#include <boost/graph/graphml.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
