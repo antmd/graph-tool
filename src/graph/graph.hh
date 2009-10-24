@@ -24,7 +24,6 @@
 #include <boost/graph/adjacency_list.hpp>
 
 #include "fast_vector_property_map.hh"
-#include <boost/dynamic_property_map.hpp>
 #include <boost/variant.hpp>
 #include <boost/python/object.hpp>
 #include <boost/python/dict.hpp>

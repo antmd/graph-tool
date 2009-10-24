@@ -32,7 +32,7 @@
 #ifndef FAST_VECTOR_PROPERTY_MAP_HH
 #define FAST_VECTOR_PROPERTY_MAP_HH
 
-#include <boost/property_map.hpp>
+#include <boost/property_map/property_map.hpp>
 #include <boost/shared_ptr.hpp>
 #include <vector>
 

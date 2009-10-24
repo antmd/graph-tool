@@ -26,7 +26,6 @@
 #include <boost/mpl/find.hpp>
 #include <boost/mpl/not.hpp>
 #include <boost/mpl/logical.hpp>
-#include <boost/dynamic_property_map.hpp>
 
 #include "graph_adaptor.hh"
 #include "graph_properties.hh"

@@ -24,8 +24,8 @@
 #include <tr1/memory>
 #include <boost/python/object.hpp>
 
-#include <boost/property_map.hpp>
-#include <boost/dynamic_property_map.hpp>
+#include <boost/property_map/property_map.hpp>
+#include <boost/property_map/dynamic_property_map.hpp>
 #include "fast_vector_property_map.hh"
 #include <boost/functional/hash.hpp>
 #include <boost/mpl/vector.hpp>

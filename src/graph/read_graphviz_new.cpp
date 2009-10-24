@@ -27,7 +27,7 @@
 
 #include <boost/ref.hpp>
 #include <boost/function/function2.hpp>
-#include <boost/dynamic_property_map.hpp>
+#include <boost/property_map/dynamic_property_map.hpp>
 #include <boost/graph/graph_traits.hpp>
 #include <boost/detail/workaround.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
