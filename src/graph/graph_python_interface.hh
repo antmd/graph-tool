@@ -249,11 +249,9 @@ public:
         if (_g().ptr() == Py_None)
             return false;
         GraphInterface& gi = python::extract<GraphInterface&>(_g());
-        return _valid &&
-            (gi._vertex_index[target(_e, gi._mg)] < num_vertices(gi._mg)) &&
-            (gi._vertex_index[source(_e, gi._mg)] < num_vertices(gi._mg)) &&
-            (target(_e, gi._mg) != graph_traits<Graph>::null_vertex()) &&
-            (source(_e, gi._mg) != graph_traits<Graph>::null_vertex());
+        GraphInterface::edge_t e(_e);
+        return (_valid && PythonVertex(_g, source(e, gi._mg)).IsValid() &&
+                PythonVertex(_g, target(e, gi._mg)).IsValid());
     }
 
     void SetValid(bool valid)
@@ -263,7 +261,7 @@ public:
 
     void CheckValid() const
     {
-        if (!_valid)
+        if (!IsValid())
             throw ValueException("invalid edge descriptor");
     }
 
