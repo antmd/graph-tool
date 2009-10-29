@@ -426,7 +426,8 @@ def absolute_trust(g, trust_map, source = None, vprop=None, n_paths=10000,
         Vector vertex property map where the values of trust for each source
         must be stored.
     n_paths : int, optimal (default: 10000)
-        Maximum number of paths to consider.
+        Number of paths  (per source vertex) with largest weights to
+        consider. When all these paths have been found, the algorithm stops.
     reversed : bool, optional (default: False)
         Calculates the "reversed" trust instead: The direction of the edges are
         inverted, but the path weighting is preserved in the original direction
@@ -464,13 +465,11 @@ def absolute_trust(g, trust_map, source = None, vprop=None, n_paths=10000,
 
     .. math::
 
-       w_{\{i\to j\}} = \prod_{e\in \{i\to j\}}\frac{c_e}{\Gamma^+_{\{i\to j\}}(s(e))}
-                        \{c_e(1-\delta_{t(e),j}) + \delta_{t(e),j}},
+       w_{\{i\to j\}} = \prod_{e\in \{i\to j\}}\{c_e(1-\delta_{t(e),j}) +
+                                                 \delta_{t(e),j}},
 
     such that the direct trust of the last edge on the path is not
-    considered. The value :math:`\Gamma^+_{\{i\to j\}}(s(e))` is the sum of
-    trust values of the selected out-edges of vertex :math:`s(e)`, which also
-    belong to the set of edge-disjoint of paths from i to j.
+    considered.
 
     The algorithm measures the absolute trust by following all vertex-disjoint
     paths, and keeping them on a priority queue. Each iteration the path with
