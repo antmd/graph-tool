@@ -102,9 +102,8 @@ def vertex_hist(g, deg, bins=[1], float_count=True):
     >>> seed(42)
     >>> g = gt.random_graph(1000, lambda: (poisson(5), poisson(5)))
     >>> print gt.vertex_hist(g, "out")
-    [array([   8.,   33.,  100.,  141.,  167.,  165.,  142.,  114.,   76.,
-             25.,   21.,    7.,    0.,    1.]), array([ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13], dtype=uint64)]
-
+    [array([  10.,   30.,   86.,  138.,  166.,  154.,  146.,  129.,   68.,
+             36.,   23.,    8.,    3.,    2.,    0.,    1.]), array([ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15], dtype=uint64)]
     """
 
     ret = libgraph_tool_stats.\
@@ -206,7 +205,7 @@ def vertex_average(g, deg):
     >>> seed(42)
     >>> g = gt.random_graph(1000, lambda: (poisson(5), poisson(5)))
     >>> print gt.vertex_average(g, "in")
-    (4.9320000000000004, 0.067833443079354308)
+    (5.0919999999999996, 0.071885575743677543)
     """
 
     ret = libgraph_tool_stats.\
@@ -358,7 +357,7 @@ def distance_histogram(g, weight=None, bins=[1], samples=None,
     [array([    0.,   300.,   862.,  2147.,  3766.,  2588.,   237.]), array([0, 1, 2, 3, 4, 5, 6], dtype=uint64)]
     >>> hist = gt.distance_histogram(g, samples=10)
     >>> print hist
-    [array([   0.,   30.,   87.,  219.,  375.,  255.,   24.]), array([0, 1, 2, 3, 4, 5, 6], dtype=uint64)]
+    [array([   0.,   30.,   84.,  210.,  375.,  264.,   27.]), array([0, 1, 2, 3, 4, 5, 6], dtype=uint64)]
     """
     if samples != None:
         seed = numpy.random.randint(0, sys.maxint)
