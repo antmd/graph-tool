@@ -518,9 +518,9 @@ class Graph(object):
 
     def clear_vertex(self, vertex):
         """Remove all in and out-edges from the given vertex."""
-        del_es = []
+        del_es = set()
         for e in vertex.all_edges():
-            del_es.append(e)
+            del_es.add(e)
         for e in del_es:
             self.remove_edge(e)
 
