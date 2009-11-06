@@ -264,7 +264,7 @@ def kolmogorov_max_flow(g, source, target, capacity, residual=None):
     The algorithm is defined in [kolmogorov-graph-2003]_ and
     [boykov-experimental-2004]_. The worst case complexity is
     :math:`O(EV^2|C|)`, where :math:`|C|` is the minimum cut (but typically
-    perfomrs much better).
+    performs much better).
 
     For a more detailed description, see [boost-kolmogorov]_.
 

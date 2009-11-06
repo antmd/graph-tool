@@ -466,7 +466,7 @@ def absolute_trust(g, trust_map, source = None, vprop=None, n_paths=10000,
     .. math::
 
        w_{\{i\to j\}} = \prod_{e\in \{i\to j\}}\{c_e(1-\delta_{t(e),j}) +
-                                                 \delta_{t(e),j}},
+                                                 \delta_{t(e),j}\},
 
     such that the direct trust of the last edge on the path is not
     considered.

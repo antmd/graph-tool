@@ -2,7 +2,7 @@ graph-tool -- a general graph measurement and manipulation python module
 =========================================================================
 
 This is graph-tool, a python module which contains general graph
-measurements data structures andalgorithms, such as degree or
+measurements data structures and algorithms, such as degree or
 properties distributions, degree or properties correlations,
 clustering, graph filtering, graph layout, and more, as well as a
 random graph generation routine. For more information and
