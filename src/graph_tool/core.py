@@ -212,9 +212,11 @@ def _check_prop_scalar(prop, name=None, floating=False):
                          (((" '%s'" % name) if name != None else ""),
                           (" floating" if floating else "")))
 
-def _check_prop_vector(prop, name=None, floating=False):
+def _check_prop_vector(prop, name=None, scalar=True, floating=False):
     scalars = ["bool", "int32_t", "int64_t", "unsigned long",
                "double", "long double"]
+    if not scalar:
+        scalars += ["string"]
     if floating:
         scalars = ["double", "long double"]
     vals = ["vector<%s>" % v for v in scalars]
@@ -274,7 +276,7 @@ def group_vector_property(g, props, value_type=None, vprop=None, pos=None):
         else:
             ValueError("Can't automatically determine property map value" +
                        " type. Please provide the 'value_type' parameter.")
-    _check_prop_vector(vprop, name="vprop")
+    _check_prop_vector(vprop, name="vprop", scalar=False)
 
     for i,p in enumerate(props):
         if k != "g":
@@ -314,7 +316,7 @@ def ungroup_vector_property(g, vprop, pos, props=None):
        A list of property maps with the ungrouped values of ``vprop``.
     """
 
-    _check_prop_vector(vprop, name="vprop")
+    _check_prop_vector(vprop, name="vprop", scalar=False)
     k = vprop.key_type()
     value_type = vprop.value_type().split("<")[1].split(">")[0]
     if props == None:
@@ -456,7 +458,7 @@ class Graph(object):
             f += ", vertices filtered by %s" % (str(self.get_vertex_filter()))
         n = self.num_vertices()
         e = self.num_edges()
-        return "<Graph object, %s%s, with %d %s and %d edge%s,%s at 0x%x>"\
+        return "<Graph object, %s%s, with %d %s and %d edge%s%s at 0x%x>"\
                % (d, fr, n, "vertex" if n == 1 else "vertices", e,
                   "" if e == 1 else "s", f, id(self))
 
