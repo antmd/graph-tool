@@ -536,7 +536,8 @@ def absolute_trust(g, trust_map, source = None, vprop=None, n_paths=10000,
             g.pop_filter(reversed=True)
 
     if source != -1:
-        vprop_temp.a = numpy.array(vprop[g.vertex(source)])
+        n = len(vprop[g.vertex(source)])
+        vprop_temp.a[:n] = numpy.array(vprop[g.vertex(source)])
         vprop = vprop_temp
 
     return vprop

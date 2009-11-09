@@ -119,6 +119,7 @@ struct get_absolute_trust
                     size_t bi = final_queue.bottom();
                     final_queue.pop_bottom();
 
+                    // do not augment if the path is the removed bottom
                     if (bi == pi)
                         continue;
                 }
@@ -152,7 +153,8 @@ struct get_absolute_trust
                             get<0>(np).first *= c[*e];
                         }
                         weight_sum[a] += get<0>(np).second;
-                        t[v][a] +=  get<0>(np).second*get<0>(np).first;
+                        t[v][vertex_index[a]] +=
+                            get<0>(np).second*get<0>(np).first;
 
                         get<1>(np).insert(a);
                         get<2>(np).push_back(*e);
