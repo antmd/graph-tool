@@ -384,14 +384,15 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
                 gv.setv(n, k, str(val[v]))
             else:
                 gv.setv(n, k, str(val))
-        nodes[g.vertex_index[v]] = n
+        nodes[v] = n
 
     for e in g.edges():
-        ge = gv.edge(nodes[g.vertex_index[e.source()]],
-                     nodes[g.vertex_index[e.target()]])
+        ge = gv.edge(nodes[e.source()],
+                     nodes[e.target()])
         gv.setv(ge, "arrowsize", "0.3")
         if g.is_directed():
             gv.setv(ge, "arrowhead", "vee")
+
         # apply color
         if ecolor != None:
             if isinstance(ecolor,str):
@@ -430,8 +431,8 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
     for n, n_gv in nodes.iteritems():
         p = gv.getv(n_gv, "pos")
         p = p.split(",")
-        pos[0][g.vertex(n)] = float(p[0])
-        pos[1][g.vertex(n)] = float(p[1])
+        pos[0][n] = float(p[0])
+        pos[1][n] = float(p[1])
 
     if output_format == "auto":
         if output == "":
