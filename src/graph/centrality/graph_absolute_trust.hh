@@ -56,11 +56,14 @@ struct path_cmp
 
 struct get_absolute_trust
 {
+    get_absolute_trust(int64_t source, double gamma, size_t n_paths,
+                       bool reversed)
+        : source(source), gamma(gamma), n_paths(n_paths), reversed(reversed) {}
+
     template <class Graph, class VertexIndex, class EdgeIndex, class TrustMap,
               class InferredTrustMap>
     void operator()(Graph& g, VertexIndex vertex_index, EdgeIndex edge_index,
-                    size_t max_edge_index, int64_t source, TrustMap c,
-                    InferredTrustMap t, size_t n_paths, bool reversed) const
+                    size_t max_edge_index, TrustMap c, InferredTrustMap t) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
@@ -152,9 +155,10 @@ struct get_absolute_trust
                                 get<0>(np).second *= c[*e];
                             get<0>(np).first *= c[*e];
                         }
-                        weight_sum[a] += get<0>(np).second;
-                        t[v][vertex_index[a]] +=
-                            get<0>(np).second*get<0>(np).first;
+
+                        t_type w = pow(get<0>(np).second, gamma);
+                        weight_sum[a] += w;
+                        t[v][vertex_index[a]] += w * get<0>(np).first;
 
                         get<1>(np).insert(a);
                         get<2>(np).push_back(*e);
@@ -186,6 +190,10 @@ struct get_absolute_trust
         }
     }
 
+    int64_t source;
+    double gamma;
+    size_t n_paths;
+    bool reversed;
 };
 
 }
