@@ -56,14 +56,11 @@ struct path_cmp
 
 struct get_absolute_trust
 {
-    get_absolute_trust(int64_t source, double gamma, size_t n_paths,
-                       bool reversed)
-        : source(source), gamma(gamma), n_paths(n_paths), reversed(reversed) {}
-
     template <class Graph, class VertexIndex, class EdgeIndex, class TrustMap,
               class InferredTrustMap>
     void operator()(Graph& g, VertexIndex vertex_index, EdgeIndex edge_index,
-                    size_t max_edge_index, TrustMap c, InferredTrustMap t) const
+                    size_t max_edge_index, int64_t source, TrustMap c,
+                    InferredTrustMap t, size_t n_paths, bool reversed) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
@@ -92,12 +89,14 @@ struct get_absolute_trust
             get<1>(paths.back()).insert(v);
             queue.push(0);
 
-            // this is the queue with paths with maximum weights
+            // this is the actual queue of paths which will be used to compute
+            // the trust values
             queue_t final_queue = queue_t(path_cmp<path_t>(paths));
 
-            // sum of weights that lead to a given vertex
-            unchecked_vector_property_map<t_type, VertexIndex>
-                weight_sum(vertex_index, num_vertices(g));
+            // store all paths which reach a given vertex
+            unchecked_vector_property_map<tr1::unordered_set<size_t>,
+                                          VertexIndex>
+                path_map(vertex_index, num_vertices(g));
 
             while (!queue.empty())
             {
@@ -110,6 +109,9 @@ struct get_absolute_trust
                 {
                     w = target(get<2>(paths[pi]).back(), g);
                     final_queue.push(pi);
+
+                    // augment path map
+                    path_map[target(get<2>(paths[pi]).back(),g)].insert(pi);
                 }
                 else
                 {
@@ -122,7 +124,10 @@ struct get_absolute_trust
                     size_t bi = final_queue.bottom();
                     final_queue.pop_bottom();
 
-                    // do not augment if the path is the removed bottom
+                    // remove path from path map
+                    path_map[boost::target(get<2>(paths[bi]).back(),g)].
+                        erase(bi);
+
                     if (bi == pi)
                         continue;
                 }
@@ -135,44 +140,152 @@ struct get_absolute_trust
                     // no loops
                     if (get<1>(paths[pi]).find(a) == get<1>(paths[pi]).end())
                     {
-                        size_t npi;
-                        paths.push_back(paths[pi]); // clone last path
-                        npi = paths.size()-1;
-
-                        path_t& np = paths[npi]; // new path
-
-                        if (!reversed)
+                        // only follow non-zero paths
+                        if (c[*e] > 0 || (reversed &&
+                                          get<1>(paths[pi]).size() == 1))
                         {
-                            // path weight
-                            get<0>(np).second = get<0>(np).first;
+                            size_t npi;
+                            paths.push_back(paths[pi]); // clone last path
+                            npi = paths.size()-1;
 
-                            // path value
-                            get<0>(np).first *= c[*e];
+                            path_t& np = paths[npi]; // new path
+
+                            if (!reversed)
+                            {
+                                // path weight
+                                get<0>(np).second = get<0>(np).first;
+
+                                // path value
+                                get<0>(np).first *= c[*e];
+                            }
+                            else
+                            {
+                                if (get<1>(np).size() > 1)
+                                    get<0>(np).second *= c[*e];
+                                get<0>(np).first *= c[*e];
+                            }
+                            get<1>(np).insert(a);
+                            get<2>(np).push_back(*e);
+
+                            // keep following paths only if there is a chance
+                            // they will make it into the final queue
+                            if ((n_paths > 0 && final_queue.size() < n_paths) ||
+                                (final_queue.size() == 0 ||
+                                 (get<0>(np).second >=
+                                  get<0>(paths[final_queue.bottom()]).second)))
+                                queue.push(npi);
+                            else
+                                paths.pop_back();
                         }
-                        else
-                        {
-                            if (get<1>(np).size() > 1)
-                                get<0>(np).second *= c[*e];
-                            get<0>(np).first *= c[*e];
-                        }
-
-                        t_type w = pow(get<0>(np).second, gamma);
-                        weight_sum[a] += w;
-                        t[v][vertex_index[a]] += w * get<0>(np).first;
-
-                        get<1>(np).insert(a);
-                        get<2>(np).push_back(*e);
-
-                        // keep following paths only if there is a chance
-                        // they will make it into the final queue
-                        if ((n_paths > 0 && final_queue.size() < n_paths) ||
-                            (final_queue.size() == 0 ||
-                             (get<0>(np).second >=
-                              get<0>(paths[final_queue.bottom()]).second)))
-                            queue.push(npi);
-                        else
-                            paths.pop_back();
                     }
+                }
+            }
+
+            unchecked_vector_property_map<t_type, VertexIndex>
+                weight_sum(vertex_index, num_vertices(g));
+
+            // paths which were already calculated and can be skipped
+            tr1::unordered_set<size_t> skip;
+
+            // calculate trust from paths in the final queue
+            while (!final_queue.empty())
+            {
+                size_t pi = final_queue.top();
+                final_queue.pop_top();
+                path_t& p = paths[pi];
+
+                if (skip.find(pi) != skip.end())
+                    continue;
+
+                tr1::unordered_set<size_t>& apaths =
+                    path_map[target(get<2>(p).back(), g)]; // all paths with the
+                                                           // same final target
+
+                tr1::unordered_set<size_t> vlist; // all vertices involved
+
+                // compute cumulative edge weight
+                unchecked_vector_property_map
+                    <tr1::unordered_map<vertex_t, t_type>, EdgeIndex>
+                    cum_weight(edge_index, max_edge_index+1);
+
+                for (typeof(apaths.begin()) iter = apaths.begin();
+                     iter != apaths.end(); ++iter)
+                {
+                    size_t path_size = get<2>(paths[*iter]).size();
+                    vertex_t ptarget = target(get<2>(paths[*iter]).back(),g);
+                    t_type w = 1;
+                    for (size_t j = 0; j < path_size; ++j)
+                    {
+                        edge_t e = get<2>(paths[*iter])[path_size - 1 - j];
+                        if (!reversed && j < path_size - 1)
+                            w *= c[e];
+                        if (reversed && j > 0)
+                            w *= c[e];
+                        cum_weight[e][ptarget] += w;
+                        vlist.insert(target(e,g));
+                    }
+                    vlist.insert(boost::source(get<2>(paths[*iter]).front(),g));
+                }
+
+                // compute out-weight
+                unchecked_vector_property_map
+                    <tr1::unordered_map<vertex_t, t_type>, VertexIndex>
+                    out_weight(vertex_index, num_vertices(g));
+                for (typeof(vlist.begin()) viter = vlist.begin();
+                     viter != vlist.end(); ++viter)
+                {
+                    vertex_t u = *viter;
+                    if (!reversed)
+                    {
+                        typename graph_traits<Graph>::out_edge_iterator e,e_end;
+                        for (tie(e, e_end) = out_edges(u, g); e != e_end; ++e)
+                            for (typeof(cum_weight[*e].begin()) witer =
+                                     cum_weight[*e].begin();
+                                 witer != cum_weight[*e].end(); ++witer)
+                                out_weight[u][witer->first] += witer->second;
+                    }
+                    else
+                    {
+                        // if reversed, use "in-trust" instead
+                        typename in_edge_iteratorS<Graph>::type e, e_end;
+                        for (tie(e, e_end) =
+                                 in_edge_iteratorS<Graph>::get_edges(v, g);
+                             e != e_end; ++e)
+                            for (typeof(cum_weight[*e].begin()) witer =
+                                     cum_weight[*e].begin();
+                                 witer != cum_weight[*e].end(); ++witer)
+                                out_weight[u][witer->first] += witer->second;
+                    }
+                }
+
+                for (typeof(apaths.begin()) iter = apaths.begin();
+                     iter != apaths.end(); ++iter)
+                {
+                    size_t pi = *iter;
+                    path_t& p = paths[pi];
+                    vertex_t ptarget = target(get<2>(paths[*iter]).back(),g);
+
+                    // calculate the trust value and weight of the path
+                    t_type w = 1, val = 1;
+                    for (size_t i = 0; i < get<2>(p).size(); ++i)
+                    {
+                        edge_t e = get<2>(p)[i];
+                        vertex_t u = (!reversed) ?
+                            boost::source(e,g) : target(e,g);
+                        if (out_weight[u][ptarget] > 0)
+                        {
+                            if ((!reversed && i < get<2>(p).size()-1) ||
+                                (reversed && i > 0))
+                                w *= c[e]*cum_weight[e][ptarget]/
+                                    out_weight[u][ptarget];
+                        }
+                        val *= c[e];
+                    }
+                    vertex_t u = target(get<2>(p).back(), g);
+                    weight_sum[u] += w;
+                    t[v][u] += w*val;
+
+                    skip.insert(pi);
                 }
             }
 
@@ -190,10 +303,6 @@ struct get_absolute_trust
         }
     }
 
-    int64_t source;
-    double gamma;
-    size_t n_paths;
-    bool reversed;
 };
 
 }
