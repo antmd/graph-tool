@@ -29,7 +29,8 @@ using namespace boost;
 using namespace graph_tool;
 
 void absolute_trust(GraphInterface& g, int64_t source, boost::any c,
-                    boost::any t, size_t n_paths, bool reversed)
+                    boost::any t, size_t n_paths, size_t n_paths_vertex,
+                    double epsilon, bool reversed)
 {
     if (!belongs<edge_floating_properties>()(c))
         throw ValueException("edge property must be of floating point value type");
@@ -38,9 +39,9 @@ void absolute_trust(GraphInterface& g, int64_t source, boost::any c,
 
     run_action<>()(g,
                    bind<void>(get_absolute_trust(), _1, g.GetVertexIndex(),
-                              g.GetEdgeIndex(), g.GetMaxEdgeIndex(),
-                              source, _2, _3, n_paths, reversed),
-                   edge_floating_properties(),
+                              g.GetEdgeIndex(), g.GetMaxEdgeIndex(), source, _2,
+                              _3, make_tuple(n_paths, n_paths_vertex, epsilon),
+                              reversed), edge_floating_properties(),
                    vertex_floating_vector_properties())(c, t);
 }
 

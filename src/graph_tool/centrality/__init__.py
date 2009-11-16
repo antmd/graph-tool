@@ -407,7 +407,7 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epslon=1e-6, max_iter=0,
         return vprop
 
 def absolute_trust(g, trust_map, source = None, vprop=None, n_paths=10000,
-                   reversed=False):
+                   n_paths_vertex=10, epsilon = 0, reversed=False):
     r"""
     Calculate the absolute trust centrality of each vertex in the graph, from a
     given source.
@@ -540,7 +540,8 @@ def absolute_trust(g, trust_map, source = None, vprop=None, n_paths=10000,
         libgraph_tool_centrality.\
                 get_absolute_trust(g._Graph__graph, source,
                                    _prop("e", g, trust_map),
-                                   _prop("v", g, vprop), n_paths, reversed)
+                                   _prop("v", g, vprop), n_paths,
+                                   n_paths_vertex, epsilon, reversed)
     finally:
         if reversed:
             g.pop_filter(reversed=True)
