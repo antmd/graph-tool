@@ -406,8 +406,7 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epslon=1e-6, max_iter=0,
     else:
         return vprop
 
-def absolute_trust(g, trust_map, source = None, vprop=None, n_paths=10000,
-                   n_paths_vertex=10, epsilon = 0, reversed=False):
+def absolute_trust(g, trust_map, source, target = None, vprop=None):
     r"""
     Calculate the absolute trust centrality of each vertex in the graph, from a
     given source.
@@ -419,29 +418,23 @@ def absolute_trust(g, trust_map, source = None, vprop=None, n_paths=10000,
     trust_map : :class:`~graph_tool.PropertyMap`
         Edge property map with the values of trust associated with each
         edge. The values must lie in the range [0,1].
-    source : Vertex (optional, default: None)
-        A vertex which is used the as the source for gathering trust values. If
-        left unspecified, the trust values for all sources are computed.
+    source : Vertex
+        A vertex which is used the as the source for gathering trust values.
+    target : Vertex (optional, default: None)
+        A vertex which is used the as the only target for which the trust value
+        will be calculated. If left unspecified, the trust values for all
+        targets are computed.
     vprop : :class:`~graph_tool.PropertyMap`, optional (default: None)
-        Vector vertex property map where the values of trust for each source
+        A vertex property map where the values of trust for each source
         must be stored.
-    n_paths : int, optimal (default: 10000)
-        Maximum number of paths to consider.
-    reversed : bool, optional (default: False)
-        Calculates the "reversed" trust instead: The direction of the edges are
-        inverted, but the path weighting is preserved in the original direction
-        (see Notes below).
 
     Returns
     -------
-    absolute_trust : :class:`~graph_tool.PropertyMap`
+    absolute_trust : :class:`~graph_tool.PropertyMap` or float
         A vertex property map containing the absolute trust vector from the
-        corresponding vertex to the rest of the network. Each element i of the
-        vector is the trust value of the vertex with index i, from the given
-        vertex.
-
-        If the parameter "source" is specified, the values of the
-        property map are scalars, instead of vectors.
+        source vertex to the rest of the network. If `target` is specified, the
+        result is a single float, with the corresponding trust value for the
+        target.
 
     See Also
     --------
@@ -455,28 +448,23 @@ def absolute_trust(g, trust_map, source = None, vprop=None, n_paths=10000,
 
     .. math::
 
-        t_{ij} = \frac{1}{\sum_{\{i\to j\}}w_{\{i\to j\}}}\sum_{\{i\to j\}}
-                 w_{\{i\to j\}} \prod_{e\in \{i\to j\}}c_e
+        t_{ij} = \frac{\sum_m A_{m,j} w^2_{G\setminus\{j\}}(i\to m)c_{m,j}}
+                 {\sum_m A_{m,j} w_{G\setminus\{j\}}(i\to m)}
 
-    where the sum is taken over all paths from i to j (without loops),
-    :math:`c_e` is the direct trust value associated with edge e, and
-    :math:`w_{\{i\to j\}}` is the weight of a given path, which is defined as
+    where :math:`A_{ij}` is the adjacency matrix, :math:`c_{ij}` is the direct
+    trust from i to j, and :math:`w_G(i\to j)` is the weight of the path with
+    maximum weight from i to j, computed as
 
     .. math::
 
-       w_{\{i\to j\}} = \prod_{e\in \{i\to j\}}\frac{c_e}{\Gamma^+_{\{i\to j\}}(s(e))}
-                        \{c_e(1-\delta_{t(e),j}) + \delta_{t(e),j}},
+       w_G(i\to j) = \prod_{e\in i\to j} c_e.
 
-    such that the direct trust of the last edge on the path is not
-    considered. The value :math:`\Gamma^+_{\{i\to j\}}(s(e))` is the sum of
-    trust values of the selected out-edges of vertex :math:`s(e)`, which also
-    belong to the set of edge-disjoint of paths from i to j.
-
-    The algorithm measures the absolute trust by following all vertex-disjoint
-    paths, and keeping them on a priority queue. Each iteration the path with
-    maximum weight is augmented, and the new paths pushed into the queue. The
-    algorithm stops when all paths are consumed, or when the all the ``n_paths``
-    paths with largest weights are found.
+    The algorithm measures the absolute trust by finding the paths with maximum
+    weight, using Dijkstra's algorithm, to all in-neighbours of a given
+    target. This search needs to be performed repeatedly for every target, since
+    it needs to be removed from the graph first. The resulting complexity is
+    therefore :math:`O(N^2\log N)` for all targets, and :math:`O(N\log N)` for a
+    single target.
 
     If enabled during compilation, this algorithm runs in parallel.
 
@@ -486,70 +474,42 @@ def absolute_trust(g, trust_map, source = None, vprop=None, n_paths=10000,
     >>> seed(42)
     >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
     >>> trust = g.new_edge_property("double")
-    >>> trust.get_array()[:] = random(g.num_edges())
+    >>> trust.a = random(g.num_edges())
     >>> t = gt.absolute_trust(g, trust, source=g.vertex(0))
     >>> print t.a
-    [  0.00000000e+00   5.14258135e-02   2.42874582e-04   1.05347472e-06
-       0.00000000e+00   3.13429149e-04   1.53697222e-04   3.83063399e-05
-       2.65668937e-06   2.04029901e-05   1.19582153e-05   2.67743821e-06
-       1.50606560e-04   1.51595650e-05   5.72684475e-05   2.16466381e-06
-       0.00000000e+00   4.08340061e-05   3.26896572e-06   7.80860267e-05
-       7.31033290e-05   7.81690832e-05   2.93440658e-04   1.19013202e-05
-       1.60601849e-06   6.79167712e-05   9.35414301e-05   1.98991248e-05
-       2.08142130e-05   1.28565785e-04   2.83893891e-03   8.45362053e-05
-       1.15751883e-05   1.97248846e-05   0.00000000e+00   7.51004486e-06
-       5.49704676e-07   0.00000000e+00   1.06219388e-04   9.64852468e-04
-       0.00000000e+00   4.70496027e-05   5.49108602e-05   6.23617670e-06
-       1.32625806e-06   7.35202433e-05   2.09546902e-06   1.99138155e-03
-       4.32934771e-06   2.61887887e-05   2.55099939e-05   3.90874553e-06
-       9.07765143e-05   2.59243068e-06   7.50032403e-06   8.36211398e-05
-       7.80814352e-04   8.12133072e-06   6.24066931e-04   2.19465770e-06
-       4.15039190e-05   5.41464668e-05   1.84421073e-03   8.02449156e-06
-       4.01472852e-06   3.76746767e-01   7.02886863e-05   1.52365123e-04
-       4.58687938e-06   3.70470973e-02   0.00000000e+00   1.85922960e-06
-       2.05481272e-05   1.41021895e-04   1.45217040e-06   3.18562543e-06
-       2.62264044e-01   7.41140347e-06   1.39150089e-05   3.86583428e-06
-       2.85681164e-06   4.12923146e-06   7.05705402e-07   2.12584322e-05
-       1.65948868e-04   3.10144404e-05   5.08749580e-06   0.00000000e+00
-       1.45435603e-03   4.19224443e-03   4.88198531e-05   3.00152848e-04
-       5.61591759e-05   2.31951396e-04   1.19051653e-05   2.34710286e-05
-       6.27636571e-04   1.65759606e-02   1.30944429e-05   1.26282526e-05]
-
+    [ 0.05927703  0.06133836  0.          0.05630559  0.          0.03317174
+      0.03488483  0.15920558  0.16940159  0.09716039  0.1485169   0.0120287
+      0.03787312  0.37284274  0.00646336  0.0084941   0.0379645   0.07997339
+      0.10733769  0.10053845  0.00283938  0.05224064  0.          0.16523684
+      0.0393326   0.25853808  0.14682555  0.03254906  0.12124144  0.0118341
+      0.18110839  0.18513216  0.05031324  0.04484457  0.17197674  0.08569659
+      0.17523371  0.22435776  0.33916191  0.07980329  0.          0.
+      0.09750183  0.09811054  0.14574289  0.0085499   0.34593499  0.03151408
+      0.083739    0.05409947  0.09161205  0.19921201  0.10647812  0.21597253
+      0.06266044  0.8738786   0.11239455  0.09493216  0.19073287  0.11968616
+      0.13409125  0.00626821  0.05857625  0.05917779  0.05673643  0.
+      0.02682173  0.00355514  0.17475858  0.15113517  0.13247358  0.
+      0.04003866  0.00997401  0.11126411  0.07400706  0.11247583  0.10125886
+      0.16028191  0.04300862  0.03259707  0.0225482   0.05538721  0.
+      0.06715919  0.0701153   0.02999368  0.04675702  0.06310919  0.01722603
+      0.18455906  0.08034113  0.00376382  0.10041304  0.3437539   0.10530238
+      0.11654855  0.09495419  0.05317485  0.10727767]
     """
 
     if vprop == None:
-        if source == None:
-            vprop = g.new_vertex_property("vector<double>")
-        else:
-            vprop = g.new_vertex_property("double")
+        vprop = g.new_vertex_property("double")
 
-    if source != None:
-        vprop_temp = vprop
-        vprop = g.new_vertex_property("vector<double>")
-        source = g.vertex_index[source]
+    source = g.vertex_index[source]
+
+    if target == None:
+        target = -1
     else:
-        source = -1
+        target = g.vertex_index[target]
 
-    if reversed:
-        g.stash_filter(reversed=True)
-
-    try:
-        if reversed:
-            g.set_reversed(True)
-
-        libgraph_tool_centrality.\
-                get_absolute_trust(g._Graph__graph, source,
-                                   _prop("e", g, trust_map),
-                                   _prop("v", g, vprop), n_paths,
-                                   n_paths_vertex, epsilon, reversed)
-    finally:
-        if reversed:
-            g.pop_filter(reversed=True)
-
-    if source != -1:
-        n = len(vprop[g.vertex(source)])
-        vprop_temp.a[:n] = numpy.array(vprop[g.vertex(source)])
-        vprop = vprop_temp
-
+    libgraph_tool_centrality.\
+            get_absolute_trust(g._Graph__graph, source, target,
+                               _prop("e", g, trust_map), _prop("v", g, vprop))
+    if target != -1:
+        return vprop.a[target]
     return vprop
 
