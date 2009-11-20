@@ -64,12 +64,12 @@ private:
     size_t _dist;
 };
 
-template <class DistMap, class PredMap>
+template <class DistMap>
 class djk_max_visitor:
     public boost::dijkstra_visitor<null_visitor>
 {
 public:
-    djk_max_visitor(DistMap dist_map, PredMap pred_map,
+    djk_max_visitor(DistMap dist_map,
                     typename property_traits<DistMap>::value_type max_dist)
         : _dist_map(dist_map), _max_dist(max_dist) {}
 
@@ -77,13 +77,16 @@ public:
     void examine_vertex(typename graph_traits<Graph>::vertex_descriptor u,
                         Graph& g)
     {
-        if (_dist_map[_pred_map[u]] >= _max_dist)
+        if (_dist_map[u] > _max_dist)
+        {
+            typedef typename property_traits<DistMap>::value_type d_type;
+            _dist_map[u] = numeric_limits<d_type>::max();
             throw stop_search();
+        }
     }
 
 private:
     DistMap _dist_map;
-    PredMap _pred_map;
     typename property_traits<DistMap>::value_type _max_dist;
 };
 
@@ -139,32 +142,14 @@ struct do_djk_search
         dist_t max_d = (max_dist > 0) ?
             max_dist : numeric_limits<dist_t>::max();
 
-        int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
-        for (i = 0; i < N; ++i)
-        {
-            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
-            if (v == graph_traits<Graph>::null_vertex())
-                continue;
-            dist_map[v] = numeric_limits<dist_t>::max();
-        }
-        dist_map[vertex(source,g)] = 0;
-        typedef unchecked_vector_property_map
-            <typename graph_traits<Graph>::vertex_descriptor, VertexIndexMap>
-            pred_map_t;
-        pred_map_t pred_map(vertex_index, num_vertices(g));
-        unchecked_vector_property_map<boost::default_color_type, VertexIndexMap>
-            color_map(vertex_index, num_vertices(g));
         try
         {
             dijkstra_shortest_paths(g, vertex(source, g),
-                                    visitor(djk_max_visitor<DistMap, pred_map_t>
-                                            (dist_map, pred_map, max_d)).
                                     weight_map(weight).
                                     distance_map(dist_map).
-                                    predecessor_map(pred_map).
                                     vertex_index_map(vertex_index).
-                                    color_map(color_map));
+                                    visitor(djk_max_visitor<DistMap>
+                                            (dist_map, max_d)));
         }
         catch (stop_search&) {}
     }
