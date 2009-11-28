@@ -481,9 +481,18 @@ class Graph(object):
         """
         return libcore.get_vertices(weakref.ref(self.__graph))
 
-    def vertex(self, i):
-        """Return the i-th vertex from the graph."""
-        return libcore.get_vertex(weakref.ref(self.__graph),int(i))
+    def vertex(self, i, use_index=False):
+        """Return the i-th vertex from the graph. If use_index=True, the vertex
+        with index i is returned (which can differ from the i-th vertex in case
+        of filtered graphs)."""
+        if use_index:
+            self.stash_filter(vertex=True)
+        try:
+            v = libcore.get_vertex(weakref.ref(self.__graph),int(i))
+        finally:
+            if use_index:
+                self.pop_filter(vertex=True)
+        return v
 
     def edges(self):
         """Return an iterator over the edges."""
