@@ -34,7 +34,7 @@ Contents
 ++++++++
 """
 
-import sys, os, os.path, time, warnings
+import sys, os, os.path, time, warnings, tempfile
 from .. core import _degree, _prop, PropertyMap, _check_prop_vector,\
      _check_prop_scalar, _check_prop_writable, group_vector_property,\
      ungroup_vector_property
@@ -53,6 +53,7 @@ except ImportError:
 try:
     import matplotlib.cm
     import matplotlib.colors
+    from pylab import imread
 except ImportError:
     warnings.warn("error importing matplotlib module... " + \
                   "graph_draw() will not work.", ImportWarning)
@@ -65,7 +66,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
                vprops={}, eprops={}, vcolor=None, ecolor=None,
                vcmap=matplotlib.cm.jet, vnorm=True, ecmap=matplotlib.cm.jet,
                enorm=True, output= "", output_format= "auto", returngv=False,
-               fork=False, seed=0):
+               fork=False, return_bitmap=False, seed=0):
     r"""Draw a graph using graphviz.
 
     Parameters
@@ -191,13 +192,13 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
     returngv : bool (default: False)
         Return the graph object used internally with the gv module.
     fork : bool (default: False)
-        If true, the program is forked before drawing. This is used as a
+        If True, the program is forked before drawing. This is used as a
         work-around for a bug in graphviz, where the exit() function is called,
         which would cause the calling program to end. This is always assumed
         'True', if output_format = 'xlib'.
-    seed : int (default: 0)
-        Seed for the random number generator. If the value 0, a different random
-        value is used each time.
+    return_bitmap : bool (default: False)
+        If True, a bitmap (:class:`~numpy.ndarray`) of the rendered graph is
+        returned.
 
     Returns
     -------
@@ -305,12 +306,8 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
     if maxiter != None:
         gv.setv(gvg,"maxiter", str(maxiter))
 
-    if seed == 0:
-        seed = numpy.random.randint(sys.maxint)
-    if type(seed) == int:
-        gv.setv(gvg, "start", "%d" % seed)
-    else:
-        gv.setv(gvg, "start", seed)
+    seed = numpy.random.randint(sys.maxint)
+    gv.setv(gvg, "start", "%d" % seed)
 
     # apply all user supplied properties
     for k,val in gprops.iteritems():
@@ -434,36 +431,53 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
         pos[0][n] = float(p[0])
         pos[1][n] = float(p[1])
 
-    if output_format == "auto":
-        if output == "":
-            output_format = "xlib"
-        elif output != None:
-            output_format = output.split(".")[-1]
-
-    # if using xlib we need to fork the process, otherwise good ol' graphviz
-    # will call exit() when the window is closed
-    if output_format == "xlib" or fork:
-        pid = os.fork()
-        if pid == 0:
-            gv.render(gvg, output_format, output)
-            os._exit(0) # since we forked, it's good to be sure
-        if output_format != "xlib":
-            os.wait()
-    elif output != None:
-        gv.render(gvg, output_format, output)
-
     # I don't get this, but it seems necessary
-    pos[0].get_array()[:] /= 100
-    pos[1].get_array()[:] /= 100
+    pos[0].a /= 100
+    pos[1].a /= 100
 
     pos = group_vector_property(g, pos)
 
+    if return_bitmap:
+        # This is a not-so-nice hack which obtains an image buffer from a png
+        # file. It is a pity that graphviz does not give access to its internal
+        # buffers.
+        tmp = tempfile.mkstemp(suffix=".png")[1]
+        gv.render(gvg, "png", tmp)
+        img = imread(tmp)
+        os.remove(tmp)
+    else:
+        if output_format == "auto":
+            if output == "":
+                output_format = "xlib"
+            elif output != None:
+                output_format = output.split(".")[-1]
+
+        # if using xlib we need to fork the process, otherwise good ol' graphviz
+        # will call exit() when the window is closed
+        if output_format == "xlib" or fork:
+            pid = os.fork()
+            if pid == 0:
+                gv.render(gvg, output_format, output)
+                os._exit(0) # since we forked, it's good to be sure
+            if output_format != "xlib":
+                os.wait()
+        elif output != None:
+            gv.render(gvg, output_format, output)
+
+    ret = [pos]
+    if return_bitmap:
+        ret.append(img)
+
     if returngv:
-        return pos, gv
+        ret.append(gv)
     else:
         gv.rm(gvg)
         del gvg
-        return pos
+
+    if len(ret) > 1:
+        return tuple(ret)
+    else:
+        return ret[0]
 
 def random_layout(g, shape=None, pos=None, dim=2):
     r"""Performs a random layout of the graph.
