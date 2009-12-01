@@ -253,10 +253,6 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
     self_loops : bool (optional, default: False)
         If True, self-loops are allowed.
 
-    Returns
-    -------
-    None
-
     See Also
     --------
     random_graph: random graph generation
