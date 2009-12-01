@@ -5,7 +5,7 @@ dnl An odd micro number indicates in-progress development.
 dnl An even micro number indicates a released version.
 m4_define(graph_tool_version_major, 2)
 m4_define(graph_tool_version_minor, 1)
-m4_define(graph_tool_version_micro, 1dev)
+m4_define(graph_tool_version_micro, 1)
 
 AC_INIT([graph-tool],
         [graph_tool_version_major().graph_tool_version_minor().graph_tool_version_micro()],
