@@ -31,6 +31,7 @@ Summary
    predecessor_tree
    line_graph
    graph_union
+   triangulation
 
 Contents
 ++++++++
@@ -39,11 +40,11 @@ Contents
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_generation")
 
-from .. core import Graph, _check_prop_scalar, _prop
+from .. core import Graph, _check_prop_scalar, _prop, _limit_args
 import sys, numpy, numpy.random
 
 __all__ = ["random_graph", "random_rewire", "predecessor_tree", "line_graph",
-           "graph_union"]
+           "graph_union", "triangulation"]
 
 def _corr_wrap(i, j, corr):
     return corr(i[1], j[1])
@@ -485,3 +486,97 @@ def graph_union(g1, g2, props=[], include=False):
         return g1, n_props
     else:
         return g1
+
+@_limit_args({"type":["simple", "delaunay"]})
+def triangulation(points, type="simple"):
+    r"""
+    Generate a 2D or 3D triangulation graph from a given point set.
+
+    Parameters
+    ----------
+    points : :class:`~numpy.ndarray`
+        Point set for the triangulation. It may be either a N x d array, where N
+        is the number of points, and d is the space dimension (either 2 or 3).
+    type : string (optional, default: 'simple')
+        Type of triangulation. May be either 'simple' or 'delaunay'.
+
+    Returns
+    -------
+    triangulation_graph : :class:`~graph_tool.Graph`
+        The generated graph.
+    pos : :class:`~graph_tool.PropertyMap`
+        Vertex property map with the Cartesian coordinates.
+
+    See Also
+    --------
+    random_graph: random graph generation
+
+    Notes
+    -----
+
+    A triangulation [cgal_triang]_ is division of the convex hull of a point set
+    into triangles, using only that set as triangle vertices.
+
+    In simple triangulations (`type="simple"`), the insertion of a point is done
+    by locating a face that contains the point, and splitting this face into
+    three new faces (the order of insertion is therefore important). If the
+    point falls outside the convex hull, the triangulation is restored by
+    flips. Apart from the location, insertion takes a time O(1). This bound is
+    only an amortized bound for points located outside the convex hull.
+
+    Delaunay triangulations (`type="delaunay"`) have the specific empty sphere
+    property, that is, the circumscribing sphere of each cell of such a
+    triangulation does not contain any other vertex of the triangulation in its
+    interior. These triangulations are uniquely defined except in degenerate
+    cases where five points are co-spherical. Note however that the CGAL
+    implementation computes a unique triangulation even in these cases.
+
+    Examples
+    --------
+    >>> from numpy.random import seed, random
+    >>> seed(42)
+    >>> points = random((500,2))
+    >>> for i in xrange(points.shape[0]):
+    ...     x,y = 1,1
+    ...     while sqrt(x**2 + y**2) > 0.5:
+    ...          x, y = random()-0.5, random()-0.5
+    ...     points[i,:] = [x,y]
+    >>> g, pos = gt.triangulation(points)
+    >>> b = gt.betweenness(g)
+    >>> gt.graph_draw(g, pos=pos, pin=True, size=(8,8), vsize=0.08, vcolor=b[0],
+    ...               ecolor=b[1], output="triang.png")
+    <...>
+    >>> g, pos = gt.triangulation(points, type="delaunay")
+    >>> b = gt.betweenness(g)
+    >>> gt.graph_draw(g, pos=pos, pin=True, size=(8,8), vsize=0.08, vcolor=b[0],
+    ...               ecolor=b[1], output="triang-delaunay.png")
+    <...>
+
+    2D triangulation of random points:
+
+    .. image:: triang.png
+    .. image:: triang-delaunay.png
+
+    *Left:* Simple triangulation. *Right:* Delaunay triangulation. The colors
+    correspond to the betweeness centrality.
+
+    References
+    ----------
+    .. [cgal_triang] http://www.cgal.org/Manual/last/doc_html/cgal_manual/Triangulation_3/Chapter_main.html
+
+    """
+
+    if points.shape[1] not in [2,3]:
+        raise ValueError("points array must have shape N x d, with d either 2 or 3.")
+    # copy points to ensure continuity and correct data type
+    points = numpy.array(points, dtype='float64')
+    if points.shape[1] == 2:
+        npoints = numpy.zeros((points.shape[0], 3))
+        npoints[:,:2] = points
+        points = npoints
+    g = Graph(directed=False)
+    pos = g.new_vertex_property("vector<double>")
+    libgraph_tool_generation.triangulation(g._Graph__graph, points,
+                                           _prop("v", g, pos), type)
+    return g, pos
+

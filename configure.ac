@@ -175,6 +175,11 @@ if test "$BOOST_GRAPH_LIB" = ""; then
 fi
 [CPPFLAGS="${CPPFLAGS} ${BOOST_CPPFLAGS}"]
 
+dnl CGAL
+AC_CHECK_LIB(CGAL,main)
+[CGAL_LIBADD="-lCGAL"]
+AC_SUBST(CGAL_LIBADD)
+
 dnl Checks for header files.
 
 dnl numpy
@@ -206,6 +211,11 @@ dnl expat
 AC_CHECK_HEADER([expat.h],
                 [],
                 [AC_MSG_ERROR([Expat header not found])])
+
+dnl cgal
+AC_CHECK_HEADER([CGAL/version.h],
+                [],
+                [AC_MSG_ERROR([CGAL headers not found])])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 dnl Checks for library functions.
