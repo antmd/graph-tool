@@ -128,4 +128,37 @@ python::object wrap_multi_array_not_owned(multi_array<ValueType,Dim>& array)
     return o;
 }
 
+// get multi_array_ref from numpy ndarrays
+
+struct invalid_numpy_conversion:
+    public std::exception
+{
+    string _error;
+public:
+    invalid_numpy_conversion(const string& error) {_error = error;}
+    ~invalid_numpy_conversion() throw () {}
+    const char * what () const throw () {return _error.c_str();}
+};
+
+template <class ValueType, size_t dim>
+multi_array_ref<ValueType,dim> get_array(python::object points)
+{
+    PyArrayObject* pa = (PyArrayObject*) points.ptr();
+
+    if (pa->nd != dim)
+        throw invalid_numpy_conversion("invalid array dimension!");
+
+    if (mpl::at<numpy_types,ValueType>::type::value != pa->descr->type_num)
+        throw invalid_numpy_conversion("invalid array value type!");
+
+    vector<size_t> shape(pa->nd);
+    for (int i = 0; i < pa->nd; ++i)
+        shape[i] = pa->dimensions[i];
+    if ((pa->flags ^ NPY_C_CONTIGUOUS) != 0)
+        return multi_array_ref<ValueType,dim>((ValueType *) pa->data, shape);
+    else
+        return multi_array_ref<ValueType,dim>((ValueType *) pa->data, shape,
+                                              fortran_storage_order());
+}
+
 #endif // NUMPY_BIND_HH
