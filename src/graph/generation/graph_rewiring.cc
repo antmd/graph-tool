@@ -33,17 +33,15 @@ void random_rewire(GraphInterface& gi, string strat, bool self_loops,
 {
     rng_t rng(static_cast<rng_t::result_type>(seed));
 
-    GraphInterface::edge_index_map_t edge_index =
-        any_cast<GraphInterface::edge_index_map_t>(gi.GetEdgeIndex());
     if (strat == "uncorrelated")
         run_action<graph_tool::detail::never_reversed>()
             (gi, bind<void>(graph_rewire<RandomRewireStrategy>(),
-                            _1, edge_index, ref(rng), self_loops,
+                            _1, gi.GetEdgeIndex(), ref(rng), self_loops,
                             parallel_edges))();
     else if (strat == "correlated")
         run_action<graph_tool::detail::never_reversed>()
             (gi, bind<void>(graph_rewire<CorrelatedRewireStrategy>(),
-                            _1, edge_index, ref(rng), self_loops,
+                            _1, gi.GetEdgeIndex(), ref(rng), self_loops,
                             parallel_edges))();
     else
         throw ValueException("invalid random rewire strategy: " + strat);
