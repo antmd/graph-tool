@@ -31,6 +31,8 @@ void get_prim_spanning_tree(GraphInterface& gi, size_t root,
 void topological_sort(GraphInterface& gi, vector<int32_t>& sort);
 void dominator_tree(GraphInterface& gi, size_t entry, boost::any pred_map);
 void transitive_closure(GraphInterface& gi, GraphInterface& tcgi);
+bool is_planar(GraphInterface& gi, boost::any embed_map, boost::any kur_map);
+
 void export_components();
 void export_dists();
 void export_all_dists();
@@ -43,6 +45,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_topology)
     def("topological_sort", &topological_sort);
     def("dominator_tree", &dominator_tree);
     def("transitive_closure", &transitive_closure);
+    def("is_planar", &is_planar);
     export_components();
     export_dists();
     export_all_dists();

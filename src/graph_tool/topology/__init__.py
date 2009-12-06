@@ -34,6 +34,7 @@ Summary
    transitive_closure
    label_components
    label_biconnected_components
+   is_planar
 
 Contents
 ++++++++
@@ -47,7 +48,7 @@ from .. core import _prop, Vector_int32_t, _check_prop_writable, \
 import random, sys, numpy
 __all__ = ["isomorphism", "min_spanning_tree", "dominator_tree",
            "topological_sort", "transitive_closure", "label_components",
-           "label_biconnected_components", "shortest_distance"]
+           "label_biconnected_components", "shortest_distance", "is_planar"]
 
 def isomorphism(g1, g2, isomap=False):
     """Check whether two graphs are isomorphisms. If `isomap` is True, a vertex
@@ -560,3 +561,100 @@ def shortest_distance(g, source=None, weights=None, max_dist=None,
         if directed != None:
             g.pop_filter(directed=True)
     return dist_map
+
+def is_planar(g, embedding=False, kuratowski=False):
+    """
+    Test if the graph is planar.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    embedding : bool (optional, default: False)
+        If true, return a mapping from vertices to the clockwise order of
+        out-edges in the planar embedding.
+    kuratowski : bool (optional, default: False)
+        If true, the minimal set of edges that form the obstructing Kuratowski
+        subgraph will be returned as a property map, if the graph is not planar.
+
+    Returns
+    -------
+    is_planar : bool
+        Whether or not the graph is planar.
+    embedding : :class:`~graph_tool.PropertyMap` (only if `embedding=True`)
+        A vertex property map with the out-edges indexes in clockwise order in
+        the planar embedding,
+    kuratowski : :class:`~graph_tool.PropertyMap` (only if `kuratowski=True`)
+        An edge property map with the minimal set of edges that form the
+        obstructing Kuratowski subgraph (if the value of kuratowski[e] is 1,
+        the edge belongs to the set)
+
+    Notes
+    -----
+
+    A graph is planar if it can be drawn in two-dimensional space without any of
+    its edges crossing. This algorithm performs the Boyer-Myrvold planarity
+    testing [boyer-myrvold]_. See [boost-planarity]_ for more details.
+
+    This algorithm runs in :math:`O(V)` time.
+
+    Examples
+    --------
+    >>> from numpy.random import seed, random
+    >>> seed(42)
+    >>> g = gt.triangulation(random((100,2)))[0]
+    >>> p, embed_order = gt.is_planar(g, embedding=True)
+    >>> print p
+    True
+    >>> print list(embed_order[g.vertex(0)])
+    [0, 3, 6, 17, 5, 13, 1, 20, 7, 23, 10, 22, 14, 2, 24, 8, 4, 15, 11, 12, 9, 18, 19, 21, 16]
+    >>> g = gt.random_graph(100, lambda: 4, directed=False)
+    >>> p, kur = gt.is_planar(g, kuratowski=True)
+    >>> print p
+    False
+    >>> g.set_edge_filter(kur, True)
+    >>> gt.graph_draw(g, layout="arf",  size=(6,6), output="kuratowski.png")
+    <...>
+
+    .. figure:: kuratowski.png
+        :align: center
+
+        Obstructing Kuratowski subgraph of a random graph.
+
+    References
+    ----------
+    .. [boyer-myrvold] John M. Boyer and Wendy J. Myrvold, "On the Cutting Edge:
+       Simplified O(n) Planarity by Edge Addition Journal of Graph Algorithms
+       and Applications", 8(2): 241-273, 2004.
+    .. [boost-planarity] http://www.boost.org/libs/graph/doc/boyer_myrvold.html
+    """
+
+    g.stash_filter(directed=True)
+    g.set_directed(False)
+
+    if embedding:
+        embed = g.new_vertex_property("vector<int>")
+    else:
+        embed = None
+
+    if kuratowski:
+        kur = g.new_edge_property("bool")
+    else:
+        kur = None
+
+    try:
+        is_planar = libgraph_tool_topology.is_planar(g._Graph__graph,
+                                                     _prop("v", g, embed),
+                                                     _prop("e", g, kur))
+    finally:
+        g.pop_filter(directed=True)
+
+    ret = [is_planar]
+    if embed != None:
+        ret.append(embed)
+    if kur != None:
+        ret.append(kur)
+    if len(ret) == 1:
+        return ret[0]
+    else:
+        return tuple(ret)
