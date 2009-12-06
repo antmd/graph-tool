@@ -185,7 +185,10 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
 
     Lets plot the average degree correlations to check.
 
-    >>> clf()
+    >>> figure(figsize=(6,3))
+    <...>
+    >>> axes([0.1,0.15,0.63,0.8])
+    <...>
     >>> corr = gt.avg_neighbour_corr(g, "in", "in")
     >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
     ...         label=r"$\left<\text{in}\right>$ vs in")
@@ -202,7 +205,7 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{out}\right>$ vs out")
     (...)
-    >>> legend(loc="best")
+    >>> legend(loc=(1.05,0.5))
     <...>
     >>> xlabel("source degree")
     <...>
@@ -269,11 +272,10 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
 
     Some small graphs for visualization.
 
-    >>> from numpy.random import zipf, seed
+    >>> from numpy.random import random, seed
     >>> from pylab import *
     >>> seed(42)
-    >>> g = gt.random_graph(1000, lambda: sample_k(10),
-    ...                     lambda i,j: exp(abs(i-j)), directed=False)
+    >>> g, pos = gt.triangulation(random((1000,2)))
     >>> gt.graph_draw(g, layout="arf", output="rewire_orig.png", size=(6,6))
     <...>
     >>> gt.random_rewire(g, "correlated")
@@ -294,11 +296,12 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
 
     We can try some larger graphs to get better statistics.
 
-    >>> clf()
+    >>> figure()
+    <...>
     >>> g = gt.random_graph(20000, lambda: sample_k(20),
     ...                     lambda i,j: exp(abs(i-j)), directed=False)
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-", label="original")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="*-", label="original")
     (...)
     >>> gt.random_rewire(g, "correlated")
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
@@ -330,7 +333,10 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
     >>> g = gt.random_graph(20000, lambda: (sample_k(19), sample_k(19)),
     ...                                     lambda a,b: (p.pmf(a[0],b[1])*
     ...                                                  p.pmf(a[1],20-b[0])))
-    >>> clf()
+    >>> figure(figsize=(6,3))
+    <...>
+    >>> axes([0.1,0.15,0.6,0.8])
+    <...>
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
     >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{o}\right>$ vs i")
@@ -357,7 +363,7 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
     >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{i}\right>$ vs o, uncorr.")
     (...)
-    >>> legend(loc="best")
+    >>> legend(loc=(1.05,0.45))
     <...>
     >>> xlabel("source degree")
     <...>
@@ -447,6 +453,26 @@ def graph_union(g1, g2, props=[], include=False):
     props : list of :class:`~graph_tool.PropertyMap` objects
         List of propagated properties.  This is only returned if `props` is not
         empty.
+
+    Examples
+    --------
+
+    >>> from numpy.random import random, seed
+    >>> seed(42)
+    >>> g = gt.triangulation(random((300,2)))[0]
+    >>> ug = gt.graph_union(g, g)
+    >>> uug = gt.graph_union(g, ug)
+    >>> gt.graph_draw(g, layout="arf", size=(8,8), output="graph_original.png")
+    <...>
+    >>> gt.graph_draw(ug, layout="arf", size=(8,8), output="graph_union.png")
+    <...>
+    >>> gt.graph_draw(uug, layout="arf", size=(8,8), output="graph_union2.png")
+    <...>
+
+    .. image:: graph_original.png
+    .. image:: graph_union.png
+    .. image:: graph_union2.png
+
     """
     if not include:
         g1 = Graph(g1)
