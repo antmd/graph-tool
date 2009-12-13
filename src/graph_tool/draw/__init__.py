@@ -149,9 +149,8 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
     penwidth : float, PropertyMap or tuple (default: 1.0)
         Specifies the width of the pen, in points, used to draw lines and
         curves, including the boundaries of edges and clusters. It has no effect
-        on text. Default vertex size (width and height). If a tuple is
-        specified, the first value should be a property map, and the second is a
-        scale factor.
+        on text. If a tuple is specified, the first value should be a property
+        map, and the second is a scale factor.
     elen : float or PropertyMap (default: None)
         Preferred edge length, in inches.
     gprops : dict (default: {})

@@ -57,8 +57,7 @@ __all__ = ["local_clustering", "global_clustering", "extended_clustering",
 
 def local_clustering(g, prop=None, undirected=False):
     r"""
-    Return vertex property containing local clustering coefficients for all
-    vertices.
+    Return the local clustering coefficients for all vertices.
 
     Parameters
     ----------
@@ -118,7 +117,7 @@ def local_clustering(g, prop=None, undirected=False):
     References
     ----------
     .. [watts-collective-1998] D. J. Watts and Steven Strogatz, "Collective
-        dynamics of 'small-world' networks", Nature, vol. 393, pp 440-442, 1998.
+       dynamics of 'small-world' networks", Nature, vol. 393, pp 440-442, 1998.
        doi:10.1038/30918
     """
 
@@ -137,7 +136,7 @@ def local_clustering(g, prop=None, undirected=False):
 
 def global_clustering(g):
     r"""
-    Return global clustering coefficients for graphs.
+    Return the global clustering coefficient.
 
     Parameters
     ----------
@@ -188,8 +187,7 @@ def global_clustering(g):
 
 def extended_clustering(g, props=None, max_depth=3, undirected=False):
     r"""
-    Return a list of vertex properties containing the extended clustering
-    coefficients for all vertices.
+    Return the extended clustering coefficients for all vertices.
 
     Parameters
     ----------
@@ -235,7 +233,7 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
     recovered for :math:`d=1`, i.e., :math:`c^1_i = c_i`.
 
     The implemented algorithm runs in
-    :math:`O(|V|\left<k\right>^{2+\text{max\_depth}})` worst time, where
+    :math:`O(|V|\left<k\right>^{2+\text{max-depth}})` worst time, where
     :math:`\left< k\right>` is the average out-degree.
 
     If enabled during compilation, this algorithm runs in parallel.
@@ -296,7 +294,7 @@ def motifs(g, k, p=1.0, motif_list=None, undirected=None):
         more details.
     motif_list : list of :class:`~graph_tool.Graph` objects, optional
         If supplied, the algorithms will only search for the motifs in this list
-        (or isomorphisms)
+        (or isomorphisms).
     undirected : bool, optional
         Treat the graph as *undirected*, if graph is directed
         (this option has no effect if the graph is undirected).
@@ -466,7 +464,7 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
         out-degree-sequence, and number of edges (in this order).
     z-scores : list of floats
         The z-score of the respective motives. See below for the definition of
-        a z-score.
+        the z-score.
 
     See Also
     --------
