@@ -2,7 +2,7 @@
 
 AM_CPPFLAGS = $(MOD_CPPFLAGS)
 
-AM_CXXFLAGS = $(CXXFLAGS)
+AM_CXXFLAGS = $(CXXFLAGS) $(CGAL_FLAGS)
 
 libgraph_tool_generationdir = $(pythondir)/graph_tool/generation
 

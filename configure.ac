@@ -179,6 +179,8 @@ dnl CGAL
 AC_CHECK_LIB(CGAL,main)
 [CGAL_LIBADD="-lCGAL"]
 AC_SUBST(CGAL_LIBADD)
+[CGAL_FLAGS="-frounding-math"]
+AC_SUBST(CGAL_FLAGS)
 
 dnl Checks for header files.
 
