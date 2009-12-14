@@ -23,8 +23,7 @@ import numpy
 try:
     import scipy.weave
 except ImportError:
-    raise libgraph_tool_core.raise_error\
-          ("You need to have scipy installed to use 'run_action'.")
+    raise ImportError("You need to have scipy installed to use 'run_action'.")
 
 
 # sys.path can be dirty and in unicode! :-p
