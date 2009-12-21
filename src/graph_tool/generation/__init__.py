@@ -65,7 +65,7 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
         function is called once per vertex, but may be called more times, if the
         degree sequence cannot be used to build a graph.
     deg_corr : function (optional, default: None)
-        A function which give the degree correlation of the graph. It should be
+        A function which gives the degree correlation of the graph. It should be
         callable with two parameters: the in,out-degree pair of the source
         vertex an edge, and the in,out-degree pair of the target of the same
         edge (for undirected graphs, both parameters are single values). The
@@ -331,8 +331,7 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
 
     >>> p = scipy.stats.poisson
     >>> g = gt.random_graph(20000, lambda: (sample_k(19), sample_k(19)),
-    ...                                     lambda a,b: (p.pmf(a[0],b[1])*
-    ...                                                  p.pmf(a[1],20-b[0])))
+    ...                     lambda a,b: (p.pmf(a[0],b[1])*p.pmf(a[1],20-b[0])))
     >>> figure(figsize=(6,3))
     <...>
     >>> axes([0.1,0.15,0.6,0.8])
