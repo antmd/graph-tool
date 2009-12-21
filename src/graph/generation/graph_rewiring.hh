@@ -248,8 +248,7 @@ struct graph_rewire
                 continue;
             typename graph_traits<Graph>::edge_descriptor e = edges[i];
             typename graph_traits<Graph>::edge_descriptor se, te;
-            tie(se, te) = rewire(e, edges, is_edge, self_loops, parallel_edges);
-            swap_edge_triad()(e, se, te, edges, edge_index, g);
+            rewire(e, edges, is_edge, self_loops, parallel_edges);
         }
     }
 };
@@ -309,6 +308,72 @@ private:
     RNG* _rng;
 };
 
+// this will rewire the edges so that the resulting graph will be entirely
+// random (i.e. Erdos-Renyi)
+template <class Graph, class EdgeIndexMap>
+class ErdosRewireStrategy
+{
+public:
+    typedef typename graph_traits<Graph>::edge_descriptor edge_t;
+    typedef typename EdgeIndexMap::value_type index_t;
+
+    ErdosRewireStrategy(Graph& g, EdgeIndexMap edge_index, rng_t& rng)
+        : _g(g), _edge_index(edge_index), _vertices(HardNumVertices()(g)),
+          _rng(rng)
+    {
+        typeof(_vertices.begin()) viter = _vertices.begin();
+        typename graph_traits<Graph>::vertex_iterator v, v_end;
+        for (tie(v, v_end) = vertices(_g); v != v_end; ++v)
+            *(viter++) = *v;
+    }
+
+    template<class EdgesType>
+    void operator()(const edge_t& e, EdgesType& edges, vector<bool>& is_edge,
+                    bool self_loops, bool parallel_edges)
+    {
+        //try randomly drawn pairs of vertices until one satisfies all the
+        //consistency checks
+        typedef random_permutation_iterator
+            <typename graph_traits<Graph>::vertex_iterator, rng_t>
+            random_vertex_iter;
+
+        tr1::uniform_int<size_t> sample(0, _vertices.size());
+        typename graph_traits<Graph>::vertex_descriptor s, t;
+        while (true)
+        {
+            s = sample(_rng);
+            t = sample(_rng);
+
+            if(s == t && !self_loops) // reject self-loops if not allowed
+                continue;
+            if (!parallel_edges &&
+                swap_edge_triad::is_adjacent_in_new(s, t, _edge_is_new, _g))
+                continue;  // reject parallel edges if not allowed
+            break;
+        }
+        edge_t ne = add_edge(s, t, _g).first;
+        edges[_edge_index[e]] = ne;
+        remove_edge(e, _g);
+        if (_edge_index[ne] >= edges.size())
+        {
+            edges.resize(_edge_index[ne] + 1);
+            is_edge.resize(_edge_index[ne] + 1, false);
+        }
+        edges[_edge_index[ne]] = ne;
+        is_edge[_edge_index[ne]] = true;
+
+        _edge_is_new[ne] = true;
+    }
+
+private:
+    Graph& _g;
+    EdgeIndexMap _edge_index;
+    vector<typename graph_traits<Graph>::vertex_descriptor> _vertices;
+    vector_property_map<bool, EdgeIndexMap> _edge_is_new;
+    rng_t& _rng;
+};
+
+
 // this is the mother class for edge-based rewire strategies
 // it contains the common loop for finding edges to swap, so different
 // strategies need only to specify where to sample the edges from.
@@ -319,13 +384,12 @@ public:
     typedef typename graph_traits<Graph>::edge_descriptor edge_t;
     typedef typename EdgeIndexMap::value_type index_t;
 
-    RewireStrategyBase(const Graph& g, EdgeIndexMap edge_index, rng_t& rng)
-        : _g(g), _edge_is_new(edge_index), _rng(rng) {}
+    RewireStrategyBase(Graph& g, EdgeIndexMap edge_index, rng_t& rng)
+        : _g(g), _edge_index(edge_index), _edge_is_new(edge_index), _rng(rng) {}
 
     template<class EdgesType>
-    pair<edge_t, edge_t> operator()(const edge_t& e, const EdgesType& edges,
-                                    vector<bool>& is_edge,
-                                    bool self_loops, bool parallel_edges)
+    void operator()(const edge_t& e, EdgesType& edges, vector<bool>& is_edge,
+                    bool self_loops, bool parallel_edges)
     {
         // where should we sample the edges from
         vector<index_t>* edges_source=0, *edges_target=0;
@@ -386,11 +450,12 @@ public:
             throw GraphException("Couldn't find random pair of edges to swap"
                                  "... This is a bug.");
         _edge_is_new[e] = true;
-        return make_pair(es, et);
+        swap_edge_triad()(e, es, et, edges, _edge_index, _g);
     }
 
 private:
-    const Graph& _g;
+    Graph& _g;
+    EdgeIndexMap _edge_index;
     vector_property_map<bool, EdgeIndexMap> _edge_is_new;
     rng_t& _rng;
 };
@@ -414,7 +479,7 @@ public:
     typedef typename graph_traits<Graph>::edge_descriptor edge_t;
     typedef typename EdgeIndexMap::value_type index_t;
 
-    RandomRewireStrategy(const Graph& g, EdgeIndexMap edge_index,
+    RandomRewireStrategy(Graph& g, EdgeIndexMap edge_index,
                          rng_t& rng)
         : base_t(g, edge_index, rng)
     {
@@ -459,7 +524,7 @@ public:
     typedef typename graph_traits<Graph>::edge_descriptor edge_t;
     typedef typename EdgeIndexMap::value_type index_t;
 
-    CorrelatedRewireStrategy (const Graph& g, EdgeIndexMap edge_index,
+    CorrelatedRewireStrategy (Graph& g, EdgeIndexMap edge_index,
                               rng_t& rng) : base_t(g, edge_index, rng), _g(g)
     {
         int i, N = num_vertices(_g);

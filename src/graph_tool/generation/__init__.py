@@ -236,22 +236,25 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     g.set_directed(directed)
     return g
 
+@_limit_args({"strat":["erdos", "correlated", "uncorrelated"]})
 def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
                   self_loops = False):
     r"""
-    Shuffle the graph in-place. The degrees (either in or out) of each vertex
-    are always the same, but otherwise the edges are randomly placed. If
-    strat == "correlated", the degree correlations are also maintained: The new
-    source and target of each edge both have the same in and out-degree.
+    Shuffle the graph in-place. If `strat` != "erdos", the degrees (either in or
+    out) of each vertex are always the same, but otherwise the edges are
+    randomly placed. If `strat` == "correlated", the degree correlations are
+    also maintained: The new source and target of each edge both have the same
+    in and out-degree.
 
     Parameters
     ----------
     g : :class:`~graph_tool.Graph`
         Graph to be shuffled. The graph will be modified.
     strat : string (optional, default: "uncorrelated")
-        If strat == "uncorrelated" only the degrees of the vertices will be
-        maintained, nothing else. If strat == "correlated", additionally the new
-        source and target of each edge both have the same in and out-degree.
+        If `strat` == "erdos", the resulting graph will be entirely random. If
+        `strat` == "uncorrelated" only the degrees of the vertices will be
+        maintained, nothing else. If `strat` == "correlated", additionally the
+        new source and target of each edge both have the same in and out-degree.
     parallel : bool (optional, default: False)
         If True, parallel edges are allowed.
     self_loops : bool (optional, default: False)
@@ -284,32 +287,41 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
     >>> gt.random_rewire(g)
     >>> gt.graph_draw(g, layout="arf", output="rewire_uncorr.png", size=(6,6))
     <...>
+    >>> gt.random_rewire(g, "erdos")
+    >>> gt.graph_draw(g, layout="arf", output="rewire_erdos.png", size=(6,6))
+    <...>
 
     Some `ridiculograms <http://www.youtube.com/watch?v=YS-asmU3p_4>`_ :
 
     .. image:: rewire_orig.png
     .. image:: rewire_corr.png
     .. image:: rewire_uncorr.png
+    .. image:: rewire_erdos.png
 
-    *Left:* Original graph; *Middle:* Shuffled graph, with degree
-    correlations; *Right:* Shuffled graph, without degree correlations.
+    *From left to right:* Original graph; Shuffled graph, with degree
+    correlations; Shuffled graph, without degree correlations; Shuffled graph,
+    with random degrees.
 
     We can try some larger graphs to get better statistics.
 
     >>> figure()
     <...>
-    >>> g = gt.random_graph(20000, lambda: sample_k(20),
+    >>> g = gt.random_graph(30000, lambda: sample_k(20),
     ...                     lambda i,j: exp(abs(i-j)), directed=False)
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="*-", label="original")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-", label="original")
     (...)
     >>> gt.random_rewire(g, "correlated")
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-", label="correlated")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="*", label="correlated")
     (...)
     >>> gt.random_rewire(g)
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
     >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-", label="uncorrelated")
+    (...)
+    >>> gt.random_rewire(g, "erdos")
+    >>> corr = gt.avg_neighbour_corr(g, "out", "out")
+    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-", label="Erdos")
     (...)
     >>> xlabel("$k$")
     <...>
@@ -381,9 +393,11 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
     seed = numpy.random.randint(0, sys.maxint)
 
     g.stash_filter(reversed=True)
-    libgraph_tool_generation.random_rewire(g._Graph__graph, strat, self_loops,
-                                           parallel_edges, seed)
-    g.pop_filter(reversed=True)
+    try:
+        libgraph_tool_generation.random_rewire(g._Graph__graph, strat,
+                                               self_loops, parallel_edges, seed)
+    finally:
+        g.pop_filter(reversed=True)
 
 def predecessor_tree(g, pred_map):
     """Return a graph from a list of predecessors given by

@@ -33,7 +33,12 @@ void random_rewire(GraphInterface& gi, string strat, bool self_loops,
 {
     rng_t rng(static_cast<rng_t::result_type>(seed));
 
-    if (strat == "uncorrelated")
+    if (strat == "erdos")
+        run_action<graph_tool::detail::never_reversed>()
+            (gi, bind<void>(graph_rewire<ErdosRewireStrategy>(),
+                            _1, gi.GetEdgeIndex(), ref(rng), self_loops,
+                            parallel_edges))();
+    else if (strat == "uncorrelated")
         run_action<graph_tool::detail::never_reversed>()
             (gi, bind<void>(graph_rewire<RandomRewireStrategy>(),
                             _1, gi.GetEdgeIndex(), ref(rng), self_loops,
