@@ -44,7 +44,12 @@
 #include <boost/config.hpp>
 #include <vector>
 #include <boost/graph/graph_traits.hpp>
-#include <boost/property_map/property_map.hpp>
+#include <boost/version.hpp>
+#if (BOOST_VERSION >= 104000)
+#   include <boost/property_map/property_map.hpp>
+#else
+#   include <boost/property_map.hpp>
+#endif
 #include <boost/graph/named_function_params.hpp>
 #include <boost/graph/breadth_first_search.hpp>
 #include <boost/type_traits/conversion_traits.hpp>

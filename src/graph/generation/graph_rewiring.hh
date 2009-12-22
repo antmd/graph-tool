@@ -369,7 +369,7 @@ private:
     Graph& _g;
     EdgeIndexMap _edge_index;
     vector<typename graph_traits<Graph>::vertex_descriptor> _vertices;
-    vector_property_map<bool, EdgeIndexMap> _edge_is_new;
+    checked_vector_property_map<bool, EdgeIndexMap> _edge_is_new;
     rng_t& _rng;
 };
 
@@ -456,7 +456,7 @@ public:
 private:
     Graph& _g;
     EdgeIndexMap _edge_index;
-    vector_property_map<bool, EdgeIndexMap> _edge_is_new;
+    checked_vector_property_map<bool, EdgeIndexMap> _edge_is_new;
     rng_t& _rng;
 };
 
