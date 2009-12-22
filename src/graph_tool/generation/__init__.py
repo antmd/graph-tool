@@ -553,8 +553,8 @@ def triangulation(points, type="simple"):
     Notes
     -----
 
-    A triangulation [cgal_triang]_ is division of the convex hull of a point set
-    into triangles, using only that set as triangle vertices.
+    A triangulation [cgal_triang]_ is a division of the convex hull of a point
+    set into triangles, using only that set as triangle vertices.
 
     In simple triangulations (`type="simple"`), the insertion of a point is done
     by locating a face that contains the point, and splitting this face into
@@ -575,20 +575,26 @@ def triangulation(points, type="simple"):
     >>> from numpy.random import seed, random
     >>> seed(42)
     >>> points = random((500,2))
-    >>> for i in xrange(points.shape[0]):
-    ...     x,y = 1,1
-    ...     while sqrt(x**2 + y**2) > 0.5:
-    ...          x, y = random()-0.5, random()-0.5
-    ...     points[i,:] = [x,y]
     >>> g, pos = gt.triangulation(points)
-    >>> b = gt.betweenness(g)
-    >>> gt.graph_draw(g, pos=pos, pin=True, size=(8,8), vsize=0.08, vcolor=b[0],
-    ...               ecolor=b[1], output="triang.png")
+    >>> weight = g.new_edge_property("double") # Edge weights corresponding to
+    ...                                        # Euclidean distances
+    >>> for e in g.edges():
+    ...    weight[e] = sqrt(sum((array(pos[e.source()]) -
+    ...                          array(pos[e.target()]))**2))
+    >>> b = gt.betweenness(g, weight=weight)
+    >>> b[1].a *= 100
+    >>> gt.graph_draw(g, pos=pos, pin=True, size=(8,8), vsize=0.07, vcolor=b[0],
+    ...               eprops={"penwidth":b[1]}, output="triang.png")
     <...>
     >>> g, pos = gt.triangulation(points, type="delaunay")
-    >>> b = gt.betweenness(g)
-    >>> gt.graph_draw(g, pos=pos, pin=True, size=(8,8), vsize=0.08, vcolor=b[0],
-    ...               ecolor=b[1], output="triang-delaunay.png")
+    >>> weight = g.new_edge_property("double")
+    >>> for e in g.edges():
+    ...    weight[e] = sqrt(sum((array(pos[e.source()]) -
+    ...                          array(pos[e.target()]))**2))
+    >>> b = gt.betweenness(g, weight=weight)
+    >>> b[1].a *= 120
+    >>> gt.graph_draw(g, pos=pos, pin=True, size=(8,8), vsize=0.07, vcolor=b[0],
+    ...               eprops={"penwidth":b[1]}, output="triang-delaunay.png")
     <...>
 
     2D triangulation of random points:
@@ -596,8 +602,9 @@ def triangulation(points, type="simple"):
     .. image:: triang.png
     .. image:: triang-delaunay.png
 
-    *Left:* Simple triangulation. *Right:* Delaunay triangulation. The colors
-    correspond to the betweeness centrality.
+    *Left:* Simple triangulation. *Right:* Delaunay triangulation. The vertex
+    colors and the edge thickness correspond to the weighted betweenness
+    centrality.
 
     References
     ----------
