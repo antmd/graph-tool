@@ -553,7 +553,7 @@ def triangulation(points, type="simple"):
     Notes
     -----
 
-    A triangulation [cgal_triang]_ is a division of the convex hull of a point
+    A triangulation [cgal-triang]_ is a division of the convex hull of a point
     set into triangles, using only that set as triangle vertices.
 
     In simple triangulations (`type="simple"`), the insertion of a point is done
@@ -608,7 +608,7 @@ def triangulation(points, type="simple"):
 
     References
     ----------
-    .. [cgal_triang] http://www.cgal.org/Manual/last/doc_html/cgal_manual/Triangulation_3/Chapter_main.html
+    .. [cgal-triang] http://www.cgal.org/Manual/last/doc_html/cgal_manual/Triangulation_3/Chapter_main.html
 
     """
 
