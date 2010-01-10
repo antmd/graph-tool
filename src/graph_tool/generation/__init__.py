@@ -527,7 +527,7 @@ def graph_union(g1, g2, props=[], include=False):
         return g1
 
 @_limit_args({"type":["simple", "delaunay"]})
-def triangulation(points, type="simple"):
+def triangulation(points, type="simple", periodic=False):
     r"""
     Generate a 2D or 3D triangulation graph from a given point set.
 
@@ -538,6 +538,9 @@ def triangulation(points, type="simple"):
         is the number of points, and d is the space dimension (either 2 or 3).
     type : string (optional, default: 'simple')
         Type of triangulation. May be either 'simple' or 'delaunay'.
+    periodic : bool (optional, default: False)
+        If True, periodic boundary conditions will be used. This is parameter is
+        valid only for type="delaunay", and is otherwise ignored.
 
     Returns
     -------
@@ -623,6 +626,6 @@ def triangulation(points, type="simple"):
     g = Graph(directed=False)
     pos = g.new_vertex_property("vector<double>")
     libgraph_tool_generation.triangulation(g._Graph__graph, points,
-                                           _prop("v", g, pos), type)
+                                           _prop("v", g, pos), type, periodic)
     return g, pos
 

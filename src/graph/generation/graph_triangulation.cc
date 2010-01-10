@@ -20,12 +20,14 @@
 //  follow the requirements of the GNU GPL in regard to all of the
 //  software in the executable aside from CGAL.
 
+#include <CGAL/version.h>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Triangulation_3.h>
 #include <CGAL/Delaunay_triangulation_3.h>
 typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
 typedef CGAL::Triangulation_3<Kernel> SimpleTriangulation;
 typedef CGAL::Delaunay_triangulation_3<Kernel> DelaunayTriangulation;
+
 
 namespace std
 {
@@ -36,19 +38,35 @@ bool operator==(const SimpleTriangulation::Vertex& a,
 }
 }
 
+// periodic triangulation is only available in more recent versions of CGAL
+#if (CGAL_VERSION_NR >= 1030500000)
+#include <CGAL/Periodic_3_triangulation_traits_3.h>
+#include <CGAL/Periodic_3_Delaunay_triangulation_3.h>
+typedef CGAL::Periodic_3_triangulation_traits_3<Kernel> GT;
+typedef CGAL::Periodic_3_Delaunay_triangulation_3<GT>
+    PeriodicDelaunayTriangulation;
+namespace std
+{
+bool operator==(const PeriodicDelaunayTriangulation::Vertex& a,
+                const PeriodicDelaunayTriangulation::Vertex& b)
+{
+    return a.point() == b.point();
+}
+}
+#endif
+
 #include "graph.hh"
 #include "graph_util.hh"
 #include "graph_filtering.hh"
 #include "graph_triangulation.hh"
 #include "numpy_bind.hh"
 
-
 using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
 void triangulation(GraphInterface& gi, python::object points, boost::any pos,
-                   string type)
+                   string type, bool periodic)
 {
     UndirectedAdaptor<GraphInterface::multigraph_t> g(gi.GetGraph());
     multi_array_ref<double,2> points_array = get_array<double,2>(points);
@@ -57,9 +75,27 @@ void triangulation(GraphInterface& gi, python::object points, boost::any pos,
     pos_type_t pos_map = any_cast<pos_type_t>(pos);
 
     if (type == "simple")
+    {
         get_triangulation<SimpleTriangulation>()(g, points_array, pos_map);
+    }
     else if (type == "delaunay")
-        get_triangulation<DelaunayTriangulation>()(g, points_array,
-                                                   pos_map);
+    {
+        if (!periodic)
+        {
+            get_triangulation<DelaunayTriangulation>()(g, points_array,
+                                                       pos_map);
+        }
+        else
+        {
+#if (CGAL_VERSION_NR >= 1030500000)
+            get_triangulation<PeriodicDelaunayTriangulation>()(g, points_array,
+                                                               pos_map);
+#else
+            throw ValueException("Periodic Delaunay triangulation is only "
+                                 "available with versions of CGAL newer than "
+                                 "3.5.0.");
+#endif
+        }
+    }
     gi.ReIndexEdges();
 }

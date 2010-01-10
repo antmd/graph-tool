@@ -89,7 +89,7 @@ struct get_triangulation
             {
                 typename graph_traits<Graph>::vertex_descriptor target
                     = iter->second;
-                if (!is_adjacent(_source, target, _g))
+                if (!is_adjacent(_source, target, _g) && _source != target)
                     add_edge(_source, target, _g);
             }
             return *this;

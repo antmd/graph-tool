@@ -105,7 +105,7 @@ void edge_property_union(GraphInterface& ugi, GraphInterface& gi,
                          boost::any p_vprop, boost::any p_eprop,
                          boost::any uprop, boost::any prop);
 void triangulation(GraphInterface& gi, python::object points, boost::any pos,
-                   string type);
+                   string type, bool periodic);
 
 using namespace boost::python;
 
