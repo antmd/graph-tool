@@ -1,105 +1,84 @@
-# ===========================================================================
-#         http://www.nongnu.org/autoconf-archive/ax_boost_regex.html
-# ===========================================================================
-#
 # SYNOPSIS
 #
 #   AX_BOOST_REGEX
 #
 # DESCRIPTION
 #
-#   Test for Regex library from the Boost C++ libraries. The macro requires
-#   a preceding call to AX_BOOST_BASE. Further documentation is available at
-#   <http://randspringer.de/boost/index.html>.
+#   This macro checks to see if the Boost.Regex library is installed. It
+#   also attempts to guess the currect library name using several attempts.
+#   It tries to build the library name using a user supplied name or suffix
+#   and then just the raw library.
 #
-#   This macro calls:
+#   If the library is found, HAVE_BOOST_REGEX is defined and
+#   BOOST_REGEX_LIB is set to the name of the library.
 #
-#     AC_SUBST(BOOST_REGEX_LIB)
+#   This macro calls AC_SUBST(BOOST_REGEX_LIB).
 #
-#   And sets:
+#   In order to ensure that the Regex headers are specified on the include
+#   path, this macro requires AX_REGEX to be called.
 #
-#     HAVE_BOOST_REGEX
+# LAST MODIFICATION
 #
-# LICENSE
+#   2008-04-12
 #
-#   Copyright (c) 2008 Thomas Porschberg <thomas@randspringer.de>
+# COPYLEFT
+#
 #   Copyright (c) 2008 Michael Tindal
 #
-#   Copying and distribution of this file, with or without modification, are
-#   permitted in any medium without royalty provided the copyright notice
-#   and this notice are preserved.
+#   This program is free software; you can redistribute it and/or modify it
+#   under the terms of the GNU General Public License as published by the
+#   Free Software Foundation; either version 2 of the License, or (at your
+#   option) any later version.
+#
+#   This program is distributed in the hope that it will be useful, but
+#   WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+#   Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License along
+#   with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+#   As a special exception, the respective Autoconf Macro's copyright owner
+#   gives unlimited permission to copy, distribute and modify the configure
+#   scripts that are the output of Autoconf when processing the Macro. You
+#   need not follow the terms of the GNU General Public License when using
+#   or distributing such scripts, even though portions of the text of the
+#   Macro appear in them. The GNU General Public License (GPL) does govern
+#   all other use of the material that constitutes the Autoconf Macro.
+#
+#   This special exception to the GPL applies to versions of the Autoconf
+#   Macro released by the Autoconf Macro Archive. When you make and
+#   distribute a modified version of the Autoconf Macro, you may extend this
+#   special exception to the GPL to apply to your modified version as well.
 
 AC_DEFUN([AX_BOOST_REGEX],
-[
-	AC_ARG_WITH([boost-regex],
-	AS_HELP_STRING([--with-boost-regex@<:@=special-lib@:>@],
-                   [use the Regex library from boost - it is possible to specify a certain library for the linker
-                        e.g. --with-boost-regex=boost_regex-gcc-mt-d-1_33_1 ]),
-        [
-        if test "$withval" = "no"; then
-			want_boost="no"
-        elif test "$withval" = "yes"; then
-            want_boost="yes"
-            ax_boost_user_regex_lib=""
-        else
-		    want_boost="yes"
-        	ax_boost_user_regex_lib="$withval"
-		fi
-        ],
-        [want_boost="yes"]
-	)
-
-	if test "x$want_boost" = "xyes"; then
-        AC_REQUIRE([AC_PROG_CC])
-		CPPFLAGS_SAVED="$CPPFLAGS"
-		CPPFLAGS="$CPPFLAGS $BOOST_CPPFLAGS"
-		export CPPFLAGS
-
-		LDFLAGS_SAVED="$LDFLAGS"
-		LDFLAGS="$LDFLAGS $BOOST_LDFLAGS"
-		export LDFLAGS
-
-        AC_CACHE_CHECK(whether the Boost::Regex library is available,
-					   ax_cv_boost_regex,
-        [AC_LANG_PUSH([C++])
-			 AC_COMPILE_IFELSE(AC_LANG_PROGRAM([[@%:@include <boost/regex.hpp>
-												]],
-                                   [[boost::regex r(); return 0;]]),
-                   ax_cv_boost_regex=yes, ax_cv_boost_regex=no)
-         AC_LANG_POP([C++])
-		])
-		if test "x$ax_cv_boost_regex" = "xyes"; then
-			AC_DEFINE(HAVE_BOOST_REGEX,,[define if the Boost::Regex library is available])
-            BOOSTLIBDIR=`echo $BOOST_LDFLAGS | sed -e 's/@<:@^\/@:>@*//'`
-            if test "x$ax_boost_user_regex_lib" = "x"; then
-                for libextension in `ls $BOOSTLIBDIR/libboost_regex*.{so,a}* 2>/dev/null | sort -r | sed 's,.*/,,' | sed -e 's;^lib\(boost_regex.*\)\.so.*$;\1;' -e 's;^lib\(boost_regex.*\)\.a*$;\1;'` ; do
-                     ax_lib=${libextension}
-				    AC_CHECK_LIB($ax_lib, exit,
-                                 [BOOST_REGEX_LIB="-l$ax_lib"; AC_SUBST(BOOST_REGEX_LIB) link_regex="yes"; break],
-                                 [link_regex="no"])
-  				done
-                if test "x$link_regex" != "xyes"; then
-                for libextension in `ls $BOOSTLIBDIR/boost_regex*.{dll,a}* 2>/dev/null | sed 's,.*/,,' | sed -e 's;^\(boost_regex.*\)\.dll.*$;\1;' -e 's;^\(boost_regex.*\)\.a*$;\1;'` ; do
-                     ax_lib=${libextension}
-				    AC_CHECK_LIB($ax_lib, exit,
-                                 [BOOST_REGEX_LIB="-l$ax_lib"; AC_SUBST(BOOST_REGEX_LIB) link_regex="yes"; break],
-                                 [link_regex="no"])
-  				done
-                fi
-
-            else
-               for ax_lib in $ax_boost_user_regex_lib boost_regex-$ax_boost_user_regex_lib; do
-				      AC_CHECK_LIB($ax_lib, main,
-                                   [BOOST_REGEX_LIB="-l$ax_lib"; AC_SUBST(BOOST_REGEX_LIB) link_regex="yes"; break],
-                                   [link_regex="no"])
-               done
-            fi
-			if test "x$link_regex" != "xyes"; then
-				AC_MSG_ERROR(Could not link against $ax_lib !)
-			fi
-		fi
-
-		CPPFLAGS="$CPPFLAGS_SAVED"
-    	LDFLAGS="$LDFLAGS_SAVED"
-	fi
+[AC_CACHE_CHECK(whether the Boost::Regex library is available,
+ac_cv_boost_regex,
+[AC_LANG_SAVE
+ AC_LANG_CPLUSPLUS
+ CPPFLAGS_SAVE=$CPPFLAGS
+ if test "x$REGEX_INCLUDE_DIR" != "x"; then
+   CPPFLAGS="-I$REGEX_INCLUDE_DIR $CPPFLAGS"
+ fi
+ AC_COMPILE_IFELSE(AC_LANG_PROGRAM([[
+#include <boost/regex.hpp>
+]],
+[[boost::regex r(); return 0;]]),
+ ac_cv_boost_regex=yes, ac_cv_boost_regex=no)
+ AC_LANG_RESTORE
+ CPPFLAGS="$CPPFLAGS_SAVE"
 ])
+if test "$ac_cv_boost_regex" = "yes"; then
+  AC_DEFINE(HAVE_BOOST_REGEX,,[define if the Boost::Regex library is available])
+  ax_regex_lib=boost_regex
+  AC_ARG_WITH([boost-regex],AS_HELP_STRING([--with-boost-regex],[specify the boost regex library or suffix to use]),
+  [if test "x$with_boost_regex" != "xno"; then
+     ax_regex_lib=$with_boost_regex
+     ax_boost_regex_lib=boost_regex-$with_boost_regex
+   fi])
+  for ax_lib in $ax_regex_lib $ax_boost_regex_lib boost_regex boost_regex-mt boost_regex-mt-py2.5; do
+    AC_CHECK_LIB($ax_lib, exit, [BOOST_REGEX_LIB=$ax_lib break])
+  done
+  AC_SUBST(BOOST_REGEX_LIB)
+fi
+])dnl

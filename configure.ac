@@ -7,9 +7,7 @@ m4_define(graph_tool_version_major, 2)
 m4_define(graph_tool_version_minor, 2)
 m4_define(graph_tool_version_micro, 4dev)
 
-AC_INIT([graph-tool],
-        [graph_tool_version_major().graph_tool_version_minor().graph_tool_version_micro()],
-        [http://graph-tool.forked.de])
+AC_INIT([graph-tool],[graph_tool_version_major().graph_tool_version_minor().graph_tool_version_micro()],[http://graph-tool.forked.de])
 
 GRAPH_TOOL_VERSION_MAJOR=graph_tool_version_major()
 GRAPH_TOOL_VERSION_MINOR=graph_tool_version_minor()
@@ -22,18 +20,18 @@ AC_CONFIG_SRCDIR(src)
 AM_INIT_AUTOMAKE([foreign])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 AM_PROG_CC_C_O
-AM_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 
-AC_ISC_POSIX
+AC_SEARCH_LIBS([strerror],[cposix])
 AC_SUBST(CXXFLAGS,$CXXFLAGS)
-AC_GNU_SOURCE
+AC_USE_SYSTEM_EXTENSIONS
 AC_PROG_CXX
-AC_LANG_CPLUSPLUS
+AC_LANG([C++])
 AC_PROG_CC_STDC
 AC_HEADER_STDC
 AC_DISABLE_STATIC
-AC_PROG_LIBTOOL
+LT_INIT
 AC_PROG_INSTALL
 
 dnl turn on warnings
@@ -44,8 +42,7 @@ dnl Checks for options
 dnl Turn debugging on or off
 AC_MSG_CHECKING(whether to enable debug info...)
 
-AC_ARG_ENABLE([debug], [AC_HELP_STRING([--enable-debug@<:@=full@:>@],
-        [compile debug information [default=yes] ])],
+AC_ARG_ENABLE([debug], [AS_HELP_STRING([--enable-debug@<:@=full@:>@],[compile debug information [default=yes] ])],
         [AC_MSG_RESULT(yes)]
         [AC_DEFINE([DEBUG], 1, [compile debug info])]
         [CXXFLAGS=" ${CXXFLAGS} -ggdb3 "],
@@ -58,8 +55,7 @@ dnl set template depth and hidden visibility
 
 AC_MSG_CHECKING(whether to enable function inlining...)
 
-AC_ARG_ENABLE([inline], [AC_HELP_STRING([--disable-inline],
-        [disable inline functions [default=enabled] ])],
+AC_ARG_ENABLE([inline], [AS_HELP_STRING([--disable-inline],[disable inline functions [default=enabled] ])],
         if test $enableval = no; then
            [AC_MSG_RESULT(no)]
            [AC_DEFINE([NO_INLINE], 1, [disable function inlining])]
@@ -77,8 +73,7 @@ AM_CONDITIONAL(NO_INLINE, test $NO_INLINE = yes)
 
 AC_MSG_CHECKING(whether to enable optimizations...)
 
-AC_ARG_ENABLE([optimization], [AC_HELP_STRING([--disable-optimization],
-        [disable optimization [default=enabled] ])],
+AC_ARG_ENABLE([optimization], [AS_HELP_STRING([--disable-optimization],[disable optimization [default=enabled] ])],
         [AC_MSG_RESULT(no)]
         ,
         [AC_MSG_RESULT(yes)]
@@ -87,8 +82,7 @@ AC_ARG_ENABLE([optimization], [AC_HELP_STRING([--disable-optimization],
 
 AC_MSG_CHECKING(whether to enable symbol visibility manipulation...)
 
-AC_ARG_ENABLE([visibility], [AC_HELP_STRING([--disable-visibility],
-        [disable symbol visibility manipulation [default=enabled] ])],
+AC_ARG_ENABLE([visibility], [AS_HELP_STRING([--disable-visibility],[disable symbol visibility manipulation [default=enabled] ])],
         [AC_MSG_RESULT(no)]
         ,
         [AC_MSG_RESULT(yes)]
@@ -97,8 +91,7 @@ AC_ARG_ENABLE([visibility], [AC_HELP_STRING([--disable-visibility],
 
 
 AC_MSG_CHECKING(whether to enable graph filtering...)
-AC_ARG_ENABLE([graph-filtering], [AC_HELP_STRING([--disable-graph-filtering],
-        [disable graph filtering [default=enabled] ])],
+AC_ARG_ENABLE([graph-filtering], [AS_HELP_STRING([--disable-graph-filtering],[disable graph filtering [default=enabled] ])],
         if test $enableval = no; then
            [AC_MSG_RESULT(no)]
            [AC_DEFINE([NO_GRAPH_FILTERING], 1, [disable graph filtering])]
@@ -112,8 +105,7 @@ AC_ARG_ENABLE([graph-filtering], [AC_HELP_STRING([--disable-graph-filtering],
         )
 
 AC_MSG_CHECKING(whether to enable parallel algorithms with openmp...)
-AC_ARG_ENABLE([openmp], [AC_HELP_STRING([--enable-openmp],
-        [enable openmp [default=disabled] ])],
+AC_ARG_ENABLE([openmp], [AS_HELP_STRING([--enable-openmp],[enable openmp [default=disabled] ])],
         if test $enableval = yes; then
            [AC_MSG_RESULT(yes)]
            [AC_DEFINE([USING_OPENMP], 1, [using openmp])]
@@ -189,8 +181,7 @@ dnl Checks for header files.
 dnl numpy
 AC_PYTHON_MODULE(numpy, fatal)
 NUMPY_DIR="${PYTHON_SITE_PKG}/numpy"
-AC_ARG_WITH([numpy], [AC_HELP_STRING([--with-numpy=DIR],
-                     [directory where numpy is installed
+AC_ARG_WITH([numpy], [AS_HELP_STRING([--with-numpy=DIR],[directory where numpy is installed
                       [default=${PYTHON_SITE_PKG}/numpy] ])],
         NUMPY_DIR=$withval)
 [NUMPY_DIR="${NUMPY_DIR}/core/include/numpy"]
@@ -202,8 +193,7 @@ AC_CHECK_HEADER([${NUMPY_DIR}/arrayobject.h],
 dnl scipy
 AC_PYTHON_MODULE(scipy, fatal)
 [SCIPY_DIR="${PYTHON_SITE_PKG}/scipy"]
-AC_ARG_WITH([scipy], [AC_HELP_STRING([--with-scipy=DIR],
-                     [scipy install directory
+AC_ARG_WITH([scipy], [AS_HELP_STRING([--with-scipy=DIR],[scipy install directory
                       [default=${PYTHON_SITE_PKG}/scipy] ])],
             [SCIPY_DIR=$withval])
 AC_CHECK_HEADER([${SCIPY_DIR}/weave/scxx/object.h],
@@ -293,8 +283,8 @@ AC_SUBST(MOD_CPPFLAGS)
 AC_SUBST(MOD_DIR)
 
 # default LIBADD flags for submodules
-[MOD_LIBADD="${PYTHON_LDFLAGS} ${BOOST_IOSTREAMS_LIB} -l${BOOST_PYTHON_LIB} \
-${BOOST_REGEX_LIB} ${OPENMP_LDFLAGS} -lexpat"]
+[MOD_LIBADD="${PYTHON_LDFLAGS} -l${BOOST_IOSTREAMS_LIB} -l${BOOST_PYTHON_LIB} \
+-l${BOOST_REGEX_LIB} ${OPENMP_LDFLAGS} -lexpat"]
 AC_SUBST(MOD_LIBADD)
 
 # needed for typeinfo objects to work across DSO boundaries.
@@ -303,7 +293,7 @@ AC_SUBST(MOD_LIBADD)
 -Wl,-E"]
 AC_SUBST(MOD_LDFLAGS)
 
-AC_OUTPUT([
+AC_CONFIG_FILES([
 Makefile
 src/Makefile
 src/graph/Makefile
@@ -319,6 +309,7 @@ src/graph/flow/Makefile
 src/graph/layout/Makefile
 src/graph_tool/Makefile
 ])
+AC_OUTPUT
 
 # ugly, dirty, smelly hack to force libtool to link to libstc++ before anything
 # else, to avoid strange exception-related segfaults in
@@ -326,5 +317,4 @@ src/graph_tool/Makefile
 # http://www.nabble.com/preventing-boost::python::throw_error_already_set-td20958723.html
 # http://wiki.fifengine.de/Segfault_in_cxa_allocate_exception
 AC_MSG_NOTICE([Modifying libtool to correctly link libstdc++ before anything else...])
-libtool=`cat libtool | sed "s/-nostdlib/-nostdlib -lstdc++/g"`
-echo "$libtool" > libtool
+eval "sed -i -e 's/-nostdlib/-nostdlib -lstdc++/g' libtool"
