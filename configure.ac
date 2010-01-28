@@ -50,8 +50,10 @@ AC_ARG_ENABLE([debug], [AS_HELP_STRING([--enable-debug@<:@=full@:>@],[compile de
         )
 
 dnl set template depth and hidden visibility
-
 [CXXFLAGS="${CXXFLAGS} -ftemplate-depth-150"]
+
+dnl disable deprecation warning, to silence some harmless BGL-related warnings
+[CXXFLAGS="${CXXFLAGS} -Wno-deprecated"]
 
 AC_MSG_CHECKING(whether to enable function inlining...)
 
