@@ -32,6 +32,10 @@ void topological_sort(GraphInterface& gi, vector<int32_t>& sort);
 void dominator_tree(GraphInterface& gi, size_t entry, boost::any pred_map);
 void transitive_closure(GraphInterface& gi, GraphInterface& tcgi);
 bool is_planar(GraphInterface& gi, boost::any embed_map, boost::any kur_map);
+void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
+                          boost::any vertex_label1, boost::any vertex_label2,
+                          boost::any edge_label1, boost::any edge_label2,
+                          python::list vmapping, python::list emapping);
 
 void export_components();
 void export_dists();
@@ -40,6 +44,7 @@ void export_all_dists();
 BOOST_PYTHON_MODULE(libgraph_tool_topology)
 {
     def("check_isomorphism", &check_isomorphism);
+    def("subgraph_isomorphism", &subgraph_isomorphism);
     def("get_kruskal_spanning_tree", &get_kruskal_spanning_tree);
     def("get_prim_spanning_tree", &get_prim_spanning_tree);
     def("topological_sort", &topological_sort);

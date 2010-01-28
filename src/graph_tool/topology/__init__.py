@@ -28,6 +28,8 @@ Summary
 
    shortest_distance
    isomorphism
+   subgraph_isomorphism
+   mark_subgraph
    min_spanning_tree
    dominator_tree
    topological_sort
@@ -44,26 +46,145 @@ from .. dl_import import dl_import
 dl_import("import libgraph_tool_topology")
 
 from .. core import _prop, Vector_int32_t, _check_prop_writable, \
-     _check_prop_scalar,  _check_prop_vector, Graph
-import random, sys, numpy
-__all__ = ["isomorphism", "min_spanning_tree", "dominator_tree",
-           "topological_sort", "transitive_closure", "label_components",
+     _check_prop_scalar,  _check_prop_vector, Graph, PropertyMap
+import random, sys, numpy, weakref
+__all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
+           "min_spanning_tree", "dominator_tree", "topological_sort",
+           "transitive_closure", "label_components",
            "label_biconnected_components", "shortest_distance", "is_planar"]
 
 def isomorphism(g1, g2, isomap=False):
-    """Check whether two graphs are isomorphisms. If `isomap` is True, a vertex
-    :class:`~graph_tool.PropertyMap` with the isomorphism mapping is returned as
-    well.
+    r"""Check whether two graphs are isomorphic.
+
+    If `isomap` is True, a vertex :class:`~graph_tool.PropertyMap` with the
+    isomorphism mapping is returned as well.
+
+    Examples
+    --------
+    >>> from numpy.random import seed
+    >>> seed(42)
+    >>> g = gt.random_graph(100, lambda: (3,3))
+    >>> g2 = gt.Graph(g)
+    >>> gt.isomorphism(g, g2)
+    True
+    >>> g.add_edge(g.vertex(0), g.vertex(1))
+    <...>
+    >>> gt.isomorphism(g, g2)
+    False
+
     """
     imap = g1.new_vertex_property("int32_t")
     iso = libgraph_tool_topology.\
-           check_isomorphism(g1._Graph__graph,g2._Graph__graph,
+           check_isomorphism(g1._Graph__graph, g2._Graph__graph,
                              _prop("v", g1, imap))
     if isomap:
         return iso, imap
     else:
         return iso
 
+def subgraph_isomorphism(sub, g):
+    r"""
+    Obtain all subgraph isomorphisms of `sub` in `g`.
+
+    It returns two lists, containing the vertex and edge property maps for `sub`
+    with the isomorphism mappings. The value of the properties are the
+    vertex/edge index of the corresponding vertex/edge in `g`.
+
+    Examples
+    --------
+    >>> from numpy.random import seed, poisson
+    >>> seed(42)
+    >>> g = gt.random_graph(30, lambda: (poisson(6),poisson(6)))
+    >>> sub = gt.random_graph(10, lambda: (poisson(1.8), poisson(1.9)))
+    >>> vm, em = gt.subgraph_isomorphism(sub, g)
+    >>> print len(vm)
+    46
+    >>> for i in xrange(len(vm)):
+    ...   g.set_vertex_filter(None)
+    ...   g.set_edge_filter(None)
+    ...   vmask, emask = gt.mark_subgraph(g, sub, vm[i], em[i])
+    ...   g.set_vertex_filter(vmask)
+    ...   g.set_edge_filter(emask)
+    ...   assert(gt.isomorphism(g, sub))
+    >>> g.set_vertex_filter(None)
+    >>> g.set_edge_filter(None)
+    >>> ewidth = g.copy_property(emask, value_type="double")
+    >>> ewidth.a *= 1.5
+    >>> ewidth.a += 0.5
+    >>> gt.graph_draw(g, vcolor=vmask, ecolor=emask, penwidth=ewidth,
+    ...               output="subgraph-iso-embed.png")
+    <...>
+    >>> gt.graph_draw(sub, output="subgraph-iso.png")
+    <...>
+
+    .. image:: subgraph-iso.png
+    .. image:: subgraph-iso-embed.png
+
+    *Left:* Subgraph searched, *Right:* One isomorphic subgraph found in main
+     graph.
+
+    Notes
+    -----
+    The algorithm used is described in [ullman-algorithm-1976]. It has
+    worse-case complexity of :math:`O(N_{\text{g}}^{N_\text{sub}})`, but for
+    random graphs it typically has a complexity of
+    :math:`O(N_{\text{g}}^\gamma)` with :math:`\gamma` depending sub-linearly on
+    the size of `sub`.
+
+    References
+    ----------
+    .. [ullman-algorithm-1976] Ullmann, J. R., "An algorithm for subgraph
+       isomorphism", Journal of the ACM 23 (1): 31–42, 1976, doi:10.1145/321921.321925
+    ... [subgraph-isormophism-wikipedia] http://en.wikipedia.org/wiki/Subgraph_isomorphism_problem
+
+    """
+    # vertex and edge labels disabled for the time being, until GCC is capable
+    # of compiling all the variants using reasonable amounts of memory
+    vlabels=(None,None)
+    elabels=(None,None)
+    vmaps = []
+    emaps = []
+    libgraph_tool_topology.\
+           subgraph_isomorphism(sub._Graph__graph, g._Graph__graph,
+                                _prop("v", sub, vlabels[0]),
+                                _prop("v", g, vlabels[1]),
+                                _prop("e", sub, elabels[0]),
+                                _prop("e", g, elabels[1]),
+                                vmaps, emaps)
+    for i in xrange(len(vmaps)):
+        vmaps[i] = PropertyMap(vmaps[i], sub, "v")
+        emaps[i] = PropertyMap(emaps[i], sub, "e")
+    return vmaps, emaps
+
+def mark_subgraph(g, sub, vmap, emap, vmask=None, emask=None):
+    r"""
+    Mark a given subgraph `sub` on the graph `g`.
+
+    The mapping must be provided by the `vmap` and `emap` parameters,
+    which map vertices/edges of `sub` to indexes of the corresponding
+    vertices/edges in `g`.
+
+    This returns a vertex and an edge property map, with value type 'bool',
+    indicating whether or not a vertex/edge in `g` corresponds to the subgraph
+    `sub`. 
+    """
+    if vmask == None:
+        vmask = g.new_vertex_property("bool")
+    if emask == None:
+        emask = g.new_edge_property("bool")
+
+    vmask.a = False
+    emask.a = False
+
+    for v in sub.vertices():
+        w = g.vertex(vmap[v])
+        vmask[w] = True
+        for ew in w.out_edges():
+            for ev in v.out_edges():
+                if emap[ev] == g.edge_index[ew]:
+                    emask[ew] = True
+                    break
+    return vmask, emask
 
 def min_spanning_tree(g, weights=None, root=None, tree_map=None):
     """
