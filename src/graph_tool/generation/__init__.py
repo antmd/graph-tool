@@ -577,7 +577,7 @@ def triangulation(points, type="simple", periodic=False):
     --------
     >>> from numpy.random import seed, random
     >>> seed(42)
-    >>> points = random((500,2))
+    >>> points = random((500,2))*4
     >>> g, pos = gt.triangulation(points)
     >>> weight = g.new_edge_property("double") # Edge weights corresponding to
     ...                                        # Euclidean distances
