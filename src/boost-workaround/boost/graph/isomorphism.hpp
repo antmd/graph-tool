@@ -274,6 +274,24 @@ namespace boost {
   } // namespace detail
 
 
+  template <typename Graph>
+  size_t get_num_vertices(const Graph& g)
+  {
+      size_t n = 0;
+      BGL_FORALL_VERTICES_T(v, g, Graph)
+          n++;
+      return n;
+  }
+
+  template <typename Graph>
+  size_t get_num_edges(const Graph& g)
+  {
+      size_t n = 0;
+      BGL_FORALL_EDGES_T(e, g, Graph)
+          n++;
+      return n;
+  }
+
   template <typename InDegreeMap, typename Graph>
   class degree_vertex_invariant
   {
@@ -284,19 +302,21 @@ namespace boost {
     typedef size_type result_type;
 
     degree_vertex_invariant(const InDegreeMap& in_degree_map, const Graph& g)
-      : m_in_degree_map(in_degree_map), m_g(g) { }
+      : m_in_degree_map(in_degree_map), m_g(g), m_N(get_num_vertices(g)),
+        m_E(get_num_edges(g)) {}
 
     size_type operator()(vertex_t v) const {
-      return (num_vertices(m_g) + 1) * out_degree(v, m_g)
-        + get(m_in_degree_map, v);
+      return (m_N + 1) * out_degree(v, m_g) + get(m_in_degree_map, v);
     }
     // The largest possible vertex invariant number
     size_type max BOOST_PREVENT_MACRO_SUBSTITUTION () const {
-      return (num_vertices(m_g) + 1) * num_edges(m_g) + num_edges(m_g) + 1;
+      return (m_N + 2) * m_E + 1;
     }
   private:
     InDegreeMap m_in_degree_map;
     const Graph& m_g;
+    size_t m_N;
+    size_t m_E;
   };
 
 
@@ -338,9 +358,10 @@ namespace boost {
     typedef typename property_traits<IndexMap2>::value_type IndexMap2Value;
     BOOST_STATIC_ASSERT((is_convertible<IndexMap2Value, size_type>::value));
 
-    if (num_vertices(G1) != num_vertices(G2))
+    size_t n1 = get_num_vertices(G1), n2 = get_num_vertices(G2);
+    if (n1 != n2)
       return false;
-    if (num_vertices(G1) == 0 && num_vertices(G2) == 0)
+    if (n1 == 0 && n2 == 0)
       return true;
 
     detail::isomorphism_algo<Graph1, Graph2, IsoMapping, Invariant1,
@@ -433,11 +454,9 @@ namespace boost {
   template<typename Graph1, typename Graph2, typename IsoMap>
   inline bool verify_isomorphism(const Graph1& g1, const Graph2& g2, IsoMap iso_map)
   {
-#if 0
-    // problematic for filtered_graph!
-    if (num_vertices(g1) != num_vertices(g2) || num_edges(g1) != num_edges(g2))
-      return false;
-#endif
+    if (get_num_vertices(g1) != get_num_vertices(g2) ||
+        get_num_edges(g1) != get_num_edges(g2))
+        return false;
 
     for (typename graph_traits<Graph1>::edge_iterator e1 = edges(g1).first;
          e1 != edges(g1).second; ++e1) {
