@@ -264,6 +264,12 @@ void GraphInterface::PurgeVertices()
         if (deleted[i])
         {
             graph_traits<multigraph_t>::vertex_descriptor v = vertex(i, _mg);
+            graph_traits<multigraph_t>::out_edge_iterator e, e_end;
+            for(tie(e, e_end) = out_edges(v, _mg); e != e_end; ++e)
+                RemoveEdgeIndex(*e);
+            graph_traits<multigraph_t>::in_edge_iterator ei, ei_end;
+            for(tie(ei, ei_end) = in_edges(v, _mg); ei != ei_end; ++ei)
+                RemoveEdgeIndex(*ei);
             clear_vertex(v, _mg);
             remove_vertex(v, _mg);
         }

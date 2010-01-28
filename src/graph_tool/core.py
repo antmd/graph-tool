@@ -33,8 +33,8 @@ from decorators import _wraps, _require, _attrs, _limit_args
 ################################################################################
 
 def _prop(t, g, prop):
-    """Return either a property map, or an internal vertex property map with a
-    given name."""
+    """Return either a property map, or an internal property map with a given
+    name."""
     if type(prop) == str:
         try:
             pmap = g.properties[(t,prop)]
@@ -47,6 +47,10 @@ def _prop(t, g, prop):
     if pmap == None:
         return libcore.any()
     else:
+        if t != prop.key_type():
+            names = {'e':'edge', 'v':'vertex', 'g':'graph'}
+            raise ValueError("Expected '%s' property map, got '%s'" %
+                             (names[t], names[prop.key_type()]))
         return pmap._PropertyMap__map.get_map()
 
 def _degree(g, name):
@@ -882,13 +886,13 @@ class Graph(object):
         """Remove all vertices of the graph which are currently being filtered
         out, and return it to the unfiltered state."""
         self.__graph.PurgeVertices()
-        self.__graph.SetVertexFilterProperty(None)
+        self.set_vertex_filter(None)
 
     def purge_edges(self):
         """Remove all edges of the graph which are currently being filtered out,
         and return it to the unfiltered state."""
         self.__graph.PurgeEdges()
-        self.__graph.SetEdgeFilterProperty(None)
+        self.set_edge_filter(None)
 
     def stash_filter(self, edge=False, vertex=False, directed=False,
                      reversed=False, all=True):
@@ -1065,7 +1069,7 @@ for directed in [True, False]:
                 if v_filtered:
                     v_filter = g.new_vertex_property("bool")
                     v_filter.a = [1]
-                    g.set_vertex_filter(e_filter)
+                    g.set_vertex_filter(v_filter)
                 e = g.edges().next()
                 e.__class__.__repr__ = _edge_repr
                 e.__class__.__iter__ = _edge_iter
