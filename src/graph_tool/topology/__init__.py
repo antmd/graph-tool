@@ -125,17 +125,16 @@ def subgraph_isomorphism(sub, g):
 
     Notes
     -----
-    The algorithm used is described in [ullman-algorithm-1976]. It has
-    worse-case complexity of :math:`O(N_{\text{g}}^{N_\text{sub}})`, but for
-    random graphs it typically has a complexity of
-    :math:`O(N_{\text{g}}^\gamma)` with :math:`\gamma` depending sub-linearly on
-    the size of `sub`.
+    The algorithm used is described in [ullmann-algorithm-1976]. It has
+    worse-case complexity of :math:`O(N_g^{N_{sub}})`, but for random graphs it
+    typically has a complexity of :math:`O(N_g^\gamma)` with :math:`\gamma`
+    depending sub-linearly on the size of `sub`.
 
     References
     ----------
-    .. [ullman-algorithm-1976] Ullmann, J. R., "An algorithm for subgraph
+    .. [ullmann-algorithm-1976] Ullmann, J. R., "An algorithm for subgraph
        isomorphism", Journal of the ACM 23 (1): 31–42, 1976, doi:10.1145/321921.321925
-    ... [subgraph-isormophism-wikipedia] http://en.wikipedia.org/wiki/Subgraph_isomorphism_problem
+    .. [subgraph-isormophism-wikipedia] http://en.wikipedia.org/wiki/Subgraph_isomorphism_problem
 
     """
     # vertex and edge labels disabled for the time being, until GCC is capable
