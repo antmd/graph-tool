@@ -37,10 +37,9 @@ public:
     bfs_max_visitor(DistMap dist_map, PredMap pred, size_t max_dist)
         : _dist_map(dist_map), _pred(pred), _max_dist(max_dist), _dist(0) {}
 
-
     template <class Graph>
-    void examine_edge(typename graph_traits<Graph>::edge_descriptor e,
-                      Graph& g)
+    void tree_edge(typename graph_traits<Graph>::edge_descriptor e,
+                   Graph& g)
     {
         _pred[target(e,g)] = source(e,g);
     }
@@ -49,7 +48,7 @@ public:
     void discover_vertex(typename graph_traits<Graph>::vertex_descriptor v,
                          Graph& g)
     {
-        if (_pred[v] == v)
+        if (size_t(_pred[v]) == v)
             return;
         size_t dist = _dist_map[_pred[v]] + 1;
         if (dist > _max_dist)
@@ -93,9 +92,10 @@ private:
 
 struct do_bfs_search
 {
-    template <class Graph, class VertexIndexMap, class DistMap>
+    template <class Graph, class VertexIndexMap, class DistMap, class PredMap>
     void operator()(const Graph& g, size_t source, VertexIndexMap vertex_index,
-                    DistMap dist_map, long double max_dist) const
+                    DistMap dist_map, PredMap pred_map, long double max_dist)
+        const
     {
         typedef typename property_traits<DistMap>::value_type dist_t;
         dist_t max_d = (max_dist > 0) ?
@@ -112,17 +112,13 @@ struct do_bfs_search
         }
         dist_map[vertex(source,g)] = 0;
 
-        typedef unchecked_vector_property_map
-            <typename graph_traits<Graph>::vertex_descriptor, VertexIndexMap>
-            pred_map_t;
-        pred_map_t pred_map(vertex_index, num_vertices(g));
         pred_map[vertex(source, g)] = vertex(source, g);
         unchecked_vector_property_map<boost::default_color_type, VertexIndexMap>
             color_map(vertex_index, num_vertices(g));
         try
         {
             breadth_first_search(g, vertex(source, g),
-                                 visitor(bfs_max_visitor<DistMap, pred_map_t>
+                                 visitor(bfs_max_visitor<DistMap, PredMap>
                                          (dist_map, pred_map, max_d)).
                                  vertex_index_map(vertex_index).
                                  color_map(color_map));
@@ -133,10 +129,11 @@ struct do_bfs_search
 
 struct do_djk_search
 {
-    template <class Graph, class VertexIndexMap, class DistMap, class WeightMap>
+    template <class Graph, class VertexIndexMap, class DistMap, class PredMap,
+              class WeightMap>
     void operator()(const Graph& g, size_t source, VertexIndexMap vertex_index,
-                    DistMap dist_map, WeightMap weight, long double max_dist)
-        const
+                    DistMap dist_map, PredMap pred_map, WeightMap weight,
+                    long double max_dist) const
     {
         typedef typename property_traits<DistMap>::value_type dist_t;
         dist_t max_d = (max_dist > 0) ?
@@ -148,6 +145,7 @@ struct do_djk_search
                                     weight_map(weight).
                                     distance_map(dist_map).
                                     vertex_index_map(vertex_index).
+                                    predecessor_map(pred_map).
                                     visitor(djk_max_visitor<DistMap>
                                             (dist_map, max_d)));
         }
@@ -156,21 +154,29 @@ struct do_djk_search
 };
 
 void get_dists(GraphInterface& gi, size_t source, boost::any dist_map,
-               boost::any weight, long double max_dist)
+               boost::any weight, boost::any pred_map, long double max_dist)
 {
+    typedef property_map_type
+        ::apply<int64_t, GraphInterface::vertex_index_map_t>::type pred_map_t;
+
+    pred_map_t pmap = any_cast<pred_map_t>(pred_map);
+
     if (weight.empty())
     {
         run_action<>()
             (gi, bind<void>(do_bfs_search(), _1, source, gi.GetVertexIndex(),
-                            _2, max_dist),
-             writable_vertex_scalar_properties())
+                            _2, pmap.get_unchecked(num_vertices(gi.GetGraph())),
+                            max_dist),
+             writable_vertex_scalar_properties(),
+             mpl::vector<pred_map_t>())
             (dist_map);
     }
     else
     {
         run_action<>()
             (gi, bind<void>(do_djk_search(), _1, source, gi.GetVertexIndex(),
-                            _2, _3, max_dist),
+                            _2, pmap.get_unchecked(num_vertices(gi.GetGraph())),
+                            _3, max_dist),
              writable_vertex_scalar_properties(),
              edge_scalar_properties())
             (dist_map, weight);

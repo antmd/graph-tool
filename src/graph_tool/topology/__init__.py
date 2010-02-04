@@ -51,7 +51,8 @@ import random, sys, numpy, weakref
 __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
            "min_spanning_tree", "dominator_tree", "topological_sort",
            "transitive_closure", "label_components",
-           "label_biconnected_components", "shortest_distance", "is_planar"]
+           "label_biconnected_components", "shortest_distance",
+           "shortest_path", "is_planar"]
 
 def isomorphism(g1, g2, isomap=False):
     r"""Check whether two graphs are isomorphic.
@@ -165,7 +166,7 @@ def mark_subgraph(g, sub, vmap, emap, vmask=None, emask=None):
 
     This returns a vertex and an edge property map, with value type 'bool',
     indicating whether or not a vertex/edge in `g` corresponds to the subgraph
-    `sub`. 
+    `sub`.
     """
     if vmask == None:
         vmask = g.new_vertex_property("bool")
@@ -537,7 +538,8 @@ def label_biconnected_components(g, eprop=None, vprop=None):
     return eprop, vprop, nc
 
 def shortest_distance(g, source=None, weights=None, max_dist=None,
-                      directed=None, dense=False, dist_map=None):
+                      directed=None, dense=False, dist_map=None,
+                      pred_map=False):
     """
     Calculate the distance of all vertices from a given source, or the all pairs
     shortest paths, if the source is not specified.
@@ -547,7 +549,7 @@ def shortest_distance(g, source=None, weights=None, max_dist=None,
     g : :class:`~graph_tool.Graph`
         Graph to be used.
     source : :class:`~graph_tool.Vertex` (optional, default: None)
-        Vertex source of the search. If unspecified, the all pairs shortest
+        Source vertex of the search. If unspecified, the all pairs shortest
         distances are computed.
     weights : :class:`~graph_tool.PropertyMap` (optional, default: None)
         The edge weights. If provided, the minimum spanning tree will minimize
@@ -565,6 +567,9 @@ def shortest_distance(g, source=None, weights=None, max_dist=None,
     dist_map : :class:`~graph_tool.PropertyMap` (optional, default: None)
         Vertex property to store the distances. If none is supplied, one
         is created.
+    pred_map : bool (optional, default: False)
+        If true, a vertex property map with the predecessors is returned.
+        Ignored if source=None.
 
     Returns
     -------
@@ -668,9 +673,11 @@ def shortest_distance(g, source=None, weights=None, max_dist=None,
 
     try:
         if source != None:
+            pmap = g.copy_property(g.vertex_index, value_type="int64_t")
             libgraph_tool_topology.get_dists(g._Graph__graph, int(source),
                                              _prop("v", g, dist_map),
                                              _prop("e", g, weights),
+                                             _prop("v", g, pmap),
                                              float(max_dist))
         else:
             libgraph_tool_topology.get_all_dists(g._Graph__graph,
@@ -680,7 +687,104 @@ def shortest_distance(g, source=None, weights=None, max_dist=None,
     finally:
         if directed != None:
             g.pop_filter(directed=True)
-    return dist_map
+    if source != None and pred_map:
+        return dist_map, pmap
+    else:
+        return dist_map
+
+def shortest_path(g, source, target, weights=None, pred_map=None):
+    """
+    Return the shortest path from `source` to `target`.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    source : :class:`~graph_tool.Vertex`
+        Source vertex of the search.
+    source : :class:`~graph_tool.Vertex`
+        Target vertex of the search.
+    weights : :class:`~graph_tool.PropertyMap` (optional, default: None)
+        The edge weights. If provided, the minimum spanning tree will minimize
+        the edge weights.
+    pred_map :  :class:`~graph_tool.PropertyMap` (optional, default: None)
+        Vertex property map with the predecessors in the search tree. If this is
+        provided, the shortest paths are not computed, and are obtained directly
+        from this map.
+
+    Returns
+    -------
+    vertex_list : list of :class:`~graph_tool.Vertex`
+        List of vertices from `source` to `target` in the shortest path.
+    edge_list : list of :class:`~graph_tool.Edge`
+        List of edges from `source` to `target` in the shortest path.
+
+    Notes
+    -----
+
+    The paths are computed with a breadth-first search (BFS) or Dijkstra's
+    algorithm [dijkstra]_, if weights are given.
+
+    The algorithm runs in :math:`O(V + E)` time, or :math:`O(V \log V)` if
+    weights are given.
+
+    Examples
+    --------
+    >>> from numpy.random import seed, poisson
+    >>> seed(42)
+    >>> g = gt.random_graph(300, lambda: (poisson(3), poisson(3)))
+    >>> vlist, elist = gt.shortest_path(g, g.vertex(10), g.vertex(11))
+    >>> print [str(v) for v in vlist]
+    ['10', '226', '288', '94', '221', '169', '203', '38', '281', '11']
+    >>> print [str(e) for e in elist]
+    ['(10,226)', '(226,288)', '(288,94)', '(94,221)', '(221,169)', '(169,203)', '(203,38)', '(38,281)', '(281,11)']
+
+    References
+    ----------
+    .. [bfs] Edward Moore, "The shortest path through a maze", International
+       Symposium on the Theory of Switching (1959), Harvard University
+       Press;http://www.boost.org/libs/graph/doc/breadth_first_search.html
+    .. [dijkstra] E. Dijkstra, "A note on two problems in connexion with
+       graphs." Numerische Mathematik, 1:269-271, 1959.
+       http://www.boost.org/libs/graph/doc/dijkstra_shortest_paths.html
+    """
+
+    if pred_map == None:
+        dists, pred_map = shortest_distance(g, source, weights=weights,
+                                            pred_map=True)
+
+    if pred_map[target] == int(target): # no path to source
+        return [], []
+
+    vlist = [target]
+    elist = []
+
+    if weights != None:
+        max_w = weights.a.max() + 1
+    else:
+        max_w = None
+
+    v = target
+    while v != source:
+        p = g.vertex(pred_map[v])
+        min_w = max_w
+        pe = None
+        s = None
+        for e in v.in_edges() if g.is_directed() else v.out_edges():
+            s = e.source() if g.is_directed() else e.target()
+            if s == p:
+                if weights != None:
+                    if weights[e] < min_w:
+                        min_w = weights[e]
+                        pe = e
+                else:
+                    pe = e
+                    break
+        elist.insert(0, pe)
+        vlist.insert(0, p)
+        v = p
+    return vlist, elist
+
 
 def is_planar(g, embedding=False, kuratowski=False):
     """
