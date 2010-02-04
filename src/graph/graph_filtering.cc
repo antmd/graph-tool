@@ -258,20 +258,25 @@ void GraphInterface::PurgeVertices()
     for (size_t i = 0; i < N; ++i)
         deleted[i] = !filter(vertex(i, _mg));
 
+    vector<graph_traits<multigraph_t>::edge_descriptor> edges;
+
     //remove vertices
-    for (size_t i = N-1; i < N; --i)
+    for (int i = N-1; i >= 0; --i)
     {
         if (deleted[i])
         {
             graph_traits<multigraph_t>::vertex_descriptor v = vertex(i, _mg);
             graph_traits<multigraph_t>::out_edge_iterator e, e_end;
             for(tie(e, e_end) = out_edges(v, _mg); e != e_end; ++e)
-                RemoveEdgeIndex(*e);
+                edges.push_back(*e);
             graph_traits<multigraph_t>::in_edge_iterator ei, ei_end;
             for(tie(ei, ei_end) = in_edges(v, _mg); ei != ei_end; ++ei)
-                RemoveEdgeIndex(*ei);
+                edges.push_back(*ei);
+            for(size_t j = 0; j < edges.size(); ++j)
+                RemoveEdgeIndex(edges[j]);
             clear_vertex(v, _mg);
             remove_vertex(v, _mg);
+            edges.clear();
         }
     }
 }
