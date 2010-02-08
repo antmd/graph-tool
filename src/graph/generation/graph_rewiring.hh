@@ -112,9 +112,9 @@ struct swap_edge_triad
             return true; // se is parallel to te after swap
         if (is_adjacent_in_new(ns,  nt, edge_is_new, g))
             return true; // e would clash with an existing (new) edge
-        if (edge_is_new[te.first] && is_adjacent_in_new(te_s, t, edge_is_new, g))
+        if (edge_is_new[te.first] && is_adjacent_in_new(te_s, t, edge_is_new,g))
             return true; // te would clash with an existing (new) edge
-        if (edge_is_new[se.first] && is_adjacent_in_new(s, se_t, edge_is_new, g))
+        if (edge_is_new[se.first] && is_adjacent_in_new(s, se_t, edge_is_new,g))
             return true; // se would clash with an existing (new) edge
         return false; // the coast is clear - hooray!
     }
@@ -161,14 +161,20 @@ struct swap_edge_triad
             ne = add_edge(source(se, g), target(te, g), g).first;
             if(e != se.first)
             {
-                nse = add_edge(source(e, g), target(se, g), g).first;
+                if (!se.second)
+                    nse = add_edge(source(e, g), target(se, g), g).first;
+                else // keep invertedness (only for undirected graphs)
+                    nse = add_edge(target(se, g), source(e, g), g).first;
                 edge_index[nse] = edge_index[se.first];
                 remove_edge(se.first, g);
                 edges[edge_index[nse]] = nse;
             }
             if(e != te.first)
             {
-                nte = add_edge(source(te, g), target(e, g), g).first;
+                if (!te.second)
+                    nte = add_edge(source(te, g), target(e, g), g).first;
+                else // keep invertedness (only for undirected graphs)
+                    nte = add_edge(target(e, g), source(te, g), g).first;
                 edge_index[nte] = edge_index[te.first];
                 remove_edge(te.first, g);
                 edges[edge_index[nte]] = nte;
@@ -425,7 +431,6 @@ public:
         static_cast<RewireStrategy*>(this)->get_edges(e, edges_source,
                                                       edges_target);
 
-
         //try randomly drawn pairs of edges until one satisfies all the
         //consistency checks
         bool found = false;
@@ -443,7 +448,6 @@ public:
             if (!is_edge[(*esi).first])
                 continue;
             es = make_pair(edges[(*esi).first], (*esi).second);
-            static_cast<RewireStrategy*>(this)->check_source_edge(es, e);
 
             if(!self_loops) // reject self-loops if not allowed
             {
@@ -460,7 +464,6 @@ public:
                 if (!is_edge[(*eti).first])
                     continue;
                 et = make_pair(edges[(*eti).first], (*eti).second);
-                static_cast<RewireStrategy*>(this)->check_target_edge(et, e);
 
                 if (!self_loops) // reject self-loops if not allowed
                 {
@@ -514,17 +517,20 @@ public:
                          rng_t& rng)
         : base_t(g, edge_index, rng)
     {
-        //bernoulli_distribution coin(0.5);
+        tr1::bernoulli_distribution coin;
+        bool invert = false;
+
         typename graph_traits<Graph>::edge_iterator e_i, e_i_end;
         for (tie(e_i, e_i_end) = edges(g); e_i != e_i_end; ++e_i)
         {
-            // For undirected graphs, there is no difference between source
-            // and target, and each edge will appear _twice_ on the list
-            // once for each different ordering of source and target.
+            // For undirected graphs, a random "direction" needs to be chosen,
+            // and it needs to be uncorrelated with the implicit direction it
+            // comes with.
 
-            _all_edges.push_back(make_pair(edge_index[*e_i], false));
             if (!is_directed::apply<Graph>::type::value)
-                _all_edges.push_back(make_pair(edge_index[*e_i], true));
+                invert = coin(rng);
+
+            _all_edges.push_back(make_pair(edge_index[*e_i], invert));
         }
         _all_edges2 = _all_edges;
 
@@ -537,9 +543,6 @@ public:
         edges_source = &_all_edges;
         edges_target = &_all_edges2;
     }
-
-    void check_source_edge(pair<edge_t,bool>& se, const edge_t& e) {}
-    void check_target_edge(pair<edge_t,bool>& te, const edge_t& e) {}
 
 private:
     vector<pair<index_t,bool> > _all_edges;
@@ -567,7 +570,8 @@ public:
     typedef typename EdgeIndexMap::value_type index_t;
 
     CorrelatedRewireStrategy (Graph& g, EdgeIndexMap edge_index,
-                              rng_t& rng) : base_t(g, edge_index, rng), _g(g)
+                              rng_t& rng)
+        : base_t(g, edge_index, rng), _g(g)
     {
         typename graph_traits<Graph>::edge_iterator e_i, e_i_end;
         for (tie(e_i, e_i_end) = edges(g); e_i != e_i_end; ++e_i)
@@ -614,55 +618,6 @@ public:
                       out_degree(target(e, _g), _g));
 
         edges_target = &_edges_by_target[deg_target];
-    }
-
-
-    void check_source_edge(pair<edge_t,bool>& se, const edge_t& e)
-    {
-        check_source_edge_if_undirected
-            (se, e, typename is_directed::apply<Graph>::type());
-    }
-    void check_target_edge(pair<edge_t,bool>& te, const edge_t& e)
-    {
-        check_target_edge_if_undirected
-            (te, e, typename is_directed::apply<Graph>::type());
-    }
-
-    void check_source_edge_if_undirected(pair<edge_t,bool>& se, const edge_t& e,
-                                         boost::true_type) {}
-    void check_target_edge_if_undirected(pair<edge_t,bool>& te, const edge_t& e,
-                                         boost::true_type) {}
-
-    void check_source_edge_if_undirected(pair<edge_t,bool>& se, const edge_t& e,
-                                         boost::false_type)
-    {
-        // check if the edge direction is correct, otherwise invert it.
-        pair<size_t, size_t> deg_source1 =
-            make_pair(out_degree(source(e, _g), _g),
-                      out_degree(source(e, _g), _g));
-
-        pair<size_t, size_t> deg_source2 =
-            make_pair(out_degree(source(se, _g), _g),
-                      out_degree(source(se, _g), _g));
-
-        if (deg_source1 != deg_source2)
-            se.first = edge_t(se.first, !se.first.IsInverted());
-    }
-
-    void check_target_edge_if_undirected(pair<edge_t,bool>& te, const edge_t& e,
-                                         boost::false_type)
-    {
-        // check if the edge direction is correct, otherwise invert it.
-        pair<size_t, size_t> deg_target1 =
-            make_pair(out_degree(target(e, _g), _g),
-                      out_degree(target(e, _g), _g));
-
-        pair<size_t, size_t> deg_target2 =
-            make_pair(out_degree(target(te, _g), _g),
-                      out_degree(target(te, _g), _g));
-
-        if (deg_target1 != deg_target2)
-            te.first = edge_t(te.first, !te.first.IsInverted());
     }
 
 private:
