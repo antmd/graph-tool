@@ -244,7 +244,8 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
     out) of each vertex are always the same, but otherwise the edges are
     randomly placed. If `strat` == "correlated", the degree correlations are
     also maintained: The new source and target of each edge both have the same
-    in and out-degree.
+    in and out-degree. If `strat` = "probabilistic", than edges are rewired
+    according to the degree correlation given by the parameter `deg_corr`.
 
     Parameters
     ----------
@@ -266,9 +267,21 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
 
     Notes
     -----
+    This algorithm iterates through all the edges in the network and tries to
+    swap its target our edge with another edge.
+
+    .. note::
+        If `parallel_edges` = False, parallel edges are not placed during
+        rewiring. In this case, for some special graphs it may be necessary to
+        call the function more than once to obtain a graph which corresponds to
+        a uniform sample from the ensemble. But typically, if the graph is
+        sufficiently large, a single call should be enough.
 
     Each edge gets swapped at least once, so the overall complexity is
-    :math:`O(E)`.
+    :math:`O(E)`. If `strat` = "probabilistic" the complexity is
+    :math:`O(E\log N_k)`,  where :math:`N_k < V` is the number of different
+    degrees (or in,out-degree pairs).
+
 
     Examples
     --------
