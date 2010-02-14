@@ -27,6 +27,7 @@ Summary
    :nosignatures:
 
    shortest_distance
+   shortest_path
    isomorphism
    subgraph_isomorphism
    mark_subgraph
@@ -836,7 +837,7 @@ def is_planar(g, embedding=False, kuratowski=False):
     >>> print p
     False
     >>> g.set_edge_filter(kur, True)
-    >>> gt.graph_draw(g, layout="arf",  size=(6,6), output="kuratowski.png")
+    >>> gt.graph_draw(g, layout="arf",  size=(7,7), output="kuratowski.png")
     <...>
 
     .. figure:: kuratowski.png

@@ -380,6 +380,12 @@ out. This behaviour can be modified with the ``inverted`` parameter of the
 respective functions. All manipulation functions and algorithms will work as if
 the marked edges or vertices were removed from the graph, with minimum overhead.
 
+.. note::
+
+    It is important to emphasize that the filtering functionality does not add
+    any overhead when the graph is not being filtered. In this case, the
+    algorithms run just as fast as if the filtering functionality didn't exist.
+
 Here is an example which obtains the minimum spanning tree of a graph, using
 edge filtering.
 
@@ -390,9 +396,9 @@ edge filtering.
 
 .. testcode::
 
-   g = random_graph(100, lambda: (poisson(4), poisson(4)))
+   g, pos = triangulation(random((500,2))*4, type="delaunay")
    tree = min_spanning_tree(g)
-   graph_draw(g, size=(8,8), ecolor=tree, output="min_tree.png")
+   graph_draw(g, pos=pos, pin=True, size=(8,8), ecolor=tree, output="min_tree.png")
 
 The ``tree`` property map has a bool type, with value "1" if the edge belongs to
 the tree, and "0" otherwise. Below is an image of the original graph, with the
@@ -406,7 +412,7 @@ We can now filter out the edges which don't belong to the minimum spanning tree.
 .. testcode::
 
     g.set_edge_filter(tree)
-    graph_draw(g, size=(8,8), layout="arf", output="min_tree_filtered.png")
+    graph_draw(g, pos=pos, pin=True, size=(8,8), output="min_tree_filtered.png")
 
 This is how the graph looks when filtered:
 
@@ -414,71 +420,35 @@ This is how the graph looks when filtered:
    :align: center
 
 Everything should work transparently on the filtered graph, simply as if the
-masked edges were removed.
+masked edges were removed. For instance, the following code will calculate the
+:func:`~graph_tool.centrality.betweenness` centrality of the edges and vertices,
+and draws them as colors and line thickness in the graph.
 
 .. testcode::
 
-    pr = pagerank(g)
-    print pr.a
+    bv, be = betweenness(g)
+    be.a *= 10
+    graph_draw(g, pos=pos, pin=True, size=(8,8), vsize=0.07, vcolor=bv,
+               eprops={"penwidth":be}, output="filtered-bt.png")
 
-Which outputs the following.
+.. figure:: filtered-bt.png
+   :align: center
 
-.. testoutput::
-
-    [ 0.25333333  0.2         0.2         0.2         0.2         0.79733333
-      0.49482667  0.52853333  0.44        0.36        0.2         0.42455467
-      0.2         0.552       0.28        0.36        0.36        0.2         0.2
-      0.25333333  1.89578667  1.06077099  0.2         0.2         1.26709333
-      0.36853333  0.2         0.2         0.2         0.488       0.49333333
-      0.28        0.2         0.2         0.2         0.648       0.2
-      0.29173333  0.28        0.56138667  0.42455467  0.2         0.36        0.504
-      0.2         1.17173333  0.2         0.28        0.36        0.488       0.52
-      0.2         0.2         0.44        0.648       0.2         0.6704      0.2
-      0.36        0.2         0.2         0.2         1.15701333  0.2         0.344
-      0.2         0.36        0.55733333  0.2         0.344       0.28        0.2
-      0.2         0.424       0.36        0.73333333  0.36853333  0.29173333
-      1.07596373  0.36        0.408       1.33386667  0.25333333  0.2         0.2
-      0.2         0.2         0.2         1.24533333  0.45173333  0.28        0.2
-      0.344       0.2         0.2         1.19626667  0.2         0.632       0.2
-      0.2       ]
 
 The original graph can be recovered by setting the edge filter to ``None``.
 
 .. testcode::
 
     g.set_edge_filter(None)
-    pr = pagerank(g)
-    print pr.a
+    bv, be = betweenness(g)
+    be.a *= 10
+    graph_draw(g, pos=pos, pin=True, size=(8,8), vsize=0.07, vcolor=bv,
+               eprops={"penwidth":be}, output="nonfiltered-bt.png")
 
-Which outputs the following.
-
-.. testoutput::
-
-    [ 0.62729462  0.76981859  2.49409878  0.6482403   0.74615387  1.05405443
-      0.61325462  0.89427918  0.71954456  1.30133216  0.2826627   0.77604271
-      0.25073123  0.86915196  1.14884858  0.2826627   1.10094496  0.57026726
-      0.6198043   0.76768522  1.52240328  0.41022172  1.17159772  0.95765161
-      0.83490887  1.2136575   1.41449882  1.5489521   0.66412068  0.7352214
-      1.21037608  0.64396361  0.87802656  0.31938462  0.78743109  1.67050184
-      0.41200881  0.73928389  0.36523029  0.87377465  2.47043781  0.30561659
-      0.93662203  0.86383309  1.21911903  1.80271636  0.2         1.03872561
-      1.4359001   1.81688914  1.68310565  0.25073123  0.52549083  1.188486
-      1.31594365  0.2         1.52498274  0.66120137  0.66025516  0.63644263
-      0.26686166  0.88481433  1.34522024  0.31707021  1.06448852  0.51983431
-      0.96831557  1.29751162  0.60525803  1.44864461  0.86032791  0.8863202
-      0.44530184  0.97948075  1.5064464   1.34553188  1.23884369  0.91887273
-      0.89110859  1.08966816  1.11685236  1.4889228   1.29937733  0.2
-      1.37848879  0.50230514  0.60896565  0.65921635  0.98165444  0.71947832
-      0.56083022  0.604076    0.48384859  0.34872367  0.5166419   1.52940485
-      1.40411236  0.99922722  0.98348377  1.04335144]
+.. figure:: nonfiltered-bt.png
+   :align: center
 
 Everything works in analogous fashion with vertex filtering.
-
-.. note::
-
-    It is important to emphasize that the filtering functionality does not add
-    any overhead when the graph is not being filtered. In this case, the
-    algorithms run just as fast as if the filtering functionality didn't exist.
 
 Additionally, the graph can also have its edges reversed with the
 :meth:`~graph_tool.Graph.set_reversed` method. This is also an :math:`O(1)`
