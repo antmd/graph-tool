@@ -19,35 +19,58 @@
 #include "graph_filtering.hh"
 
 #include <tr1/random>
-typedef std::tr1::mt19937 rng_t;
 
 #include "graph_rewiring.hh"
 
 #include <boost/bind.hpp>
+#include <boost/python.hpp>
 
 using namespace graph_tool;
 using namespace boost;
 
+class PythonFuncWrap
+{
+public:
+    PythonFuncWrap(python::object o): _o(o) {}
+
+    double operator()(pair<size_t, size_t> deg, pair<size_t, size_t> degl) const
+    {
+        python::object ret = _o(python::make_tuple(deg.first, deg.second),
+                                python::make_tuple(degl.first, degl.second));
+        return python::extract<double>(ret);
+    }
+
+private:
+    python::object _o;
+};
+
 void random_rewire(GraphInterface& gi, string strat, bool self_loops,
-                   bool parallel_edges, size_t seed)
+                   bool parallel_edges, python::object corr_prob, size_t seed,
+                   bool verbose)
 {
     rng_t rng(static_cast<rng_t::result_type>(seed));
+    PythonFuncWrap corr(corr_prob);
 
     if (strat == "erdos")
         run_action<graph_tool::detail::never_reversed>()
             (gi, bind<void>(graph_rewire<ErdosRewireStrategy>(),
-                            _1, gi.GetEdgeIndex(), ref(rng), self_loops,
-                            parallel_edges))();
+                            _1, gi.GetEdgeIndex(), ref(corr), ref(rng),
+                            self_loops, parallel_edges, verbose))();
     else if (strat == "uncorrelated")
         run_action<graph_tool::detail::never_reversed>()
             (gi, bind<void>(graph_rewire<RandomRewireStrategy>(),
-                            _1, gi.GetEdgeIndex(), ref(rng), self_loops,
-                            parallel_edges))();
+                            _1, gi.GetEdgeIndex(), ref(corr), ref(rng),
+                            self_loops, parallel_edges, verbose))();
     else if (strat == "correlated")
         run_action<graph_tool::detail::never_reversed>()
             (gi, bind<void>(graph_rewire<CorrelatedRewireStrategy>(),
-                            _1, gi.GetEdgeIndex(), ref(rng), self_loops,
-                            parallel_edges))();
+                            _1, gi.GetEdgeIndex(), ref(corr), ref(rng),
+                            self_loops, parallel_edges, verbose))();
+    else if (strat == "probabilistic")
+        run_action<>()
+            (gi, bind<void>(graph_rewire<ProbabilisticRewireStrategy>(),
+                            _1, gi.GetEdgeIndex(), ref(corr), ref(rng),
+                            self_loops, parallel_edges, verbose))();
     else
         throw ValueException("invalid random rewire strategy: " + strat);
 }

@@ -50,7 +50,7 @@ def _corr_wrap(i, j, corr):
     return corr(i[1], j[1])
 
 def random_graph(N, deg_sampler, deg_corr=None, directed=True,
-                 parallel=False, self_loops=False, verbose=False):
+                 parallel_edges=False, self_loops=False, verbose=False):
     r"""
     Generate a random graph, with a given degree distribution and correlation.
 
@@ -73,10 +73,12 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
         an edge existing in the generated graph.
     directed : bool (optional, default: True)
         Whether the generated graph should be directed.
-    parallel : bool (optional, default: False)
+    parallel_edges : bool (optional, default: False)
         If True, parallel edges are allowed.
     self_loops : bool (optional, default: False)
         If True, self-loops are allowed.
+    verbose : bool (optional, default: False)
+        If True, verbose information is displayed.
 
     Returns
     -------
@@ -224,25 +226,26 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
         uncorrelated = True
     else:
         uncorrelated = False
-    if not directed and deg_corr != None:
-        corr = lambda i,j: _corr_wrap(i, j, deg_corr)
-    else:
-        corr = deg_corr
-    libgraph_tool_generation.gen_random_graph(g._Graph__graph, N,
-                                              deg_sampler, corr,
-                                              uncorrelated, not parallel,
+    libgraph_tool_generation.gen_random_graph(g._Graph__graph, N, deg_sampler,
+                                              uncorrelated, not parallel_edges,
                                               not self_loops, not directed,
                                               seed, verbose)
     g.set_directed(directed)
+    random_rewire(g, parallel_edges = parallel_edges, self_loops = self_loops,
+                  verbose = verbose)
+    if deg_corr != None:
+        random_rewire(g, strat = "probabilistic",
+                      parallel_edges = parallel_edges, deg_corr = deg_corr,
+                      self_loops = self_loops, verbose = verbose)
     return g
 
-@_limit_args({"strat":["erdos", "correlated", "uncorrelated"]})
+@_limit_args({"strat":["erdos", "correlated", "uncorrelated", "probabilistic"]})
 def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
-                  self_loops = False):
+                  self_loops = False, deg_corr = None, verbose = False):
     r"""
     Shuffle the graph in-place. If `strat` != "erdos", the degrees (either in or
     out) of each vertex are always the same, but otherwise the edges are
-    randomly placed. If `strat` == "correlated", the degree correlations are
+    randomly placed. If `strat` = "correlated", the degree correlations are
     also maintained: The new source and target of each edge both have the same
     in and out-degree. If `strat` = "probabilistic", than edges are rewired
     according to the degree correlation given by the parameter `deg_corr`.
@@ -256,10 +259,22 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
         `strat` == "uncorrelated" only the degrees of the vertices will be
         maintained, nothing else. If `strat` == "correlated", additionally the
         new source and target of each edge both have the same in and out-degree.
+        If `strat` == "probabilistic", than edges are rewired according to the
+        degree correlation given by the parameter `deg_corr`.
     parallel : bool (optional, default: False)
         If True, parallel edges are allowed.
     self_loops : bool (optional, default: False)
         If True, self-loops are allowed.
+    deg_corr : function (optional, default: None)
+        A function which gives the degree correlation of the graph. It should be
+        callable with two parameters: the in,out-degree pair of the source
+        vertex an edge, and the in,out-degree pair of the target of the same
+        edge (for undirected graphs, both parameters are single values). The
+        function should return a number proportional to the probability of such
+        an edge existing in the generated graph. This parameter is ignored,
+        unless `strat` = "probabilistic".
+    verbose : bool (optional, default: False)
+        If True, verbose information is displayed.
 
     See Also
     --------
@@ -405,10 +420,16 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
 
     seed = numpy.random.randint(0, sys.maxint)
 
+    if not g.is_directed() and deg_corr != None:
+        corr = lambda i,j: _corr_wrap(i, j, deg_corr)
+    else:
+        corr = deg_corr
+
     g.stash_filter(reversed=True)
     try:
         libgraph_tool_generation.random_rewire(g._Graph__graph, strat,
-                                               self_loops, parallel_edges, seed)
+                                               self_loops, parallel_edges,
+                                               corr, seed, verbose)
     finally:
         g.pop_filter(reversed=True)
 
