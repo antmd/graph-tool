@@ -41,16 +41,15 @@ from .. dl_import import dl_import
 dl_import("import libgraph_tool_generation")
 
 from .. core import Graph, _check_prop_scalar, _prop, _limit_args
+from .. stats import label_parallel_edges, label_self_loops
 import sys, numpy, numpy.random
 
 __all__ = ["random_graph", "random_rewire", "predecessor_tree", "line_graph",
            "graph_union", "triangulation"]
 
-def _corr_wrap(i, j, corr):
-    return corr(i[1], j[1])
-
 def random_graph(N, deg_sampler, deg_corr=None, directed=True,
-                 parallel_edges=False, self_loops=False, verbose=False):
+                 parallel_edges=False, self_loops=False, random=True,
+                 verbose=False):
     r"""
     Generate a random graph, with a given degree distribution and correlation.
 
@@ -77,6 +76,8 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
         If True, parallel edges are allowed.
     self_loops : bool (optional, default: False)
         If True, self-loops are allowed.
+    random : bool (optional, default: True)
+        If True, the returned graph is randomized.
     verbose : bool (optional, default: False)
         If True, verbose information is displayed.
 
@@ -91,14 +92,19 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
 
     Notes
     -----
-    The algorithm maintains a list of all available source and target degree
-    pairs, such that the deg_corr function is called only once with the same
-    parameters.
+    The algorithm makes sure the degree sequence is graphical (i.e. realizable)
+    and keeps re-sampling the degrees if is not. With a valid degree sequence,
+    the edges are placed deterministically, and later the graph is shuffled with
+    the :func:`~graph_tool.generation.random_rewire` function.
 
-    The uncorrelated case, the complexity is :math:`O(V+E)`. For the correlated
-    case the worst-case complexity is :math:`O(V^2)`, but the typical case has
-    complexity :math:`O(V + E\log N_k + N_k^2)`, where :math:`N_k < V` is the
-    number of different degrees sampled (or in,out-degree pairs).
+    The complexity is :math:`O(V+E)` if parallel edges are allowed, and
+    :math:`O(V+E \times \log N_k)` if parallel edges are not allowed, where
+    :math:`N_k < V` is the number of different degrees sampled (or in,out-degree
+    pairs).
+
+    References
+    ----------
+    [deg-sequence] http://en.wikipedia.org/wiki/Degree_%28graph_theory%29#Degree_sequence
 
     Examples
     --------
@@ -129,7 +135,7 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     >>> g = gt.random_graph(1000, lambda: sample_k(40),
     ...                     lambda i,k: 1.0/(1+abs(i-k)), directed=False)
     >>> gt.scalar_assortativity(g, "out")
-    (0.60296352140954257, 0.011780362691333932)
+    (0.63243885897121965, 0.011153551018567562)
 
     The following samples an in,out-degree pair from the joint distribution:
 
@@ -231,12 +237,13 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
                                               not self_loops, not directed,
                                               seed, verbose)
     g.set_directed(directed)
-    random_rewire(g, parallel_edges = parallel_edges, self_loops = self_loops,
-                  verbose = verbose)
-    if deg_corr != None:
-        random_rewire(g, strat = "probabilistic",
-                      parallel_edges = parallel_edges, deg_corr = deg_corr,
+    if random:
+        random_rewire(g, parallel_edges = parallel_edges,
                       self_loops = self_loops, verbose = verbose)
+        if deg_corr != None:
+            random_rewire(g, strat = "probabilistic",
+                          parallel_edges = parallel_edges, deg_corr = deg_corr,
+                          self_loops = self_loops, verbose = verbose)
     return g
 
 @_limit_args({"strat":["erdos", "correlated", "uncorrelated", "probabilistic"]})
@@ -420,18 +427,33 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
 
     seed = numpy.random.randint(0, sys.maxint)
 
-    if not g.is_directed() and deg_corr != None:
-        corr = lambda i,j: _corr_wrap(i, j, deg_corr)
+    if not parallel_edges:
+        p = label_parallel_edges(g)
+        if p.a.max() != 0:
+            raise ValueError("Parallel edge detected. Can't rewire " +
+                             "graph without parallel edges if it " +
+                             "already contains parallel edges!")
+    if not self_loops:
+        l = label_self_loops(g)
+        if l.a.max() != 0:
+            raise ValueError("Self-loop detected. Can't rewire graph " +
+                             "without self-loops if it already contains" +
+                             " self-loops!")
+
+    if deg_corr != None and  not g.is_directed():
+        corr = lambda i,j: deg_corr(i[1], j[1])
     else:
         corr = deg_corr
 
-    g.stash_filter(reversed=True)
+    if corr == None:
+        g.stash_filter(reversed=True)
     try:
         libgraph_tool_generation.random_rewire(g._Graph__graph, strat,
                                                self_loops, parallel_edges,
                                                corr, seed, verbose)
     finally:
-        g.pop_filter(reversed=True)
+        if corr == None:
+            g.pop_filter(reversed=True)
 
 def predecessor_tree(g, pred_map):
     """Return a graph from a list of predecessors given by

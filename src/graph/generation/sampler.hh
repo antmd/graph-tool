@@ -148,7 +148,6 @@ public:
                 }
                 else
                 {
-                    cout << "all probabilities are zero... sample randomly.\n";
                     // all probabilities are zero... sample randomly.
                     tr1::uniform_int<size_t>
                         sample(0, _candidates_set.size()-1);

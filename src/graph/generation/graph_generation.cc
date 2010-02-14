@@ -44,20 +44,12 @@ public:
         return python::extract<size_t>(ret);
     }
 
-    double operator()(pair<size_t, size_t> deg, pair<size_t, size_t> degl) const
-    {
-        python::object ret = _o(python::make_tuple(deg.first, deg.second),
-                                python::make_tuple(degl.first, degl.second));
-        return python::extract<double>(ret);
-    }
-
 private:
     python::object _o;
 };
 
 void generate_random_graph(GraphInterface& gi, size_t N,
                            python::object deg_sample,
-                           python::object corr_deg_sample,
                            bool uncorrelated, bool no_parallel,
                            bool no_self_loops, bool undirected,
                            size_t seed, bool verbose)
@@ -73,26 +65,25 @@ void generate_random_graph(GraphInterface& gi, size_t N,
     if (uncorrelated)
     {
         run_action<graph_views>()
-            (gi, bind<void>(gen_random_graph<mpl::bool_<false> >(N), _1,
+            (gi, bind<void>(gen_random_graph(), _1, N,
                             PythonFuncWrap(deg_sample),
-                            PythonFuncWrap(corr_deg_sample),
                             no_parallel, no_self_loops,
-                            undirected, seed, verbose))();
+                            seed, verbose))();
     }
     else
     {
         run_action<graph_views>()
-            (gi, bind<void>(gen_random_graph<mpl::bool_<true> >(N), _1,
+            (gi, bind<void>(gen_random_graph(), _1, N,
                             PythonFuncWrap(deg_sample),
-                            PythonFuncWrap(corr_deg_sample),
                             no_parallel, no_self_loops,
-                            undirected, seed, verbose))();
+                            seed, verbose))();
     }
     gi.ReIndexEdges();
 }
 
 void random_rewire(GraphInterface& gi, string strat, bool self_loops,
-                   bool parallel_edges, size_t seed);
+                   bool parallel_edges, python::object corr_prob, size_t seed,
+                   bool verbose);
 void predecessor_graph(GraphInterface& gi, GraphInterface& gpi,
                        boost::any pred_map);
 void line_graph(GraphInterface& gi, GraphInterface& lgi,

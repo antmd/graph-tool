@@ -29,4 +29,5 @@ libgraph_tool_generation_la_include_HEADERS = \
     graph_rewiring.hh \
     graph_predecessor.hh \
     graph_union.hh \
-    graph_triangulation.hh
+    graph_triangulation.hh \
+    sampler.hh
