@@ -158,7 +158,7 @@ def edge_hist(g, eprop, bins=[1], float_count=True):
     >>> eprop = g.new_edge_property("double")
     >>> eprop.get_array()[:] = random(g.num_edges())
     >>> print gt.edge_hist(g, eprop, arange(0, 1, 0.1))
-    [array([ 525.,  504.,  502.,  502.,  467.,  499.,  531.,  471.,  520.,  479.]), array([ 0. ,  0.1,  0.2,  0.3,  0.4,  0.5,  0.6,  0.7,  0.8,  0.9])]
+    [array([ 525.,  504.,  502.,  502.,  468.,  499.,  531.,  471.,  520.,  478.]), array([ 0. ,  0.1,  0.2,  0.3,  0.4,  0.5,  0.6,  0.7,  0.8,  0.9])]
 
     """
 
@@ -252,7 +252,7 @@ def edge_average(g, eprop):
     >>> eprop = g.new_edge_property("double")
     >>> eprop.get_array()[:] = random(g.num_edges())
     >>> print gt.edge_average(g, eprop)
-    (0.49683581007070887, 0.0040956077241228531)
+    (0.49674035434130187, 0.0040946040690938677)
     """
 
     ret = libgraph_tool_stats.\
@@ -354,10 +354,10 @@ def distance_histogram(g, weight=None, bins=[1], samples=None,
     >>> g = gt.random_graph(100, lambda: (3, 3))
     >>> hist = gt.distance_histogram(g)
     >>> print hist
-    [array([    0.,   300.,   862.,  2147.,  3766.,  2588.,   237.]), array([0, 1, 2, 3, 4, 5, 6], dtype=uint64)]
+    [array([    0.,   300.,   857.,  2186.,  3894.,  2511.,   152.]), array([0, 1, 2, 3, 4, 5, 6], dtype=uint64)]
     >>> hist = gt.distance_histogram(g, samples=10)
     >>> print hist
-    [array([   0.,   30.,   84.,  210.,  375.,  264.,   27.]), array([0, 1, 2, 3, 4, 5, 6], dtype=uint64)]
+    [array([   0.,   30.,   88.,  222.,  384.,  251.,   15.]), array([0, 1, 2, 3, 4, 5, 6], dtype=uint64)]
     """
     if samples != None:
         seed = numpy.random.randint(0, sys.maxint)
