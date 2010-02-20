@@ -307,7 +307,7 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epslon=1e-6, max_iter=0,
         Graph to be used.
     trust_map : :class:`~graph_tool.PropertyMap`
         Edge property map with the values of trust associated with each
-        edge. The values must not lie in the range [0,1].
+        edge. The values must lie in the range [0,1].
     vprop : PropertyMap, optional (default: None)
         Vertex property map where the values of eigentrust must be stored.
     norm : bool, optional (default: false)
@@ -419,12 +419,11 @@ def absolute_trust(g, trust_map, source, target = None, vprop=None):
         Edge property map with the values of trust associated with each
         edge. The values must lie in the range [0,1].
     source : Vertex
-        A vertex which is used the as the source for gathering trust values.
+        Source vertex. All trust values are computed relative to this vertex.
     target : Vertex (optional, default: None)
-        A vertex which is used the as the only target for which the trust value
-        will be calculated. If left unspecified, the trust values for all
-        targets are computed.
-    vprop : :class:`~graph_tool.PropertyMap`, optional (default: None)
+        The only target for which the trust value will be calculated. If left
+        unspecified, the trust values for all targets are computed.
+    vprop : :class:`~graph_tool.PropertyMap` (optional, default: None)
         A vertex property map where the values of trust for each source
         must be stored.
 

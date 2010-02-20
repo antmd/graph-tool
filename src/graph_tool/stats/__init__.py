@@ -278,8 +278,8 @@ def label_parallel_edges(g, eprop=None):
     return eprop
 
 def remove_parallel_edges(g):
-    """Remove all parallel edges from the graph. Only on edge from each parallel
-    edge set is left."""
+    """Remove all parallel edges from the graph. Only one edge from each
+    parallel edge set is left."""
     eprop = label_parallel_edges(g)
     remove_labeled_edges(g, eprop)
 
