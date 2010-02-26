@@ -486,7 +486,7 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
 
     where :math:`N_i` is the number of times motif i found, and :math:`N^s_i`
     is the count of the same motif but on a shuffled network. It measures how
-    many standard deviations is each motif count, in respect to a ensemble of
+    many standard deviations is each motif count, in respect to an ensemble of
     randomly shuffled graphs with the same degree sequence.
 
     The z-scores values are not normalized.

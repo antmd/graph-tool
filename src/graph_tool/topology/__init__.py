@@ -704,7 +704,7 @@ def shortest_path(g, source, target, weights=None, pred_map=None):
         Graph to be used.
     source : :class:`~graph_tool.Vertex`
         Source vertex of the search.
-    source : :class:`~graph_tool.Vertex`
+    target : :class:`~graph_tool.Vertex`
         Target vertex of the search.
     weights : :class:`~graph_tool.PropertyMap` (optional, default: None)
         The edge weights. If provided, the minimum spanning tree will minimize

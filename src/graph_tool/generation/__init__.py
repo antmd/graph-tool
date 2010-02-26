@@ -100,9 +100,8 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     the :func:`~graph_tool.generation.random_rewire` function.
 
     The complexity is :math:`O(V+E)` if parallel edges are allowed, and
-    :math:`O(V+E \times \log N_k)` if parallel edges are not allowed, where
-    :math:`N_k < V` is the number of different degrees sampled (or in,out-degree
-    pairs).
+    :math:`O(V+E\log N_k)` if parallel edges are not allowed, where :math:`N_k <
+    V` is the number of different degrees sampled (or in,out-degree pairs).
 
     References
     ----------
@@ -264,11 +263,11 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
     g : :class:`~graph_tool.Graph`
         Graph to be shuffled. The graph will be modified.
     strat : string (optional, default: "uncorrelated")
-        If `strat` == "erdos", the resulting graph will be entirely random. If
-        `strat` == "uncorrelated" only the degrees of the vertices will be
-        maintained, nothing else. If `strat` == "correlated", additionally the
+        If `strat` = "erdos", the resulting graph will be entirely random. If
+        `strat` = "uncorrelated" only the degrees of the vertices will be
+        maintained, nothing else. If `strat` = "correlated", additionally the
         new source and target of each edge both have the same in and out-degree.
-        If `strat` == "probabilistic", than edges are rewired according to the
+        If `strat` = "probabilistic", than edges are rewired according to the
         degree correlation given by the parameter `deg_corr`.
     parallel : bool (optional, default: False)
         If True, parallel edges are allowed.
