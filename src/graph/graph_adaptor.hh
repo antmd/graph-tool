@@ -43,8 +43,8 @@ template <class Graph> class UndirectedAdaptor
 public:
     UndirectedAdaptor(const Graph &g):_g(const_cast<Graph &>(g)){}
 
-    typedef typename Graph::vertex_property_type vertex_property_type;
-    typedef typename Graph::edge_property_type edge_property_type;
+    typedef typename vertex_property_type<Graph>::type vertex_property_type;
+    typedef typename edge_property_type<Graph>::type edge_property_type;
     typedef typename Graph::graph_tag graph_tag;
     typedef Graph graph_type;
 

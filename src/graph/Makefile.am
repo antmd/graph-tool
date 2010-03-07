@@ -32,6 +32,7 @@ libgraph_tool_core_la_SOURCES = \
     graphml.cpp\
     read_graphviz_new.cpp\
     ../boost-workaround/boost/graph/filtered_graph.hpp\
+    ../boost-workaround/boost/graph/properties.hpp\
     ../boost-workaround/boost/graph/graphml.hpp\
     ../boost-workaround/boost/graph/graphviz.hpp\
     ../boost-workaround/boost/graph/detail/read_graphviz_new.hpp\
