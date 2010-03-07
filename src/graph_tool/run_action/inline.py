@@ -58,25 +58,28 @@ typedef prop_bind_t<GraphInterface::edge_index_map_t> edge_prop_t;
 typedef prop_bind_t<ConstantPropertyMap<size_t,graph_property_tag> > graph_prop_t;
 """
 
+
 def clean_prop_type(t):
-    return t.replace(" ","_").replace("::","_")\
-           .replace("<","_").replace(">","_").\
-           replace("__","_")
+    return t.replace(" ", "_").replace("::", "_")\
+           .replace("<", "_").replace(">", "_").\
+           replace("__", "_")
 
 for d in ["vertex", "edge", "graph"]:
     for t in core.value_types():
         props += "typedef %s_prop_t::as<%s >::type %sprop_%s_t;\n" % \
-                 (d,t.replace("bool","uint8_t"),d[0],clean_prop_type(t))
+                 (d, t.replace("bool", "uint8_t"), d[0], clean_prop_type(t))
+
 
 def get_graph_type(g):
     return libgraph_tool_core.get_graph_type(g._Graph__graph)
 
-def inline(code, arg_names=[], local_dict=None,
+
+def inline(code, arg_names=None, local_dict=None,
            global_dict=None, force=False, compiler="gcc", verbose=False,
-           auto_downcast=1, support_code="", libraries=[],
-           library_dirs=[], extra_compile_args=[],
-           runtime_library_dirs=[], extra_objects=[],
-           extra_link_args=[], mask_ret=[], debug=False):
+           auto_downcast=1, support_code="", libraries=None,
+           library_dirs=None, extra_compile_args=None,
+           runtime_library_dirs=None, extra_objects=None,
+           extra_link_args=None, mask_ret=None, debug=False):
     """Compile (if necessary) and run the C++ code specified by 'code', using
     :mod:`~scipy.weave`. The (possibly modified) variables in 'arg_names' are
     returned.
@@ -117,12 +120,22 @@ def inline(code, arg_names=[], local_dict=None,
 
     """
 
-    # each term on the expansion will properly unwrap a tuple pointer value
-    # to a reference with the appropriate name and type
-    exp_term = """typename boost::remove_pointer<typename tr1::tuple_element<%d,Args>::type>::type& %s =
-                          *tr1::get<%d>(_args);"""
-    arg_expansion = "\n".join([ exp_term % (i,arg_names[i],i) for i in \
-                                xrange(0, len(arg_names))])
+    if arg_names == None:
+        arg_names = []
+    if libraries == None:
+        libraries = []
+    if library_dirs == None:
+        library_dirs = []
+    if extra_compile_args == None:
+        extra_compile_args = []
+    if runtime_library_dirs == None:
+        runtime_library_dirs = []
+    if extra_objects == None:
+        extra_objects = []
+    if  extra_link_args == None:
+        extra_link_args = []
+    if mask_ret == None:
+        mask_ret = []
 
     # we need to get the locals and globals of the _calling_ function. Thus, we
     # need to go deeper into the call stack
@@ -140,7 +153,7 @@ def inline(code, arg_names=[], local_dict=None,
     alias_dict = {}
     for arg in arg_names:
         if arg not in local_dict.keys() and arg not in global_dict.keys():
-            raise ValueError("undefined variable: "+ arg)
+            raise ValueError("undefined variable: " + arg)
         if arg in local_dict.keys():
             arg_val = local_dict[arg]
         else:
@@ -150,8 +163,8 @@ def inline(code, arg_names=[], local_dict=None,
             gi = "__gt__" + arg + "__gi"
             graph_type = get_graph_type(arg_val)
             gi_val = arg_val._Graph__graph
-            arg_def += "typedef GraphWrap<%s > %s_graph_t;\n" % (graph_type, arg);
-            arg_def += "GraphInterface& %s = python::extract<GraphInterface&>(%s);\n" %\
+            arg_def += "typedef GraphWrap<%s > %s_graph_t;\n" % (graph_type, arg)
+            arg_def += "GraphInterface& %s = python::extract<GraphInterface&>(%s);\n" % \
                         (gi, alias)
             arg_def += "%s_graph_t %s = graph_wrap(*boost::any_cast<%s*>(%s.GetGraphView()), %s);\n" % \
                         (arg, arg, graph_type, gi, gi)
@@ -167,7 +180,7 @@ def inline(code, arg_names=[], local_dict=None,
                 prop_name = "%sprop_%s_t" % \
                             (arg_val.key_type(),
                              clean_prop_type(arg_val.value_type()))
-            arg_def  += "%s %s;\n" % (prop_name, arg)
+            arg_def += "%s %s;\n" % (prop_name, arg)
             arg_conv += "%s = get_prop<%s>(%s);\n" % \
                         (arg, prop_name, alias)
             arg_alias.append(alias)
@@ -189,7 +202,7 @@ def inline(code, arg_names=[], local_dict=None,
         elif type(arg_val) == bool:
             #weave is dumb with bools
             alias = "__gt__" + arg
-            arg_def += "bool %s;\n" % arg;
+            arg_def += "bool %s;\n" % arg
             arg_conv += "%s = python::extract<bool>(python::object(python::handle<>" % arg + \
                         "(python::borrowed((PyObject*)(%s)))));\n" % alias
             arg_alias.append(alias)
@@ -238,7 +251,7 @@ def inline(code, arg_names=[], local_dict=None,
     # friends to work properly across DSO boundaries. See
     # http://gcc.gnu.org/faq.html#dso
     orig_dlopen_flags = sys.getdlopenflags()
-    sys.setdlopenflags(core.RTLD_NOW|core.RTLD_GLOBAL)
+    sys.setdlopenflags(core.RTLD_NOW | core.RTLD_GLOBAL)
 
     # call weave and pass all the updated kw arguments
     ret_vals = \
@@ -259,12 +272,12 @@ def inline(code, arg_names=[], local_dict=None,
     else:
         del ret_vals["__exception_thrown"]
         del ret_vals["__exception_error"]
-    sys.setdlopenflags(orig_dlopen_flags) # reset dlopen to normal case to
-                                          # avoid unnecessary symbol collision
+    sys.setdlopenflags(orig_dlopen_flags)  # reset dlopen to normal case to
+                                           # avoid unnecessary symbol collision
     # set return vals
     for arg in arg_names:
-        if ret_vals.has_key(arg):
-            if local_dict.has_key(arg):
+        if arg in ret_vals:
+            if arg in local_dict:
                 local_dict[arg] = ret_vals[arg]
             else:
                 global_dict[arg] = ret_vals[arg]

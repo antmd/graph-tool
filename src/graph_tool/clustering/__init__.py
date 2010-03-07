@@ -57,6 +57,7 @@ import sys
 __all__ = ["local_clustering", "global_clustering", "extended_clustering",
            "motifs", "motif_significance"]
 
+
 def local_clustering(g, prop=None, undirected=False):
     r"""
     Return the local clustering coefficients for all vertices.
@@ -136,6 +137,7 @@ def local_clustering(g, prop=None, undirected=False):
             g.set_directed(True)
     return prop
 
+
 def global_clustering(g):
     r"""
     Return the global clustering coefficient.
@@ -186,6 +188,7 @@ def global_clustering(g):
 
     c =_gt.global_clustering(g._Graph__graph)
     return c
+
 
 def extended_clustering(g, props=None, max_depth=3, undirected=False):
     r"""
@@ -359,7 +362,7 @@ def motifs(g, k, p=1.0, motif_list=None, undirected=None):
             sub_list.append(m._Graph__graph)
 
     if type(p) == float:
-        pd = [1.0]*(k-1)
+        pd = [1.0] * (k-1)
         pd.append(p)
     if type(p) == list:
         pd = [float(x) for x in p]
@@ -386,37 +389,39 @@ def motifs(g, k, p=1.0, motif_list=None, undirected=None):
 
     list_hist = zip(sub_list, hist)
     # sort according to in-degree sequence
-    list_hist.sort(lambda x,y: cmp(sorted([v.in_degree() for v in x[0].vertices()]),
-                                   sorted([v.in_degree() for v in y[0].vertices()])))
+    list_hist.sort(lambda x, y: cmp(sorted([v.in_degree() for v in x[0].vertices()]),
+                                    sorted([v.in_degree() for v in y[0].vertices()])))
 
     # sort according to out-degree sequence
-    list_hist.sort(lambda x,y: cmp(sorted([v.out_degree() for v in x[0].vertices()]),
-                                   sorted([v.out_degree() for v in y[0].vertices()])))
+    list_hist.sort(lambda x, y: cmp(sorted([v.out_degree() for v in x[0].vertices()]),
+                                    sorted([v.out_degree() for v in y[0].vertices()])))
 
     # sort according to ascending number of edges
-    list_hist.sort(lambda x,y: cmp(x[0].num_edges(), y[0].num_edges()))
+    list_hist.sort(lambda x, y: cmp(x[0].num_edges(), y[0].num_edges()))
 
     sub_list = [x[0] for x in list_hist]
     hist = [x[1] for x in list_hist]
 
     return sub_list, hist
 
+
 def _graph_sig(g):
     """return the graph signature, i.e., the in and out degree distribution as
     concatenated as a tuple."""
-    bins = range(0, g.num_vertices()+1)
-    in_dist = vertex_hist(g, "in", bins = bins if g.is_directed() else [0],
+    bins = range(0, g.num_vertices() + 1)
+    in_dist = vertex_hist(g, "in", bins=bins if g.is_directed() else [0],
                           float_count=False)
-    out_dist = vertex_hist(g, "out", bins = bins, float_count=False)
-    sig = tuple([(in_dist[1][i],in_dist[0][i]) for \
+    out_dist = vertex_hist(g, "out", bins=bins, float_count=False)
+    sig = tuple([(in_dist[1][i], in_dist[0][i]) for \
                  i in xrange(len(in_dist[0]))] +
-                [(out_dist[1][i],out_dist[0][i]) for\
+                [(out_dist[1][i], out_dist[0][i]) for\
                  i in xrange(len(out_dist[0]))])
     return sig
 
+
 def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
                        threshold=0, undirected=None, self_loops=False,
-                       parallel_edges=False, full_output=False,
+                       parallel_edges = False, full_output = False,
                        shuffle_strategy= "uncorrelated"):
     r"""
     Obtain the motif significance profile, for subgraphs with k vertices. A
@@ -510,8 +515,8 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
         s_ms, counts = zip(*[x for x in zip(s_ms, counts) if x[1] > threshold])
         s_ms = list(s_ms)
         counts = list(counts)
-    s_counts = [0]*len(s_ms)
-    s_dev = [0]*len(s_ms)
+    s_counts = [0] * len(s_ms)
+    s_dev = [0] * len(s_ms)
 
     # group subgraphs by number of edges
     m_e = defaultdict(lambda: [])
@@ -533,37 +538,37 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
                 if isomorphism(s_ms[l], m_temp[j]):
                     found = True
                     s_counts[l] += count_temp[j]
-                    s_dev[l] += count_temp[j]**2
+                    s_dev[l] += count_temp[j] ** 2
             if not found:
                 s_ms.append(m_temp[j])
                 s_counts.append(count_temp[j])
-                s_dev.append(count_temp[j]**2)
+                s_dev.append(count_temp[j] ** 2)
                 counts.append(0)
-                m_e[_graph_sig(m_temp[j])].append(len(s_ms)-1)
+                m_e[_graph_sig(m_temp[j])].append(len(s_ms) - 1)
 
-    s_counts = [ x/float(n_shuffles) for x in s_counts ]
-    s_dev = [ max(sqrt(x[0]/float(n_shuffles) - x[1]**2),1) \
-              for x in izip(s_dev,s_counts) ]
+    s_counts = [x / float(n_shuffles) for x in s_counts]
+    s_dev = [max(sqrt(x[0] / float(n_shuffles) - x[1] ** 2), 1) \
+              for x in izip(s_dev, s_counts)]
 
     list_hist = zip(s_ms, s_counts, s_dev)
     # sort according to in-degree sequence
-    list_hist.sort(lambda x,y: cmp(sorted([v.in_degree()\
-                                           for v in x[0].vertices()]),
-                                   sorted([v.in_degree()\
-                                           for v in y[0].vertices()])))
+    list_hist.sort(lambda x, y: cmp(sorted([v.in_degree()\
+                                            for v in x[0].vertices()]),
+                                    sorted([v.in_degree()\
+                                            for v in y[0].vertices()])))
 
     # sort according to out-degree sequence
-    list_hist.sort(lambda x,y: cmp(sorted([v.out_degree()\
-                                           for v in x[0].vertices()]),
-                                   sorted([v.out_degree()\
-                                           for v in y[0].vertices()])))
+    list_hist.sort(lambda x, y: cmp(sorted([v.out_degree()\
+                                            for v in x[0].vertices()]),
+                                    sorted([v.out_degree()\
+                                            for v in y[0].vertices()])))
 
     # sort according to ascending number of edges
-    list_hist.sort(lambda x,y: cmp(x[0].num_edges(), y[0].num_edges()))
+    list_hist.sort(lambda x, y: cmp(x[0].num_edges(), y[0].num_edges()))
 
     s_ms, s_counts, s_dev = zip(*list_hist)
 
-    zscore = [(x[0] - x[1])/x[2] for x in izip(counts, s_counts, s_dev)]
+    zscore = [(x[0] - x[1]) / x[2] for x in izip(counts, s_counts, s_dev)]
 
     if full_output:
         return s_ms, zscore, counts, s_counts, s_dev

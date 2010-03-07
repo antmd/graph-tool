@@ -21,17 +21,18 @@
 Some useful decorators
 """
 
-__author__="Tiago de Paula Peixoto <tiago@forked.de>"
-__copyright__="Copyright 2008 Tiago de Paula Peixoto"
-__license__="GPL version 3 or above"
+__author__ = "Tiago de Paula Peixoto <tiago@forked.de>"
+__copyright__ = "Copyright 2008 Tiago de Paula Peixoto"
+__license__ = "GPL version 3 or above"
 
-import inspect, functools
-import libgraph_tool_core as libcore
+import inspect
+import functools
 
 ################################################################################
 # Decorators
 # Some useful function decorators which will be used
 ################################################################################
+
 
 def _wraps(func):
     """This decorator works like the functools.wraps meta-decorator, but
@@ -46,6 +47,7 @@ def _wraps(func):
         return functools.wraps(func)(wrap)
     return decorate
 
+
 def _attrs(**kwds):
     """Decorator which adds arbitrary attributes to methods"""
     def decorate(f):
@@ -53,6 +55,7 @@ def _attrs(**kwds):
             setattr(f, k, kwds[k])
         return f
     return decorate
+
 
 def _limit_args(allowed_vals):
     """Decorator which will limit the values of given arguments to a specified
@@ -66,7 +69,7 @@ def _limit_args(allowed_vals):
             arguments = zip(arg_names, args)
             arguments += [(k, kwargs[k]) for k in kwargs.keys()]
             for a in arguments:
-                if allowed_vals.has_key(a[0]):
+                if a[0] in allowed_vals:
                     if a[1] not in allowed_vals[a[0]]:
                         raise TypeError("value for '%s' must be one of: %s" % \
                                          (a[0], ", ".join(allowed_vals[a[0]])))
@@ -74,13 +77,14 @@ def _limit_args(allowed_vals):
         return wrap
     return decorate
 
+
 def _require(arg_name, *allowed_types):
     """Decorator that lets you annotate function definitions with argument type
     requirements. These type requirements are automatically checked by the
     system at function invocation time."""
     def make_wrapper(f):
         if hasattr(f, "wrapped_args"):
-            wrapped_args = getattr(f, "wrapped_args")
+            wrapped_args = f.wrapped_args
         else:
             code = f.func_code
             wrapped_args = list(code.co_varnames[:code.co_argcount])
@@ -88,7 +92,7 @@ def _require(arg_name, *allowed_types):
         try:
             arg_index = wrapped_args.index(arg_name)
         except ValueError:
-            raise NameError, arg_name
+            raise NameError(arg_name)
 
         @_wraps(f)
         def wrapper(*args, **kwargs):
@@ -97,8 +101,8 @@ def _require(arg_name, *allowed_types):
                 if not isinstance(arg, allowed_types):
                     type_list = " or ".join(str(allowed_type) \
                                             for allowed_type in allowed_types)
-                    raise TypeError, "Expected '%s' to be %s; was %s." % \
-                          (arg_name, type_list, type(arg))
+                    raise TypeError("Expected '%s' to be %s; was %s." % \
+                                    (arg_name, type_list, type(arg)))
             else:
                 if arg_name in kwargs:
                     arg = kwargs[arg_name]
@@ -106,8 +110,8 @@ def _require(arg_name, *allowed_types):
                         type_list = " or ".join(str(allowed_type) \
                                                 for allowed_type in \
                                                 allowed_types)
-                        raise TypeError, "Expected '%s' to be %s; was %s." %\
-                              (arg_name, type_list, type(arg))
+                        raise TypeError("Expected '%s' to be %s; was %s." %\
+                                        (arg_name, type_list, type(arg)))
 
             return f(*args, **kwargs)
         wrapper.wrapped_args = wrapped_args

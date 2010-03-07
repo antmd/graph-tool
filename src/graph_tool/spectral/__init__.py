@@ -97,21 +97,22 @@ def adjacency(g, sparse=True, weight=None):
 
     if g.get_vertex_filter()[0] != None:
         index = g.new_vertex_property("int64_t")
-        for i,v in enumerate(g.vertices()):
+        for i, v in enumerate(g.vertices()):
             index[v] = i
     else:
         index = g.vertex_index
     N = g.num_vertices()
     if sparse:
-        m = scipy.sparse.lil_matrix((N,N))
+        m = scipy.sparse.lil_matrix((N, N))
     else:
-        m = matrix(zeros((N,N)))
+        m = matrix(zeros((N, N)))
     for v in g.vertices():
         for e in v.out_edges():
-            m[index[v],index[e.target()]] = 1 if weight == None else weight[e]
+            m[index[v], index[e.target()]] = 1 if weight == None else weight[e]
     if sparse:
         m = m.tocsr()
     return m
+
 
 def _get_deg(v, deg, weight):
     if deg == "total":
@@ -131,7 +132,8 @@ def _get_deg(v, deg, weight):
             d = sum(weight[e] for e in v.out_edges())
     return d
 
-@_limit_args({"deg":["total", "in", "out"]})
+
+@_limit_args({"deg": ["total", "in", "out"]})
 def laplacian(g, deg="total", normalized=True, sparse=True, weight=None):
     r"""Return the Laplacian matrix of the graph.
 
@@ -203,15 +205,15 @@ def laplacian(g, deg="total", normalized=True, sparse=True, weight=None):
 
     if g.get_vertex_filter()[0] != None:
         index = g.new_vertex_property("int64_t")
-        for i,v in enumerate(g.vertices()):
+        for i, v in enumerate(g.vertices()):
             index[v] = i
     else:
         index = g.vertex_index
     N = g.num_vertices()
     if sparse:
-        m = scipy.sparse.lil_matrix((N,N))
+        m = scipy.sparse.lil_matrix((N, N))
     else:
-        m = matrix(zeros((N,N)))
+        m = matrix(zeros((N, N)))
     for v in g.vertices():
         d = _get_deg(v, deg, weight)
         if not normalized:
@@ -220,14 +222,15 @@ def laplacian(g, deg="total", normalized=True, sparse=True, weight=None):
             m[index[v], index[v]] = 1
         for e in v.out_edges():
             if not normalized:
-                m[index[v],index[e.target()]] = (-1 if weight == None
-                                                 else -weight[e])
+                m[index[v], index[e.target()]] = (-1 if weight == None
+                                                  else -weight[e])
             else:
-                val = (d*_get_deg(e.target(),deg,weight))**(-0.5)
-                m[index[v],index[e.target()]] = val
+                val = (d * _get_deg(e.target(), deg, weight)) ** (-0.5)
+                m[index[v], index[e.target()]] = val
     if sparse:
         m = m.tocsr()
     return m
+
 
 def incidence(g, sparse=True):
     r"""Return the incidence matrix of the graph.
@@ -289,7 +292,7 @@ def incidence(g, sparse=True):
 
     if g.get_vertex_filter()[0] != None:
         index = g.new_vertex_property("int64_t")
-        for i,v in enumerate(g.vertices()):
+        for i, v in enumerate(g.vertices()):
             index[v] = i
     else:
         index = g.vertex_index
@@ -301,18 +304,18 @@ def incidence(g, sparse=True):
     N = g.num_vertices()
     E = g.num_edges()
     if sparse:
-        m = scipy.sparse.lil_matrix((N,E))
+        m = scipy.sparse.lil_matrix((N, E))
     else:
-        m = matrix(zeros((N,E)))
+        m = matrix(zeros((N, E)))
     for v in g.vertices():
         if g.is_directed():
             for e in v.out_edges():
-                m[index[v],eindex[e]] += -1
+                m[index[v], eindex[e]] += -1
             for e in v.in_edges():
-                m[index[v],eindex[e]] += 1
+                m[index[v], eindex[e]] += 1
         else:
             for e in v.out_edges():
-                m[index[v],eindex[e]] += 1
+                m[index[v], eindex[e]] += 1
     if sparse:
         m = m.tocsr()
     return m

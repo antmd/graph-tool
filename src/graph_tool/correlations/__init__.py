@@ -286,7 +286,8 @@ def corr_hist(g, deg_source, deg_target, bins=[[1], [1]], weight=None,
     return [array(ret[0], dtype="float64") if float_count else ret[0],
             [ret[1][0], ret[1][1]]]
 
-def combined_corr_hist(g, deg1, deg2, bins=[[1],[1]], float_count=True):
+
+def combined_corr_hist(g, deg1, deg2, bins=None, float_count=True):
     r"""
     Obtain the single-vertex combined correlation histogram for the given graph.
 
@@ -361,6 +362,8 @@ def combined_corr_hist(g, deg1, deg2, bins=[[1],[1]], float_count=True):
         Combined in/out-degree correlation histogram.
 
     """
+    if bins == None:
+        bins = [[1], [1]]
     ret = libgraph_tool_correlations.\
           vertex_combined_correlation_histogram(g._Graph__graph,
                                                 _degree(g, deg1),
@@ -369,7 +372,8 @@ def combined_corr_hist(g, deg1, deg2, bins=[[1],[1]], float_count=True):
     return [array(ret[0], dtype="float64") if float_count else ret[0],
             [ret[1][0], ret[1][1]]]
 
-def avg_neighbour_corr(g, deg_source, deg_target, bins=[1], weight=None):
+
+def avg_neighbour_corr(g, deg_source, deg_target, bins=None, weight=None):
     r"""
     Obtain the average neighbour-neighbour correlation for the given graph.
 
@@ -448,13 +452,15 @@ def avg_neighbour_corr(g, deg_source, deg_target, bins=[1], weight=None):
         Average out/out degree correlation.
     """
 
+    if bins == None:
+        bins = [1]
     ret = libgraph_tool_correlations.\
           vertex_avg_correlation(g._Graph__graph, _degree(g, deg_source),
                                  _degree(g, deg_target), _prop("e", g, weight),
                                  bins)
     return [ret[0], ret[1], ret[2][0]]
 
-def avg_combined_corr(g, deg1, deg2, bins=[1]):
+def avg_combined_corr(g, deg1, deg2, bins=None):
     r"""
     Obtain the single-vertex combined correlation histogram for the given graph.
 
@@ -524,6 +530,8 @@ def avg_combined_corr(g, deg1, deg2, bins=[1]):
         Average combined in/out-degree correlation.
     """
 
+    if bins == None:
+        bins = [1]
     ret = libgraph_tool_correlations.\
           vertex_avg_combined_correlation(g._Graph__graph, _degree(g, deg1),
                                           _degree(g, deg2), bins)

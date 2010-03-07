@@ -44,6 +44,7 @@ from .. core import _prop, _check_prop_scalar, _check_prop_writable
 __all__ = ["edmonds_karp_max_flow", "push_relabel_max_flow",
            "kolmogorov_max_flow", "max_cardinality_matching"]
 
+
 def edmonds_karp_max_flow(g, source, target, capacity, residual=None):
     r"""
     Calculate maximum flow on the graph with Edmonds-Karp algorithm.
@@ -149,6 +150,7 @@ def edmonds_karp_max_flow(g, source, target, capacity, residual=None):
                                  _prop("e", g, residual))
     return residual
 
+
 def push_relabel_max_flow(g, source, target, capacity, residual=None):
     r"""
     Calculate maximum flow on the graph with push-relabel algorithm.
@@ -238,6 +240,7 @@ def push_relabel_max_flow(g, source, target, capacity, residual=None):
                                  _prop("e", g, capacity),
                                  _prop("e", g, residual))
     return residual
+
 
 def kolmogorov_max_flow(g, source, target, capacity, residual=None):
     r"""Calculate maximum flow on the graph with Kolmogorov algorithm.
@@ -336,6 +339,7 @@ def kolmogorov_max_flow(g, source, target, capacity, residual=None):
                                  _prop("e", g, capacity),
                                  _prop("e", g, residual))
     return residual
+
 
 def max_cardinality_matching(g, match=None):
     r"""Find the maximum cardinality matching in the graph.

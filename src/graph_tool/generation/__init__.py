@@ -49,6 +49,7 @@ import sys, numpy, numpy.random
 __all__ = ["random_graph", "random_rewire", "predecessor_tree", "line_graph",
            "graph_union", "triangulation"]
 
+
 def random_graph(N, deg_sampler, deg_corr=None, directed=True,
                  parallel_edges=False, self_loops=False, random=True,
                  verbose=False):
@@ -239,17 +240,17 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
                                               seed, verbose)
     g.set_directed(directed)
     if random:
-        random_rewire(g, parallel_edges = parallel_edges,
-                      self_loops = self_loops, verbose = verbose)
+        random_rewire(g, parallel_edges=parallel_edges,
+                      self_loops=self_loops, verbose=verbose)
         if deg_corr != None:
-            random_rewire(g, strat = "probabilistic",
-                          parallel_edges = parallel_edges, deg_corr = deg_corr,
-                          self_loops = self_loops, verbose = verbose)
+            random_rewire(g, strat="probabilistic",
+                          parallel_edges=parallel_edges, deg_corr=deg_corr,
+                          self_loops=self_loops, verbose=verbose)
     return g
 
-@_limit_args({"strat":["erdos", "correlated", "uncorrelated", "probabilistic"]})
-def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
-                  self_loops = False, deg_corr = None, verbose = False):
+@_limit_args({"strat": ["erdos", "correlated", "uncorrelated", "probabilistic"]})
+def random_rewire(g, strat="uncorrelated", parallel_edges=False,
+                  self_loops=False, deg_corr=None, verbose=False):
     r"""
     Shuffle the graph in-place. If `strat` != "erdos", the degrees (either in or
     out) of each vertex are always the same, but otherwise the edges are
@@ -442,7 +443,7 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
                              " self-loops!")
 
     if deg_corr != None and  not g.is_directed():
-        corr = lambda i,j: deg_corr(i[1], j[1])
+        corr = lambda i, j: deg_corr(i[1], j[1])
     else:
         corr = deg_corr
 
@@ -456,6 +457,7 @@ def random_rewire(g, strat= "uncorrelated", parallel_edges = False,
         if corr == None:
             g.pop_filter(reversed=True)
 
+
 def predecessor_tree(g, pred_map):
     """Return a graph from a list of predecessors given by
     the 'pred_map' vertex property."""
@@ -466,6 +468,7 @@ def predecessor_tree(g, pred_map):
                                                pg._Graph__graph,
                                                _prop("v", g, pred_map))
     return pg
+
 
 def line_graph(g):
     """Return the line graph of the given graph `g`.
@@ -497,7 +500,8 @@ def line_graph(g):
                                         _prop("v", lg, vertex_map))
     return lg, vertex_map
 
-def graph_union(g1, g2, props=[], include=False):
+
+def graph_union(g1, g2, props=None, include=False):
     """Return the union of graphs g1 and g2, composed of all edges and vertices
     of g1 and g2, without overlap.
 
@@ -544,6 +548,8 @@ def graph_union(g1, g2, props=[], include=False):
     .. image:: graph_union2.png
 
     """
+    if props == None:
+        props = []
     if not include:
         g1 = Graph(g1)
     g1.stash_filter(directed=True)
@@ -583,7 +589,8 @@ def graph_union(g1, g2, props=[], include=False):
     else:
         return g1
 
-@_limit_args({"type":["simple", "delaunay"]})
+
+@_limit_args({"type": ["simple", "delaunay"]})
 def triangulation(points, type="simple", periodic=False):
     r"""
     Generate a 2D or 3D triangulation graph from a given point set.
@@ -672,7 +679,7 @@ def triangulation(points, type="simple", periodic=False):
 
     """
 
-    if points.shape[1] not in [2,3]:
+    if points.shape[1] not in [2, 3]:
         raise ValueError("points array must have shape N x d, with d either 2 or 3.")
     # copy points to ensure continuity and correct data type
     points = numpy.array(points, dtype='float64')
@@ -685,4 +692,3 @@ def triangulation(points, type="simple", periodic=False):
     libgraph_tool_generation.triangulation(g._Graph__graph, points,
                                            _prop("v", g, pos), type, periodic)
     return g, pos
-

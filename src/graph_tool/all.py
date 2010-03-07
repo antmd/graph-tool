@@ -22,11 +22,6 @@
 Utility module which includes all the sub-modules in graph_tool
 """
 
-__author__="Tiago de Paula Peixoto <tiago@forked.de>"
-__copyright__="Copyright 2008 Tiago de Paula Peixoto"
-__license__="GPL version 3 or above"
-__URL__="http://graph-tool.forked.de"
-
 from graph_tool import *
 import graph_tool
 from graph_tool.correlations import *

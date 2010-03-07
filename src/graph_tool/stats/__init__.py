@@ -57,7 +57,8 @@ __all__ = ["vertex_hist", "edge_hist", "vertex_average", "edge_average",
            "label_self_loops", "remove_self_loops", "remove_labeled_edges",
            "distance_histogram"]
 
-def vertex_hist(g, deg, bins=[1], float_count=True):
+
+def vertex_hist(g, deg, bins=None, float_count=True):
     """
     Return the vertex histogram of the given degree type or property.
 
@@ -108,11 +109,13 @@ def vertex_hist(g, deg, bins=[1], float_count=True):
              36.,   23.,    8.,    3.,    2.,    0.,    1.]), array([ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15], dtype=uint64)]
     """
 
+    if bins == None:
+        bins = [1]
     ret = libgraph_tool_stats.\
           get_vertex_histogram(g._Graph__graph, _degree(g, deg), bins)
     return [array(ret[0], dtype="float64") if float_count else ret[0], ret[1]]
 
-def edge_hist(g, eprop, bins=[1], float_count=True):
+def edge_hist(g, eprop, bins=None, float_count=True):
     """
     Return the edge histogram of the given property.
 
@@ -164,6 +167,8 @@ def edge_hist(g, eprop, bins=[1], float_count=True):
 
     """
 
+    if bins == None:
+        bins = [1]
     ret = libgraph_tool_stats.\
           get_edge_histogram(g._Graph__graph, _prop("e", g, eprop), bins)
     return [array(ret[0], dtype="float64") if float_count else ret[0], ret[1]]
@@ -302,7 +307,7 @@ def remove_self_loops(g):
     eprop = label_self_loops(g)
     remove_labeled_edges(g, eprop)
 
-def distance_histogram(g, weight=None, bins=[1], samples=None,
+def distance_histogram(g, weight=None, bins=None, samples=None,
                        float_count=True):
     r"""
     Return the shortest-distance histogram for each vertex pair in the graph.
@@ -361,6 +366,9 @@ def distance_histogram(g, weight=None, bins=[1], samples=None,
     >>> print hist
     [array([   0.,   30.,   88.,  222.,  384.,  251.,   15.]), array([0, 1, 2, 3, 4, 5, 6], dtype=uint64)]
     """
+
+    if bins == None:
+        bins = [1]
     if samples != None:
         seed = numpy.random.randint(0, sys.maxint)
         ret = libgraph_tool_stats.\

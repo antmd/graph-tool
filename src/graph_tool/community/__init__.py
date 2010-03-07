@@ -43,12 +43,13 @@ from .. dl_import import dl_import
 dl_import("import libgraph_tool_community")
 
 from .. core import _degree, _prop, Graph, libcore
-import random, sys
+import random
+import sys
 
 __all__ = ["community_structure", "modularity", "condensation_graph"]
 
 
-def community_structure(g, n_iter, n_spins, gamma=1.0, corr= "erdos",
+def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
                         spins=None, weight=None, t_range=(100.0, 0.01),
                         verbose=False, history_file=None):
     r"""
@@ -273,6 +274,7 @@ def modularity(g, prop, weight=None):
                                            _prop("v", g, prop))
     return m
 
+
 def condensation_graph(g, prop, weight=None):
     r"""
     Obtain the condensation graph, where each vertex with the same 'prop' value
@@ -343,4 +345,3 @@ def condensation_graph(g, prop, weight=None):
                                               _prop("e", g, ecount),
                                               _prop("e", g, weight))
     return gp, vcount, ecount
-

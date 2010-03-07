@@ -57,6 +57,7 @@ __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
            "label_biconnected_components", "shortest_distance",
            "shortest_path", "is_planar"]
 
+
 def isomorphism(g1, g2, isomap=False):
     r"""Check whether two graphs are isomorphic.
 
@@ -85,6 +86,7 @@ def isomorphism(g1, g2, isomap=False):
         return iso, imap
     else:
         return iso
+
 
 def subgraph_isomorphism(sub, g):
     r"""
@@ -143,8 +145,8 @@ def subgraph_isomorphism(sub, g):
     """
     # vertex and edge labels disabled for the time being, until GCC is capable
     # of compiling all the variants using reasonable amounts of memory
-    vlabels=(None,None)
-    elabels=(None,None)
+    vlabels=(None, None)
+    elabels=(None, None)
     vmaps = []
     emaps = []
     libgraph_tool_topology.\
@@ -158,6 +160,7 @@ def subgraph_isomorphism(sub, g):
         vmaps[i] = PropertyMap(vmaps[i], sub, "v")
         emaps[i] = PropertyMap(emaps[i], sub, "e")
     return vmaps, emaps
+
 
 def mark_subgraph(g, sub, vmap, emap, vmask=None, emask=None):
     r"""
@@ -188,6 +191,7 @@ def mark_subgraph(g, sub, vmap, emap, vmask=None, emask=None):
                     emask[ew] = True
                     break
     return vmask, emask
+
 
 def min_spanning_tree(g, weights=None, root=None, tree_map=None):
     """
@@ -269,6 +273,7 @@ def min_spanning_tree(g, weights=None, root=None, tree_map=None):
     g.pop_filter(directed=True)
     return tree_map
 
+
 def dominator_tree(g, root, dom_map=None):
     """Return a vertex property map the dominator vertices for each vertex.
 
@@ -326,6 +331,7 @@ def dominator_tree(g, root, dom_map=None):
                               _prop("v", g, dom_map))
     return dom_map
 
+
 def topological_sort(g):
     """
     Return the topological sort of the given graph. It is returned as an array
@@ -363,6 +369,7 @@ def topological_sort(g):
                topological_sort(g._Graph__graph, topological_order)
     return numpy.array(topological_order)
 
+
 def transitive_closure(g):
     """Return the transitive closure graph of g.
 
@@ -395,6 +402,7 @@ def transitive_closure(g):
     libgraph_tool_topology.transitive_closure(g._Graph__graph,
                                               tg._Graph__graph)
     return tg
+
 
 def label_components(g, vprop=None, directed=None):
     """
@@ -454,6 +462,7 @@ def label_components(g, vprop=None, directed=None):
     if directed != None:
         g.pop_filter(directed=True)
     return vprop
+
 
 def label_biconnected_components(g, eprop=None, vprop=None):
     """
@@ -539,6 +548,7 @@ def label_biconnected_components(g, eprop=None, vprop=None):
     finally:
         g.pop_filter(directed=True)
     return eprop, vprop, nc
+
 
 def shortest_distance(g, source=None, weights=None, max_dist=None,
                       directed=None, dense=False, dist_map=None,
@@ -694,6 +704,7 @@ def shortest_distance(g, source=None, weights=None, max_dist=None,
     else:
         return dist_map
 
+
 def shortest_path(g, source, target, weights=None, pred_map=None):
     """
     Return the shortest path from `source` to `target`.
@@ -752,10 +763,10 @@ def shortest_path(g, source, target, weights=None, pred_map=None):
     """
 
     if pred_map == None:
-        dists, pred_map = shortest_distance(g, source, weights=weights,
-                                            pred_map=True)
+        pred_map = shortest_distance(g, source, weights=weights,
+                                     pred_map=True)[1]
 
-    if pred_map[target] == int(target): # no path to source
+    if pred_map[target] == int(target):  # no path to source
         return [], []
 
     vlist = [target]

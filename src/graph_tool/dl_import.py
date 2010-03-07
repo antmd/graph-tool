@@ -28,6 +28,7 @@ except ImportError:
 
 all = ["dl_import"]
 
+
 def dl_import(import_expr):
     """Import module according to import_expr, but with RTLD_GLOBAL enabled."""
     # we need to get the locals and globals of the _calling_ function. Thus, we
@@ -39,13 +40,13 @@ def dl_import(import_expr):
     # RTLD_GLOBAL needs to be set in dlopen() if we want typeinfo and friends to
     # work properly across DSO boundaries. See http://gcc.gnu.org/faq.html#dso
 
-    # The "except" is because the dl module raises a system error on ia64 and x86_64
-    # systems because "int" and addresses are different sizes.
+    # The "except" is because the dl module raises a system error on ia64 and
+    # x86_64 systems because "int" and addresses are different sizes.
     orig_dlopen_flags = sys.getdlopenflags()
 
-    sys.setdlopenflags(RTLD_LAZY|RTLD_GLOBAL)
+    sys.setdlopenflags(RTLD_LAZY | RTLD_GLOBAL)
 
     exec import_expr in local_dict, global_dict
 
-    sys.setdlopenflags(orig_dlopen_flags) # reset it to normal case to avoid
-                                          # unnecessary symbol collision
+    sys.setdlopenflags(orig_dlopen_flags)  # reset it to normal case to avoid
+                                           # unnecessary symbol collision

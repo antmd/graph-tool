@@ -44,10 +44,12 @@ from .. dl_import import dl_import
 dl_import("import libgraph_tool_centrality")
 
 from .. core import _prop
-import sys, numpy
+import sys
+import numpy
 
 __all__ = ["pagerank", "betweenness", "central_point_dominance", "eigentrust",
            "absolute_trust"]
+
 
 def pagerank(g, damping=0.8, prop=None, epslon=1e-6, max_iter=None,
              ret_iter=False):
@@ -145,6 +147,7 @@ def pagerank(g, damping=0.8, prop=None, epslon=1e-6, max_iter=None,
     else:
         return prop
 
+
 def betweenness(g, vprop=None, eprop=None, weight=None, norm=True):
     r"""
     Calculate the betweenness centrality for each vertex and edge.
@@ -240,6 +243,7 @@ def betweenness(g, vprop=None, eprop=None, weight=None, norm=True):
             get_betweenness(g._Graph__graph, _prop("e", g, weight),
                             _prop("e", g, eprop), _prop("v", g, vprop), norm)
     return vprop, eprop
+
 
 def central_point_dominance(g, betweenness):
     r"""
@@ -408,7 +412,8 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epslon=1e-6, max_iter=0,
     else:
         return vprop
 
-def absolute_trust(g, trust_map, source, target = None, vprop=None):
+
+def absolute_trust(g, trust_map, source, target=None, vprop=None):
     r"""
     Calculate the absolute trust centrality of each vertex in the graph, from a
     given source.
@@ -513,4 +518,3 @@ def absolute_trust(g, trust_map, source, target = None, vprop=None):
     if target != -1:
         return vprop.a[target]
     return vprop
-

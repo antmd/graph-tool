@@ -62,12 +62,13 @@ except ImportError:
 
 __all__ = ["graph_draw", "arf_layout", "random_layout"]
 
-def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
-               maxiter=None, ratio= "fill", overlap="prism", sep=None,
+
+def graph_draw(g, pos=None, size=(15, 15), pin=False, layout="neato",
+               maxiter=None, ratio="fill", overlap="prism", sep=None,
                splines=False, vsize=0.1, penwidth=1.0, elen=None, gprops={},
                vprops={}, eprops={}, vcolor=None, ecolor=None,
                vcmap=matplotlib.cm.jet, vnorm=True, ecmap=matplotlib.cm.jet,
-               enorm=True, output= "", output_format= "auto", returngv=False,
+               enorm=True, output="", output_format="auto", returngv=False,
                fork=False, return_bitmap=False, seed=0):
     r"""Draw a graph using graphviz.
 
@@ -290,28 +291,29 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
         penwidth = s
 
     # main graph properties
-    gv.setv(gvg,"outputorder", "edgesfirst")
-    gv.setv(gvg,"mode", "major")
+    gv.setv(gvg, "outputorder", "edgesfirst")
+    gv.setv(gvg, "mode", "major")
     if overlap == False:
         overlap = "false"
     else:
         overlap = "true"
-    if isinstance(overlap,str):
-        gv.setv(gvg,"overlap", overlap)
+    if isinstance(overlap, str):
+        gv.setv(gvg, "overlap", overlap)
     if sep != None:
-        gv.setv(gvg,"sep", str(sep))
+        gv.setv(gvg, "sep", str(sep))
     if splines:
-        gv.setv(gvg,"splines", "true")
-    gv.setv(gvg,"ratio", str(ratio))
-    gv.setv(gvg,"size", "%f,%f" % (size[0]/2.54,size[1]/2.54)) # centimeters
+        gv.setv(gvg, "splines", "true")
+    gv.setv(gvg, "ratio", str(ratio))
+    # size is in centimeters... convert to inches
+    gv.setv(gvg, "size", "%f,%f" % (size[0] / 2.54, size[1] / 2.54))
     if maxiter != None:
-        gv.setv(gvg,"maxiter", str(maxiter))
+        gv.setv(gvg, "maxiter", str(maxiter))
 
     seed = numpy.random.randint(sys.maxint)
     gv.setv(gvg, "start", "%d" % seed)
 
     # apply all user supplied properties
-    for k,val in gprops.iteritems():
+    for k, val in gprops.iteritems():
         if isinstance(val, PropertyMap):
             gv.setv(gvg, k, str(val[g]))
         else:
@@ -322,8 +324,8 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
         minmax = [float("inf"), -float("inf")]
         for v in g.vertices():
             c = vcolor[v]
-            minmax[0] = min(c,minmax[0])
-            minmax[1] = max(c,minmax[1])
+            minmax[0] = min(c, minmax[0])
+            minmax[1] = max(c, minmax[1])
         if minmax[0] == minmax[1]:
             minmax[1] += 1
         if vnorm:
@@ -335,8 +337,8 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
         minmax = [float("inf"), -float("inf")]
         for e in g.edges():
             c = ecolor[e]
-            minmax[0] = min(c,minmax[0])
-            minmax[1] = max(c,minmax[1])
+            minmax[0] = min(c, minmax[0])
+            minmax[1] = max(c, minmax[1])
         if minmax[0] == minmax[1]:
             minmax[1] += 1
         if enorm:
@@ -345,11 +347,10 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
             enorm = lambda x: x
 
     nodes = {}
-    edges = []
 
     # add nodes
     for v in g.vertices():
-        n = gv.node(gvg,str(g.vertex_index[v]))
+        n = gv.node(gvg, str(g.vertex_index[v]))
 
         if type(vsize) == PropertyMap:
             vw = vh = vsize[v]
@@ -362,10 +363,10 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
         gv.setv(n, "color", "black")
         # apply color
         if vcolor != None:
-            if isinstance(vcolor,str):
+            if isinstance(vcolor, str):
                 gv.setv(n, "fillcolor", vcolor)
             else:
-                color = tuple([int(c*255.0) for c in vcmap(vnorm(vcolor[v]))])
+                color = tuple([int(c * 255.0) for c in vcmap(vnorm(vcolor[v]))])
                 gv.setv(n, "fillcolor", "#%.2x%.2x%.2x%.2x" % color)
         else:
             gv.setv(n, "fillcolor", "red")
@@ -373,11 +374,11 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
 
         # user supplied position
         if pos != None:
-            gv.setv(n, "pos", "%f,%f" % (pos[0][v],pos[1][v]))
+            gv.setv(n, "pos", "%f,%f" % (pos[0][v], pos[1][v]))
             gv.setv(n, "pin", str(pin))
 
         # apply all user supplied properties
-        for k,val in vprops.iteritems():
+        for k, val in vprops.iteritems():
             if isinstance(val, PropertyMap):
                 gv.setv(n, k, str(val[v]))
             else:
@@ -393,10 +394,10 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
 
         # apply color
         if ecolor != None:
-            if isinstance(ecolor,str):
+            if isinstance(ecolor, str):
                 gv.setv(ge, "color", ecolor)
             else:
-                color = tuple([int(c*255.0) for c in ecmap(enorm(ecolor[e]))])
+                color = tuple([int(c * 255.0) for c in ecmap(enorm(ecolor[e]))])
                 gv.setv(ge, "color", "#%.2x%.2x%.2x%.2x" % color)
 
         # apply edge length
@@ -414,15 +415,14 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
                 gv.setv(ge, "penwidth", str(penwidth))
 
         # apply all user supplied properties
-        for k,v in eprops.iteritems():
+        for k, v in eprops.iteritems():
             if isinstance(v, PropertyMap):
                 gv.setv(ge, k, str(v[e]))
             else:
                 gv.setv(ge, k, str(v))
 
-
     gv.layout(gvg, layout)
-    gv.render(gvg, "dot", "/dev/null") # retrieve positions
+    gv.render(gvg, "dot", "/dev/null")  # retrieve positions
 
     if pos == None:
         pos = (g.new_vertex_property("double"), g.new_vertex_property("double"))
@@ -459,7 +459,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
             pid = os.fork()
             if pid == 0:
                 gv.render(gvg, output_format, output)
-                os._exit(0) # since we forked, it's good to be sure
+                os._exit(0)  # since we forked, it's good to be sure
             if output_format != "xlib":
                 os.wait()
         elif output != None:
@@ -479,6 +479,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
         return tuple(ret)
     else:
         return ret[0]
+
 
 def random_layout(g, shape=None, pos=None, dim=2):
     r"""Performs a random layout of the graph.
@@ -512,16 +513,17 @@ def random_layout(g, shape=None, pos=None, dim=2):
         pos = ungroup_vector_property(pos)
 
     if shape == None:
-        shape = [sqrt(g.num_vertices())]*dim
+        shape = [sqrt(g.num_vertices())] * dim
 
     for i in xrange(dim):
         _check_prop_scalar(pos[i], name="pos[%d]" % i)
         _check_prop_writable(pos[i], name="pos[%d]" % i)
         a = pos[i].get_array()
-        a[:] = numpy.random.random(len(a))*shape[i]
+        a[:] = numpy.random.random(len(a)) * shape[i]
 
     pos = group_vector_property(g, pos)
     return pos
+
 
 def arf_layout(g, weight=None, d=0.1, a=10, dt=0.001, epsilon=1e-6,
                max_iter=1000, pos=None, dim=2):

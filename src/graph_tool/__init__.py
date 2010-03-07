@@ -69,10 +69,10 @@ Classes
 
 """
 
-__author__="Tiago de Paula Peixoto <tiago@forked.de>"
-__copyright__="Copyright 2008 Tiago de Paula Peixoto"
-__license__="GPL version 3 or above"
-__URL__="http://graph-tool.forked.de"
+__author__ = "Tiago de Paula Peixoto <tiago@forked.de>"
+__copyright__ = "Copyright 2007-2010 Tiago de Paula Peixoto"
+__license__ = "GPL version 3 or above"
+__URL__ = "http://graph-tool.forked.de"
 
 # import numpy and scipy before everything to avoid weird segmentation faults
 # depending on the order things are imported.
@@ -89,5 +89,5 @@ from . core import  __version__, Graph, Vector_bool, Vector_int32_t, \
 __all__ = ["Graph", "Vertex", "Edge", "Vector_bool", "Vector_int32_t",
            "Vector_int64_t", "Vector_double", "Vector_long_double",
            "Vector_string", "value_types", "load_graph", "PropertyMap",
-           "group_vector_property", "ungroup_vector_property",
-           "show_config"]
+           "group_vector_property", "ungroup_vector_property", "show_config",
+           "__author__", "__copyright__", "__URL__", "__version__"]
