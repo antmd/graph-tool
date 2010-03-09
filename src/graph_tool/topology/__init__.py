@@ -88,9 +88,10 @@ def isomorphism(g1, g2, isomap=False):
         return iso
 
 
-def subgraph_isomorphism(sub, g):
+def subgraph_isomorphism(sub, g, max_n=0):
     r"""
-    Obtain all subgraph isomorphisms of `sub` in `g`.
+    Obtain all subgraph isomorphisms of `sub` in `g` (or at most `max_n`
+    subgraphs, if `max_n > 0`).
 
     It returns two lists, containing the vertex and edge property maps for `sub`
     with the isomorphism mappings. The value of the properties are the
@@ -155,7 +156,7 @@ def subgraph_isomorphism(sub, g):
                                 _prop("v", g, vlabels[1]),
                                 _prop("e", sub, elabels[0]),
                                 _prop("e", g, elabels[1]),
-                                vmaps, emaps)
+                                vmaps, emaps, max_n)
     for i in xrange(len(vmaps)):
         vmaps[i] = PropertyMap(vmaps[i], sub, "v")
         emaps[i] = PropertyMap(emaps[i], sub, "e")

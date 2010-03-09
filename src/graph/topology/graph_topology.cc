@@ -35,7 +35,8 @@ bool is_planar(GraphInterface& gi, boost::any embed_map, boost::any kur_map);
 void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
                           boost::any vertex_label1, boost::any vertex_label2,
                           boost::any edge_label1, boost::any edge_label2,
-                          python::list vmapping, python::list emapping);
+                          python::list vmapping, python::list emapping,
+                          size_t n_max);
 
 void export_components();
 void export_dists();

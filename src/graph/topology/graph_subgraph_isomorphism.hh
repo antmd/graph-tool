@@ -192,7 +192,8 @@ bool refine_check(const Graph1& g1, const Graph2& g2, matrix_t& M, size_t count,
 
 template <class Graph1, class Graph2, class EdgeLabelling, class Mapping>
 void find_mappings(const Graph1& g1, const Graph2& g2, matrix_t M0,
-                   vector<Mapping>& FF, EdgeLabelling edge_labelling)
+                   vector<Mapping>& FF, EdgeLabelling edge_labelling,
+                   size_t max_n)
 {
     size_t i = 0;
     for (i=0; i < num_vertices(g1); ++i)
@@ -214,7 +215,7 @@ void find_mappings(const Graph1& g1, const Graph2& g2, matrix_t M0,
     tr1::unordered_set<size_t> already_mapped;
 
     // perform depth-first search of combination space
-    while (!Mstack.empty())
+    while (!Mstack.empty() && (max_n == 0 || FF.size() < max_n))
     {
         const matrix_t& M = get<0>(Mstack.back());
         size_t& i = get<1>(Mstack.back());
@@ -290,7 +291,8 @@ template <class Graph1, class Graph2, class VertexLabelling,
           class EdgeLabelling, class Mapping>
 void subgraph_isomorphism(const Graph1& g1, const Graph2& g2,
                           VertexLabelling vertex_labelling,
-                          EdgeLabelling edge_labelling, vector<Mapping>& F)
+                          EdgeLabelling edge_labelling, vector<Mapping>& F,
+                          size_t max_n)
 {
     detail::matrix_t M0(num_vertices(g1));
 
@@ -314,7 +316,7 @@ void subgraph_isomorphism(const Graph1& g1, const Graph2& g2,
     }
     if (abort)
         return;
-    detail::find_mappings(g1, g2, M0, F, edge_labelling);
+    detail::find_mappings(g1, g2, M0, F, edge_labelling, max_n);
 }
 
 }  // namespace boost

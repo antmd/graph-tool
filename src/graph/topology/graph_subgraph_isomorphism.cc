@@ -64,7 +64,8 @@ struct get_subgraphs
     void operator()(const Graph1& g1, const Graph2* g2,
                     VertexLabel vertex_label1, boost::any vertex_label2,
                     EdgeLabel edge_label1, boost::any edge_label2,
-                    vector<vector<pair<size_t,size_t> > >& F) const
+                    vector<vector<pair<size_t,size_t> > >& F, size_t max_n)
+        const
     {
         typedef PropLabelling<Graph1,Graph2,VertexLabel,VertexLabel>
             vlabelling_t;
@@ -75,7 +76,7 @@ struct get_subgraphs
             (g1, *g2, vlabelling_t(g1, *g2, vertex_label1,
                                    any_cast<VertexLabel>(vertex_label2)),
              elabelling_t(g1, *g2, edge_label1,
-                          any_cast<EdgeLabel>(edge_label2)), F);
+                          any_cast<EdgeLabel>(edge_label2)), F, max_n);
     }
 };
 
@@ -147,7 +148,8 @@ typedef mpl::vector<ConstantPropertyMap<bool,GraphInterface::edge_t> > edge_prop
 void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
                           boost::any vertex_label1, boost::any vertex_label2,
                           boost::any edge_label1, boost::any edge_label2,
-                          python::list vmapping, python::list emapping)
+                          python::list vmapping, python::list emapping,
+                          size_t max_n)
 {
     if (gi1.GetDirected() != gi2.GetDirected())
         return;
@@ -171,7 +173,7 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
         run_action<graph_tool::detail::always_directed>()
             (gi1, bind<void>(get_subgraphs(),
                              _1, _2, _3, vertex_label2, _4, edge_label2,
-                             ref(F)),
+                             ref(F), max_n),
              directed_graph_view_pointers(), vertex_props_t(),
              edge_props_t())
             (gi2.GetGraphView(), vertex_label1,  edge_label1);
@@ -181,7 +183,7 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
         run_action<graph_tool::detail::never_directed>()
             (gi1, bind<void>(get_subgraphs(),
                              _1, _2, _3, vertex_label2, _4, edge_label2,
-                             ref(F)),
+                             ref(F), max_n),
              undirected_graph_view_pointers(), vertex_props_t(),
              edge_props_t())
             (gi2.GetGraphView(), vertex_label1, edge_label1);
