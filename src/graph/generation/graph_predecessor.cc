@@ -30,4 +30,5 @@ void predecessor_graph(GraphInterface& gi, GraphInterface& gpi,
                                    gi.GetVertexIndex(), ref(gpi.GetGraph()),
                                    _2),
                     vertex_scalar_properties())(pred_map);
+     gpi.ReIndexEdges();
 }
