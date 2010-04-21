@@ -55,14 +55,14 @@ size_t hash_value(const dvertex_t& v)
 // used for verbose display
 void print_progress(size_t current, size_t total, stringstream& str)
 {
-    size_t atom = max(total/100, 1);
-    if ( (current % atom == 0) || current == total)
+    size_t atom = (total > 200) ? total/100 : 1;
+    if ( ( (current+1) % atom == 0) || (current + 1) == total)
     {
         for (size_t j = 0; j < str.str().length(); ++j)
             cout << "\b";
         str.str("");
-        str << current+1 << " of " << total << " (" <<
-            (current+1)*100/total << "%)";
+        str << current+1 << " of " << total << " ("
+            << (current+1)*100 / total << "%)";
         cout << str.str() << flush;
     }
 }
@@ -78,6 +78,18 @@ void print_update(size_t current, stringstream& str)
     str.str("");
     str << current;
     cout << str.str() << flush;
+}
+
+template <class Graph>
+bool is_adjacent(typename graph_traits<Graph>::vertex_descriptor u,
+                 typename graph_traits<Graph>::vertex_descriptor v,
+                 const Graph& g)
+{
+    typename graph_traits<Graph>::adjacency_iterator a, a_end;
+    for (tie(a, a_end) = adjacent_vertices(u, g); a != a_end; ++a)
+        if (*a == v)
+            return true;
+    return false;
 }
 
 //
@@ -173,7 +185,7 @@ public:
                    (v.in_degree > _max_deg || v.out_degree > _max_deg));
             sum_j += v.in_degree;
             sum_k += v.out_degree;
-            if (_no_parallel)
+            if (_no_parallel || _no_self_loops)
                 _deg_seq[make_pair(v.in_degree, v.out_degree)]++;
         }
 
@@ -192,7 +204,7 @@ public:
                !is_graphical_parallel(_deg_seq)))
         {
             dvertex_t& v = vertices[vertex_sample(rng)];
-            if (_no_parallel || (_no_self_loops && !_no_parallel))
+            if (_no_parallel || _no_self_loops)
             {
                 typeof(_deg_seq.begin()) iter =
                     _deg_seq.find(make_pair(v.in_degree, v.out_degree));
@@ -211,10 +223,10 @@ public:
                    (v.in_degree > _max_deg || v.out_degree > _max_deg));
             sum_j += v.in_degree;
             sum_k += v.out_degree;
-            if (_no_parallel || (_no_self_loops && !_no_parallel))
+            if (_no_parallel || _no_self_loops)
                 _deg_seq[make_pair(v.in_degree, v.out_degree)]++;
             if (verbose && (count % 100 == 0 || sum_j == sum_k))
-                    print_update(min(sum_j-sum_k, sum_k-sum_j), str);
+                print_update(min(sum_j-sum_k, sum_k-sum_j), str);
             count++;
         }
         return sum_k;
@@ -332,7 +344,7 @@ public:
                 !is_graphical_parallel(_deg_seq)))
         {
             dvertex_t& v = vertices[vertex_sample(rng)];
-            if (_no_parallel || (_no_self_loops && !_no_parallel))
+            if (_no_parallel || _no_self_loops)
             {
                 typeof(_deg_seq.begin()) iter = _deg_seq.find(v.out_degree);
                 iter->second--;
@@ -346,7 +358,7 @@ public:
             }
             while (_no_parallel && (v.out_degree > _max_deg));
             sum_k +=  v.out_degree;
-            if (_no_parallel || (_no_self_loops && !_no_parallel))
+            if (_no_parallel || _no_self_loops)
                 _deg_seq[v.out_degree]++;
             if (verbose && (count % 100 || sum_k % 2 == 0))
                 print_update(sum_k, str);
@@ -402,11 +414,39 @@ pair<size_t, size_t> get_deg(dvertex_t& v, Graph& g)
                      v.out_degree - out_degree(vertex(v.index, g), g));
 }
 
+template <class Graph>
+bool is_source(const pair<size_t, size_t>& deg)
+{
+    return deg.second > 0;
+}
+
+template <class Graph>
+bool is_target(const pair<size_t, size_t>& deg)
+{
+    if (is_directed::apply<Graph>::type::value)
+        return deg.first > 0;
+    else
+        return is_source<Graph>(deg);
+}
+
+
+template <class Vset, class Targets, class Sources, class Graph>
+bool update_deg(size_t t_i, const pair<size_t, size_t>& deg, Vset& vset,
+                Targets& targets, Sources& sources, Graph& g)
+{
+    if (is_source<Graph>(deg))
+        sources.insert(deg);
+    if (is_target<Graph>(deg))
+        targets.insert(deg);
+    vset[deg].push_back(t_i);
+    return true;
+}
+
 struct gen_random_graph
 {
     template <class Graph, class DegSample>
     void operator()(Graph& g, size_t N, DegSample& deg_sample, bool no_parallel,
-                    bool no_self_loops, size_t seed, bool verbose)
+                    bool no_self_loops, size_t seed, bool verbose, bool verify)
         const
     {
         rng_t rng(static_cast<rng_t::result_type>(seed));
@@ -431,18 +471,26 @@ struct gen_random_graph
         // sample the N (j,k) pairs
         size_t E = gen_strat.SampleDegrees(vertices, deg_sample, rng, verbose);
 
+        // source and target degree lists
         typedef pair<size_t, size_t> deg_t;
         set<deg_t, cmp_out<greater<size_t> > > sources;
         set<deg_t, cmp_in<greater<size_t> > > targets;
-        tr1::unordered_map<deg_t, tr1::unordered_set<size_t>,
+
+        // vertices with a given degree
+        tr1::unordered_map<deg_t, vector<size_t>,
                            boost::hash<deg_t> > vset;
 
+        size_t num_e = 0;
         for (size_t i = 0; i < vertices.size();  ++i)
         {
             deg_t deg = get_deg(vertices[i], g);
-            sources.insert(deg);
-            targets.insert(deg);
-            vset[deg].insert(i);
+
+            if (is_source<Graph>(deg))
+                sources.insert(deg);
+            if (is_target<Graph>(deg))
+                targets.insert(deg);
+            if (is_target<Graph>(deg) || is_source<Graph>(deg))
+                vset[deg].push_back(i);
         }
 
         if (verbose)
@@ -451,7 +499,7 @@ struct gen_random_graph
             str.str("");
         }
 
-        size_t num_e = 0;
+        vector<size_t> skip;
 
         // connect edges: from sources with the largest in-degree to the ones
         // with largest out-degree
@@ -460,103 +508,150 @@ struct gen_random_graph
             // find source. The out-degree must be non-zero, and there must be a
             // vertex with the chosen degree.
             deg_t s_deg = *sources.begin();
-            typeof(vset.begin()) v_iter = vset.find(s_deg);
-            if (s_deg.second == 0 || v_iter == vset.end())
+            typeof(vset.begin()) sv_iter = vset.find(s_deg);
+            if (s_deg.second == 0 || sv_iter == vset.end() ||
+                sv_iter->second.empty())
             {
                 sources.erase(sources.begin());
                 continue;
             }
 
-            size_t s_i = *v_iter->second.begin();
+            vector<size_t>& s_list = sv_iter->second;
+            size_t s_i = s_list.front();
             typename graph_traits<Graph>::vertex_descriptor s =
                 vertex(vertices[s_i].index, g);
 
-            // find the targets. Skipped targets will be removed from the main
-            // set, and kept temporarily in the skip set.
-            vector<pair<deg_t, size_t> > skip;
-            skip.reserve(s_deg.second+1);
-            skip.push_back(make_pair(s_deg, s_i));
+            deg_t ns_deg = get_deg(vertices[s_i], g);
+            if (ns_deg != s_deg)
+            {
+                swap(s_list.back(), s_list.front());
+                s_list.pop_back();
+                update_deg(s_i, ns_deg, vset, targets, sources, g);
+                continue;
+            }
+
+            // find the targets.
+            // we will keep an iterator to the current target degree
+            typeof(targets.begin()) t_iter = targets.begin();
+            typeof(vset.begin()) v_iter = vset.find(*t_iter);
+            while (v_iter == vset.end() || v_iter->second.empty())
+            {
+                targets.erase(t_iter);
+                t_iter = targets.begin();
+                v_iter = vset.find(*t_iter);
+            }
+
+            skip.clear();
+            skip.push_back(s_i);
+
+            if (no_self_loops)
+            {
+                swap(s_list.back(), s_list.front());
+                s_list.pop_back();
+            }
+
             while (s_deg.second > 0)
             {
-                assert(!targets.empty());
-                deg_t t_deg = *targets.begin();
-                v_iter = vset.find(t_deg);
-                if (v_iter == vset.end() ||
-                    (is_directed::apply<Graph>::type::value &&
-                     t_deg.first == 0))
+                //assert(!targets.empty());
+                //assert(t_iter != targets.end());
+
+                while (v_iter == vset.end() || v_iter->second.empty())
                 {
-                    targets.erase(targets.begin());
+                    ++t_iter;
+                    v_iter = vset.find(*t_iter);
+                }
+
+                deg_t t_deg = *t_iter;
+
+                vector<size_t>& v_list = v_iter->second;
+
+                size_t t_i = v_list.front();
+
+                deg_t nt_deg = get_deg(vertices[t_i], g);
+                if (nt_deg != t_deg)
+                {
+                    swap(v_list.back(), v_list.front());
+                    v_list.pop_back();
+                    update_deg(t_i, nt_deg, vset, targets, sources, g);
+                    //t_iter = targets.begin();
+                    //v_iter = vset.find(*t_iter);
                     continue;
                 }
-                size_t t_i = *v_iter->second.begin();
 
-                // remove target from vertex list temporarily
-                v_iter->second.erase(t_i);
-                if (v_iter->second.empty())
-                    vset.erase(v_iter);
-                skip.push_back(make_pair(t_deg, t_i));
+                // remove target from vertex list, and get new t_i
+                skip.push_back(t_i);
 
-                if (!no_parallel)
-                {
-                    v_iter = vset.find(s_deg);
-                    if (v_iter != vset.end())
-                    {
-                        v_iter->second.erase(s_i);
-                        if (v_iter->second.empty())
-                            vset.erase(v_iter);
-                    }
-                }
+                swap(v_list.back(), v_list.front());
+                v_list.pop_back();
 
                 typename graph_traits<Graph>::vertex_descriptor t =
                     vertex(vertices[t_i].index, g);
 
-                if ((s == t) && (no_self_loops ||
-                                 (!is_directed::apply<Graph>::type::value
-                                  && s_deg.second < 2)))
-                    continue; // no self-loops
+                if ((s == t) && (!is_directed::apply<Graph>::type::value &&
+                                 s_deg.second < 2))
+                    continue;
 
                 add_edge(s, t, g);
-
-                // if parallel edges are allowed, we should put the target back
-                // in the set right away
-                if (!no_parallel)
-                {
-                    skip.pop_back();
-                    deg_t deg = get_deg(vertices[t_i], g);
-                    vset[deg].insert(t_i);
-                    targets.insert(deg);
-                    sources.insert(deg);
-
-                    deg = get_deg(vertices[s_i], g);
-                    vset[deg].insert(s_i);
-                    targets.insert(deg);
-                    sources.insert(deg);
-                }
-
                 s_deg = get_deg(vertices[s_i], g);
 
+                // if parallel edges are allowed, we should update the target
+                // list right away
+                if (!no_parallel)
+                {
+                    for (size_t i = 0; i < skip.size(); ++i)
+                    {
+                        if (no_self_loops && skip[i] == s_i)
+                            continue;
+                        update_deg(skip[i],
+                                   get_deg(vertices[skip[i]], g), vset,
+                                   targets, sources, g);
+                    }
+                    skip.clear();
+                    if (no_self_loops)
+                        skip.push_back(s_i);
+                }
                 if (verbose)
                     print_progress(num_e++, E, str);
             }
 
-            // put back modified targets
-            for (int i = skip.size() - 1; i >= 0; --i)
+            if (!s_list.empty() && s_list.front() == s_i)
             {
-                v_iter = vset.find(skip[i].first);
-                if (v_iter != vset.end())
-                {
-                    v_iter->second.erase(skip[i].second);
-                    if (v_iter->second.empty())
-                        vset.erase(v_iter);
-                }
-                deg_t deg = get_deg(vertices[skip[i].second], g);
-                targets.insert(targets.begin(), deg);
-                sources.insert(deg);
-                vset[deg].insert(skip[i].second);
+                swap(s_list.back(), s_list.front());
+                s_list.pop_back();
             }
-        }
+
+            // update modified degrees
+            for (size_t i = 0; i < skip.size(); ++i)
+                update_deg(skip[i],
+                           get_deg(vertices[skip[i]], g),
+                           vset, targets, sources, g);
+       }
         if (verbose)
             cout << endl;
+
+        if (verify)
+        {
+            for (size_t i = 0; i < vertices.size(); ++i)
+            {
+                deg_t dseq = make_pair(vertices[i].in_degree,
+                                       vertices[i].out_degree);
+                deg_t deg = make_pair(in_degreeS()(vertex(i, g), g),
+                                      out_degree(vertex(i, g), g));
+                if (deg != dseq)
+                    throw GraphException("Graph does not match the desired "
+                                         "sequence! Vertex " +
+                                         lexical_cast<string>(i) +
+                                         ", wanted: " +
+                                         lexical_cast<string>(dseq.first) +
+                                         " " +
+                                         lexical_cast<string>(dseq.second) +
+                                         ", got: " +
+                                         lexical_cast<string>(deg.first) +
+                                         " " +
+                                         lexical_cast<string>(deg.second) +
+                                         " This is a bug.");
+            }
+        }
     }
 };
 

@@ -237,7 +237,7 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     libgraph_tool_generation.gen_random_graph(g._Graph__graph, N, deg_sampler,
                                               uncorrelated, not parallel_edges,
                                               not self_loops, not directed,
-                                              seed, verbose)
+                                              seed, verbose, True)
     g.set_directed(directed)
     if random:
         random_rewire(g, parallel_edges=parallel_edges,

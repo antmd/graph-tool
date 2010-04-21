@@ -52,7 +52,7 @@ void generate_random_graph(GraphInterface& gi, size_t N,
                            python::object deg_sample,
                            bool uncorrelated, bool no_parallel,
                            bool no_self_loops, bool undirected,
-                           size_t seed, bool verbose)
+                           size_t seed, bool verbose, bool verify)
 {
     typedef graph_tool::detail::get_all_graph_views::apply<
     graph_tool::detail::scalar_pairs, mpl::bool_<false>,
@@ -68,7 +68,7 @@ void generate_random_graph(GraphInterface& gi, size_t N,
             (gi, bind<void>(gen_random_graph(), _1, N,
                             PythonFuncWrap(deg_sample),
                             no_parallel, no_self_loops,
-                            seed, verbose))();
+                            seed, verbose, verify))();
     }
     else
     {
@@ -76,7 +76,7 @@ void generate_random_graph(GraphInterface& gi, size_t N,
             (gi, bind<void>(gen_random_graph(), _1, N,
                             PythonFuncWrap(deg_sample),
                             no_parallel, no_self_loops,
-                            seed, verbose))();
+                            seed, verbose, verify))();
     }
     gi.ReIndexEdges();
 }
