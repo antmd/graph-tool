@@ -115,7 +115,7 @@ def local_clustering(g, prop=None, undirected=False):
     >>> g = gt.random_graph(1000, lambda: (5,5))
     >>> clust = gt.local_clustering(g)
     >>> print gt.vertex_average(g, clust)
-    (0.0052816666666666671, 0.00046415526317530143)
+    (0.0057683333333333336, 0.00048270786829210805)
 
     References
     ----------
@@ -178,7 +178,7 @@ def global_clustering(g):
     >>> seed(42)
     >>> g = gt.random_graph(1000, lambda: (5,5))
     >>> print gt.global_clustering(g)
-    (0.0075696677384780283, 0.00039465997422993533)
+    (0.0093894614473184149, 0.00045618573270753208)
 
     References
     ----------
@@ -252,11 +252,11 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
     >>> for i in xrange(0, 5):
     ...    print gt.vertex_average(g, clusts[i])
     ...
-    (0.0052816666666666671, 0.00046415526317530143)
-    (0.026543333333333332, 0.0010405374199048405)
-    (0.11648, 0.0019761350156302583)
-    (0.40672499999999995, 0.0031128844140121867)
-    (0.42646999999999996, 0.0030644539462829075)
+    (0.0057683333333333336, 0.00048270786829210805)
+    (0.025800144927536232, 0.00097643830822805055)
+    (0.11379500000000001, 0.0019584434515139259)
+    (0.39734630434782608, 0.0029727349290168477)
+    (0.43750507246376807, 0.0029440016153056154)
 
     References
     ----------
@@ -335,9 +335,9 @@ def motifs(g, k, p=1.0, motif_list=None, undirected=None):
     >>> g = gt.random_graph(1000, lambda: (5,5))
     >>> motifs, counts = gt.motifs(g, 4, undirected=True)
     >>> print len(motifs)
-    11
+    14
     >>> print counts
-    [115780, 390603, 667, 764, 2666, 1694, 821, 5, 9, 4, 4]
+    [114808, 388149, 791, 901, 2064, 3266, 780, 6, 14, 16, 8, 9, 12, 13]
 
 
     References
@@ -421,7 +421,7 @@ def _graph_sig(g):
 
 def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
                        threshold=0, undirected=None, self_loops=False,
-                       parallel_edges = False, full_output = False,
+                       parallel_edges=False, full_output=False,
                        shuffle_strategy= "uncorrelated"):
     r"""
     Obtain the motif significance profile, for subgraphs with k vertices. A
@@ -505,9 +505,9 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
     >>> g = gt.random_graph(100, lambda: (3,3))
     >>> motifs, zscores = gt.motif_significance(g, 3)
     >>> print len(motifs)
-    12
+    11
     >>> print zscores
-    [0.84493166311546375, 0.83875258032645894, 1.2117425659306142, -0.20405718722884647, -0.69886762637118316, -0.68343227667794837, -0.92481997609648403, -0.11, -0.14999999999999999, -0.26000000000000001, -0.14000000000000001, -0.01]
+    [-0.77247260114237382, -0.99569269406173944, -0.89282671051270046, 0.3239871430063806, 0.30808421357288784, 0.78512106107239443, 0.53748384988656916, 1.9099999999999999, -0.12, -0.29999999999999999, -0.12]
     """
 
     s_ms, counts = motifs(g, k, p, motif_list, undirected)

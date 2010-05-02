@@ -137,7 +137,7 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     >>> g = gt.random_graph(1000, lambda: sample_k(40),
     ...                     lambda i,k: 1.0/(1+abs(i-k)), directed=False)
     >>> gt.scalar_assortativity(g, "out")
-    (0.62318897995178757, 0.011431222500824638)
+    (0.62986894481988553, 0.011101504846821255)
 
     The following samples an in,out-degree pair from the joint distribution:
 
@@ -247,6 +247,7 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
                           parallel_edges=parallel_edges, deg_corr=deg_corr,
                           self_loops=self_loops, verbose=verbose)
     return g
+
 
 @_limit_args({"strat": ["erdos", "correlated", "uncorrelated", "probabilistic"]})
 def random_rewire(g, strat="uncorrelated", parallel_edges=False,

@@ -154,7 +154,7 @@ In order to iterate through the vertices or edges of the graph, the
 
    for v in g.vertices():
        print v
-   for e in e.vertices():
+   for e in e.edges():
        print e
 
 The code above will print the vertices and edges of the graph in the order they
@@ -357,13 +357,12 @@ use the :func:`~graph_tool.draw.graph_draw` function.
 .. testcode::
 
    g = load_graph("price.xml.gz")
-   g.remove_vertex_if(lambda v: g.vertex_index[v] >= 1000)
-   graph_draw(g, size=(10,10), layout="arf", output="price.png")
+   graph_draw(g, size=(15,15), layout="sfdp", output="price.png")
 
 .. figure:: price.png
    :align: center
 
-   First 1000 nodes of a price network.
+   A Price network with :math:`10^5` nodes.
 
 Graph filtering
 ---------------
