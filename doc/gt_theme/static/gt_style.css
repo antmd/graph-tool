@@ -1,4 +1,4 @@
-@import url("default.css");
+@import url("flasky.css");
 
 table.docutils td {
     padding-left: 0.5em;
@@ -25,4 +25,14 @@ div.float-right {
 
 p.rubric {
    clear: both;
+}
+
+table.docutils td {
+    padding-left: 0.5em;
+}
+
+table.citation td, table.citation th, table.citation {
+    -moz-box-shadow: None;
+    border: 0px;
+    padding: 0.25em 0.7em;
 }
