@@ -22,30 +22,30 @@
 #include "graph.hh"
 #include "graph_selectors.hh"
 
-#include "graph_absolute_trust.hh"
+#include "graph_trust_transitivity.hh"
 
 using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-void absolute_trust(GraphInterface& g, int64_t source, int64_t target,
+void trust_transitivity(GraphInterface& g, int64_t source, int64_t target,
                     boost::any c, boost::any t)
 {
     if (!belongs<edge_floating_properties>()(c))
         throw ValueException("edge property must be of floating point value type");
-    if (!belongs<vertex_floating_properties>()(t))
-        throw ValueException("vertex property must be of floating point value type");
+    if (!belongs<vertex_floating_vector_properties>()(t))
+        throw ValueException("vertex property must be of floating point valued vector type");
 
     run_action<>()(g,
-                   bind<void>(get_absolute_trust(), _1, g.GetVertexIndex(),
+                   bind<void>(get_trust_transitivity(), _1, g.GetVertexIndex(),
                               g.GetEdgeIndex(), g.GetMaxEdgeIndex(), source,
                               target, _2, _3),
                    edge_floating_properties(),
-                   vertex_floating_properties())(c,t);
+                   vertex_floating_vector_properties())(c,t);
 }
 
-void export_absolute_trust()
+void export_trust_transitivity()
 {
     using namespace boost::python;
-    def("get_absolute_trust", &absolute_trust);
+    def("get_trust_transitivity", &trust_transitivity);
 }

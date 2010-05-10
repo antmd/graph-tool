@@ -34,7 +34,7 @@ Summary
    betweenness
    central_point_dominance
    eigentrust
-   absolute_trust
+   trust_transitivity
 
 Contents
 ++++++++
@@ -43,12 +43,12 @@ Contents
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_centrality")
 
-from .. core import _prop
+from .. core import _prop, ungroup_vector_property
 import sys
 import numpy
 
 __all__ = ["pagerank", "betweenness", "central_point_dominance", "eigentrust",
-           "absolute_trust"]
+           "trust_transitivity"]
 
 
 def pagerank(g, damping=0.8, prop=None, epslon=1e-6, max_iter=None,
@@ -81,7 +81,7 @@ def pagerank(g, damping=0.8, prop=None, epslon=1e-6, max_iter=None,
     --------
     betweenness: betweenness centrality
     eigentrust: eigentrust centrality
-    absolute_trust: absolute trust centrality
+    trust_transitivity: pervasive trust transitivity
 
     Notes
     -----
@@ -177,7 +177,7 @@ def betweenness(g, vprop=None, eprop=None, weight=None, norm=True):
     central_point_dominance: central point dominance of the graph
     pagerank: PageRank centrality
     eigentrust: eigentrust centrality
-    absolute_trust: absolute trust centrality
+    trust_transitivity: pervasive trust transitivity
 
     Notes
     -----
@@ -342,7 +342,7 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epslon=1e-6, max_iter=0,
     --------
     betweenness: betweenness centrality
     pagerank: PageRank centrality
-    absolute_trust: absolute trust centrality
+    trust_transitivity: pervasive trust transitivity
 
     Notes
     -----
@@ -413,10 +413,10 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epslon=1e-6, max_iter=0,
         return vprop
 
 
-def absolute_trust(g, trust_map, source, target=None, vprop=None):
+def trust_transitivity(g, trust_map, source=None, target=None, vprop=None):
     r"""
-    Calculate the absolute trust centrality of each vertex in the graph, from a
-    given source.
+    Calculate the pervasive trust transitivity between chosen (or all) vertices
+    in the graph.
 
     Parameters
     ----------
@@ -425,22 +425,26 @@ def absolute_trust(g, trust_map, source, target=None, vprop=None):
     trust_map : :class:`~graph_tool.PropertyMap`
         Edge property map with the values of trust associated with each
         edge. The values must lie in the range [0,1].
-    source : Vertex
+    source : Vertex (optional, default: None)
         Source vertex. All trust values are computed relative to this vertex.
+        If left unspecified, the trust values for all sources are computed.
     target : Vertex (optional, default: None)
         The only target for which the trust value will be calculated. If left
         unspecified, the trust values for all targets are computed.
     vprop : :class:`~graph_tool.PropertyMap` (optional, default: None)
-        A vertex property map where the values of trust for each source
-        must be stored.
+        A vertex property map where the values of transitive trust must be
+        stored.
 
     Returns
     -------
-    absolute_trust : :class:`~graph_tool.PropertyMap` or float
-        A vertex property map containing the absolute trust vector from the
-        source vertex to the rest of the network. If `target` is specified, the
-        result is a single float, with the corresponding trust value for the
-        target.
+    trust_transitivity : :class:`~graph_tool.PropertyMap` or float
+        A vertex vector property map containing, for each source vertex, a
+        vector with the trust values for the other vertices. If only one of
+        `source` or `target` is specified, this will be a single-valued vertex
+        property map containing the trust vector from/to the source/target
+        vertex to/from the rest of the network. If both `source` and `target`
+        are specified, the result is a single float, with the corresponding
+        trust value for the target.
 
     See Also
     --------
@@ -465,12 +469,16 @@ def absolute_trust(g, trust_map, source, target=None, vprop=None):
 
        w_G(i\to j) = \prod_{e\in i\to j} c_e.
 
-    The algorithm measures the absolute trust by finding the paths with maximum
-    weight, using Dijkstra's algorithm, to all in-neighbours of a given
+    The algorithm measures the transitive trust by finding the paths with
+    maximum weight, using Dijkstra's algorithm, to all in-neighbours of a given
     target. This search needs to be performed repeatedly for every target, since
-    it needs to be removed from the graph first. The resulting complexity is
-    therefore :math:`O(N^2\log N)` for all targets, and :math:`O(N\log N)` for a
-    single target.
+    it needs to be removed from the graph first. For each given source, the
+    resulting complexity is therefore :math:`O(N^2\log N)` for all targets, and
+    :math:`O(N\log N)` for a single target. For a given target, the complexity
+    for obtaining the trust from all given sources is :math:`O(kN\log N)`, where
+    :math:`k` is the in-degree of the target. Thus, the complexity for obtaining
+    the complete trust matrix is :math:`O(EN\log N)`, where :math:`E` is the
+    number of edges in the network.
 
     If enabled during compilation, this algorithm runs in parallel.
 
@@ -481,7 +489,7 @@ def absolute_trust(g, trust_map, source, target=None, vprop=None):
     >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
     >>> trust = g.new_edge_property("double")
     >>> trust.a = random(g.num_edges())
-    >>> t = gt.absolute_trust(g, trust, source=g.vertex(0))
+    >>> t = gt.trust_transitivity(g, trust, source=g.vertex(0))
     >>> print t.a
     [ 0.04096112  0.15271582  0.07130332  0.10597708  0.          0.58940763
       0.04233924  0.03619048  0.04137002  0.05926363  0.06584407  0.06315985
@@ -503,18 +511,24 @@ def absolute_trust(g, trust_map, source, target=None, vprop=None):
     """
 
     if vprop == None:
-        vprop = g.new_vertex_property("double")
-
-    source = g.vertex_index[source]
+        vprop = g.new_vertex_property("vector<double>")
 
     if target == None:
         target = -1
     else:
         target = g.vertex_index[target]
 
+    if source == None:
+        source = -1
+    else:
+        source = g.vertex_index[source]
+
     libgraph_tool_centrality.\
-            get_absolute_trust(g._Graph__graph, source, target,
-                               _prop("e", g, trust_map), _prop("v", g, vprop))
-    if target != -1:
+            get_trust_transitivity(g._Graph__graph, source, target,
+                                   _prop("e", g, trust_map),
+                                   _prop("v", g, vprop))
+    if target != -1 or source != -1:
+        vprop = ungroup_vector_property(g, vprop, [0])[0]
+    if target != -1 and source != -1:
         return vprop.a[target]
     return vprop

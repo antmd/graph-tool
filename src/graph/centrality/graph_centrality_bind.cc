@@ -21,13 +21,13 @@ using namespace boost;
 
 void export_betweenness();
 void export_eigentrust();
-void export_absolute_trust();
+void export_trust_transitivity();
 void export_pagerank();
 
 BOOST_PYTHON_MODULE(libgraph_tool_centrality)
 {
     export_betweenness();
     export_eigentrust();
-    export_absolute_trust();
+    export_trust_transitivity();
     export_pagerank();
 }
