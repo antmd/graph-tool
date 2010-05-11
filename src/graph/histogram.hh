@@ -59,7 +59,33 @@ public:
     {
         bin_t new_shape;
         for (size_t j = 0; j < Dim; ++j)
-            new_shape[j] = _bins[j].size();
+        {
+            // detect whether the given bins are of constant width, for faster
+            // binning
+            bool const_width = true;
+            value_type delta = (bins.size() > 1) ?
+                _bins[j][1] - _bins[j][0] : 0.0;
+            for (size_t i = 1; i < _bins[j].size(); ++i)
+            {
+                value_type d = _bins[j][i] - _bins[j][i-1];
+                if (delta != d)
+                    const_width = false;
+            }
+
+            if (bins.size() > 1 && const_width)
+            {
+                _data_range[j] = make_pair(_bins[j].front(),
+                                           _bins[j].back() + delta);
+                _bins[j].resize(1);
+                _bins[j][0] = delta;
+            }
+
+            if (_bins[j].size() > 1)
+                new_shape[j] = _bins[j].size();
+            else
+                new_shape[j] = size_t((data_range[j].second -
+                                       data_range[j].first) / _bins[j][0]) + 1;
+        }
         _counts.resize(new_shape);
     }
 
@@ -70,19 +96,15 @@ public:
         {
             if (_bins[i].size() == 1) // constant bin width
             {
-                bin[i] = (v[i] - _data_range[i].first)/_bins[i][0];
-                if (bin[i] >= _counts.shape()[i])
-                {
-                    boost::array<size_t, Dim> new_shape;
-                    for (size_t j = 0; j < Dim; ++j)
-                        new_shape[j] = _counts.shape()[j];
-                    new_shape[i] = bin[i] + 1;
-                    _counts.resize(new_shape);
-                    if (v[i] > _data_range[i].second)
-                        _data_range[i].second = v[i];
-                }
+                if (v[i] < _data_range[i].first || v[i] > _data_range[i].second)
+                    return; // out of bounds
+
+                bin[i] = (v[i] - _data_range[i].first) / _bins[i][0];
+                if (bin[i] >= _counts.shape()[i]) // bogus _data_range...
+                    throw std::range_error("given value does not correspond to"
+                                           " data_range");
             }
-            else // arbitrary bins. do a binary search
+            else // arbitrary bins widths. do a binary search
             {
                 std::vector<ValueType>& bins = _bins[i];
                 typeof(bins.begin()) iter = upper_bound(bins.begin(),
