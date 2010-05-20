@@ -804,7 +804,7 @@ class Graph(object):
         if isinstance(file_name, str):
             props = self.__graph.ReadFromFile(file_name, None, file_format)
         else:
-            props = self.__graph.ReadFromFile("", file_name, format)
+            props = self.__graph.ReadFromFile("", file_name, file_format)
         for name, prop in props[0].iteritems():
             self.vertex_properties[name] = PropertyMap(prop, self, "v")
         for name, prop in props[1].iteritems():
