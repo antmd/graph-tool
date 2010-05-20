@@ -127,11 +127,23 @@ struct export_vector_types
         if (type_name == "long double")
             type_name = "long_double";
         string name = "Vector_" + type_name;
-        class_<vector<ValueType> >(name.c_str())
-            .def(vector_indexing_suite<vector<ValueType> >())
+        class_<vector<ValueType> > vc(name.c_str());
+        vc.def(vector_indexing_suite<vector<ValueType> >())
             .def("__eq__", &vector_equal_compare<ValueType>)
             .def("__ne__", &vector_nequal_compare<ValueType>);
+        wrap_array(vc, typename mpl::has_key<numpy_types,ValueType>::type());
         vector_from_list<ValueType>();
+    }
+
+    template <class ValueType>
+    void wrap_array(class_<vector<ValueType> >& vc, mpl::true_) const
+    {
+        vc.def("get_array", &wrap_vector_not_owned<ValueType>);
+    }
+
+    template <class ValueType>
+    void wrap_array(class_<vector<ValueType> >& vc, mpl::false_) const
+    {
     }
 };
 

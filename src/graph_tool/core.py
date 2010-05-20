@@ -1099,3 +1099,16 @@ def init_edge_classes():
                     e.__class__.__iter__ = _edge_iter
 
 init_edge_classes()
+
+# Add convenience function to vector classes
+
+
+def _get_array_view(self):
+    return self.get_array()[:]
+
+vector_types = [Vector_bool, Vector_int32_t, Vector_int64_t, Vector_double,
+                Vector_long_double]
+for vt in vector_types:
+    vt.a = property(_get_array_view)
+Vector_string.a = None
+Vector_string.get_array = lambda self: None
