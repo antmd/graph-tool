@@ -73,7 +73,6 @@ struct get_community_network
         for (typeof(comms.begin()) iter = comms.begin(); iter != comms.end();
              ++iter)
         {
-
             cvertex_t cs = comm_vertices[iter->first];
             for (size_t i = 0; i < iter->second.size(); ++i)
             {

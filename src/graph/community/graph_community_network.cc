@@ -74,4 +74,5 @@ void community_network(GraphInterface& gi, GraphInterface& cgi,
                    vertex_properties(), weight_properties(),
                    ecount_properties())
         (community_property, weight, edge_count);
+     cgi.ReIndexEdges();
 }
