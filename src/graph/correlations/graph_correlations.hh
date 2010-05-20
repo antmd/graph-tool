@@ -330,8 +330,9 @@ struct get_avg_correlation
         {
             sum.GetArray()[i] /= count.GetArray()[i];
             sum2.GetArray()[i] =
-                sqrt(sum2.GetArray()[i]/count.GetArray()[i] -
-                     sum.GetArray()[i])/sqrt(count.GetArray()[i]);
+                sqrt(abs(sum2.GetArray()[i]/count.GetArray()[i] -
+                         sum.GetArray()[i] * sum.GetArray()[i])) /
+                sqrt(count.GetArray()[i]);
         }
 
         bins = sum.GetBins();
