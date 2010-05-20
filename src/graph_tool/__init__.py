@@ -51,7 +51,7 @@ Use the built-in ``help`` function to view a function's docstring::
 
    >>> help(gt.Graph)
 
-Classes
+Summary
 -------
 
 .. autosummary::
@@ -67,6 +67,8 @@ Classes
    value_types
    show_config
 
+Classes
+-------
 """
 
 __author__ = "Tiago de Paula Peixoto <tiago@forked.de>"

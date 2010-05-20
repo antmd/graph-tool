@@ -44,7 +44,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'graph-tool'
-copyright = u'2009, Tiago de Paula Peixoto <tiago@forked.de>'
+copyright = u'2010, Tiago de Paula Peixoto <tiago@forked.de>'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

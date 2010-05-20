@@ -261,6 +261,9 @@ method, i.e.,
     # this assigns random values to the properties
     vprop_double.get_array()[:] = random(g.num_vertices())
 
+    # or more conveniently (this is equivalent to the above)
+    vprop_double.a = random(g.num_vertices())
+
 Internal property maps
 ++++++++++++++++++++++
 
@@ -302,7 +305,7 @@ file-like object. A graph can also be loaded from disk with the
     #  ... fill the graph ...
     g.save("my_graph.xml.gz")    
     g2 = load_graph("my_graph.xml.gz")
-    # g and g2 should be a copy of each other
+    # g and g2 should be copies of each other
 
 Graph classes can also be pickled with the :mod:`pickle` module.
 
@@ -313,9 +316,9 @@ An Example: Building a Price Network
 A Price network is the first known model of a "scale-free" graph, invented in
 1976 by `de Solla Price
 <http://en.wikipedia.org/wiki/Derek_J._de_Solla_Price>`_. It is defined
-dynamically, and at each time step a new vertex is added to the graph, and
+dynamically, where at each time step a new vertex is added to the graph, and
 connected to an old vertex, with probability proportional to its in-degree. The
-following program implements this construction method using ``graph-tool``.
+following program implements this construction using ``graph-tool``.
 
 .. literalinclude:: price.py
    :linenos:
@@ -342,7 +345,7 @@ The following is what should happen when the program is run.
     vertex: 0 in-degree: 210 out-degree: 0 age: 0
     Nowhere else to go... We found the main hub!
 
-This is the degree distribution, with 100000 nodes. If you want to really see a
+This is the degree distribution, with 100000 nodes. If you want to see a broader
 power law, try to increase the number of vertices to something like :math:`10^6`
 or :math:`10^7`.
 
@@ -367,10 +370,10 @@ use the :func:`~graph_tool.draw.graph_draw` function.
 Graph filtering
 ---------------
 
-One of the very nice features from ``graph-tool`` is the "on-the-fly" filtering
-of edges and/or vertices. Filtering means the temporary masking of
-vertices/edges, which are not really removed, and can be easily
-recovered. Vertices or edges which are to be filtered should be marked with a
+One of the very nice features of ``graph-tool`` is the "on-the-fly" filtering of
+edges and/or vertices. Filtering means the temporary masking of vertices/edges,
+which are in fact not really removed, and can be easily recovered. Vertices or
+edges which are to be filtered should be marked with a
 :class:`~graph_tool.PropertyMap` with value type ``bool``, and then set with
 :meth:`~graph_tool.Graph.set_vertex_filter` or
 :meth:`~graph_tool.Graph.set_edge_filter` methods. By default, vertex or edges

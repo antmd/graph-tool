@@ -10,7 +10,7 @@ seed(42)
 from graph_tool.all import *
 
 # let's construct a Price network (the one that existed before Barabasi). It is
-# a directed network, with preferential attachment. The algorithm below is a
+# a directed network, with preferential attachment. The algorithm below is
 # very naive, and a bit slow, but quite simple.
 
 # We start with an empty, directed graph
@@ -64,7 +64,7 @@ gca().set_ylim(1e-1,1e5)
 gca().set_xlim(0.8,1e3)
 subplots_adjust(left=0.2,bottom=0.2)
 xlabel("$k_{in}$")
-ylabel("$P(k_{in})$")
+ylabel("$NP(k_{in})$")
 savefig("deg-hist.png")
 
 # let's do a random walk on the graph and print the age of the vertices we find,
@@ -84,7 +84,7 @@ for i in xrange(0, 100):
         n_list.append(w)
     v = n_list[randint(0, len(n_list))]
 
-# let's save our graph for posterity We want to save the age properties as
+# let's save our graph for posterity. We want to save the age properties as
 # well... To do this, they must become "internal" properties, as such:
 
 g.vertex_properties["age"] = v_age

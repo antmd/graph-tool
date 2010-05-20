@@ -293,7 +293,7 @@ def random_rewire(g, strat="uncorrelated", parallel_edges=False,
     Notes
     -----
     This algorithm iterates through all the edges in the network and tries to
-    swap its target our edge with another edge.
+    swap its target or source with the target or source of another edge.
 
     .. note::
         If `parallel_edges` = False, parallel edges are not placed during
