@@ -21,17 +21,18 @@
 #include <boost/graph/graph_traits.hpp>
 #include <utility>
 #include <tr1/unordered_set>
+#include <tr1/random>
 
 namespace boost
 {
 using namespace std;
 
+typedef tr1::mt19937 rng_t;
+
 namespace detail {
 
 //sparse matrix
 typedef vector<tr1::unordered_set<size_t> > matrix_t;
-
-
 
 struct check_adjacency
 {
@@ -79,26 +80,28 @@ struct check_adjacency
     bool operator()(typename graph_traits<Graph1>::vertex_descriptor k,
                     typename graph_traits<Graph2>::vertex_descriptor l,
                     matrix_t& M, EdgeLabelling& edge_labelling,
-                    Graph1& g1, Graph2& g2, mpl::true_ directed)
+                    Graph1& g1, Graph2& g2, vector<size_t>& vindex,
+                    mpl::true_ directed)
     {
-        return do_check(k, l, M, edge_labelling, g1, g2, mpl::true_()) &&
-            do_check(k, l, M, edge_labelling, g1, g2, mpl::false_());
+        return do_check(k, l, M, edge_labelling, g1, g2, vindex,
+                        mpl::true_()) &&
+            do_check(k, l, M, edge_labelling, g1, g2, vindex, mpl::false_());
     }
 
     template <class Graph1, class Graph2, class EdgeLabelling>
     bool operator()(typename graph_traits<Graph1>::vertex_descriptor k,
                     typename graph_traits<Graph2>::vertex_descriptor l,
-                    matrix_t& M, EdgeLabelling& edge_labelling,
-                    Graph1& g1, Graph2& g2, mpl::false_ directed)
+                    matrix_t& M, EdgeLabelling& edge_labelling, Graph1& g1,
+                    Graph2& g2, vector<size_t>& vindex, mpl::false_ directed)
     {
-        return do_check(k, l, M, edge_labelling, g1, g2, mpl::true_());
+        return do_check(k, l, M, edge_labelling, g1, g2, vindex, mpl::true_());
     }
 
     template <class Graph1, class Graph2, class EdgeLabelling, class IsOut>
     bool do_check(typename graph_traits<Graph1>::vertex_descriptor k,
                   typename graph_traits<Graph2>::vertex_descriptor l,
                   matrix_t& M, EdgeLabelling& edge_labelling, Graph1& g1,
-                  Graph2& g2, IsOut)
+                  Graph2& g2, vector<size_t>& vindex, IsOut)
     {
         bool valid = true;
         typename get_edge_iterator<Graph1, IsOut>::type e1, e1_end;
@@ -118,7 +121,8 @@ struct check_adjacency
                 typename graph_traits<Graph2>::vertex_descriptor v2 =
                     get_vertex(*e2, g2, IsOut());
 
-                if (M[v1].find(v2) != M[v1].end() && edge_labelling(*e1, *e2))
+                if (M[v1].find(vindex[v2]) != M[v1].end() &&
+                    edge_labelling(*e1, *e2))
                 {
                     is_adjacent = true;
                     break;
@@ -137,13 +141,14 @@ struct check_adjacency
 
 
 template <class Graph1, class Graph2, class EdgeLabelling>
-bool refine_check(const Graph1& g1, const Graph2& g2, matrix_t& M, size_t count,
+bool refine_check(const Graph1& sub, const Graph2& g, matrix_t& M, size_t count,
                   tr1::unordered_set<size_t>& already_mapped,
-                  EdgeLabelling edge_labelling)
+                  EdgeLabelling edge_labelling, vector<size_t>& vlist,
+                  vector<size_t>& vindex)
 {
-    matrix_t M_temp(num_vertices(g1));
+    matrix_t M_temp(num_vertices(sub));
 
-    int k = 0, N = num_vertices(g1);
+    int k = 0, N = num_vertices(sub);
     #pragma omp parallel for default(shared) private(k) schedule(dynamic)
     for (k = 0; k < int(count); ++k)
         M_temp[k] = M[k];
@@ -159,7 +164,7 @@ bool refine_check(const Graph1& g1, const Graph2& g2, matrix_t& M, size_t count,
         {
             if (abort)
                 continue;
-            if (vertex(k, g1) == graph_traits<Graph1>::null_vertex())
+            if (vertex(k, sub) == graph_traits<Graph1>::null_vertex())
                 continue;
             tr1::unordered_set<size_t> m_new;
             for (typeof(M[k].begin()) li = M[k].begin(); li != M[k].end(); ++li)
@@ -168,7 +173,8 @@ bool refine_check(const Graph1& g1, const Graph2& g2, matrix_t& M, size_t count,
                 if (already_mapped.find(l) != already_mapped.end())
                     continue;
                 bool valid = check_adjacency()
-                    (vertex(k, g1), vertex(l, g2), M, edge_labelling, g1, g2,
+                    (vertex(k, sub), vertex(vlist[l], g), M, edge_labelling,
+                     sub, g, vindex,
                      typename is_directed::apply<Graph1>::type());
                 if (valid)
                     m_new.insert(l);
@@ -191,26 +197,26 @@ bool refine_check(const Graph1& g1, const Graph2& g2, matrix_t& M, size_t count,
 
 
 template <class Graph1, class Graph2, class EdgeLabelling, class Mapping>
-void find_mappings(const Graph1& g1, const Graph2& g2, matrix_t M0,
+void find_mappings(const Graph1& sub, const Graph2& g, matrix_t& M0,
                    vector<Mapping>& FF, EdgeLabelling edge_labelling,
-                   size_t max_n)
+                   vector<size_t>& vlist, vector<size_t>& vindex, size_t max_n)
 {
     size_t i = 0;
-    for (i=0; i < num_vertices(g1); ++i)
-        if (vertex(i, g1) != graph_traits<Graph1>::null_vertex())
+    for (i = 0; i < num_vertices(sub); ++i)
+        if (vertex(i, sub) != graph_traits<Graph1>::null_vertex())
             break;
     int last_i = 0;
-    for (last_i = num_vertices(g1)-1; last_i >= 0; --last_i)
-        if (vertex(i, g1) != graph_traits<Graph1>::null_vertex())
+    for (last_i = num_vertices(sub) - 1; last_i >= 0; --last_i)
+        if (vertex(i, sub) != graph_traits<Graph1>::null_vertex())
             break;
-    for (; i < num_vertices(g2); ++i)
-        if (vertex(i, g2) != graph_traits<Graph2>::null_vertex())
+    for (; i < vlist.size(); ++i)
+        if (vertex(vlist[i], g) != graph_traits<Graph2>::null_vertex())
             break;
 
     Mapping F;
     list<tuple<matrix_t, size_t,
                typename matrix_t::value_type::const_iterator> > Mstack;
-    Mstack.push_back(make_tuple(M0,i,M0[i].begin()));
+    Mstack.push_back(make_tuple(M0, i, M0[i].begin()));
     get<2>(Mstack.back()) = get<0>(Mstack.back())[i].begin();
     tr1::unordered_set<size_t> already_mapped;
 
@@ -244,12 +250,13 @@ void find_mappings(const Graph1& g1, const Graph2& g2, matrix_t M0,
         ++mi;
 
         size_t ni = i + 1;
-        for (; ni < num_vertices(g1); ++ni)
-            if (vertex(ni, g1) != graph_traits<Graph1>::null_vertex())
+        for (; ni < num_vertices(sub); ++ni)
+            if (vertex(ni, sub) != graph_traits<Graph1>::null_vertex())
                 break;
 
         // refine search tree
-        if (refine_check(g1, g2, M_prime, ni, already_mapped, edge_labelling))
+        if (refine_check(sub, g, M_prime, ni, already_mapped, edge_labelling,
+                         vlist, vindex))
         {
             // store the current mapping so far
             F.push_back(std::make_pair(i, c_mi));
@@ -289,26 +296,30 @@ void find_mappings(const Graph1& g1, const Graph2& g2, matrix_t M0,
 
 template <class Graph1, class Graph2, class VertexLabelling,
           class EdgeLabelling, class Mapping>
-void subgraph_isomorphism(const Graph1& g1, const Graph2& g2,
+void subgraph_isomorphism(const Graph1& sub, const Graph2& g,
                           VertexLabelling vertex_labelling,
                           EdgeLabelling edge_labelling, vector<Mapping>& F,
-                          size_t max_n)
+                          vector<size_t>& vlist, size_t max_n)
 {
-    detail::matrix_t M0(num_vertices(g1));
+    // initial mapping candidates
+    detail::matrix_t M0(num_vertices(sub));
+    vector<size_t> vindex(num_vertices(g));
+    for (size_t j = 0; j < num_vertices(g); ++j)
+        vindex[vlist[j]] = j;
 
     bool abort = false;
-    int i, N = num_vertices(g1);
+    int i, N = num_vertices(sub);
     #pragma omp parallel for default(shared) private(i) schedule(dynamic)
     for (i = 0; i < N; ++i)
     {
-        if (vertex(i, g1) == graph_traits<Graph1>::null_vertex() || abort)
+        if (vertex(i, sub) == graph_traits<Graph1>::null_vertex() || abort)
             continue;
 
-        for (size_t j = 0; j < num_vertices(g2); ++j)
+        for (size_t j = 0; j < num_vertices(g); ++j)
         {
-            if (vertex(j, g2) == graph_traits<Graph1>::null_vertex())
+            if (vertex(vlist[j], g) == graph_traits<Graph1>::null_vertex())
                 continue;
-            if (vertex_labelling(vertex(i,g1), vertex(j,g2)))
+            if (vertex_labelling(vertex(i, sub), vertex(vlist[j], g)))
                 M0[i].insert(j);
         }
         if (M0[i].empty())
@@ -316,7 +327,7 @@ void subgraph_isomorphism(const Graph1& g1, const Graph2& g2,
     }
     if (abort)
         return;
-    detail::find_mappings(g1, g2, M0, F, edge_labelling, max_n);
+    detail::find_mappings(sub, g, M0, F, edge_labelling, vlist, vindex, max_n);
 }
 
 }  // namespace boost

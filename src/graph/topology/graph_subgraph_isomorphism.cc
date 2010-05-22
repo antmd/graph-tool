@@ -61,22 +61,35 @@ struct get_subgraphs
 {
     template <class Graph1, class Graph2, class VertexLabel,
               class EdgeLabel>
-    void operator()(const Graph1& g1, const Graph2* g2,
+    void operator()(const Graph1& sub, const Graph2* g,
                     VertexLabel vertex_label1, boost::any vertex_label2,
                     EdgeLabel edge_label1, boost::any edge_label2,
-                    vector<vector<pair<size_t,size_t> > >& F, size_t max_n)
-        const
+                    vector<vector<pair<size_t, size_t> > >& F,
+                    vector<size_t>& vlist, pair<size_t,size_t> sn) const
     {
         typedef PropLabelling<Graph1,Graph2,VertexLabel,VertexLabel>
             vlabelling_t;
         typedef PropLabelling<Graph1,Graph2,EdgeLabel,EdgeLabel>
             elabelling_t;
+        size_t seed = sn.first;
+        size_t max_n = sn.second;
+
+        rng_t rng(static_cast<rng_t::result_type>(seed));
+        vlist.resize(num_vertices(*g));
+        int i, N = num_vertices(*g);
+        for (i = 0; i < N; ++i)
+            vlist[i] = i;
+        for (i = 0; i < N - 1; ++i)
+        {
+            tr1::uniform_int<> random(i, N - 1);
+            swap(vlist[i], vlist[random(rng)]);
+        }
 
         subgraph_isomorphism
-            (g1, *g2, vlabelling_t(g1, *g2, vertex_label1,
+            (sub, *g, vlabelling_t(sub, *g, vertex_label1,
                                    any_cast<VertexLabel>(vertex_label2)),
-             elabelling_t(g1, *g2, edge_label1,
-                          any_cast<EdgeLabel>(edge_label2)), F, max_n);
+             elabelling_t(sub, *g, edge_label1,
+                          any_cast<EdgeLabel>(edge_label2)), F, vlist, max_n);
     }
 };
 
@@ -84,32 +97,34 @@ struct get_mapping
 {
     template <class Graph1, class Graph2, class EdgeLabel, class VertexMap,
               class EdgeMap, class EdgeIndexMap>
-    void operator()(const Graph1& g1, const Graph2* g2, EdgeLabel edge_label1,
+    void operator()(const Graph1& sub, const Graph2* g, EdgeLabel edge_label1,
                     boost::any edge_label2, vector<pair<size_t, size_t> >& F,
                     VertexMap vmapping, EdgeMap emapping,
-                    EdgeIndexMap edge_index2) const
+                    EdgeIndexMap edge_index2, vector<size_t>& vlist) const
     {
         typedef PropLabelling<Graph1,Graph2,EdgeLabel,EdgeLabel>
             elabelling_t;
-        elabelling_t edge_labelling(g1, *g2, edge_label1,
+        elabelling_t edge_labelling(sub, *g, edge_label1,
                                     any_cast<EdgeLabel>(edge_label2));
         int i, N = F.size();
         #pragma omp parallel for default(shared) private(i) schedule(dynamic)
         for (i = 0; i < N; ++i)
         {
-            if (vertex(i, g1) == graph_traits<Graph1>::null_vertex())
+            if (vertex(i, sub) == graph_traits<Graph1>::null_vertex())
                 continue;
-            vmapping[vertex(F[i].first, g1)] = vertex(F[i].second, *g2);
+            vmapping[vertex(F[i].first, sub)] = vertex(vlist[F[i].second], *g);
             typename graph_traits<Graph1>::out_edge_iterator e, e_end;
-            for (tie(e, e_end) = out_edges(vertex(i, g1), g1); e != e_end; ++e)
+            for (tie(e, e_end) = out_edges(vertex(i, sub), sub); e != e_end;
+                 ++e)
             {
                 bool found = false;
                 typename graph_traits<Graph2>::out_edge_iterator e2, e2_end;
-                for (tie(e2, e2_end) = out_edges(vertex(F[i].second, *g2), *g2);
+                for (tie(e2, e2_end) =
+                         out_edges(vertex(vlist[F[i].second], *g), *g);
                      e2 != e2_end; ++e2)
                 {
-                    if (target(*e2, *g2) ==
-                        vertex(F[target(*e, g1)].second, *g2) &&
+                    if (target(*e2, *g) ==
+                        vertex(vlist[F[target(*e, sub)].second], *g) &&
                         edge_labelling(*e, *e2))
                     {
                         emapping[*e] = edge_index2[*e2];
@@ -149,7 +164,7 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
                           boost::any vertex_label1, boost::any vertex_label2,
                           boost::any edge_label1, boost::any edge_label2,
                           python::list vmapping, python::list emapping,
-                          size_t max_n)
+                          size_t max_n, size_t seed)
 {
     if (gi1.GetDirected() != gi2.GetDirected())
         return;
@@ -167,13 +182,14 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
     }
 
     vector<vector<pair<size_t,size_t> > > F;
+    vector<size_t> vlist;
 
     if (gi1.GetDirected())
     {
         run_action<graph_tool::detail::always_directed>()
             (gi1, bind<void>(get_subgraphs(),
                              _1, _2, _3, vertex_label2, _4, edge_label2,
-                             ref(F), max_n),
+                             ref(F), ref(vlist), make_pair(seed, max_n)),
              directed_graph_view_pointers(), vertex_props_t(),
              edge_props_t())
             (gi2.GetGraphView(), vertex_label1,  edge_label1);
@@ -183,7 +199,7 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
         run_action<graph_tool::detail::never_directed>()
             (gi1, bind<void>(get_subgraphs(),
                              _1, _2, _3, vertex_label2, _4, edge_label2,
-                             ref(F), max_n),
+                             ref(F), ref(vlist), make_pair(seed, max_n)),
              undirected_graph_view_pointers(), vertex_props_t(),
              edge_props_t())
             (gi2.GetGraphView(), vertex_label1, edge_label1);
@@ -205,7 +221,7 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
                 (gi1, bind<void>(get_mapping(),
                                  _1, _2, _3, edge_label2,
                                  ref(F[i]), ref(vm), ref(ep),
-                                 gi2.GetEdgeIndex()),
+                                 gi2.GetEdgeIndex(), ref(vlist)),
                  directed_graph_view_pointers(), edge_props_t())
                 (gi2.GetGraphView(), edge_label1);
         }
@@ -215,7 +231,7 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
                 (gi1, bind<void>(get_mapping(),
                                  _1, _2, _3, edge_label2,
                                  ref(F[i]), ref(vm), ref(ep),
-                                 gi2.GetEdgeIndex()),
+                                 gi2.GetEdgeIndex(), ref(vlist)),
                  undirected_graph_view_pointers(), edge_props_t())
                 (gi2.GetGraphView(), edge_label1);
         }

@@ -88,10 +88,13 @@ def isomorphism(g1, g2, isomap=False):
         return iso
 
 
-def subgraph_isomorphism(sub, g, max_n=0):
+def subgraph_isomorphism(sub, g, max_n=0, random=True):
     r"""
     Obtain all subgraph isomorphisms of `sub` in `g` (or at most `max_n`
     subgraphs, if `max_n > 0`).
+
+    If `random` = True, the vertices of `g` are indexed in random order before
+    the search.
 
     It returns two lists, containing the vertex and edge property maps for `sub`
     with the isomorphism mappings. The value of the properties are the
@@ -150,13 +153,17 @@ def subgraph_isomorphism(sub, g, max_n=0):
     elabels=(None, None)
     vmaps = []
     emaps = []
+    if random:
+        seed = numpy.random.randint(0, sys.maxint)
+    else:
+        seed = 42
     libgraph_tool_topology.\
            subgraph_isomorphism(sub._Graph__graph, g._Graph__graph,
                                 _prop("v", sub, vlabels[0]),
                                 _prop("v", g, vlabels[1]),
                                 _prop("e", sub, elabels[0]),
                                 _prop("e", g, elabels[1]),
-                                vmaps, emaps, max_n)
+                                vmaps, emaps, max_n, seed)
     for i in xrange(len(vmaps)):
         vmaps[i] = PropertyMap(vmaps[i], sub, "v")
         emaps[i] = PropertyMap(emaps[i], sub, "e")
