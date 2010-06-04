@@ -63,13 +63,14 @@ except ImportError:
 __all__ = ["graph_draw", "arf_layout", "random_layout"]
 
 
-def graph_draw(g, pos=None, size=(15, 15), pin=False, layout="neato",
-               maxiter=None, ratio="fill", overlap="prism", sep=None,
+def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
+               maxiter=None, ratio= "fill", overlap= "prism", sep=None,
                splines=False, vsize=0.1, penwidth=1.0, elen=None, gprops={},
                vprops={}, eprops={}, vcolor=None, ecolor=None,
                vcmap=matplotlib.cm.jet, vnorm=True, ecmap=matplotlib.cm.jet,
-               enorm=True, output="", output_format="auto", returngv=False,
-               fork=False, return_bitmap=False, seed=0):
+               enorm=True, vorder=None, eorder=None, output= "",
+               output_format= "auto", returngv=False, fork=False,
+               return_bitmap=False, seed=0):
     r"""Draw a graph using graphviz.
 
     Parameters
@@ -183,6 +184,12 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout="neato",
         Edge color map.
     enorm : bool (default: True)
         Normalize edge color values to the [0,1] range.
+    vorder : PropertyMap (default: None)
+        Scalar vertex property map which specifies the order with which vertices
+        are drawn.
+    eorder : PropertyMap (default: None)
+        Scalar edge property map which specifies the order with which edges
+        are drawn.
     output : string (default: "")
         Output file name.
     output_format : string (default: "auto")
@@ -349,7 +356,11 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout="neato",
     nodes = {}
 
     # add nodes
-    for v in g.vertices():
+    if vorder != None:
+        vertices = sorted(g.vertices(), lambda a, b: cmp(vorder[a], vorder[b]))
+    else:
+        vertices = g.vertices()
+    for v in vertices:
         n = gv.node(gvg, str(g.vertex_index[v]))
 
         if type(vsize) == PropertyMap:
@@ -385,7 +396,12 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout="neato",
                 gv.setv(n, k, str(val))
         nodes[v] = n
 
-    for e in g.edges():
+    # add edges
+    if eorder != None:
+        edges = sorted(g.edges(), lambda a, b: cmp(eorder[a], eorder[b]))
+    else:
+        edges = g.edges()
+    for e in edges:
         ge = gv.edge(nodes[e.source()],
                      nodes[e.target()])
         gv.setv(ge, "arrowsize", "0.3")
