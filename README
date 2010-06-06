@@ -1,7 +1,8 @@
-graph-tool -- a general graph measurement and manipulation python module
-=========================================================================
+graph-tool -- an efficient python module for analysis of graphs
+===============================================================
 
-This is graph-tool, a python module which contains general graph
+graph-tool is an efficient python module for manipulation and
+statistical analysis of graphs. It contains several general graph
 measurements data structures and algorithms, such as degree or
 properties distributions, degree or properties correlations,
 clustering, graph filtering, graph layout, and more, as well as a
@@ -9,8 +10,9 @@ random graph generation routine. For more information and
 documentation, please take a look at the website
 http://graph-tool.forked.de.
 
-graph-tool is free software, you can redistribute it and/or modify it under
-the terms of the GNU General Public License.
+graph-tool is free software, you can redistribute it and/or modify it
+under the terms of the GNU General Public License, version 3 or
+above. See COPYING for details.
 
 This program is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -25,14 +27,15 @@ project's website: http://graph-tool.forked.de
 Installation
 ============
 
-graph-tool follows the standard GNU installation procedure.  Please consult
-the INSTALL file in this distribution for more detailed instructions.
+graph-tool follows the standard GNU installation procedure.  Please
+consult the INSTALL file in this distribution for more detailed
+instructions.
 
 Note that recent versions of GCC (4.4 or above) are required for
 compilation, and due to the usage of template metaprogramming
-techniques in the program, relatively large amounts of RAM
-are required during compilation. You have been warned! For this
-reason, pre-compiled packages are available in the website.
+techniques in the program, relatively large amounts of RAM are
+required during compilation. You have been warned! For this reason,
+pre-compiled packages are available in the website.
 
 More information about graph-tool
 ==================================
