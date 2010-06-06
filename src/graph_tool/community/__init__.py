@@ -341,7 +341,7 @@ def condensation_graph(g, prop, weight=None):
     libgraph_tool_community.community_network(g._Graph__graph,
                                               gp._Graph__graph,
                                               _prop("v", g, prop),
-                                              _prop("v", g, vcount),
-                                              _prop("e", g, ecount),
+                                              _prop("v", gp, vcount),
+                                              _prop("e", gp, ecount),
                                               _prop("e", g, weight))
     return gp, vcount, ecount

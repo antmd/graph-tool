@@ -92,8 +92,9 @@ struct get_community_network
                         ce = comm_edges[make_pair(ct, cs)];
                     else
                     {
-                        ce = add_edge(cs,ct,cg).first;
+                        ce = add_edge(cs, ct, cg).first;
                         comm_edges[make_pair(cs, ct)] = ce;
+                        cedge_index[ce] = comm_edges.size() - 1;
                     }
                     edge_count[ce] += get(weight, *e);
                 }
