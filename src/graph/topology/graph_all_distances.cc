@@ -40,11 +40,8 @@ struct do_all_pairs_search
         #pragma omp parallel for default(shared) private(i) schedule(dynamic)
         for (i = 0; i < N; ++i)
         {
-            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
-            if (v == graph_traits<Graph>::null_vertex())
-                continue;
-            dist_map[v].clear();
-            dist_map[v].resize(num_vertices(g), 0);
+            dist_map[i].clear();
+            dist_map[i].resize(num_vertices(g), 0);
         }
 
         if (dense)
