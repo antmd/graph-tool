@@ -17,6 +17,7 @@
 #define GRAPH_PARALLEL_HH
 
 #include <tr1/unordered_set>
+#include "graph_util.hh"
 
 namespace graph_tool
 {
@@ -49,6 +50,12 @@ struct label_parallel_edges
             {
                 if (p_edges.find(*e1) != p_edges.end())
                     continue;
+
+                // do not visit edges twice in undirected graphs
+                if (!is_directed::apply<Graph>::type::value &&
+                    target(*e1, g) < v)
+                    continue;
+
                 size_t n = 0;
                 put(parallel, *e1, n);
                 for (tie(e2, e_end2) = out_edges(v, g); e2 != e_end2; ++e2)
