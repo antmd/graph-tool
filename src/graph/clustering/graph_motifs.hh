@@ -18,10 +18,6 @@
 #ifndef GRAPH_MOTIFS_HH
 #define GRAPH_MOTIFS_HH
 
-#ifdef USING_OPENMP
-#include <omp.h>
-#endif
-
 #include <boost/functional/hash.hpp>
 #include <boost/graph/copy.hpp>
 #include <boost/graph/isomorphism.hpp>
@@ -272,21 +268,22 @@ struct wrap_undirected
     };
 };
 
-// get the signature of the graph: concatenated out + in degree histograms
+// get the signature of the graph: sorted degree sequence
 template <class Graph>
 void get_sig(Graph& g, vector<size_t>& sig)
 {
-    size_t N = num_vertices(g) + 1;
-    sig.resize(is_directed::apply<Graph>::type::value ? 2*N : N);
-    for (size_t i = 0; i < sig.size(); ++i)
-        sig[i] = 0;
-    typename graph_traits<Graph>::vertex_iterator v, v_end;
-    for (tie(v, v_end) = vertices(g); v != v_end; ++v)
+    sig.clear();
+    size_t N = num_vertices(g);
+    if (N > 0)
+        sig.resize(is_directed::apply<Graph>::type::value ? 2 * N : N);
+    for (size_t i = 0; i < N; ++i)
     {
-        sig[out_degree(*v,g)]++;
+        typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+        sig[i] = out_degree(v, g);
         if(is_directed::apply<Graph>::type::value)
-            sig[in_degreeS()(*v,g)+N]++;
+            sig[i + N] = in_degreeS()(v, g);
     }
+    sort(sig.begin(), sig.end());
 }
 
 // gets (or samples) all the subgraphs in graph g
@@ -349,11 +346,6 @@ struct get_all_motifs
             V.resize(n);
         }
 
-        #ifdef USING_OPENMP
-        omp_lock_t lock;
-        omp_init_lock(&lock);
-        #endif
-
         int i, N = (p < 1) ? V.size() : num_vertices(g);
         #pragma omp parallel for default(shared) private(i, sig) \
             schedule(dynamic)
@@ -369,64 +361,56 @@ struct get_all_motifs
             typename wrap_undirected::apply<Graph>::type ug(g);
             get_subgraphs(ug, v, k, subgraphs, sampler);
 
+            #pragma omp critical
+
             for (size_t j = 0; j < subgraphs.size(); ++j)
             {
                 graph_sg_t sub;
                 make_subgraph(subgraphs[j], g, sub);
                 get_sig(sub, sig);
 
-                #ifdef USING_OPENMP
-                if (fill_list)
-                    omp_set_lock(&lock);
-                #endif
-
                 typeof(sub_list.begin()) iter = sub_list.find(sig);
                 if(iter == sub_list.end())
                 {
                     if (!fill_list)
                         continue; // avoid inserting an element in sub_list
-                    sub_list[sig] = vector<pair<size_t,graph_sg_t> >();
+                    sub_list[sig].clear();
                 }
 
                 bool found = false;
-                vector<pair<size_t, graph_sg_t> >& sl = sub_list[sig];
-                for (size_t l = 0; l < sl.size(); ++l)
+                typeof(sub_list.begin()) sl = sub_list.find(sig);
+                if (sl != sub_list.end())
                 {
-                    graph_sg_t& motif = sl[l].second;
-                    if (comp_iso)
+                    for (size_t l = 0; l < sl->second.size(); ++l)
                     {
-                        if (isomorphism(motif, sub))
-                            found = true;
-                    }
-                    else
-                    {
-                        if (graph_cmp(motif, sub))
-                            found = true;
-                    }
-                    if (found)
-                    {
-                        #pragma omp critical
-                        hist[sl[l].first]++;
-                        break;
+                        graph_sg_t& motif = sl->second[l].second;
+                        if (comp_iso)
+                        {
+                            if (isomorphism(motif, sub))
+                                found = true;
+                        }
+                        else
+                        {
+                            if (graph_cmp(motif, sub))
+                                found = true;
+                        }
+                        if (found)
+                        {
+                            hist[sl->second[l].first]++;
+                            break;
+                        }
                     }
                 }
 
                 if (found == false && fill_list)
                 {
                     subgraph_list.push_back(sub);
-                    sl.push_back(make_pair(subgraph_list.size()-1,sub));
-                        hist.push_back(1);
+                    sub_list[sig].push_back(make_pair(subgraph_list.size() - 1,
+                                                      sub));
+                    hist.push_back(1);
                 }
-
-                #ifdef USING_OPENMP
-                if (fill_list)
-                    omp_unset_lock(&lock);
-                #endif
             }
         }
-        #ifdef USING_OPENMP
-        omp_destroy_lock(&lock);
-        #endif
     }
 };
 
