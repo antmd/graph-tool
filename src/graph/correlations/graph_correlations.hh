@@ -202,34 +202,7 @@ struct get_correlation_histogram
         for (size_t i = 0; i < bins.size(); ++i)
             clean_bins(_bins[i], bins[i]);
 
-        // find the data range
-        pair<type1,type1> range1;
-        pair<type2,type2> range2;
-        range1.first = range1.second = bins[0][0];
-        range2.first = range2.second = bins[1][0];
-        if (bins[0].size() == 1 || bins[1].size() == 1)
-        {
-            typename graph_traits<Graph>::vertex_iterator vi,vi_end;
-            range1.first = boost::numeric::bounds<type1>::highest();
-            range1.second = boost::numeric::bounds<type1>::lowest();
-            range2.first = boost::numeric::bounds<type2>::highest();
-            range2.second = boost::numeric::bounds<type2>::lowest();
-            for (tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
-            {
-                type1 v1 = deg1(*vi, g);
-                type2 v2 = deg2(*vi, g);
-                range1.first = min(range1.first, v1);
-                range1.second = max(range1.second, v1);
-                range2.first = min(range2.first, v2);
-                range2.second = max(range2.second, v2);
-            }
-        }
-
-        boost::array<pair<val_type, val_type>, 2> data_range;
-        data_range[0] = range1;
-        data_range[1] = range2;
-
-        hist_t hist(bins, data_range);
+        hist_t hist(bins);
         SharedHistogram<hist_t> s_hist(hist);
 
         int i, N = num_vertices(g);
@@ -288,25 +261,9 @@ struct get_avg_correlation
         bins[0].resize(_bins.size());
         clean_bins(_bins, bins[0]);
 
-        // find the data range
-        array<pair<val_type,val_type>,1> data_range;
-        data_range[0].first = data_range[0].second = _bins[0];
-        if (bins.size() == 1)
-        {
-            typename graph_traits<Graph>::vertex_iterator vi, vi_end;
-            data_range[0].first = boost::numeric::bounds<type1>::highest();
-            data_range[0].second = boost::numeric::bounds<type1>::lowest();
-            for (tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
-            {
-                val_type v1 = deg1(*vi, g);
-                data_range[0].first = min(data_range[0].first, v1);
-                data_range[0].second = max(data_range[0].second, v1);
-            }
-        }
-
-        sum_t sum(bins, data_range);
-        sum_t sum2(bins, data_range);
-        count_t count(bins, data_range);
+        sum_t sum(bins);
+        sum_t sum2(bins);
+        count_t count(bins);
 
         SharedHistogram<sum_t> s_sum(sum);
         SharedHistogram<sum_t> s_sum2(sum2);

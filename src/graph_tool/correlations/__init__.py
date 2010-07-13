@@ -49,6 +49,7 @@ from numpy import *
 __all__ = ["assortativity", "scalar_assortativity", "corr_hist",
            "combined_corr_hist", "avg_neighbour_corr", "avg_combined_corr"]
 
+
 def assortativity(g, deg):
     r"""
     Obtain the assortativity coefficient for the given graph.
@@ -118,6 +119,7 @@ def assortativity(g, deg):
     """
     return libgraph_tool_correlations.\
            assortativity_coefficient(g._Graph__graph, _degree(g, deg))
+
 
 def scalar_assortativity(g, deg):
     r"""
@@ -193,7 +195,8 @@ def scalar_assortativity(g, deg):
            scalar_assortativity_coefficient(g._Graph__graph,
                                             _degree(g, deg))
 
-def corr_hist(g, deg_source, deg_target, bins=[[1], [1]], weight=None,
+
+def corr_hist(g, deg_source, deg_target, bins=[[0, 1], [0, 1]], weight=None,
               float_count=True):
     r"""
     Obtain the correlation histogram for the given graph.
@@ -209,9 +212,9 @@ def corr_hist(g, deg_source, deg_target, bins=[[1], [1]], weight=None,
         degree type ("in", "out" or "total") or vertex property map for the
         target vertex.
     bins : list of lists (optional, default: [[1], [1]])
-        A list of bins to be used for the source and target degrees. If any list
-        has size 1, it is used as the constant width of an automatically
-        generated bin range.
+        A list of bin edges to be used for the source and target degrees. If any
+        list has size 2, it is used as the constant width of an automatically
+        generated bin range, starting from the first value.
     weight : edge property map (optional, default: None)
         Weight (multiplicative factor) to be used on each edge.
     float_count : bool (optional, default: True)
@@ -282,12 +285,14 @@ def corr_hist(g, deg_source, deg_target, bins=[[1], [1]], weight=None,
     ret = libgraph_tool_correlations.\
           vertex_correlation_histogram(g._Graph__graph, _degree(g, deg_source),
                                        _degree(g, deg_target),
-                                       _prop("e", g, weight), bins[0], bins[1])
+                                       _prop("e", g, weight),
+                                       [float(x) for x in bins[0]],
+                                       [float(x) for x in bins[1]])
     return [array(ret[0], dtype="float64") if float_count else ret[0],
             [ret[1][0], ret[1][1]]]
 
 
-def combined_corr_hist(g, deg1, deg2, bins=None, float_count=True):
+def combined_corr_hist(g, deg1, deg2, bins=[[0, 1], [0, 1]], float_count=True):
     r"""
     Obtain the single-vertex combined correlation histogram for the given graph.
 
@@ -299,10 +304,10 @@ def combined_corr_hist(g, deg1, deg2, bins=None, float_count=True):
         first degree type ("in", "out" or "total") or vertex property map.
     deg2 : string or :class:`~graph_tool.PropertyMap`
         second degree type ("in", "out" or "total") or vertex property map.
-    bins : list of lists (optional, default: [[1], [1]])
-        A list of bins to be used for the first and second degrees. If any list
-        has size 1, it is used as the constant width of an automatically
-        generated bin range.
+    bins : list of lists (optional, default: [[0, 1], [0, 1]])
+        A list of bin edges to be used for the first and second degrees. If any
+        list has size 2, it is used as the constant width of an automatically
+        generated bin range, starting from the first value.
     float_count : bool (optional, default: True)
         If True, the bin counts are converted float variables, which is useful
         for normalization, and other processing. It False, the bin counts will
@@ -362,18 +367,17 @@ def combined_corr_hist(g, deg1, deg2, bins=None, float_count=True):
         Combined in/out-degree correlation histogram.
 
     """
-    if bins == None:
-        bins = [[1], [1]]
     ret = libgraph_tool_correlations.\
           vertex_combined_correlation_histogram(g._Graph__graph,
                                                 _degree(g, deg1),
                                                 _degree(g, deg2),
-                                                bins[0], bins[1])
+                                                [float(x) for x in bins[0]],
+                                                [float(x) for x in bins[1]])
     return [array(ret[0], dtype="float64") if float_count else ret[0],
             [ret[1][0], ret[1][1]]]
 
 
-def avg_neighbour_corr(g, deg_source, deg_target, bins=None, weight=None):
+def avg_neighbour_corr(g, deg_source, deg_target, bins=[0, 1], weight=None):
     r"""
     Obtain the average neighbour-neighbour correlation for the given graph.
 
@@ -387,9 +391,10 @@ def avg_neighbour_corr(g, deg_source, deg_target, bins=None, weight=None):
     deg_target : string or :class:`~graph_tool.PropertyMap`
         degree type ("in", "out" or "total") or vertex property map for the
         target vertex.
-    bins : list (optional, default: [1])
-        Bins to be used for the source degrees. If the list has size 1, it is
-        used as the constant width of an automatically generated bin range.
+    bins : list (optional, default: [0, 1])
+        Bins to be used for the source degrees. If the list has size 2, it is
+        used as the constant width of an automatically generated bin range,
+        starting from the first value.
     weight : edge property map (optional, default: None)
         Weight (multiplicative factor) to be used on each edge.
 
@@ -442,7 +447,7 @@ def avg_neighbour_corr(g, deg_source, deg_target, bins=None, weight=None):
     <...>
     >>> ylabel("target out-degree")
     <...>
-    >>> errorbar(h[2], h[0], yerr=h[1], fmt="o")
+    >>> errorbar(h[2][:-1], h[0], yerr=h[1], fmt="o")
     (...)
     >>> savefig("avg_corr.png")
 
@@ -452,15 +457,14 @@ def avg_neighbour_corr(g, deg_source, deg_target, bins=None, weight=None):
         Average out/out degree correlation.
     """
 
-    if bins == None:
-        bins = [1]
     ret = libgraph_tool_correlations.\
           vertex_avg_correlation(g._Graph__graph, _degree(g, deg_source),
                                  _degree(g, deg_target), _prop("e", g, weight),
-                                 bins)
+                                 [float(x) for x in bins])
     return [ret[0], ret[1], ret[2][0]]
 
-def avg_combined_corr(g, deg1, deg2, bins=None):
+
+def avg_combined_corr(g, deg1, deg2, bins=[0, 1]):
     r"""
     Obtain the single-vertex combined correlation histogram for the given graph.
 
@@ -472,10 +476,10 @@ def avg_combined_corr(g, deg1, deg2, bins=None):
         first degree type ("in", "out" or "total") or vertex property map.
     deg2 : string or :class:`~graph_tool.PropertyMap`
         second degree type ("in", "out" or "total") or vertex property map.
-    bins : list (optional, default: [1])
-        A list of bins to be used for the first degrees. If the list
-        has size 1, it is used as the constant width of an automatically
-        generated bin range.
+    bins : list (optional, default: [0, 1])
+        Bins to be used for the first degrees. If the list has size 2, it is
+        used as the constant width of an automatically generated bin range,
+        starting from the first value.
 
     Returns
     -------
@@ -520,7 +524,7 @@ def avg_combined_corr(g, deg1, deg2, bins=None):
     <...>
     >>> ylabel("out-degree")
     <...>
-    >>> errorbar(h[2], h[0], yerr=h[1], fmt="o")
+    >>> errorbar(h[2][:-1], h[0], yerr=h[1], fmt="o")
     (...)
     >>> savefig("combined_avg_corr.png")
 
@@ -530,9 +534,8 @@ def avg_combined_corr(g, deg1, deg2, bins=None):
         Average combined in/out-degree correlation.
     """
 
-    if bins == None:
-        bins = [1]
     ret = libgraph_tool_correlations.\
           vertex_avg_combined_correlation(g._Graph__graph, _degree(g, deg1),
-                                          _degree(g, deg2), bins)
+                                          _degree(g, deg2),
+                                          [float(x) for x in bins])
     return [ret[0], ret[1], ret[2][0]]

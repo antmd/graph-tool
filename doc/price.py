@@ -2,8 +2,8 @@
 
 # We probably will need some things from several places
 import sys, os
-from pylab import * # for plotting
-from numpy.random import * # for random sampling
+from pylab import *  # for plotting
+from numpy.random import *  # for random sampling
 seed(42)
 
 # We need to import the graph_tool module itself
@@ -56,13 +56,14 @@ for i in xrange(1, N):
 
 in_hist = vertex_hist(g, "in")
 
-figure(figsize=(4,3))
-errorbar(in_hist[1], in_hist[0], fmt="o", yerr=sqrt(in_hist[0]), label="in")
+figure(figsize=(4, 3))
+errorbar(in_hist[1][:-1], in_hist[0], fmt="o", yerr=sqrt(in_hist[0]),
+         label="in")
 gca().set_yscale("log")
 gca().set_xscale("log")
-gca().set_ylim(1e-1,1e5)
-gca().set_xlim(0.8,1e3)
-subplots_adjust(left=0.2,bottom=0.2)
+gca().set_ylim(1e-1, 1e5)
+gca().set_xlim(0.8, 1e3)
+subplots_adjust(left=0.2, bottom=0.2)
 xlabel("$k_{in}$")
 ylabel("$NP(k_{in})$")
 savefig("deg-hist.png")

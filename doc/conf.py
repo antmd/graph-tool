@@ -126,7 +126,7 @@ rcParams["text.latex.preamble"] = [#"\usepackage{times}",
                                    "\usepackage{amssymb}",
                                    "\usepackage{amsmath}"]
 
-from numpy import array
+from numpy import *
 import scipy
 import scipy.stats
 from math import *

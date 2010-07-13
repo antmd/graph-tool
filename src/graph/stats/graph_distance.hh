@@ -73,11 +73,7 @@ struct get_distance_histogram
         for (size_t i = 0; i < obins.size(); ++i)
             bins[0][i] = obins[i];
 
-        // only used for constant-sized bins
-        boost::array<pair<val_type, val_type>, 1> data_range;
-        data_range[0].first = data_range[0].second = 0;
-
-        hist_t hist(bins, data_range);
+        hist_t hist(bins);
         SharedHistogram<hist_t> s_hist(hist);
 
         typename hist_t::point_t point;

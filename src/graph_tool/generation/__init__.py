@@ -200,19 +200,19 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     >>> axes([0.1,0.15,0.63,0.8])
     <...>
     >>> corr = gt.avg_neighbour_corr(g, "in", "in")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
+    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...         label=r"$\left<\text{in}\right>$ vs in")
     (...)
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
+    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...         label=r"$\left<\text{out}\right>$ vs in")
     (...)
     >>> corr = gt.avg_neighbour_corr(g, "out", "in")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
+    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{in}\right>$ vs out")
     (...)
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
+    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{out}\right>$ vs out")
     (...)
     >>> legend(loc=(1.05,0.5))
@@ -347,19 +347,19 @@ def random_rewire(g, strat="uncorrelated", parallel_edges=False,
     >>> g = gt.random_graph(30000, lambda: sample_k(20),
     ...                     lambda i,j: exp(abs(i-j)), directed=False)
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-", label="original")
+    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label="original")
     (...)
     >>> gt.random_rewire(g, "correlated")
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="*", label="correlated")
+    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="*", label="correlated")
     (...)
     >>> gt.random_rewire(g)
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-", label="uncorrelated")
+    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label="uncorrelated")
     (...)
     >>> gt.random_rewire(g, "erdos")
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-", label="Erdos")
+    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label="Erdos")
     (...)
     >>> xlabel("$k$")
     <...>
@@ -387,29 +387,29 @@ def random_rewire(g, strat="uncorrelated", parallel_edges=False,
     >>> axes([0.1,0.15,0.6,0.8])
     <...>
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
+    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{o}\right>$ vs i")
     (...)
     >>> corr = gt.avg_neighbour_corr(g, "out", "in")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
+    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{i}\right>$ vs o")
     (...)
     >>> gt.random_rewire(g, "correlated")
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
+    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{o}\right>$ vs i, corr.")
     (...)
     >>> corr = gt.avg_neighbour_corr(g, "out", "in")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
+    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{i}\right>$ vs o, corr.")
     (...)
     >>> gt.random_rewire(g, "uncorrelated")
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
+    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{o}\right>$ vs i, uncorr.")
     (...)
     >>> corr = gt.avg_neighbour_corr(g, "out", "in")
-    >>> errorbar(corr[2], corr[0], yerr=corr[1], fmt="o-",
+    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{i}\right>$ vs o, uncorr.")
     (...)
     >>> legend(loc=(1.05,0.45))

@@ -58,7 +58,7 @@ __all__ = ["vertex_hist", "edge_hist", "vertex_average", "edge_average",
            "distance_histogram"]
 
 
-def vertex_hist(g, deg, bins=None, float_count=True):
+def vertex_hist(g, deg, bins=[0, 1], float_count=True):
     """
     Return the vertex histogram of the given degree type or property.
 
@@ -70,11 +70,12 @@ def vertex_hist(g, deg, bins=None, float_count=True):
         Degree or property to be used for the histogram. It can be either "in",
         "out" or "total", for in-, out-, or total degree of the vertices. It can
         also be a vertex property map.
-    bins : list of bins
+    bins : list of bins (optional, default: [0, 1])
         List of bins to be used for the histogram. The values given represent
-        the edges of the bins (i,e, lower bounds). If the list contains only one
-        value, this will be used to automatically create an appropriate bin
-        range, with a constant lenght given by this value.
+        the edges of the bins (i.e. lower and upper bounds). If the list
+        contains two value, this will be used to automatically create an
+        appropriate bin range, with a constant lenght given by the difference of
+        the two values, and starting from the first value.
     float_count : bool (optional, default: True)
         If True, the counts in each histogram bin will be returned as floats. If
         False, they will be returned as integers.
@@ -106,16 +107,16 @@ def vertex_hist(g, deg, bins=None, float_count=True):
     >>> g = gt.random_graph(1000, lambda: (poisson(5), poisson(5)))
     >>> print gt.vertex_hist(g, "out")
     [array([  10.,   30.,   86.,  138.,  166.,  154.,  146.,  129.,   68.,
-             36.,   23.,    8.,    3.,    2.,    0.,    1.]), array([ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15], dtype=uint64)]
+             36.,   23.,    8.,    3.,    2.,    0.,    1.]), array([ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16], dtype=uint64)]
     """
 
-    if bins == None:
-        bins = [1]
     ret = libgraph_tool_stats.\
-          get_vertex_histogram(g._Graph__graph, _degree(g, deg), bins)
+          get_vertex_histogram(g._Graph__graph, _degree(g, deg),
+                               [float(x) for x in bins])
     return [array(ret[0], dtype="float64") if float_count else ret[0], ret[1]]
 
-def edge_hist(g, eprop, bins=None, float_count=True):
+
+def edge_hist(g, eprop, bins=[0, 1], float_count=True):
     """
     Return the edge histogram of the given property.
 
@@ -125,11 +126,12 @@ def edge_hist(g, eprop, bins=None, float_count=True):
         Graph to be used.
     eprop : :class:`~graph_tool.PropertyMap`
         Edge property to be used for the histogram.
-    bins : list of bins
+    bins : list of bins (optional, default: [0, 1])
         List of bins to be used for the histogram. The values given represent
-        the edges of the bins (i,e, lower bounds). If the list contains only one
-        value, this will be used to automatically create an appropriate bin
-        range, with a constant lenght given by this value.
+        the edges of the bins (i.e. lower and upper bounds). If the list
+        contains two value, this will be used to automatically create an
+        appropriate bin range, with a constant lenght given by the difference of
+        the two values, and starting from the first value.
     float_count : bool (optional, default: True)
         If True, the counts in each histogram bin will be returned as floats. If
         False, they will be returned as integers.
@@ -162,16 +164,16 @@ def edge_hist(g, eprop, bins=None, float_count=True):
     >>> g = gt.random_graph(1000, lambda: (5, 5))
     >>> eprop = g.new_edge_property("double")
     >>> eprop.get_array()[:] = random(g.num_edges())
-    >>> print gt.edge_hist(g, eprop, arange(0, 1, 0.1))
-    [array([ 525.,  504.,  502.,  502.,  468.,  499.,  531.,  471.,  520.,  478.]), array([ 0. ,  0.1,  0.2,  0.3,  0.4,  0.5,  0.6,  0.7,  0.8,  0.9])]
+    >>> print gt.edge_hist(g, eprop, linspace(0, 1, 11))
+    [array([ 525.,  504.,  502.,  502.,  468.,  499.,  531.,  471.,  520.,  478.]), array([ 0. ,  0.1,  0.2,  0.3,  0.4,  0.5,  0.6,  0.7,  0.8,  0.9,  1. ])]
 
     """
 
-    if bins == None:
-        bins = [1]
     ret = libgraph_tool_stats.\
-          get_edge_histogram(g._Graph__graph, _prop("e", g, eprop), bins)
+          get_edge_histogram(g._Graph__graph, _prop("e", g, eprop),
+                             [float(x) for x in bins])
     return [array(ret[0], dtype="float64") if float_count else ret[0], ret[1]]
+
 
 def vertex_average(g, deg):
     """
@@ -218,6 +220,7 @@ def vertex_average(g, deg):
     ret = libgraph_tool_stats.\
           get_vertex_average(g._Graph__graph, _degree(g, deg))
     return ret
+
 
 def edge_average(g, eprop):
     """
@@ -266,12 +269,14 @@ def edge_average(g, eprop):
           get_edge_average(g._Graph__graph, _prop("e", g, eprop))
     return ret
 
+
 def remove_labeled_edges(g, label):
     """Remove every edge `e` such that `label[e] != 0`."""
     g.stash_filter(all=False, directed=True, reversed=True)
     libgraph_tool_stats.\
           remove_labeled_edges(g._Graph__graph, _prop("e", g, label))
     g.pop_filter(all=False, directed=True, reversed=True)
+
 
 def label_parallel_edges(g, eprop=None):
     r"""Label edges which are parallel, i.e, have the same source and target
@@ -284,11 +289,13 @@ def label_parallel_edges(g, eprop=None):
           label_parallel_edges(g._Graph__graph, _prop("e", g, eprop))
     return eprop
 
+
 def remove_parallel_edges(g):
     """Remove all parallel edges from the graph. Only one edge from each
     parallel edge set is left."""
     eprop = label_parallel_edges(g)
     remove_labeled_edges(g, eprop)
+
 
 def label_self_loops(g, eprop=None):
     """Label edges which are self-loops, i.e, the source and target vertices are
@@ -302,12 +309,14 @@ def label_self_loops(g, eprop=None):
           label_self_loops(g._Graph__graph, _prop("e", g, eprop))
     return eprop
 
+
 def remove_self_loops(g):
     """Remove all self-loops edges from the graph."""
     eprop = label_self_loops(g)
     remove_labeled_edges(g, eprop)
 
-def distance_histogram(g, weight=None, bins=None, samples=None,
+
+def distance_histogram(g, weight=None, bins=[0, 1], samples=None,
                        float_count=True):
     r"""
     Return the shortest-distance histogram for each vertex pair in the graph.
@@ -318,11 +327,12 @@ def distance_histogram(g, weight=None, bins=None, samples=None,
         Graph to be used.
     weight : :class:`~graph_tool.PropertyMap` (optional, default: None)
         Edge weights.
-    bins : list (optional, default: [1])
+    bins : list of bins (optional, default: [0, 1])
         List of bins to be used for the histogram. The values given represent
-        the edges of the bins (i,e, lower bounds). If the list contains only one
-        value, this will be used to automatically create an appropriate bin
-        range, with a constant length given by this value.
+        the edges of the bins (i.e. lower and upper bounds). If the list
+        contains two value, this will be used to automatically create an
+        appropriate bin range, with a constant lenght given by the difference of
+        the two values, and starting from the first value.
     samples : int (optional, default: None)
         If supplied, the distances will be randomly sampled from a number of
         source vertices given by this parameter. It `samples == None` (default),
@@ -361,19 +371,18 @@ def distance_histogram(g, weight=None, bins=None, samples=None,
     >>> g = gt.random_graph(100, lambda: (3, 3))
     >>> hist = gt.distance_histogram(g)
     >>> print hist
-    [array([    0.,   300.,   868.,  2222.,  3906.,  2463.,   141.]), array([0, 1, 2, 3, 4, 5, 6], dtype=uint64)]
+    [array([    0.,   300.,   868.,  2222.,  3906.,  2463.,   141.]), array([0, 1, 2, 3, 4, 5, 6, 7], dtype=uint64)]
     >>> hist = gt.distance_histogram(g, samples=10)
     >>> print hist
-    [array([   0.,   30.,   87.,  230.,  408.,  223.,   12.]), array([0, 1, 2, 3, 4, 5, 6], dtype=uint64)]
+    [array([   0.,   30.,   87.,  230.,  408.,  223.,   12.]), array([0, 1, 2, 3, 4, 5, 6, 7], dtype=uint64)]
     """
 
-    if bins == None:
-        bins = [1]
     if samples != None:
         seed = numpy.random.randint(0, sys.maxint)
         ret = libgraph_tool_stats.\
               sampled_distance_histogram(g._Graph__graph,
-                                         _prop("e", g, weight), bins,
+                                         _prop("e", g, weight),
+                                         [float(x) for x in bins],
                                          samples, seed)
     else:
         ret = libgraph_tool_stats.\

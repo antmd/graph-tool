@@ -34,16 +34,6 @@ using namespace boost;
 class VertexHistogramFiller
 {
 public:
-    template <class Graph, class DegreeSelector, class ValueType>
-    void UpdateRange(Graph& g,
-                     typename graph_traits<Graph>::vertex_descriptor v,
-                     DegreeSelector& deg, pair<ValueType,ValueType>& range)
-    {
-        ValueType val = deg(v, g);
-        range.first = min(range.first, val);
-        range.second = max(range.second, val);
-    }
-
     template <class Graph, class DegreeSelector, class Hist>
     void operator()(Graph& g, typename graph_traits<Graph>::vertex_descriptor v,
                     DegreeSelector& deg, Hist& hist)
@@ -57,21 +47,6 @@ public:
 class EdgeHistogramFiller
 {
 public:
-    template <class Graph, class EdgeProperty, class ValueType>
-    void UpdateRange(Graph& g,
-                     typename graph_traits<Graph>::vertex_descriptor v,
-                     EdgeProperty& eprop, pair<ValueType,ValueType>& range)
-    {
-        typename graph_traits<Graph>::out_edge_iterator e, e_begin, e_end;
-        tie(e_begin,e_end) = out_edges(v, g);
-        for(e = e_begin; e != e_end; ++e)
-        {
-            ValueType val = eprop[*e];
-            range.first = min(range.first, val);
-            range.second = max(range.second, val);
-        }
-    }
-
     template <class Graph, class EdgeProperty, class Hist>
     void operator()(Graph& g, typename graph_traits<Graph>::vertex_descriptor v,
                     EdgeProperty& eprop, Hist& hist)
@@ -134,29 +109,10 @@ struct get_histogram
         }
         bins = temp_bin;
 
-        // find the data range
-        pair<value_type,value_type> range;
-
-        if (bins.size() == 1)
-        {
-            typename graph_traits<Graph>::vertex_iterator vi,vi_end;
-            range.first = boost::numeric::bounds<value_type>::highest();
-            range.second = boost::numeric::bounds<value_type>::lowest();
-            for (tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
-                filler.UpdateRange(g, *vi, deg, range);
-        }
-        else
-        {
-            range.first = bins.front();
-            range.second = bins.back();
-        }
-
-        boost::array<pair<value_type, value_type>, 1> data_range;
-        data_range[0] = range;
         boost::array<vector<value_type>, 1> bin_list;
         bin_list[0] = bins;
 
-        hist_t hist(bin_list, data_range);
+        hist_t hist(bin_list);
         SharedHistogram<hist_t> s_hist(hist);
 
         int i, N = num_vertices(g);

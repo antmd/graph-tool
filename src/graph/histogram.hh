@@ -52,39 +52,49 @@ public:
     typedef typename boost::mpl::if_<boost::is_floating_point<ValueType>,
                                      ValueType, double>::type mean_t;
 
-    Histogram(const boost::array<std::vector<ValueType>, Dim>& bins,
-              const boost::array<std::pair<ValueType,ValueType>,Dim>&
-              data_range)
-        : _bins(bins), _data_range(data_range)
+    Histogram(const boost::array<std::vector<ValueType>, Dim>& bins):
+        _bins(bins)
     {
         bin_t new_shape;
         for (size_t j = 0; j < Dim; ++j)
         {
+            if (_bins[j].size() < 2)
+                throw std::range_error("invalid bin edge number < 2!");
+
+            _data_range[j] = std::make_pair(0, 0);
+
             // detect whether the given bins are of constant width, for faster
             // binning
-            bool const_width = true;
-            value_type delta = (bins.size() > 1) ?
-                _bins[j][1] - _bins[j][0] : 0.0;
-            for (size_t i = 1; i < _bins[j].size(); ++i)
+            _const_width[j] = true;
+            value_type delta = _bins[j][1] - _bins[j][0];
+            for (size_t i = 2; i < _bins[j].size(); ++i)
             {
                 value_type d = _bins[j][i] - _bins[j][i-1];
                 if (delta != d)
-                    const_width = false;
+                    _const_width[j] = false;
             }
 
-            if (bins.size() > 1 && const_width)
+            if (_const_width[j])
             {
-                _data_range[j] = make_pair(_bins[j].front(),
-                                           _bins[j].back() + delta);
-                _bins[j].resize(1);
-                _bins[j][0] = delta;
+                if (_bins[j].size() > 2)
+                {
+                    _data_range[j] = std::make_pair(_bins[j].front(),
+                                                    _bins[j].back());
+                    new_shape[j] = _bins[j].size() - 1;
+                }
+                else
+                {
+                    _data_range[j] = std::make_pair(_bins[j].front(),
+                                                    _bins[j].front());
+                    new_shape[j] = 1;
+                }
+                if (delta == 0)
+                    throw std::range_error("invalid bin size of zero!");
             }
-
-            if (_bins[j].size() > 1)
-                new_shape[j] = _bins[j].size();
             else
-                new_shape[j] = size_t((data_range[j].second -
-                                       data_range[j].first) / _bins[j][0]) + 1;
+            {
+                new_shape[j] = _bins[j].size() - 1;
+            }
         }
         _counts.resize(new_shape);
     }
@@ -94,24 +104,33 @@ public:
         bin_t bin;
         for (size_t i = 0; i < Dim; ++i)
         {
-            if (_bins[i].size() == 1) // constant bin width
+            if (_const_width[i])
             {
-                if (v[i] < _data_range[i].first || v[i] > _data_range[i].second)
+                if (_data_range[i].first != _data_range[i].second &&
+                    (v[i] < _data_range[i].first ||
+                     v[i] > _data_range[i].second))
                     return; // out of bounds
-
-                bin[i] = (v[i] - _data_range[i].first) / _bins[i][0];
-                if (bin[i] >= _counts.shape()[i]) // bogus _data_range...
-                    throw std::range_error("given value does not correspond to"
-                                           " data_range");
+                value_type delta = _bins[i][1] - _bins[i][0];
+                bin[i] = (v[i] - _data_range[i].first) / delta;
+                if (bin[i] >= _counts.shape()[i]) // modify shape
+                {
+                    bin_t new_shape;
+                    for (size_t j = 0; j < Dim; ++j)
+                        new_shape[j] = _counts.shape()[j];
+                    new_shape[i] = bin[i] + 1;
+                    _counts.resize(new_shape);
+                    while (_bins[i].size() < new_shape[i] + 1)
+                        _bins[i].push_back(_bins[i].back() + delta);
+                }
             }
             else // arbitrary bins widths. do a binary search
             {
                 std::vector<ValueType>& bins = _bins[i];
                 typeof(bins.begin()) iter = upper_bound(bins.begin(),
                                                         bins.end(), v[i]);
-                if (iter == bins.end()) // larger than any bin, thus belongs to
-                {                       // the last one
-                    bin[i] = bins.size() - 1;
+                if (iter == bins.end())
+                {
+                    return;  // falls off from last bin, do not count
                 }
                 else
                 {
@@ -131,28 +150,13 @@ public:
     boost::array<std::pair<ValueType,ValueType>,Dim>& GetDataRange()
     { return _data_range; }
 
-
-    boost::array<std::vector<ValueType>, Dim> GetBins()
-    {
-        boost::array<std::vector<ValueType>, Dim> bins;
-        for (size_t j = 0; j < Dim; ++j)
-            if (_bins[j].size() == 1) // constant bin width
-            {
-                for (ValueType i = _data_range[j].first;
-                     i <= _data_range[j].second; i += _bins[j][0])
-                    bins[j].push_back(i);
-            }
-            else
-            {
-                bins[j] = _bins[j];
-            }
-        return bins;
-    }
+    boost::array<std::vector<ValueType>, Dim>& GetBins() { return _bins; }
 
 protected:
     boost::multi_array<CountType,Dim> _counts;
     boost::array<std::vector<ValueType>, Dim> _bins;
     boost::array<std::pair<ValueType,ValueType>,Dim> _data_range;
+    boost::array<bool,Dim> _const_width;
 };
 
 
@@ -185,14 +189,10 @@ public:
                 _sum->GetArray().resize(shape);
                 for (size_t i = 0; i < this->_counts.num_elements(); ++i)
                     _sum->GetArray().data()[i] += this->_counts.data()[i];
-                for (size_t i = 0; i < size_t(Histogram::dim::value); ++i)
+                for (int i = 0; i < Histogram::dim::value; ++i)
                 {
-                    _sum->GetDataRange()[i].first =
-                        min(this->_data_range[i].first,
-                            _sum->GetDataRange()[i].first);
-                    _sum->GetDataRange()[i].second =
-                        max(this->_data_range[i].second,
-                            _sum->GetDataRange()[i].second);
+                    if (_sum->GetBins()[i].size() < this->_bins[i].size())
+                        _sum->GetBins()[i] = this->_bins[i];
                 }
             }
             _sum = 0;
