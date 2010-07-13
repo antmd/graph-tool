@@ -853,8 +853,8 @@ class Graph(object):
     # ============
 
     def set_reversed(self, is_reversed):
-        """Reverse the direction of the edges, if ``reversed`` is ``True``, or
-        maintain the original direction otherwise."""
+        """Reverse the direction of the edges, if ``is_reversed`` is ``True``,
+        or maintain the original direction otherwise."""
         self.__graph.SetReversed(is_reversed)
 
     def is_reversed(self):
