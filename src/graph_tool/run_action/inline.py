@@ -21,6 +21,7 @@ import sys, string, hashlib, os.path, re, glob
 from .. import core
 from .. import libgraph_tool_core
 import numpy
+import DLFCN
 
 try:
     import scipy.weave
@@ -251,7 +252,7 @@ def inline(code, arg_names=None, local_dict=None,
     # friends to work properly across DSO boundaries. See
     # http://gcc.gnu.org/faq.html#dso
     orig_dlopen_flags = sys.getdlopenflags()
-    sys.setdlopenflags(core.RTLD_NOW | core.RTLD_GLOBAL)
+    sys.setdlopenflags(DLFCN.RTLD_LAZY | DLFCN.RTLD_GLOBAL)
 
     # call weave and pass all the updated kw arguments
     ret_vals = \

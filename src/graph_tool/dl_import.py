@@ -19,12 +19,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
-try:
-    from dl import RTLD_LAZY, RTLD_NOW, RTLD_GLOBAL
-except ImportError:
-    RTLD_LAZY = 1
-    RTLD_NOW = 2
-    RTLD_GLOBAL = 256
+from DLFCN import RTLD_LAZY, RTLD_GLOBAL
 
 all = ["dl_import"]
 
