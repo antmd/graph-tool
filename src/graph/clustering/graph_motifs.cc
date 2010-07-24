@@ -24,7 +24,6 @@
 #include "graph_motifs.hh"
 
 #include <boost/python.hpp>
-#include <boost/ref.hpp>
 
 using namespace std;
 using namespace boost;
@@ -89,7 +88,7 @@ void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
             GraphInterface& sub =
                 python::extract<GraphInterface&>(subgraph_list[i]);
             run_action<>()(sub, bind<void>(append_to_list(), _1,
-                                           ref(list)))();
+                                           boost::ref(list)))();
         }
     }
     catch (bad_any_cast&)
@@ -114,8 +113,9 @@ void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
         sampler = sample_some(plist, rng);
 
     run_action<>()
-        (g, bind<void>(get_all_motifs(), _1, k, ref(list), ref(phist), _2,
-                       plist[0], comp_iso, fill_list, ref(rng)),
+        (g, boost::bind<void>(get_all_motifs(), _1, k, boost::ref(list),
+                              boost::ref(phist), _2,
+                              plist[0], comp_iso, fill_list, boost::ref(rng)),
          mpl::vector<sample_all,sample_some>())(sampler);
 
     for (size_t i = 0; i < phist.size(); ++i)
@@ -138,8 +138,8 @@ void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
                 mpl::bool_<false>,mpl::bool_<true>,
                 mpl::bool_<true> >::type gviews;
             run_action<gviews>()
-                (sub, bind<void>(retrieve_from_list(), _1,
-                                 ref(list), ref(done)))();
+                (sub, boost::bind<void>(retrieve_from_list(), _1,
+                                        boost::ref(list), boost::ref(done)))();
             if (!done)
             {
                 sub.ReIndexEdges();

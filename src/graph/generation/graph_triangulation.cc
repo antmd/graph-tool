@@ -20,6 +20,11 @@
 //  follow the requirements of the GNU GPL in regard to all of the
 //  software in the executable aside from CGAL.
 
+#if (GCC_VERSION < 40400)
+#   define CGAL_CFG_NO_TR1_ARRAY
+#   define CGAL_CFG_NO_TR1_TUPLE
+#endif
+
 #include <CGAL/version.h>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Triangulation_3.h>
@@ -27,7 +32,6 @@
 typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
 typedef CGAL::Triangulation_3<Kernel> SimpleTriangulation;
 typedef CGAL::Delaunay_triangulation_3<Kernel> DelaunayTriangulation;
-
 
 namespace std
 {
@@ -56,9 +60,9 @@ bool operator==(const PeriodicDelaunayTriangulation::Vertex& a,
 #endif
 
 #include "graph.hh"
+#include "graph_triangulation.hh"
 #include "graph_util.hh"
 #include "graph_filtering.hh"
-#include "graph_triangulation.hh"
 #include "numpy_bind.hh"
 
 using namespace std;

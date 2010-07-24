@@ -18,9 +18,15 @@
 #ifndef GRAPH_REWIRING_HH
 #define GRAPH_REWIRING_HH
 
-#include <tr1/unordered_set>
-#include <tr1/random>
+#if (GCC_VERSION >= 40400)
+#   include <tr1/unordered_set>
+#   include <tr1/random>
+#else
+#   include <boost/tr1/unordered_set.hpp>
+#   include <boost/tr1/random.hpp>
+#endif
 #include <boost/functional/hash.hpp>
+
 #include <iostream>
 
 #include <boost/multi_index_container.hpp>
@@ -700,7 +706,8 @@ public:
 private:
     typedef tr1::unordered_map<pair<size_t, size_t>,
                                vector<pair<index_t, bool> >,
-                               hash<pair<size_t, size_t> > > edges_by_end_deg_t;
+                               hash<pair<size_t, size_t> > >
+        edges_by_end_deg_t;
     edges_by_end_deg_t _edges_by_source, _edges_by_target;
 
 protected:

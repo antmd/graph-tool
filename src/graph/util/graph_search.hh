@@ -19,7 +19,11 @@
 #include "graph_python_interface.hh"
 #include "graph_util.hh"
 
-#include <tr1/unordered_set>
+#if (GCC_VERSION >= 40400)
+#   include <tr1/unordered_set>
+#else
+#   include <boost/tr1/unordered_set.hpp>
+#endif
 
 #ifdef USING_OPENMP
 #include <omp.h>

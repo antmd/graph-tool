@@ -20,8 +20,13 @@
 
 #include <boost/graph/graph_traits.hpp>
 #include <utility>
-#include <tr1/unordered_set>
-#include <tr1/random>
+#if (GCC_VERSION >= 40400)
+#   include <tr1/unordered_set>
+#   include <tr1/random>
+#else
+#   include <boost/tr1/unordered_set.hpp>
+#   include <boost/tr1/random.hpp>
+#endif
 
 namespace boost
 {
@@ -175,7 +180,7 @@ bool refine_check(const Graph1& sub, const Graph2& g, matrix_t& M, size_t count,
                 bool valid = check_adjacency()
                     (vertex(k, sub), vertex(vlist[l], g), M, edge_labelling,
                      sub, g, vindex,
-                     typename is_directed::apply<Graph1>::type());
+                     typename graph_tool::is_directed::apply<Graph1>::type());
                 if (valid)
                     m_new.insert(l);
             }

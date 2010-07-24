@@ -224,7 +224,7 @@ inline void clear_vertex
     typename graph_traits<graph_t>::out_edge_iterator e, e_end;
     for (tie(e,e_end) == out_edges(u, g); e != e_end; ++e)
         del_es.push_back(*e);
-    if (is_directed::apply<graph_t>::type::value)
+    if (graph_tool::is_directed::apply<graph_t>::type::value)
     {
         typename in_edge_iteratorS<graph_t>::type e, e_end;
         for (tie(e,e_end) == in_edge_iteratorS<graph_t>::get_edges(u, g);

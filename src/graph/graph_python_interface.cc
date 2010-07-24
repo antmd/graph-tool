@@ -207,7 +207,8 @@ struct get_edge_descriptor
         pe.SetValid(false);
         typename graph_traits<Graph>::out_edge_iterator e_begin, e_end;
         tie(e_begin, e_end) = out_edges(source(pe.GetDescriptor(),g),g);
-        e_begin = std::find(e_begin, e_end, pe.GetDescriptor());
+        while(e_begin != e_end && *e_begin != pe.GetDescriptor())
+            ++e_begin;
         if (e_begin == e_end)
             return; // invalid edge descriptor
         edge = pe.GetDescriptor();

@@ -264,9 +264,9 @@ template <class IndexMap>
 python::object find_property_map(dynamic_property_map* map, IndexMap)
 {
     python::object pmap;
-    mpl::for_each<value_types>(bind<void>(get_python_property(),
-                                          _1, IndexMap(), ref(map),
-                                          ref(pmap)));
+    mpl::for_each<value_types>(boost::bind<void>(get_python_property(),
+                                                 _1, IndexMap(), ref(map),
+                                                 boost::ref(pmap)));
     return pmap;
 }
 
@@ -670,20 +670,22 @@ void GraphInterface::WriteToFile(string file, python::object pfile,
             typedef tr1::unordered_map<vertex_t, size_t>  map_t;
             map_t vertex_to_index;
             associative_property_map<map_t> index_map(vertex_to_index);
-            run_action<>()(*this, bind<void>(generate_index(),
-                                             _1, index_map))();
+            run_action<>()(*this, boost::bind<void>(generate_index(),
+                                                    _1, index_map))();
             if (graphviz)
                 graphviz_insert_index(dp, index_map);
 
             if (GetDirected())
                 run_action<detail::always_directed>()
-                    (*this, bind<void>(write_to_file(), ref(stream), _1,
-                                       index_map, ref(dp), graphviz))();
+                    (*this, boost::bind<void>(write_to_file(),
+                                              boost::ref(stream), _1,
+                                              index_map, boost::ref(dp),
+                                              graphviz))();
             else
                 run_action<detail::never_directed>()
-                    (*this,bind<void>(write_to_file_fake_undir(),
-                                      ref(stream), _1, index_map,
-                                      ref(dp), graphviz))();
+                    (*this,boost::bind<void>(write_to_file_fake_undir(),
+                                             boost::ref(stream), _1, index_map,
+                                             boost::ref(dp), graphviz))();
         }
         else
         {
@@ -692,13 +694,16 @@ void GraphInterface::WriteToFile(string file, python::object pfile,
 
             if (GetDirected())
                 run_action<detail::always_directed>()
-                    (*this, bind<void>(write_to_file(), ref(stream), _1,
-                                       _vertex_index,  ref(dp),  graphviz))();
+                    (*this, boost::bind<void>(write_to_file(),
+                                              boost::ref(stream), _1,
+                                              _vertex_index,  boost::ref(dp),
+                                              graphviz))();
             else
                 run_action<detail::never_directed>()
-                    (*this,bind<void>(write_to_file_fake_undir(),
-                                      ref(stream), _1, _vertex_index,
-                                      ref(dp), graphviz))();
+                    (*this,boost::bind<void>(write_to_file_fake_undir(),
+                                             boost::ref(stream), _1,
+                                             _vertex_index, boost::ref(dp),
+                                             graphviz))();
         }
         stream.reset();
     }

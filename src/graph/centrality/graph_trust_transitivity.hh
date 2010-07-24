@@ -22,8 +22,6 @@
 #include "graph_filtering.hh"
 #include "graph_util.hh"
 
-#include <tr1/unordered_set>
-#include <tr1/tuple>
 #include <algorithm>
 
 #include <boost/graph/dijkstra_shortest_paths.hpp>

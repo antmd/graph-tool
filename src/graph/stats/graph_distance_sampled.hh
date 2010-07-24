@@ -25,7 +25,11 @@
 #include <boost/python/list.hpp>
 #include <boost/python/extract.hpp>
 
-#include <tr1/random>
+#if (GCC_VERSION >= 40400)
+#   include <tr1/random>
+#else
+#   include <boost/tr1/random.hpp>
+#endif
 
 #include "histogram.hh"
 #include "numpy_bind.hh"

@@ -18,7 +18,11 @@
 #ifndef SAMPLER_HH
 #define SAMPLER_HH
 
-#include <tr1/random>
+#if (GCC_VERSION >= 40400)
+#   include <tr1/random>
+#else
+#   include <boost/tr1/random.hpp>
+#endif
 #include <iostream>
 
 namespace graph_tool

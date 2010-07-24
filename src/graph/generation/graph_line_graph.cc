@@ -19,15 +19,6 @@
 #include "graph.hh"
 #include "graph_properties.hh"
 
-#include <tr1/unordered_set>
-#include <iostream>
-#include <iomanip>
-#include <boost/algorithm/string.hpp>
-#include <boost/iostreams/filtering_stream.hpp>
-#include <boost/iostreams/filter/gzip.hpp>
-#include <boost/iostreams/filter/bzip2.hpp>
-#include <boost/iostreams/device/file.hpp>
-
 using namespace std;
 using namespace boost;
 using namespace graph_tool;

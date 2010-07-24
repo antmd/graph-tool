@@ -18,11 +18,16 @@
 #ifndef GRAPH_MOTIFS_HH
 #define GRAPH_MOTIFS_HH
 
-#include <boost/functional/hash.hpp>
 #include <boost/graph/copy.hpp>
 #include <boost/graph/isomorphism.hpp>
-#include <tr1/unordered_map>
-#include <tr1/random>
+#if (GCC_VERSION >= 40400)
+#   include <tr1/unordered_set>
+#   include <tr1/random>
+#else
+#   include <boost/tr1/unordered_set.hpp>
+#   include <boost/tr1/random.hpp>
+#endif
+#include <boost/functional/hash.hpp>
 #include <algorithm>
 
 namespace graph_tool

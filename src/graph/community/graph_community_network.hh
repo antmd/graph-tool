@@ -18,7 +18,11 @@
 #ifndef GRAPH_COMMUNITY_NETWORK_HH
 #define GRAPH_COMMUNITY_NETWORK_HH
 
-#include <tr1/unordered_set>
+#if (GCC_VERSION >= 40400)
+#   include <tr1/unordered_map>
+#else
+#   include <boost/tr1/unordered_map.hpp>
+#endif
 #include <iostream>
 #include <iomanip>
 
@@ -49,14 +53,14 @@ struct get_community_network
         typedef typename boost::property_traits<CommunityMap>::value_type
             s_type;
 
-        tr1::unordered_map<s_type, vector<vertex_t>, boost::hash<s_type> >
+        tr1::unordered_map<s_type, vector<vertex_t>, hash<s_type> >
             comms;
         typename graph_traits<Graph>::vertex_iterator v, v_end;
         for (tie(v, v_end) = vertices(g); v != v_end; ++v)
             comms[get(s_map, *v)].push_back(*v);
 
         // create vertices
-        tr1::unordered_map<s_type, cvertex_t, boost::hash<s_type> >
+        tr1::unordered_map<s_type, cvertex_t, hash<s_type> >
             comm_vertices;
         for (typeof(comms.begin()) iter = comms.begin(); iter != comms.end();
              ++iter)
@@ -68,7 +72,7 @@ struct get_community_network
 
         // create edges
         tr1::unordered_map<pair<size_t, size_t>,
-                           cedge_t, boost::hash<pair<size_t, size_t> > >
+                           cedge_t, hash<pair<size_t, size_t> > >
             comm_edges;
         for (typeof(comms.begin()) iter = comms.begin(); iter != comms.end();
              ++iter)

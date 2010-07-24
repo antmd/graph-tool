@@ -18,9 +18,15 @@
 #ifndef GRAPH_COMMUNITY_HH
 #define GRAPH_COMMUNITY_HH
 
-#include <tr1/random>
-#include <tr1/unordered_set>
-#include <tr1/tuple>
+#if (GCC_VERSION >= 40400)
+#   include <tr1/unordered_set>
+#   include <tr1/random>
+#   include <tr1/tuple>
+#else
+#   include <boost/tr1/unordered_set.hpp>
+#   include <boost/tr1/random.hpp>
+#   include <boost/tr1/tuple.hpp>
+#endif
 #include <iostream>
 #include <fstream>
 #include <iomanip>

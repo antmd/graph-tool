@@ -18,10 +18,6 @@
 #ifndef GRAPH_REWIRING_HH
 #define GRAPH_REWIRING_HH
 
-#include <tr1/unordered_set>
-#include <tr1/random>
-#include <boost/functional/hash.hpp>
-
 #include "graph.hh"
 #include "graph_filtering.hh"
 #include "graph_util.hh"

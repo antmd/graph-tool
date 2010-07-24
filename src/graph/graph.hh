@@ -17,6 +17,7 @@
 
 #ifndef GRAPH_HH
 #define GRAPH_HH
+#include "config.h"
 
 #include <deque>
 
@@ -29,7 +30,6 @@
 #include <boost/python/dict.hpp>
 #include <boost/mpl/vector.hpp>
 #include "graph_properties.hh"
-#include "config.h"
 
 namespace graph_tool
 {

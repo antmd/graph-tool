@@ -20,7 +20,11 @@
 #ifndef GRAPH_EXTENDED_CLUSTERING_HH
 #define GRAPH_EXTENDED_CLUSTERING_HH
 
-#include <tr1/unordered_set>
+#if (GCC_VERSION >= 40400)
+#   include <tr1/unordered_set>
+#else
+#   include <boost/tr1/unordered_set.hpp>
+#endif
 #include <boost/graph/breadth_first_search.hpp>
 
 namespace graph_tool

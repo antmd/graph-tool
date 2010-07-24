@@ -20,8 +20,18 @@
 
 #include <string>
 #include <vector>
-#include <tr1/unordered_map>
-#include <tr1/memory>
+#if (GCC_VERSION >= 40400)
+#   include <tr1/unordered_set>
+#   include <tr1/unordered_map>
+#   include <tr1/random>
+#   include <tr1/memory>
+#else
+#   include <boost/tr1/unordered_set.hpp>
+#   include <boost/tr1/unordered_map.hpp>
+#   include <boost/tr1/random.hpp>
+#   include <boost/tr1/memory.hpp>
+#endif
+#include <boost/functional/hash.hpp>
 #include <boost/python/object.hpp>
 
 #include <boost/version.hpp>
@@ -33,7 +43,6 @@
 #   include <boost/dynamic_property_map.hpp>
 #endif
 #include "fast_vector_property_map.hh"
-#include <boost/functional/hash.hpp>
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/for_each.hpp>
 #include <boost/mpl/transform.hpp>

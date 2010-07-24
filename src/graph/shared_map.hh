@@ -18,7 +18,11 @@
 #ifndef SHARED_MAP_HH
 #define SHARED_MAP_HH
 
-#include <tr1/unordered_set>
+#if (GCC_VERSION >= 40400)
+#   include <tr1/unordered_set>
+#else
+#   include <boost/tr1/unordered_set.hpp>
+#endif
 
 // This class will encapsulate a map, and atomically sum it to a given resulting
 // map (which is shared among all copies) after it is destructed, or when the

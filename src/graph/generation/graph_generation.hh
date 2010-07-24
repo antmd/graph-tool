@@ -18,10 +18,16 @@
 #ifndef GRAPH_GENERATION_HH
 #define GRAPH_GENERATION_HH
 
+#if (GCC_VERSION >= 40400)
+#   include <tr1/unordered_map>
+#   include <tr1/random>
+#   include <tr1/tuple>
+#else
+#   include <boost/tr1/unordered_map.hpp>
+#   include <boost/tr1/random.hpp>
+#   include <boost/tr1/tuple.hpp>
+#endif
 #include <boost/functional/hash.hpp>
-#include <tr1/unordered_set>
-#include <tr1/unordered_map>
-#include <tr1/random>
 #include <map>
 #include <set>
 #include <iostream>
@@ -478,7 +484,7 @@ struct gen_random_graph
 
         // vertices with a given degree
         tr1::unordered_map<deg_t, vector<size_t>,
-                           boost::hash<deg_t> > vset;
+                           hash<deg_t> > vset;
 
         size_t num_e = 0;
         for (size_t i = 0; i < vertices.size();  ++i)

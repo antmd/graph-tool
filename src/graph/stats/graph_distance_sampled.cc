@@ -41,16 +41,18 @@ python::object sampled_distance_histogram(GraphInterface& gi, boost::any weight,
     if (weight.empty())
     {
         run_action<>()(gi,
-                       bind<void>(get_sampled_distance_histogram(), _1,
-                                  gi.GetVertexIndex(), no_weightS(), n_samples,
-                                  ref(bins), ref(ret), ref(rng)))();
+                       boost::bind<void>(get_sampled_distance_histogram(), _1,
+                                         gi.GetVertexIndex(), no_weightS(),
+                                         n_samples, boost::ref(bins),
+                                         boost::ref(ret), boost::ref(rng)))();
     }
     else
     {
         run_action<>()(gi,
-                       bind<void>(get_sampled_distance_histogram(), _1,
-                                  gi.GetVertexIndex(), _2, n_samples,
-                                  ref(bins), ref(ret), ref(rng)),
+                       boost::bind<void>(get_sampled_distance_histogram(), _1,
+                                         gi.GetVertexIndex(), _2, n_samples,
+                                         boost::ref(bins), boost::ref(ret),
+                                         boost::ref(rng)),
                            edge_scalar_properties())(weight);
     }
     return ret;
