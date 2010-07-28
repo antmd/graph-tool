@@ -185,7 +185,7 @@ class PropertyMap(object):
         if self.__key_type == 'v':
             n = self.__g().num_vertices()
         elif self.__key_type == 'e':
-            n = self.__g().num_edges()
+            n = self.__g()._Graph__graph.GetMaxEdgeIndex() + 1
         else:
             n = 1
         self.__g().pop_filter(edge=True, vertex=True)

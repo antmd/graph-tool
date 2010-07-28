@@ -366,6 +366,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
         .def("ClearEdges", &GraphInterface::ClearEdges)
         .def("GetVertexIndex", &GraphInterface::GetVertexIndex)
         .def("GetEdgeIndex", &GraphInterface::GetEdgeIndex)
+        .def("GetMaxEdgeIndex", &GraphInterface::GetMaxEdgeIndex)
         .def("GetGraphIndex", &GraphInterface::GetGraphIndex)
         .def("CopyVertexProperty", &GraphInterface::CopyVertexProperty)
         .def("CopyEdgeProperty", &GraphInterface::CopyEdgeProperty);
