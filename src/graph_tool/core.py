@@ -696,6 +696,26 @@ class Graph(object):
         return self.__edge_index
     edge_index = property(_get_edge_index, doc="Edge index map.")
 
+    def _get_max_edge_index(self):
+        return self.__graph.GetMaxEdgeIndex()
+    max_edge_index = property(_get_max_edge_index,
+                              doc="The maximum value of the edge index map.")
+
+    def reindex_edges(self):
+        """
+        Reset the edge indexes so that they lie in the [0, :meth:`~graph_tool.Graph.num_edges` - 1]
+        range. The index ordering will be compatible with the sequence returned
+        by the :meth:`~graph_tool.Graph.edges` function.
+
+        .. WARNING::
+
+           Calling this function will invalidate all existing edge property
+           maps, if the index ordering is modified! The property maps will still
+           be usable, but their contents will still be tied to the old indices,
+           and thus may be scrambled.
+        """
+        self.__graph.ReIndexEdges()
+
     # Property map creation
 
     def new_property(self, key_type, value_type):

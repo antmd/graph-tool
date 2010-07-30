@@ -210,11 +210,9 @@ bool GraphInterface::IsEdgeFilterActive() const
 void GraphInterface::ReIndexEdges()
 {
     size_t index = 0;
-    graph_traits<multigraph_t>::vertex_iterator v, v_end;
-    graph_traits<multigraph_t>::out_edge_iterator e, e_end;
-    for (tie(v, v_end) = vertices(_mg); v != v_end; ++v)
-        for (tie(e, e_end) = out_edges(*v, _mg); e != e_end; ++e)
-            _edge_index[*e] = index++;
+    graph_traits<multigraph_t>::edge_iterator e, e_end;
+    for (tie(e, e_end) = edges( _mg); e != e_end; ++e)
+        _edge_index[*e] = index++;
     _max_edge_index =  (index > 0) ? index - 1 : 0;
     _nedges = index;
     _free_indexes.clear();
