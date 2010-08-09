@@ -294,9 +294,13 @@ AC_SUBST(MOD_LIBADD)
 
 # needed for typeinfo objects to work across DSO boundaries.
 # see http://gcc.gnu.org/faq.html#dso
-[MOD_LDFLAGS="-module  -avoid-version  -export-dynamic  -no-undefined\
--Wl,-E"]
+[MOD_LDFLAGS="-module  -avoid-version  -export-dynamic  -no-undefined -Wl,-E"]
+
+# link libraries as needed
+[MOD_LDFLAGS="${MOD_LDFLAGS} -Wl,--as-needed"]
+
 AC_SUBST(MOD_LDFLAGS)
+
 
 AC_CONFIG_FILES([
 Makefile
