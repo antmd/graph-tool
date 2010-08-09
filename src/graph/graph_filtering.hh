@@ -111,14 +111,14 @@ using namespace boost;
 class ActionNotFound: public GraphException
 {
 public:
-    ActionNotFound(const boost::any& graph_view, const type_info& action,
-                   const vector<const type_info*>& args);
+    ActionNotFound(const boost::any& graph_view, const std::type_info& action,
+                   const vector<const std::type_info*>& args);
     virtual const char * what () const throw ();
     virtual ~ActionNotFound() throw () {}
 private:
     boost::any _graph_view;
-    const type_info& _action;
-    vector<const type_info*> _args;
+    const std::type_info& _action;
+    vector<const std::type_info*> _args;
 };
 
 namespace detail
@@ -592,7 +592,7 @@ struct graph_action
         if (!found)
         {
             throw ActionNotFound(gview, typeid(Action),
-                                 vector<const type_info*>());
+                                 vector<const std::type_info*>());
         }
     }
 
@@ -604,7 +604,7 @@ struct graph_action
             (boost::mpl::select_types(_a, found, gview, a1));
         if (!found)
         {
-            vector<const type_info*> args;
+            vector<const std::type_info*> args;
             args.push_back(&a1.type());
             throw ActionNotFound(gview, typeid(Action), args);
         }
@@ -618,7 +618,7 @@ struct graph_action
             (boost::mpl::select_types(_a, found, gview, a1, a2));
         if (!found)
         {
-            vector<const type_info*> args;
+            vector<const std::type_info*> args;
             args.push_back(&a1.type());
             args.push_back(&a2.type());
             throw ActionNotFound(gview, typeid(Action), args);
@@ -633,7 +633,7 @@ struct graph_action
             (boost::mpl::select_types(_a, found, gview, a1, a2, a3));
         if (!found)
         {
-            vector<const type_info*> args;
+            vector<const std::type_info*> args;
             args.push_back(&a1.type());
             args.push_back(&a2.type());
             args.push_back(&a3.type());
@@ -650,7 +650,7 @@ struct graph_action
             (boost::mpl::select_types(_a, found, gview, a1, a2, a3,a4));
         if (!found)
         {
-            vector<const type_info*> args;
+            vector<const std::type_info*> args;
             args.push_back(&a1.type());
             args.push_back(&a2.type());
             args.push_back(&a3.type());

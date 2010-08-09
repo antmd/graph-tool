@@ -18,6 +18,7 @@
 #ifndef GRAPH_PROPERTIES_HH
 #define GRAPH_PROPERTIES_HH
 
+#include <typeinfo>
 #include <string>
 #include <vector>
 #if (GCC_VERSION >= 40400)
@@ -206,7 +207,7 @@ public:
         }
     }
 
-    const string& operator()(const type_info& type) const
+    const string& operator()(const std::type_info& type) const
     {
         string* name;
         mpl::for_each<TypeSequence>
@@ -224,7 +225,7 @@ private:
     struct find_name
     {
         template <class Type>
-        void operator()(Type, const type_info& type,
+        void operator()(Type, const std::type_info& type,
                         vector<string>& all_names,
                         string*& name) const
         {
