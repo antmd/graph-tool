@@ -25,4 +25,7 @@ libgraph_tool_correlations_la_SOURCES = \
 
 libgraph_tool_correlations_la_include_HEADERS = \
     graph_assortativity.hh \
-    graph_correlations.hh
+    graph_correlations.hh \
+    graph_corr_hist.hh \
+    graph_avg_correlations.hh
+

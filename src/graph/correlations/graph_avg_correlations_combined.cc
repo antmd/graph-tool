@@ -23,7 +23,7 @@
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
 
-#include "graph_correlations.hh"
+#include "graph_avg_correlations.hh"
 
 #include <iostream>
 

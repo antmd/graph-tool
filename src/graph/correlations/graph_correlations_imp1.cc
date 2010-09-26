@@ -22,7 +22,7 @@
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
 
-#include "graph_correlations.hh"
+#include "graph_corr_hist.hh"
 
 using namespace std;
 using namespace boost;
