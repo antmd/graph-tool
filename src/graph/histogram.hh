@@ -170,7 +170,7 @@ class SharedHistogram: public Histogram
 {
 public:
 
-    SharedHistogram(Histogram &hist): Histogram(hist), _sum(&hist) {}
+    SharedHistogram(Histogram& hist): Histogram(hist), _sum(&hist) {}
     ~SharedHistogram()
     {
         Gather();
@@ -182,13 +182,24 @@ public:
         {
             #pragma omp critical
             {
+                typename Histogram::bin_t idx;
+
                 typename Histogram::bin_t shape;
                 for (size_t i = 0; i <  this->_counts.num_dimensions(); ++i)
                     shape[i] = max(this->_counts.shape()[i],
                                    _sum->GetArray().shape()[i]);
                 _sum->GetArray().resize(shape);
                 for (size_t i = 0; i < this->_counts.num_elements(); ++i)
-                    _sum->GetArray().data()[i] += this->_counts.data()[i];
+                {
+                    size_t offset = 1;
+                    for (size_t j = 0; j < this->_counts.num_dimensions(); ++j)
+                    {
+                        size_t L = this->_counts.shape()[j];
+                        idx[j] = ((i / offset) % L);
+                        offset *= L;
+                    }
+                    _sum->GetArray()(idx) += this->_counts(idx);
+                }
                 for (int i = 0; i < Histogram::dim::value; ++i)
                 {
                     if (_sum->GetBins()[i].size() < this->_bins[i].size())
