@@ -111,7 +111,33 @@ def show_config():
 
 
 class PropertyMap(object):
-    """Property map class."""
+    """Property map class.
+
+    This class provides a mapping from vertices, edges or whole graphs to
+    arbitrary properties.
+
+    The possible property types are listed below.
+
+    .. table::
+
+        =======================     ================
+         Type name                  Alias
+        =======================     ================
+        ``bool``                    ``uint8_t``
+        ``int32_t``                 ``int``   
+        ``int64_t``                 ``long``  
+        ``double``                  ``float``
+        ``long double``             
+        ``string``                  
+        ``vector<bool>``            ``vector<uint8_t>``
+        ``vector<int32_t>``         ``vector<int>``
+        ``vector<int64_t>``         ``vector<long>``
+        ``vector<double>``          ``vector<float>``
+        ``vector<long double>``
+        ``vector<string>``
+        ``python::object``          ``object`` 
+        =======================     ================
+    """
     def __init__(self, pmap, g, key_type, key_trans=None):
         self.__map = pmap
         self.__g = weakref.ref(g)
@@ -242,14 +268,12 @@ def _check_prop_vector(prop, name=None, scalar=True, floating=False):
                           (" floating" if floating else "")))
 
 
-def group_vector_property(g, props, value_type=None, vprop=None, pos=None):
+def group_vector_property(props, value_type=None, vprop=None, pos=None):
     """Group list of properties ``props`` into a vector property map of the same
     type.
 
     Parameters
     ----------
-    g : :class:`~graph_tool.Graph`
-        Graph to which the property maps belong.
     props : list of :class:`~graph_tool.PropertyMap`
         Properties to be grouped.
     value_type : string (optional, default: None)
@@ -398,12 +422,20 @@ from libgraph_tool_core import Vertex, Edge, Vector_bool, Vector_int32_t, \
 
 
 class Graph(object):
-    """This class encapsulates either a directed multigraph (default or if
+    """Generic multigraph class.
+
+    This class encapsulates either a directed multigraph (default or if
     ``directed=True``) or an undirected multigraph (if ``directed=False``), with
     optional internal edge, vertex or graph properties.
 
-    It is implemented as an adjacency list, where both vertex and edge lists are
-    C++ STL vectors.
+    If ``g`` is specified, the graph (and its internal properties) will be
+    copied.
+
+    The graph is implemented as an `adjacency list`_, where both vertex and edge
+    lists are C++ STL vectors.
+
+    .. _adjacency list: http://en.wikipedia.org/wiki/Adjacency_list
+
     """
 
     def __init__(self, g=None, directed=True):
@@ -1041,6 +1073,10 @@ def value_types():
 # =====================
 from libgraph_tool_core import Vertex, Edge
 
+Vertex.__doc__ = """Vertex descriptor.
+
+This class represents a vertex in a :class:`~graph_tool.Graph`."""
+
 
 def _out_neighbours(self):
     """Return an iterator over the out-neighbours."""
@@ -1080,6 +1116,10 @@ def _vertex_repr(self):
     return "<Vertex object with index '%d' at 0x%x>" % (int(self), id(self))
 Vertex.__repr__ = _vertex_repr
 
+_edge_doc = """Edge descriptor.
+
+This class represents an edge in a :class:`~graph_tool.Graph`."""
+
 
 def _edge_iter(self):
     """Iterate over the source and target"""
@@ -1117,6 +1157,7 @@ def init_edge_classes():
                     e = g.edges().next()
                     e.__class__.__repr__ = _edge_repr
                     e.__class__.__iter__ = _edge_iter
+                    e.__class__.__doc__ = _edge_doc
 
 init_edge_classes()
 

@@ -308,7 +308,7 @@ struct export_python_interface
         using namespace boost::python;
 
         class_<PythonEdge<Graph> >
-            ("Edge", "This class represents an edge in a graph", no_init)
+            ("Edge", no_init)
             .def("source", &PythonEdge<Graph>::GetSource,
                  "Return the source vertex")
             .def("target", &PythonEdge<Graph>::GetTarget,
@@ -388,7 +388,7 @@ void export_python_interface()
     using namespace boost::python;
 
     class_<PythonVertex>
-        ("Vertex", "This class represents a vertex in a graph", no_init)
+        ("Vertex", no_init)
         .def("in_degree", &PythonVertex::GetInDegree,
              "Return the in-degree")
         .def("out_degree", &PythonVertex::GetOutDegree,

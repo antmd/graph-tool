@@ -202,7 +202,7 @@ type*, which must be chosen from the predefined set:
 .. table::
 
     =======================     ================
-     Type name                  Aliases
+     Type name                  Alias
     =======================     ================
     ``bool``                    ``uint8_t``
     ``int32_t``                 ``int``   

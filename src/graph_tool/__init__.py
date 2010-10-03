@@ -19,10 +19,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-``graph_tool`` - a general graph manipulation python module
-===========================================================
+``graph_tool`` - an efficient python module for graph analysis and manipulation
+===============================================================================
 
-Provides
+This module provides:
+
    1. A Graph object for graph representation and manipulation
    2. Property maps for Vertex, Edge or Graph.
    3. Fast algorithms implemented in C++.
