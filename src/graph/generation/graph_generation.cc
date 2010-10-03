@@ -97,6 +97,9 @@ void edge_property_union(GraphInterface& ugi, GraphInterface& gi,
                          boost::any uprop, boost::any prop);
 void triangulation(GraphInterface& gi, python::object points, boost::any pos,
                    string type, bool periodic);
+void lattice(GraphInterface& gi, python::object oshape, bool periodic);
+void geometric(GraphInterface& gi, python::object opoints, double r,
+               python::object orange, bool periodic, boost::any pos);
 
 using namespace boost::python;
 
@@ -110,4 +113,6 @@ BOOST_PYTHON_MODULE(libgraph_tool_generation)
     def("vertex_property_union", &vertex_property_union);
     def("edge_property_union", &edge_property_union);
     def("triangulation", &triangulation);
+    def("lattice", &lattice);
+    def("geometric", &geometric);
 }

@@ -22,7 +22,10 @@ libgraph_tool_generation_la_SOURCES = \
     graph_union.cc \
     graph_union_vprop.cc \
     graph_union_eprop.cc \
-    graph_triangulation.cc
+    graph_triangulation.cc \
+    graph_lattice.cc \
+    graph_geometric.cc
+
 
 libgraph_tool_generation_la_include_HEADERS = \
     graph_generation.hh \
@@ -30,4 +33,6 @@ libgraph_tool_generation_la_include_HEADERS = \
     graph_predecessor.hh \
     graph_union.hh \
     graph_triangulation.hh \
+    graph_lattice.hh \
+    graph_geometric.hh \
     sampler.hh
