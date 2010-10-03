@@ -25,10 +25,12 @@ sys.path.append(os.path.abspath('.'))
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest',
-              'sphinx.ext.intersphinx', 'sphinx.ext.jsmath',
-              'sphinxext.numpydoc', 'sphinxext.autosummary']
+              'sphinx.ext.intersphinx', 'mathjax', 
+              'sphinx.ext.autosummary', 'sphinxext.numpydoc']
 
-jsmath_path = "jsMath/easy/load.js"
+numpydoc_show_class_members = False
+
+mathjax_path = "MathJax/MathJax.js"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['.templates']
