@@ -290,6 +290,7 @@ def group_vector_property(props, value_type=None, vprop=None, pos=None):
        A vector property map with the grouped values of each property map in
        ``props``.
     """
+    g = props[0].get_graph()
     vtypes = set()
     keys = set()
     for i, p in enumerate(props):
@@ -335,14 +336,12 @@ def group_vector_property(props, value_type=None, vprop=None, pos=None):
     return vprop
 
 
-def ungroup_vector_property(g, vprop, pos, props=None):
+def ungroup_vector_property(vprop, pos, props=None):
     """Ungroup vector property map ``vprop`` into a list of individual property
     maps.
 
     Parameters
     ----------
-    g : :class:`~graph_tool.Graph`
-        Graph to which the property map belong.
     vprop : :class:`~graph_tool.PropertyMap`
         Vector property map to be ungrouped.
     pos : list of ints (optional, default: None)
@@ -358,6 +357,7 @@ def ungroup_vector_property(g, vprop, pos, props=None):
        A list of property maps with the ungrouped values of ``vprop``.
     """
 
+    g = vprop.get_graph()
     _check_prop_vector(vprop, name="vprop", scalar=False)
     k = vprop.key_type()
     value_type = vprop.value_type().split("<")[1].split(">")[0]

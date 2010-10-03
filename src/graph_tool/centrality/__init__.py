@@ -528,7 +528,7 @@ def trust_transitivity(g, trust_map, source=None, target=None, vprop=None):
                                    _prop("e", g, trust_map),
                                    _prop("v", g, vprop))
     if target != -1 or source != -1:
-        vprop = ungroup_vector_property(g, vprop, [0])[0]
+        vprop = ungroup_vector_property(vprop, [0])[0]
     if target != -1 and source != -1:
         return vprop.a[target]
     return vprop

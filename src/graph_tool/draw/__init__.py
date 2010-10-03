@@ -281,7 +281,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
     if pos != None:
         # copy user-supplied property
         if isinstance(pos, PropertyMap):
-            pos = ungroup_vector_property(g, pos, [0,1])
+            pos = ungroup_vector_property(pos, [0,1])
         else:
             pos = (g.copy_property(pos[0]), g.copy_property(pos[1]))
 
@@ -452,7 +452,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
     pos[0].a /= 100
     pos[1].a /= 100
 
-    pos = group_vector_property(g, pos)
+    pos = group_vector_property(pos)
 
     if return_bitmap:
         # This is a not-so-nice hack which obtains an image buffer from a png
