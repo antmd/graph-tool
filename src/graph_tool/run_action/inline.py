@@ -81,9 +81,8 @@ def inline(code, arg_names=None, local_dict=None,
            library_dirs=None, extra_compile_args=None,
            runtime_library_dirs=None, extra_objects=None,
            extra_link_args=None, mask_ret=None, debug=False):
-    """Compile (if necessary) and run the C++ code specified by 'code', using
-    :mod:`~scipy.weave`. The (possibly modified) variables in 'arg_names' are
-    returned.
+    """Compile (if necessary) and run the C++ code specified by 'code', using :mod:`~scipy.weave`.
+    The (possibly modified) variables in 'arg_names' are returned.
 
     See :func:`scipy.weave.inline` for detailed parameter documentation.
 

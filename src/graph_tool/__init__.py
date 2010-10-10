@@ -19,8 +19,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-``graph_tool`` - an efficient python module for graph analysis and manipulation
-===============================================================================
+``graph_tool`` - efficient graph analysis and manipulation
+===========================================================
 
 This module provides:
 

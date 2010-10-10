@@ -464,8 +464,7 @@ def random_rewire(g, strat="uncorrelated", parallel_edges=False,
 
 
 def predecessor_tree(g, pred_map):
-    """Return a graph from a list of predecessors given by
-    the 'pred_map' vertex property."""
+    """Return a graph from a list of predecessors given by the ``pred_map`` vertex property."""
 
     _check_prop_scalar(pred_map, "pred_map")
     pg = Graph()
