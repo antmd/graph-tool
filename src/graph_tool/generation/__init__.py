@@ -36,6 +36,7 @@ Summary
    triangulation
    lattice
    geometric_graph
+   price_network
 
 Contents
 ++++++++
@@ -49,7 +50,8 @@ from .. stats import label_parallel_edges, label_self_loops
 import sys, numpy, numpy.random
 
 __all__ = ["random_graph", "random_rewire", "predecessor_tree", "line_graph",
-           "graph_union", "triangulation", "lattice", "geometric_graph"]
+           "graph_union", "triangulation", "lattice", "geometric_graph",
+           "price_network"]
 
 
 def random_graph(N, deg_sampler, deg_corr=None, directed=True,
@@ -830,3 +832,126 @@ def geometric_graph(points, radius, ranges=None):
                                        ranges, periodic,
                                        _prop("v", g, pos))
     return g, pos
+
+
+def price_network(N, m=1, c=None, gamma=1, directed=True, seed_graph=None):
+    r"""A generalized version of Price's -- or Barabási-Albert if undirected -- preferential attachment network model.
+
+    Parameters
+    ----------
+    N : int
+        Size of the network.
+    m : int (optional, default: 1)
+        Out-degree of newly added vertices.
+    c : float (optional, default: 1 if ``directed==True`` else 0)
+        Constant factor added to the probability of a vertex receiving an edge
+        (see notes below).
+    gamma : float (optional, default: 1)
+        Preferential attachment power (see notes below).
+    directed : bool (optional, default: True)
+        If ``True``, a Price network is generated. If ``False``, a
+        Barabási-Albert network is generated.
+    seed_graph : :class:`~graph_tool.Graph` (optional, default: None)
+        If provided, this graph will be used as the starting point of the
+        algorithm.
+
+    Returns
+    -------
+    price_graph : :class:`~graph_tool.Graph`
+        The generated graph.
+
+    Notes
+    -----
+
+    The (generalized) [price]_ network is either a directed or undirected graph
+    (the latter is called a Barabási-Albert network), generated dynamically by
+    at each step adding a new vertex, and connecting it to :math:`m` other
+    vertices, chosen with probability:
+
+    .. math::
+
+        P \propto k^\gamma + c
+
+    where :math:`k` is the in-degree of the vertex (or simply the degree in the
+    undirected case). If :math:`\gamma=1`, the tail of resulting in-degree
+    distribution of the directed case is given by
+
+    .. math::
+
+        P_{k_\text{in}} \sim k_\text{in}^{-(2 + c/m)},
+
+    or for the undirected case
+
+    .. math::
+
+        P_{k} \sim k^{-(3 + c/m)}.
+
+    However, if :math:`\gamma \ne 1`, the in-degree distribution is not
+    scale-free (see [dorogovtsev-evolution]_ for details).
+
+    This algorithm runs in :math:`O(N\log N)` time.
+
+    See Also
+    --------
+    triangulation: 2D or 3D triangulation
+    random_graph: random graph generation
+    lattice : N-dimensional square lattice
+    geometric_graph : N-dimensional geometric network
+
+    Examples
+    --------
+    >>> from numpy.random import seed, random
+    >>> seed(42)
+    >>> g = gt.price_network(100000)
+    >>> gt.graph_draw(g, layout="sfdp", size=(12,12), vcolor=g.vertex_index,
+    ...               output="price-network.png")
+    <...>
+    >>> g = gt.price_network(100000, c=0.1)
+    >>> gt.graph_draw(g, layout="sfdp", size=(12,12), vcolor=g.vertex_index,
+    ...               output="price-network-broader.png")
+    <...>
+
+    .. image:: price-network.png
+    .. image:: price-network-broader.png
+
+    Price networks with :math:`N=10^5` nodes. **Left:** :math:`c=1`, **Right:**
+    :math:`c=0.1`. The colors represent the order in which vertices were
+    added.
+
+    References
+    ----------
+
+    .. [yule] Yule, G. U. "A Mathematical Theory of Evolution, based on the
+       Conclusions of Dr. J. C. Willis, F.R.S.". Philosophical Transactions of
+       the Royal Society of London, Ser. B 213: 21–87, 1925,
+       doi:10.1098/rstb.1925.0002
+    .. [price] Derek De Solla Price, "A general theory of bibliometric and other
+       cumulative advantage processes", Journal of the American Society for
+       Information Science, Volume 27, Issue 5, pages 292–306, September 1976,
+       DOI: 10.1002/asi.4630270505
+    .. [barabasi-albert] Barabási, A.-L., and Albert, R., "Emergence of
+       scaling in random networks", Science, 286, 509, 1999;
+       DOI: 10.1126/science.286.5439.509
+    .. [dorogovtsev-evolution] S. N. Dorogovtsev and J. F. F. Mendes, "Evolution
+       of networks", Advances in Physics, 2002, Vol. 51, No. 4, 1079-1187,
+       DOI: 10.1080/00018730110112519
+    """
+
+    if c is None:
+        c = 1 if directed else 0
+
+    if seed_graph is None:
+        if directed:
+            g = Graph()
+            g.add_vertex(m)
+        else:
+            N_s = m + 1 if m % 2 != 0 else m + 2
+            g = random_graph(N_s, lambda: 1, directed=False)
+        N -= g.num_vertices()
+    else:
+        g = seed_graph
+        if g.num_vertices() < m:
+            raise ValueError("seed_graph has number of vertices < m!")
+    seed = numpy.random.randint(0, sys.maxint)
+    libgraph_tool_generation.price(g._Graph__graph, N, gamma, c, m, seed)
+    return g

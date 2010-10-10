@@ -100,6 +100,8 @@ void triangulation(GraphInterface& gi, python::object points, boost::any pos,
 void lattice(GraphInterface& gi, python::object oshape, bool periodic);
 void geometric(GraphInterface& gi, python::object opoints, double r,
                python::object orange, bool periodic, boost::any pos);
+void price(GraphInterface& gi, size_t N, double gamma, double c, size_t m,
+           size_t seed);
 
 using namespace boost::python;
 
@@ -115,4 +117,5 @@ BOOST_PYTHON_MODULE(libgraph_tool_generation)
     def("triangulation", &triangulation);
     def("lattice", &lattice);
     def("geometric", &geometric);
+    def("price", &price);
 }
