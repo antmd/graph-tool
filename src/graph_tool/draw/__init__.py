@@ -63,13 +63,13 @@ except ImportError:
 __all__ = ["graph_draw", "arf_layout", "random_layout"]
 
 
-def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
-               maxiter=None, ratio= "fill", overlap= "prism", sep=None,
+def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
+               maxiter=None, ratio="fill", overlap="prism", sep=None,
                splines=False, vsize=0.1, penwidth=1.0, elen=None, gprops={},
                vprops={}, eprops={}, vcolor=None, ecolor=None,
                vcmap=matplotlib.cm.jet, vnorm=True, ecmap=matplotlib.cm.jet,
-               enorm=True, vorder=None, eorder=None, output= "",
-               output_format= "auto", returngv=False, fork=False,
+               enorm=True, vorder=None, eorder=None, output="",
+               output_format="auto", returngv=False, fork=False,
                return_bitmap=False, seed=0):
     r"""Draw a graph using graphviz.
 
@@ -83,7 +83,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
         Size (in centimeters) of the canvas.
     pin : bool (default: False)
         If True, the vertices are not moved from their initial position.
-    layout : string (default: "neato")
+    layout : string (default: "neato" if g.num_vertices() <= 1000 else "sfdp")
         Layout engine to be used. Possible values are "neato", "fdp", "dot",
         "circo", "twopi" and "arf".
     maxiter : int (default: None)
@@ -272,6 +272,9 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout= "neato",
         gvg = gv.digraph("G")
     else:
         gvg = gv.graph("G")
+
+    if layout is None:
+        layout = "neato" if g.num_vertices() <= 1000 else "sfdp"
 
     if layout == "arf":
         layout = "neato"
