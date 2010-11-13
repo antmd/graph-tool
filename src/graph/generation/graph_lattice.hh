@@ -64,7 +64,7 @@ struct get_lattice
                     bool periodic_boundary) const
     {
         int N = 1;
-        for (int i = 0; i < shape.size(); ++i)
+        for (size_t i = 0; i < shape.size(); ++i)
             N *= shape[i];
         for (int i = 0; i < N; ++i)
             add_vertex(g);

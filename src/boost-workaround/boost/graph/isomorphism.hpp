@@ -21,6 +21,17 @@
 #include <boost/graph/iteration_macros.hpp>
 #endif
 
+// redefine this locally to avoid a stupid compilation warning
+#undef BGL_FORALL_ADJ_T
+#define BGL_FORALL_ADJ_T(UNAME, VNAME, GNAME, GraphType) \
+for (std::pair<typename boost::graph_traits<GraphType>::adjacency_iterator, \
+               typename boost::graph_traits<GraphType>::adjacency_iterator> BGL_RANGE(__LINE__) = adjacent_vertices(UNAME, GNAME); \
+  BGL_FIRST(__LINE__) != BGL_LAST(__LINE__); BGL_FIRST(__LINE__) = BGL_LAST(__LINE__)) \
+for (typename boost::graph_traits<GraphType>::vertex_descriptor VNAME = 0; \
+  BGL_FIRST(__LINE__) != BGL_LAST(__LINE__) ? (VNAME = *BGL_FIRST(__LINE__), true) : false; \
+   ++BGL_FIRST(__LINE__))
+
+
 namespace boost {
 
   namespace detail {

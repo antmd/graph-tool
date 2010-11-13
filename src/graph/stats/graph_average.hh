@@ -71,8 +71,8 @@ struct get_average
     void operator()(Graph& g, DegreeSelector deg) const
     {
         typedef typename DegreeSelector::value_type value_type;
-        long double a, aa;
-        size_t count;
+        long double a = 0, aa = 0;
+        size_t count = 0;
 
         AverageTraverse traverse;
         int i, N = num_vertices(g);

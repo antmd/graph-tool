@@ -44,8 +44,8 @@ bool operator<=(const vector<ValueType>& v1, const vector<ValueType>& v2)
         return true;
     if (v1.size() > v2.size())
         return false;
-    long double d1, d2;
-    for (size_t i; i < v1.size(); ++i)
+    long double d1 = 0, d2 = 0;
+    for (size_t i = 0; i < v1.size(); ++i)
     {
         d1 += v1[i]*v1[i];
         d2 += v2[i]*v2[i];
