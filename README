@@ -8,7 +8,7 @@ properties distributions, degree or properties correlations,
 clustering, graph filtering, graph layout, and more, as well as a
 random graph generation routine. For more information and
 documentation, please take a look at the website
-http://graph-tool.forked.de.
+http://graph-tool.skewed.de.
 
 graph-tool is free software, you can redistribute it and/or modify it
 under the terms of the GNU General Public License, version 3 or
@@ -22,7 +22,7 @@ Availability
 ============
 
 The current stable version of graph-tool is always available from the
-project's website: http://graph-tool.forked.de
+project's website: http://graph-tool.skewed.de
 
 Installation
 ============
@@ -40,7 +40,7 @@ pre-compiled packages are available in the website.
 More information about graph-tool
 ==================================
 
-The project homepage is http://graph-tool.forked.de. It contains
+The project homepage is http://graph-tool.skewed.de. It contains
 documentation, info on mailing lists, a wiki, as well as a
 bug-tracking function. You should be reading it, instead of this. :-)
 
@@ -50,11 +50,11 @@ Reporting Bugs
 ==============
 
 A list of known bugs can be found in the website:
-https://projects.forked.de/graph-tool/report
+https://projects.skewed.de/graph-tool/report
 
 If you found a bug in the program which is not included in this list,
 please submit a ticket through the website at
-https://projects.forked.de/graph-tool/newticket
+https://projects.skewed.de/graph-tool/newticket
 
 --
-Tiago de Paula Peixoto <tiago@forked.de>
+Tiago de Paula Peixoto <tiago@skewed.de>

@@ -3,7 +3,7 @@
 #
 # graph_tool -- a general graph manipulation python module
 #
-# Copyright (C) 2007-2010 Tiago de Paula Peixoto <tiago@forked.de>
+# Copyright (C) 2007-2010 Tiago de Paula Peixoto <tiago@skewed.de>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ How to use the documentation
 
 Documentation is available in two forms: docstrings provided
 with the code, and the full documentation available in
-`the graph-tool homepage <http://graph-tool.forked.de>`_.
+`the graph-tool homepage <http://graph-tool.skewed.de>`_.
 
 We recommend exploring the docstrings using `IPython
 <http://ipython.scipy.org>`_, an advanced Python shell with TAB-completion and
@@ -72,10 +72,10 @@ Classes
 -------
 """
 
-__author__ = "Tiago de Paula Peixoto <tiago@forked.de>"
+__author__ = "Tiago de Paula Peixoto <tiago@skewed.de>"
 __copyright__ = "Copyright 2007-2010 Tiago de Paula Peixoto"
 __license__ = "GPL version 3 or above"
-__URL__ = "http://graph-tool.forked.de"
+__URL__ = "http://graph-tool.skewed.de"
 
 # import numpy and scipy before everything to avoid weird segmentation faults
 # depending on the order things are imported.

@@ -1,4 +1,4 @@
-// Copyright (C) 2006  Tiago de Paula Peixoto <tiago@forked.de>
+// Copyright (C) 2006  Tiago de Paula Peixoto <tiago@skewed.de>
 // Copyright (C) 2004  The Trustees of Indiana University.
 //
 // Use, modification and distribution is subject to the Boost Software

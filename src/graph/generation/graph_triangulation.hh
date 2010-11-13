@@ -1,6 +1,6 @@
 // graph-tool -- a general graph modification and manipulation thingy
 //
-// Copyright (C) 2007-2010 Tiago de Paula Peixoto <tiago@forked.de>
+// Copyright (C) 2007-2010 Tiago de Paula Peixoto <tiago@skewed.de>
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License

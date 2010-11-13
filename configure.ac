@@ -7,7 +7,7 @@ m4_define(graph_tool_version_major, 2)
 m4_define(graph_tool_version_minor, 2)
 m4_define(graph_tool_version_micro, 8dev)
 
-AC_INIT([graph-tool],[graph_tool_version_major().graph_tool_version_minor().graph_tool_version_micro()],[http://graph-tool.forked.de])
+AC_INIT([graph-tool],[graph_tool_version_major().graph_tool_version_minor().graph_tool_version_micro()],[http://graph-tool.skewed.de])
 
 GRAPH_TOOL_VERSION_MAJOR=graph_tool_version_major()
 GRAPH_TOOL_VERSION_MINOR=graph_tool_version_minor()
@@ -257,7 +257,7 @@ AC_DEFINE_UNQUOTED([PACKAGE_DATA_DIR], "${packageprefix}/${packagedatadir}", [pa
 AC_DEFINE_UNQUOTED([PACKAGE_DOC_DIR], "${packageprefix}/${packagedocdir}", [package doc dir])
 AC_DEFINE_UNQUOTED([PACKAGE_SOURCE_DIR], "${packagesrcdir}", [package source dir])
 
-AC_DEFINE_UNQUOTED([AUTHOR], "Tiago de Paula Peixoto <tiago@forked.de>", [program author(s)])
+AC_DEFINE_UNQUOTED([AUTHOR], "Tiago de Paula Peixoto <tiago@skewed.de>", [program author(s)])
 
 AC_DEFINE_UNQUOTED([COPYRIGHT],
     "Copyright (C) 2007-2010 Tiago de Paula Peixoto\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",

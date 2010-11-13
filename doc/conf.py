@@ -46,7 +46,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'graph-tool'
-copyright = u'2010, Tiago de Paula Peixoto <tiago@forked.de>'
+copyright = u'2010, Tiago de Paula Peixoto <tiago@skewed.de>'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -197,7 +197,7 @@ html_copy_source = True
 # If true, an OpenSearch description file will be output, and all pages will
 # contain a <link> tag referring to it.  The value of this option must be the
 # base URL from which the finished HTML is served.
-html_use_opensearch = 'http://projects.forked.de/graph-tool/doc/'
+html_use_opensearch = 'http://projects.skewed.de/graph-tool/doc/'
 
 # If nonempty, this is the file name suffix for HTML files (e.g. ".xhtml").
 #html_file_suffix = ''
