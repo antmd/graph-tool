@@ -33,6 +33,7 @@ AC_HEADER_STDC
 AC_DISABLE_STATIC
 LT_INIT
 AC_PROG_INSTALL
+AC_CANONICAL_TARGET
 
 dnl turn on warnings
 [CXXFLAGS="${CXXFLAGS} -Wall"]
@@ -294,10 +295,12 @@ AC_SUBST(MOD_LIBADD)
 
 # needed for typeinfo objects to work across DSO boundaries.
 # see http://gcc.gnu.org/faq.html#dso
-[MOD_LDFLAGS="-module  -avoid-version  -export-dynamic  -no-undefined -Wl,-E"]
+[MOD_LDFLAGS="-module -avoid-version -export-dynamic -no-undefined -Wl,-E -Wl,--as-needed"]
 
-# link libraries as needed
-[MOD_LDFLAGS="${MOD_LDFLAGS} -Wl,--as-needed"]
+# MacOS needs different options
+if test "x${target_os}" = "xdarwin"; then
+   [MOD_LDFLAGS="-module -dynamiclib"]
+fi
 
 AC_SUBST(MOD_LDFLAGS)
 

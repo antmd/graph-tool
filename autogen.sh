@@ -21,7 +21,11 @@ fi
 
 aclocal -I m4 || exit $?
 autoheader || exit $?
-libtoolize -f || exit $?
+if [ `type -P libtoolize` ]; then
+    libtoolize -f || exit $?
+else
+    glibtoolize -f || exit $?
+fi
 automake --add-missing --copy || exit $?
 autoconf || exit $?
 

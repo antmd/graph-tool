@@ -28,6 +28,9 @@
 #include <boost/functional/hash.hpp>
 #include "graph_util.hh"
 
+#include <ext/numeric>
+using __gnu_cxx::power;
+
 namespace graph_tool
 {
 using namespace std;
@@ -133,10 +136,10 @@ struct get_geometric
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
 
             get_box(points[i], w, box, ranges, periodic_boundary);
-            for (size_t k = 0; k < pow(3, box.size()); ++k)
+            for (int k = 0; k < power(3, int(box.size())); ++k)
             {
-                for (size_t j = 0; j < box.size(); ++j)
-                    box[j] += (int(k / pow(3, j)) % 3) - 1;
+                for (int j = 0; j < box.size(); ++j)
+                  box[j] += ((k / power(3, j)) % 3) - 1;
 
                 if (periodic_boundary)
                     periodic(box, box_ranges);

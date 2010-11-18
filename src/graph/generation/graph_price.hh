@@ -27,7 +27,7 @@
 #   include <tr1/unordered_set>
 #else
 #   include <boost/tr1/random.hpp>
-#   include <boost/tr1/unordered_set>
+#   include <boost/tr1/unordered_set.hpp>
 #endif
 
 #include <map>
