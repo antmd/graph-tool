@@ -298,7 +298,7 @@ AC_SUBST(MOD_LIBADD)
 [MOD_LDFLAGS="-module -avoid-version -export-dynamic -no-undefined -Wl,-E -Wl,--as-needed"]
 
 # MacOS needs different options
-if test "x${target_os}" = "xdarwin"; then
+if [[ `echo ${target_os} | grep -c -e "^darwin"` == 1 ]]; then
    [MOD_LDFLAGS="-module -dynamiclib"]
 fi
 
