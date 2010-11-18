@@ -219,14 +219,12 @@ latex_documents = [
 #latex_logo = "graph-draw.png"
 
 latex_elements = {
-    'papersize' : "a4paper",
-    'fontpkg' : r"\usepackage{palatino}\usepackage{eulervm}"
-}
-
+    'papersize': "a4paper",
+    'fontpkg': r"\usepackage{palatino}\usepackage{eulervm}"}
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'http://docs.python.org': None,
                        'http://docs.scipy.org/doc/numpy': None,
                        'http://docs.scipy.org/doc/scipy/reference': None,
-                       'http://matplotlib.sourceforge.net' : None}
+                       'http://matplotlib.sourceforge.net': None}
