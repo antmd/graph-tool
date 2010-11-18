@@ -15,11 +15,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#include "graph.hh"
 #define NUMPY_EXPORT
+#include "numpy_bind.hh"
+
+#include "graph.hh"
 #include "graph_python_interface.hh"
 #include "graph_util.hh"
-#include "numpy_bind.hh"
 
 #include <boost/python.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
