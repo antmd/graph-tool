@@ -42,7 +42,7 @@ dnl Checks for options
 dnl Turn debugging on or off
 AC_MSG_CHECKING(whether to enable debug info...)
 
-AC_ARG_ENABLE([debug], [AS_HELP_STRING([--enable-debug@<:@=full@:>@],[compile debug information [default=yes] ])],
+AC_ARG_ENABLE([debug], [AS_HELP_STRING([--enable-debug],[compile debug information [default=disabled] ])],
         [AC_MSG_RESULT(yes)]
         [AC_DEFINE([DEBUG], 1, [compile debug info])]
         [CXXFLAGS=" ${CXXFLAGS} -ggdb3 "],
