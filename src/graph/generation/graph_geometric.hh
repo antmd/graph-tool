@@ -138,7 +138,7 @@ struct get_geometric
             get_box(points[i], w, box, ranges, periodic_boundary);
             for (int k = 0; k < power(3, int(box.size())); ++k)
             {
-                for (int j = 0; j < box.size(); ++j)
+                for (int j = 0; j < int(box.size()); ++j)
                   box[j] += ((k / power(3, j)) % 3) - 1;
 
                 if (periodic_boundary)
