@@ -31,6 +31,8 @@ import os, os.path, re, struct, fcntl, termios, gzip, bz2, string,\
        functools, types, weakref, copy
 from StringIO import StringIO
 from decorators import _wraps, _require, _attrs, _limit_args
+from inspect import ismethod
+import numpy
 
 ################################################################################
 # Utility functions
@@ -110,10 +112,106 @@ def show_config():
 ################################################################################
 
 
-class PropertyMap(object):
-    """Property map class.
+class PropertyArray(numpy.ndarray):
+    """This is a :class:`~numpy.ndarray` subclass which keeps a reference of its :class:`~graph_tool.PropertyMap` owner, and detects if the underlying data has been invalidated."""
 
-    This class provides a mapping from vertices, edges or whole graphs to
+    __array_priority__ = -10
+
+    def _get_pmap(self):
+        return self._prop_map
+
+    def _set_pmap(self, value):
+        self._prop_map = value
+
+    prop_map = property(_get_pmap, _set_pmap,
+                        doc=":class:`~graph_tool.PropertyMap` owner instance.")
+
+    def __new__(cls, input_array, prop_map):
+        obj = numpy.asarray(input_array).view(cls)
+        obj.prop_map = prop_map
+
+        # check if data really belongs to property map
+        if (prop_map._get_data().__array_interface__['data'][0] !=
+            obj._get_base_data()):
+            obj.prop_map = None
+            obj = numpy.asarray(obj)
+
+        return obj
+
+    def _get_base(self):
+        base = self
+        while base.base is not None:
+            base = base.base
+        return base
+
+    def _get_base_data(self):
+        return self._get_base().__array_interface__['data'][0]
+
+    def _check_data(self):
+        if self.prop_map is None:
+            return
+
+        data = self.prop_map._get_data()
+
+        if (data is None or
+            data.__array_interface__['data'][0] != self._get_base_data()):
+            raise ValueError(("The graph correspondig to the underlying" +
+                              " property map %s has changed. The" +
+                              " PropertyArray at 0x%x is no longer valid!") %
+                             (repr(self.prop_map), id(self)))
+
+    def __array_finalize__(self, obj):
+        if type(obj) is PropertyArray:
+            obj._check_data()
+
+        if obj is not None:
+            # inherit prop_map only if the data is the same
+            if (type(obj) is PropertyArray and
+                self._get_base_data() == obj._get_base_data()):
+                self.prop_map = getattr(obj, 'prop_map', None)
+            else:
+                self.prop_map = None
+        self._check_data()
+
+    def __array_prepare__(self, out_arr, context=None):
+        self._check_data()
+        return numpy.ndarray.__array_prepare__(self, out_arr, context)
+
+    def __array_wrap__(self, out_arr, context=None):
+        #demote to ndarray
+        obj = numpy.ndarray.__array_wrap__(self, out_arr, context)
+        return numpy.asarray(obj)
+
+    # Overload members and operators to add data checking
+
+    def _wrap_method(method):
+        method = getattr(numpy.ndarray, method)
+
+        def checked_method(self, *args, **kwargs):
+            self._check_data()
+            return method(self, *args, **kwargs)
+
+        if ismethod(method):
+            checked_method = _wraps(method)(checked_method)
+        checked_method.__doc__ = getattr(method, "__doc__", None)
+        return checked_method
+
+    for method in ['all', 'any', 'argmax', 'argmin', 'argsort', 'astype',
+                   'byteswap', 'choose', 'clip', 'compress', 'conj',
+                   'conjugate', 'copy', 'cumprod', 'cumsum', 'diagonal', 'dot',
+                   'dump', 'dumps', 'fill', 'flat', 'flatten', 'getfield',
+                   'imag', 'item', 'itemset', 'itemsize', 'max', 'mean', 'min',
+                   'newbyteorder', 'nonzero', 'prod', 'ptp', 'put', 'ravel',
+                   'real', 'repeat', 'reshape', 'resize', 'round',
+                   'searchsorted', 'setfield', 'setflags', 'sort', 'squeeze',
+                   'std', 'sum', 'swapaxes', 'take', 'tofile', 'tolist',
+                   'tostring', 'trace', 'transpose', 'var', 'view',
+                   '__getitem__']:
+        locals()[method] = _wrap_method(method)
+
+
+class PropertyMap(object):
+    """This class provides a mapping from vertices, edges or whole graphs to
     arbitrary properties.
 
     The possible property types are listed below.
@@ -124,18 +222,18 @@ class PropertyMap(object):
          Type name                  Alias
         =======================     ================
         ``bool``                    ``uint8_t``
-        ``int32_t``                 ``int``   
-        ``int64_t``                 ``long``  
+        ``int32_t``                 ``int``
+        ``int64_t``                 ``long``
         ``double``                  ``float``
-        ``long double``             
-        ``string``                  
+        ``long double``
+        ``string``
         ``vector<bool>``            ``vector<uint8_t>``
         ``vector<int32_t>``         ``vector<int>``
         ``vector<int64_t>``         ``vector<long>``
         ``vector<double>``          ``vector<float>``
         ``vector<long double>``
         ``vector<string>``
-        ``python::object``          ``object`` 
+        ``python::object``          ``object``
         =======================     ================
     """
     def __init__(self, pmap, g, key_type, key_trans=None):
@@ -196,17 +294,22 @@ class PropertyMap(object):
         return self.__map.value_type()
 
     def get_array(self):
-        """Get an array with property values.
+        """Get a :class:`~graph_tool.PropertyArray` with the property values.
 
         .. WARNING::
 
            The returned array does not own the data, which belongs to the
-           property map. Therefore, the returned array cannot have a longer
-           lifespan than the property map itself! Furthermore, if the graph
-           changes, it may leave the pointer to the data in the array dangling!
-           Do *not* store the array if the graph is to be modified, or the
-           original property map deleted; *store a copy instead*!
+           property map. Therefore, if the graph changes, the array may become
+           *invalid* and any operation on it will fail with a
+           :class:`ValueError` exception. Do **not** store the array if
+           the graph is to be modified; store a **copy** instead.
         """
+        a = self._get_data()
+        return PropertyArray(a, prop_map=self)
+
+    def _get_data(self):
+        if self.__g() is None:
+            return None
         self.__g().stash_filter(edge=True, vertex=True)
         if self.__key_type == 'v':
             n = self.__g().num_vertices()
@@ -215,7 +318,8 @@ class PropertyMap(object):
         else:
             n = 1
         self.__g().pop_filter(edge=True, vertex=True)
-        return self.__map.get_array(n)
+        a = self.__map.get_array(n)
+        return a
 
     def __get_array(self):
         if self.get_array() != None:
@@ -229,7 +333,7 @@ class PropertyMap(object):
     a = property(__get_array, __set_array,
                  doc=r"""Shortcut to the :meth:`~PropertyMap.get_array` method
                  as a property. A view to the array is returned, instead of the
-                 array, for convenience.""")
+                 array itself, for convenience.""")
 
     def is_writable(self):
         """Return True if the property is writable."""
