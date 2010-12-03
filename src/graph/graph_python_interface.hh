@@ -98,7 +98,8 @@ public:
     void CheckValid() const
     {
         if (!IsValid())
-            throw ValueException("invalid vertex descriptor");
+            throw ValueException("invalid vertex descriptor: " +
+                                 lexical_cast<string>(_v));
     }
 
     GraphInterface::vertex_t GetDescriptor() const
@@ -391,8 +392,10 @@ public:
         return get(_pmap, key.GetDescriptor());
     }
 
+    // in this case, val should be a copy, not a reference. This is to avoid a
+    // problem with vector-valued property maps
     template <class PythonDescriptor>
-    void SetValue(const PythonDescriptor& key, const value_type& val)
+    void SetValue(const PythonDescriptor& key, value_type val)
     {
         set_value(key, val,
                   is_convertible<

@@ -95,6 +95,23 @@ def _type_alias(type_name):
     raise ValueError("invalid property value type: " + type_name)
 
 
+def _python_type(type_name):
+    type_name = _type_alias(type_name)
+    if "vector" in type_name:
+        ma = re.compile(r"vector<(.*)>").match(type_name)
+        t = ma.group(1)
+        return list, _python_type(t)
+    if "int" in type_name:
+        return int
+    if type_name == "bool":
+        return bool
+    if "double" in type_name:
+        return float
+    if "string" in type_name:
+        return str
+    return object
+
+
 def show_config():
     """Show ``graph_tool`` build configuration."""
     info = libcore.mod_info()
@@ -240,7 +257,7 @@ class PropertyMap(object):
         self.__map = pmap
         self.__g = weakref.ref(g)
         self.__key_type = key_type
-        self.__key_trans = key_trans if key_trans != None else lambda k: k
+        self.__key_trans = key_trans if key_trans is not None else lambda k: k
         self.__register_map()
 
     def __register_map(self):
@@ -263,7 +280,17 @@ class PropertyMap(object):
         return self.__map[self.__key_trans(k)]
 
     def __setitem__(self, k, v):
-        self.__map[self.__key_trans(k)] = v
+        try:
+            self.__map[self.__key_trans(k)] = v
+        except TypeError:
+            # attempt to convert to a compatible python type. This is useful,
+            # for instance, when dealing with numpy scalar types.
+            valtype = self.python_value_type()
+            if isistance(valtype, tuple):
+                val = [valtype[1](x) for x in v]
+            else:
+                val = valtype(v)
+            self.__map[self.__key_trans(k)] = val
 
     def __repr__(self):
         # provide some more useful information
@@ -293,6 +320,10 @@ class PropertyMap(object):
         """Return the value type of the map."""
         return self.__map.value_type()
 
+    def python_value_type(self):
+        """Return the python-compatible value type of the map."""
+        return _python_type(self.__map.value_type())
+
     def get_array(self):
         """Get a :class:`~graph_tool.PropertyArray` with the property values.
 
@@ -305,6 +336,8 @@ class PropertyMap(object):
            the graph is to be modified; store a **copy** instead.
         """
         a = self._get_data()
+        if a is None:
+            return None
         return PropertyArray(a, prop_map=self)
 
     def _get_data(self):
@@ -322,7 +355,7 @@ class PropertyMap(object):
         return a
 
     def __get_array(self):
-        if self.get_array() != None:
+        if self.get_array() is not None:
             return self.get_array()[:]
         else:
             return None
