@@ -139,6 +139,9 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
 
     Examples
     --------
+
+    This example uses the network :download:`community.xml <community.xml>`.
+
     >>> from pylab import *
     >>> from numpy.random import seed
     >>> seed(42)
