@@ -12,10 +12,11 @@ Available subpackages
    community
    correlations
    draw
-   generation
-   topology
    flow
+   generation
+   run_action
+   search_module
    spectral
    stats
-   run_action
+   topology
    util 

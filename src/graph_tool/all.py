@@ -48,5 +48,7 @@ from graph_tool.flow import *
 import graph_tool.flow
 from graph_tool.spectral import *
 import graph_tool.spectral
+from graph_tool.search import *
+import graph_tool.search
 from graph_tool.util import *
 import graph_tool.util

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+
+  <!-- property keys -->
+  <key id="key0" for="node" attr.name="name" attr.type="string" />
+  <key id="key1" for="edge" attr.name="weight" attr.type="float" />
+
+  <graph id="G" edgedefault="undirected" parse.nodeids="canonical" parse.edgeids="canonical" parse.order="nodesfirst">
+
+   <!-- graph properties -->
+
+   <!-- vertices -->
+    <node id="n0">
+      <data key="key0">Bob</data>
+    </node>
+    <node id="n1">
+      <data key="key0">Alice</data>
+    </node>
+    <node id="n2">
+      <data key="key0">Carol</data>
+    </node>
+    <node id="n3">
+      <data key="key0">Carlos</data>
+    </node>
+    <node id="n4">
+      <data key="key0">Chuck</data>
+    </node>
+    <node id="n5">
+      <data key="key0">Dave</data>
+    </node>
+    <node id="n6">
+      <data key="key0">Eve</data>
+    </node>
+    <node id="n7">
+      <data key="key0">Isaac</data>
+    </node>
+    <node id="n8">
+      <data key="key0">Oscar</data>
+    </node>
+    <node id="n9">
+      <data key="key0">Imothep</data>
+    </node>
+
+   <!-- edges -->
+    <edge id="e0" source="n0" target="n6">
+      <data key="key1">0x1.9e7393907213cp+1</data>
+    </edge>
+    <edge id="e1" source="n0" target="n4">
+      <data key="key1">0x1.015b0db294a3dp+2</data>
+    </edge>
+    <edge id="e2" source="n0" target="n3">
+      <data key="key1">0x1.12bcc343cdc2ap+2</data>
+    </edge>
+    <edge id="e3" source="n0" target="n7">
+      <data key="key1">0x1.ba3952afb7e9ep+1</data>
+    </edge>
+    <edge id="e4" source="n1" target="n8">
+      <data key="key1">0x1.0ff8065948f03p+1</data>
+    </edge>
+    <edge id="e5" source="n1" target="n5">
+      <data key="key1">0x1.a872068a0a4e5p+1</data>
+    </edge>
+    <edge id="e6" source="n1" target="n3">
+      <data key="key1">0x1.2816bc78b034fp+2</data>
+    </edge>
+    <edge id="e7" source="n2" target="n6">
+      <data key="key1">0x1.82250c1278b54p+2</data>
+    </edge>
+    <edge id="e8" source="n2" target="n9">
+      <data key="key1">0x1.8bb78dae3ee5ap+0</data>
+    </edge>
+    <edge id="e9" source="n3" target="n6">
+      <data key="key1">0x1.587ad2707187fp+2</data>
+    </edge>
+    <edge id="e10" source="n3" target="n9">
+      <data key="key1">0x1.7df6a3095905ep+2</data>
+    </edge>
+    <edge id="e11" source="n4" target="n6">
+      <data key="key1">0x1.62ac71123a64ap+0</data>
+    </edge>
+    <edge id="e12" source="n4" target="n7">
+      <data key="key1">0x1.2c156b7e6a49p+1</data>
+    </edge>
+    <edge id="e13" source="n4" target="n9">
+      <data key="key1">0x1.543c16e43a9bfp+2</data>
+    </edge>
+    <edge id="e14" source="n5" target="n8">
+      <data key="key1">0x1.5a4ab7454f0e2p+1</data>
+    </edge>
+    <edge id="e15" source="n6" target="n7">
+      <data key="key1">0x1.841d9db6417f3p+1</data>
+    </edge>
+    <edge id="e16" source="n6" target="n9">
+      <data key="key1">0x1.20af02e97ed9ep+2</data>
+    </edge>
+
+  </graph>
+</graphml>

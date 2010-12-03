@@ -61,3 +61,7 @@ graph_tool_flowdir = $(MOD_DIR)/flow
 graph_tool_spectral_PYTHON = \
     spectral/__init__.py
 graph_tool_spectraldir = $(MOD_DIR)/spectral
+
+graph_tool_search_PYTHON = \
+    search/__init__.py
+graph_tool_searchdir = $(MOD_DIR)/search
