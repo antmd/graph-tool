@@ -293,6 +293,7 @@ table.footnote {
 
 table.field-list th {
     padding: 0 0.8em 0 0;
+    white-space: nowrap;
 }
 
 table.field-list td {
@@ -311,7 +312,22 @@ dl {
 dl dd {
     margin-left: 30px;
 }
- 
+
+dl.function, dl.class, dl.exception {
+    border-top-style: solid;
+    border-top-width: 5px;
+    padding-top: 1em;
+}
+
+dl.function dt, dl.class dt, dl.exception dt{
+    background-color: #EFEFEF;
+}
+
+dl.docutils dt {
+    background-color: inherit;
+}
+
+
 pre {
     background: #eee;
     padding: 7px 30px;
