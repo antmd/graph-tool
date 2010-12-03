@@ -25,8 +25,8 @@ sys.path.append(os.path.abspath('.'))
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest',
-              'sphinx.ext.intersphinx', 'mathjax', 
-              'sphinx.ext.autosummary', 'sphinxext.numpydoc']
+              'sphinx.ext.intersphinx', 'mathjax', 'sphinx.ext.autosummary',
+              'sphinxext.numpydoc', 'sphinx.ext.extlinks']
 
 numpydoc_show_class_members = False
 
@@ -123,8 +123,8 @@ rcParams["ps.usedistiller"] = "xpdf"
 rcParams["pdf.compression"] = 9
 rcParams["ps.useafm"] = True
 rcParams["path.simplify"] = True
-rcParams["text.latex.preamble"] = [#"\usepackage{times}",
-                                   "\usepackage{euler}",
+rcParams["text.latex.preamble"] = ["\usepackage{times}",
+                                   #"\usepackage{euler}",
                                    "\usepackage{amssymb}",
                                    "\usepackage{amsmath}"]
 
@@ -228,3 +228,8 @@ intersphinx_mapping = {'http://docs.python.org': None,
                        'http://docs.scipy.org/doc/numpy': None,
                        'http://docs.scipy.org/doc/scipy/reference': None,
                        'http://matplotlib.sourceforge.net': None}
+
+extlinks = {'ticket': ('http://projects.skewed.de/graph-tool/ticket/%s',
+                       'ticket '),
+            'doi': ('http://dx.doi.org/%s', 'DOI: ')}
+
