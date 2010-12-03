@@ -52,7 +52,7 @@ void vertex_property_union(GraphInterface& ugi, GraphInterface& gi,
     vprop_t vprop = any_cast<vprop_t>(p_vprop);
     eprop_t eprop = any_cast<eprop_t>(p_eprop);
 
-    run_action<graph_tool::detail::always_directed,mpl::true_>()
+    run_action<graph_tool::detail::always_directed>()
         (ugi, bind<void>(graph_tool::property_union(),
                          _1, _2, vprop, eprop, _3, prop),
          get_pointers::apply<graph_tool::detail::always_directed>::type(),

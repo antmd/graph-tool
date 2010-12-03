@@ -71,9 +71,10 @@ struct get_kolmogorov_max_flow
         unchecked_vector_property_map<size_t,VertexIndex>
             dist_map(vertex_index, num_vertices(g));
 
-        augment_graph(g, augmented.get_checked(), get_checked(cm),
-                      reverse_map.get_checked(), res.get_checked());
-        boost::kolmogorov_max_flow(g._g, cm, res, reverse_map, pred_map,
+        augment_graph(g, augmented.get_checked(), cm,
+                      reverse_map.get_checked(), res);
+        boost::kolmogorov_max_flow(g._g, get_unchecked(cm),
+                                   res.get_unchecked(), reverse_map, pred_map,
                                    color_map, dist_map, vertex_index,
                                    vertex(src, g), vertex(sink, g));
         deaugment_graph(g, augmented.get_checked());

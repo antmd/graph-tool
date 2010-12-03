@@ -60,6 +60,17 @@ template <class Graph>
 struct graph_traits<const GraphWrap<Graph> >:
         public graph_traits<const Graph> {};
 
+template <class Graph, class Tag>
+struct property_map<GraphWrap<Graph>, Tag>:
+        public property_map<Graph, Tag> {};
+
+template <class Graph, class Tag>
+typename property_map<Graph, Tag>::type
+get(Tag t, const GraphWrap<Graph>& g)
+{
+    return get(t, g._g);
+}
+
 template <class Graph>
 inline typename graph_traits<GraphWrap<Graph> >::vertex_descriptor
 source(typename graph_traits<GraphWrap<Graph> >::edge_descriptor e,

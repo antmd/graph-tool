@@ -41,12 +41,12 @@ struct get_edmonds_karp_max_flow
             augmented(edge_index, max_e);
         unchecked_vector_property_map<edge_t,EdgeIndex>
             reverse_map(edge_index, max_e);
-        augment_graph(g, augmented.get_checked(), get_checked(cm),
-                      reverse_map.get_checked(), res.get_checked());
+        augment_graph(g, augmented.get_checked(), cm, reverse_map.get_checked(),
+                      res);
         boost::edmonds_karp_max_flow(g._g, vertex(src, g), vertex(sink, g),
-                                     capacity_map(cm).
+                                     capacity_map(get_unchecked(cm)).
                                      reverse_edge_map(reverse_map).
-                                     residual_capacity_map(res));
+                                     residual_capacity_map(res.get_unchecked()));
         deaugment_graph(g, augmented.get_checked());
     }
 };

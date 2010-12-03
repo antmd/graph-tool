@@ -509,33 +509,48 @@ struct action_wrap
         : _a(a), _g(g), _max_v(max_v), _max_e(max_e) {}
 
     template <class Type>
-    typename checked_vector_property_map
-        <Type,GraphInterface::vertex_index_map_t>::unchecked_t
+    checked_vector_property_map<Type,GraphInterface::vertex_index_map_t>
     uncheck(checked_vector_property_map
-            <Type,GraphInterface::vertex_index_map_t> a) const
+            <Type,GraphInterface::vertex_index_map_t> a, mpl::true_) const
+    {
+        return a;
+    }
+
+    template <class Type>
+    unchecked_vector_property_map<Type,GraphInterface::vertex_index_map_t>
+    uncheck(checked_vector_property_map
+            <Type,GraphInterface::vertex_index_map_t> a, mpl::false_) const
     {
         return a.get_unchecked(_max_v);
     }
 
     template <class Type>
-    typename checked_vector_property_map
-        <Type,GraphInterface::edge_index_map_t>::unchecked_t
+    checked_vector_property_map<Type,GraphInterface::edge_index_map_t>
     uncheck(checked_vector_property_map
-            <Type,GraphInterface::edge_index_map_t> a) const
+            <Type,GraphInterface::edge_index_map_t> a, mpl::true_) const
+    {
+        return a;
+    }
+
+    template <class Type>
+    unchecked_vector_property_map<Type,GraphInterface::edge_index_map_t>
+    uncheck(checked_vector_property_map
+            <Type,GraphInterface::edge_index_map_t> a, mpl::false_) const
     {
         return a.get_unchecked(_max_e);
     }
 
     template <class Type>
     scalarS<typename Type::unchecked_t>
-    uncheck(scalarS<Type> a) const
+    uncheck(scalarS<Type> a, mpl::false_) const
     {
-        return scalarS<typename Type::unchecked_t>(uncheck(a._pmap));
+        return scalarS<typename Type::unchecked_t>(uncheck(a._pmap,
+                                                           mpl::false_()));
     }
 
     //no op
-    template <class Type>
-    Type uncheck(Type a) const { return a; }
+    template <class Type, class DoWrap>
+    Type uncheck(Type a, DoWrap) const { return a; }
 
     template <class Graph>
     GraphWrap<Graph> wrap(Graph* g, mpl::true_) const
@@ -550,21 +565,24 @@ struct action_wrap
     }
 
     void operator()() const {};
-    template <class T1> void operator()(const T1& a1) const { _a(wrap(a1, Wrap())); }
+    template <class T1> void operator()(const T1& a1) const
+    { _a(wrap(a1, Wrap())); }
     template <class T1, class T2>
     void operator()(const T1& a1, const T2& a2) const
-    { _a(wrap(a1,Wrap()), uncheck(a2)); }
+    { _a(wrap(a1,Wrap()), uncheck(a2, Wrap())); }
     template <class T1, class T2, class T3>
     void operator()(const T1& a1, const T2& a2, const T3& a3) const
-    { _a(wrap(a1,Wrap()), uncheck(a2), uncheck(a3));}
+    { _a(wrap(a1,Wrap()), uncheck(a2, Wrap()), uncheck(a3, Wrap()));}
     template <class T1, class T2, class T3, class T4>
     void operator()(const T1& a1, const T2& a2, const T3& a3, const T4& a4)
         const
-    { _a(wrap(a1,Wrap()), uncheck(a2), uncheck(a3), uncheck(a4)); }
+    { _a(wrap(a1,Wrap()), uncheck(a2, Wrap()), uncheck(a3, Wrap()),
+         uncheck(a4, Wrap())); }
     template <class T1, class T2, class T3, class T4, class T5>
     void operator()(const T1& a1, const T2& a2, const T3& a3, const T4& a4,
                     const T5& a5) const
-    { _a(wrap(a1,Wrap()), uncheck(a2), uncheck(a3), uncheck(a4), uncheck(a5)); }
+    { _a(wrap(a1,Wrap()), uncheck(a2, Wrap()), uncheck(a3, Wrap()),
+         uncheck(a4, Wrap()), uncheck(a5), Wrap()); }
 
     Action _a;
     reference_wrapper<GraphInterface> _g;

@@ -54,8 +54,7 @@ struct property_union
                     UnionProp uprop, boost::any aprop) const
     {
         Graph& g = *gp;
-        typename UnionProp::checked_t prop =
-            any_cast<typename UnionProp::checked_t>(aprop);
+        UnionProp prop = any_cast<UnionProp>(aprop);
         dispatch(ug, g, vmap, emap, uprop, prop,
                  is_same<typename property_traits<UnionProp>::key_type,
                          typename graph_traits<Graph>::vertex_descriptor>());

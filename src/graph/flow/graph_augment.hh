@@ -78,15 +78,15 @@ void deaugment_graph(Graph& g, AugmentedMap augmented)
 
 
 template <class Type, class Index>
-checked_vector_property_map<Type, Index>
-get_checked(unchecked_vector_property_map<Type, Index> prop)
+unchecked_vector_property_map<Type, Index>
+get_unchecked(checked_vector_property_map<Type, Index> prop)
 {
-    return prop.get_checked();
+    return prop.get_unchecked();
 }
 
 template <class Prop>
 Prop
-get_checked(Prop prop)
+get_unchecked(Prop prop)
 {
     return prop;
 }

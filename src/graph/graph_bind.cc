@@ -307,11 +307,11 @@ string get_graph_type(GraphInterface& g)
 
 bool openmp_enabled()
 {
-    #ifdef USING_OPENMP
+#ifdef USING_OPENMP
     return true;
-    #else
+#else
     return false;
-    #endif
+#endif
 }
 
 void ungroup_vector_property(GraphInterface& g, boost::any vector_prop,
