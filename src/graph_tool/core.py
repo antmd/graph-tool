@@ -80,9 +80,10 @@ def _type_alias(type_name):
     alias = {"int8_t": "bool",
              "boolean": "bool",
              "int": "int32_t",
-             "long": "int32_t",
+             "long": "int64_t",
              "long long": "int64_t",
-             "object": "python::object"}
+             "object": "python::object",
+             "float": "double"}
     if type_name in value_types():
         return type_name
     if type_name in alias:
@@ -235,23 +236,23 @@ class PropertyMap(object):
 
     .. table::
 
-        =======================     ================
+        =======================     ======================
          Type name                  Alias
-        =======================     ================
+        =======================     ======================
         ``bool``                    ``uint8_t``
         ``int32_t``                 ``int``
-        ``int64_t``                 ``long``
+        ``int64_t``                 ``long``, ``long long``
         ``double``                  ``float``
         ``long double``
         ``string``
         ``vector<bool>``            ``vector<uint8_t>``
         ``vector<int32_t>``         ``vector<int>``
-        ``vector<int64_t>``         ``vector<long>``
+        ``vector<int64_t>``         ``vector<long>``, ``vector<long long>``
         ``vector<double>``          ``vector<float>``
         ``vector<long double>``
         ``vector<string>``
         ``python::object``          ``object``
-        =======================     ================
+        =======================     ======================
     """
     def __init__(self, pmap, g, key_type, key_trans=None):
         self.__map = pmap
