@@ -40,11 +40,26 @@ def _wraps(func):
     thus a bit of a hack, but there no better way I know of to do this."""
     def decorate(f):
         argspec = inspect.getargspec(func)
-        args_call = inspect.formatargspec(argspec[0])
-        argspec = inspect.formatargspec(argspec[0], defaults=argspec[3])
+        ___wrap_defaults = defaults = argspec[-1]
+        if defaults is not None:
+            def_string = ["___wrap_defaults[%d]" % d for
+                          d in xrange(len(defaults))]
+            def_names = argspec[0][-len(defaults):]
+        else:
+            def_string = None
+            def_names = None
+        args_call = inspect.formatargspec(argspec[0], defaults=def_names)
+        argspec = inspect.formatargspec(argspec[0], defaults=def_string)
         argspec = argspec.lstrip("(").rstrip(")")
-        wrap = eval("lambda %s: f%s" % (argspec, args_call), locals())
-        return functools.wraps(func)(wrap)
+        wf = "def %s(%s):\n    return f%s\n" % \
+            (func.__name__, argspec, args_call)
+        if def_string is not None:
+            for d in def_string:
+                wf = wf.replace("'%s'" % d, "%s" % d)
+            for d in def_names:
+                wf = wf.replace("'%s'" % d, "%s" % d)
+        exec wf in locals()
+        return functools.wraps(func)(locals()[func.__name__])
     return decorate
 
 
