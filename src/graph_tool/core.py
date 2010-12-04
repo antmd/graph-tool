@@ -631,6 +631,10 @@ class Graph(object):
         self.__edge_index = \
                  PropertyMap(libcore.get_edge_index(self.__graph), self, "e")
 
+        # modification permissions
+        self.__perms = {"add_edge": True, "del_edge": True,
+                        "add_vertex": True, "del_vertex": True}
+
     def copy(self):
         """Return a deep copy of self. All internal property maps are also
         copied."""
@@ -653,6 +657,10 @@ class Graph(object):
 
     # Graph access
     # ============
+
+    def __check_perms(self, ptype):
+        if not self.__perms[ptype]:
+            raise RuntimeError("the graph cannot be modified at this point!")
 
     def vertices(self):
         """Return an iterator over the vertices.
@@ -690,6 +698,7 @@ class Graph(object):
     def add_vertex(self, n=1):
         """Add a vertex to the graph, and return it. If ``n > 1``, ``n``
         vertices are inserted and a list is returned."""
+        self.__check_perms("add_vertex")
         vlist = [libcore.add_vertex(weakref.ref(self.__graph)) \
                  for i in xrange(0, n)]
         if n == 1:
@@ -698,6 +707,7 @@ class Graph(object):
 
     def remove_vertex(self, vertex):
         """Remove a vertex from the graph."""
+        self.__check_perms("del_vertex")
         index = self.vertex_index[vertex]
         for pmap in self.__known_properties:
             if pmap[0] == "v" and pmap[1]() != None and \
@@ -726,10 +736,12 @@ class Graph(object):
     def add_edge(self, source, target):
         """Add a new edge from ``source`` to ``target`` to the graph, and return
         it."""
+        self.__check_perms("add_edge")
         return libcore.add_edge(weakref.ref(self.__graph), source, target)
 
     def remove_edge(self, edge):
         """Remove an edge from the graph."""
+        self.__check_perms("del_edge")
         return libcore.remove_edge(self.__graph, edge)
 
     def remove_edge_if(self, predicate):
@@ -745,10 +757,13 @@ class Graph(object):
 
     def clear(self):
         """Remove all vertices and edges from the graph."""
+        self.__check_perms("del_vertex")
+        self.__check_perms("del_edge")
         self.__graph.Clear()
 
     def clear_edges(self):
         """Remove all edges from the graph."""
+        self.__check_perms("del_edge")
         self.__graph.ClearEdges()
 
     # Internal property maps
