@@ -251,8 +251,9 @@ accessed by vertex or edge descriptors, or the graph itself, as such:
     gprop_bool[g] = True
 
 Property maps with scalar value types can also be accessed as a numpy
-:class:`~numpy.ndarray`, with the :meth:`~graph_tool.PropertyMap.get_array`
-method, i.e.,
+:class:`~numpy.ndarray`, with the
+:meth:`~graph_tool.PropertyMap.get_array` method, or the
+:meth:`~graph_tool.PropertyMap.a` attribute, i.e.,
 
 .. doctest::
 

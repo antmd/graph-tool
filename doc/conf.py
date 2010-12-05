@@ -233,3 +233,5 @@ extlinks = {'ticket': ('http://projects.skewed.de/graph-tool/ticket/%s',
                        'ticket '),
             'doi': ('http://dx.doi.org/%s', 'DOI: ')}
 
+autodoc_member_order='bysource'
+autodoc_default_flags=['members']
