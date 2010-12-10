@@ -66,7 +66,7 @@ struct get_price
 
         for (size_t i = 0; i < N; ++i)
         {
-            unordered_set<typename graph_traits<Graph>::vertex_descriptor>
+            tr1::unordered_set<typename graph_traits<Graph>::vertex_descriptor>
                 visited;
             typename graph_traits<Graph>::vertex_descriptor v = add_vertex(g);
             for (size_t j = 0; j < m; ++j)
