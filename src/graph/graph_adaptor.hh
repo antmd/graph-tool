@@ -68,6 +68,12 @@ public:
         operator[](Descriptor x) const { return this->m_g[x]; }
 #endif // BOOST_GRAPH_NO_BUNDLED_PROPERTIES
 
+#if (BOOST_VERSION / 100 % 1000 >= 45)
+    typedef typename Graph::graph_property_type graph_property_type;
+    typedef typename Graph::graph_bundled graph_bundled;
+    typedef typename Graph::edge_bundled edge_bundled;
+    typedef typename Graph::vertex_bundled vertex_bundled;
+#endif
 
     const Graph& OriginalGraph() const {return _g;}
     Graph& OriginalGraph() {return _g;}

@@ -243,7 +243,7 @@ bool graph_cmp(Graph& g1, Graph& g2)
         if (in_degreeS()(*v1, g1) != in_degreeS()(*v2, g2))
             return false;
 
-        vector<typename graph_traits<Graph>::vertex_iterator> out1, out2;
+        vector<typename graph_traits<Graph>::vertex_descriptor> out1, out2;
         typename graph_traits<Graph>::out_edge_iterator e, e_end;
         for (tie(e, e_end) = out_edges(*v1, g1); e != e_end; ++e)
             out1.push_back(target(*e, g1));

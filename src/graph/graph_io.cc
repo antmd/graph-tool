@@ -39,6 +39,13 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
+// use correct smart pointer type for dynamic properties
+#if (BOOST_VERSION / 100 % 1000 >= 45)
+    #define DP_SMART_PTR boost::shared_ptr
+#else
+    #define DP_SMART_PTR std::auto_ptr
+#endif
+
 //
 // Data type string representation
 // ===============================
@@ -244,7 +251,7 @@ private:
 struct get_python_property
 {
     template <class ValueType, class IndexMap>
-    void operator()(ValueType, IndexMap, dynamic_property_map* map,
+    void operator()(ValueType, IndexMap, dynamic_property_map& map,
                     python::object& pmap) const
     {
         typedef typename property_map_type::apply<ValueType, IndexMap>::type
@@ -254,14 +261,14 @@ struct get_python_property
             pmap = python::object
                 (PythonPropertyMap<map_t>
                  (dynamic_cast
-                  <boost::detail::dynamic_property_map_adaptor<map_t>&>(*map)
+                  <boost::detail::dynamic_property_map_adaptor<map_t>&>(map)
                   .base()));
         } catch (bad_cast&) {}
     }
 };
 
 template <class IndexMap>
-python::object find_property_map(dynamic_property_map* map, IndexMap)
+python::object find_property_map(dynamic_property_map& map, IndexMap)
 {
     python::object pmap;
     mpl::for_each<value_types>(boost::bind<void>(get_python_property(),
@@ -312,9 +319,9 @@ struct create_dynamic_map
 
     create_dynamic_map(VertexIndexMap vertex_map, EdgeIndexMap edge_map)
         :_vertex_map(vertex_map), _edge_map(edge_map) {}
-    auto_ptr<dynamic_property_map> operator()(const string& name,
-                                              const boost::any& key,
-                                              const boost::any& value)
+    DP_SMART_PTR<dynamic_property_map> operator()(const string& name,
+                                                  const boost::any& key,
+                                                  const boost::any& value)
     {
         dynamic_property_map* map;
         try
@@ -343,7 +350,7 @@ struct create_dynamic_map
                       value, map));
             }
         }
-        return auto_ptr<dynamic_property_map>(map);
+        return DP_SMART_PTR<dynamic_property_map>(map);
     }
 
     VertexIndexMap _vertex_map;
@@ -365,6 +372,13 @@ struct GraphEdgeIndexWrap
     typedef typename Graph::edge_property_type edge_property_type;
     typedef typename Graph::graph_tag graph_tag;
     typedef typename Graph::graph_type graph_type;
+
+#if (BOOST_VERSION / 100 % 1000 >= 45)
+    typedef typename Graph::graph_property_type graph_property_type;
+    typedef typename Graph::graph_bundled graph_bundled;
+    typedef typename Graph::edge_bundled edge_bundled;
+    typedef typename Graph::vertex_bundled vertex_bundled;
+#endif
 };
 
 template <class Graph, class EdgeIndexMap>
@@ -530,13 +544,13 @@ python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
         for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)
         {
             if (iter->second->key() == typeid(vertex_t))
-                vprops[iter->first] = find_property_map(iter->second,
+                vprops[iter->first] = find_property_map(*iter->second,
                                                        _vertex_index);
             else if (iter->second->key() == typeid(edge_t))
-                eprops[iter->first] = find_property_map(iter->second,
+                eprops[iter->first] = find_property_map(*iter->second,
                                                        _edge_index);
             else
-                gprops[iter->first] = find_property_map(iter->second,
+                gprops[iter->first] = find_property_map(*iter->second,
                                                         _graph_index);
         }
         return python::make_tuple(vprops, eprops, gprops);
@@ -661,7 +675,7 @@ void GraphInterface::WriteToFile(string file, python::object pfile,
                 (python::extract<boost::any>
                  (props[i][1].attr("get_dynamic_map")()));
             dp.insert(python::extract<string>(props[i][0]),
-                      auto_ptr<dynamic_property_map>(pmap));
+                      DP_SMART_PTR<dynamic_property_map>(pmap));
         }
 
         if (IsVertexFilterActive())

@@ -10,6 +10,7 @@
 #ifndef BOOST_FILTERED_GRAPH_HPP
 #define BOOST_FILTERED_GRAPH_HPP
 
+#include <boost/version.hpp>
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/properties.hpp>
 #include <boost/graph/adjacency_iterator.hpp>
@@ -129,6 +130,14 @@ namespace boost {
     typedef graph_traits<G> Traits;
     typedef typename Traits::vertex_descriptor          vertex_descriptor;
     typedef typename Traits::edge_descriptor            edge_descriptor;
+
+#if (BOOST_VERSION / 100 % 1000 >= 45)
+    typedef typename G::graph_property_type graph_property_type;
+    typedef typename G::graph_bundled graph_bundled;
+    typedef typename G::edge_bundled edge_bundled;
+    typedef typename G::vertex_bundled vertex_bundled;
+#endif
+
     filtered_graph_base(const G& g) : m_g(g) { }
     //protected:
     const G& m_g;
