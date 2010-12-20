@@ -678,10 +678,10 @@ class Graph(object):
         """
         return libcore.get_vertices(weakref.ref(self.__graph))
 
-    def vertex(self, i, use_index=False):
-        """Return the i-th vertex from the graph. If use_index=True, the vertex
-        with index i is returned (which can differ from the i-th vertex in case
-        of filtered graphs)."""
+    def vertex(self, i, use_index=True):
+        """Return the vertex with index ``i``. If ``use_index=False``, the
+        ``i``-th vertex is returned (which can differ from the vertex with index
+        ``i`` in case of filtered graphs). """
         if use_index:
             self.stash_filter(vertex=True)
         try:
