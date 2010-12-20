@@ -691,6 +691,26 @@ class Graph(object):
                 self.pop_filter(vertex=True)
         return v
 
+    def edge(self, s, t, all_edges=False):
+        """Return the edge from vertex ``s`` to ``t``, if it exists. If
+        ``all_edges=True`` then a list is returned with all the parallel edges
+        from ``s`` to ``t``, otherwise only one edge is returned.
+
+        This operation will take :math:`O(k(s))` time, where :math:`k(s)` is the
+        out-degree of vertex :math:`s`.
+        """
+        s = self.vertex(int(s))
+        t = self.vertex(int(t))
+        edges = []
+        for e in s.out_edges():
+            if e.target() == t:
+                if not all_edges:
+                    return e
+                edges.append(e)
+        if all_edges:
+            return edges
+        return None
+
     def edges(self):
         """Return an iterator over the edges."""
         return libcore.get_edges(weakref.ref(self.__graph))
