@@ -113,7 +113,7 @@ def assortativity(g, deg):
     References
     ----------
     .. [newman-mixing-2003] M. E. J. Newman, "Mixing patterns in networks",
-        Phys. Rev. E 67, 026126 (2003)
+        Phys. Rev. E 67, 026126 (2003), :doi:`10.1103/PhysRevE.67.026126`
     .. _jackknife method: http://en.wikipedia.org/wiki/Resampling_%28statistics%29#Jackknife
 
     """
@@ -188,7 +188,7 @@ def scalar_assortativity(g, deg):
     References
     ----------
     .. [newman-mixing-2003] M. E. J. Newman, "Mixing patterns in networks",
-        Phys. Rev. E 67, 026126 (2003)
+        Phys. Rev. E 67, 026126 (2003), :doi:`10.1103/PhysRevE.67.026126`
     .. _jackknife method: http://en.wikipedia.org/wiki/Resampling_%28statistics%29#Jackknife
     """
     return libgraph_tool_correlations.\

@@ -143,7 +143,7 @@ def subgraph_isomorphism(sub, g, max_n=0, random=True):
     References
     ----------
     .. [ullmann-algorithm-1976] Ullmann, J. R., "An algorithm for subgraph
-       isomorphism", Journal of the ACM 23 (1): 31–42, 1976, doi:10.1145/321921.321925
+       isomorphism", Journal of the ACM 23 (1): 31–42, 1976, :doi:`10.1145/321921.321925`
     .. [subgraph-isormophism-wikipedia] http://en.wikipedia.org/wiki/Subgraph_isomorphism_problem
 
     """
@@ -255,7 +255,8 @@ def min_spanning_tree(g, weights=None, root=None, tree_map=None):
     ----------
     .. [kruskal-shortest-1956] J. B. Kruskal.  "On the shortest spanning subtree
        of a graph and the traveling salesman problem",  In Proceedings of the
-       American Mathematical Sofiety, volume 7, pages 48-50, 1956.
+       American Mathematical Society, volume 7, pages 48-50, 1956.
+       :doi:`10.1090/S0002-9939-1956-0078686-7`
     .. [prim-shortest-1957] R. Prim.  "Shortest connection networks and some
        generalizations",  Bell System Technical Journal, 36:1389-1401, 1957.
     .. [boost-mst] http://www.boost.org/libs/graph/doc/graph_theory_review.html#sec:minimum-spanning-tree
@@ -659,10 +660,11 @@ def shortest_distance(g, source=None, weights=None, max_dist=None,
     ----------
     .. [bfs] Edward Moore, "The shortest path through a maze", International
        Symposium on the Theory of Switching (1959), Harvard University
-       Press;http://www.boost.org/libs/graph/doc/breadth_first_search.html
+       Press;
+    .. [bfs-boost] http://www.boost.org/libs/graph/doc/breadth_first_search.html
     .. [dijkstra] E. Dijkstra, "A note on two problems in connexion with
        graphs." Numerische Mathematik, 1:269-271, 1959.
-       http://www.boost.org/libs/graph/doc/dijkstra_shortest_paths.html
+    .. [dijkstra-boost] http://www.boost.org/libs/graph/doc/dijkstra_shortest_paths.html
     .. [johnson-apsp] http://www.boost.org/libs/graph/doc/johnson_all_pairs_shortest.html
     .. [floyd-warshall-apsp] http://www.boost.org/libs/graph/doc/floyd_warshall_shortest.html
     """
@@ -764,10 +766,11 @@ def shortest_path(g, source, target, weights=None, pred_map=None):
     ----------
     .. [bfs] Edward Moore, "The shortest path through a maze", International
        Symposium on the Theory of Switching (1959), Harvard University
-       Press;http://www.boost.org/libs/graph/doc/breadth_first_search.html
+       Press
+    .. [bfs-boost] http://www.boost.org/libs/graph/doc/breadth_first_search.html
     .. [dijkstra] E. Dijkstra, "A note on two problems in connexion with
        graphs." Numerische Mathematik, 1:269-271, 1959.
-       http://www.boost.org/libs/graph/doc/dijkstra_shortest_paths.html
+    .. [dijkstra-boost] http://www.boost.org/libs/graph/doc/dijkstra_shortest_paths.html
     """
 
     if pred_map == None:

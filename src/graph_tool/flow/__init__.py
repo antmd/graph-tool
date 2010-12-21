@@ -130,7 +130,7 @@ def edmonds_karp_max_flow(g, source, target, capacity, residual=None):
     .. [boost-edmonds-karp] http://www.boost.org/libs/graph/doc/edmonds_karp_max_flow.html
     .. [edmonds-theoretical-1972] Jack Edmonds and Richard M. Karp, "Theoretical
        improvements in the algorithmic efficiency for network flow problems.
-       Journal of the ACM", 1972 19:248-264
+       Journal of the ACM", 19:248-264, 1972 :doi:`10.1145/321694.321699`
     .. [ravindra-network-1993] Ravindra K. Ahuja and Thomas L. Magnanti and
        James B. Orlin,"Network Flows: Theory, Algorithms, and Applications".
        Prentice Hall, 1993.

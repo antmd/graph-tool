@@ -121,7 +121,7 @@ def local_clustering(g, prop=None, undirected=False):
     ----------
     .. [watts-collective-1998] D. J. Watts and Steven Strogatz, "Collective
        dynamics of 'small-world' networks", Nature, vol. 393, pp 440-442, 1998.
-       doi:10.1038/30918
+       :doi:`10.1038/30918`
     """
 
     if prop == None:
@@ -183,7 +183,8 @@ def global_clustering(g):
     References
     ----------
     .. [newman-structure-2003] M. E. J. Newman, "The structure and function of
-       complex networks", SIAM Review, vol. 45, pp. 167-256, 2003
+       complex networks", SIAM Review, vol. 45, pp. 167-256, 2003,
+       :doi:`10.1137/S003614450342480`
     """
 
     c =_gt.global_clustering(g._Graph__graph)
@@ -261,7 +262,7 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
     References
     ----------
     .. [abdo-clustering] A. H. Abdo, A. P. S. de Moura, "Clustering as a
-       measure of the local topology of networks", arXiv:physics/0605235v4
+       measure of the local topology of networks", :arxiv:`physics/0605235`
     """
 
     was_directed = g.is_directed()
@@ -345,6 +346,7 @@ def motifs(g, k, p=1.0, motif_list=None, undirected=None):
     .. [wernicke-efficient-2006] S. Wernicke, "Efficient detection of network
        motifs", IEEE/ACM Transactions on Computational Biology and
        Bioinformatics (TCBB), Volume 3, Issue 4, Pages 347-359, 2006.
+       :doi:`10.1109/TCBB.2006.51`
     """
 
     seed = random.randint(0, sys.maxint)

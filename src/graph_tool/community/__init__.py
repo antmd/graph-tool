@@ -193,10 +193,10 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
     ----------
     .. [reichard-statistical-2006] Joerg Reichardt and Stefan Bornholdt,
        "Statistical Mechanics of Community Detection", Phys. Rev. E 74 (2006)
-       016110, arXiv:cond-mat/0603718
+       016110, :doi:`10.1103/PhysRevE.74.016110`, :arxiv:`cond-mat/0603718`
     .. [newman-modularity-2006] M. E. J. Newman, "Modularity and community
        structure in networks", Proc. Natl. Acad. Sci. USA 103, 8577-8582 (2006),
-       arXiv:physics/0602124
+       :doi:`10.1073/pnas.0601602103`, :arxiv:`physics/0602124`
     .. _simulated annealing: http://en.wikipedia.org/wiki/Simulated_annealing
     """
 
@@ -215,6 +215,7 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
                                                 _prop("e", g, weight),
                                                 _prop("v", g, spins))
     return spins
+
 
 def modularity(g, prop, weight=None):
     r"""
@@ -269,7 +270,7 @@ def modularity(g, prop, weight=None):
     ----------
     .. [newman-modularity-2006] M. E. J. Newman, "Modularity and community
        structure in networks", Proc. Natl. Acad. Sci. USA 103, 8577-8582 (2006),
-       arXiv:physics/0602124
+       :doi:`10.1073/pnas.0601602103`, :arxiv:`physics/0602124`
     """
 
     m = libgraph_tool_community.modularity(g._Graph__graph,

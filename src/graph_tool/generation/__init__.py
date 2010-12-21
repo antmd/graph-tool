@@ -807,7 +807,7 @@ def geometric_graph(points, radius, ranges=None):
     References
     ----------
     .. [geometric-graph] Jesper Dall and Michael Christensen, "Random geometric
-       graphs", Phys. Rev. E 66, 016121 (2002), DOI: 10.1103/PhysRevE.66.016121
+       graphs", Phys. Rev. E 66, 016121 (2002), :doi:`10.1103/PhysRevE.66.016121`
 
     """
 
@@ -923,17 +923,17 @@ def price_network(N, m=1, c=None, gamma=1, directed=True, seed_graph=None):
     .. [yule] Yule, G. U. "A Mathematical Theory of Evolution, based on the
        Conclusions of Dr. J. C. Willis, F.R.S.". Philosophical Transactions of
        the Royal Society of London, Ser. B 213: 21–87, 1925,
-       doi:10.1098/rstb.1925.0002
+       :doi:`10.1098/rstb.1925.0002`
     .. [price] Derek De Solla Price, "A general theory of bibliometric and other
        cumulative advantage processes", Journal of the American Society for
        Information Science, Volume 27, Issue 5, pages 292–306, September 1976,
-       DOI: 10.1002/asi.4630270505
+       :doi:`10.1002/asi.4630270505`
     .. [barabasi-albert] Barabási, A.-L., and Albert, R., "Emergence of
-       scaling in random networks", Science, 286, 509, 1999;
-       DOI: 10.1126/science.286.5439.509
+       scaling in random networks", Science, 286, 509, 1999,
+       :doi:`10.1126/science.286.5439.509`
     .. [dorogovtsev-evolution] S. N. Dorogovtsev and J. F. F. Mendes, "Evolution
        of networks", Advances in Physics, 2002, Vol. 51, No. 4, 1079-1187,
-       DOI: 10.1080/00018730110112519
+       :doi:`10.1080/00018730110112519`
     """
 
     if c is None:

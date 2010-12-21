@@ -132,6 +132,7 @@ from numpy import *
 import scipy
 import scipy.stats
 from math import *
+import numpy as np
 import graph_tool.all as gt
 """
 
@@ -231,7 +232,8 @@ intersphinx_mapping = {'http://docs.python.org': None,
 
 extlinks = {'ticket': ('http://projects.skewed.de/graph-tool/ticket/%s',
                        'ticket '),
-            'doi': ('http://dx.doi.org/%s', 'DOI: ')}
+            'doi': ('http://dx.doi.org/%s', 'DOI: '),
+            'arxiv': ('http://arxiv.org/abs/%s', 'arXiv: ')}
 
-autodoc_member_order='bysource'
-autodoc_default_flags=['members']
+autodoc_member_order = 'bysource'
+autodoc_default_flags = ['members']
