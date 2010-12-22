@@ -40,7 +40,7 @@ using namespace boost;
 using namespace graph_tool;
 
 // use correct smart pointer type for dynamic properties
-#if (BOOST_VERSION / 100 % 1000 >= 45)
+#if (BOOST_VERSION / 100 % 1000 >= 44)
     #define DP_SMART_PTR boost::shared_ptr
 #else
     #define DP_SMART_PTR std::auto_ptr
