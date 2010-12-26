@@ -51,7 +51,7 @@ __all__ = ["pagerank", "betweenness", "central_point_dominance", "eigentrust",
            "trust_transitivity"]
 
 
-def pagerank(g, damping=0.8, prop=None, epslon=1e-6, max_iter=None,
+def pagerank(g, damping=0.8, prop=None, epsilon=1e-6, max_iter=None,
              ret_iter=False):
     r"""
     Calculate the PageRank of each vertex.
@@ -64,7 +64,7 @@ def pagerank(g, damping=0.8, prop=None, epslon=1e-6, max_iter=None,
         Damping factor.
     prop : :class:`~graph_tool.PropertyMap`, optional (default: None)
         Vertex property map to store the PageRank values.
-    epslon : float, optional (default: 1e-6)
+    epsilon : float, optional (default: 1e-6)
         Convergence condition. The iteration will stop if the total delta of all
         vertices are below this value.
     max_iter : int, optional (default: None)
@@ -97,7 +97,7 @@ def pagerank(g, damping=0.8, prop=None, epslon=1e-6, max_iter=None,
     the out-degree of w, and d is a damping factor.
 
     The implemented algorithm progressively iterates the above condition, until
-    it no longer changes, according to the parameter epslon. It has a
+    it no longer changes, according to the parameter epsilon. It has a
     topology-dependent running time.
 
     If enabled during compilation, this algorithm runs in parallel.
@@ -140,7 +140,7 @@ def pagerank(g, damping=0.8, prop=None, epslon=1e-6, max_iter=None,
     if prop == None:
         prop = g.new_vertex_property("double")
     ic = libgraph_tool_centrality.\
-            get_pagerank(g._Graph__graph, _prop("v", g, prop), damping, epslon,
+            get_pagerank(g._Graph__graph, _prop("v", g, prop), damping, epsilon,
                          max_iter)
     if ret_iter:
         return prop, ic
@@ -310,7 +310,7 @@ def central_point_dominance(g, betweenness):
                                        _prop("v", g, betweenness))
 
 
-def eigentrust(g, trust_map, vprop=None, norm=False, epslon=1e-6, max_iter=0,
+def eigentrust(g, trust_map, vprop=None, norm=False, epsilon=1e-6, max_iter=0,
                ret_iter=False):
     r"""
     Calculate the eigentrust centrality of each vertex in the graph.
@@ -326,7 +326,7 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epslon=1e-6, max_iter=0,
         Vertex property map where the values of eigentrust must be stored.
     norm : bool, optional (default: false)
         Norm eigentrust values so that the total sum equals 1.
-    epslon : float, optional (default: 1e-6)
+    epsilon : float, optional (default: 1e-6)
         Convergence condition. The iteration will stop if the total delta of all
         vertices are below this value.
     max_iter : int, optional (default: None)
@@ -403,7 +403,7 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epslon=1e-6, max_iter=0,
         vprop = g.new_vertex_property("double")
     i = libgraph_tool_centrality.\
            get_eigentrust(g._Graph__graph, _prop("e", g, trust_map),
-                          _prop("v", g, vprop), epslon, max_iter)
+                          _prop("v", g, vprop), epsilon, max_iter)
     if norm:
         vprop.get_array()[:] /= sum(vprop.get_array())
 
