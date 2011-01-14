@@ -24,11 +24,12 @@ using namespace boost;
 template <class Graph, class AugmentedMap, class CapacityMap,
           class ReversedMap,  class ResidualMap>
 void augment_graph(Graph& g, AugmentedMap augmented, CapacityMap capacity,
-                   ReversedMap rmap, ResidualMap res)
+                   ReversedMap rmap, ResidualMap res,
+                   bool detect_reversed = false)
 {
     typename graph_traits<Graph>::edge_iterator e, e_end;
     for (tie(e,e_end) = edges(g); e != e_end; ++e)
-        augmented[*e] = false;
+        augmented[*e] = 0;
 
     typename graph_traits<Graph>::vertex_iterator v, v_end;
     vector<typename graph_traits<Graph>::edge_descriptor> e_list;
@@ -39,7 +40,27 @@ void augment_graph(Graph& g, AugmentedMap augmented, CapacityMap capacity,
         typename graph_traits<Graph>::out_edge_iterator e, e_end;
         for (tie(e, e_end) = out_edges(*v, g); e != e_end; ++e)
         {
-            if (!augmented[*e])
+            if (detect_reversed && augmented[*e] != 0)
+            {
+                typename graph_traits<Graph>::out_edge_iterator e2, e2_end;
+                for (tie(e2, e2_end) = out_edges(target(*e, g), g);
+                     e2 != e2_end; ++e2)
+                {
+                    if (augmented[*e2] != 0)
+                        continue;
+
+                    if (target(*e2, g) == *v)
+                    {
+                        augmented[*e] = 2;
+                        augmented[*e2] = 2;
+                        rmap[*e] = *e2;
+                        rmap[*e2] = *e;
+                        break;
+                    }
+                }
+            }
+
+            if (augmented[*e] == 0)
                 e_list.push_back(*e);
         }
 
@@ -47,7 +68,7 @@ void augment_graph(Graph& g, AugmentedMap augmented, CapacityMap capacity,
         {
             typename graph_traits<Graph>::edge_descriptor ae;
             ae = add_edge(target(e_list[i],g), source(e_list[i],g), g).first;
-            augmented[ae] = true;
+            augmented[ae] = 1;
             capacity[ae] = 0;
             rmap[e_list[i]] = ae;
             rmap[ae] = e_list[i];
@@ -67,12 +88,12 @@ void deaugment_graph(Graph& g, AugmentedMap augmented)
         typename graph_traits<Graph>::out_edge_iterator e, e_end;
         for (tie(e, e_end) = out_edges(*v, g); e != e_end; ++e)
         {
-            if (augmented[*e])
+            if (augmented[*e] == 1)
                 e_list.push_back(*e);
         }
 
         for (size_t i = 0; i < e_list.size(); ++i)
-            remove_edge(e_list[i],g);
+            remove_edge(e_list[i], g);
     }
 }
 

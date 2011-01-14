@@ -44,12 +44,18 @@ min(const T1& v1, const T2& v2)
 }
 }
 
-#include <boost/graph/kolmogorov_max_flow.hpp>
-
 #include <boost/bind.hpp>
 
 using namespace graph_tool;
 using namespace boost;
+
+#if (BOOST_VERSION >= 104400)
+# include <boost/graph/boykov_kolmogorov_max_flow.hpp>
+# define KOLMOGOROV_MAX_FLOW boost::boykov_kolmogorov_max_flow
+#else
+# include <boost/graph/kolmogorov_max_flow.hpp>
+# define KOLMOGOROV_MAX_FLOW boost::kolmogorov_max_flow
+#endif
 
 struct get_kolmogorov_max_flow
 {
@@ -72,18 +78,21 @@ struct get_kolmogorov_max_flow
             dist_map(vertex_index, num_vertices(g));
 
         augment_graph(g, augmented.get_checked(), cm,
-                      reverse_map.get_checked(), res);
-        boost::kolmogorov_max_flow(g._g, get_unchecked(cm),
-                                   res.get_unchecked(), reverse_map, pred_map,
-                                   color_map, dist_map, vertex_index,
-                                   vertex(src, g), vertex(sink, g));
+                      reverse_map.get_checked(), res, true);
+
+        KOLMOGOROV_MAX_FLOW(g._g, get_unchecked(cm),
+                            res.get_unchecked(), reverse_map, pred_map,
+                            color_map, dist_map, vertex_index,
+                            vertex(src, g), vertex(sink, g));
+
         deaugment_graph(g, augmented.get_checked());
+
     }
 };
 
 
 void kolmogorov_max_flow(GraphInterface& gi, size_t src, size_t sink,
-                           boost::any capacity, boost::any res)
+                         boost::any capacity, boost::any res)
 {
     run_action<graph_tool::detail::always_directed, mpl::true_>()
         (gi, bind<void>(get_kolmogorov_max_flow(),

@@ -61,17 +61,20 @@ struct get_push_relabel_max_flow
                     size_t sink, CapacityMap cm, ResidualMap res) const
     {
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
-        unchecked_vector_property_map<bool,EdgeIndex>
-            augmented(edge_index, max_e);
+        checked_vector_property_map<bool,EdgeIndex>
+            augmented(edge_index);
         unchecked_vector_property_map<edge_t,EdgeIndex>
             reverse_map(edge_index, max_e);
-        augment_graph(g, augmented.get_checked(), cm,
+
+        augment_graph(g, augmented, cm,
                       reverse_map.get_checked(), res);
+
         boost::push_relabel_max_flow(g._g, vertex(src, g), vertex(sink, g),
                                      capacity_map(get_unchecked(cm)).
                                      reverse_edge_map(reverse_map).
                                      residual_capacity_map(res.get_unchecked()));
-        deaugment_graph(g, augmented.get_checked());
+
+        deaugment_graph(g, augmented);
     }
 };
 

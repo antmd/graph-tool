@@ -30,7 +30,7 @@ Summary
 
    edmonds_karp_max_flow
    push_relabel_max_flow
-   kolmogorov_max_flow
+   boykov_kolmogorov_max_flow
    max_cardinality_matching
 
 Contents
@@ -42,12 +42,12 @@ dl_import("import libgraph_tool_flow")
 
 from .. core import _prop, _check_prop_scalar, _check_prop_writable
 __all__ = ["edmonds_karp_max_flow", "push_relabel_max_flow",
-           "kolmogorov_max_flow", "max_cardinality_matching"]
+           "boykov_kolmogorov_max_flow", "max_cardinality_matching"]
 
 
 def edmonds_karp_max_flow(g, source, target, capacity, residual=None):
     r"""
-    Calculate maximum flow on the graph with Edmonds-Karp algorithm.
+    Calculate maximum flow on the graph with the Edmonds-Karp algorithm.
 
     Parameters
     ----------
@@ -75,8 +75,8 @@ def edmonds_karp_max_flow(g, source, target, capacity, residual=None):
 
     This algorithm provides a very simple and easy to implement solution to the
     maximum flow problem. However, there are several reasons why this algorithm
-    is not as good as the push_relabel_max_flow() or the kolmogorov_max_flow()
-    algorithm.
+    is not as good as the push_relabel_max_flow() or the
+    boykov_kolmogorov_max_flow() algorithm.
 
     - In the non-integer capacity case, the time complexity is :math:`O(V E^2)`
       which is worse than the time complexity of the push-relabel algorithm
@@ -142,16 +142,19 @@ def edmonds_karp_max_flow(g, source, target, capacity, residual=None):
     _check_prop_scalar(residual, "residual")
     _check_prop_writable(residual, "residual")
 
+    if not g.is_directed():
+        raise ValueError("The graph provided must be directed!")
+
     libgraph_tool_flow.\
-           edmonds_karp_max_flow(g._Graph__graph, int(source), int(target),
-                                 _prop("e", g, capacity),
-                                 _prop("e", g, residual))
+               edmonds_karp_max_flow(g._Graph__graph, int(source), int(target),
+                                     _prop("e", g, capacity),
+                                     _prop("e", g, residual))
     return residual
 
 
 def push_relabel_max_flow(g, source, target, capacity, residual=None):
     r"""
-    Calculate maximum flow on the graph with push-relabel algorithm.
+    Calculate maximum flow on the graph with the push-relabel algorithm.
 
     Parameters
     ----------
@@ -231,15 +234,19 @@ def push_relabel_max_flow(g, source, target, capacity, residual=None):
     _check_prop_scalar(residual, "residual")
     _check_prop_writable(residual, "residual")
 
+    if not g.is_directed():
+        raise ValueError("The graph provided must be directed!")
+
     libgraph_tool_flow.\
-           push_relabel_max_flow(g._Graph__graph, int(source), int(target),
-                                 _prop("e", g, capacity),
-                                 _prop("e", g, residual))
+               push_relabel_max_flow(g._Graph__graph, int(source), int(target),
+                                     _prop("e", g, capacity),
+                                     _prop("e", g, residual))
+
     return residual
 
 
-def kolmogorov_max_flow(g, source, target, capacity, residual=None):
-    r"""Calculate maximum flow on the graph with Kolmogorov algorithm.
+def boykov_kolmogorov_max_flow(g, source, target, capacity, residual=None):
+    r"""Calculate maximum flow on the graph with the Boykov-Kolmogorov algorithm.
 
     Parameters
     ----------
@@ -276,51 +283,35 @@ def kolmogorov_max_flow(g, source, target, capacity, residual=None):
     >>> g = gt.random_graph(100, lambda: (2,2))
     >>> c = g.new_edge_property("double")
     >>> c.a = random(len(c.a))
-    >>> res = gt.push_relabel_max_flow(g, g.vertex(0), g.vertex(1), c)
+    >>> res = gt.boykov_kolmogorov_max_flow(g, g.vertex(0), g.vertex(1), c)
     >>> res.a = c.a - res.a  # the actual flow
     >>> print res.a[0:g.num_edges()]
-    [ 0.00730949  0.0835572   0.          0.          0.          0.          0.
-      0.06926091  0.06926091  0.          0.07624771  0.          0.03957485
-      0.05028544  0.05028544  0.          0.          0.          0.07624771
-      0.07624771  0.          0.07624771  0.          0.          0.07624771
-      0.          0.          0.          0.          0.          0.20608185
-      0.03395359  0.          0.          0.06926091  0.          0.          0.
-      0.          0.          0.          0.          0.06926091  0.
-      0.03957485  0.          0.          0.          0.          0.
-      0.02596227  0.05028544  0.12983414  0.          0.          0.
-      0.06926091  0.          0.20608185  0.          0.          0.          0.
-      0.12983414  0.          0.          0.          0.04480769  0.          0.
-      0.          0.06926091  0.          0.          0.06926091  0.03957485
-      0.06926091  0.05028544  0.          0.06057324  0.          0.
-      0.00730949  0.          0.          0.          0.          0.02596227
-      0.          0.03667285  0.          0.          0.          0.          0.
-      0.          0.          0.0835572   0.          0.          0.          0.
-      0.07624771  0.12983414  0.12983414  0.          0.          0.
-      0.02596227  0.          0.          0.          0.          0.05028544
-      0.          0.          0.          0.04480769  0.          0.          0.
-      0.          0.00730949  0.          0.          0.06926091  0.
-      0.05028544  0.          0.          0.03395359  0.          0.          0.
-      0.          0.          0.          0.06057324  0.          0.          0.
-      0.03395359  0.          0.          0.          0.          0.01633184
-      0.          0.          0.          0.          0.02596227  0.          0.
-      0.          0.          0.          0.          0.03395359  0.          0.
-      0.          0.          0.          0.00547774  0.          0.12983414
-      0.03395359  0.          0.          0.          0.          0.00547774
-      0.          0.          0.          0.          0.          0.03957485
-      0.03395359  0.          0.06926091  0.          0.          0.          0.
+    [ 0.13339096  0.13339096  0.          0.          0.          0.          0.
+      0.          0.00730949  0.          0.          0.          0.          0.
       0.          0.          0.          0.          0.          0.          0.
-      0.00730949  0.07624771  0.20608185  0.          0.          0.          0.        ]
+      0.          0.          0.          0.          0.          0.          0.
+      0.          0.          0.          0.          0.          0.          0.
+      0.          0.          0.          0.          0.          0.          0.
+      0.          0.          0.          0.          0.          0.          0.
+      0.          0.          0.          0.          0.          0.          0.
+      0.          0.          0.20608185  0.          0.          0.
+      0.07269089  0.          0.00730949  0.          0.          0.          0.
+      0.13339096  0.          0.          0.          0.          0.          0.
+      0.          0.          0.          0.07269089  0.          0.          0.
+      0.          0.          0.          0.          0.          0.          0.
+      0.          0.          0.          0.          0.          0.          0.        ]
 
     References
     ----------
     .. [boost-kolmogorov] http://www.boost.org/libs/graph/doc/kolmogorov_max_flow.html
     .. [kolmogorov-graph-2003] Vladimir Kolmogorov, "Graph Based Algorithms for
        Scene Reconstruction from Two or More Views", PhD thesis, Cornell
-        University, September 2003.
+       University, September 2003.
     .. [boykov-experimental-2004] Yuri Boykov and Vladimir Kolmogorov, "An
        Experimental Comparison of Min-Cut/Max-Flow Algorithms for Energy
-       Minimization", Vision In IEEE Transactions on Pattern Analysis and
+       Minimization in Vision", IEEE Transactions on Pattern Analysis and
        Machine Intelligence, vol. 26, no. 9, pp. 1124-1137, Sept. 2004.
+       :doi:`10.1109/TPAMI.2004.60`
     """
     _check_prop_scalar(capacity, "capacity")
     if residual == None:
@@ -328,10 +319,13 @@ def kolmogorov_max_flow(g, source, target, capacity, residual=None):
     _check_prop_scalar(residual, "residual")
     _check_prop_writable(residual, "residual")
 
+    if not g.is_directed():
+        raise ValueError("The graph provided must be directed!")
+
     libgraph_tool_flow.\
-           kolmogorov_max_flow(g._Graph__graph, int(source), int(target),
-                                 _prop("e", g, capacity),
-                                 _prop("e", g, residual))
+               kolmogorov_max_flow(g._Graph__graph, int(source), int(target),
+                                   _prop("e", g, capacity),
+                                   _prop("e", g, residual))
     return residual
 
 
@@ -385,9 +379,12 @@ def max_cardinality_matching(g, match=None):
     _check_prop_scalar(match, "match")
     _check_prop_writable(match, "match")
 
-    g.stash_filter(directed=True)
-    g.set_directed(False)
-    check = libgraph_tool_flow.\
-            max_cardinality_matching(g._Graph__graph, _prop("e", g, match))
-    g.pop_filter(directed=True)
+    try:
+        g.stash_filter(directed=True)
+        g.set_directed(False)
+        check = libgraph_tool_flow.\
+                max_cardinality_matching(g._Graph__graph, _prop("e", g, match))
+    finally:
+        g.pop_filter(directed=True)
+
     return match, check
