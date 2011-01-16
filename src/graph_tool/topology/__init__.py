@@ -182,9 +182,9 @@ def mark_subgraph(g, sub, vmap, emap, vmask=None, emask=None):
     indicating whether or not a vertex/edge in `g` corresponds to the subgraph
     `sub`.
     """
-    if vmask == None:
+    if vmask is None:
         vmask = g.new_vertex_property("bool")
-    if emask == None:
+    if emask is None:
         emask = g.new_edge_property("bool")
 
     vmask.a = False
@@ -213,7 +213,7 @@ def min_spanning_tree(g, weights=None, root=None, tree_map=None):
         The edge weights. If provided, the minimum spanning tree will minimize
         the edge weights.
     root : :class:`~graph_tool.Vertex` (optional, default: None)
-        Root of the minimum spanning tree. It this is provided, Prim's algorithm
+        Root of the minimum spanning tree. If this is provided, Prim's algorithm
         is used. Otherwise, Kruskal's algorithm is used.
     tree_map : :class:`~graph_tool.PropertyMap` (optional, default: None)
         If provided, the edge tree map will be written in this property map.
@@ -262,24 +262,26 @@ def min_spanning_tree(g, weights=None, root=None, tree_map=None):
     .. [boost-mst] http://www.boost.org/libs/graph/doc/graph_theory_review.html#sec:minimum-spanning-tree
     .. [mst-wiki] http://en.wikipedia.org/wiki/Minimum_spanning_tree
     """
-    if tree_map == None:
+    if tree_map is None:
         tree_map = g.new_edge_property("bool")
     if tree_map.value_type() != "bool":
         raise ValueError("edge property 'tree_map' must be of value type bool.")
 
-    g.stash_filter(directed=True)
-    g.set_directed(False)
-    if root == None:
-        libgraph_tool_topology.\
-               get_kruskal_spanning_tree(g._Graph__graph,
-                                         _prop("e", g, weights),
-                                         _prop("e", g, tree_map))
-    else:
-        libgraph_tool_topology.\
-               get_prim_spanning_tree(g._Graph__graph, int(root),
-                                      _prop("e", g, weights),
-                                      _prop("e", g, tree_map))
-    g.pop_filter(directed=True)
+    try:
+        g.stash_filter(directed=True)
+        g.set_directed(False)
+        if root is None:
+            libgraph_tool_topology.\
+                   get_kruskal_spanning_tree(g._Graph__graph,
+                                             _prop("e", g, weights),
+                                             _prop("e", g, tree_map))
+        else:
+            libgraph_tool_topology.\
+                   get_prim_spanning_tree(g._Graph__graph, int(root),
+                                          _prop("e", g, weights),
+                                          _prop("e", g, tree_map))
+    finally:
+        g.pop_filter(directed=True)
     return tree_map
 
 
@@ -328,7 +330,7 @@ def dominator_tree(g, root, dom_map=None):
     .. [dominator-bgl] http://www.boost.org/libs/graph/doc/lengauer_tarjan_dominator.htm
 
     """
-    if dom_map == None:
+    if dom_map is None:
         dom_map = g.new_vertex_property("int32_t")
     if dom_map.value_type() != "int32_t":
         raise ValueError("vertex property 'dom_map' must be of value type" +
@@ -455,21 +457,22 @@ def label_components(g, vprop=None, directed=None):
      1 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0]
     """
 
-    if vprop == None:
+    if vprop is None:
         vprop = g.new_vertex_property("int32_t")
 
     _check_prop_writable(vprop, name="vprop")
     _check_prop_scalar(vprop, name="vprop")
 
-    if directed != None:
-        g.stash_filter(directed=True)
-        g.set_directed(directed)
+    try:
+        if directed is not None:
+            g.stash_filter(directed=True)
+            g.set_directed(directed)
 
-    libgraph_tool_topology.\
-          label_components(g._Graph__graph, _prop("v", g, vprop))
-
-    if directed != None:
-        g.pop_filter(directed=True)
+        libgraph_tool_topology.\
+              label_components(g._Graph__graph, _prop("v", g, vprop))
+    finally:
+        if directed is not None:
+            g.pop_filter(directed=True)
     return vprop
 
 
@@ -538,9 +541,9 @@ def label_biconnected_components(g, eprop=None, vprop=None):
 
     """
 
-    if vprop == None:
+    if vprop is None:
         vprop = g.new_vertex_property("bool")
-    if eprop == None:
+    if eprop is None:
         eprop = g.new_edge_property("int32_t")
 
     _check_prop_writable(vprop, name="vprop")
@@ -578,13 +581,13 @@ def shortest_distance(g, source=None, weights=None, max_dist=None,
         the edge weights.
     max_dist : scalar value (optional, default: None)
         If specified, this limits the maximum distance of the vertices
-        are searched. This parameter has no effect if source == None.
+        are searched. This parameter has no effect if source is None.
     directed : bool (optional, default:None)
         Treat graph as directed or not, independently of its actual
         directionality.
     dense : bool (optional, default: False)
-        If true, and source == None, the Floyd-Warshall algorithm is used,
-        otherwise the Johnson algorithm is used. If source != None, this option
+        If true, and source is None, the Floyd-Warshall algorithm is used,
+        otherwise the Johnson algorithm is used. If source is not None, this option
         has no effect.
     dist_map : :class:`~graph_tool.PropertyMap` (optional, default: None)
         Vertex property to store the distances. If none is supplied, one
@@ -669,32 +672,32 @@ def shortest_distance(g, source=None, weights=None, max_dist=None,
     .. [floyd-warshall-apsp] http://www.boost.org/libs/graph/doc/floyd_warshall_shortest.html
     """
 
-    if weights == None:
+    if weights is None:
         dist_type = 'int32_t'
     else:
         dist_type = weights.value_type()
 
-    if dist_map == None:
-        if source != None:
+    if dist_map is None:
+        if source is not None:
             dist_map = g.new_vertex_property(dist_type)
         else:
             dist_map = g.new_vertex_property("vector<%s>" % dist_type)
 
     _check_prop_writable(dist_map, name="dist_map")
-    if source != None:
+    if source is not None:
         _check_prop_scalar(dist_map, name="dist_map")
     else:
         _check_prop_vector(dist_map, name="dist_map")
 
-    if max_dist == None:
+    if max_dist is None:
         max_dist = 0
 
-    if directed != None:
+    if directed is not None:
         g.stash_filter(directed=True)
         g.set_directed(directed)
 
     try:
-        if source != None:
+        if source is not None:
             pmap = g.copy_property(g.vertex_index, value_type="int64_t")
             libgraph_tool_topology.get_dists(g._Graph__graph, int(source),
                                              _prop("v", g, dist_map),
@@ -707,9 +710,9 @@ def shortest_distance(g, source=None, weights=None, max_dist=None,
                                                  _prop("e", g, weights), dense)
 
     finally:
-        if directed != None:
+        if directed is not None:
             g.pop_filter(directed=True)
-    if source != None and pred_map:
+    if source is not None and pred_map:
         return dist_map, pmap
     else:
         return dist_map
@@ -773,7 +776,7 @@ def shortest_path(g, source, target, weights=None, pred_map=None):
     .. [dijkstra-boost] http://www.boost.org/libs/graph/doc/dijkstra_shortest_paths.html
     """
 
-    if pred_map == None:
+    if pred_map is None:
         pred_map = shortest_distance(g, source, weights=weights,
                                      pred_map=True)[1]
 
@@ -783,7 +786,7 @@ def shortest_path(g, source, target, weights=None, pred_map=None):
     vlist = [target]
     elist = []
 
-    if weights != None:
+    if weights is not None:
         max_w = weights.a.max() + 1
     else:
         max_w = None
@@ -797,7 +800,7 @@ def shortest_path(g, source, target, weights=None, pred_map=None):
         for e in v.in_edges() if g.is_directed() else v.out_edges():
             s = e.source() if g.is_directed() else e.target()
             if s == p:
-                if weights != None:
+                if weights is not None:
                     if weights[e] < min_w:
                         min_w = weights[e]
                         pe = e
@@ -898,9 +901,9 @@ def is_planar(g, embedding=False, kuratowski=False):
         g.pop_filter(directed=True)
 
     ret = [is_planar]
-    if embed != None:
+    if embed is not None:
         ret.append(embed)
-    if kur != None:
+    if kur is not None:
         ret.append(kur)
     if len(ret) == 1:
         return ret[0]
