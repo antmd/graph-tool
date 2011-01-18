@@ -66,10 +66,10 @@ struct get_kolmogorov_max_flow
                     CapacityMap cm, ResidualMap res) const
     {
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
-        unchecked_vector_property_map<bool,EdgeIndex>
-            augmented(edge_index, max_e);
-        unchecked_vector_property_map<edge_t,EdgeIndex>
-            reverse_map(edge_index, max_e);
+        checked_vector_property_map<uint8_t,EdgeIndex>
+            augmented(edge_index);
+        checked_vector_property_map<edge_t,EdgeIndex>
+            reverse_map(edge_index);
         unchecked_vector_property_map<edge_t,VertexIndex>
             pred_map(vertex_index, num_vertices(g));
         unchecked_vector_property_map<size_t,VertexIndex>
@@ -77,15 +77,13 @@ struct get_kolmogorov_max_flow
         unchecked_vector_property_map<size_t,VertexIndex>
             dist_map(vertex_index, num_vertices(g));
 
-        augment_graph(g, augmented.get_checked(), cm,
-                      reverse_map.get_checked(), res, true);
+        augment_graph(g, augmented, cm, reverse_map, res, true);
 
-        KOLMOGOROV_MAX_FLOW(g._g, get_unchecked(cm),
-                            res.get_unchecked(), reverse_map, pred_map,
-                            color_map, dist_map, vertex_index,
-                            vertex(src, g), vertex(sink, g));
+        KOLMOGOROV_MAX_FLOW(g._g, cm, res, reverse_map, pred_map, color_map,
+                            dist_map, vertex_index, vertex(src, g),
+                            vertex(sink, g));
 
-        deaugment_graph(g, augmented.get_checked());
+        deaugment_graph(g, augmented);
 
     }
 };

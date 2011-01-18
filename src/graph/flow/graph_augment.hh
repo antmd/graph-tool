@@ -40,7 +40,7 @@ void augment_graph(Graph& g, AugmentedMap augmented, CapacityMap capacity,
         typename graph_traits<Graph>::out_edge_iterator e, e_end;
         for (tie(e, e_end) = out_edges(*v, g); e != e_end; ++e)
         {
-            if (detect_reversed && augmented[*e] != 0)
+            if (detect_reversed && augmented[*e] == 0)
             {
                 typename graph_traits<Graph>::out_edge_iterator e2, e2_end;
                 for (tie(e2, e2_end) = out_edges(target(*e, g), g);
