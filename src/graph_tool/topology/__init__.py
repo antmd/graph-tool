@@ -19,8 +19,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-``graph_tool.topology`` - Topology related functions
-----------------------------------------------------
+``graph_tool.topology`` - Important functions for assessing graph topology
+--------------------------------------------------------------------------
 
 Summary
 +++++++
@@ -43,6 +43,7 @@ Summary
 
 Contents
 ++++++++
+
 """
 
 from .. dl_import import dl_import
@@ -233,23 +234,22 @@ def min_spanning_tree(g, weights=None, root=None, tree_map=None):
     --------
     >>> from numpy.random import seed
     >>> seed(42)
-    >>> g = gt.random_graph(100, lambda: (5, 5))
-    >>> tree = gt.min_spanning_tree(g)
-    >>> print tree.a
-    [0 0 0 0 0 0 0 0 0 1 0 1 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 1 0 0 1 1 0 0 0
-     0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1 1 0 0 0 1 0 0 0 0 0 1 0 1
-     0 0 1 0 0 0 0 1 0 0 0 1 0 1 0 1 0 0 0 1 0 0 0 0 1 0 0 0 0 0 1 0 1 0 0 0 1
-     0 0 1 0 0 0 0 0 0 1 0 1 1 0 0 1 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 1 0 0 1 0 0
-     1 0 0 0 0 1 0 0 0 1 0 1 0 0 0 1 0 0 0 0 0 0 0 1 0 0 1 0 0 0 1 1 1 0 0 1 0
-     1 0 0 1 0 0 0 0 0 0 0 0 0 0 1 1 0 0 1 0 0 0 0 0 0 0 0 1 0 0 1 0 0 0 0 0 0
-     0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 0 0
-     0 0 0 1 0 0 0 0 1 1 0 1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1
-     0 0 1 1 0 1 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 1 0 0 0 1 0 0 0 0 0 0 1
-     0 0 0 1 0 1 0 0 0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 1 1 0 0
-     0 1 0 1 0 1 0 0 0 0 0 1 0 0 0 1 0 0 0 1 1 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0
-     0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 1 0 0 1 0 0 0 0 1 0 0 1 1 0 0 0 0 0 0 0 0
-     0 0 0 0 1 0 1 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 1 1 0 0
-     0 1 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0]
+    >>> g, pos = gt.triangulation(random((400, 2)) * 10, type="delaunay")
+    >>> weight = g.new_edge_property("double")
+    >>> for e in g.edges():
+    ...    weight[e] = norm(pos[e.target()].a - pos[e.source()].a)
+    >>> tree = gt.min_spanning_tree(g, weights=weight)
+    >>> graph_draw(g, pos=pos, pin=True, output="triang_orig.png")
+    <...>
+    >>> g.set_edge_filter(tree)
+    >>> graph_draw(g, pos=pos, pin=True, output="triang_min_span_tree.png")
+    <...>
+
+
+    .. image:: triang_orig.png
+    .. image:: triang_orig_span_tree.png
+
+    *Left:* Original graph, *Right:* The minimum spanning tree.
 
     References
     ----------
@@ -864,7 +864,7 @@ def is_planar(g, embedding=False, kuratowski=False):
     >>> print p
     False
     >>> g.set_edge_filter(kur, True)
-    >>> gt.graph_draw(g, layout="arf",  size=(7,7), output="kuratowski.png")
+    >>> gt.graph_draw(g, output="kuratowski.png")
     <...>
 
     .. figure:: kuratowski.png
