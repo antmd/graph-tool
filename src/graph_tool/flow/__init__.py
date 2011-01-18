@@ -35,6 +35,39 @@ Summary
 
 Contents
 ++++++++
+
+The following network will be used as an example throughout the documentation.
+
+.. testcode::
+
+    from numpy.random import seed, random
+    from scipy.linalg import norm
+    seed(42)
+    points = random((400, 2)) * 10
+    points[0] = [0, 0]
+    points[1] = [10, 10]
+    g, pos = gt.triangulation(points, type="delaunay")
+    g.set_directed(True)
+    edges = list(g.edges())
+    # reciprocate edges
+    for e in edges:
+        g.add_edge(e.target(), e.source())
+    # The capacity will be defined as the inverse euclidian distance
+    cap = g.new_edge_property("double")
+    for e in g.edges():
+        cap[e] = min(1.0 / norm(pos[e.target()].a - pos[e.source()].a), 10)
+    g.edge_properties["cap"] = cap
+    g.vertex_properties["pos"] = pos
+    g.save("flow-example.xml.gz")
+    gt.graph_draw(g, pos=pos, pin=True, penwidth=cap, output="flow-example.png")
+
+
+.. figure:: flow-example.png
+    :align: center
+
+    Example network used in the documentation below. The edge capacities are
+    represented by the edge width.
+
 """
 
 from .. dl_import import dl_import
@@ -87,43 +120,25 @@ def edmonds_karp_max_flow(g, source, target, capacity, residual=None):
 
     Examples
     --------
-    >>> from numpy.random import seed, random
-    >>> seed(43)
-    >>> g = gt.random_graph(100, lambda: (2,2))
-    >>> c = g.new_edge_property("double")
-    >>> c.a = random(len(c.a))
-    >>> res = gt.edmonds_karp_max_flow(g, g.vertex(0), g.vertex(1), c)
-    >>> res.a = c.a - res.a  # the actual flow
-    >>> print res.a[0:g.num_edges()]
-    [ 0.13339096  0.13339096  0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.          0.          0.20608185  0.          0.          0.
-      0.08000038  0.          0.          0.          0.          0.          0.
-      0.12608147  0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.08000038  0.          0.
-      0.00730949  0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.          0.13339096  0.          0.          0.          0.          0.
-      0.08000038  0.08000038  0.          0.          0.          0.          0.
-      0.          0.12608147  0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.00730949
-      0.          0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.08000038  0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.08000038  0.          0.          0.          0.          0.          0.
-      0.00730949  0.          0.12608147  0.          0.          0.          0.        ]
+    >>> g = gt.load_graph("flow-example.xml.gz")
+    >>> cap = g.edge_properties["cap"]
+    >>> src, tgt = g.vertex(0), g.vertex(1)
+    >>> res = gt.edmonds_karp_max_flow(g, src, tgt, cap)
+    >>> res.a = cap.a - res.a  # the actual flow
+    >>> max_flow = sum(res[e] for e in tgt.in_edges())
+    >>> print max_flow
+    6.92759897841
+    >>> pos = g.vertex_properties["pos"]
+    >>> gt.graph_draw(g, pos=pos, pin=True, penwidth=res, output="example-edmonds-karp.png")
+    <...>
+
+    .. figure:: example-edmonds-karp.png
+        :align: center
+
+        Edge flows obtained with the Edmonds-Karp algorithm. The source and
+        target are on the lower left and upper right corners, respectively. The
+        edge flows are represented by the edge width.
+
 
     References
     ----------
@@ -181,45 +196,25 @@ def push_relabel_max_flow(g, source, target, capacity, residual=None):
 
     Examples
     --------
-    >>> from numpy.random import seed, random
-    >>> seed(43)
-    >>> g = gt.random_graph(100, lambda: (2,2))
-    >>> c = g.new_edge_property("double")
-    >>> c.a = random(len(c.a))
-    >>> res = gt.push_relabel_max_flow(g, g.vertex(0), g.vertex(1), c)
-    >>> res.a = c.a - res.a  # the actual flow
-    >>> print res.a[0:g.num_edges()]
-    [ 0.00730949  0.0835572   0.          0.          0.          0.          0.
-      0.06926091  0.06926091  0.          0.07624771  0.          0.03957485
-      0.05028544  0.05028544  0.          0.          0.          0.07624771
-      0.07624771  0.          0.07624771  0.          0.          0.07624771
-      0.          0.          0.          0.          0.          0.20608185
-      0.03395359  0.          0.          0.06926091  0.          0.          0.
-      0.          0.          0.          0.          0.06926091  0.
-      0.03957485  0.          0.          0.          0.          0.
-      0.02596227  0.05028544  0.12983414  0.          0.          0.
-      0.06926091  0.          0.20608185  0.          0.          0.          0.
-      0.12983414  0.          0.          0.          0.04480769  0.          0.
-      0.          0.06926091  0.          0.          0.06926091  0.03957485
-      0.06926091  0.05028544  0.          0.06057324  0.          0.
-      0.00730949  0.          0.          0.          0.          0.02596227
-      0.          0.03667285  0.          0.          0.          0.          0.
-      0.          0.          0.0835572   0.          0.          0.          0.
-      0.07624771  0.12983414  0.12983414  0.          0.          0.
-      0.02596227  0.          0.          0.          0.          0.05028544
-      0.          0.          0.          0.04480769  0.          0.          0.
-      0.          0.00730949  0.          0.          0.06926091  0.
-      0.05028544  0.          0.          0.03395359  0.          0.          0.
-      0.          0.          0.          0.06057324  0.          0.          0.
-      0.03395359  0.          0.          0.          0.          0.01633184
-      0.          0.          0.          0.          0.02596227  0.          0.
-      0.          0.          0.          0.          0.03395359  0.          0.
-      0.          0.          0.          0.00547774  0.          0.12983414
-      0.03395359  0.          0.          0.          0.          0.00547774
-      0.          0.          0.          0.          0.          0.03957485
-      0.03395359  0.          0.06926091  0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.00730949  0.07624771  0.20608185  0.          0.          0.          0.        ]
+    >>> g = gt.load_graph("flow-example.xml.gz")
+    >>> cap = g.edge_properties["cap"]
+    >>> src, tgt = g.vertex(0), g.vertex(1)
+    >>> res = gt.push_relabel_max_flow(g, src, tgt, cap)
+    >>> res.a = cap.a - res.a  # the actual flow
+    >>> max_flow = sum(res[e] for e in tgt.in_edges())
+    >>> print max_flow
+    6.92759897841
+    >>> pos = g.vertex_properties["pos"]
+    >>> gt.graph_draw(g, pos=pos, pin=True, penwidth=res, output="example-push-relabel.png")
+    <...>
+
+    .. figure:: example-push-relabel.png
+        :align: center
+
+
+        Edge flows obtained with the push-relabel algorithm. The source and
+        target are on the lower left and upper right corners, respectively. The
+        edge flows are represented by the edge width.
 
     References
     ----------
@@ -278,32 +273,28 @@ def boykov_kolmogorov_max_flow(g, source, target, capacity, residual=None):
 
     Examples
     --------
-    >>> from numpy.random import seed, random
-    >>> seed(43)
-    >>> g = gt.random_graph(100, lambda: (2,2))
-    >>> c = g.new_edge_property("double")
-    >>> c.a = random(len(c.a))
-    >>> res = gt.boykov_kolmogorov_max_flow(g, g.vertex(0), g.vertex(1), c)
-    >>> res.a = c.a - res.a  # the actual flow
-    >>> print res.a[0:g.num_edges()]
-    [ 0.13339096  0.13339096  0.          0.          0.          0.          0.
-      0.          0.00730949  0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.          0.          0.20608185  0.          0.          0.
-      0.07269089  0.          0.00730949  0.          0.          0.          0.
-      0.13339096  0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.07269089  0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.
-      0.          0.          0.          0.          0.          0.          0.        ]
+    >>> g = gt.load_graph("flow-example.xml.gz")
+    >>> cap = g.edge_properties["cap"]
+    >>> src, tgt = g.vertex(0), g.vertex(1)
+    >>> res = gt.boykov_kolmogorov_max_flow(g, src, tgt, cap)
+    >>> res.a = cap.a - res.a  # the actual flow
+    >>> max_flow = sum(res[e] for e in tgt.in_edges())
+    >>> print max_flow
+    6.92759897841
+    >>> pos = g.vertex_properties["pos"]
+    >>> gt.graph_draw(g, pos=pos, pin=True, penwidth=res, output="example-kolmogorov.png")
+    <...>
+
+    .. figure:: example-kolmogorov.png
+        :align: center
+
+        Edge flows obtained with the Boykov-Kolmogorov algorithm. The source and
+        target are on the lower left and upper right corners, respectively. The
+        edge flows are represented by the edge width.
 
     References
     ----------
-    .. [boost-kolmogorov] http://www.boost.org/libs/graph/doc/kolmogorov_max_flow.html
+    .. [boost-kolmogorov] http://www.boost.org/libs/graph/doc/boykov_kolmogorov_max_flow.html
     .. [kolmogorov-graph-2003] Vladimir Kolmogorov, "Graph Based Algorithms for
        Scene Reconstruction from Two or More Views", PhD thesis, Cornell
        University, September 2003.
