@@ -167,10 +167,8 @@ def betweenness(g, vprop=None, eprop=None, weight=None, norm=True):
 
     Returns
     -------
-    vertex_betweenness : A vertex property map with the vertex betweenness
-                         values.
-    edge_betweenness : An edge property map with the edge betweenness
-                       values.
+    vertex_betweenness : A vertex property map with the vertex betweenness values.
+    edge_betweenness : An edge property map with the edge betweenness values.
 
     See Also
     --------
@@ -302,7 +300,8 @@ def central_point_dominance(g, betweenness):
     References
     ----------
     .. [freeman-set-1977] Linton C. Freeman, "A Set of Measures of Centrality
-       Based on Betweenness", Sociometry, Vol. 40, No. 1,  pp. 35-41, 1977
+       Based on Betweenness", Sociometry, Vol. 40, No. 1,  pp. 35-41, 1977,
+       `http://www.jstor.org/stable/3033543 <http://www.jstor.org/stable/3033543>`_
     """
 
     return libgraph_tool_centrality.\
