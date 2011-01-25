@@ -225,7 +225,8 @@ class PropertyArray(numpy.ndarray):
                    'std', 'sum', 'swapaxes', 'take', 'tofile', 'tolist',
                    'tostring', 'trace', 'transpose', 'var', 'view',
                    '__getitem__']:
-        locals()[method] = _wrap_method(method)
+        if hasattr(numpy.ndarray, method):
+            locals()[method] = _wrap_method(method)
 
 
 class PropertyMap(object):
