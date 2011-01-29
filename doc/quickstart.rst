@@ -201,23 +201,23 @@ type*, which must be chosen from the predefined set:
 
 .. table::
 
-    =======================     ======================
-     Type name                  Alias
-    =======================     ======================
-    ``bool``                    ``uint8_t``
-    ``int32_t``                 ``int``
-    ``int64_t``                 ``long``, ``long long``
-    ``double``                  ``float``
+    ========================     ======================
+     Type name                   Alias
+    ========================     ======================
+    ``bool``                     ``uint8_t``
+    ``int32_t``                  ``int``
+    ``int64_t``                  ``long``, ``long long``
+    ``double``                   ``float``
     ``long double``
     ``string``
-    ``vector<bool>``            ``vector<uint8_t>``
-    ``vector<int32_t>``         ``vector<int>``
-    ``vector<int64_t>``         ``vector<long>``, ``vector<long long>``
-    ``vector<double>``          ``vector<float>``
+    ``vector<bool>``             ``vector<uint8_t>``
+    ``vector<int32_t>``          ``vector<int>``
+    ``vector<int64_t>``          ``vector<long>``, ``vector<long long>``
+    ``vector<double>``           ``vector<float>``
     ``vector<long double>``
     ``vector<string>``
-    ``python::object``          ``object``
-    =======================     ======================
+    ``python::object``           ``object``
+    ========================     ======================
 
 New property maps can be created for a given graph by calling the
 :meth:`~graph_tool.Graph.new_vertex_property`, :meth:`~graph_tool.Graph.new_edge_property`, or

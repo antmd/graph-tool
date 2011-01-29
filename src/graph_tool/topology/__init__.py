@@ -232,22 +232,24 @@ def min_spanning_tree(g, weights=None, root=None, tree_map=None):
 
     Examples
     --------
-    >>> from numpy.random import seed
+    >>> from numpy.random import seed, random
     >>> seed(42)
     >>> g, pos = gt.triangulation(random((400, 2)) * 10, type="delaunay")
     >>> weight = g.new_edge_property("double")
     >>> for e in g.edges():
-    ...    weight[e] = norm(pos[e.target()].a - pos[e.source()].a)
+    ...    weight[e] = linalg.norm(pos[e.target()].a - pos[e.source()].a)
     >>> tree = gt.min_spanning_tree(g, weights=weight)
-    >>> graph_draw(g, pos=pos, pin=True, output="triang_orig.png")
+    >>> gt.graph_draw(g, pos=pos, pin=True, output="triang_orig.png")
     <...>
     >>> g.set_edge_filter(tree)
-    >>> graph_draw(g, pos=pos, pin=True, output="triang_min_span_tree.png")
+    >>> gt.graph_draw(g, pos=pos, pin=True, output="triang_min_span_tree.png")
     <...>
 
 
     .. image:: triang_orig.png
-    .. image:: triang_orig_span_tree.png
+        :width: 400px
+    .. image:: triang_min_span_tree.png
+        :width: 400px
 
     *Left:* Original graph, *Right:* The minimum spanning tree.
 
@@ -875,8 +877,8 @@ def is_planar(g, embedding=False, kuratowski=False):
     References
     ----------
     .. [boyer-myrvold] John M. Boyer and Wendy J. Myrvold, "On the Cutting Edge:
-       Simplified O(n) Planarity by Edge Addition Journal of Graph Algorithms
-       and Applications", 8(2): 241-273, 2004.
+       Simplified O(n) Planarity by Edge Addition" Journal of Graph Algorithms
+       and Applications, 8(2): 241-273, 2004. http://www.emis.ams.org/journals/JGAA/accepted/2004/BoyerMyrvold2004.8.3.pdf
     .. [boost-planarity] http://www.boost.org/libs/graph/doc/boyer_myrvold.html
     """
 
