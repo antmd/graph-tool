@@ -1,6 +1,11 @@
 .. automodule:: graph_tool
    :members:
 
+   .. autoclass:: GraphView
+       :show-inheritance:
+   .. autoclass:: PropertyArray
+       :show-inheritance:
+       :members: prop_map
 
 Available subpackages
 =====================

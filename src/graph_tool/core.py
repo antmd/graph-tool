@@ -230,8 +230,7 @@ class PropertyArray(numpy.ndarray):
 
 
 class PropertyMap(object):
-    """This class provides a mapping from vertices, edges or whole graphs to
-    arbitrary properties.
+    """This class provides a mapping from vertices, edges or whole graphs to arbitrary properties.
 
     The possible property types are listed below.
 
@@ -282,17 +281,18 @@ class PropertyMap(object):
         return self.__map[self.__key_trans(k)]
 
     def __setitem__(self, k, v):
+        key = self.__key_trans(k)
         try:
-            self.__map[self.__key_trans(k)] = v
+            self.__map[key] = v
         except TypeError:
             # attempt to convert to a compatible python type. This is useful,
             # for instance, when dealing with numpy scalar types.
             valtype = self.python_value_type()
-            if isistance(valtype, tuple):
+            if isinstance(valtype, tuple):
                 val = [valtype[1](x) for x in v]
             else:
                 val = valtype(v)
-            self.__map[self.__key_trans(k)] = val
+            self.__map[key] = val
 
     def __repr__(self):
         # provide some more useful information
@@ -408,8 +408,7 @@ def _check_prop_vector(prop, name=None, scalar=True, floating=False):
 
 
 def group_vector_property(props, value_type=None, vprop=None, pos=None):
-    """Group list of properties ``props`` into a vector property map of the same
-    type.
+    """Group list of properties ``props`` into a vector property map of the same type.
 
     Parameters
     ----------
@@ -476,8 +475,7 @@ def group_vector_property(props, value_type=None, vprop=None, pos=None):
 
 
 def ungroup_vector_property(vprop, pos, props=None):
-    """Ungroup vector property map ``vprop`` into a list of individual property
-    maps.
+    """Ungroup vector property map ``vprop`` into a list of individual property maps.
 
     Parameters
     ----------
@@ -1232,9 +1230,12 @@ class Graph(object):
 
 
 def load_graph(file_name, file_format="auto"):
-    """Load a graph from ``file_name`` (which can be either a string or a
-        file-like object). The format is guessed from ``file_name``, or can be
-        specified by ``file_format``, which can be either "xml" or "dot"."""
+    """
+    Load a graph from ``file_name`` (which can be either a string or a file-like object).
+
+    The format is guessed from ``file_name``,
+    or can be specified by ``file_format``, which can be either "xml" or "dot".
+    """
     g = Graph()
     g.load(file_name, file_format=file_format)
     return g
