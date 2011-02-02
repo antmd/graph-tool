@@ -59,15 +59,16 @@ Summary
    :nosignatures:
 
    Graph
+   GraphView
    Vertex
    Edge
    PropertyMap
-   PropertyArray
    load_graph
    group_vector_property
    ungroup_vector_property
    value_types
    show_config
+   PropertyArray
 
 Classes
 -------
@@ -88,11 +89,11 @@ import scipy.stats
 from . core import  __version__, Graph, Vector_bool, Vector_int32_t, \
      Vector_int64_t, Vector_double, Vector_long_double, Vector_string, \
      value_types, load_graph, PropertyArray, PropertyMap, Vertex, Edge, \
-     group_vector_property, ungroup_vector_property, show_config
+     group_vector_property, ungroup_vector_property, show_config, GraphView
 
-__all__ = ["Graph", "Vertex", "Edge", "Vector_bool", "Vector_int32_t",
-           "Vector_int64_t", "Vector_double", "Vector_long_double",
-           "Vector_string", "value_types", "load_graph", "PropertyMap",
-           "group_vector_property", "ungroup_vector_property", "show_config",
-           "PropertyArray", "__author__", "__copyright__", "__URL__",
-           "__version__"]
+__all__ = ["Graph", "GraphView", "Vertex", "Edge", "Vector_bool",
+           "Vector_int32_t", "Vector_int64_t", "Vector_double",
+           "Vector_long_double", "Vector_string", "value_types", "load_graph",
+           "PropertyMap", "group_vector_property", "ungroup_vector_property",
+           "show_config", "PropertyArray", "__author__", "__copyright__",
+           "__URL__", "__version__"]

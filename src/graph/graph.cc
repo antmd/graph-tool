@@ -31,13 +31,11 @@ using namespace graph_tool;
 
 // this is the constructor for the graph interface
 GraphInterface::GraphInterface()
-    :_mg(),
-     _nedges(0),
+    :_state(new state_t()),
+     _vertex_index(get(vertex_index, _state->_mg)),
+     _edge_index(get(edge_index_t(), _state->_mg)),
      _reversed(false),
      _directed(true),
-     _vertex_index(get(vertex_index,_mg)),
-     _edge_index(get(edge_index_t(),_mg)),
-     _max_edge_index(0),
      _graph_index(0),
      _vertex_filter_map(_vertex_index),
      _vertex_filter_invert(false),
@@ -46,7 +44,7 @@ GraphInterface::GraphInterface()
      _edge_filter_invert(false),
      _edge_filter_active(false)
 {
-
+    _state->_nedges = _state->_max_edge_index = 0;
 }
 
 // the destructor
@@ -79,19 +77,25 @@ size_t GraphInterface::GetNumberOfEdges()
         run_action<>()(*this, lambda::var(n) =
                        lambda::bind<size_t>(HardNumEdges(),lambda::_1))();
     else
-        n = _nedges;
+        n = _state->_nedges;
     return n;
 }
 
 void GraphInterface::Clear()
 {
-    _mg.clear();
+    _state->_mg.clear();
+    _state->_nedges = 0;
+    _state->_max_edge_index = 0;
+    _state->_free_indexes.clear();
 }
 
 void GraphInterface::ClearEdges()
 {
     graph_traits<multigraph_t>::vertex_iterator v, v_end;
-    for (tie(v, v_end) = vertices(_mg); v != v_end; ++v)
-        clear_vertex(*v, _mg);
+    for (tie(v, v_end) = vertices(_state->_mg); v != v_end; ++v)
+        clear_vertex(*v, _state->_mg);
+    _state->_nedges = 0;
+    _state->_max_edge_index = 0;
+    _state->_free_indexes.clear();
 }
 

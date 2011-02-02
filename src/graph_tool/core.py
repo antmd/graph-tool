@@ -593,7 +593,7 @@ class Graph(object):
             self.__graph = libcore.GraphInterface()
             self.set_directed(directed)
         else:
-            self.__graph = libcore.GraphInterface(g.__graph)
+            self.__graph = libcore.GraphInterface(g.__graph, False)
             for k, v in g.__properties.iteritems():
                 new_p = self.new_property(v.key_type(), v.value_type())
                 self.copy_property(v, new_p, g)
@@ -652,9 +652,10 @@ class Graph(object):
             f += ", vertices filtered by %s" % (str(self.get_vertex_filter()))
         n = self.num_vertices()
         e = self.num_edges()
-        return "<Graph object, %s%s, with %d %s and %d edge%s%s at 0x%x>"\
-               % (d, fr, n, "vertex" if n == 1 else "vertices", e,
-                  "" if e == 1 else "s", f, id(self))
+        return "<%s object, %s%s, with %d %s and %d edge%s%s at 0x%x>"\
+               % (type(self).__name__, d, fr, n,
+                  "vertex" if n == 1 else "vertices", e, "" if e == 1 else "s",
+                  f, id(self))
 
     # Graph access
     # ============
@@ -1347,3 +1348,87 @@ for vt in vector_types:
     vt.a = property(_get_array_view)
 Vector_string.a = None
 Vector_string.get_array = lambda self: None
+
+
+class GraphView(Graph):
+    """
+    A view of selected vertices or edges of another graph.
+
+    This class uses shared data from another :class:`~graph_tool.Graph`
+    instance, but allows for local filtering of vertices and/or edges, edge
+    directionality or reversal.
+
+    The existence of a :class:`~graph_tool.GraphView` object does not affect the
+    original graph, except if the graph view is modified (addition or removal of
+    vertices or edges), in which case the modification is directly reflected in
+    the original graph (and vice-versa), since they both point to the same
+    underlying data. Because of this, instances of
+    :class:`~graph_tool.PropertyMap` can be used interchangeably with a graph
+    and its views.
+
+    The argument ``g`` must be an instance of a :class:`~graph_tool.Graph`
+    class. If specified, ``vfilt`` and ``efilt`` select which vertices and edges
+    are filtered, respectively. These parameters can either be a
+    boolean-valued :class:`~graph_tool.PropertyMap` or a
+    :class:`~numpy.ndarray`, which specify which vertices/edges are selected, or
+    an unary function which returns ``True`` if a given vertex/edge is to be
+    selected, or ``False`` otherwise.
+
+    The boolean parameter ``directed`` can be used to set the directionality of
+    the graph view. If ``directed = None``, the directionality is inherited from
+    ``g``.
+
+    If ``reversed = True``, the direction of the edges is reversed.
+
+    If ``vfilt`` or ``efilt`` is anything other than a
+    :class:`~graph_tool.PropertyMap` instance, the instantiation running time is
+    :math:`O(V)` and :math:`O(E)`, respectively. Otherwise, the running time is
+    :math:`O(1)`.
+    """
+
+    def __init__(self, g, vfilt=None, efilt=None, directed=None,
+                 reversed=False):
+        Graph.__init__(self)
+        self._Graph__graph = libcore.GraphInterface(g._Graph__graph, True)
+        self._Graph__properties = g._Graph__properties
+        self._Graph__known_properties = g._Graph__known_properties
+        self.__parent = g
+
+        if vfilt is not None:
+            if type(vfilt) is PropertyMap:
+                self.set_vertex_filter(vfilt)
+            else:
+                vmap = self.new_vertex_property("bool")
+                if issubclass(type(vfilt), numpy.ndarray):
+                    vmap.a = vfilt
+                else:
+                    omap, inv = g.get_vertex_filter()
+                    if omap is not None:
+                        vmap.a = omap.a if not inv else omap.a ^ 1
+                    for v in g.vertices():
+                        vmap[v] = vfilt(v)
+                self.set_vertex_filter(vmap)
+
+        if efilt is not None:
+            if type(efilt) is PropertyMap:
+                self.set_edge_filter(efilt)
+            else:
+                emap = self.new_edge_property("bool")
+                if issubclass(type(efilt), numpy.ndarray):
+                    vmap.a = efilt
+                else:
+                    omap, inv = g.get_edge_filter()
+                    if omap is not None:
+                        emap.a = omap.a if not inv else omap.a ^ 1
+                    for e in g.edges():
+                        emap[e] = efilt(e)
+                self.set_edge_filter(emap)
+
+        if directed is not None:
+            self.set_directed(directed)
+        if reversed:
+            self.set_reversed(not g.is_reversed())
+
+    def get_parent(self):
+        "Return parent graph."
+        return self.__parent

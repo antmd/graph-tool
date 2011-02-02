@@ -61,15 +61,12 @@ struct graph_copy
 };
 
 // copy constructor
-GraphInterface::GraphInterface(const GraphInterface& gi)
-    :_mg(),
-     _nedges(gi._nedges),
+GraphInterface::GraphInterface(const GraphInterface& gi, bool keep_ref)
+    :_state(keep_ref ? gi._state : shared_ptr<state_t>(new state_t())),
+     _vertex_index(get(vertex_index, _state->_mg)),
+     _edge_index(get(edge_index_t(), _state->_mg)),
      _reversed(gi._reversed),
      _directed(gi._directed),
-     _vertex_index(get(vertex_index,_mg)),
-     _edge_index(get(edge_index_t(),_mg)),
-     _free_indexes(gi._free_indexes),
-     _max_edge_index(gi._max_edge_index),
      _vertex_filter_map(_vertex_index),
      _vertex_filter_invert(false),
      _vertex_filter_active(false),
@@ -77,10 +74,11 @@ GraphInterface::GraphInterface(const GraphInterface& gi)
      _edge_filter_invert(false),
      _edge_filter_active(false)
 {
-
-    graph_copy()(_mg, gi._mg, _vertex_index,
-                 gi._vertex_index, _edge_index,
-                 gi._edge_index);
+    if (keep_ref)
+        return;
+    _state->_nedges = _state->_max_edge_index = 0;
+    graph_copy()(_state->_mg, gi._state->_mg, _vertex_index, gi._vertex_index,
+                 _edge_index, gi._edge_index);
     // filters will be copied in python
 }
 
@@ -270,7 +268,7 @@ void GraphInterface::CopyVertexProperty(const GraphInterface& src,
 
     run_action<unfiltered>()
         (*this, bind<void>(copy_property<vertex_selector>(),
-                           _1, ref(src._mg),  _2, _3),
+                           _1, ref(src._state->_mg),  _2, _3),
          vertex_properties(), writable_vertex_properties())
         (prop_src, prop_tgt);
 }
@@ -283,7 +281,7 @@ void GraphInterface::CopyEdgeProperty(const GraphInterface& src,
 
     run_action<unfiltered>()
         (*this, bind<void>(copy_property<edge_selector>(),
-                           _1, ref(src._mg), _2, _3),
+                           _1, ref(src._state->_mg), _2, _3),
          edge_properties(), writable_edge_properties())
         (prop_src, prop_tgt);
 }

@@ -87,7 +87,7 @@ public:
         GraphInterface& gi = python::extract<GraphInterface&>(_g());
         return _valid &&
             (_v != graph_traits<GraphInterface::multigraph_t>::null_vertex()) &&
-            (_v < num_vertices(gi._mg));
+            (_v < num_vertices(gi._state->_mg));
     }
 
     void SetValid(bool valid)
@@ -251,8 +251,9 @@ public:
             return false;
         GraphInterface& gi = python::extract<GraphInterface&>(_g());
         GraphInterface::edge_t e(_e);
-        return (_valid && PythonVertex(_g, source(e, gi._mg)).IsValid() &&
-                PythonVertex(_g, target(e, gi._mg)).IsValid());
+        return (_valid &&
+                PythonVertex(_g, source(e, gi._state->_mg)).IsValid() &&
+                PythonVertex(_g, target(e, gi._state->_mg)).IsValid());
     }
 
     void SetValid(bool valid)

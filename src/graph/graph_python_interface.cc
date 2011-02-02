@@ -168,17 +168,17 @@ struct add_new_edge
 
 void GraphInterface::AddEdgeIndex(const edge_t& e)
 {
-    if (!_free_indexes.empty())
+    if (!_state->_free_indexes.empty())
     {
-        _edge_index[e] = _free_indexes.front();
-        _free_indexes.pop_front();
+        _edge_index[e] = _state->_free_indexes.front();
+        _state->_free_indexes.pop_front();
     }
     else
     {
-        _edge_index[e] = _nedges;
-        _max_edge_index = _nedges;
+        _edge_index[e] = _state->_nedges;
+        _state->_max_edge_index = _state->_nedges;
     }
-    _nedges++;
+    _state->_nedges++;
 }
 
 python::object add_edge(python::object g, const python::object& s,
@@ -230,27 +230,28 @@ void remove_edge(GraphInterface& gi, const python::object& e)
 void GraphInterface::RemoveEdgeIndex(const edge_t& e)
 {
     size_t index = _edge_index[e];
-    if (index == _max_edge_index)
+    if (index == _state->_max_edge_index)
     {
-        if (_max_edge_index > 0)
-            _max_edge_index--;
+        if (_state->_max_edge_index > 0)
+            _state->_max_edge_index--;
 
-        while (!_free_indexes.empty() &&
-               _max_edge_index == _free_indexes.back())
+        while (!_state->_free_indexes.empty() &&
+               _state->_max_edge_index == _state->_free_indexes.back())
         {
-            _free_indexes.pop_back();
-            if (_max_edge_index > 0)
-                _max_edge_index--;
+            _state->_free_indexes.pop_back();
+            if (_state->_max_edge_index > 0)
+                _state->_max_edge_index--;
         }
     }
     else
     {
-        typeof(_free_indexes.begin()) pos =
-                lower_bound(_free_indexes.begin(), _free_indexes.end(), index);
-        _free_indexes.insert(pos, index);
+        typeof(_state->_free_indexes.begin()) pos =
+                lower_bound(_state->_free_indexes.begin(),
+                            _state->_free_indexes.end(), index);
+        _state->_free_indexes.insert(pos, index);
     }
-    _nedges--;
-    remove_edge(e, _mg);
+    _state->_nedges--;
+    remove_edge(e, _state->_mg);
 }
 
 struct get_degree_map
@@ -277,7 +278,7 @@ python::object GraphInterface::DegreeMap(string deg) const
         map_t;
 
     map_t deg_map(_vertex_index);
-    deg_map.reserve(num_vertices(_mg));
+    deg_map.reserve(num_vertices(_state->_mg));
 
     if (deg == "in")
         run_action<>()(const_cast<GraphInterface&>(*this),

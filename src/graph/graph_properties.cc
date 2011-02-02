@@ -62,7 +62,7 @@ void GraphInterface::ShiftVertexProperty(boost::any prop, size_t index) const
 {
     bool found = false;
     mpl::for_each<writable_vertex_properties>
-        (bind<void>(shift_vertex_property(), _1, ref(_mg),
+        (bind<void>(shift_vertex_property(), _1, ref(_state->_mg),
                     prop, index, ref(found)));
     if (!found)
         throw GraphException("invalid writable property map");

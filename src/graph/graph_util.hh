@@ -26,7 +26,6 @@
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/trim.hpp>
-#include <boost/xpressive/xpressive.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/type_traits/is_convertible.hpp>
 #include <string>

@@ -32,6 +32,7 @@
 #include <boost/graph/graphviz.hpp>
 #include <boost/python/extract.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/xpressive/xpressive.hpp>
 
 #include "graph_python_interface.hh"
 
@@ -509,9 +510,10 @@ python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
         create_dynamic_map<vertex_index_map_t,edge_index_map_t>
             map_creator(_vertex_index, _edge_index);
         dynamic_properties dp(map_creator);
-        _mg.clear();
+        _state->_mg.clear();
 
-        GraphEdgeIndexWrap<multigraph_t,edge_index_map_t> wg(_mg, _edge_index);
+        GraphEdgeIndexWrap<multigraph_t,edge_index_map_t> wg(_state->_mg,
+                                                             _edge_index);
         _directed = true;
         try
         {
@@ -537,8 +539,9 @@ python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
             else
                 read_graphml(stream, ug, dp);
         }
-        _nedges = num_edges(_mg);
-        _max_edge_index = (_nedges > 0) ? _nedges - 1 : 0;
+        _state->_nedges = num_edges(_state->_mg);
+        _state->_max_edge_index = (_state->_nedges > 0) ?
+            _state->_nedges - 1 : 0;
 
         python::dict vprops, eprops, gprops;
         for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)

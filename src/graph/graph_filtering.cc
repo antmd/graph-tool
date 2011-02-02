@@ -189,11 +189,12 @@ boost::any GraphInterface::GetGraphView() const
     // TODO: implement memoization
 
     boost::any graph =
-        check_filtered(_mg, _edge_filter_map, _edge_filter_invert,
-                       _edge_filter_active, _max_edge_index, _vertex_filter_map,
-                       _vertex_filter_invert, _vertex_filter_active,
-                       const_cast<vector<boost::any>&>(_graph_views),
-                       _reversed, _directed);
+        check_filtered(_state->_mg, _edge_filter_map, _edge_filter_invert,
+                       _edge_filter_active, _state->_max_edge_index,
+                       _vertex_filter_map, _vertex_filter_invert,
+                       _vertex_filter_active,
+                       const_cast<vector<boost::any>&>(_graph_views), _reversed,
+                       _directed);
     return graph;
 }
 
@@ -211,11 +212,11 @@ void GraphInterface::ReIndexEdges()
 {
     size_t index = 0;
     graph_traits<multigraph_t>::edge_iterator e, e_end;
-    for (tie(e, e_end) = edges( _mg); e != e_end; ++e)
+    for (tie(e, e_end) = edges(_state->_mg); e != e_end; ++e)
         _edge_index[*e] = index++;
-    _max_edge_index =  (index > 0) ? index - 1 : 0;
-    _nedges = index;
-    _free_indexes.clear();
+    _state->_max_edge_index = (index > 0) ? index - 1 : 0;
+    _state->_nedges = index;
+    _state->_free_indexes.clear();
 }
 
 // this will definitively remove all the edges from the graph, which are being
@@ -229,9 +230,9 @@ void GraphInterface::PurgeEdges()
     graph_traits<multigraph_t>::vertex_iterator v, v_end;
     graph_traits<multigraph_t>::out_edge_iterator e, e_end;
     vector<graph_traits<multigraph_t>::edge_descriptor> deleted_edges;
-    for (tie(v, v_end) = vertices(_mg); v != v_end; ++v)
+    for (tie(v, v_end) = vertices(_state->_mg); v != v_end; ++v)
     {
-        for (tie(e, e_end) = out_edges(*v, _mg); e != e_end; ++e)
+        for (tie(e, e_end) = out_edges(*v, _state->_mg); e != e_end; ++e)
             if (!filter(*e))
                 deleted_edges.push_back(*e);
         for (typeof(deleted_edges.begin()) iter = deleted_edges.begin();
@@ -251,10 +252,10 @@ void GraphInterface::PurgeVertices()
 
     MaskFilter<vertex_filter_t> filter(_vertex_filter_map,
                                        _vertex_filter_invert);
-    size_t N = num_vertices(_mg);
+    size_t N = num_vertices(_state->_mg);
     vector<bool> deleted(N, false);
     for (size_t i = 0; i < N; ++i)
-        deleted[i] = !filter(vertex(i, _mg));
+        deleted[i] = !filter(vertex(i, _state->_mg));
 
     vector<graph_traits<multigraph_t>::edge_descriptor> edges;
 
@@ -263,17 +264,18 @@ void GraphInterface::PurgeVertices()
     {
         if (deleted[i])
         {
-            graph_traits<multigraph_t>::vertex_descriptor v = vertex(i, _mg);
+            graph_traits<multigraph_t>::vertex_descriptor v =
+                vertex(i, _state->_mg);
             graph_traits<multigraph_t>::out_edge_iterator e, e_end;
-            for(tie(e, e_end) = out_edges(v, _mg); e != e_end; ++e)
+            for(tie(e, e_end) = out_edges(v, _state->_mg); e != e_end; ++e)
                 edges.push_back(*e);
             graph_traits<multigraph_t>::in_edge_iterator ei, ei_end;
-            for(tie(ei, ei_end) = in_edges(v, _mg); ei != ei_end; ++ei)
+            for(tie(ei, ei_end) = in_edges(v, _state->_mg); ei != ei_end; ++ei)
                 edges.push_back(*ei);
             for(size_t j = 0; j < edges.size(); ++j)
                 RemoveEdgeIndex(edges[j]);
-            clear_vertex(v, _mg);
-            remove_vertex(v, _mg);
+            clear_vertex(v, _state->_mg);
+            remove_vertex(v, _state->_mg);
             edges.clear();
         }
     }

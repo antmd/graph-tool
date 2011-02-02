@@ -344,7 +344,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
     mpl::for_each<mpl::push_back<scalar_types,string>::type>(export_vector_types());
 
     class_<GraphInterface>("GraphInterface", init<>())
-        .def(init<GraphInterface>())
+        .def(init<GraphInterface,bool>())
         .def("GetNumberOfVertices", &GraphInterface::GetNumberOfVertices)
         .def("GetNumberOfEdges", &GraphInterface::GetNumberOfEdges)
         .def("SetDirected", &GraphInterface::SetDirected)

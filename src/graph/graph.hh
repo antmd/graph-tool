@@ -54,7 +54,7 @@ class GraphInterface
 {
 public:
     GraphInterface();
-    GraphInterface(const GraphInterface& gi);
+    GraphInterface(const GraphInterface& g, bool keep_ref);
     ~GraphInterface();
 
     // useful enums
@@ -136,10 +136,10 @@ public:
 
     // internal access
 
-    multigraph_t& GetGraph() {return _mg;}
+    multigraph_t& GetGraph() {return _state->_mg;}
     vertex_index_map_t GetVertexIndex() {return _vertex_index;}
     edge_index_map_t   GetEdgeIndex()   {return _edge_index;}
-    size_t             GetMaxEdgeIndex(){return _max_edge_index;}
+    size_t             GetMaxEdgeIndex(){return _state->_max_edge_index;}
 
     graph_index_map_t  GetGraphIndex()  {return graph_index_map_t(0);}
 
@@ -162,12 +162,28 @@ private:
     template <class Graph>
     friend class PythonEdge;
 
-    // this is the main graph
-    multigraph_t _mg;
+    struct state_t
+    {
+        // this is the main graph
+        multigraph_t _mg;
 
-    // keep track of the number of edges, since num_edges() is O(V) in
-    // adjacency_list... :-(
-    size_t _nedges;
+        // keep track of the number of edges, since num_edges() is O(V) in
+        // adjacency_list... :-(
+        size_t _nedges;
+
+        deque<size_t> _free_indexes; // indexes of deleted edges to be used up
+                                     // for new edges to avoid very large
+                                     // indexes, and property map memory usage
+        size_t _max_edge_index;
+    };
+
+    shared_ptr<state_t> _state;
+
+    // vertex index map
+    vertex_index_map_t _vertex_index;
+
+    // edge index map
+    edge_index_map_t _edge_index;
 
     // this will hold an instance of the graph views at run time
     vector<boost::any> _graph_views;
@@ -175,16 +191,6 @@ private:
     // reverse and directed states
     bool _reversed;
     bool _directed;
-
-    // vertex index map
-    vertex_index_map_t _vertex_index;
-
-    // edge index map
-    edge_index_map_t _edge_index;
-    deque<size_t> _free_indexes; // indexes of deleted edges to be used up for
-                                 // new edges to avoid very large indexes, and
-                                 // property map memory usage
-    size_t _max_edge_index;
 
     // graph index map
     graph_index_map_t _graph_index;
@@ -197,7 +203,8 @@ private:
     bool _vertex_filter_active;
 
     // edge filter
-    typedef unchecked_vector_property_map<uint8_t,edge_index_map_t> edge_filter_t;
+    typedef unchecked_vector_property_map<uint8_t,edge_index_map_t>
+        edge_filter_t;
     edge_filter_t _edge_filter_map;
     bool _edge_filter_invert;
     bool _edge_filter_active;

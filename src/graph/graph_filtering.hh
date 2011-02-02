@@ -599,7 +599,8 @@ struct graph_action
         mpl::transform<GraphViews, mpl::quote1<add_pointer> >::type {};
 
     graph_action(GraphInterface& g, Action a)
-        : _g(g), _a(a, g, num_vertices(g._mg), g._max_edge_index + 1) {}
+        : _g(g), _a(a, g, num_vertices(g._state->_mg),
+                    g._state->_max_edge_index + 1) {}
 
     void operator()() const
     {
