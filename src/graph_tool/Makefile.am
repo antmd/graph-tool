@@ -3,7 +3,6 @@
 graph_tool_PYTHON = \
     __init__.py \
     dl_import.py \
-    core.py \
     decorators.py \
     io.py \
     all.py
