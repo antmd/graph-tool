@@ -28,8 +28,6 @@ extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest',
               'sphinx.ext.intersphinx', 'mathjax', 'sphinx.ext.autosummary',
               'sphinxext.numpydoc', 'sphinx.ext.extlinks']
 
-numpydoc_show_class_members = False
-
 mathjax_path = "MathJax/MathJax.js"
 
 # Add any paths that contain templates here, relative to this directory.
@@ -235,5 +233,8 @@ extlinks = {'ticket': ('http://projects.skewed.de/graph-tool/ticket/%s',
             'doi': ('http://dx.doi.org/%s', 'DOI: '),
             'arxiv': ('http://arxiv.org/abs/%s', 'arXiv: ')}
 
+
+# autodoc_default_flags = ['members']
+numpydoc_show_class_members = False
 autodoc_member_order = 'bysource'
-autodoc_default_flags = ['members']
+

@@ -19,8 +19,27 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-``graph_tool`` - efficient graph analysis and manipulation
-===========================================================
+graph_tool - efficient graph analysis and manipulation
+======================================================
+
+Summary
+-------
+
+.. autosummary::
+   :nosignatures:
+
+   Graph
+   GraphView
+   Vertex
+   Edge
+   PropertyMap
+   PropertyArray
+   load_graph
+   group_vector_property
+   ungroup_vector_property
+   value_types
+   show_config
+
 
 This module provides:
 
@@ -52,26 +71,8 @@ Use the built-in ``help`` function to view a function's docstring::
 
    >>> help(gt.Graph)
 
-Summary
--------
-
-.. autosummary::
-   :nosignatures:
-
-   Graph
-   GraphView
-   Vertex
-   Edge
-   PropertyMap
-   load_graph
-   group_vector_property
-   ungroup_vector_property
-   value_types
-   show_config
-   PropertyArray
-
-Classes
--------
+Contents
+--------
 """
 
 __author__ = "Tiago de Paula Peixoto <tiago@skewed.de>"

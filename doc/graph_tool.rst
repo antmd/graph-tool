@@ -1,11 +1,25 @@
 .. automodule:: graph_tool
-   :members:
 
+   .. autoclass:: Graph
+       :members:
    .. autoclass:: GraphView
        :show-inheritance:
+       :members:
+   .. autoclass:: Vertex
+       :members:
+   .. autoclass:: Edge
+       :members:
+   .. autoclass:: PropertyMap
+       :members:
    .. autoclass:: PropertyArray
        :show-inheritance:
        :members: prop_map
+   .. autofunction:: load_graph
+   .. autofunction:: group_vector_property
+   .. autofunction:: ungroup_vector_property
+   .. autofunction:: value_types
+   .. autofunction:: show_config
+
 
 Available subpackages
 =====================
