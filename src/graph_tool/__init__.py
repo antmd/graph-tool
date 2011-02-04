@@ -1473,7 +1473,7 @@ class GraphView(Graph):
         self._Graph__graph = libcore.GraphInterface(g._Graph__graph, True)
         self._Graph__properties = g._Graph__properties
         self._Graph__known_properties = g._Graph__known_properties
-        self.__parent = g
+        self.__base = g if type(g) is not GraphView else g.base
 
         if vfilt is not None:
             if type(vfilt) is PropertyMap:
@@ -1510,6 +1510,6 @@ class GraphView(Graph):
         if reversed:
             self.set_reversed(not g.is_reversed())
 
-    def get_parent(self):
-        "Return parent graph."
-        return self.__parent
+    def __get_base(self):
+        return self.__base
+    base = property(__get_base, doc="Base graph.")
