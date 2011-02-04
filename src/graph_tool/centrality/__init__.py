@@ -424,10 +424,10 @@ def trust_transitivity(g, trust_map, source=None, target=None, vprop=None):
     trust_map : :class:`~graph_tool.PropertyMap`
         Edge property map with the values of trust associated with each
         edge. The values must lie in the range [0,1].
-    source : Vertex (optional, default: None)
+    source : :class:`~graph_tool.Vertex` (optional, default: None)
         Source vertex. All trust values are computed relative to this vertex.
         If left unspecified, the trust values for all sources are computed.
-    target : Vertex (optional, default: None)
+    target : :class:`~graph_tool.Vertex` (optional, default: None)
         The only target for which the trust value will be calculated. If left
         unspecified, the trust values for all targets are computed.
     vprop : :class:`~graph_tool.PropertyMap` (optional, default: None)
