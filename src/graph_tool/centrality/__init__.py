@@ -85,8 +85,8 @@ def pagerank(g, damping=0.8, prop=None, epsilon=1e-6, max_iter=None,
 
     Notes
     -----
-    The value of PageRank [pagerank-wikipedia]_ of vertex v :math:`PR(v)` is
-    given interactively by the relation:
+    The value of PageRank [pagerank-wikipedia]_ of vertex v, :math:`PR(v)`, is
+    given iteratively by the relation:
 
     .. math::
 
