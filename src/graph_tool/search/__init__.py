@@ -3,7 +3,7 @@
 #
 # graph_tool -- a general graph manipulation python module
 #
-# Copyright (C) 2007-2010 Tiago de Paula Peixoto <tiago@skewed.de>
+# Copyright (C) 2007-2011 Tiago de Paula Peixoto <tiago@skewed.de>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1539,6 +1539,5 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
 
 
 class StopSearch(Exception):
-    """If this exception is raised from inside any search visitor object, the
-    search is aborted."""
+    """If this exception is raised from inside any search visitor object, the search is aborted."""
     pass
