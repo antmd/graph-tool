@@ -73,7 +73,7 @@ The following network will be used as an example throughout the documentation.
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_flow")
 
-from .. core import _prop, _check_prop_scalar, _check_prop_writable
+from .. import _prop, _check_prop_scalar, _check_prop_writable
 __all__ = ["edmonds_karp_max_flow", "push_relabel_max_flow",
            "boykov_kolmogorov_max_flow", "max_cardinality_matching"]
 

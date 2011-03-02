@@ -47,7 +47,7 @@ Contents
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_stats")
 
-from .. core import _degree, _prop
+from .. import _degree, _prop
 from numpy import *
 import numpy
 import sys

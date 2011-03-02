@@ -18,7 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys, string, hashlib, os.path, re, glob
-from .. import core
+from .. import *
 from .. import libgraph_tool_core
 import numpy
 import DLFCN
@@ -66,7 +66,7 @@ def clean_prop_type(t):
            replace("__", "_")
 
 for d in ["vertex", "edge", "graph"]:
-    for t in core.value_types():
+    for t in value_types():
         props += "typedef %s_prop_t::as<%s >::type %sprop_%s_t;\n" % \
                  (d, t.replace("bool", "uint8_t"), d[0], clean_prop_type(t))
 
@@ -158,7 +158,7 @@ def inline(code, arg_names=None, local_dict=None,
             arg_val = local_dict[arg]
         else:
             arg_val = global_dict[arg]
-        if issubclass(type(arg_val), core.Graph):
+        if issubclass(type(arg_val), Graph):
             alias = "__gt__" + arg
             gi = "__gt__" + arg + "__gi"
             graph_type = get_graph_type(arg_val)
@@ -170,7 +170,7 @@ def inline(code, arg_names=None, local_dict=None,
                         (arg, arg, graph_type, gi, gi)
             arg_alias.append(alias)
             alias_dict[alias] = gi_val
-        elif type(arg_val) == core.PropertyMap:
+        elif type(arg_val) == PropertyMap:
             alias = "__gt__" + arg
             if arg_val == arg_val.get_graph().vertex_index:
                 prop_name = "GraphInterface::vertex_index_map_t"
@@ -222,8 +222,8 @@ def inline(code, arg_names=None, local_dict=None,
         else:
             arg_val = global_dict[arg]
         if arg not in mask_ret and \
-               type(arg_val) not in [numpy.ndarray, core.PropertyMap] and \
-               not issubclass(type(arg_val), core.Graph):
+               type(arg_val) not in [numpy.ndarray, PropertyMap] and \
+               not issubclass(type(arg_val), Graph):
             return_vals += 'return_vals["%s"] = %s;\n' % (arg, arg)
 
     support_code += globals()["support_template"]
@@ -241,7 +241,7 @@ def inline(code, arg_names=None, local_dict=None,
                                         extra_compile_args +\
                                         extra_objects + \
                                         extra_link_args) + \
-                               headers_hash + core.__version__).hexdigest()
+                               headers_hash + __version__).hexdigest()
     code += "\n// support code hash: " + support_hash
     inline_code = string.Template(globals()["code_template"]).\
                   substitute(var_defs=arg_def, var_extract=arg_conv,

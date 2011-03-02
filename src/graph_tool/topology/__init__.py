@@ -49,7 +49,7 @@ Contents
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_topology")
 
-from .. core import _prop, Vector_int32_t, _check_prop_writable, \
+from .. import _prop, Vector_int32_t, _check_prop_writable, \
      _check_prop_scalar,  _check_prop_vector, Graph, PropertyMap
 import random, sys, numpy, weakref
 __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",

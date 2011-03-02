@@ -43,7 +43,7 @@ Contents
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_centrality")
 
-from .. core import _prop, ungroup_vector_property
+from .. import _prop, ungroup_vector_property
 import sys
 import numpy
 

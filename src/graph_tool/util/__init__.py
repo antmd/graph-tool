@@ -41,7 +41,7 @@ Contents
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_util")
 
-from .. core import _degree, _prop
+from .. import _degree, _prop
 import weakref
 
 __all__ = ["find_vertex", "find_vertex_range", "find_edge", "find_edge_range"]

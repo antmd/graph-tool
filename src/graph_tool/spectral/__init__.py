@@ -36,7 +36,7 @@ Contents
 ++++++++
 """
 
-from .. core import _degree, _prop, Graph, _limit_args
+from .. import _degree, _prop, Graph, _limit_args
 from numpy import *
 import scipy.sparse
 

@@ -37,7 +37,7 @@ Contents
 """
 
 import sys, os, os.path, time, warnings, tempfile
-from .. core import _degree, _prop, PropertyMap, _check_prop_vector,\
+from .. import _degree, _prop, PropertyMap, _check_prop_vector,\
      _check_prop_scalar, _check_prop_writable, group_vector_property,\
      ungroup_vector_property
 from .. decorators import _limit_args

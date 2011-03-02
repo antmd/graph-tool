@@ -44,7 +44,7 @@ Contents
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_clustering as _gt")
 
-from .. core import _degree, _prop, Graph
+from .. import _degree, _prop, Graph
 from .. topology import isomorphism
 from .. generation import random_rewire
 from .. stats import vertex_hist
@@ -463,7 +463,7 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
         shuffled networks.
     shuffle_strategy : string (optional, default: "uncorrelated")
         Shuffle strategy to use. Can be either "correlated" or "uncorrelated".
-        See random_rewire() for details.
+        See :func:`~graph_tool.generation.random_rewire` for details.
 
     Returns
     -------

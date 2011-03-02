@@ -45,7 +45,7 @@ Contents
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_generation")
 
-from .. core import Graph, _check_prop_scalar, _prop, _limit_args
+from .. import Graph, _check_prop_scalar, _prop, _limit_args
 from .. stats import label_parallel_edges, label_self_loops
 import sys, numpy, numpy.random
 

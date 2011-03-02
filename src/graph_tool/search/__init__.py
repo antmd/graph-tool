@@ -78,7 +78,7 @@ Contents
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_search")
 
-from .. core import _prop
+from .. import _prop
 from .. decorators import _wraps
 import sys
 import weakref
@@ -191,8 +191,7 @@ class BFSVisitor(object):
 @_perm_wrap(["initialize_vertex", "examine_vertex", "finish_vertex"],
             ["initialize_vertex"])
 def bfs_search(g, source, visitor=BFSVisitor()):
-    r"""This function performs a breadth-first traversal of the vertices in a
-    directed or undirected graph.
+    r"""Breadth-first traversal of a directed or undirected graph.
 
     Parameters
     ----------
@@ -401,8 +400,7 @@ class DFSVisitor(object):
 @_perm_wrap(["initialize_vertex", "discover_vertex", "finish_vertex",
              "start_vertex"], ["initialize_vertex"])
 def dfs_search(g, source, visitor=DFSVisitor()):
-    r"""This function performs a depth-first traversal of the vertices in a
-    directed or undirected graph.
+    r"""Depth-first traversal of a directed or undirected graph.
 
     Parameters
     ----------
@@ -631,7 +629,7 @@ class DijkstraVisitor(object):
 def dijkstra_search(g, source, weight, visitor=DijkstraVisitor(), dist_map=None,
                     pred_map=None, combine=lambda a, b: a + b,
                     compare=lambda a, b: a < b, zero=0, infinity=float('inf')):
-    r"""This function performs a Dijsktra traversal of the vertices in a directed or undirected graph, with non-negative weights.
+    r"""Dijsktra traversal of a directed or undirected graph, with non-negative weights.
 
     Parameters
     ----------
@@ -898,7 +896,7 @@ def bellman_ford_search(g, source, weight, visitor=BellmanFordVisitor(),
                         combine=lambda a, b: a + b,
                         compare=lambda a, b: a < b, zero=0,
                         infinity=float('inf')):
-    r"""This function performs a Bellman-Ford traversal of the vertices in a directed or undirected graph, with negative weights.
+    r"""Bellman-Ford traversal of a directed or undirected graph, with negative weights.
 
     Parameters
     ----------
@@ -1171,7 +1169,7 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
                  compare=lambda a, b: a < b, zero=0,
                  infinity=float('inf'), implicit=False):
     r"""
-    This algorithm implements a heuristic :math:`A^*` search on a weighted, directed or undirected graph for the case where all edge weights are non-negative.
+    Heuristic :math:`A^*` search on a weighted, directed or undirected graph for the case where all edge weights are non-negative.
 
     Parameters
     ----------

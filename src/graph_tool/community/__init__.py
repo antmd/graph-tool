@@ -42,7 +42,7 @@ Contents
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_community")
 
-from .. core import _degree, _prop, Graph, libcore
+from .. import _degree, _prop, Graph, libcore
 import random
 import sys
 
