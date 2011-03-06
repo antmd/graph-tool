@@ -44,7 +44,7 @@ Contents
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_clustering as _gt")
 
-from .. import _degree, _prop, Graph
+from .. import _degree, _prop, Graph, GraphView
 from .. topology import isomorphism
 from .. generation import random_rewire
 from .. stats import vertex_hist
@@ -115,7 +115,7 @@ def local_clustering(g, prop=None, undirected=True):
     >>> g = gt.random_graph(1000, lambda: (5,5))
     >>> clust = gt.local_clustering(g)
     >>> print gt.vertex_average(g, clust)
-    (0.0057683333333333336, 0.00048270786829210805)
+    (0.009394444444444445, 0.00045574247520250265)
 
     References
     ----------
@@ -172,7 +172,7 @@ def global_clustering(g):
     >>> seed(42)
     >>> g = gt.random_graph(1000, lambda: (5,5))
     >>> print gt.global_clustering(g)
-    (0.0093894614473184149, 0.00045618573270753208)
+    (0.009389461447318415, 0.0004561857327075321)
 
     References
     ----------
@@ -181,7 +181,7 @@ def global_clustering(g):
        :doi:`10.1137/S003614450342480`
     """
 
-    c =_gt.global_clustering(g._Graph__graph)
+    c = _gt.global_clustering(g._Graph__graph)
     return c
 
 
@@ -247,11 +247,11 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
     >>> for i in xrange(0, 5):
     ...    print gt.vertex_average(g, clusts[i])
     ...
-    (0.0057683333333333336, 0.00048270786829210805)
-    (0.025800144927536232, 0.00097643830822805055)
-    (0.11379500000000001, 0.0019584434515139259)
-    (0.39734630434782608, 0.0029727349290168477)
-    (0.43750507246376807, 0.0029440016153056154)
+    (0.005768333333333334, 0.00048270786829210805)
+    (0.025800144927536232, 0.0009764383082280506)
+    (0.11379500000000001, 0.001958443451513926)
+    (0.3973463043478261, 0.0029727349290168477)
+    (0.4375050724637681, 0.0029440016153056154)
 
     References
     ----------
@@ -418,11 +418,11 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
     g : :class:`~graph_tool.Graph`
         Graph to be used.
     k : int
-        number of vertices of the motifs
+        Number of vertices of the motifs
     n_shuffles : int (optional, default: 100)
-        number of shuffled networks to consider for the z-score
+        Number of shuffled networks to consider for the z-score
     p : float or float list (optional, default: 1.0)
-        uniform fraction of the motifs to be sampled. If a float list is
+        Uniform fraction of the motifs to be sampled. If a float list is
         provided, it will be used as the fraction at each depth
         :math:`[1,\dots,k]` in the algorithm. See [wernicke-efficient-2006]_ for
         more details.

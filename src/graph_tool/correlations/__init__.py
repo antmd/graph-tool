@@ -183,7 +183,7 @@ def scalar_assortativity(g, deg):
     ...                     lambda i,k: 1.0/(1+abs(i-k)),
     ...                     directed=False)
     >>> gt.scalar_assortativity(g, "out")
-    (0.62451825727122212, 0.011132275391353953)
+    (0.6245182572712221, 0.011132275391353953)
 
     References
     ----------

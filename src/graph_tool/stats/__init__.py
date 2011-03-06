@@ -214,7 +214,7 @@ def vertex_average(g, deg):
     >>> seed(42)
     >>> g = gt.random_graph(1000, lambda: (poisson(5), poisson(5)))
     >>> print gt.vertex_average(g, "in")
-    (5.0919999999999996, 0.071885575743677543)
+    (5.092, 0.07188557574367754)
     """
 
     ret = libgraph_tool_stats.\
@@ -262,7 +262,7 @@ def edge_average(g, eprop):
     >>> eprop = g.new_edge_property("double")
     >>> eprop.get_array()[:] = random(g.num_edges())
     >>> print gt.edge_average(g, eprop)
-    (0.49674035434130187, 0.0040946040690938677)
+    (0.49674035434130187, 0.004094604069093868)
     """
 
     ret = libgraph_tool_stats.\
