@@ -21,6 +21,8 @@
 
 #include <boost/python.hpp>
 
+#include <iostream>
+
 using namespace std;
 using namespace boost;
 using namespace graph_tool;
@@ -45,7 +47,7 @@ void do_label_self_loops(GraphInterface& gi, boost::any property)
 
 void do_remove_labeled_edges(GraphInterface& gi, boost::any property)
 {
-    run_action<graph_tool::detail::always_directed_never_reversed>()
+    run_action<graph_tool::detail::always_directed_never_reversed, mpl::true_>()
         (gi, bind<void>(remove_labeled_edges(), _1, _2),
          edge_scalar_properties())(property);
 }
