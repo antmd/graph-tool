@@ -58,7 +58,7 @@ __all__ = ["local_clustering", "global_clustering", "extended_clustering",
            "motifs", "motif_significance"]
 
 
-def local_clustering(g, prop=None, undirected=False):
+def local_clustering(g, prop=None, undirected=True):
     r"""
     Return the local clustering coefficients for all vertices.
 
@@ -69,7 +69,7 @@ def local_clustering(g, prop=None, undirected=False):
     prop : :class:`~graph_tool.PropertyMap` or string, optional
         Vertex property map where results will be stored. If specified, this
         parameter will also be the return value.
-    undirected : bool, optional
+    undirected : bool (default: True)
         Calculate the *undirected* clustering coefficient, if graph is directed
         (this option has no effect if the graph is undirected).
 
@@ -126,15 +126,9 @@ def local_clustering(g, prop=None, undirected=False):
 
     if prop == None:
         prop = g.new_vertex_property("double")
-    was_directed = g.is_directed()
     if g.is_directed() and undirected:
-        g.set_directed(False)
-    try:
-       _gt.extended_clustering(g._Graph__graph,
-                                [_prop("v", g, prop)])
-    finally:
-        if was_directed and undirected:
-            g.set_directed(True)
+        g = GraphView(g, directed=False)
+    _gt.extended_clustering(g._Graph__graph, [_prop("v", g, prop)])
     return prop
 
 
@@ -265,23 +259,18 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
        measure of the local topology of networks", :arxiv:`physics/0605235`
     """
 
-    was_directed = g.is_directed()
     if g.is_directed() and undirected:
-        g.set_directed(False)
+        g = GraphView(g, directed=False)
     if props == None:
         props = []
         for i in xrange(0, max_depth):
             props.append(g.new_vertex_property("double"))
-    try:
-       _gt.extended_clustering(g._Graph__graph,
-                               [_prop("v", g, p) for p in props])
-    finally:
-        if was_directed and undirected:
-            g.set_directed(True)
+    _gt.extended_clustering(g._Graph__graph,
+                            [_prop("v", g, p) for p in props])
     return props
 
 
-def motifs(g, k, p=1.0, motif_list=None, undirected=None):
+def motifs(g, k, p=1.0, motif_list=None):
     r"""
     Count the occurrence of k-size subgraphs (motifs). A tuple with two lists is
     returned: the list of motifs found, and the list with their respective
@@ -301,9 +290,6 @@ def motifs(g, k, p=1.0, motif_list=None, undirected=None):
     motif_list : list of :class:`~graph_tool.Graph` objects, optional
         If supplied, the algorithms will only search for the motifs in this list
         (or isomorphisms).
-    undirected : bool, optional
-        Treat the graph as *undirected*, if graph is directed
-        (this option has no effect if the graph is undirected).
 
     Returns
     -------
@@ -334,7 +320,7 @@ def motifs(g, k, p=1.0, motif_list=None, undirected=None):
     >>> from numpy.random import seed
     >>> seed(42)
     >>> g = gt.random_graph(1000, lambda: (5,5))
-    >>> motifs, counts = gt.motifs(g, 4, undirected=True)
+    >>> motifs, counts = gt.motifs(gt.GraphView(g, directed=False), 4)
     >>> print len(motifs)
     14
     >>> print counts
@@ -352,40 +338,38 @@ def motifs(g, k, p=1.0, motif_list=None, undirected=None):
     seed = random.randint(0, sys.maxint)
 
     sub_list = []
-    directed_motifs = g.is_directed() if undirected == None else not undirected
+    directed_motifs = g.is_directed()
 
-    if motif_list != None:
+    if motif_list is not None:
         directed_motifs = motif_list[0].is_directed()
         for m in motif_list:
             if m.is_directed() != directed_motifs:
-                raise ValueError("all motif graphs must be either directed or undirected")
+                raise ValueError("all motif graphs must be either directed or undirected!")
             if m.num_vertices() != k:
                 raise ValueError("all motifs must have the same number of vertices: " + k)
             sub_list.append(m._Graph__graph)
 
+    if directed_motifs != g.is_directed():
+        raise ValueError("motifs do not have the same directionality as the graph itself!")
+
     if type(p) == float:
-        pd = [1.0] * (k-1)
+        pd = [1.0] * (k - 1)
         pd.append(p)
     if type(p) == list:
         pd = [float(x) for x in p]
 
     hist = []
     was_directed = g.is_directed()
-    if g.is_directed() and not directed_motifs:
-        g.set_directed(False)
-    try:
-       _gt.get_motifs(g._Graph__graph, k, sub_list, hist, pd,
-                      True, len(sub_list) == 0,
-                      seed)
-    finally:
-        if was_directed and not directed_motifs:
-            g.set_directed(True)
+    _gt.get_motifs(g._Graph__graph, k, sub_list, hist, pd,
+                   True, len(sub_list) == 0,
+                   seed)
 
     # assemble graphs
     temp = []
     for m in sub_list:
         mg = Graph()
         mg._Graph__graph = m
+        mg.reindex_edges()
         temp.append(mg)
     sub_list = temp
 
@@ -422,9 +406,8 @@ def _graph_sig(g):
 
 
 def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
-                       threshold=0, undirected=None, self_loops=False,
-                       parallel_edges=False, full_output=False,
-                       shuffle_strategy= "uncorrelated"):
+                       threshold=0, self_loops=False, parallel_edges=False,
+                       full_output=False, shuffle_strategy="uncorrelated"):
     r"""
     Obtain the motif significance profile, for subgraphs with k vertices. A
     tuple with two lists is returned: the list of motifs found, and their
@@ -448,9 +431,6 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
         (isomorphisms)
     threshold : int (optional, default: 0)
         If a given motif count is below this level, it is not considered.
-    undirected : bool (optional, default: None)
-        Treat the graph as *undirected*, if graph is directed
-        (this option has no effect if the graph is undirected).
     self_loops : bool (optional, default: False)
         Whether or not the shuffled graphs are allowed to contain self-loops
     parallel_edges : bool (optional, default: False)
@@ -509,10 +489,10 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
     >>> print len(motifs)
     11
     >>> print zscores
-    [-0.77247260114237382, -0.99569269406173944, -0.89282671051270046, 0.3239871430063806, 0.30808421357288784, 0.78512106107239443, 0.53748384988656916, 1.9099999999999999, -0.12, -0.29999999999999999, -0.12]
+    [-0.77247260114237382, -0.99569269406173944, -0.89282671051270046, 0.3239871430063806, 0.30808421357288784, 0.78512106107239443, 0.53748384988656916, 1.91, -0.12, -0.3, -0.12]
     """
 
-    s_ms, counts = motifs(g, k, p, motif_list, undirected)
+    s_ms, counts = motifs(g, k, p, motif_list)
     if threshold > 0:
         s_ms, counts = zip(*[x for x in zip(s_ms, counts) if x[1] > threshold])
         s_ms = list(s_ms)
@@ -530,7 +510,7 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
     for i in xrange(0, n_shuffles):
         random_rewire(sg, shuffle_strategy, self_loops=self_loops,
                       parallel_edges=parallel_edges)
-        m_temp, count_temp = motifs(sg, k, p, motif_list, undirected)
+        m_temp, count_temp = motifs(sg, k, p, motif_list)
         if threshold > 0:
             m_temp, count_temp = zip(*[x for x in zip(m_temp, count_temp) \
                                        if x[1] > threshold])
