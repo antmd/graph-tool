@@ -66,7 +66,7 @@ __all__ = ["graph_draw", "arf_layout", "random_layout"]
 def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
                maxiter=None, ratio="fill", overlap="prism", sep=None,
                splines=False, vsize=0.1, penwidth=1.0, elen=None, gprops={},
-               vprops={}, eprops={}, vcolor=None, ecolor=None,
+               vprops={}, eprops={}, vcolor="#a40000", ecolor="#2e3436",
                vcmap=matplotlib.cm.jet, vnorm=True, ecmap=matplotlib.cm.jet,
                enorm=True, vorder=None, eorder=None, output="",
                output_format="auto", returngv=False, fork=False,
@@ -168,11 +168,11 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
         Additional edge properties, as a dictionary. The keys are the property
         names, and the values must be convertible to string, or edge property
         maps, with values convertible to strings.
-    vcolor : string or PropertyMap (default: None)
+    vcolor : string or PropertyMap (default: "#a40000")
         Drawing color for vertices. If the valued supplied is a property map,
         the values must be scalar types, whose color values are obtained from
         the 'vcmap' argument.
-    ecolor : string or PropertyMap (default: None)
+    ecolor : string or PropertyMap (default: "#2e3436")
         Drawing color for edges. If the valued supplied is a property map,
         the values must be scalar types, whose color values are obtained from
         the 'ecmap' argument.
@@ -284,7 +284,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
     if pos != None:
         # copy user-supplied property
         if isinstance(pos, PropertyMap):
-            pos = ungroup_vector_property(pos, [0,1])
+            pos = ungroup_vector_property(pos, [0, 1])
         else:
             pos = (g.copy_property(pos[0]), g.copy_property(pos[1]))
 
@@ -322,7 +322,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
     seed = numpy.random.randint(sys.maxint)
     gv.setv(gvg, "start", "%d" % seed)
 
-    # apply all user supplied properties
+    # apply all user supplied graph properties
     for k, val in gprops.iteritems():
         if isinstance(val, PropertyMap):
             gv.setv(gvg, k, str(val[g]))
@@ -371,19 +371,17 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
         else:
             vw = vh = vsize
 
+        gv.setv(n, "shape", "circle")
         gv.setv(n, "width", "%g" % vw)
         gv.setv(n, "height", "%g" % vh)
         gv.setv(n, "style", "filled")
-        gv.setv(n, "color", "black")
+        gv.setv(n, "color", ecolor if isinstance(ecolor, str) else "#2e3436")
         # apply color
-        if vcolor != None:
-            if isinstance(vcolor, str):
-                gv.setv(n, "fillcolor", vcolor)
-            else:
-                color = tuple([int(c * 255.0) for c in vcmap(vnorm(vcolor[v]))])
-                gv.setv(n, "fillcolor", "#%.2x%.2x%.2x%.2x" % color)
+        if isinstance(vcolor, str):
+            gv.setv(n, "fillcolor", vcolor)
         else:
-            gv.setv(n, "fillcolor", "red")
+            color = tuple([int(c * 255.0) for c in vcmap(vnorm(vcolor[v]))])
+            gv.setv(n, "fillcolor", "#%.2x%.2x%.2x%.2x" % color)
         gv.setv(n, "label", "")
 
         # user supplied position
@@ -412,12 +410,11 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
             gv.setv(ge, "arrowhead", "vee")
 
         # apply color
-        if ecolor != None:
-            if isinstance(ecolor, str):
-                gv.setv(ge, "color", ecolor)
-            else:
-                color = tuple([int(c * 255.0) for c in ecmap(enorm(ecolor[e]))])
-                gv.setv(ge, "color", "#%.2x%.2x%.2x%.2x" % color)
+        if isinstance(ecolor, str):
+            gv.setv(ge, "color", ecolor)
+        else:
+            color = tuple([int(c * 255.0) for c in ecmap(enorm(ecolor[e]))])
+            gv.setv(ge, "color", "#%.2x%.2x%.2x%.2x" % color)
 
         # apply edge length
         if elen != None:
