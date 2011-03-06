@@ -76,7 +76,9 @@ GraphInterface::GraphInterface(const GraphInterface& gi, bool keep_ref)
 {
     if (keep_ref)
         return;
-    _state->_nedges = _state->_max_edge_index = 0;
+    _state->_nedges = gi._state->_nedges;
+    _state->_max_edge_index = gi._state->_max_edge_index;
+    _state->_free_indexes = gi._state->_free_indexes;
     graph_copy()(_state->_mg, gi._state->_mg, _vertex_index, gi._vertex_index,
                  _edge_index, gi._edge_index);
     // filters will be copied in python
