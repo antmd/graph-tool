@@ -93,8 +93,8 @@ void extended_clustering(GraphInterface& g, python::list props)
 
     run_action<>()
         (g, bind<void>(get_extended_clustering(), _1,
-                               any_cast<GraphInterface::vertex_index_map_t>
-                               (g.GetVertexIndex()), _2),
+                       any_cast<GraphInterface::vertex_index_map_t>
+                       (g.GetVertexIndex()), _2),
          properties_vector()) (vprop);
 }
 
