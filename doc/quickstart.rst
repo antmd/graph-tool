@@ -1,9 +1,10 @@
 Quick start using `graph-tool`
 ==============================
 
-The :mod:`graph_tool` module provides a :class:`~graph_tool.Graph` class and
-several algorithms that operate on it. The internals of this class, and of most
-algorithms, are written in C++ for performance.
+The :mod:`graph_tool` module provides a :class:`~graph_tool.Graph` class
+and several algorithms that operate on it. The internals of this class,
+and of most algorithms, are written in C++ for performance, using the
+`Boost Graph Library <http://www.boost.org>`_.
 
 The module must be of course imported before it can be used. The package is
 subdivided into several sub-modules. To import everything from all of them, one
@@ -26,15 +27,16 @@ class:
    >>> g = Graph()
 
 By default, newly created graphs are always directed. To construct undirected
-graphs, one must pass the ``directed`` parameter:
+graphs, one must pass a value to the ``directed`` parameter:
 
 .. doctest::
 
    >>> ug = Graph(directed=False)
 
-A graph can always be switched on-the-fly from directed to undirected (and vice
-versa), with the :meth:`~graph_tool.Graph.set_directed` method. The "directedness" of the
-graph can be queried with the :meth:`~graph_tool.Graph.is_directed` method,
+A graph can always be switched *on-the-fly* from directed to undirected
+(and vice versa), with the :meth:`~graph_tool.Graph.set_directed`
+method. The "directedness" of the graph can be queried with the
+:meth:`~graph_tool.Graph.is_directed` method,
 
 .. doctest::
 
@@ -42,26 +44,84 @@ graph can be queried with the :meth:`~graph_tool.Graph.is_directed` method,
    >>> ug.set_directed(False)
    >>> assert(ug.is_directed() == False)
 
-A graph can also be created from another graph, in which case the entire graph
-(and its internal property maps, see :ref:`sec_property_maps`) is copied:
+A graph can also be created by providing another graph, in which case
+the entire graph (and its internal property maps, see
+:ref:`sec_property_maps`) is copied:
 
 .. doctest::
 
    >>> g1 = Graph()
-   >>> # ... populate g1 ...
+   >>> # ... construct g1 ...
    >>> g2 = Graph(g1)                 # g1 and g2 are copies
 
-Once a graph is created, it can be populated with vertices and edges. A vertex
-can be added with the :meth:`~graph_tool.Graph.add_vertex` method,
+Above, ``g2`` is a "deep" copy of ``g1``, i.e. any modification of
+``g2`` will not affect ``g1``.
+
+Once a graph is created, it can be populated with vertices and edges. A
+vertex can be added with the :meth:`~graph_tool.Graph.add_vertex`
+method, which returns an instance of a :class:`~graph_tool.Vertex`
+class, also called a *vertex descriptor*. For instance, the following
+code creates two vertices, and returns vertex descriptors stored in the
+variables ``v1`` and ``v2``.
 
 .. doctest::
 
-   >>> v = g.add_vertex()
+   >>> v1 = g.add_vertex()
+   >>> v2 = g.add_vertex()
 
-which returns an instance of a :class:`~graph_tool.Vertex` class, also called a
-*vertex descriptor*. The :meth:`~graph_tool.Graph.add_vertex` method also
-accepts an optional parameter which specifies the number of vertices to
-create. If this value is greater than 1, it returns a list of vertices:
+Edges can be added in an analogous manner, by calling the
+:meth:`~graph_tool.Graph.add_edge` method, which returns an edge
+descriptor (an instance of the :class:`~graph_tool.Edge` class):
+
+.. doctest::
+
+   >>> e = g.add_edge(v1, v2)
+
+The above code creates a directed edge from ``v1`` to ``v2``. We can
+visualize the graph we created so far with the
+:func:`~graph_tool.draw.graph_draw` function.
+
+.. doctest::
+
+   >>> graph_draw(g, vprops={"label": g.vertex_index}, output="two-nodes.png")
+   <...>
+
+.. figure:: two-nodes.png
+   :align: center
+
+   A simple directed graph with two vertices and one edge, created by
+   the commands above.
+
+With vertex and edge descriptors, one can examine and manipulate the
+graph in an arbitrary manner. For instance, in order to obtain the
+out-degree of a vertex, we can simply call the
+:meth:`~graph_tool.Vertex.out_degree` method:
+
+.. doctest::
+
+   >>> print v1.out_degree()
+   1
+
+Analogously, we could have used the :meth:`~graph_tool.Vertex.in_degree`
+method to query the in-degree.
+
+.. note::
+
+   For undirected graphs, the "out-degree" is synonym for degree, and
+   in this case the in-degree of a vertex is always zero.
+
+Edge descriptors have two useful methods, :meth:`~graph_tool.Edge.source`
+and :meth:`~graph_tool.Edge.target`, which return the source and target
+vertex of an edge, respectively.
+
+.. doctest::
+
+   >>> print e.source(), e.target()
+   0 1
+
+The :meth:`~graph_tool.Graph.add_vertex` method also accepts an optional
+parameter which specifies the number of vertices to create. If this
+value is greater than 1, it returns a list of vertex descriptors:
 
 .. doctest::
 
@@ -69,86 +129,107 @@ create. If this value is greater than 1, it returns a list of vertices:
    >>> print len(vlist)
    10
 
-Each vertex has an unique index, which is numbered from 0 to N-1, where N is the
-number of vertices. This index can be obtained by using the
-:attr:`~graph_tool.Graph.vertex_index` attribute of the graph (which is a
-*property map*, see :ref:`sec_property_maps`), or by converting the vertex
-descriptor to an int.
-
-.. doctest::
-
-   >>> v = g.add_vertex()
-   >>> print g.vertex_index[v], int(v)
-   11 11
-
-There is no need to keep the vertex descriptor lying around to access them at a
-later point: One can obtain the descriptor of a vertex with a given index using
-the :meth:`~graph_tool.Graph.vertex` method,
-
-.. doctest::
-
-   >>> print g.vertex(8)
-   8
-
-Another option is to iterate through the vertices, as described in section
-:ref:`sec_iteration`.
-
-Once we have some vertices in the graph, we can create some edges between them
-with the :meth:`~graph_tool.Graph.add_edge` method, which returns an edge
-descriptor (an instance of the :class:`~graph_tool.Edge` class).
-
-.. doctest::
-
-   >>> v1 = g.add_vertex()
-   >>> v2 = g.add_vertex()
-   >>> e = g.add_edge(v1, v2)
-
-Edges also have an unique index, which is given by the :attr:`~graph_tool.Graph.edge_index`
-property:
-
-.. doctest::
-
-   >>> print g.edge_index[e]
-   0
-
-Unlike the vertices, edge indexes are not guaranteed to be continuous in any
-range, but they are always unique.
-
-Both vertex and edge descriptors have methods which query associate information,
-such as :meth:`~graph_tool.Vertex.in_degree`,
-:meth:`~graph_tool.Vertex.out_degree`, :meth:`~graph_tool.Edge.source` and
-:meth:`~graph_tool.Edge.target`:
-
-.. doctest::
-
-   >>> v1 = g.add_vertex()
-   >>> v2 = g.add_vertex()
-   >>> e = g.add_edge(v1, v2)
-   >>> print v1.out_degree(), v2.in_degree()
-   1 1
-   >>> assert(e.source() == v1 and e.target() == v2)
-
 Edges and vertices can also be removed at any time with the
 :meth:`~graph_tool.Graph.remove_vertex` and :meth:`~graph_tool.Graph.remove_edge` methods,
 
 .. doctest::
 
+   >>> g.remove_edge(e)                               # e no longer exists
+   >>> g.remove_vertex(v2)                # the second vertex is also gone
+
+.. note::
+
+   Removing a vertex is an :math:`O(N)` operation. The vertices are
+   internally stored in a STL vector, so removing an element somewhere
+   in the middle of the list requires the shifting of the rest of the
+   list. Thus, fast :math:`O(1)` removals are only possible if one can
+   guarantee that only vertices in the end of the list are removed (the
+   ones last added to the graph).
+
+   Removing an edge is an :math:`O(k_{s} + k_{t})` operation, where
+   :math:`O(k_{s})` is the out-degree of the source vertex, and
+   :math:`O(k_{t})` is the in-degree of the target vertex.
+
+Each vertex in a graph has an unique index, which is numbered from 0 to
+N-1, where N is the number of vertices. This index can be obtained by
+using the :attr:`~graph_tool.Graph.vertex_index` attribute of the graph
+(which is a *property map*, see :ref:`sec_property_maps`), or by
+converting the vertex descriptor to an ``int``.
+
+.. doctest::
+
+   >>> v = g.add_vertex()
+   >>> print g.vertex_index[v]
+   11
+   >>> print int(v)
+   11
+
+.. note::
+
+   Removing a vertex will cause the index of any vertex with a larger
+   index to be changed, so that the indexes *always* conform to the
+   :math:`[0, N-1]` range. However, property map values (see
+   :ref:`sec_property_maps`) are unaffected.
+
+Since vertices are uniquely identifiable by their indexes, there is no
+need to keep the vertex descriptor lying around to access them at a
+later point. If we know its index, one can obtain the descriptor of a
+vertex with a given index using the :meth:`~graph_tool.Graph.vertex`
+method,
+
+.. doctest::
+
+   >>> v = g.vertex(8)
+
+which takes an index, and returns a vertex descriptor. Edges cannot be
+directly obtained by its index, but if the source and target vertices of
+a given edge is known, it can be obtained with the
+:meth:`~graph_tool.Graph.edge` method
+
+.. doctest::
+
+   >>> g.add_edge(g.vertex(2), g.vertex(3))
+   <...>
+   >>> e = g.edge(2, 3)
+
+
+Another way to obtain edge or vertex descriptors is to *iterate* through
+them, as described in section :ref:`sec_iteration`. This is in fact the
+most useful way of obtaining vertex and edge descriptors.
+
+Like vertices, edges also have unique indexes, which are given by the
+:attr:`~graph_tool.Graph.edge_index` property:
+
+.. doctest::
+
    >>> e = g.add_edge(g.vertex(0), g.vertex(1))
-   >>> g.remove_edge(e)                                      # e no longer exists
-   >>> g.remove_vertex(g.vertex(1))              # the second vertex is also gone
+   >>> print g.edge_index[e]
+   1
+
+Differently from vertices, edge indexes do not necessarily conform to
+any specific range. If no edges are ever removed, the indexes will be in
+the range :math:`[0, E-1]`, where :math:`E` is the number of edges, and
+edges added earlier have lower indexes. However if an edge is removed,
+its index will be "vacant", and the remaining indexes will be left
+unmodified, and thus will not lie in the range :math:`[0, E-1]`.  If a
+new edge is added, it will reuse old indexes, in an increasing order.
 
 .. _sec_iteration:
 
 Iterating over vertices and edges
-+++++++++++++++++++++++++++++++++
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Algorithms must often iterate through the vertices, edges, out edge, etc. of the
-graph. The :class:`~graph_tool.Graph` and :class:`~graph_tool.Edge` classes
-provide the necessary iterators for doing so. The iterators always give back
-edge or vertex descriptors.
+Algorithms must often iterate through vertices, edges, out-edges of a
+vertex, etc. The :class:`~graph_tool.Graph` and
+:class:`~graph_tool.Vertex` classes provide different types of iterators
+for doing so. The iterators always point to edge or vertex descriptors.
 
-In order to iterate through the vertices or edges of the graph, the
-:meth:`~graph_tool.Graph.vertices` and :meth:`~graph_tool.Graph.edges` methods should be used, as such:
+Iterating over all vertices or edges
+""""""""""""""""""""""""""""""""""""
+
+In order to iterate through all the vertices or edges of a graph, the
+:meth:`~graph_tool.Graph.vertices` and :meth:`~graph_tool.Graph.edges`
+methods should be used:
 
 .. doctest::
 
@@ -160,10 +241,13 @@ In order to iterate through the vertices or edges of the graph, the
 The code above will print the vertices and edges of the graph in the order they
 are found.
 
+Iterating over the neighbourhood of a vertex
+""""""""""""""""""""""""""""""""""""""""""""
+
 The out- and in-edges of a vertex, as well as the out- and in-neighbours can be
 iterated through with the :meth:`~graph_tool.Vertex.out_edges`,
 :meth:`~graph_tool.Vertex.in_edges`, :meth:`~graph_tool.Vertex.out_neighbours`
-and :meth:`~graph_tool.Vertex.in_neighbours` respectively.
+and :meth:`~graph_tool.Vertex.in_neighbours` methods, respectively.
 
 .. doctest::
 
@@ -171,31 +255,46 @@ and :meth:`~graph_tool.Vertex.in_neighbours` respectively.
    for v in g.vertices():
       for e in v.out_edges():
           print e
-      for e in v.out_neighbours():
-          print e
+      for w in v.out_neighbours():
+          print w
 
       # the edge and neighbours order always match
       for e,w in izip(v.out_edges(), v.out_neighbours()):
           assert(e.target() == w)
 
-.. warning:
+The code above will print the out-edges and out-neighbours of all
+vertices in the graph.
 
-   You should never remove vertex or edge descriptors when iterating over them,
-   since this invalidates the iterators. If you plan to remove vertices or edges
-   during iteration, you must first store them somewhere (such as in a list) and
-   remove them only later. Removal during iteration will cause bad things to
+.. note::
+
+   The ordering of the vertices and edges visited by the iterators is
+   always the same as the order in which they were added to the graph
+   (with the exception of the iterator returned by
+   :meth:`~graph_tool.Graph.edges`). Usually, algorithms do not care
+   about this order, but if it is ever needed, this inherent ordering
+   can be relied upon.
+
+.. warning::
+
+   You should never remove vertex or edge descriptors when iterating
+   over them, since this invalidates the iterators. If you plan to
+   remove vertices or edges during iteration, you must first store them
+   somewhere (such as in a list) and remove them only after no iterator
+   is being used. Removal during iteration will cause bad things to
    happen.
+
 
 .. _sec_property_maps:
 
 Property maps
 -------------
 
-Property maps are a way of associating additional information to the vertices,
-edges or to the graph itself. There are thus three types of property maps:
-vertex, edge and graph. All of them are instances of the same class,
-:class:`~graph_tool.PropertyMap`. Each property map has an associated *value
-type*, which must be chosen from the predefined set:
+Property maps are a way of associating additional information to the
+vertices, edges or to the graph itself. There are thus three types of
+property maps: vertex, edge and graph. All of them are handled by the
+same class, :class:`~graph_tool.PropertyMap`. Each created property map
+has an associated *value type*, which must be chosen from the predefined
+set:
 
 .. tabularcolumns:: |l|l|
 
@@ -234,47 +333,46 @@ accessed by vertex or edge descriptors, or the graph itself, as such:
     # insert some random links
     for s,t in izip(randint(0, 100, 100), randint(0, 100, 100)):
         g.add_edge(g.vertex(s), g.vertex(t))
-    
-    vprop_double = g.new_vertex_property("double")
-    vprop_vint = g.new_vertex_property("vector<int>")
 
-    eprop_dict = g.new_edge_property("object")
-
-    gprop_bool = g.new_edge_property("bool")
-
+    vprop_double = g.new_vertex_property("double")            # Double-precision floating point
     vprop_double[g.vertex(10)] = 3.1416
 
+    vprop_vint = g.new_vertex_property("vector<int>")         # Vector of ints
     vprop_vint[g.vertex(40)] = [1, 3, 42, 54]
     
-    eprop_dict[g.edges().next()] = {"foo":"bar", "gnu":42}
+    eprop_dict = g.new_edge_property("object")                # Arbitrary python object. In this case, a dictionary.
+    eprop_dict[g.edges().next()] = {"foo": "bar", "gnu": 42}
 
+    gprop_bool = g.new_edge_property("bool")                  # Boolean
     gprop_bool[g] = True
 
-Property maps with scalar value types can also be accessed as a numpy
-:class:`~numpy.ndarray`, with the
+Property maps with scalar value types can also be accessed as a
+:class:`numpy.ndarray`, with the
 :meth:`~graph_tool.PropertyMap.get_array` method, or the
-:meth:`~graph_tool.PropertyMap.a` attribute, i.e.,
+:attr:`~graph_tool.PropertyMap.a` attribute, i.e.,
 
 .. doctest::
 
     from numpy.random import random
 
-    # this assigns random values to the properties
+    # this assigns random values to the vertex properties
     vprop_double.get_array()[:] = random(g.num_vertices())
 
     # or more conveniently (this is equivalent to the above)
     vprop_double.a = random(g.num_vertices())
 
 Internal property maps
-++++++++++++++++++++++
+^^^^^^^^^^^^^^^^^^^^^^
 
-Any created property map can be made "internal" to the respective graph. This
-means that it will be copied and saved to a file together with the
-graph. Properties are internalized by including them in the graph's
-dictionary-like attributes :attr:`~graph_tool.Graph.vertex_properties`,
+Any created property map can be made "internal" to the corresponding
+graph. This means that it will be copied and saved to a file together
+with the graph. Properties are internalized by including them in the
+graph's dictionary-like attributes
+:attr:`~graph_tool.Graph.vertex_properties`,
 :attr:`~graph_tool.Graph.edge_properties` or
-:attr:`~graph_tool.Graph.graph_properties`. When inserted in the graph, the
-property maps must have an unique name (between those of the same type):
+:attr:`~graph_tool.Graph.graph_properties`. When inserted in the graph,
+the property maps must have an unique name (between those of the same
+type):
 
 .. doctest::
 
@@ -361,12 +459,14 @@ use the :func:`~graph_tool.draw.graph_draw` function.
 .. testcode::
 
    g = load_graph("price.xml.gz")
-   graph_draw(g, size=(15,15), layout="sfdp", output="price.png")
+   age = g.vertex_properties["age"]
+   graph_draw(g, size=(15,15), vcolor=age, output="price.png")
 
 .. figure:: price.png
    :align: center
 
-   A Price network with :math:`10^5` nodes.
+   A Price network with :math:`10^5` nodes. The vertex colors represent
+   the age of the vertex, from older (red) to newer (blue).
 
 Graph filtering
 ---------------
@@ -389,19 +489,21 @@ the marked edges or vertices were removed from the graph, with minimum overhead.
     any overhead when the graph is not being filtered. In this case, the
     algorithms run just as fast as if the filtering functionality didn't exist.
 
-Here is an example which obtains the minimum spanning tree of a graph, using
+Here is an example which obtains the minimum spanning tree of a graph,
+using the function :func:`~graph_tool.topology.min_spanning_tree` and
 edge filtering.
 
 .. testcode::
    :hide:
 
+   from numpy.random import *
    seed(42)
 
 .. testcode::
 
-   g, pos = triangulation(random((500,2))*4, type="delaunay")
+   g, pos = triangulation(random((500, 2)) * 4, type="delaunay")
    tree = min_spanning_tree(g)
-   graph_draw(g, pos=pos, pin=True, size=(8,8), ecolor=tree, output="min_tree.png")
+   graph_draw(g, pos=pos, pin=True, size=(8, 8), ecolor=tree, output="min_tree.png")
 
 The ``tree`` property map has a bool type, with value "1" if the edge belongs to
 the tree, and "0" otherwise. Below is an image of the original graph, with the
@@ -415,7 +517,7 @@ We can now filter out the edges which don't belong to the minimum spanning tree.
 .. testcode::
 
     g.set_edge_filter(tree)
-    graph_draw(g, pos=pos, pin=True, size=(8,8), output="min_tree_filtered.png")
+    graph_draw(g, pos=pos, pin=True, size=(8, 8), output="min_tree_filtered.png")
 
 This is how the graph looks when filtered:
 
@@ -459,3 +561,125 @@ operation, which does not really modify the graph.
 
 As mentioned previously, the directedness of the graph can also be changed
 "on-the-fly" with the :meth:`~graph_tool.Graph.set_directed` method.
+
+Graph views
+^^^^^^^^^^^
+
+It is often desired to work with filtered and unfiltered graphs
+simultaneously, or to temporarily create a filtered version of graph for
+some specific task. For these purposes, graph-tool provides a
+:class:`~graph_tool.GraphView` class, which represents a filtered "view"
+of a graph, and behaves as an independent graph object, which shares the
+underlying data with the original graph. Graph views are constructed by
+instantiating a :class:`~graph_tool.GraphView` class, and passing a
+graph object which is supposed to be filtered, together with the desired
+filter parameters. For example, to create an directed view of the
+graph ``g`` constructed above, one should do:
+
+.. doctest::
+
+    >>> ug = GraphView(g, directed=True)
+    >>> ug.is_directed()
+    True
+
+Graph views also provide a much more direct and convenient approach to
+vertex/edge filtering: To construct a filtered minimum spanning tree
+like in the example above, one must only pass the filter property as the
+"efilter" parameter:
+
+.. doctest::
+
+    >>> tv = GraphView(g, efilt=tree)
+
+Note that this is an :math:`O(1)` operation, since it is equivalent (in
+speed) to setting the filter in graph ``g`` directly, but in this case
+the object ``g`` remains unmodified.
+
+Like above, the result should be the isolated minimum spanning tree:
+
+.. doctest::
+
+    >>> bv, be = betweenness(tv)
+    >>> be.a *= 10
+    >>> graph_draw(tv, pos=pos, pin=True, size=(8,8), vsize=0.07, vcolor=bv,
+    ...            eprops={"penwidth":be}, output="mst-view.png")
+    <...>
+
+
+.. figure:: mst-view.png
+   :align: center
+
+   A view of the Delaunay graph, isolating only the minimum spanning tree.
+
+.. note::
+
+   :class:`~graph_tool.GraphView` objects behave *exactly* like regular
+   :class:`~graph_tool.Graph` objects. In fact,
+   :class:`~graph_tool.GraphView` is a subclass of
+   :class:`~graph_tool.Graph`. The only difference is that a
+   :class:`~graph_tool.GraphView` object shares its internal data with
+   its parent :class:`~graph_tool.Graph` class. Therefore, if the
+   original :class:`~graph_tool.Graph` object is modified, this
+   modification will be reflected immediately in the
+   :class:`~graph_tool.GraphView` object, and vice-versa.
+
+For even more convenience, one can supply a function as filter
+parameter, which takes a vertex or an edge as single parameter, and
+returns ``True`` if the vertex/edge should be kept and ``False``
+otherwise. For instance, if we want to keep only the most "central"
+edges, we can do:
+
+.. doctest::
+
+    >>> bv, be = betweenness(g)
+    >>> u = GraphView(g, efilt=lambda e: be[e] > 0.01)
+
+This creates a graph view ``u`` which contains only the edges of ``g``
+which have a normalized betweenness centrality larger than 0.01. Note
+that, differently from the case above, this is an :math:`O(E)`
+operation, where :math:`E` is the number of edges, since the supplied
+function must be called :math:`E` times to construct a filter property
+map. Thus, supplying a constructed filter map is always faster, but
+supplying a function can be more convenient.
+
+The graph view constructed above can be visualized as
+
+.. doctest::
+
+    >>> graph_draw(u, pos=pos, pin=True, size=(8,8), vsize=0.07, vcolor=bv,
+    ...            output="central-edges-view.png")
+    <...>
+
+.. figure:: central-edges-view.png
+   :align: center
+
+   A view of the Delaunay graph, isolating only the edges with
+   normalized betweenness centrality larger than 0.01.
+
+Composing graph views
+"""""""""""""""""""""
+
+Since graph views are regular graphs, one can just as easily create
+graph views of graph views. This provides a convenient way of composing
+filters. For instance, in order to isolate the minimum spanning tree of
+all vertices of the example above which have a degree larger than four,
+one can do:
+
+
+    >>> u = GraphView(g, vfilt=lambda v: v.out_degree() > 4)
+    >>> tree = min_spanning_tree(u)
+    >>> u = GraphView(u, efilt=tree)
+
+The resulting graph view can be visualized as
+
+.. doctest::
+
+    >>> graph_draw(u, pos=pos, pin=True, size=(8,8), vsize=0.07,
+    ...            output="composed-filter.png")
+    <...>
+
+.. figure:: composed-filter.png
+   :align: center
+
+   A composed view, obtained as the minimum spanning tree of all vertices
+   in the graph which have a degree larger than four.

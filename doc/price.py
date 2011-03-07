@@ -72,7 +72,7 @@ savefig("deg-hist.png")
 # just for fun.
 
 v = g.vertex(randint(0, g.num_vertices()))
-for i in xrange(0, 100):
+while True:
     print "vertex:", v, "in-degree:", v.in_degree(), "out-degree:",\
           v.out_degree(), "age:", v_age[v]
 
@@ -86,11 +86,10 @@ for i in xrange(0, 100):
     v = n_list[randint(0, len(n_list))]
 
 # let's save our graph for posterity. We want to save the age properties as
-# well... To do this, they must become "internal" properties, as such:
+# well... To do this, they must become "internal" properties:
 
 g.vertex_properties["age"] = v_age
 g.edge_properties["age"] = e_age
 
 # now we can save it
 g.save("price.xml.gz")
-
