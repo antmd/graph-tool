@@ -25,9 +25,11 @@
 #   and this notice are preserved.
 
 AC_DEFUN([AC_PYTHON_MODULE],[
-    if test -z $PYTHON;
+    if test -z $PYTHON_BIN;
     then
         PYTHON="python"
+    else
+        PYTHON=$PYTHON_BIN
     fi
     PYTHON_NAME=`basename $PYTHON`
     AC_MSG_CHECKING($PYTHON_NAME module: $1)
