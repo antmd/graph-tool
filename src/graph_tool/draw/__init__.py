@@ -63,10 +63,10 @@ except ImportError:
 __all__ = ["graph_draw", "arf_layout", "random_layout"]
 
 
-def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
-               maxiter=None, ratio="fill", overlap="prism", sep=None,
-               splines=False, vsize=0.1, penwidth=1.0, elen=None, gprops={},
-               vprops={}, eprops={}, vcolor="#a40000", ecolor="#2e3436",
+def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
+               ratio="fill", overlap="prism", sep=None, splines=False,
+               vsize=0.105, penwidth=1.0, elen=None, gprops={}, vprops={},
+               eprops={}, vcolor="#a40000", ecolor="#2e3436",
                vcmap=matplotlib.cm.jet, vnorm=True, ecmap=matplotlib.cm.jet,
                enorm=True, vorder=None, eorder=None, output="",
                output_format="auto", returngv=False, fork=False,
