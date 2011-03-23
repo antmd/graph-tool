@@ -337,22 +337,30 @@ class PropertyMap(object):
     def __init__(self, pmap, g, key_type, key_trans=None):
         self.__map = pmap
         self.__g = weakref.ref(g)
+        self.__base_g = lambda: None
+        try:
+            if isinstance(g, GraphView):
+                self.__base_g = weakref.ref(g.base)  # keep reference to the
+                                                     # base graph, in case the
+                                                     # graph view is deleted.
+        except NameError:
+            pass  # ignore if GraphView is yet undefined
         self.__key_type = key_type
         self.__key_trans = key_trans if key_trans is not None else lambda k: k
         self.__register_map()
 
     def __register_map(self):
-        if self.__g() == None:
-            return
-        self.__g()._Graph__known_properties.append((self.key_type(),
-                                                    weakref.ref(self.__map)))
+        for g in [self.__g(), self.__base_g()]:
+            if g is not None:
+                g._Graph__known_properties.append((self.key_type(),
+                                                   weakref.ref(self.__map)))
 
     def __unregister_map(self):
-        if self.__g() == None:
-            return
-        i = self.__g()._Graph__known_properties.index((self.key_type(),
-                                                       weakref.ref(self.__map)))
-        del self.__g()._Graph__known_properties[i]
+        for g in [self.__g(), self.__base_g()]:
+            if g is not None:
+                i = g._Graph__known_properties.index((self.key_type(),
+                                                      weakref.ref(self.__map)))
+                del g._Graph__known_properties[i]
 
     def __del__(self):
         self.__unregister_map()
@@ -382,7 +390,7 @@ class PropertyMap(object):
             k = "Vertex"
         else:
             k = "Graph"
-        g = self.__g()
+        g = self.get_graph()
         if g == None:
             g = "a non-existent graph"
         else:
@@ -392,7 +400,10 @@ class PropertyMap(object):
 
     def get_graph(self):
         """Get the graph class to which the map refers."""
-        return self.__g()
+        g = self.__g()
+        if g is None:
+            g = self.__base_g()
+        return g
 
     def key_type(self):
         """Return the key type of the map. Either 'g', 'v' or 'e'."""
@@ -423,16 +434,17 @@ class PropertyMap(object):
         return PropertyArray(a, prop_map=self)
 
     def _get_data(self):
-        if self.__g() is None:
+        g = self.get_graph()
+        if g is None:
             return None
-        self.__g().stash_filter(edge=True, vertex=True)
+        g.stash_filter(edge=True, vertex=True)
         if self.__key_type == 'v':
-            n = self.__g().num_vertices()
+            n = g.num_vertices()
         elif self.__key_type == 'e':
-            n = self.__g()._Graph__graph.GetMaxEdgeIndex() + 1
+            n = g._Graph__graph.GetMaxEdgeIndex() + 1
         else:
             n = 1
-        self.__g().pop_filter(edge=True, vertex=True)
+        g.pop_filter(edge=True, vertex=True)
         a = self.__map.get_array(n)
         return a
 
@@ -1469,11 +1481,11 @@ class GraphView(Graph):
 
     def __init__(self, g, vfilt=None, efilt=None, directed=None,
                  reversed=False):
+        self.__base = g if not isinstance(g, GraphView) else g.base
         Graph.__init__(self)
         self._Graph__graph = libcore.GraphInterface(g._Graph__graph, True)
         self._Graph__properties = g._Graph__properties
         self._Graph__known_properties = g._Graph__known_properties
-        self.__base = g if type(g) is not GraphView else g.base
 
         if vfilt is not None:
             if type(vfilt) is PropertyMap:
