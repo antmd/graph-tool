@@ -573,8 +573,8 @@ of a graph, and behaves as an independent graph object, which shares the
 underlying data with the original graph. Graph views are constructed by
 instantiating a :class:`~graph_tool.GraphView` class, and passing a
 graph object which is supposed to be filtered, together with the desired
-filter parameters. For example, to create an directed view of the
-graph ``g`` constructed above, one should do:
+filter parameters. For example, to create a directed view of the graph
+``g`` constructed above, one should do:
 
 .. doctest::
 
