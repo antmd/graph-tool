@@ -25,6 +25,9 @@
 #endif
 #include <boost/mpl/if.hpp>
 
+#include <ext/numeric>
+using __gnu_cxx::power;
+
 namespace graph_tool
 {
 using namespace boost;
@@ -98,7 +101,7 @@ struct get_global_clustering
         int i, N = num_vertices(g);
 
         #pragma omp parallel for default(shared) private(i,temp) \
-            schedule(dynamic) reduction(+:triangles)
+            schedule(dynamic) reduction(+:triangles, n)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -109,13 +112,13 @@ struct get_global_clustering
             triangles += temp.first;
             n += temp.second;
         }
-        c = double(triangles)/n;
+        c = double(triangles) / n;
 
         // "jackknife" variance
         c_err = 0.0;
 
         #pragma omp parallel for default(shared) private(i,temp) \
-            schedule(dynamic)
+            schedule(dynamic) reduction(+:c_err)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -123,10 +126,9 @@ struct get_global_clustering
                 continue;
 
             temp = get_triangles(v, g);
-            double cl = double(triangles - temp.first)/(n - temp.second);
+            double cl = double(triangles - temp.first) / (n - temp.second);
 
-            #pragma omp atomic
-            c_err += (c - cl)*(c - cl);
+            c_err += power(c - cl, 2);
         }
         c_err = sqrt(c_err);
     }
