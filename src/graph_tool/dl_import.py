@@ -19,7 +19,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
-from DLFCN import RTLD_LAZY, RTLD_GLOBAL
+try:
+    from DLFCN import RTLD_LAZY, RTLD_GLOBAL
+except ImportError:
+    # handle strange python installations, by importing from the deprecated dl
+    # module
+    from dl import RTLD_LAZY, RTLD_GLOBAL
 
 all = ["dl_import"]
 
