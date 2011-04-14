@@ -211,10 +211,11 @@ def corr_hist(g, deg_source, deg_target, bins=[[0, 1], [0, 1]], weight=None,
     deg_target : string or :class:`~graph_tool.PropertyMap`
         degree type ("in", "out" or "total") or vertex property map for the
         target vertex.
-    bins : list of lists (optional, default: [[1], [1]])
+    bins : list of lists (optional, default: [[0, 1], [0, 1]])
         A list of bin edges to be used for the source and target degrees. If any
-        list has size 2, it is used as the constant width of an automatically
-        generated bin range, starting from the first value.
+        list has size 2, it is used to create an automatically generated bin
+        range starting from the first value, and with constant bin width given
+        by the second value.
     weight : edge property map (optional, default: None)
         Weight (multiplicative factor) to be used on each edge.
     float_count : bool (optional, default: True)
@@ -306,8 +307,9 @@ def combined_corr_hist(g, deg1, deg2, bins=[[0, 1], [0, 1]], float_count=True):
         second degree type ("in", "out" or "total") or vertex property map.
     bins : list of lists (optional, default: [[0, 1], [0, 1]])
         A list of bin edges to be used for the first and second degrees. If any
-        list has size 2, it is used as the constant width of an automatically
-        generated bin range, starting from the first value.
+        list has size 2, it is used to create an automatically generated bin
+        range starting from the first value, and with constant bin width given
+        by the second value.
     float_count : bool (optional, default: True)
         If True, the bin counts are converted float variables, which is useful
         for normalization, and other processing. It False, the bin counts will

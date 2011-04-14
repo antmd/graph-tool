@@ -73,9 +73,9 @@ def vertex_hist(g, deg, bins=[0, 1], float_count=True):
     bins : list of bins (optional, default: [0, 1])
         List of bins to be used for the histogram. The values given represent
         the edges of the bins (i.e. lower and upper bounds). If the list
-        contains two value, this will be used to automatically create an
-        appropriate bin range, with a constant lenght given by the difference of
-        the two values, and starting from the first value.
+        contains two values, this will be used to automatically create an
+        appropriate bin range, with a constant width given by the second value,
+        and starting from the first value.
     float_count : bool (optional, default: True)
         If True, the counts in each histogram bin will be returned as floats. If
         False, they will be returned as integers.
@@ -129,9 +129,9 @@ def edge_hist(g, eprop, bins=[0, 1], float_count=True):
     bins : list of bins (optional, default: [0, 1])
         List of bins to be used for the histogram. The values given represent
         the edges of the bins (i.e. lower and upper bounds). If the list
-        contains two value, this will be used to automatically create an
-        appropriate bin range, with a constant lenght given by the difference of
-        the two values, and starting from the first value.
+        contains two values, this will be used to automatically create an
+        appropriate bin range, with a constant width given by the second value,
+        and starting from the first value.
     float_count : bool (optional, default: True)
         If True, the counts in each histogram bin will be returned as floats. If
         False, they will be returned as integers.
@@ -330,9 +330,9 @@ def distance_histogram(g, weight=None, bins=[0, 1], samples=None,
     bins : list of bins (optional, default: [0, 1])
         List of bins to be used for the histogram. The values given represent
         the edges of the bins (i.e. lower and upper bounds). If the list
-        contains two value, this will be used to automatically create an
-        appropriate bin range, with a constant lenght given by the difference of
-        the two values, and starting from the first value.
+        contains two values, this will be used to automatically create an
+        appropriate bin range, with a constant width given by the second value,
+        and starting from the first value.
     samples : int (optional, default: None)
         If supplied, the distances will be randomly sampled from a number of
         source vertices given by this parameter. It `samples == None` (default),

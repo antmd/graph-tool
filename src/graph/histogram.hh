@@ -58,43 +58,38 @@ public:
         bin_t new_shape;
         for (size_t j = 0; j < Dim; ++j)
         {
-            if (_bins[j].size() < 2)
-                throw std::range_error("invalid bin edge number < 2!");
+            if (_bins[j].size() < 1)
+                throw std::range_error("invalid bin edge number < 1!");
 
             _data_range[j] = std::make_pair(0, 0);
-
-            // detect whether the given bins are of constant width, for faster
-            // binning
-            _const_width[j] = true;
             value_type delta = _bins[j][1] - _bins[j][0];
-            for (size_t i = 2; i < _bins[j].size(); ++i)
-            {
-                value_type d = _bins[j][i] - _bins[j][i-1];
-                if (delta != d)
-                    _const_width[j] = false;
-            }
 
-            if (_const_width[j])
+            if (_bins[j].size() == 2)
             {
-                if (_bins[j].size() > 2)
-                {
-                    _data_range[j] = std::make_pair(_bins[j].front(),
-                                                    _bins[j].back());
-                    new_shape[j] = _bins[j].size() - 1;
-                }
-                else
-                {
-                    _data_range[j] = std::make_pair(_bins[j].front(),
-                                                    _bins[j].front());
-                    new_shape[j] = 1;
-                }
-                if (delta == 0)
-                    throw std::range_error("invalid bin size of zero!");
+                _data_range[j] = std::make_pair(_bins[j][0], _bins[j][0]);
+                delta = _bins[j][1];
+                _const_width[j] = true;
             }
             else
             {
-                new_shape[j] = _bins[j].size() - 1;
+                // detect whether the given bins are of constant width, for faster
+                // binning
+                _const_width[j] = true;
+                for (size_t i = 2; i < _bins[j].size(); ++i)
+                {
+                    value_type d = _bins[j][i] - _bins[j][i-1];
+                    if (delta != d)
+                        _const_width[j] = false;
+                }
+
+                if (_const_width[j])
+                    _data_range[j] = std::make_pair(_bins[j].front(),
+                                                    _bins[j].back());
             }
+            if (delta == 0)
+                throw std::range_error("invalid bin size of zero!");
+
+            new_shape[j] = _bins[j].size() - 1;
         }
         _counts.resize(new_shape);
     }
@@ -106,11 +101,24 @@ public:
         {
             if (_const_width[i])
             {
-                if (_data_range[i].first != _data_range[i].second &&
-                    (v[i] < _data_range[i].first ||
-                     v[i] > _data_range[i].second))
-                    return; // out of bounds
-                value_type delta = _bins[i][1] - _bins[i][0];
+                value_type delta;
+
+                if (_data_range[i].first == _data_range[i].second)
+                {
+                    delta = _bins[i][1];
+
+                    if (v[i] < _data_range[i].first)
+                        return; // out of bounds
+                }
+                else
+                {
+                    delta = _bins[i][1] - _bins[i][0];
+
+                    if (v[i] < _data_range[i].first ||
+                        v[i] >= _data_range[i].second)
+                        return; // out of bounds
+                }
+                
                 bin[i] = (v[i] - _data_range[i].first) / delta;
                 if (bin[i] >= _counts.shape()[i]) // modify shape
                 {

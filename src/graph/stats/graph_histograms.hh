@@ -35,7 +35,8 @@ class VertexHistogramFiller
 {
 public:
     template <class Graph, class DegreeSelector, class Hist>
-    void operator()(Graph& g, typename graph_traits<Graph>::vertex_descriptor v,
+    void operator()(const Graph& g,
+                    typename graph_traits<Graph>::vertex_descriptor v,
                     DegreeSelector& deg, Hist& hist)
     {
         typename Hist::point_t p;
@@ -48,7 +49,8 @@ class EdgeHistogramFiller
 {
 public:
     template <class Graph, class EdgeProperty, class Hist>
-    void operator()(Graph& g, typename graph_traits<Graph>::vertex_descriptor v,
+    void operator()(const Graph& g,
+                    typename graph_traits<Graph>::vertex_descriptor v,
                     EdgeProperty& eprop, Hist& hist)
     {
         typename Hist::point_t p;
@@ -71,7 +73,7 @@ struct get_histogram
         : _hist(hist), _bins(bins), _ret_bins(ret_bins) {}
 
     template <class Graph, class DegreeSelector>
-    void operator()(Graph& g, DegreeSelector deg) const
+    void operator()(const Graph& g, DegreeSelector deg) const
     {
         typedef typename DegreeSelector::value_type value_type;
         typedef Histogram<value_type, size_t, 1> hist_t;
