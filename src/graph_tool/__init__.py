@@ -653,9 +653,10 @@ from libgraph_tool_core import Vertex, Edge, Vector_bool, Vector_int32_t, \
 class Graph(object):
     """Generic multigraph class.
 
-    This class encapsulates either a directed multigraph (default or if
-    ``directed=True``) or an undirected multigraph (if ``directed=False``), with
-    optional internal edge, vertex or graph properties.
+    This class encapsulates either a directed multigraph (
+        default or if ``directed=True``) or an undirected multigraph (
+        if ``directed=False``),
+    with optional internal edge, vertex or graph properties.
 
     If ``g`` is specified, the graph (and its internal properties) will be
     copied.
@@ -667,10 +668,14 @@ class Graph(object):
 
     """
 
-    def __init__(self, g=None, directed=True):
+    def __init__(self, g=None, directed=True, prune=False):
         """Construct a graph. If ``g`` is specified, the graph (and its internal
         properties) will be copied. The ``directed`` parameter specifies whether
-        the graph should be directed or undirected."""
+        the graph should be directed or undirected. If ``prune`` is set to True,
+        and ``g`` is specified, only the filtered graph will be copied, and the
+        new graph object will not be filtered. Optionally, a tuple of booleans
+        can be passed as value to ``prune``, to specify a different behavior to
+        vertex, edge, and reversal filters, respectively."""
         self.__properties = {}
         self.__known_properties = []
         self.__filter_state = {"reversed": False,
@@ -683,7 +688,16 @@ class Graph(object):
             self.__graph = libcore.GraphInterface()
             self.set_directed(directed)
         else:
+            if isinstance(prune, bool):
+                vprune = eprune = rprune = prune
+            else:
+                vprune, eprune, rprune = prune
+            if not (vprune or eprune or rprune):
+                g.stash_filter(vertex=vprune, edge=vprune, reversed=rprune)
             self.__graph = libcore.GraphInterface(g.__graph, False)
+            if not (vprune or eprune or rprune):
+                g.pop_filter(vertex=vprune, edge=vprune, reversed=rprune)
+
             for k, v in g.__properties.iteritems():
                 new_p = self.new_property(v.key_type(), v.value_type())
                 self.copy_property(v, new_p, g)
@@ -691,31 +705,43 @@ class Graph(object):
 
             self.__stashed_filter_state = [self.get_filter_state()]
 
-            v_filt, v_rev = g.__filter_state["vertex_filter"]
-            if v_filt != None:
-                if v_filt not in g.vertex_properties.values():
-                    new_filt = self.new_vertex_property("bool")
-                    self.copy_property(v_filt, new_filt)
+            if not vprune:
+                v_filt, v_rev = g.__filter_state["vertex_filter"]
+                if v_filt != None:
+                    if v_filt not in g.vertex_properties.values():
+                        new_filt = self.new_vertex_property("bool")
+                        self.copy_property(v_filt, new_filt)
 
-                else:
-                    for k, v in g.vertex_properties.iteritems():
-                        if v == v_filt:
-                            new_filt = self.vertex_properties[k]
-                self.__stashed_filter_state[0]["vertex_filter"] = (new_filt,
-                                                                   v_rev)
-            e_filt, e_rev = g.__filter_state["edge_filter"]
-            if e_filt != None:
-                if e_filt not in g.edge_properties.values():
-                    new_filt = self.new_edge_property("bool")
-                    self.copy_property(e_filt, new_filt)
+                    else:
+                        for k, v in g.vertex_properties.iteritems():
+                            if v == v_filt:
+                                new_filt = self.vertex_properties[k]
+                    self.__stashed_filter_state[0]["vertex_filter"] = (new_filt,
+                                                                       v_rev)
+            if not eprune:
+                e_filt, e_rev = g.__filter_state["edge_filter"]
+                if e_filt != None:
+                    if e_filt not in g.edge_properties.values():
+                        new_filt = self.new_edge_property("bool")
+                        self.copy_property(e_filt, new_filt)
 
-                else:
-                    for k, v in g.edge_properties.iteritems():
-                        if v == e_filt:
-                            new_filt = self.edge_properties[k]
-                self.__stashed_filter_state[0]["edge_filter"] = (new_filt,
-                                                                 e_rev)
+                    else:
+                        for k, v in g.edge_properties.iteritems():
+                            if v == e_filt:
+                                new_filt = self.edge_properties[k]
+                    self.__stashed_filter_state[0]["edge_filter"] = (new_filt,
+                                                                     e_rev)
+            if not rprune:
+                self.__stashed_filter_state[0]["reversed"] = g.is_reversed()
+
+            # directedness is always a filter
+            self.__stashed_filter_state[0]["directed"] = g.is_directed()
+
             self.pop_filter()
+
+            if vprune or eprune:
+                self.reindex_edges()
+
         # internal index maps
         self.__vertex_index = \
                  PropertyMap(libcore.get_vertex_index(self.__graph), self, "v")

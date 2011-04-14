@@ -31,11 +31,11 @@ struct graph_copy
     template <class GraphDst, class GraphSrc, class DstVertexIndexMap,
               class SrcVertexIndexMap,  class DstEdgeIndexMap,
               class SrcEdgeIndexMap>
-    void operator()(GraphDst& dst, GraphSrc& src,
-                    DstVertexIndexMap dst_vertex_index,
-                    SrcVertexIndexMap src_vertex_index,
-                    DstEdgeIndexMap dst_edge_index,
-                    SrcEdgeIndexMap src_edge_index) const
+    void operator()(const GraphSrc& src, GraphDst& dst,
+                    DstVertexIndexMap src_vertex_index,
+                    SrcVertexIndexMap dst_vertex_index,
+                    DstEdgeIndexMap src_edge_index,
+                    SrcEdgeIndexMap dst_edge_index) const
     {
         vector<size_t> index_map(num_vertices(src));
         typename graph_traits<GraphSrc>::vertex_iterator v, v_end;
@@ -79,8 +79,15 @@ GraphInterface::GraphInterface(const GraphInterface& gi, bool keep_ref)
     _state->_nedges = gi._state->_nedges;
     _state->_max_edge_index = gi._state->_max_edge_index;
     _state->_free_indexes = gi._state->_free_indexes;
-    graph_copy()(_state->_mg, gi._state->_mg, _vertex_index, gi._vertex_index,
-                 _edge_index, gi._edge_index);
+
+    run_action<>()
+        (const_cast<GraphInterface&>(gi),
+         bind<void>(graph_copy(), _1, ref(_state->_mg),
+                    gi._vertex_index, _vertex_index, 
+                    gi._edge_index, _edge_index))();
+
+    // graph_copy()(_state->_mg, gi._state->_mg, _vertex_index, gi._vertex_index,
+    //              _edge_index, gi._edge_index);
     // filters will be copied in python
 }
 
