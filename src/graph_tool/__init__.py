@@ -653,13 +653,17 @@ from libgraph_tool_core import Vertex, Edge, Vector_bool, Vector_int32_t, \
 class Graph(object):
     """Generic multigraph class.
 
-    This class encapsulates either a directed multigraph (
-        default or if ``directed=True``) or an undirected multigraph (
-        if ``directed=False``),
+    This class encapsulates either a directed multigraph (default or if
+    ``directed=True``) or an undirected multigraph (if ``directed=False``),
     with optional internal edge, vertex or graph properties.
 
     If ``g`` is specified, the graph (and its internal properties) will be
     copied.
+
+    If ``prune`` is set to True, and ``g`` is specified, only the filtered graph
+    will be copied, and the new graph object will not be filtered. Optionally, a
+    tuple of three booleans can be passed as value to ``prune``, to specify a
+    different behavior to vertex, edge, and reversal filters, respectively.
 
     The graph is implemented as an `adjacency list`_, where both vertex and edge
     lists are C++ STL vectors.
@@ -669,13 +673,6 @@ class Graph(object):
     """
 
     def __init__(self, g=None, directed=True, prune=False):
-        """Construct a graph. If ``g`` is specified, the graph (and its internal
-        properties) will be copied. The ``directed`` parameter specifies whether
-        the graph should be directed or undirected. If ``prune`` is set to True,
-        and ``g`` is specified, only the filtered graph will be copied, and the
-        new graph object will not be filtered. Optionally, a tuple of booleans
-        can be passed as value to ``prune``, to specify a different behavior to
-        vertex, edge, and reversal filters, respectively."""
         self.__properties = {}
         self.__known_properties = []
         self.__filter_state = {"reversed": False,
