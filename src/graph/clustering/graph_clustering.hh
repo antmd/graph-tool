@@ -12,7 +12,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
-// You should have received a copy of the GNU General Public License
+// you should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef GRAPH_CLUSTERING_HH
@@ -117,8 +117,10 @@ struct get_global_clustering
         // "jackknife" variance
         c_err = 0.0;
 
+	double cerr = 0.0;
+
         #pragma omp parallel for default(shared) private(i,temp) \
-            schedule(dynamic) reduction(+:c_err)
+            schedule(dynamic) reduction(+:cerr)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -128,9 +130,9 @@ struct get_global_clustering
             temp = get_triangles(v, g);
             double cl = double(triangles - temp.first) / (n - temp.second);
 
-            c_err += power(c - cl, 2);
+            cerr += power(c - cl, 2);
         }
-        c_err = sqrt(c_err);
+        c_err = sqrt(cerr);
     }
 };
 
