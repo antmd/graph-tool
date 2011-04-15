@@ -20,29 +20,34 @@
 
 #include "graph_components.hh"
 
+#include "numpy_bind.hh"
+
 #include <boost/python.hpp>
 
 using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-void  do_label_components(GraphInterface& gi, boost::any prop)
+python::object do_label_components(GraphInterface& gi, boost::any prop)
 {
-    run_action<>()(gi, label_components(),
+    vector<size_t> hist;
+    run_action<>()(gi, bind<void>(label_components(), _1, _2, ref(hist)),
                    writable_vertex_scalar_properties())(prop);
+    return wrap_vector_owned(hist);
 }
 
-size_t do_label_biconnected_components(GraphInterface& gi, boost::any comp,
-                                       boost::any art)
+python::object
+do_label_biconnected_components(GraphInterface& gi, boost::any comp,
+                                boost::any art)
 {
-    size_t nc;
+    vector<size_t> hist;
     run_action<graph_tool::detail::never_directed>()
         (gi, bind<void>(label_biconnected_components(), _1, _2, _3,
-                        ref(nc)),
+                        ref(hist)),
          writable_edge_scalar_properties(),
          writable_vertex_scalar_properties())
         (comp, art);
-    return nc;
+    return wrap_vector_owned(hist);
 }
 
 void export_components()

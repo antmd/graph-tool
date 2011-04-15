@@ -22,20 +22,91 @@
 
 namespace graph_tool
 {
+template <class PropertyMap>
+class HistogramPropertyMap;
+}
+
+namespace boost
+{
+template <class PropertyMap>
+struct property_traits<HistogramPropertyMap<PropertyMap> >:
+        public property_traits<PropertyMap> {};
+}
+
+namespace graph_tool
+{
 using namespace std;
 using namespace boost;
 
+// this wraps an existing property map, and makes a simple histogram of the
+// values (assumed to be an integer type)
+
+template <class PropertyMap>
+class HistogramPropertyMap
+{
+public:
+    typedef typename property_traits<PropertyMap>::value_type value_type;
+    typedef typename property_traits<PropertyMap>::key_type key_type;
+    typedef typename property_traits<PropertyMap>::category category;
+
+    HistogramPropertyMap(PropertyMap base_map, size_t max, vector<size_t>& hist)
+        : _base_map(base_map), _max(max), _hist(hist) {}
+    HistogramPropertyMap(){}
+
+    value_type get(const key_type& k) const
+    {
+        return boost::get(_base_map, k);
+    }
+
+    void put(const key_type& k, const value_type& v)
+    {
+        boost::put(_base_map, k, v);
+
+        vector<size_t>& h = _hist;
+        size_t bin = v;        
+        if (bin > _max)
+            return;
+        if (bin >= h.size())
+            h.resize(bin + 1);
+        ++h[bin];
+    }
+
+private:
+    PropertyMap _base_map;
+    size_t _max;
+    boost::reference_wrapper<vector<size_t> > _hist;
+};
+
+template <class PropertyMap>
+typename property_traits<PropertyMap>::value_type
+get(const HistogramPropertyMap<PropertyMap>& pmap,
+    const typename property_traits<PropertyMap>::key_type& k)
+{
+    return pmap.get(k);
+}
+
+template <class PropertyMap>
+void put(HistogramPropertyMap<PropertyMap> pmap,
+         const typename property_traits<PropertyMap>::key_type& k,
+         const typename property_traits<PropertyMap>::value_type& val)
+{
+    pmap.put(k, val);
+}
+
+
 // this will label the components of a graph to a given vertex property, from
-// [0, number of components - 1]. If the graph is directed the strong
-// components are used.
+// [0, number of components - 1], and keep an histogram. If the graph is
+// directed the strong components are used.
 struct label_components
 {
     template <class Graph, class CompMap>
-    void operator()(const Graph& g, CompMap comp_map) const
+    void operator()(const Graph& g, CompMap comp_map, vector<size_t>& hist)
+        const
     {
         typedef typename graph_traits<Graph>::directed_category
             directed_category;
-        get_components(g, comp_map,
+        HistogramPropertyMap<CompMap> cm(comp_map, num_vertices(g), hist);
+        get_components(g, cm,
                        typename is_convertible<directed_category,
                                                directed_tag>::type());
     }
@@ -80,10 +151,11 @@ struct label_biconnected_components
 
     template <class Graph, class CompMap, class ArtMap>
     void operator()(const Graph& g, CompMap comp_map, ArtMap art_map,
-                    size_t& nc) const
+                    vector<size_t>& hist) const
     {
-        nc = biconnected_components(g, comp_map,
-                                    vertex_inserter<ArtMap>(art_map)).first;
+        HistogramPropertyMap<CompMap> cm(comp_map, num_edges(g), hist);
+        biconnected_components(g, cm,
+                               vertex_inserter<ArtMap>(art_map)).first;
     }
 };
 

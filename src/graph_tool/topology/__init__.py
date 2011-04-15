@@ -50,11 +50,11 @@ from .. dl_import import dl_import
 dl_import("import libgraph_tool_topology")
 
 from .. import _prop, Vector_int32_t, _check_prop_writable, \
-     _check_prop_scalar,  _check_prop_vector, Graph, PropertyMap
+     _check_prop_scalar, _check_prop_vector, Graph, PropertyMap, GraphView
 import random, sys, numpy, weakref
 __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
            "min_spanning_tree", "dominator_tree", "topological_sort",
-           "transitive_closure", "label_components",
+           "transitive_closure", "label_components", "label_largest_component",
            "label_biconnected_components", "shortest_distance",
            "shortest_path", "is_planar"]
 
@@ -422,15 +422,16 @@ def label_components(g, vprop=None, directed=None):
     Label the components to which each vertex in the graph belongs. If the
     graph is directed, it finds the strongly connected components.
 
+    A property map with the component labels is returned, together with an
+    histogram of component labels.
+
     Parameters
     ----------
     g : :class:`~graph_tool.Graph`
         Graph to be used.
-
     vprop : :class:`~graph_tool.PropertyMap` (optional, default: None)
         Vertex property to store the component labels. If none is supplied, one
         is created.
-
     directed : bool (optional, default:None)
         Treat graph as directed or not, independently of its actual
         directionality.
@@ -439,6 +440,8 @@ def label_components(g, vprop=None, directed=None):
     -------
     comp : :class:`~graph_tool.PropertyMap`
         Vertex property map with component labels.
+    hist : :class:`~numpy.ndarray`
+        Histogram of component labels.
 
     Notes
     -----
@@ -452,11 +455,13 @@ def label_components(g, vprop=None, directed=None):
     >>> from numpy.random import seed
     >>> seed(43)
     >>> g = gt.random_graph(100, lambda: (1, 1))
-    >>> comp = gt.label_components(g)
+    >>> comp, hist = gt.label_components(g)
     >>> print comp.get_array()
     [0 0 1 0 0 0 1 0 0 0 0 0 1 0 0 2 0 0 0 1 0 0 0 0 1 1 0 2 0 1 1 0 0 0 0 1 0
      0 0 0 0 0 2 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 2 0 0 0 0 1 0 0 0 0 0 1 0 0 0
      1 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0]
+    >>> print hist
+    [81 15  4]
     """
 
     if vprop is None:
@@ -465,23 +470,67 @@ def label_components(g, vprop=None, directed=None):
     _check_prop_writable(vprop, name="vprop")
     _check_prop_scalar(vprop, name="vprop")
 
-    try:
-        if directed is not None:
-            g.stash_filter(directed=True)
-            g.set_directed(directed)
+    if directed is not None:
+        g = GraphView(g, directed=directed)
 
-        libgraph_tool_topology.\
-              label_components(g._Graph__graph, _prop("v", g, vprop))
-    finally:
-        if directed is not None:
-            g.pop_filter(directed=True)
-    return vprop
+    hist = libgraph_tool_topology.\
+               label_components(g._Graph__graph, _prop("v", g, vprop))
+    return vprop, hist
+
+
+def label_largest_component(g, directed=None):
+    """
+    Label the largest component in the graph. If the graph is directed, it
+    labels the largest strongly connected components.
+
+    A property map with a boolean label is returned.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    directed : bool (optional, default:None)
+        Treat graph as directed or not, independently of its actual
+        directionality.
+
+    Returns
+    -------
+    comp : :class:`~graph_tool.PropertyMap`
+        Vertex property map which labels the largest component with value 1.
+
+    Notes
+    -----
+    The algorithm runs in :math:`O(V + E)` time.
+
+    Examples
+    --------
+    >>> from numpy.random import seed, poisson
+    >>> seed(43)
+    >>> g = gt.random_graph(100, lambda: poisson(1), directed=False)
+    >>> l = gt.label_largest_component(g)
+    >>> print l.a
+    [1 0 0 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0 1 0 0 0 1 0 0 0 0 1 0 0 0 1 0 0 0 0 0
+     0 0 1 1 0 0 1 0 0 1 0 0 0 1 1 0 0 0 0 1 0 0 1 0 0 0 0 1 1 0 0 0 0 0 0 0 1
+     0 0 0 0 1 0 0 1 0 1 1 0 1 1 0 0 0 0 0 0 1 1 0 0 0 0]
+    >>> u = gt.GraphView(g, vfilt=l)   # extract the largest component as a graph
+    >>> print u.num_vertices()
+    26
+    """
+
+    label = g.new_vertex_property("bool")
+    c, h = label_components(g, directed=directed)
+    label.a = c.a == h.argmax()
+    return label
 
 
 def label_biconnected_components(g, eprop=None, vprop=None):
     """
     Label the edges of biconnected components, and the vertices which are
     articulation points.
+
+    An edge property map with the component labels is returned, together a
+    boolean vertex map marking the articulation points, and an histogram of
+    component labels.
 
     Parameters
     ----------
@@ -529,7 +578,7 @@ def label_biconnected_components(g, eprop=None, vprop=None):
     >>> from numpy.random import seed
     >>> seed(43)
     >>> g = gt.random_graph(100, lambda: 2, directed=False)
-    >>> comp, art, nc = gt.label_biconnected_components(g)
+    >>> comp, art, hist = gt.label_biconnected_components(g)
     >>> print comp.a
     [1 0 0 0 2 0 1 0 0 0 0 0 1 0 0 3 0 0 0 0 0 0 0 0 2 0 0 0 0 0 1 1 0 0 0 0 0
      1 0 1 3 0 2 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 3 0 0 0 0 0 0 0 0 0 1 0
@@ -538,8 +587,8 @@ def label_biconnected_components(g, eprop=None, vprop=None):
     [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
-    >>> print nc
-    4
+    >>> print hist
+    [77 13  6  4]
 
     """
 
@@ -553,15 +602,11 @@ def label_biconnected_components(g, eprop=None, vprop=None):
     _check_prop_writable(eprop, name="eprop")
     _check_prop_scalar(eprop, name="eprop")
 
-    g.stash_filter(directed=True)
-    try:
-        g.set_directed(False)
-        nc = libgraph_tool_topology.\
+    g = GraphView(g, directed=False)
+    hist = libgraph_tool_topology.\
              label_biconnected_components(g._Graph__graph, _prop("e", g, eprop),
                                           _prop("v", g, vprop))
-    finally:
-        g.pop_filter(directed=True)
-    return eprop, vprop, nc
+    return eprop, vprop, hist
 
 
 def shortest_distance(g, source=None, weights=None, max_dist=None,
