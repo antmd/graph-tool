@@ -67,7 +67,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
                ratio="fill", overlap="prism", sep=None, splines=False,
                vsize=0.105, penwidth=1.0, elen=None, gprops={}, vprops={},
                eprops={}, vcolor="#a40000", ecolor="#2e3436",
-               vcmap=matplotlib.cm.jet, vnorm=True, ecmap=matplotlib.cm.jet,
+               vcmap=None, vnorm=True, ecmap=None,
                enorm=True, vorder=None, eorder=None, output="",
                output_format="auto", returngv=False, fork=False,
                return_bitmap=False, seed=0):
@@ -355,6 +355,12 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
             enorm = matplotlib.colors.normalize(vmin=minmax[0], vmax=minmax[1])
         else:
             enorm = lambda x: x
+
+    if vcmap is None:
+        vcmap = matplotlib.cm.jet
+
+    if ecmap is None:
+        ecmap = matplotlib.cm.jet
 
     nodes = {}
 
