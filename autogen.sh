@@ -12,6 +12,8 @@ PROJECT="graph-tool"
     exit 1
 }
 
+AUTOGEN_SUBDIR_MODE="foo"
+
 if test -z "$AUTOGEN_SUBDIR_MODE"; then
     if test -z "$*"; then
         echo "I am going to run ./configure with no arguments - if you wish "
