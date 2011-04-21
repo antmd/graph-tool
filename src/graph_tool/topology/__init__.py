@@ -39,6 +39,7 @@ Summary
    transitive_closure
    label_components
    label_biconnected_components
+   label_largest_component
    is_planar
 
 Contents
@@ -480,8 +481,8 @@ def label_components(g, vprop=None, directed=None):
 
 def label_largest_component(g, directed=None):
     """
-    Label the largest component in the graph. If the graph is directed, it
-    labels the largest strongly connected components.
+    Label the largest component in the graph. If the graph is directed, then the
+    largest strongly connected component is labelled.
 
     A property map with a boolean label is returned.
 
@@ -496,7 +497,7 @@ def label_largest_component(g, directed=None):
     Returns
     -------
     comp : :class:`~graph_tool.PropertyMap`
-        Vertex property map which labels the largest component with value 1.
+         Boolean vertex property map which labels the largest component.
 
     Notes
     -----
