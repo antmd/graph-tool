@@ -24,7 +24,6 @@
 #include <boost/iterator_adaptors.hpp>
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/properties.hpp>
-#include <boost/graph/filtered_graph.hpp>
 
 namespace boost {
 
@@ -32,16 +31,16 @@ namespace boost {
 // UndirectedAdaptor
 // This class encapsulates a directed graph with parallel edges and provides a
 // view of the graph as undirected with parallel edges.
-// Encapsulated graph must be: VertexListGraph, EdgeListGraph, IncidenceGraph,
-//                             AdjacencyGraph, VertexMutableGraph,
-//                             EdgeMutableGraph, VertexMutablePropertyGraph,
-//                             EdgeMutablePropertyGraph, BidirectionalGraph
+// Encapsulated graph can be: VertexListGraph, EdgeListGraph, IncidenceGraph,
+//                            AdjacencyGraph, VertexMutableGraph,
+//                            EdgeMutableGraph, VertexMutablePropertyGraph,
+//                            EdgeMutablePropertyGraph, BidirectionalGraph
 // The undirected graph obeys the same concepts.
 //==============================================================================
 template <class Graph> class UndirectedAdaptor
 {
 public:
-    UndirectedAdaptor(const Graph &g):_g(const_cast<Graph &>(g)){}
+    UndirectedAdaptor(const Graph& g):_g(const_cast<Graph&>(g)){}
 
     typedef typename vertex_property_type<Graph>::type vertex_property_type;
     typedef typename edge_property_type<Graph>::type edge_property_type;
@@ -56,6 +55,9 @@ public:
     typedef typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor
         edge_descriptor;
 
+    typedef undirected_tag directed_category;
+    typedef allow_parallel_edge_tag edge_parallel_category;
+    typedef typename graph_traits<Graph>::traversal_category traversal_category;
 
 #ifndef BOOST_GRAPH_NO_BUNDLED_PROPERTIES
     // Bundled properties support
@@ -68,18 +70,11 @@ public:
         operator[](Descriptor x) const { return this->m_g[x]; }
 #endif // BOOST_GRAPH_NO_BUNDLED_PROPERTIES
 
-#if (BOOST_VERSION / 100 % 1000 >= 45)
-    typedef typename Graph::graph_property_type graph_property_type;
-    typedef typename Graph::graph_bundled graph_bundled;
-    typedef typename Graph::edge_bundled edge_bundled;
-    typedef typename Graph::vertex_bundled vertex_bundled;
-#endif
-
     const Graph& OriginalGraph() const {return _g;}
     Graph& OriginalGraph() {return _g;}
 
 private:
-    Graph &_g;
+    Graph& _g;
 };
 
 #ifndef BOOST_GRAPH_NO_BUNDLED_PROPERTIES
@@ -104,7 +99,7 @@ public:
     typedef typename graph_traits<Graph>::edge_descriptor original_edge_t;
     EdgeDescriptor(){}
     EdgeDescriptor(original_edge_t e): original_edge_t(e), _inverted(false) {}
-    EdgeDescriptor(const original_edge_t &e,  bool inverted):
+    EdgeDescriptor(const original_edge_t& e,  bool inverted):
         original_edge_t(e), _inverted(inverted) {}
 
     bool IsInverted() const {return _inverted;}
@@ -133,7 +128,7 @@ class UndirectedAdaptorEdgeIterator
 public:
     UndirectedAdaptorEdgeIterator() {}
     explicit UndirectedAdaptorEdgeIterator
-        (typename graph_traits<Graph>::edge_iterator &iter):_iter(iter){}
+        (typename graph_traits<Graph>::edge_iterator& iter):_iter(iter){}
     typename UndirectedAdaptor<Graph>::EdgeDescriptor operator*() const
     {
         return (typename UndirectedAdaptor<Graph>::EdgeDescriptor(*_iter,
@@ -212,7 +207,7 @@ public:
     {
         if ( _out_iter != _out_range.second )
             return (typename UndirectedAdaptor<Graph>::EdgeDescriptor
-                    (*_out_iter,false));
+                    (*_out_iter, false));
         else
             return (typename UndirectedAdaptor<Graph>::EdgeDescriptor
                     (*_in_iter, true));
@@ -298,7 +293,7 @@ public:
     UndirectedAdaptorAdjacencyIterator(){};
     UndirectedAdaptorAdjacencyIterator
         (UndirectedAdaptorOutEdgeIterator<Graph> iter,
-         const UndirectedAdaptor<Graph> &g)
+         const UndirectedAdaptor<Graph>& g)
             :_iter(iter), _g(&g) {}
 
     typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor operator*() const
@@ -350,16 +345,6 @@ private:
 };
 
 //==============================================================================
-// undirected_adaptor_traversal_category
-//==============================================================================
-struct undirected_adaptor_traversal_category :
-    public virtual bidirectional_graph_tag,
-    public virtual adjacency_graph_tag,
-    public virtual vertex_list_graph_tag,
-    public virtual edge_list_graph_tag { };
-
-
-//==============================================================================
 // graph_traits<UndirectedAdaptor>
 // this defines all the necessary types associated with UndirectedAdaptor
 //==============================================================================
@@ -376,7 +361,7 @@ struct graph_traits<UndirectedAdaptor<Graph> > {
 
     typedef undirected_tag directed_category;
     typedef allow_parallel_edge_tag edge_parallel_category;
-    typedef undirected_adaptor_traversal_category traversal_category;
+    typedef typename graph_traits<Graph>::traversal_category traversal_category;
     typedef typename graph_traits<Graph>::vertices_size_type vertices_size_type;
     typedef typename graph_traits<Graph>::edges_size_type edges_size_type;
     typedef typename graph_traits<Graph>::degree_size_type degree_size_type;
@@ -544,7 +529,7 @@ template <class Graph>
 inline typename graph_traits<UndirectedAdaptor<Graph> >::degree_size_type
 out_degree
     (typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor u,
-     const UndirectedAdaptor<Graph> &g)
+     const UndirectedAdaptor<Graph>& g)
 {
     return (out_degree(u, g.OriginalGraph())+in_degree(u,g.OriginalGraph()));
 }
@@ -555,7 +540,7 @@ out_degree
 template <class Graph>
 inline typename graph_traits<UndirectedAdaptor<Graph> >::degree_size_type
 degree(typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor u,
-       const UndirectedAdaptor<Graph> &g)
+       const UndirectedAdaptor<Graph>& g)
 {
     return out_degree(u, g);
 }
@@ -576,7 +561,7 @@ add_vertex(UndirectedAdaptor<Graph>& g)
 //==============================================================================
 template <class Graph, class VertexProperties>
 inline typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor
-add_vertex(const VertexProperties &p, UndirectedAdaptor<Graph>& g)
+add_vertex(const VertexProperties& p, UndirectedAdaptor<Graph>& g)
 {
     return add_vertex(p, g.OriginalGraph());
 }
@@ -752,9 +737,7 @@ class property_map<UndirectedAdaptor<Graph>, PropertyTag>
 {
 public:
     typedef typename property_map<Graph, PropertyTag>::type type;
-    typedef typename property_map<const Graph, PropertyTag>::const_type
-        const_type;
-    //typedef typename property_map<Graph, PropertyTag>::const_type const type;
+    typedef typename property_map<Graph, PropertyTag>::const_type const_type;
 };
 
 //==============================================================================
@@ -774,7 +757,7 @@ public:
 //==============================================================================
 template <class PropertyTag, class Graph>
 inline typename property_map<UndirectedAdaptor<Graph>, PropertyTag>::type
-get(PropertyTag tag, UndirectedAdaptor<Graph> &g)
+get(PropertyTag tag, UndirectedAdaptor<Graph>& g)
 {
     return get(tag, g.OriginalGraph());
 }
@@ -784,7 +767,7 @@ get(PropertyTag tag, UndirectedAdaptor<Graph> &g)
 //==============================================================================
 template <class PropertyTag, class Graph>
 inline typename property_map<UndirectedAdaptor<Graph>, PropertyTag>::const_type
-get(PropertyTag tag, const UndirectedAdaptor<Graph> &g)
+get(PropertyTag tag, const UndirectedAdaptor<Graph>& g)
 {
     return get(tag, g.OriginalGraph());
 }
@@ -797,7 +780,7 @@ inline
 typename property_traits
     <typename property_map<UndirectedAdaptor<Graph>,
                            PropertyTag>::const_type >::value_type
-get(PropertyTag tag, const UndirectedAdaptor<Graph> &g,
+get(PropertyTag tag, const UndirectedAdaptor<Graph>& g,
     typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor v)
 {
     return get(tag, g.OriginalGraph(), v);
@@ -811,7 +794,7 @@ inline
 typename property_traits
     <typename property_map<UndirectedAdaptor<Graph>,
                            PropertyTag>::const_type >::value_type
-get(PropertyTag tag, const UndirectedAdaptor<Graph> &g,
+get(PropertyTag tag, const UndirectedAdaptor<Graph>& g,
     typename graph_traits<UndirectedAdaptor<Graph> >::edge_descriptor e)
 {
     return get(tag, g.OriginalGraph(), e.OriginalEdge());
@@ -822,9 +805,9 @@ get(PropertyTag tag, const UndirectedAdaptor<Graph> &g,
 //==============================================================================
 template <class Graph, class PropertyTag, class Value>
 inline
-void put(PropertyTag tag, UndirectedAdaptor<Graph> &g,
+void put(PropertyTag tag, UndirectedAdaptor<Graph>& g,
          typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor v,
-         const Value &value)
+         const Value& value)
 {
     put(tag, g.OriginalGraph(), v, value);
 }
@@ -834,7 +817,7 @@ void put(PropertyTag tag, UndirectedAdaptor<Graph> &g,
 //==============================================================================
 template <class Graph, class PropertyTag, class X, class Value>
 inline
-void put(PropertyTag tag, const UndirectedAdaptor<Graph> &g,
+void put(PropertyTag tag, const UndirectedAdaptor<Graph>& g,
          typename graph_traits<UndirectedAdaptor<Graph> >::edge_descriptor e,
          const Value &value)
 {
@@ -847,7 +830,7 @@ void put(PropertyTag tag, const UndirectedAdaptor<Graph> &g,
 template <class Graph, class GraphProperties, class GraphPropertyTag>
 inline
 typename property_value<GraphProperties, GraphPropertyTag>::type&
-get_property(UndirectedAdaptor<Graph> &g, GraphPropertyTag tag)
+get_property(UndirectedAdaptor<Graph>& g, GraphPropertyTag tag)
 {
     get_property(g.OriginalGraph(), tag);
 }
@@ -858,7 +841,7 @@ get_property(UndirectedAdaptor<Graph> &g, GraphPropertyTag tag)
 template <class Graph, class GraphProperties, class GraphPropertyTag>
 inline
 const typename property_value<GraphProperties, GraphPropertyTag>::type&
-get_property(const UndirectedAdaptor<Graph> &g, GraphPropertyTag tag)
+get_property(const UndirectedAdaptor<Graph>& g, GraphPropertyTag tag)
 {
     get_property(g.OriginalGraph(), tag);
 }

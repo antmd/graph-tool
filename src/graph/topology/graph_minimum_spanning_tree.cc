@@ -54,7 +54,8 @@ struct get_kruskal_min_span_tree
                     TreeMap tree_map) const
     {
         kruskal_minimum_spanning_tree(g, tree_inserter<TreeMap>(tree_map),
-                                      weight_map(weights));
+                                      weight_map(weights).
+                                      vertex_index_map(vertex_index));
     }
 };
 
