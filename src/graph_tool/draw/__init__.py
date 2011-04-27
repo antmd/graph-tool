@@ -232,7 +232,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
     >>> g = gt.random_graph(1000, lambda: min(zipf(2.4), 40),
     ...                     lambda i,j: exp(abs(i-j)), directed=False)
     >>> # extract largest component
-    >>> g = GraphView(g, vfilt=gt.label_largest_component(g))
+    >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(g))
     >>> deg = g.degree_property_map("out")
     >>> deg.get_array()[:] = 2*(sqrt(deg.get_array()[:])*0.5 + 0.4)
     >>> ebet = gt.betweenness(g)[1]
