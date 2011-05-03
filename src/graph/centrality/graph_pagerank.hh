@@ -35,6 +35,7 @@ struct get_pagerank
                     size_t& iter) const
     {
         typedef typename property_traits<RankMap>::value_type rank_type;
+        size_t NV = HardNumVertices()(g);
 
         RankMap r_temp(vertex_index,num_vertices(g));
 
@@ -47,10 +48,10 @@ struct get_pagerank
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
-            rank[v] = 1.0/N;
+            rank[v] = 1.0 / NV;
         }
 
-        rank_type delta = 2*epslon;
+        rank_type delta = epslon + 1;
         rank_type d = damping;
         iter = 0;
         while (delta >= epslon)
@@ -75,7 +76,7 @@ struct get_pagerank
                         source(*e, g);
                     r += get(rank, s) / out_degree(s, g);
                 }
-                put(r_temp, v, (1.0 - d) + d * r);
+                put(r_temp, v, (1.0 - d) / NV + d * r);
 
                 delta += abs(get(r_temp, v) - get(rank,v));
             }
