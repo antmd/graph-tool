@@ -53,23 +53,30 @@ struct get_price
 
         map<double, typename graph_traits<Graph>::vertex_descriptor> probs;
 
-        double p = 0;
+        size_t n_possible = 0;
+        double cp = 0, p = 0;
         typename graph_traits<Graph>::vertex_iterator vi, vi_end;
         for (tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
         {
-            p += pow(DegSelector()(*vi, g) + c, gamma);
-            probs.insert(make_pair(p, *vi));
+            p = pow(DegSelector()(*vi, g) + c, gamma);
+            cp += p;
+            if (p > 0)
+            {
+                probs.insert(make_pair(cp, *vi));
+                ++n_possible;
+            }
         }
 
-        if (probs.rbegin()->first <= 0)
+        if (probs.empty() || probs.rbegin()->first <= 0)
             throw GraphException("Cannot connect edges: probabilities are <= 0!");
 
+        tr1::unordered_set<typename graph_traits<Graph>::vertex_descriptor>
+            visited;
         for (size_t i = 0; i < N; ++i)
         {
-            tr1::unordered_set<typename graph_traits<Graph>::vertex_descriptor>
-                visited;
+            visited.clear();
             typename graph_traits<Graph>::vertex_descriptor v = add_vertex(g);
-            for (size_t j = 0; j < m; ++j)
+            for (size_t j = 0; j < min(m, n_possible); ++j)
             {
                 tr1::variate_generator<rng_t&, tr1::uniform_real<> >
                     sample(rng, tr1::uniform_real<>(0, probs.rbegin()->first));
@@ -88,10 +95,15 @@ struct get_price
 
                 p = abs(pow(DegSelector()(w, g) + c, gamma)
                         - pow(DegSelector()(w, g) + c - 1, gamma));
-                probs.insert(make_pair(probs.rbegin()->first + p, w));
+                if (p > 0)
+                    probs.insert(make_pair(probs.rbegin()->first + p, w));
             }
             p = pow(DegSelector()(v, g) + c, gamma);
-            probs.insert(make_pair(probs.rbegin()->first + p, v));
+            if (p > 0)
+            {
+                probs.insert(make_pair(probs.rbegin()->first + p, v));
+                n_possible += 1;
+            }
         }
     }
 };

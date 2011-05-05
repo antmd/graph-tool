@@ -865,11 +865,11 @@ def price_network(N, m=1, c=None, gamma=1, directed=True, seed_graph=None):
     The (generalized) [price]_ network is either a directed or undirected graph
     (the latter is called a Barabási-Albert network), generated dynamically by
     at each step adding a new vertex, and connecting it to :math:`m` other
-    vertices, chosen with probability:
+    vertices, chosen with probability :math:`\pi` defined as:
 
     .. math::
 
-        P \propto k^\gamma + c
+        \pi \propto k^\gamma + c
 
     where :math:`k` is the in-degree of the vertex (or simply the degree in the
     undirected case). If :math:`\gamma=1`, the tail of resulting in-degree
@@ -887,6 +887,13 @@ def price_network(N, m=1, c=None, gamma=1, directed=True, seed_graph=None):
 
     However, if :math:`\gamma \ne 1`, the in-degree distribution is not
     scale-free (see [dorogovtsev-evolution]_ for details).
+
+    Note that if `seed_graph` is not given, the algorithm will *always* start
+    with one node if :math:`c > 0`, or with two nodes with a link between them
+    otherwise. If :math:`m > 1`, the degree of the newly added vertices will be
+    vary dynamically as :math:`m'(t) = \min(m, N(t))`, where :math:`N(t)` is the
+    number of vertices added so far. If this behaviour is undesired, a proper
+    seed graph with :math:`N \ge m` vertices must be provided.
 
     This algorithm runs in :math:`O(N\log N)` time.
 
@@ -940,17 +947,15 @@ def price_network(N, m=1, c=None, gamma=1, directed=True, seed_graph=None):
         c = 1 if directed else 0
 
     if seed_graph is None:
-        if directed:
-            g = Graph()
-            g.add_vertex(m)
+        g = Graph(directed=directed)
+        if c > 0:
+            g.add_vertex()
         else:
-            N_s = m + 1 if m % 2 != 0 else m + 2
-            g = random_graph(N_s, lambda: 1, directed=False)
+            g.add_vertex(2)
+            g.add_edge(g.vertex(1), g.vertex(0))
         N -= g.num_vertices()
     else:
         g = seed_graph
-        if g.num_vertices() < m:
-            raise ValueError("seed_graph has number of vertices < m!")
     seed = numpy.random.randint(0, sys.maxint)
     libgraph_tool_generation.price(g._Graph__graph, N, gamma, c, m, seed)
     return g
