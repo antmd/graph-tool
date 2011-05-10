@@ -519,6 +519,21 @@ def group_vector_property(props, value_type=None, vprop=None, pos=None):
     vprop : :class:`~graph_tool.PropertyMap`
        A vector property map with the grouped values of each property map in
        ``props``.
+
+    Examples
+    --------
+    >>> from numpy.random import seed, randint
+    >>> from numpy import array
+    >>> seed(42)
+    >>> g = gt.random_graph(100, lambda: (3, 3))
+    >>> props = [g.new_vertex_property("int") for i in xrange(3)]
+    >>> for i in xrange(3):
+    ...    props[i].a = randint(0, 100, g.num_vertices())
+    >>> gprop = gt.group_vector_property(props)
+    >>> print gprop[g.vertex(0)].a
+    [71 40 96]
+    >>> print array([p[g.vertex(0)] for p in props])
+    [71 40 96]
     """
     g = props[0].get_graph()
     vtypes = set()
@@ -569,13 +584,13 @@ def group_vector_property(props, value_type=None, vprop=None, pos=None):
 def ungroup_vector_property(vprop, pos, props=None):
     """Ungroup vector property map ``vprop`` into a list of individual property maps.
 
-    Parameters
+    Parameters 
     ----------
     vprop : :class:`~graph_tool.PropertyMap`
         Vector property map to be ungrouped.
-    pos : list of ints (optional, default: None)
-        If supplied, should contain a list of indexes where each corresponding
-        element of ``vprop`` should be inserted into the ``props`` list.
+    pos : list of ints
+        A list of indexes corresponding to where each element of ``vprop``
+        should be inserted into the ungrouped list.
     props : list of :class:`~graph_tool.PropertyMap`  (optional, default: None)
         If supplied, should contain a list of property maps to which ``vprop``
         should be ungroupped.
@@ -584,6 +599,21 @@ def ungroup_vector_property(vprop, pos, props=None):
     -------
     props : list of :class:`~graph_tool.PropertyMap`
        A list of property maps with the ungrouped values of ``vprop``.
+
+    Examples
+    --------
+    >>> from numpy.random import seed, randint
+    >>> from numpy import array
+    >>> seed(42)
+    >>> g = gt.random_graph(100, lambda: (3, 3))
+    >>> prop = g.new_vertex_property("vector<int>")
+    >>> for v in g.vertices():
+    ...    prop[v] = randint(0, 100, 3)
+    >>> uprops = gt.ungroup_vector_property(prop, [0, 1, 2])
+    >>> print prop[g.vertex(0)].a
+    [71 60 20]
+    >>> print array([p[g.vertex(0)] for p in uprops])
+    [71 60 20]
     """
 
     g = vprop.get_graph()
