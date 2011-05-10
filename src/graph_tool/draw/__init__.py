@@ -506,9 +506,11 @@ def random_layout(g, shape=None, pos=None, dim=2):
     ----------
     g : Graph
         Graph to be used.
-    shape : tuple (optional, default: None)
-        Rectangular shape of the bounding area. If None, a square of linear size
-        :math:`\sqrt{N}` is used.
+    shape : tuple or list (optional, default: None)
+        Rectangular shape of the bounding area. The size of this parameter must
+        match `dim`, and each element can be either a pair specifying a range,
+        or a single value specifying a range starting from zero. If None is
+        passed, a square of linear size :math:`\sqrt{N}` is used.
     pos : PropertyMap (optional, default: None)
         Vector vertex property maps where the coordinates should be stored.
     dim : int (optional, default: 2)
@@ -522,24 +524,39 @@ def random_layout(g, shape=None, pos=None, dim=2):
     Notes
     -----
     This algorithm has complexity :math:`O(V)`.
+
+    Examples
+    --------
+    >>> from numpy.random import seed
+    >>> seed(42)
+    >>> g = gt.random_graph(100, lambda: (3, 3))
+    >>> shape = [[50, 100], [1, 2], 4]
+    >>> pos = gt.random_layout(g, shape=shape, dim=3)
+    >>> pos[g.vertex(0)].a
+    array([ 86.59969709,   1.31435598,   0.64651486])
+
     """
 
     if pos == None:
-        pos = [g.new_vertex_property("double") for i in xrange(dim)]
+        pos = g.new_vertex_property("vector<double>")
+    _check_prop_vector(pos, name="pos")
 
-    if isinstance(pos, PropertyMap) and "vector" in pos.value_type():
-        pos = ungroup_vector_property(pos)
+    pos = ungroup_vector_property(pos, range(0, dim))
 
     if shape == None:
         shape = [sqrt(g.num_vertices())] * dim
 
     for i in xrange(dim):
-        _check_prop_scalar(pos[i], name="pos[%d]" % i)
-        _check_prop_writable(pos[i], name="pos[%d]" % i)
-        a = pos[i].get_array()
-        a[:] = numpy.random.random(len(a)) * shape[i]
+        if hasattr(shape[i], "__len__"):
+            if len(shape[i]) != 2:
+                raise ValueError("The elements of 'shape' must have size 2.")
+            r = [min(shape[i]), max(shape[i])]
+        else:
+            r = [min(shape[i], 0), max(shape[i], 0)]
+        d = r[1] - r[0]
+        pos[i].a = numpy.random.random(g.num_vertices()) * d + r[0]
 
-    pos = group_vector_property(g, pos)
+    pos = group_vector_property(pos)
     return pos
 
 
