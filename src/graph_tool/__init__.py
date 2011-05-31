@@ -1488,10 +1488,17 @@ init_edge_classes()
 def _get_array_view(self):
     return self.get_array()[:]
 
+
+def _set_array_view(self, v):
+    self.get_array()[:] = v
+
 vector_types = [Vector_bool, Vector_int32_t, Vector_int64_t, Vector_double,
                 Vector_long_double]
 for vt in vector_types:
-    vt.a = property(_get_array_view)
+    vt.a = property(_get_array_view, _set_array_view,
+                    doc=r"""Shortcut to the `get_array` method as a property. A
+                    view to the array is returned, instead of the array itself,
+                    for convenience.""")
 Vector_string.a = None
 Vector_string.get_array = lambda self: None
 
