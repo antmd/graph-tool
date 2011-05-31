@@ -34,6 +34,7 @@
 #endif
 #include <boost/functional/hash.hpp>
 #include <boost/python/object.hpp>
+#include <boost/python/extract.hpp>
 
 #include <boost/version.hpp>
 #if (BOOST_VERSION >= 104000)
@@ -51,6 +52,7 @@
 #include <boost/bind.hpp>
 
 #include "graph.hh"
+#include "graph_exceptions.hh"
 
 // this file provides general functions for manipulating graph properties
 
@@ -257,6 +259,110 @@ vector<string> get_type_name<TypeSequence,NamedSequence>::_all_names;
 // Extra Property Map Types
 // ========================
 
+
+// handle type convertions
+
+// generic types
+template <class Type1, class Type2>
+struct convert
+{
+    Type1 operator()(const Type2& v) const
+    {
+        return do_convert(v, is_convertible<Type2,Type1>());
+    }
+
+    Type1 do_convert(const Type2& v, mpl::bool_<true>) const
+    {
+        return Type1(v);
+    }
+
+    Type1 do_convert(const Type2& v, mpl::bool_<false>) const
+    {
+        return specific_convert<Type1,Type2>()(v);
+    }
+
+    template <class T1, class T2>
+    struct specific_convert
+    {
+        T1 operator()(const T2& v) const
+        {
+            throw bad_lexical_cast(); // default action
+        }
+    };
+
+    // specific specializations
+
+    // python::object
+    template <class T1>
+    struct specific_convert<T1,python::object>
+    {
+        T1 operator()(const python::object& v) const
+        {
+            python::extract<Type1> x(v);
+            if (x.check())
+                return x();
+            else
+                throw bad_lexical_cast();
+        }
+    };
+
+    // string
+    template <class T1>
+    struct specific_convert<T1,string>
+    {
+        T1 operator()(const string& v) const
+        {
+            //uint8_t is not char, it is bool!
+            if (is_same<T1, uint8_t>::value)
+                return convert<T1,int>()(lexical_cast<int>(v));
+            else
+                return lexical_cast<Type1>(v);
+        }
+    };
+
+    template <class T2>
+    struct specific_convert<string,T2>
+    {
+        string operator()(const T2& v) const
+        {
+            //uint8_t is not char, it is bool!
+            if (is_same<T2, uint8_t>::value)
+                return lexical_cast<string>(convert<int,T2>()(v));
+            else
+                return lexical_cast<string>(v);
+        }
+    };
+
+    // vectors
+    template <class T1, class T2>
+    struct specific_convert<vector<T1>, vector<T2> >
+    {
+        vector<T1> operator()(const vector<T2>& v) const
+        {
+            vector<T1> v2(v.size());
+            convert<T1,T2> c;
+            for (size_t i = 0; i < v.size(); ++i)
+                v2[i] = c(v[i]);
+            return v2;
+        }
+    };
+
+};
+
+// python::object to string, to solve ambiguity
+template<> template<>
+struct convert<string,python::object>::specific_convert<string,python::object>
+{
+    string operator()(const python::object& v) const
+    {
+        python::extract<string> x(v);
+        if (x.check())
+                return x();
+        else
+            throw bad_lexical_cast();
+    }
+};
+
 // the following class wraps a generic property map, so it can be used as a
 // property with a given Key and Value type. The keys and values are converted
 // to the desired Key and Value type, which may cause a performance impact,
@@ -308,22 +414,57 @@ private:
     {
     public:
         ValueConverterImp(PropertyMap pmap): _pmap(pmap) {}
+        typedef typename property_traits<PropertyMap>::value_type val_t;
+        typedef typename property_traits<PropertyMap>::key_type key_t;
 
         virtual Value get(const Key& k)
         {
-            typedef typename property_traits<PropertyMap>::key_type key_t;
-            return boost::get(_pmap, key_t(k));
+            return get_dispatch(_pmap, k,
+                                is_convertible<typename property_traits<PropertyMap>::category,
+                                readable_property_map_tag>());
         }
 
         virtual void put(const Key& k, const Value& val)
         {
-            typedef typename property_traits<PropertyMap>::key_type key_t;
-            typedef typename property_traits<PropertyMap>::value_type val_t;
-            boost::put(_pmap, key_t(k), val_t(val));
+            return  put_dispatch(_pmap, k, _c_put(val),
+                                 is_convertible<typename property_traits<PropertyMap>::category,
+                                                writable_property_map_tag>());
         }
 
+        template <class PMap>
+        Value get_dispatch(PMap pmap, const typename property_traits<PMap>::key_type& k,
+                           mpl::bool_<true>)
+        {
+            return _c_get(boost::get(pmap, k));
+        }
+        
+        template <class PMap>
+        Value get_dispatch(PMap pmap, const typename property_traits<PMap>::key_type& k,
+                           mpl::bool_<false>)
+        {
+            throw graph_tool::ValueException("Property map is not readable.");
+        }
+
+        template <class PMap>
+        void put_dispatch(PMap pmap, const typename property_traits<PMap>::key_type& k,
+                          typename property_traits<PMap>::value_type val,
+                          mpl::bool_<true>)
+        {
+            boost::put(pmap, k, val);
+        }
+
+        template <class PMap>
+        void put_dispatch(PMap pmap, const typename property_traits<PMap>::key_type& k,
+                          typename property_traits<PMap>::value_type val,
+                          mpl::bool_<false>)
+        {
+            throw ValueException("Property map is not writable.");
+        }
+        
     private:
         PropertyMap _pmap;
+        convert<Value, val_t> _c_get;
+        convert<val_t, Value> _c_put;
     };
 
     struct choose_converter

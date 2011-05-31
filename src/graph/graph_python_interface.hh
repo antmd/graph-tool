@@ -474,9 +474,8 @@ public:
 
     bool IsWritable() const
     {
-        return is_convertible<
-            typename property_traits<PropertyMap>::category,
-            readable_property_map_tag>::value;
+        return is_convertible<typename property_traits<PropertyMap>::category,
+                              writable_property_map_tag>::value;
     }
 
 private:

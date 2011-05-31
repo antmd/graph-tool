@@ -711,7 +711,7 @@ class Graph(object):
                                "directed": True}
         self.__stashed_filter_state = []
 
-        if g == None:
+        if g is None:
             self.__graph = libcore.GraphInterface()
             self.set_directed(directed)
         else:
@@ -727,7 +727,7 @@ class Graph(object):
 
             for k, v in g.__properties.iteritems():
                 new_p = self.new_property(v.key_type(), v.value_type())
-                self.copy_property(v, new_p, g)
+                self.copy_property(v, new_p, g=g)
                 self.properties[k] = new_p
 
             self.__stashed_filter_state = [self.get_filter_state()]
@@ -875,8 +875,7 @@ class Graph(object):
         self.__check_perms("del_vertex")
         index = self.vertex_index[vertex]
         for pmap in self.__known_properties:
-            if pmap[0] == "v" and pmap[1]() != None and \
-                   pmap[1]() != self.__vertex_index._PropertyMap__map:
+            if pmap[0] == "v" and pmap[1]() != None and pmap[1]().is_writable():
                 self.__graph.ShiftVertexProperty(pmap[1]().get_map(), index)
         self.clear_vertex(vertex)
         libcore.remove_vertex(self.__graph, vertex)
@@ -1115,7 +1114,7 @@ class Graph(object):
         optional parameter g specifies the (identical) source graph to copy
         properties from (defaults to self).
         """
-        if tgt == None:
+        if tgt is None:
             tgt = self.new_property(src.key_type(),
                                     (src.value_type()
                                      if value_type == None else value_type))
@@ -1126,22 +1125,22 @@ class Graph(object):
         if src.key_type() != tgt.key_type():
             raise ValueError("source and target properties must have the same" +
                              " key type")
-        if g == None:
+        if g is None:
             g = self
-        if g != self:
-            g.stash_filter()
-        self.stash_filter()
+        if g is not self:
+            g.stash_filter(directed=True, reversed=True)
+        self.stash_filter(directed=True, reversed=True)
         if src.key_type() == "v":
             self.__graph.CopyVertexProperty(g.__graph, _prop("v", g, src),
-                                            _prop("v", g, tgt))
+                                            _prop("v", self, tgt))
         elif src.key_type() == "e":
             self.__graph.CopyEdgeProperty(g.__graph, _prop("e", g, src),
-                                            _prop("e", g, tgt))
+                                            _prop("e", self, tgt))
         else:
             tgt[self] = src[g]
-        self.pop_filter()
-        if g != self:
-            g.pop_filter()
+        self.pop_filter(directed=True, reversed=True)
+        if g is not self:
+            g.pop_filter(directed=True, reversed=True)
         return ret
 
     # degree property map

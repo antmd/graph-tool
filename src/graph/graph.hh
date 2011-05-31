@@ -30,6 +30,7 @@
 #include <boost/python/dict.hpp>
 #include <boost/mpl/vector.hpp>
 #include "graph_properties.hh"
+#include "graph_exceptions.hh"
 
 namespace graph_tool
 {
@@ -209,36 +210,6 @@ private:
     bool _edge_filter_invert;
     bool _edge_filter_active;
 };
-
-// Exceptions
-// ==========
-//
-// This is the main exception which will be thrown the outside world, when
-// things go wrong
-
-class GraphException : public std::exception
-{
-    string _error;
-public:
-    GraphException(const string& error) {_error = error;}
-    virtual ~GraphException() throw () {}
-    virtual const char * what () const throw () {return _error.c_str();}
-protected:
-    virtual void SetError(const string& error) {_error = error;}
-};
-
-class IOException : public GraphException
-{
-public:
-    IOException(const string& error): GraphException(error) {}
-};
-
-class ValueException : public GraphException
-{
-public:
-    ValueException(const string& error): GraphException(error) {}
-};
-
 
 } //namespace graph_tool
 
