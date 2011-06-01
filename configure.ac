@@ -42,10 +42,15 @@ dnl Turn debugging on or off
 AC_MSG_CHECKING(whether to enable debug info...)
 
 AC_ARG_ENABLE([debug], [AS_HELP_STRING([--enable-debug],[compile debug information [default=disabled] ])],
-        [AC_MSG_RESULT(yes)]
-        [AC_DEFINE([DEBUG], 1, [compile debug info])]
-        [CXXFLAGS=" ${CXXFLAGS} -ggdb3 "],
-        [AC_MSG_RESULT(no)]
+        if test $enableval = yes; then
+           [AC_DEFINE([DEBUG], 1, [compile debug info])]
+           [CXXFLAGS=" ${CXXFLAGS} -ggdb3"]
+           [AC_MSG_RESULT(yes)] 
+        else
+           [AC_MSG_RESULT(no)]
+        fi
+	,
+	[AC_MSG_RESULT(no)]
         )
 
 dnl set template depth and hidden visibility
@@ -56,18 +61,18 @@ dnl disable deprecation warning, to silence some harmless BGL-related warnings
 
 AC_MSG_CHECKING(whether to enable function inlining...)
 
+[NO_INLINE=no]
 AC_ARG_ENABLE([inline], [AS_HELP_STRING([--disable-inline],[disable inline functions [default=enabled] ])],
         if test $enableval = no; then
-           [AC_MSG_RESULT(no)]
            [AC_DEFINE([NO_INLINE], 1, [disable function inlining])]
            [CXXFLAGS="${CXXFLAGS} -fno-inline -fno-default-inline"]
-           NO_INLINE=yes
+           [NO_INLINE=yes]
+           [AC_MSG_RESULT(no)]
         else
            [AC_MSG_RESULT(yes)]
         fi
         ,
         [AC_MSG_RESULT(yes)]
-        NO_INLINE=no
         )
 
 AM_CONDITIONAL(NO_INLINE, test $NO_INLINE = yes)
@@ -75,51 +80,63 @@ AM_CONDITIONAL(NO_INLINE, test $NO_INLINE = yes)
 AC_MSG_CHECKING(whether to enable optimizations...)
 
 AC_ARG_ENABLE([optimization], [AS_HELP_STRING([--disable-optimization],[disable optimization [default=enabled] ])],
-        [AC_MSG_RESULT(no)]
+        if test $enableval = no; then
+           [AC_MSG_RESULT(no)]
+	else
+           [CXXFLAGS="${CXXFLAGS} -O99"]
+	   [AC_MSG_RESULT(yes)]
+	fi
         ,
-        [AC_MSG_RESULT(yes)]
         [CXXFLAGS="${CXXFLAGS} -O99"]
+        [AC_MSG_RESULT(yes)]
         )
 
 AC_MSG_CHECKING(whether to enable symbol visibility manipulation...)
 
 AC_ARG_ENABLE([visibility], [AS_HELP_STRING([--disable-visibility],[disable symbol visibility manipulation [default=enabled] ])],
-        [AC_MSG_RESULT(no)]
+        if test $enableval = yes; then
+           [CXXFLAGS="${CXXFLAGS} -fvisibility=default -fvisibility-inlines-hidden"]
+	   [AC_MSG_RESULT(yes)]
+	else
+           [AC_MSG_RESULT(no)]
+	fi
         ,
-        [AC_MSG_RESULT(yes)]
         [CXXFLAGS="${CXXFLAGS} -fvisibility=default -fvisibility-inlines-hidden"]
+        [AC_MSG_RESULT(yes)]
         )
 
 
+[NO_GRAPH_FILTERING=no]
 AC_MSG_CHECKING(whether to enable graph filtering...)
 AC_ARG_ENABLE([graph-filtering], [AS_HELP_STRING([--disable-graph-filtering],[disable graph filtering [default=enabled] ])],
         if test $enableval = no; then
-           [AC_MSG_RESULT(no)]
            [AC_DEFINE([NO_GRAPH_FILTERING], 1, [disable graph filtering])]
-           NO_GRAPH_FILTERING=yes
+           [NO_GRAPH_FILTERING=yes]
+           [AC_MSG_RESULT(no)]
         else
            [AC_MSG_RESULT(yes)]
         fi
         ,
         [AC_MSG_RESULT(yes)]
-        NO_GRAPH_FILTERING=no
         )
 
+[USING_OPENMP=yes]
+[OPENMP_LDFLAGS=""]
 AC_MSG_CHECKING(whether to enable parallel algorithms with openmp...)
 AC_ARG_ENABLE([openmp], [AS_HELP_STRING([--enable-openmp],[enable openmp [default=disabled] ])],
         if test $enableval = yes; then
            [AC_MSG_RESULT(yes)]
            [AC_DEFINE([USING_OPENMP], 1, [using openmp])]
-           USING_OPENMP=yes
            [CXXFLAGS="${CXXFLAGS} -fopenmp"]
            [OPENMP_LDFLAGS=" -lgomp "]
+        else
+	   [USING_OPENMP=no]
+	   [CXXFLAGS="${CXXFLAGS} -Wno-unknown-pragmas"]
+           [AC_MSG_RESULT(no)]	
         fi
         ,
-        [AC_MSG_RESULT(no)]
-        [AC_DEFINE([USING_OPENMP], 0, [using openmp])]
-        USING_OPENMP=no
         [CXXFLAGS="${CXXFLAGS} -Wno-unknown-pragmas"]
-        [OPENMP_LDFLAGS=""]
+        [AC_MSG_RESULT(no)]
         )
 AC_SUBST(OPENMP_LDFLAGS)
 
@@ -183,7 +200,7 @@ dnl Checks for header files.
 
 dnl numpy
 AC_PYTHON_MODULE(numpy, fatal)
-NUMPY_DIR="${PYTHON_SITE_PKG}/numpy"
+[NUMPY_DIR="${PYTHON_SITE_PKG}/numpy"]
 AC_ARG_WITH([numpy], [AS_HELP_STRING([--with-numpy=DIR],[directory where numpy is installed
                       [default=${PYTHON_SITE_PKG}/numpy] ])],
         NUMPY_DIR=$withval)
@@ -261,8 +278,8 @@ AC_DEFINE_UNQUOTED([PACKAGE_SOURCE_DIR], "${packagesrcdir}", [package source dir
 AC_DEFINE_UNQUOTED([AUTHOR], "Tiago de Paula Peixoto <tiago@skewed.de>", [program author(s)])
 
 AC_DEFINE_UNQUOTED([COPYRIGHT],
-    "Copyright (C) 2007-2010 Tiago de Paula Peixoto\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
-	[copyright info])
+    "Copyright (C) 2006-2011 Tiago de Paula Peixoto\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+        [copyright info])
 
 # git information
 AC_DEFINE([GIT_COMMIT], "esyscmd(git show | head -n 1 | sed 's/commit //' |  grep -o -e '.\{8\}' | head -n 1 |tr -d '\n')", [git HEAD commit hash])
