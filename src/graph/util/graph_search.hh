@@ -36,47 +36,27 @@ namespace graph_tool
 using namespace std;
 using namespace boost;
 
-// less than or equal for vectors. Compare sizes, or distance from origin.
+// sort sequences lexicographically
 template <class ValueType>
 bool operator<=(const vector<ValueType>& v1, const vector<ValueType>& v2)
 {
-    if (v1.size() < v2.size())
-        return true;
-    if (v1.size() > v2.size())
-        return false;
-    long double d1 = 0, d2 = 0;
-    for (size_t i = 0; i < v1.size(); ++i)
+    for (size_t i = 0; i < min(v1.size(), v2.size()); ++i)
     {
-        d1 += v1[i]*v1[i];
-        d2 += v2[i]*v2[i];
+        if (v1[i] != v2[i])
+            return (v1[i] <= v2[i]);
     }
-    return (d1 <= d2);
+    return (v1.size() <= v2.size());
 }
 
 // sort strings in alphabetical (ASCII) order
-bool operator<=(const string s1, const string s2)
+bool operator<=(const string& s1, const string& s2)
 {
-    for (size_t i = 0; i < s1.size(); ++i)
+    for (size_t i = 0; i < min(s1.size(), s2.size()); ++i)
     {
-        if (s1[i] != s1[i])
-            return (s1[i] < s1[i]);
+        if (s1[i] != s2[i])
+            return (s1[i] <= s2[i]);
     }
-    return (s1.size() == s2.size());
-}
-
-// vector of strings. compare element by element
-bool operator<=(const vector<string>& v1, const vector<string>& v2)
-{
-    if (v1.size() < v2.size())
-        return true;
-    if (v1.size() > v2.size())
-        return false;
-    for (size_t i = 0; i < v1.size(); ++i)
-    {
-        if (v1[i] > v2[i])
-            return false;
-    }
-    return true;
+    return (s1.size() <= s2.size());
 }
 
 // find vertices which match a certain (inclusive) property range

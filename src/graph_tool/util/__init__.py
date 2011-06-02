@@ -66,6 +66,7 @@ def find_vertex_range(g, prop, range):
                             range)
     return ret
 
+
 def find_edge(g, prop, match):
     """Find all vertices `e` for which `prop[e] = match`. The parameter prop
     must be a :class:`~graph_tool.PropertyMap`."""
