@@ -193,6 +193,15 @@ def _python_type(type_name):
     return object
 
 
+def _convert(prop, val):
+    # attempt to convert to a compatible python type. This is useful,
+    # for instance, when dealing with numpy types.
+    vtype = _python_type(prop.value_type())
+    if type(vtype) is tuple:
+        return [vtype[1](x) for x in val]
+    return vtype(val)
+
+
 def show_config():
     """Show ``graph_tool`` build configuration."""
     info = libcore.mod_info()
@@ -373,14 +382,7 @@ class PropertyMap(object):
         try:
             self.__map[key] = v
         except TypeError:
-            # attempt to convert to a compatible python type. This is useful,
-            # for instance, when dealing with numpy scalar types.
-            valtype = self.python_value_type()
-            if isinstance(valtype, tuple):
-                val = [valtype[1](x) for x in v]
-            else:
-                val = valtype(v)
-            self.__map[key] = val
+            self.__map[key] = _convert(self, v)
 
     def __repr__(self):
         # provide some more useful information

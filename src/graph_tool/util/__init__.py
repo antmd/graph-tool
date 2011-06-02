@@ -41,7 +41,7 @@ Contents
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_util")
 
-from .. import _degree, _prop
+from .. import _degree, _prop, _convert
 import weakref
 
 __all__ = ["find_vertex", "find_vertex_range", "find_edge", "find_edge_range"]
@@ -51,9 +51,10 @@ def find_vertex(g, prop, match):
     """Find all vertices `v` for which `prop[v] = match`. The parameter prop
     can be either a :class:`~graph_tool.PropertyMap` or string with value "in",
     "out" or "total", representing a degree type."""
+    val = _convert(prop, match)
     ret = libgraph_tool_util.\
           find_vertex_range(weakref.ref(g._Graph__graph), _degree(g, prop),
-                            (match, match))
+                            (val, val))
     return ret
 
 
@@ -63,22 +64,24 @@ def find_vertex_range(g, prop, range):
     with value"in", "out" or "total", representing a degree type."""
     ret = libgraph_tool_util.\
           find_vertex_range(weakref.ref(g._Graph__graph), _degree(g, prop),
-                            range)
+                            (_convert(prop, range[0]), _convert(prop, range[1])))
     return ret
 
 
 def find_edge(g, prop, match):
     """Find all vertices `e` for which `prop[e] = match`. The parameter prop
     must be a :class:`~graph_tool.PropertyMap`."""
+    val = _convert(prop, match)
     ret = libgraph_tool_util.\
           find_edge_range(weakref.ref(g._Graph__graph), _prop("e", g, prop),
-                          (match, match))
+                          (val, val))
     return ret
+
 
 def find_edge_range(g, prop, range):
     """Find all vertices `e` for which `range[0] <= prop[e] <= range[1]`. The
     parameter prop can be either a :class:`~graph_tool.PropertyMap`."""
     ret = libgraph_tool_util.\
           find_edge_range(weakref.ref(g._Graph__graph), _prop("e", g, prop),
-                          range)
+                          (_convert(prop, range[0]), _convert(prop, range[1])))
     return ret
