@@ -86,7 +86,7 @@ struct find_vertices
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
             value_type val = deg(v, g);
-            if (val >= range.first && val <= range.second)
+            if (range.first <= val && val <= range.second)
             {
                 PythonVertex pv(pg, v);
                 {
@@ -139,7 +139,7 @@ struct find_edges
                 }
 
                 value_type val = get(prop, *e);
-                if (val >= range.first && val <= range.second)
+                if (range.first <= val && val <= range.second)
                 {
                     PythonEdge<Graph> pe(pg, *e);
                     {
