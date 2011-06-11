@@ -36,41 +36,77 @@ Contents
 ++++++++
 """
 
-import sys, os, os.path, time, warnings, tempfile
+import sys
+import os
+import os.path
+import time
+import warnings
+import ctypes
+import ctypes.util
 from .. import _degree, _prop, PropertyMap, _check_prop_vector,\
      _check_prop_scalar, _check_prop_writable, group_vector_property,\
      ungroup_vector_property
 from .. decorators import _limit_args
 import numpy.random
 from numpy import *
+import copy
 
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_layout")
 
 try:
-    import gv
-except ImportError:
-    warnings.warn("error importing gv module... graph_draw() will not work.",
-                  ImportWarning)
-try:
     import matplotlib.cm
     import matplotlib.colors
-    from pylab import imread
 except ImportError:
     warnings.warn("error importing matplotlib module... " + \
                   "graph_draw() will not work.", ImportWarning)
 
+try:
+    libname = ctypes.util.find_library("c")
+    libc = ctypes.CDLL(libname)
+    libc.open_memstream.restype = ctypes.POINTER(ctypes.c_char)
+except OSError:
+    pass
+
+try:
+    libname = ctypes.util.find_library("gvc")
+    if libname is None:
+        raise OSError()
+    libgv = ctypes.CDLL(libname)
+    # properly set the return types of certain functions
+    ptype = ctypes.POINTER(ctypes.c_char)
+    libgv.gvContext.restype = ptype
+    libgv.agopen.restype = ptype
+    libgv.agnode.restype = ptype
+    libgv.agedge.restype = ptype
+    libgv.agget.restype = ptype
+    # create a context to use the whole time (if we keep freeing and recreating
+    # it, we will hit a memory leak in graphviz)
+    gvc = libgv.gvContext()
+except OSError:
+    warnings.warn("error importing graphviz C library (libgvc)... " + \
+                  "graph_draw() will not work.", ImportWarning)
+
+
 __all__ = ["graph_draw", "arf_layout", "random_layout"]
+
+
+def aset(elem, attr, value):
+    v = str(value)
+    libgv.agsafeset(elem, str(attr), v, v)
+
+
+def aget(elem, attr):
+    return ctypes.string_at(libgv.agget(elem, str(attr)))
 
 
 def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
                ratio="fill", overlap="prism", sep=None, splines=False,
                vsize=0.105, penwidth=1.0, elen=None, gprops={}, vprops={},
-               eprops={}, vcolor="#a40000", ecolor="#2e3436",
-               vcmap=None, vnorm=True, ecmap=None,
-               enorm=True, vorder=None, eorder=None, output="",
-               output_format="auto", returngv=False, fork=False,
-               return_bitmap=False, seed=0):
+               eprops={}, vcolor="#a40000", ecolor="#2e3436", vcmap=None,
+               vnorm=True, ecmap=None, enorm=True, vorder=None, eorder=None,
+               output="", output_format="auto", fork=False,
+               return_string=False, seed=0):
     r"""Draw a graph using graphviz.
 
     Parameters
@@ -198,16 +234,14 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
         "cmapx". If the value is "auto", the format is guessed from the 'output'
         parameter, or 'xlib' if it is empty. If the value is None, no output is
         produced.
-    returngv : bool (default: False)
-        Return the graph object used internally with the gv module.
     fork : bool (default: False)
         If True, the program is forked before drawing. This is used as a
         work-around for a bug in graphviz, where the exit() function is called,
         which would cause the calling program to end. This is always assumed
         'True', if output_format = 'xlib'.
-    return_bitmap : bool (default: False)
-        If True, a bitmap (:class:`~numpy.ndarray`) of the rendered graph is
-        returned.
+    return_string : bool (default: False)
+        If True, a string containing the rendered graph as binary data is
+        returned (defaults to png format).
 
     Returns
     -------
@@ -264,234 +298,237 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
                not os.access(os.path.dirname(output), os.W_OK):
             raise IOError("cannot write to " + os.path.dirname(output))
 
-    if g.is_directed():
-        gvg = gv.digraph("G")
-    else:
-        gvg = gv.graph("G")
+    has_layout = False
+    try:
+        gvg = libgv.agopen("G", 1 if g.is_directed() else 0)
 
-    if layout is None:
-        layout = "neato" if g.num_vertices() <= 1000 else "sfdp"
+        if layout is None:
+            layout = "neato" if g.num_vertices() <= 1000 else "sfdp"
 
-    if layout == "arf":
-        layout = "neato"
-        pos = arf_layout(g, pos=pos)
-        pin = True
+        if layout == "arf":
+            layout = "neato"
+            pos = arf_layout(g, pos=pos)
+            pin = True
 
-    if pos != None:
-        # copy user-supplied property
-        if isinstance(pos, PropertyMap):
-            pos = ungroup_vector_property(pos, [0, 1])
-        else:
-            pos = (g.copy_property(pos[0]), g.copy_property(pos[1]))
-
-    if type(vsize) == tuple:
-        s = g.new_vertex_property("double")
-        g.copy_property(vsize[0], s)
-        s.a *= vsize[1]
-        vsize = s
-
-    if type(penwidth) == tuple:
-        s = g.new_edge_property("double")
-        g.copy_property(penwidth[0], s)
-        s.a *= penwidth[1]
-        penwidth = s
-
-    # main graph properties
-    gv.setv(gvg, "outputorder", "edgesfirst")
-    gv.setv(gvg, "mode", "major")
-    if overlap == False:
-        overlap = "false"
-    else:
-        overlap = "true"
-    if isinstance(overlap, str):
-        gv.setv(gvg, "overlap", overlap)
-    if sep != None:
-        gv.setv(gvg, "sep", str(sep))
-    if splines:
-        gv.setv(gvg, "splines", "true")
-    gv.setv(gvg, "ratio", str(ratio))
-    # size is in centimeters... convert to inches
-    gv.setv(gvg, "size", "%f,%f" % (size[0] / 2.54, size[1] / 2.54))
-    if maxiter != None:
-        gv.setv(gvg, "maxiter", str(maxiter))
-
-    seed = numpy.random.randint(sys.maxint)
-    gv.setv(gvg, "start", "%d" % seed)
-
-    # apply all user supplied graph properties
-    for k, val in gprops.iteritems():
-        if isinstance(val, PropertyMap):
-            gv.setv(gvg, k, str(val[g]))
-        else:
-            gv.setv(gvg, k, str(val))
-
-    # normalize color properties
-    if vcolor != None and not isinstance(vcolor, str):
-        minmax = [float("inf"), -float("inf")]
-        for v in g.vertices():
-            c = vcolor[v]
-            minmax[0] = min(c, minmax[0])
-            minmax[1] = max(c, minmax[1])
-        if minmax[0] == minmax[1]:
-            minmax[1] += 1
-        if vnorm:
-            vnorm = matplotlib.colors.normalize(vmin=minmax[0], vmax=minmax[1])
-        else:
-            vnorm = lambda x: x
-
-    if ecolor != None and not isinstance(ecolor, str):
-        minmax = [float("inf"), -float("inf")]
-        for e in g.edges():
-            c = ecolor[e]
-            minmax[0] = min(c, minmax[0])
-            minmax[1] = max(c, minmax[1])
-        if minmax[0] == minmax[1]:
-            minmax[1] += 1
-        if enorm:
-            enorm = matplotlib.colors.normalize(vmin=minmax[0], vmax=minmax[1])
-        else:
-            enorm = lambda x: x
-
-    if vcmap is None:
-        vcmap = matplotlib.cm.jet
-
-    if ecmap is None:
-        ecmap = matplotlib.cm.jet
-
-    nodes = {}
-
-    # add nodes
-    if vorder != None:
-        vertices = sorted(g.vertices(), lambda a, b: cmp(vorder[a], vorder[b]))
-    else:
-        vertices = g.vertices()
-    for v in vertices:
-        n = gv.node(gvg, str(g.vertex_index[v]))
-
-        if type(vsize) == PropertyMap:
-            vw = vh = vsize[v]
-        else:
-            vw = vh = vsize
-
-        gv.setv(n, "shape", "circle")
-        gv.setv(n, "width", "%g" % vw)
-        gv.setv(n, "height", "%g" % vh)
-        gv.setv(n, "style", "filled")
-        gv.setv(n, "color", ecolor if isinstance(ecolor, str) else "#2e3436")
-        # apply color
-        if isinstance(vcolor, str):
-            gv.setv(n, "fillcolor", vcolor)
-        else:
-            color = tuple([int(c * 255.0) for c in vcmap(vnorm(vcolor[v]))])
-            gv.setv(n, "fillcolor", "#%.2x%.2x%.2x%.2x" % color)
-        gv.setv(n, "label", "")
-
-        # user supplied position
         if pos != None:
-            gv.setv(n, "pos", "%f,%f" % (pos[0][v], pos[1][v]))
-            gv.setv(n, "pin", str(pin))
-
-        # apply all user supplied properties
-        for k, val in vprops.iteritems():
-            if isinstance(val, PropertyMap):
-                gv.setv(n, k, str(val[v]))
+            # copy user-supplied property
+            if isinstance(pos, PropertyMap):
+                pos = ungroup_vector_property(pos, [0, 1])
             else:
-                gv.setv(n, k, str(val))
-        nodes[v] = n
+                pos = (g.copy_property(pos[0]), g.copy_property(pos[1]))
 
-    # add edges
-    if eorder != None:
-        edges = sorted(g.edges(), lambda a, b: cmp(eorder[a], eorder[b]))
-    else:
-        edges = g.edges()
-    for e in edges:
-        ge = gv.edge(nodes[e.source()],
-                     nodes[e.target()])
-        gv.setv(ge, "arrowsize", "0.3")
-        if g.is_directed():
-            gv.setv(ge, "arrowhead", "vee")
+        if type(vsize) == tuple:
+            s = g.new_vertex_property("double")
+            g.copy_property(vsize[0], s)
+            s.a *= vsize[1]
+            vsize = s
 
-        # apply color
-        if isinstance(ecolor, str):
-            gv.setv(ge, "color", ecolor)
+        if type(penwidth) == tuple:
+            s = g.new_edge_property("double")
+            g.copy_property(penwidth[0], s)
+            s.a *= penwidth[1]
+            penwidth = s
+
+        # main graph properties
+        aset(gvg, "outputorder", "edgesfirst")
+        aset(gvg, "mode", "major")
+        if overlap == False:
+            overlap = "false"
         else:
-            color = tuple([int(c * 255.0) for c in ecmap(enorm(ecolor[e]))])
-            gv.setv(ge, "color", "#%.2x%.2x%.2x%.2x" % color)
+            overlap = "true"
+        if isinstance(overlap, str):
+            aset(gvg, "overlap", overlap)
+        if sep != None:
+            aset(gvg, "sep", sep)
+        if splines:
+            aset(gvg, "splines", "true")
+        aset(gvg, "ratio", ratio)
+        # size is in centimeters... convert to inches
+        aset(gvg, "size", "%f,%f" % (size[0] / 2.54, size[1] / 2.54))
+        if maxiter != None:
+            aset(gvg, "maxiter", maxiter)
 
-        # apply edge length
-        if elen != None:
-            if isinstance(elen, PropertyMap):
-                gv.setv(ge, "len", str(elen[e]))
+        seed = numpy.random.randint(sys.maxint)
+        aset(gvg, "start", "%d" % seed)
+
+        # apply all user supplied graph properties
+        for k, val in gprops.iteritems():
+            if isinstance(val, PropertyMap):
+                aset(gvg, k, val[g])
             else:
-                gv.setv(ge, "len", str(elen))
+                aset(gvg, k, val)
 
-        # apply width
-        if penwidth != None:
-            if isinstance(penwidth, PropertyMap):
-                gv.setv(ge, "penwidth", str(penwidth[e]))
+        # normalize color properties
+        if vcolor != None and not isinstance(vcolor, str):
+            minmax = [float("inf"), -float("inf")]
+            for v in g.vertices():
+                c = vcolor[v]
+                minmax[0] = min(c, minmax[0])
+                minmax[1] = max(c, minmax[1])
+            if minmax[0] == minmax[1]:
+                minmax[1] += 1
+            if vnorm:
+                vnorm = matplotlib.colors.normalize(vmin=minmax[0], vmax=minmax[1])
             else:
-                gv.setv(ge, "penwidth", str(penwidth))
+                vnorm = lambda x: x
 
-        # apply all user supplied properties
-        for k, v in eprops.iteritems():
-            if isinstance(v, PropertyMap):
-                gv.setv(ge, k, str(v[e]))
+        if ecolor != None and not isinstance(ecolor, str):
+            minmax = [float("inf"), -float("inf")]
+            for e in g.edges():
+                c = ecolor[e]
+                minmax[0] = min(c, minmax[0])
+                minmax[1] = max(c, minmax[1])
+            if minmax[0] == minmax[1]:
+                minmax[1] += 1
+            if enorm:
+                enorm = matplotlib.colors.normalize(vmin=minmax[0],
+                                                    vmax=minmax[1])
             else:
-                gv.setv(ge, k, str(v))
+                enorm = lambda x: x
 
-    gv.layout(gvg, layout)
-    gv.render(gvg, "dot", "/dev/null")  # retrieve positions
+        if vcmap is None:
+            vcmap = matplotlib.cm.jet
 
-    if pos == None:
-        pos = (g.new_vertex_property("double"), g.new_vertex_property("double"))
-    for n, n_gv in nodes.iteritems():
-        p = gv.getv(n_gv, "pos")
-        p = p.split(",")
-        pos[0][n] = float(p[0])
-        pos[1][n] = float(p[1])
+        if ecmap is None:
+            ecmap = matplotlib.cm.jet
 
-    # I don't get this, but it seems necessary
-    pos[0].a /= 100
-    pos[1].a /= 100
+        # add nodes
+        if vorder != None:
+            vertices = sorted(g.vertices(), lambda a, b: cmp(vorder[a], vorder[b]))
+        else:
+            vertices = g.vertices()
+        for v in vertices:
+            n = libgv.agnode(gvg, str(int(v)))
 
-    pos = group_vector_property(pos)
+            if type(vsize) == PropertyMap:
+                vw = vh = vsize[v]
+            else:
+                vw = vh = vsize
 
-    if return_bitmap:
-        # This is a not-so-nice hack which obtains an image buffer from a png
-        # file. It is a pity that graphviz does not give access to its internal
-        # buffers.
-        tmp = tempfile.mkstemp(suffix=".png")[1]
-        gv.render(gvg, "png", tmp)
-        img = imread(tmp)
-        os.remove(tmp)
-    else:
-        if output_format == "auto":
-            if output == "":
-                output_format = "xlib"
+            aset(n, "shape", "circle")
+            aset(n, "width", "%g" % vw)
+            aset(n, "height", "%g" % vh)
+            aset(n, "style", "filled")
+            aset(n, "color", ecolor if isinstance(ecolor, str) else "#2e3436")
+            # apply color
+            if isinstance(vcolor, str):
+                aset(n, "fillcolor", vcolor)
+            else:
+                color = tuple([int(c * 255.0) for c in vcmap(vnorm(vcolor[v]))])
+                aset(n, "fillcolor", "#%.2x%.2x%.2x%.2x" % color)
+            aset(n, "label", "")
+
+            # user supplied position
+            if pos != None:
+                aset(n, "pos", "%f,%f" % (pos[0][v], pos[1][v]))
+                aset(n, "pin", pin)
+
+            # apply all user supplied properties
+            for k, val in vprops.iteritems():
+                if isinstance(val, PropertyMap):
+                    aset(n, k, val[v])
+                else:
+                    aset(n, k, val)
+
+        # add edges
+        if eorder != None:
+            edges = sorted(g.edges(), lambda a, b: cmp(eorder[a], eorder[b]))
+        else:
+            edges = g.edges()
+        for e in edges:
+            ge = libgv.agedge(gvg,
+                              libgv.agnode(gvg, str(int(e.source()))),
+                              libgv.agnode(gvg, str(int(e.target()))))
+            aset(ge, "arrowsize", "0.3")
+            if g.is_directed():
+                aset(ge, "arrowhead", "vee")
+
+            # apply color
+            if isinstance(ecolor, str):
+                aset(ge, "color", ecolor)
+            else:
+                color = tuple([int(c * 255.0) for c in ecmap(enorm(ecolor[e]))])
+                aset(ge, "color", "#%.2x%.2x%.2x%.2x" % color)
+
+            # apply edge length
+            if elen != None:
+                if isinstance(elen, PropertyMap):
+                    aset(ge, "len", elen[e])
+                else:
+                    aset(ge, "len", elen)
+
+            # apply width
+            if penwidth != None:
+                if isinstance(penwidth, PropertyMap):
+                    aset(ge, "penwidth", penwidth[e])
+                else:
+                    aset(ge, "penwidth", penwidth)
+
+            # apply all user supplied properties
+            for k, v in eprops.iteritems():
+                if isinstance(v, PropertyMap):
+                    aset(ge, k, v[e])
+                else:
+                    aset(ge, k, v)
+
+        libgv.gvLayout(gvc, gvg, layout)
+        has_layout = True
+        retv = libgv.gvRender(gvc, gvg, "dot", None)  # retrieve positions only
+
+        if pos == None:
+            pos = (g.new_vertex_property("double"),
+                   g.new_vertex_property("double"))
+        for v in g.vertices():
+            n = libgv.agnode(gvg, str(int(v)))
+            p = aget(n, "pos")
+            p = p.split(",")
+            pos[0][v] = float(p[0])
+            pos[1][v] = float(p[1])
+
+        # I don't get this, but it seems necessary
+        pos[0].a /= 100
+        pos[1].a /= 100
+
+        pos = group_vector_property(pos)
+
+        if return_string:
+            if output_format == "auto":
+                output_format = "png"
+            buf = ctypes.c_char_p()
+            buf_len = ctypes.c_size_t()
+            fstream = libc.open_memstream(ctypes.byref(buf),
+                                          ctypes.byref(buf_len))
+            libgv.gvRender(gvc, gvg, output_format, fstream)
+            libc.fclose(fstream)
+            data = copy.copy(ctypes.string_at(buf, buf_len.value))
+            libc.free(buf)
+        else:
+            if output_format == "auto":
+                if output == "":
+                    output_format = "xlib"
+                elif output != None:
+                    output_format = output.split(".")[-1]
+
+            # if using xlib we need to fork the process, otherwise good ol'
+            # graphviz will call exit() when the window is closed
+            if output_format == "xlib" or fork:
+                pid = os.fork()
+                if pid == 0:
+                    libgv.gvRenderFilename(gvc, gvg, output_format, output)
+                    os._exit(0)  # since we forked, it's good to be sure
+                if output_format != "xlib":
+                    os.wait()
             elif output != None:
-                output_format = output.split(".")[-1]
+                libgv.gvRenderFilename(gvc, gvg, output_format, output)
 
-        # if using xlib we need to fork the process, otherwise good ol' graphviz
-        # will call exit() when the window is closed
-        if output_format == "xlib" or fork:
-            pid = os.fork()
-            if pid == 0:
-                gv.render(gvg, output_format, output)
-                os._exit(0)  # since we forked, it's good to be sure
-            if output_format != "xlib":
-                os.wait()
-        elif output != None:
-            gv.render(gvg, output_format, output)
+        ret = [pos]
+        if return_string:
+            ret.append(data)
 
-    ret = [pos]
-    if return_bitmap:
-        ret.append(img)
-
-    if returngv:
-        ret.append(gv)
-    else:
-        gv.rm(gvg)
-        del gvg
+    finally:
+        if has_layout:
+            libgv.gvFreeLayout(gvc, gvg)
+        libgv.agclose(gvg)
 
     if len(ret) > 1:
         return tuple(ret)
