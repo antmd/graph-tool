@@ -256,9 +256,9 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
 
     Notes
     -----
-    This function is a wrapper for the [graphviz] python
-    routines. Extensive additional documentation for the graph, vertex and edge
-    properties is available at: http://www.graphviz.org/doc/info/attrs.html.
+    This function is a wrapper for the [graphviz] routines. Extensive additional
+    documentation for the graph, vertex and edge properties is available at:
+    http://www.graphviz.org/doc/info/attrs.html.
 
 
     Examples
@@ -267,16 +267,17 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
     >>> from numpy.random import seed, zipf
     >>> seed(42)
     >>> g = gt.random_graph(1000, lambda: min(zipf(2.4), 40),
-    ...                     lambda i,j: exp(abs(i-j)), directed=False)
+    ...                     lambda i, j: exp(abs(i - j)), directed=False)
     >>> # extract largest component
     >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(g))
     >>> deg = g.degree_property_map("out")
-    >>> deg.get_array()[:] = 2*(sqrt(deg.get_array()[:])*0.5 + 0.4)
+    >>> deg.a = 2 * (sqrt(deg.a) * 0.5 + 0.4)
     >>> ebet = gt.betweenness(g)[1]
-    >>> ebet.get_array()[:] *= 4000
-    >>> ebet.get_array()[:] += 10
-    >>> gt.graph_draw(g, vsize=deg, vcolor=deg, elen=10, ecolor=ebet,
-    ...               penwidth=ebet, overlap="prism", output="graph-draw.png")
+    >>> ebet.a *= 4000
+    >>> ebet.a += 10
+    >>> gt.graph_draw(g, vsize=deg, vcolor=deg, vorder=deg, elen=10,
+    ...               ecolor=ebet, eorder=ebet, penwidth=ebet,
+    ...               overlap="prism", output="graph-draw.png")
     <...>
 
     .. figure:: graph-draw.png
@@ -698,7 +699,7 @@ def arf_layout(g, weight=None, d=0.5, a=10, dt=0.001, epsilon=1e-6,
         Graph to be used.
     weight : PropertyMap (optional, default: None)
         An edge property map with the respective weights.
-    d : float (optional, default: 0.1)
+    d : float (optional, default: 0.5)
         Opposing force between vertices.
     a : float (optional, default: 10)
         Attracting force between adjacent vertices.
@@ -728,40 +729,34 @@ def arf_layout(g, weight=None, d=0.5, a=10, dt=0.001, epsilon=1e-6,
     --------
     >>> from numpy.random import seed, zipf
     >>> seed(42)
-    >>> g = gt.random_graph(100, lambda: 3, directed=False)
-    >>> t = gt.min_spanning_tree(g)
-    >>> g.set_edge_filter(t)
-    >>> pos = gt.graph_draw(g, output=None) # initial configuration
-    >>> pos = gt.arf_layout(g, pos=pos, max_iter=0)
+    >>> g = gt.price_network(300)
+    >>> pos = gt.arf_layout(g, max_iter=0)
     >>> gt.graph_draw(g, pos=pos, pin=True, output="graph-draw-arf.png")
     <...>
 
     .. figure:: graph-draw-arf.png
         :align: center
 
-        ARF layout of a minimum spanning tree of a random graph.
+        ARF layout of a Price network.
 
     References
     ----------
     .. [geipel-self-organization-2007] Markus M. Geipel, "Self-Organization
-       applied to Dynamic Network Layout" , International Journal of Modern
-       Physics C vol. 18, no. 10 (2007), pp. 1537-1549, arXiv:0704.1748v5
+       applied to Dynamic Network Layout", International Journal of Modern
+       Physics C vol. 18, no. 10 (2007), pp. 1537-1549,
+       :doi:`10.1142/S0129183107011558`, :arxiv:`0704.1748v5`
     .. _arf: http://www.sg.ethz.ch/research/graphlayout
     """
 
-    if pos == None:
+    if pos is None:
         if dim != 2:
             pos = random_layout(g, dim=dim)
         else:
             pos = graph_draw(g, output=None)
     _check_prop_vector(pos, name="pos", floating=True)
 
-    g.stash_filter(directed=True)
-    try:
-        g.set_directed(False)
-        libgraph_tool_layout.arf_layout(g._Graph__graph, _prop("v", g, pos),
-                                        _prop("e", g, weight), d, a, dt,
-                                        max_iter, epsilon, dim)
-    finally:
-        g.pop_filter(directed=True)
+    ug = GraphView(g, directed=False)
+    libgraph_tool_layout.arf_layout(ug._Graph__graph, _prop("v", g, pos),
+                                    _prop("e", g, weight), d, a, dt, max_iter,
+                                    epsilon, dim)
     return pos
