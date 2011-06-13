@@ -85,9 +85,6 @@ GraphInterface::GraphInterface(const GraphInterface& gi, bool keep_ref)
          bind<void>(graph_copy(), _1, ref(_state->_mg),
                     gi._vertex_index, _vertex_index, 
                     gi._edge_index, _edge_index))();
-
-    // graph_copy()(_state->_mg, gi._state->_mg, _vertex_index, gi._vertex_index,
-    //              _edge_index, gi._edge_index);
     // filters will be copied in python
 }
 

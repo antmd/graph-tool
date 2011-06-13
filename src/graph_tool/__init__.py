@@ -1544,9 +1544,18 @@ class GraphView(Graph):
                  reversed=False):
         self.__base = g if not isinstance(g, GraphView) else g.base
         Graph.__init__(self)
+        # copy graph reference
         self._Graph__graph = libcore.GraphInterface(g._Graph__graph, True)
         self._Graph__properties = g._Graph__properties
         self._Graph__known_properties = g._Graph__known_properties
+
+        # set already existent filters
+        vf = g.get_vertex_filter()
+        if vf[0] is not None:
+            self.set_vertex_filter(vf[0], vf[1])
+        ef = g.get_edge_filter()
+        if ef[0] is not None:
+            self.set_edge_filter(ef[0], ef[1])
 
         if vfilt is not None:
             if type(vfilt) is PropertyMap:
