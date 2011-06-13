@@ -29,6 +29,7 @@ Summary
    :nosignatures:
 
    graph_draw
+   fruchterman_reingold_layout
    arf_layout
    random_layout
 
@@ -45,7 +46,8 @@ import ctypes
 import ctypes.util
 from .. import _degree, _prop, PropertyMap, _check_prop_vector,\
      _check_prop_scalar, _check_prop_writable, group_vector_property,\
-     ungroup_vector_property
+     ungroup_vector_property, GraphView
+from .. topology import label_components
 from .. decorators import _limit_args
 import numpy.random
 from numpy import *
@@ -88,7 +90,8 @@ except OSError:
                   "graph_draw() will not work.", ImportWarning)
 
 
-__all__ = ["graph_draw", "arf_layout", "random_layout"]
+__all__ = ["graph_draw", "fruchterman_reingold_layout", "arf_layout",
+           "random_layout"]
 
 
 def aset(elem, attr, value):
@@ -597,7 +600,95 @@ def random_layout(g, shape=None, pos=None, dim=2):
     return pos
 
 
-def arf_layout(g, weight=None, d=0.1, a=10, dt=0.001, epsilon=1e-6,
+def fruchterman_reingold_layout(g, weight=None, a=None, r=1., scale=None,
+                                circular=False, grid=True, t_range=None,
+                                n_iter=100, pos=None):
+    r"""Calculate the Fruchterman-Reingold spring-block layout of the graph.
+
+    Parameters
+    ----------
+    g : Graph
+        Graph to be used.
+    weight : PropertyMap (optional, default: None)
+        An edge property map with the respective weights.
+    a : float (optional, default: :math:`V`)
+        Attracting force between adjacent vertices.
+    r : float (optional, default: 1.0)
+        Repulsive force between vertices.
+    scale : float (optional, default: :math:`\sqrt{V}`)
+        Total scale of the layout (either square side or radius).
+    circular : bool (optional, default: False)
+        If `True`, the layout will have a circular shape. Otherwise the shape
+        will be a square.
+    grid : bool (optional, default: True)
+        If `True`, the repulsive forces will only act on vertices which are on
+        the same site on a grid. Otherwise they will act on all vertex pairs.
+    t_range : tuple of floats (optional, default: (scale / 10, scale / 1000))
+        Temperature range used in annealing. The temperature limits the
+        displacement at each iteration.
+    n_iter : int (optional, default: 100)
+        Total number of iterations.
+    pos : PropertyMap (optional, default: None)
+        Vector vertex property maps where the coordinates should be stored. If
+        provided, this will also be used as the initial position of the
+        vertices.
+
+    Returns
+    -------
+    pos : A vector vertex property map
+        Vertex property map with the coordinates of the vertices.
+
+    Notes
+    -----
+    This algorithm is defined in [fruchterman-reingold]_, and has
+    complexity :math:`O(\text{n_iter}\times V^2)` if `grid=False` or
+    :math:`O(\text{n_iter}\times (V + E))` otherwise.
+
+    Examples
+    --------
+    >>> from numpy.random import seed, zipf
+    >>> seed(42)
+    >>> g = gt.price_network(300)
+    >>> pos = gt.fruchterman_reingold_layout(g, n_iter=1000)
+    >>> gt.graph_draw(g, pos=pos, pin=True, output="graph-draw-fr.png")
+    <...>
+
+    .. figure:: graph-draw-fr.png
+        :align: center
+
+        Fruchterman-Reingold layout of a Price network.
+
+    References
+    ----------
+    .. [fruchterman-reingold] Fruchterman, Thomas M. J.; Reingold, Edward M.
+       "Graph Drawing by Force-Directed Placement". Software – Practice & Experience
+       (Wiley) 21 (11): 1129–1164. (1991) :doi:`10.1002/spe.4380211102`
+    """
+
+    if pos == None:
+        pos = random_layout(g, dim=2)
+    _check_prop_vector(pos, name="pos", floating=True)
+
+    if a is None:
+        a = float(g.num_vertices())
+
+    if scale is None:
+        scale = sqrt(g.num_vertices())
+
+    if t_range is None:
+        t_range = (scale / 10, scale / 1000)
+
+    ug = GraphView(g, directed=False)
+    libgraph_tool_layout.fruchterman_reingold_layout(ug._Graph__graph,
+                                                     _prop("v", g, pos),
+                                                     _prop("e", g, weight),
+                                                     a, r, not circular, scale,
+                                                     grid, t_range[0],
+                                                     t_range[1], n_iter)
+    return pos
+
+
+def arf_layout(g, weight=None, d=0.5, a=10, dt=0.001, epsilon=1e-6,
                max_iter=1000, pos=None, dim=2):
     r"""Calculate the ARF spring-block layout of the graph.
 

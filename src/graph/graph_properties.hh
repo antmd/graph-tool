@@ -605,9 +605,11 @@ private:
     value_type _c;
 };
 
+
 // this wraps an existing property map, but always converts its values to a
 // given type
-template <class PropertyMap, class Type>
+template <class PropertyMap, class Type,
+          template <class T1, class T2> class Converter = convert>
 class ConvertedPropertyMap
 {
 public:
@@ -621,32 +623,34 @@ public:
         : _base_map(base_map) {}
     ConvertedPropertyMap(){}
 
-    value_type get(const key_type& k) const
+    value_type do_get(const key_type& k) const
     {
-        return boost::get(_base_map, k);
+        return _convert_to(get(_base_map, k));
     }
 
-    void put(const key_type& k, const Type& v)
+    void do_put(const key_type& k, const value_type& v)
     {
-        put(_base_map, k, orig_type(v));
+        put(_base_map, k, _convert_from(v));
     }
 private:
     PropertyMap _base_map;
+    Converter<value_type, orig_type> _convert_to;
+    Converter<orig_type, value_type> _convert_from;
 };
 
 template <class PropertyMap, class Type>
-Type get(const graph_tool::ConvertedPropertyMap<PropertyMap,Type>& pmap,
-         const typename property_traits<PropertyMap>::key_type& k)
+Type get(ConvertedPropertyMap<PropertyMap,Type> pmap,
+         typename ConvertedPropertyMap<PropertyMap,Type>::key_type k)
 {
-    return pmap.get(k);
+    return pmap.do_get(k);
 }
 
 template <class PropertyMap, class Type>
-void put(graph_tool::ConvertedPropertyMap<PropertyMap,Type> pmap,
-         const typename property_traits<PropertyMap>::key_type& k,
-         const typename property_traits<PropertyMap>::value_type& val)
+void put(ConvertedPropertyMap<PropertyMap,Type> pmap,
+         typename property_traits<PropertyMap>::key_type k,
+         const typename ConvertedPropertyMap<PropertyMap,Type>::value_type& val)
 {
-    pmap.put(k, val);
+    pmap.do_put(k, val);
 }
 
 } // graph_tool namespace
