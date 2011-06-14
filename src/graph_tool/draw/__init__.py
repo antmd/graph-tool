@@ -44,6 +44,7 @@ import time
 import warnings
 import ctypes
 import ctypes.util
+import tempfile
 from .. import _degree, _prop, PropertyMap, _check_prop_vector,\
      _check_prop_scalar, _check_prop_writable, group_vector_property,\
      ungroup_vector_property, GraphView
@@ -66,7 +67,8 @@ except ImportError:
 try:
     libname = ctypes.util.find_library("c")
     libc = ctypes.CDLL(libname)
-    libc.open_memstream.restype = ctypes.POINTER(ctypes.c_char)
+    if hasattr(libc, "open_memstream"):
+        libc.open_memstream.restype = ctypes.POINTER(ctypes.c_char)
 except OSError:
     pass
 
@@ -498,14 +500,21 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
         if return_string:
             if output_format == "auto":
                 output_format = "png"
-            buf = ctypes.c_char_p()
-            buf_len = ctypes.c_size_t()
-            fstream = libc.open_memstream(ctypes.byref(buf),
-                                          ctypes.byref(buf_len))
-            libgv.gvRender(gvc, gvg, output_format, fstream)
-            libc.fclose(fstream)
-            data = copy.copy(ctypes.string_at(buf, buf_len.value))
-            libc.free(buf)
+            if hasattr(libc, "open_memstream"):
+                buf = ctypes.c_char_p()
+                buf_len = ctypes.c_size_t()
+                fstream = libc.open_memstream(ctypes.byref(buf),
+                                              ctypes.byref(buf_len))
+                libgv.gvRender(gvc, gvg, output_format, fstream)
+                libc.fclose(fstream)
+                data = copy.copy(ctypes.string_at(buf, buf_len.value))
+                libc.free(buf)
+            else:
+                # write to temporary file, if open_memstream is not available
+                output = tempfile.mkstemp()[1]
+                libgv.gvRenderFilename(gvc, gvg, output_format, output)
+                data = open(output).read()
+                os.remove(output)
         else:
             if output_format == "auto":
                 if output == "":
