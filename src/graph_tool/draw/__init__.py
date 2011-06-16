@@ -425,7 +425,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
             aset(n, "label", "")
 
             # user supplied position
-            if pos != None:
+            if pos is not None:
                 aset(n, "pos", "%f,%f" % (pos[0][v], pos[1][v]))
                 aset(n, "pin", pin)
 

@@ -26,7 +26,7 @@ except ImportError:
     # module
     from dl import RTLD_LAZY, RTLD_GLOBAL
 
-all = ["dl_import"]
+__all__ = ["dl_import"]
 
 
 def dl_import(import_expr):
