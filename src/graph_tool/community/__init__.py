@@ -42,7 +42,7 @@ Contents
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_community")
 
-from .. import _degree, _prop, Graph, libcore
+from .. import _degree, _prop, Graph, GraphView, libcore
 import random
 import sys
 
@@ -207,12 +207,13 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
     if history_file == None:
         history_file = ""
     seed = random.randint(0, sys.maxint)
-    libgraph_tool_community.community_structure(g._Graph__graph, gamma, corr,
+    ug = GraphView(g, directed=False)
+    libgraph_tool_community.community_structure(ug._Graph__graph, gamma, corr,
                                                 n_iter, t_range[1], t_range[0],
                                                 n_spins, new_spins, seed,
                                                 verbose, history_file,
-                                                _prop("e", g, weight),
-                                                _prop("v", g, spins))
+                                                _prop("e", ug, weight),
+                                                _prop("v", ug, spins))
     return spins
 
 
@@ -260,7 +261,7 @@ def modularity(g, prop, weight=None):
     >>> from pylab import *
     >>> from numpy.random import seed
     >>> seed(42)
-    >>> g = gt.load_graph("community.dot")
+    >>> g = gt.load_graph("community.xml")
     >>> spins = gt.community_structure(g, 10000, 10)
     >>> gt.modularity(g, spins)
     0.535314188562404
@@ -272,9 +273,10 @@ def modularity(g, prop, weight=None):
        :doi:`10.1073/pnas.0601602103`, :arxiv:`physics/0602124`
     """
 
-    m = libgraph_tool_community.modularity(g._Graph__graph,
-                                           _prop("e", g, weight),
-                                           _prop("v", g, prop))
+    ug = GraphView(directed=False)
+    m = libgraph_tool_community.modularity(ug._Graph__graph,
+                                           _prop("e", ug, weight),
+                                           _prop("v", ug, prop))
     return m
 
 

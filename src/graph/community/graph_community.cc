@@ -65,8 +65,6 @@ void community_structure(GraphInterface& g, double gamma, string corr_name,
     else
         throw ValueException("invalid correlation type: " + corr_name);
 
-    bool directed = g.GetDirected();
-    g.SetDirected(false);
     run_action<graph_tool::detail::never_directed>()
         (g, bind<void>(get_communities_selector(corr, g.GetVertexIndex()),
                        _1, _2, _3, gamma, n_iter,
@@ -74,7 +72,6 @@ void community_structure(GraphInterface& g, double gamma, string corr_name,
                        seed, make_pair(verbose,history_file)),
          weight_properties(), allowed_spin_properties())
         (weight, property);
-    g.SetDirected(directed);
 }
 
 
@@ -89,14 +86,10 @@ double modularity(GraphInterface& g, boost::any weight, boost::any property)
     if(weight.empty())
         weight = weight_map_t(1);
 
-    bool directed = g.GetDirected();
-    g.SetDirected(false);
     run_action<graph_tool::detail::never_directed>()
         (g, bind<void>(get_modularity(), _1, _2, _3, ref(modularity)),
          edge_props_t(), vertex_scalar_properties())
         (weight, property);
-    g.SetDirected(directed);
-
     return modularity;
 }
 
