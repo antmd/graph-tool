@@ -18,7 +18,7 @@
 #include "graph_filtering.hh"
 
 #include <boost/python.hpp>
-#include <boost/lambda/bind.hpp>
+#include <boost/bind.hpp>
 
 #include "graph.hh"
 #include "graph_selectors.hh"
@@ -28,18 +28,39 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-size_t pagerank(GraphInterface& g, boost::any rank, double d, double epslon,
-                size_t max_iter)
+size_t pagerank(GraphInterface& g, boost::any rank, boost::any pers,
+                boost::any weight, double d, double epsilon, size_t max_iter)
 {
-    if (!belongs<writable_vertex_scalar_properties>()(rank))
-        throw ValueException("vertex property must be writable");
+    if (!belongs<vertex_floating_properties>()(rank))
+        throw ValueException("rank vertex property must have a floating-point value type");
+
+    if (!pers.empty() && !belongs<vertex_scalar_properties>()(pers))
+        throw ValueException("personalization vertex property must have a scalar value type");
+
+    typedef ConstantPropertyMap<double, GraphInterface::vertex_t> pers_map_t;
+    typedef mpl::push_back<vertex_scalar_properties, pers_map_t>::type
+        pers_props_t;
+
+    if(pers.empty())
+        pers = pers_map_t(1.0 / g.GetNumberOfVertices());
+
+    typedef ConstantPropertyMap<double, GraphInterface::edge_t> weight_map_t;
+    typedef mpl::push_back<edge_scalar_properties, weight_map_t>::type
+        weight_props_t;
+
+    if (!weight.empty() && !belongs<edge_scalar_properties>()(weight))
+        throw ValueException("weight edge property must have a scalar value type");
+
+    if(weight.empty())
+        weight = weight_map_t(1.0);
 
     size_t iter;
     run_action<>()
         (g, bind<void>(get_pagerank(),
-                       _1, g.GetVertexIndex(),  _2, d,
-                       epslon, max_iter, ref(iter)),
-         writable_vertex_scalar_properties())(rank);
+                       _1, g.GetVertexIndex(), _2, _3, _4, d,
+                       epsilon, max_iter, ref(iter)),
+         vertex_floating_properties(),
+         pers_props_t(), weight_props_t())(rank, pers, weight);
     return iter;
 }
 

@@ -29,15 +29,16 @@ using namespace boost;
 
 struct get_pagerank
 {
-    template <class Graph, class VertexIndex, class RankMap>
+    template <class Graph, class VertexIndex, class RankMap, class PerMap,
+              class Weight>
     void operator()(Graph& g, VertexIndex vertex_index, RankMap rank,
-                    double damping, double epslon, size_t max_iter,
-                    size_t& iter) const
+                    PerMap pers, Weight weight, double damping, double epsilon,
+                    size_t max_iter, size_t& iter) const
     {
         typedef typename property_traits<RankMap>::value_type rank_type;
-        size_t NV = HardNumVertices()(g);
 
-        RankMap r_temp(vertex_index,num_vertices(g));
+        RankMap r_temp(vertex_index, num_vertices(g));
+        RankMap deg(vertex_index, num_vertices(g));
 
         // init ranks
         int i, N = num_vertices(g);
@@ -48,13 +49,18 @@ struct get_pagerank
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
-            rank[v] = 1.0 / NV;
+            put(rank, v, get(pers, v));
+
+            typename graph_traits<Graph>::out_edge_iterator e, e_end;
+            put(deg, v, 0);
+            for (tie(e, e_end) = out_edges(v, g); e!= e_end; ++e)
+                put(deg, v, get(deg, v) + get(weight, *e));
         }
 
-        rank_type delta = epslon + 1;
+        rank_type delta = epsilon + 1;
         rank_type d = damping;
         iter = 0;
-        while (delta >= epslon)
+        while (delta >= epsilon)
         {
             delta = 0;
             int i, N = num_vertices(g);
@@ -74,11 +80,12 @@ struct get_pagerank
                 {
                     typename graph_traits<Graph>::vertex_descriptor s =
                         source(*e, g);
-                    r += get(rank, s) / out_degree(s, g);
+                    r += (get(rank, s) * get(weight, *e)) / get(deg, s);
                 }
-                put(r_temp, v, (1.0 - d) / NV + d * r);
 
-                delta += abs(get(r_temp, v) - get(rank,v));
+                put(r_temp, v, (1.0 - d) * get(pers, v) + d * r);
+
+                delta += abs(get(r_temp, v) - get(rank, v));
             }
             swap(r_temp, rank);
             ++iter;

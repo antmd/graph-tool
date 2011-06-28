@@ -51,8 +51,8 @@ __all__ = ["pagerank", "betweenness", "central_point_dominance", "eigentrust",
            "trust_transitivity"]
 
 
-def pagerank(g, damping=0.8, prop=None, epsilon=1e-6, max_iter=None,
-             ret_iter=False):
+def pagerank(g, damping=0.85, pers=None, weight=None, prop=None, epsilon=1e-6,
+             max_iter=None, ret_iter=False):
     r"""
     Calculate the PageRank of each vertex.
 
@@ -60,8 +60,13 @@ def pagerank(g, damping=0.8, prop=None, epsilon=1e-6, max_iter=None,
     ----------
     g : :class:`~graph_tool.Graph`
         Graph to be used.
-    damping : float, optional (default: 0.8)
+    damping : float, optional (default: 0.85)
         Damping factor.
+    pers : :class:`~graph_tool.PropertyMap`, optional (default: None)
+        Personalization vector. If omitted, a constant value of :math:`1/N`
+        will be used.
+    weight : :class:`~graph_tool.PropertyMap`, optional (default: None)
+        Edge weights. If omitted, a constant value of 1 will be used.
     prop : :class:`~graph_tool.PropertyMap`, optional (default: None)
         Vertex property map to store the PageRank values.
     epsilon : float, optional (default: 1e-6)
@@ -90,13 +95,30 @@ def pagerank(g, damping=0.8, prop=None, epsilon=1e-6, max_iter=None,
 
     .. math::
 
-        PR(v) = \frac{1-d}{N} + d \sum_{w \in \Gamma^{-}(v)}
-                \frac{PR (w)}{d^{+}(w)}
+        PR(v) = \frac{1-d}{N} + d \sum_{u \in \Gamma^{-}(v)}
+                \frac{PR (u)}{d^{+}(u)}
 
     where :math:`\Gamma^{-}(v)` are the in-neighbours of v, :math:`d^{+}(w)` is
     the out-degree of w, and d is a damping factor.
 
-    The implemented algorithm progressively iterates the above condition, until
+    If a personalization property :math:`p(v)` is given, the definition becomes:
+
+    .. math::
+
+        PR(v) = (1-d)p(v) + d \sum_{u \in \Gamma^{-}(v)}
+                \frac{PR (u)}{d^{+}(u)}
+
+    If edge weights are also given, the equation is then generalized to:
+
+    .. math::
+
+        PR(v) = (1-d)p(v) + d \sum_{u \in \Gamma^{-}(v)}
+                \frac{PR (u) w_{u\to v}}{d^{+}(u)}
+
+    where :math:`d^{+}(u)=\sum_{y}A_{u,y}w_{u\to y}` is redefined to be the sum
+    of the weights of the out-going edges from u.
+
+    The implemented algorithm progressively iterates the above equations, until
     it no longer changes, according to the parameter epsilon. It has a
     topology-dependent running time.
 
@@ -104,28 +126,55 @@ def pagerank(g, damping=0.8, prop=None, epsilon=1e-6, max_iter=None,
 
     Examples
     --------
-    >>> from numpy.random import poisson, seed
+    >>> from numpy.random import random, poisson, seed
     >>> seed(42)
     >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
     >>> pr = gt.pagerank(g)
     >>> print pr.a
-    [ 0.0087012   0.01734503  0.0047588   0.00453451  0.002       0.01265973
-      0.0060965   0.00680647  0.00813758  0.00862694  0.00518331  0.00491948
-      0.00748761  0.00528322  0.00601439  0.00639214  0.013249    0.0068361
-      0.01026087  0.00909041  0.01102634  0.0056291   0.002       0.00308401
-      0.00907272  0.0035584   0.00955833  0.00232     0.00410904  0.00887352
-      0.00474244  0.00661384  0.01263138  0.00745946  0.00841104  0.00949735
-      0.01059004  0.00944125  0.00264336  0.00861976  0.002       0.00253333
-      0.00659745  0.00698895  0.01027991  0.00776186  0.00579061  0.01128291
-      0.00232     0.01183673  0.00389293  0.01724249  0.0047967   0.01093172
-      0.00459377  0.01094803  0.00802747  0.00447822  0.01046185  0.00253333
-      0.00822962  0.00402102  0.00727797  0.00750763  0.00417424  0.002
-      0.00898431  0.00929422  0.00696827  0.00693413  0.01026798  0.002
-      0.00677507  0.00856227  0.00772329  0.01090938  0.01144107  0.00594142
-      0.00544564  0.0064372   0.00402752  0.00729768  0.01404475  0.002
-      0.00318314  0.00373451  0.00256223  0.01058081  0.01024193  0.0082748
-      0.00496463  0.00729605  0.00486213  0.01421478  0.00656225  0.00316644
-      0.01553884  0.005844    0.02039237  0.01478031]
+    [ 0.00782362  0.01642353  0.00420484  0.0038825   0.0015      0.01145378
+      0.00514203  0.00593481  0.00743705  0.00785063  0.00446447  0.00440222
+      0.00684158  0.00463226  0.00518308  0.0056288   0.01207045  0.00617264
+      0.00958574  0.00817165  0.01041552  0.00508079  0.0015      0.00249411
+      0.00842537  0.00293099  0.00873296  0.001755    0.003371    0.00817938
+      0.00406813  0.00576584  0.01188752  0.00674565  0.00758134  0.00855306
+      0.00975204  0.00823918  0.00209855  0.00753858  0.0015      0.001925
+      0.00593262  0.00603431  0.00977679  0.00707922  0.00529399  0.01048882
+      0.001755    0.0111949   0.0032813   0.01591077  0.00407595  0.01015827
+      0.00383036  0.01024311  0.00714593  0.00379142  0.00955729  0.001925
+      0.00737848  0.00352088  0.00654273  0.00676324  0.00353259  0.0015
+      0.00809045  0.00864939  0.00626611  0.00632213  0.00939761  0.0015
+      0.00584767  0.0077272   0.00688094  0.01010526  0.01071083  0.00550524
+      0.0045327   0.00577072  0.00337711  0.00637928  0.01295484  0.0015
+      0.00265875  0.003245    0.00203456  0.00969993  0.00908983  0.00759961
+      0.00428542  0.00674196  0.0043264   0.01339053  0.00570051  0.00253539
+      0.01464169  0.00505055  0.01919599  0.01413612]
+
+    Now with a personalization vector, and edge weights:
+
+    >>> w = g.new_edge_property("double")
+    >>> w.a = random(g.num_edges())
+    >>> p = g.new_vertex_property("double")
+    >>> p.a = random(g.num_vertices())
+    >>> p.a /= p.a.sum()
+    >>> pr = gt.pagerank(g, pers=p, weight=w)
+    >>> print pr.a
+    [ 0.01693559  0.01316915  0.00369907  0.00245658  0.00092715  0.01380721
+      0.00703909  0.00407121  0.00816254  0.00880131  0.0035886   0.0050914
+      0.00815843  0.00624021  0.0069828   0.00647311  0.01260669  0.00884083
+      0.01324534  0.01103024  0.01417902  0.00309344  0.00250025  0.00153889
+      0.00969556  0.00491575  0.00552323  0.00300698  0.00327355  0.00829017
+      0.00274335  0.00440865  0.01436394  0.00671045  0.00788395  0.01092875
+      0.0126331   0.00789263  0.00422443  0.00745144  0.00148972  0.00198663
+      0.00476339  0.00800871  0.01468149  0.00971962  0.00446663  0.01333257
+      0.00085768  0.01044298  0.00286075  0.02119469  0.00406517  0.01317145
+      0.00280023  0.0143227   0.00867722  0.00234863  0.01180399  0.00298827
+      0.0049022   0.00532752  0.00603759  0.00766617  0.00293739  0.00238803
+      0.00863735  0.01110095  0.00660816  0.00170262  0.00884469  0.00300867
+      0.00441168  0.00630793  0.00424727  0.00906709  0.0135949   0.00890726
+      0.00267835  0.00615783  0.0045653   0.00720592  0.00996495  0.0009367
+      0.00233309  0.00265909  0.00211686  0.01277934  0.01284484  0.00625721
+      0.00487027  0.00852522  0.00403389  0.01817233  0.00573321  0.0038696
+      0.00932334  0.00515806  0.01601592  0.0167547 ]
 
     References
     ----------
@@ -133,6 +182,9 @@ def pagerank(g, damping=0.8, prop=None, epsilon=1e-6, max_iter=None,
     .. [lawrence-pagerank-1998] P. Lawrence, B. Sergey, M. Rajeev, W. Terry,
        "The pagerank citation ranking: Bringing order to the web", Technical
        report, Stanford University, 1998
+    .. [Langville-survey-2005] A. N. Langville, C. D. Meyer, "A Survey of
+       Eigenvector Methods for Web Information Retrieval", SIAM Review, vol. 47,
+       no. 1, pp. 135-161, 2005, :DOI:`10.1137/S0036144503424786`
     """
 
     if max_iter == None:
@@ -140,8 +192,9 @@ def pagerank(g, damping=0.8, prop=None, epsilon=1e-6, max_iter=None,
     if prop == None:
         prop = g.new_vertex_property("double")
     ic = libgraph_tool_centrality.\
-            get_pagerank(g._Graph__graph, _prop("v", g, prop), damping, epsilon,
-                         max_iter)
+            get_pagerank(g._Graph__graph, _prop("v", g, prop),
+                         _prop("v", g, pers), _prop("e", g, weight),
+                         damping, epsilon, max_iter)
     if ret_iter:
         return prop, ic
     else:
