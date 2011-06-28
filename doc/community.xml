@@ -7,7 +7,7 @@
   <key id="key0" for="node" attr.name="pos_x" attr.type="float" />
   <key id="key1" for="node" attr.name="pos_y" attr.type="float" />
 
-  <graph id="G" edgedefault="directed" parse.nodeids="canonical" parse.edgeids="canonical" parse.order="nodesfirst">
+  <graph id="G" edgedefault="undirected" parse.nodeids="canonical" parse.edgeids="canonical" parse.order="nodesfirst">
 
    <!-- graph properties -->
 
