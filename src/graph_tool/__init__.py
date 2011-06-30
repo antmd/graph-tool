@@ -113,6 +113,8 @@ __all__ = ["Graph", "GraphView", "Vertex", "Edge", "Vector_bool",
            "show_config", "PropertyArray", "__author__", "__copyright__",
            "__URL__", "__version__"]
 
+# this is rather pointless, but it works around a sphinx bug
+graph_tool = sys.modules[__name__]
 
 ################################################################################
 # Utility functions
