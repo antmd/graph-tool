@@ -273,7 +273,7 @@ def modularity(g, prop, weight=None):
        :doi:`10.1073/pnas.0601602103`, :arxiv:`physics/0602124`
     """
 
-    ug = GraphView(directed=False)
+    ug = GraphView(g, directed=False)
     m = libgraph_tool_community.modularity(ug._Graph__graph,
                                            _prop("e", ug, weight),
                                            _prop("v", ug, prop))
