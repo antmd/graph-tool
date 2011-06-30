@@ -11,6 +11,16 @@ dl.method dl.last {
     width: 0px;
 }
 
+dl.method dl.docutils dd {
+    margin-left: 0px;
+    margin-bottom: -10px;
+}
+
+dl.method dl.docutils dt {
+    visibility: collapse;
+    line-height: 0;
+}
+
 div.align-center {
     text-align: center;
 }
