@@ -651,8 +651,8 @@ def fruchterman_reingold_layout(g, weight=None, a=None, r=1., scale=None,
     Notes
     -----
     This algorithm is defined in [fruchterman-reingold]_, and has
-    complexity :math:`O(\text{n_iter}\times V^2)` if `grid=False` or
-    :math:`O(\text{n_iter}\times (V + E))` otherwise.
+    complexity :math:`O(\text{n-iter}\times V^2)` if `grid=False` or
+    :math:`O(\text{n-iter}\times (V + E))` otherwise.
 
     Examples
     --------
