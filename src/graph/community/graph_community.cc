@@ -88,7 +88,7 @@ double modularity(GraphInterface& g, boost::any weight, boost::any property)
 
     run_action<graph_tool::detail::never_directed>()
         (g, bind<void>(get_modularity(), _1, _2, _3, ref(modularity)),
-         edge_props_t(), vertex_scalar_properties())
+         edge_props_t(), vertex_properties())
         (weight, property);
     return modularity;
 }
