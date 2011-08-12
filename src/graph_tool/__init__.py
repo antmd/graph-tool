@@ -84,6 +84,7 @@ __URL__ = "http://graph-tool.skewed.de"
 # depending on the order things are imported.
 
 import numpy
+import numpy.ma
 import scipy
 import scipy.stats
 
@@ -243,6 +244,7 @@ class PropertyArray(numpy.ndarray):
         if (prop_map._get_data().__array_interface__['data'][0] !=
             obj._get_base_data()):
             obj.prop_map = None
+            # do a copy
             obj = numpy.asarray(obj)
 
         return obj
@@ -452,19 +454,85 @@ class PropertyMap(object):
         a = self.__map.get_array(n)
         return a
 
-    def __get_array(self):
-        if self.get_array() is not None:
-            return self.get_array()[:]
-        else:
-            return None
-
     def __set_array(self, v):
-        self.get_array()[:] = v
+        a = self.get_array()
+        if a is None:
+            return
+        a[:] = v
 
-    a = property(__get_array, __set_array,
+    a = property(get_array, __set_array,
                  doc=r"""Shortcut to the :meth:`~PropertyMap.get_array` method
-                 as a property. A view to the array is returned, instead of the
-                 array itself, for convenience.""")
+                 as an attribute. This makes assignments more convenient, e.g.:
+
+                 >>> g = gt.Graph()
+                 >>> g.add_vertex(10)
+                 [...]
+                 >>> prop = g.new_vertex_property("double")
+                 >>> prop.a = np.random.random(10)           # Assignment from array
+                 """)
+
+    def __get_set_f_array(self, v=None, get=True):
+        g = self.get_graph()
+        if g is None:
+            return None
+        a = self.get_array()
+        filt = [None]
+        if self.__key_type == 'v':
+            filt = g.get_vertex_filter()
+        elif self.__key_type == 'e':
+            filt = g.get_edge_filter()
+        if filt[0] is None or a is None:
+            if get:
+                return a
+            else:
+                return
+        if get:
+            return a[filt[0].a == (not filt[1])]
+        else:
+            a[filt[0].a == (not filt[1])] = v
+
+    fa = property(__get_set_f_array,
+                  lambda self, v: self.__get_set_f_array(v, False),
+                  doc=r"""The same as the :attr:`~PropertyMap.a` attribute, but
+                  instead an *indexed* array is returned, which contains only
+                  entries for vertices/edges which are not filtered out. If
+                  there are no filters in place, the array is not indexed, and
+                  is identical to the :attr:`~PropertyMap.a` attribute.
+
+                  Note that because advanced indexing is triggered, a **copy**
+                  of the array is returned, not a view, as for the
+                  :attr:`~PropertyMap.a` attribute. Nevertheless, the assignment
+                  of values to the *whole* array at once works as expected.""")
+
+    def __get_set_m_array(self, v=None, get=True):
+        g = self.get_graph()
+        if g is None:
+            return None
+        a = self.get_array()
+        filt = [None]
+        if self.__key_type == 'v':
+            filt = g.get_vertex_filter()
+        elif self.__key_type == 'e':
+            filt = g.get_edge_filter()
+        if filt[0] is None or a is None:
+            if get:
+                return a
+            else:
+                return
+        ma = numpy.ma.array(a, mask=(filt[0].a == False) if not filt[1] else (filt[0].a == True))
+        if get:
+            return ma
+        else:
+            ma[:] = v
+
+    ma = property(__get_set_m_array,
+                  lambda self, v: self.__get_set_m_array(v, False),
+                  doc=r"""The same as the :attr:`~PropertyMap.a` attribute, but
+                  instead a :class:`~numpy.ma.MaskedArray` object is returned,
+                  which contains only entries for vertices/edges which are not
+                  filtered out. If there are no filters in place, a regular
+                  :class:`~graph_tool.PropertyArray` is returned, which is
+                  identical to the :attr:`~PropertyMap.a` attribute.""")
 
     def is_writable(self):
         """Return True if the property is writable."""
@@ -1499,9 +1567,7 @@ vector_types = [Vector_bool, Vector_int32_t, Vector_int64_t, Vector_double,
                 Vector_long_double]
 for vt in vector_types:
     vt.a = property(_get_array_view, _set_array_view,
-                    doc=r"""Shortcut to the `get_array` method as a property. A
-                    view to the array is returned, instead of the array itself,
-                    for convenience.""")
+                    doc=r"""Shortcut to the `get_array` method as an attribute.""")
 Vector_string.a = None
 Vector_string.get_array = lambda self: None
 
