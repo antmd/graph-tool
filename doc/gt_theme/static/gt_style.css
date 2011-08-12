@@ -4,6 +4,18 @@ table.docutils td {
     padding-left: 0.5em;
 }
 
+table.docutils.field-list
+{
+    border-collapse: separate; 
+    border-spacing: 0em 1em;
+}
+
+table.docutils td.field-body  {
+    border-left: 1px solid #BBBBBB !important;
+    border-collapse: separate !important;
+    padding-left: 1em;
+}
+
 /* stupid workaround to hide ugly c++ signature stuff from sphinx*/
 dl.method dl.last {
     visibility: collapse;

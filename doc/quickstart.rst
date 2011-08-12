@@ -147,8 +147,8 @@ Edges and vertices can also be removed at any time with the
    ones last added to the graph).
 
    Removing an edge is an :math:`O(k_{s} + k_{t})` operation, where
-   :math:`O(k_{s})` is the out-degree of the source vertex, and
-   :math:`O(k_{t})` is the in-degree of the target vertex.
+   :math:`k_{s}` is the out-degree of the source vertex, and
+   :math:`k_{t}` is the in-degree of the target vertex.
 
 Each vertex in a graph has an unique index, which is numbered from 0 to
 N-1, where N is the number of vertices. This index can be obtained by

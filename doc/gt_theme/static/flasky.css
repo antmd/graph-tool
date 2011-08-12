@@ -11,19 +11,8 @@
  
 @import url("basic.css");
 
-@font-face {
-  font-family: 'Droid Serif';
-  font-style: normal;
-  font-weight: normal;
-  src: local('Droid Serif'), local('DroidSerif'), url('http://themes.googleusercontent.com/font?kit=0AKsP294HTD-nvJgucYTaJ0EAVxt0G0biEntp43Qt6E') format('truetype');
-}
-
-@font-face {
-  font-family: 'Envy Code R';
-  font-style: normal;
-  font-weight: normal;
-  src: local('Envy Code R'), url('http://skewed.de/envy.ttf') format('truetype');
-}
+/* webfonts */
+@import url("http://fonts.googleapis.com/css?family=Droid+Serif:400,400italic,700,700italic|Droid+Sans+Mono");
  
 /* -- page layout ----------------------------------------------------------- */
 body {
@@ -263,7 +252,7 @@ p.admonition-title:after {
 }
 
 pre, tt {
-    font-family: 'Envy Code R', 'Consolas', 'Menlo', 'Deja Vu Sans Mono', 'Bitstream Vera Sans Mono', monospace;
+    font-family: 'Droid Mono', 'Consolas', 'Menlo', 'Deja Vu Sans Mono', 'Bitstream Vera Sans Mono', monospace;
     font-size: 0.9em;
 }
 
