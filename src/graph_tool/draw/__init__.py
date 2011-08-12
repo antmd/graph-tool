@@ -604,7 +604,10 @@ def random_layout(g, shape=None, pos=None, dim=2):
         else:
             r = [min(shape[i], 0), max(shape[i], 0)]
         d = r[1] - r[0]
-        pos[i].a = numpy.random.random(g.num_vertices()) * d + r[0]
+
+        # deal with filtering
+        p = pos[i].ma
+        p[:] = numpy.random.random(len(p)) * d + r[0]
 
     pos = group_vector_property(pos)
     return pos
