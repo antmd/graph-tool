@@ -36,6 +36,7 @@
 #include <boost/xpressive/xpressive.hpp>
 
 #include "graph_python_interface.hh"
+#include "str_repr.hh"
 
 using namespace std;
 using namespace boost;
@@ -47,135 +48,6 @@ using namespace graph_tool;
 #else
     #define DP_SMART_PTR std::auto_ptr
 #endif
-
-//
-// Data type string representation
-// ===============================
-//
-// String representation of individual data types. We have to take care
-// specifically that no information is lost with floating point I/O.
-
-namespace boost
-{
-
-template <>
-string lexical_cast<string,uint8_t>(const uint8_t& val)
-{
-
-    // "chars" should be printed as numbers, since they can be non-printable
-    return lexical_cast<std::string>(int(val));
-}
-
-template <>
-uint8_t lexical_cast<uint8_t,string>(const string& val)
-{
-
-    // "chars" should be printed as numbers, since they can be non-printable
-    return uint8_t(lexical_cast<int>(val));
-}
-
-// double and long double should be printed in hexadecimal format to preserve
-// internal representation
-template <>
-string lexical_cast<string,double>(const double& val)
-{
-    char* str = 0;
-    int retval = asprintf(&str, "%la", val);
-    if (retval == -1)
-        throw bad_lexical_cast();
-    std::string ret = str;
-    free(str);
-    return ret;
-}
-
-template <>
-double lexical_cast<double,string>(const string& val)
-{
-    double ret;
-    int nc = sscanf(val.c_str(), "%la", &ret);
-    if (nc != 1)
-        throw bad_lexical_cast();
-    return ret;
-}
-
-template <>
-string lexical_cast<string,long double>(const long double& val)
-{
-    char* str = 0;
-    int retval = asprintf(&str, "%La", val);
-    if (retval == -1)
-        throw bad_lexical_cast();
-    std::string ret = str;
-    free(str);
-    return ret;
-}
-
-template <>
-long double lexical_cast<long double,string>(const string& val)
-{
-    long double ret;
-    int nc = sscanf(val.c_str(), "%La", &ret);
-    if (nc != 1)
-        throw bad_lexical_cast();
-    return ret;
-}
-}
-
-// std::vector<> stream i/o
-namespace std
-{
-// string vectors need special attention, since separators must be properly
-// escaped.
-template <>
-ostream& operator<<(ostream& out, const vector<string>& vec)
-{
-    for (size_t i = 0; i < vec.size(); ++i)
-    {
-        string s = vec[i];
-        // escape separators
-        boost::replace_all(s, "\\", "\\\\");
-        boost::replace_all(s, ", ", ",\\ ");
-
-        out << s;
-        if (i < vec.size() - 1)
-            out << ", ";
-    }
-    return out;
-}
-
-template <>
-istream& operator>>(istream& in, vector<string>& vec)
-{
-    using namespace boost;
-    using namespace boost::algorithm;
-    using namespace boost::xpressive;
-
-    vec.clear();
-    string data;
-    while (in.good())
-    {
-        string line;
-        getline(in, line);
-        data += line;
-    }
-
-    if (data == "")
-        return in; // empty string is OK
-
-    sregex re = sregex::compile(", ");
-    sregex_token_iterator iter(data.begin(), data.end(), re, -1), end;
-    for (; iter != end; ++iter)
-    {
-        vec.push_back(*iter);
-        // un-escape separators
-        boost::replace_all(vec.back(), ",\\ ", ", ");
-        boost::replace_all(vec.back(), "\\\\", "\\");
-    }
-    return in;
-}
-
-} // std namespace
-
 
 //
 // Persistent IO of python::object types. All the magic is done in python,
