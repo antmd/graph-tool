@@ -106,153 +106,157 @@ def aget(elem, attr):
 
 
 def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
-               ratio="fill", overlap="prism", sep=None, splines=False,
+               ratio="fill", overlap=True, sep=None, splines=False,
                vsize=0.105, penwidth=1.0, elen=None, gprops={}, vprops={},
                eprops={}, vcolor="#a40000", ecolor="#2e3436", vcmap=None,
                vnorm=True, ecmap=None, enorm=True, vorder=None, eorder=None,
                output="", output_format="auto", fork=False,
-               return_string=False, seed=0):
+               return_string=False):
     r"""Draw a graph using graphviz.
 
     Parameters
     ----------
-    g : Graph
-        Graph to be used.
-    pos : PropertyMap or tuple of PropertyMaps (optional, default: None)
+    g : :class:`~graph_tool.Graph`
+        Graph to be drawn.
+    pos : :class:`~graph_tool.PropertyMap` or tuple of :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         Vertex property maps containing the x and y coordinates of the vertices.
-    size : tuple of scalars (optional, default: (15,15))
+    size : tuple of scalars (optional, default: ``(15,15)``)
         Size (in centimeters) of the canvas.
-    pin : bool (default: False)
-        If True, the vertices are not moved from their initial position.
-    layout : string (default: "neato" if g.num_vertices() <= 1000 else "sfdp")
-        Layout engine to be used. Possible values are "neato", "fdp", "dot",
-        "circo", "twopi" and "arf".
-    maxiter : int (default: None)
+    pin : bool or :class:`~graph_tool.PropertyMap` (default: ``False``)
+        If ``True``, the vertices are not moved from their initial position. If
+        a :class:`~graph_tool.PropertyMap` is passed, it is used to pin nodes
+        individually.
+    layout : string (default: ``"neato" if g.num_vertices() <= 1000 else "sfdp"``)
+        Layout engine to be used. Possible values are ``"neato"``, ``"fdp"``,
+        ``"dot"``, ``"circo"``, ``"twopi"`` and ``"arf"``.
+    maxiter : int (default: ``None``)
         If specified, limits the maximum number of iterations.
-    ratio : string or float (default: "fill")
+    ratio : string or float (default: ``"fill"``)
         Sets the aspect ratio (drawing height/drawing width) for the
-        drawing. Note that this is adjusted before the 'size' attribute
+        drawing. Note that this is adjusted before the ``size`` attribute
         constraints are enforced.
 
-        If ratio is numeric, it is taken as the desired aspect ratio. Then, if
-        the actual aspect ratio is less than the desired ratio, the drawing
+        If ``ratio`` is numeric, it is taken as the desired aspect ratio. Then,
+        if the actual aspect ratio is less than the desired ratio, the drawing
         height is scaled up to achieve the desired ratio; if the actual ratio is
         greater than that desired ratio, the drawing width is scaled up.
 
-        If ratio = "fill" and the size attribute is set, node positions are
+        If ``ratio == "fill"`` and the size attribute is set, node positions are
         scaled, separately in both x and y, so that the final drawing exactly
         fills the specified size.
 
-        If ratio = "compress" and the size attribute is set, dot attempts to
-        compress the initial layout to fit in the given size. This achieves a
-        tighter packing of nodes but reduces the balance and symmetry.
-        This feature only works in dot.
+        If ``ratio == "compress"`` and the size attribute is set, dot attempts
+        to compress the initial layout to fit in the given size. This achieves a
+        tighter packing of nodes but reduces the balance and symmetry.  This
+        feature only works in dot.
 
-        If ratio = "expand", the size attribute is set, and both the width and
-        the height of the graph are less than the value in size, node positions
-        are scaled uniformly until at least one dimension fits size exactly.
-        Note that this is distinct from using size as the desired size, as here
-        the drawing is expanded before edges are generated and all node and text
-        sizes remain unchanged.
+        If ``ratio == "expand"``, the size attribute is set, and both the width
+        and the height of the graph are less than the value in size, node
+        positions are scaled uniformly until at least one dimension fits size
+        exactly.  Note that this is distinct from using size as the desired
+        size, as here the drawing is expanded before edges are generated and all
+        node and text sizes remain unchanged.
 
-        If ratio = "auto", the page attribute is set and the graph cannot be
-        drawn on a single page, then size is set to an "ideal" value. In
+        If ``ratio == "auto"``, the page attribute is set and the graph cannot
+        be drawn on a single page, then size is set to an "ideal" value. In
         particular, the size in a given dimension will be the smallest integral
         multiple of the page size in that dimension which is at least half the
         current size. The two dimensions are then scaled independently to the
         new size. This feature only works in dot.
-    overlap : bool or string (default: "prism")
+    overlap : bool or string (default: ``"prism"``)
         Determines if and how node overlaps should be removed. Nodes are first
-        enlarged using the sep attribute. If True, overlaps are retained. If
-        the value is "scale", overlaps are removed by uniformly scaling in x and
-        y. If the value is False, node overlaps are removed by a Voronoi-based
-        technique. If the value is "scalexy", x and y are separately scaled to
-        remove overlaps.
+        enlarged using the sep attribute. If ``True``, overlaps are retained. If
+        the value is ``"scale"``, overlaps are removed by uniformly scaling in x
+        and y. If the value is ``False``, node overlaps are removed by a
+        Voronoi-based technique. If the value is ``"scalexy"``, x and y are
+        separately scaled to remove overlaps.
 
-        If sfdp is available, one can set overlap to "prism" to use a proximity
-        graph-based algorithm for overlap removal. This is the preferred
-        technique, though "scale" and False can work well with small graphs.
-        This technique starts with a small scaling up, controlled by the
-        overlap_scaling attribute, which can remove a significant portion of the
-        overlap. The prism option also accepts an optional non-negative integer
-        suffix. This can be used to control the number of attempts made at
-        overlap removal. By default, overlap="prism" is equivalent to
-        overlap="prism1000". Setting overlap="prism0" causes only the scaling
-        phase to be run.
+        If sfdp is available, one can set overlap to ``"prism"`` to use a
+        proximity graph-based algorithm for overlap removal. This is the
+        preferred technique, though ``"scale"`` and ``False`` can work well with
+        small graphs. This technique starts with a small scaling up, controlled
+        by the overlap_scaling attribute, which can remove a significant portion
+        of the overlap. The prism option also accepts an optional non-negative
+        integer suffix. This can be used to control the number of attempts made
+        at overlap removal. By default, ``overlap == "prism"`` is equivalent to
+        ``overlap == "prism1000"``. Setting ``overlap == "prism0"`` causes only
+        the scaling phase to be run.
 
-        If the value is "compress", the layout will be scaled down as much as
-        possible without introducing any overlaps, obviously assuming there are
-        none to begin with.
-    sep : float (default: None)
+        If the value is ``"compress"``, the layout will be scaled down as much
+        as possible without introducing any overlaps, obviously assuming there
+        are none to begin with.
+    sep : float (default: ``None``)
         Specifies margin to leave around nodes when removing node overlap. This
         guarantees a minimal non-zero distance between nodes.
-    splines : bool (default: False)
-        If True, the edges are drawn as splines and routed around the vertices.
-    vsize : float, PropertyMap, or tuple (default: 0.1)
+    splines : bool (default: ``False``)
+        If ``True``, the edges are drawn as splines and routed around the
+        vertices.
+    vsize : float, :class:`~graph_tool.PropertyMap`, or tuple (default: ``0.105``)
         Default vertex size (width and height). If a tuple is specified, the
         first value should be a property map, and the second is a scale factor.
-    penwidth : float, PropertyMap or tuple (default: 1.0)
+    penwidth : float, :class:`~graph_tool.PropertyMap` or tuple (default: ``1.0``)
         Specifies the width of the pen, in points, used to draw lines and
         curves, including the boundaries of edges and clusters. It has no effect
         on text. If a tuple is specified, the first value should be a property
         map, and the second is a scale factor.
-    elen : float or PropertyMap (default: None)
+    elen : float or :class:`~graph_tool.PropertyMap` (default: ``None``)
         Preferred edge length, in inches.
-    gprops : dict (default: {})
+    gprops : dict (default: ``{}``)
         Additional graph properties, as a dictionary. The keys are the property
         names, and the values must be convertible to string.
-    vprops : dict (default: {})
+    vprops : dict (default: ``{}``)
         Additional vertex properties, as a dictionary. The keys are the property
         names, and the values must be convertible to string, or vertex property
         maps, with values convertible to strings.
-    eprops : dict (default: {})
+    eprops : dict (default: ``{}``)
         Additional edge properties, as a dictionary. The keys are the property
         names, and the values must be convertible to string, or edge property
         maps, with values convertible to strings.
-    vcolor : string or PropertyMap (default: "#a40000")
+    vcolor : string or :class:`~graph_tool.PropertyMap` (default: ``"#a40000"``)
         Drawing color for vertices. If the valued supplied is a property map,
         the values must be scalar types, whose color values are obtained from
-        the 'vcmap' argument.
-    ecolor : string or PropertyMap (default: "#2e3436")
+        the ``vcmap`` argument.
+    ecolor : string or :class:`~graph_tool.PropertyMap` (default: ``"#2e3436"``)
         Drawing color for edges. If the valued supplied is a property map,
         the values must be scalar types, whose color values are obtained from
-        the 'ecmap' argument.
-    vcmap : matplotlib.colors.Colormap (default: matplotlib.cm.jet)
+        the ``ecmap`` argument.
+    vcmap : :class:`matplotlib.colors.Colormap` (default: :class:`matplotlib.cm.jet`)
         Vertex color map.
-    vnorm : bool (default: True)
+    vnorm : bool (default: ``True``)
         Normalize vertex color values to the [0,1] range.
-    ecmap : matplotlib.colors.Colormap (default: matplotlib.cm.jet)
+    ecmap : :class:`matplotlib.colors.Colormap` (default: :class:`matplotlib.cm.jet`)
         Edge color map.
-    enorm : bool (default: True)
+    enorm : bool (default: ``True``)
         Normalize edge color values to the [0,1] range.
-    vorder : PropertyMap (default: None)
+    vorder : :class:`~graph_tool.PropertyMap` (default: ``None``)
         Scalar vertex property map which specifies the order with which vertices
         are drawn.
-    eorder : PropertyMap (default: None)
+    eorder : :class:`~graph_tool.PropertyMap` (default: ``None``)
         Scalar edge property map which specifies the order with which edges
         are drawn.
-    output : string (default: "")
+    output : string (default: ``""``)
         Output file name.
-    output_format : string (default: "auto")
-        Output file format. Possible values are "auto", "xlib", "ps", "svg",
-        "svgz", "fig", "mif", "hpgl", "pcl", "png", "gif", "dia", "imap",
-        "cmapx". If the value is "auto", the format is guessed from the 'output'
-        parameter, or 'xlib' if it is empty. If the value is None, no output is
-        produced.
-    fork : bool (default: False)
-        If True, the program is forked before drawing. This is used as a
-        work-around for a bug in graphviz, where the exit() function is called,
-        which would cause the calling program to end. This is always assumed
-        'True', if output_format = 'xlib'.
-    return_string : bool (default: False)
-        If True, a string containing the rendered graph as binary data is
+    output_format : string (default: ``"auto"``)
+        Output file format. Possible values are ``"auto"``, ``"xlib"``,
+        ``"ps"``, ``"svg"``, ``"svgz"``, ``"fig"``, ``"mif"``, ``"hpgl"``,
+        ``"pcl"``, ``"png"``, ``"gif"``, ``"dia"``, ``"imap"``, ``"cmapx"``. If
+        the value is ``"auto"``, the format is guessed from the ``output``
+        parameter, or ``xlib`` if it is empty. If the value is ``None``, no
+        output is produced.
+    fork : bool (default: ``False``)
+        If ``True``, the program is forked before drawing. This is used as a
+        work-around for a bug in graphviz, where the ``exit()`` function is
+        called, which would cause the calling program to end. This is always
+        assumed ``True``, if ``output_format == 'xlib'``.
+    return_string : bool (default: ``False``)
+        If ``True``, a string containing the rendered graph as binary data is
         returned (defaults to png format).
 
     Returns
     -------
-    pos : PropertyMap
+    pos : :class:`~graph_tool.PropertyMap`
         Vector vertex property map with the x and y coordinates of the vertices.
-    gv : gv.digraph or gv.graph (optional, only if returngv == True)
+    gv : gv.digraph or gv.graph (optional, only if ``returngv == True``)
         Internally used graphviz graph.
 
 
@@ -296,7 +300,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
 
     """
 
-    if output != "" and output != None:
+    if output != "" and output is not None:
         output = os.path.expanduser(output)
         # check opening file for writing, since graphviz will bork if it is not
         # possible to open file
@@ -309,14 +313,17 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
         gvg = libgv.agopen("G", 1 if g.is_directed() else 0)
 
         if layout is None:
-            layout = "neato" if g.num_vertices() <= 1000 else "sfdp"
+            if pin == False:
+                layout = "neato" if g.num_vertices() <= 1000 else "sfdp"
+            else:
+                layout = "neato"
 
         if layout == "arf":
             layout = "neato"
             pos = arf_layout(g, pos=pos)
             pin = True
 
-        if pos != None:
+        if pos is not None:
             # copy user-supplied property
             if isinstance(pos, PropertyMap):
                 pos = ungroup_vector_property(pos, [0, 1])
@@ -338,20 +345,19 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
         # main graph properties
         aset(gvg, "outputorder", "edgesfirst")
         aset(gvg, "mode", "major")
-        if overlap == False:
-            overlap = "false"
+        if type(overlap) is bool:
+            overlap = "true" if overlap else "false"
         else:
-            overlap = "true"
-        if isinstance(overlap, str):
-            aset(gvg, "overlap", overlap)
-        if sep != None:
+            overlap = str(overlap)
+        aset(gvg, "overlap", overlap)
+        if sep is not None:
             aset(gvg, "sep", sep)
         if splines:
             aset(gvg, "splines", "true")
         aset(gvg, "ratio", ratio)
         # size is in centimeters... convert to inches
         aset(gvg, "size", "%f,%f" % (size[0] / 2.54, size[1] / 2.54))
-        if maxiter != None:
+        if maxiter is not None:
             aset(gvg, "maxiter", maxiter)
 
         seed = numpy.random.randint(sys.maxint)
@@ -365,7 +371,8 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
                 aset(gvg, k, val)
 
         # normalize color properties
-        if vcolor != None and not isinstance(vcolor, str):
+        if (isinstance(vcolor, PropertyMap) and
+            vcolor.value_type() != "string"):
             minmax = [float("inf"), -float("inf")]
             for v in g.vertices():
                 c = vcolor[v]
@@ -378,7 +385,8 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
             else:
                 vnorm = lambda x: x
 
-        if ecolor != None and not isinstance(ecolor, str):
+        if (isinstance(ecolor, PropertyMap) and
+            ecolor.value_type() != "string"):
             minmax = [float("inf"), -float("inf")]
             for e in g.edges():
                 c = ecolor[e]
@@ -399,7 +407,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
             ecmap = matplotlib.cm.jet
 
         # add nodes
-        if vorder != None:
+        if vorder is not None:
             vertices = sorted(g.vertices(), lambda a, b: cmp(vorder[a], vorder[b]))
         else:
             vertices = g.vertices()
@@ -415,19 +423,28 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
             aset(n, "width", "%g" % vw)
             aset(n, "height", "%g" % vh)
             aset(n, "style", "filled")
-            aset(n, "color", ecolor if isinstance(ecolor, str) else "#2e3436")
+            aset(n, "color", "#2e3436")
             # apply color
             if isinstance(vcolor, str):
                 aset(n, "fillcolor", vcolor)
             else:
-                color = tuple([int(c * 255.0) for c in vcmap(vnorm(vcolor[v]))])
-                aset(n, "fillcolor", "#%.2x%.2x%.2x%.2x" % color)
+                color = vcolor[v]
+                if isinstance(color, str):
+                    aset(n, "fillcolor", color)
+                else:
+                    color = tuple([int(c * 255.0) for c in vcmap(vnorm(color))])
+                    aset(n, "fillcolor", "#%.2x%.2x%.2x%.2x" % color)
             aset(n, "label", "")
 
             # user supplied position
             if pos is not None:
-                aset(n, "pos", "%f,%f" % (pos[0][v], pos[1][v]))
-                aset(n, "pin", pin)
+                if isinstance(pin, bool):
+                    pin_val = pin
+                else:
+                    pin_val = pin[v]
+                aset(n, "pos", "%f,%f%s" % (pos[0][v], pos[1][v],
+                                            "!" if pin_val else ""))
+                aset(n, "pin", pin_val)
 
             # apply all user supplied properties
             for k, val in vprops.iteritems():
@@ -437,7 +454,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
                     aset(n, k, val)
 
         # add edges
-        if eorder != None:
+        if eorder is not None:
             edges = sorted(g.edges(), lambda a, b: cmp(eorder[a], eorder[b]))
         else:
             edges = g.edges()
@@ -453,18 +470,22 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
             if isinstance(ecolor, str):
                 aset(ge, "color", ecolor)
             else:
-                color = tuple([int(c * 255.0) for c in ecmap(enorm(ecolor[e]))])
-                aset(ge, "color", "#%.2x%.2x%.2x%.2x" % color)
+                color = ecolor[e]
+                if isinstance(color, str):
+                    aset(ge, "color", color)
+                else:
+                    color = tuple([int(c * 255.0) for c in ecmap(enorm(color))])
+                    aset(ge, "color", "#%.2x%.2x%.2x%.2x" % color)
 
             # apply edge length
-            if elen != None:
+            if elen is not None:
                 if isinstance(elen, PropertyMap):
                     aset(ge, "len", elen[e])
                 else:
                     aset(ge, "len", elen)
 
             # apply width
-            if penwidth != None:
+            if penwidth is not None:
                 if isinstance(penwidth, PropertyMap):
                     aset(ge, "penwidth", penwidth[e])
                 else:
@@ -519,7 +540,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
             if output_format == "auto":
                 if output == "":
                     output_format = "xlib"
-                elif output != None:
+                elif output is not None:
                     output_format = output.split(".")[-1]
 
             # if using xlib we need to fork the process, otherwise good ol'
@@ -531,7 +552,7 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
                     os._exit(0)  # since we forked, it's good to be sure
                 if output_format != "xlib":
                     os.wait()
-            elif output != None:
+            elif output is not None:
                 libgv.gvRenderFilename(gvc, gvg, output_format, output)
 
         ret = [pos]
@@ -554,22 +575,23 @@ def random_layout(g, shape=None, pos=None, dim=2):
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
-    shape : tuple or list (optional, default: None)
+    shape : tuple or list (optional, default: ``None``)
         Rectangular shape of the bounding area. The size of this parameter must
         match `dim`, and each element can be either a pair specifying a range,
         or a single value specifying a range starting from zero. If None is
         passed, a square of linear size :math:`\sqrt{N}` is used.
-    pos : PropertyMap (optional, default: None)
+    pos : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         Vector vertex property maps where the coordinates should be stored.
-    dim : int (optional, default: 2)
+    dim : int (optional, default: ``2``)
         Number of coordinates per vertex.
 
     Returns
     -------
-    pos : A vector vertex property map
-        Vertex property map with the coordinates of the vertices.
+    pos : :class:`~graph_tool.PropertyMap`
+        A vector-valued vertex property map with the coordinates of the
+        vertices.
 
     Notes
     -----
@@ -620,9 +642,9 @@ def fruchterman_reingold_layout(g, weight=None, a=None, r=1., scale=None,
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
-    weight : PropertyMap (optional, default: None)
+    weight : :class:`PropertyMap` (optional, default: ``None``)
         An edge property map with the respective weights.
     a : float (optional, default: :math:`V`)
         Attracting force between adjacent vertices.
@@ -630,26 +652,27 @@ def fruchterman_reingold_layout(g, weight=None, a=None, r=1., scale=None,
         Repulsive force between vertices.
     scale : float (optional, default: :math:`\sqrt{V}`)
         Total scale of the layout (either square side or radius).
-    circular : bool (optional, default: False)
-        If `True`, the layout will have a circular shape. Otherwise the shape
+    circular : bool (optional, default: ``False``)
+        If ``True``, the layout will have a circular shape. Otherwise the shape
         will be a square.
-    grid : bool (optional, default: True)
-        If `True`, the repulsive forces will only act on vertices which are on
+    grid : bool (optional, default: ``True``)
+        If ``True``, the repulsive forces will only act on vertices which are on
         the same site on a grid. Otherwise they will act on all vertex pairs.
-    t_range : tuple of floats (optional, default: (scale / 10, scale / 1000))
+    t_range : tuple of floats (optional, default: ``(scale / 10, scale / 1000)``)
         Temperature range used in annealing. The temperature limits the
         displacement at each iteration.
-    n_iter : int (optional, default: 100)
+    n_iter : int (optional, default: ``100``)
         Total number of iterations.
-    pos : PropertyMap (optional, default: None)
+    pos : :class:`PropertyMap` (optional, default: ``None``)
         Vector vertex property maps where the coordinates should be stored. If
         provided, this will also be used as the initial position of the
         vertices.
 
     Returns
     -------
-    pos : A vector vertex property map
-        Vertex property map with the coordinates of the vertices.
+    pos : :class:`~graph_tool.PropertyMap`
+        A vector-valued vertex property map with the coordinates of the
+        vertices.
 
     Notes
     -----
@@ -707,30 +730,31 @@ def arf_layout(g, weight=None, d=0.5, a=10, dt=0.001, epsilon=1e-6,
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
-    weight : PropertyMap (optional, default: None)
+    weight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         An edge property map with the respective weights.
-    d : float (optional, default: 0.5)
+    d : float (optional, default: ``0.5``)
         Opposing force between vertices.
-    a : float (optional, default: 10)
+    a : float (optional, default: ``10``)
         Attracting force between adjacent vertices.
-    dt : float (optional, default: 0.001)
+    dt : float (optional, default: ``0.001``)
         Iteration step size.
-    epsilon : float (optional, default: 1e-6)
+    epsilon : float (optional, default: ``1e-6``)
         Convergence criterion.
-    max_iter : int (optional, default: 1000)
-        Maximum number of iterations. If this value is 0, it runs until
+    max_iter : int (optional, default: ``1000``)
+        Maximum number of iterations. If this value is ``0``, it runs until
         convergence.
-    pos : PropertyMap (optional, default: None)
+    pos : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         Vector vertex property maps where the coordinates should be stored.
-    dim : int (optional, default: 2)
+    dim : int (optional, default: ``2``)
         Number of coordinates per vertex.
 
     Returns
     -------
-    pos : A vector vertex property map
-        Vertex property map with the coordinates of the vertices.
+    pos : :class:`~graph_tool.PropertyMap`
+        A vector-valued vertex property map with the coordinates of the
+        vertices.
 
     Notes
     -----
