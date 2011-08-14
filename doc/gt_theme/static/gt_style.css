@@ -58,3 +58,39 @@ table.citation td, table.citation th, table.citation {
     border: 0px;
     padding: 0.25em 0.7em;
 }
+
+.container.sec-title {
+    font-size: 150%;
+    font-weight: normal;
+    margin: 30px 0px 10px 0px;
+    margin-bottom: 1em;
+    border-bottom: 1px solid #BBBBBB;
+    padding: 0;
+    padding-bottom: 0.2em;
+}
+
+div.admonition {
+    margin-left: 0em;
+    padding-left: 1em;
+    width: 80%;
+}
+
+div.admonition p.admonition-title + p {
+    margin-top: 0.5em;
+}
+
+dl dl pre {
+    margin-left: 0;
+    padding-left: 1em;
+}
+
+dl pre {
+    margin-left: 0;
+    padding-left: 1em;
+}
+
+pre {
+    margin-left: 0;
+    padding-left: 1em;
+}
+

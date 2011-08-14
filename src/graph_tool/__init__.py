@@ -43,7 +43,7 @@ Summary
 
 This module provides:
 
-   1. A Graph object for graph representation and manipulation
+   1. A :class:`~graph_tool.Graph` class for graph representation and manipulation
    2. Property maps for Vertex, Edge or Graph.
    3. Fast algorithms implemented in C++.
 
@@ -325,7 +325,9 @@ class PropertyArray(numpy.ndarray):
 class PropertyMap(object):
     """This class provides a mapping from vertices, edges or whole graphs to arbitrary properties.
 
-    The possible property types are listed below.
+    See :ref:`sec_property_maps` for more details.
+
+    The possible property value types are listed below.
 
     .. table::
 
@@ -426,7 +428,13 @@ class PropertyMap(object):
     def get_array(self):
         """Get a :class:`~graph_tool.PropertyArray` with the property values.
 
-        .. WARNING::
+        .. note::
+
+           An array is returned *only if* the value type of the property map is
+           a scalar. For vector, string or object types, ``None`` is returned
+           instead.
+
+        .. warning::
 
            The returned array does not own the data, which belongs to the
            property map. Therefore, if the graph changes, the array may become
@@ -642,14 +650,13 @@ def group_vector_property(props, value_type=None, vprop=None, pos=None):
             g.stash_filter(directed=True, reversed=True)
             g.set_directed(True)
             g.set_reversed(False)
-            libcore.group_vector_property(g._Graph__graph,
-                                          _prop(k, g, vprop),
+            libcore.group_vector_property(g._Graph__graph, _prop(k, g, vprop),
                                           _prop(k, g, p),
                                           i if pos == None else pos[i],
                                           k == 'e')
             g.pop_filter(directed=True, reversed=True)
         else:
-            vprop[g][i if pos == None else pos[i]] = p[g]
+            vprop[g][i if pos is None else pos[i]] = p[g]
     return vprop
 
 
@@ -852,18 +859,18 @@ class Graph(object):
                         "add_vertex": True, "del_vertex": True}
 
     def copy(self):
-        """Return a deep copy of self. All internal property maps are also
-        copied."""
+        """Return a deep copy of self. All :ref:`internal property maps <sec_internal_props>`
+        are also copied."""
         return Graph(self)
 
     def __repr__(self):
-        # provide some more useful information
+        # provide more useful information
         d = "directed" if self.is_directed() else "undirected"
         fr = ", reversed" if self.is_reversed() and self.is_directed() else ""
         f = ""
-        if self.get_edge_filter()[0] != None:
+        if self.get_edge_filter()[0] is not None:
             f += ", edges filtered by %s" % (str(self.get_edge_filter()))
-        if self.get_vertex_filter()[0] != None:
+        if self.get_vertex_filter()[0] is not None:
             f += ", vertices filtered by %s" % (str(self.get_vertex_filter()))
         n = self.num_vertices()
         e = self.num_edges()
@@ -880,7 +887,13 @@ class Graph(object):
             raise RuntimeError("the graph cannot be modified at this point!")
 
     def vertices(self):
-        """Return an iterator over the vertices.
+        """Return an :meth:`iterator <iterator.__iter__>` over the vertices.
+
+        .. note::
+
+           The order of the vertices traversed by the iterator **always**
+           corresponds to the vertex index ordering, as given by the
+           :attr:`~graph_tool.Graph.vertex_index` property map.
 
         Examples
         --------
@@ -929,7 +942,19 @@ class Graph(object):
         return None
 
     def edges(self):
-        """Return an iterator over the edges."""
+        """Return an :meth:`iterator <iterator.__iter__>` over the edges.
+
+        .. note::
+
+           The order of the edges traversed by the iterator **does not**
+           necessesarly correspond to the edge index ordering, as given by the
+           :attr:`~graph_tool.Graph.edge_index` property map. This will only
+           happen after :meth:`~graph_tool.Graph.reindex_edges` is called, or in
+           certain situations such as just after a graph is loaded from a
+           file. However, further manipulation of the graph may destroy the
+           ordering.
+
+        """
         return libcore.get_edges(weakref.ref(self.__graph))
 
     def add_vertex(self, n=1):
@@ -1029,8 +1054,8 @@ class Graph(object):
                           doc=
     """Dictionary of internal properties. Keys must always be a tuple, where the
     first element if a string from the set {'v', 'e', 'g'}, representing a
-    vertex, edge or graph property, and the second element is the name of the
-    property map.
+    vertex, edge or graph property, respectively, and the second element is the
+    name of the property map.
 
     Examples
     --------
@@ -1040,8 +1065,8 @@ class Graph(object):
     """)
 
     def __get_specific_properties(self, t):
-        props = dict([(k[1], v) for k,v in self.__properties.iteritems() \
-                      if k[0] == t ])
+        props = dict([(k[1], v) for k, v in self.__properties.iteritems() \
+                      if k[0] == t])
         return props
 
     # vertex properties
@@ -1051,7 +1076,7 @@ class Graph(object):
                             lambda g, k, v: g.__set_property("v", k, v),
                             lambda g, k: g.__del_property("v", k))
     vertex_properties = property(__get_vertex_properties,
-                                 doc="Dictionary of vertex properties")
+                                 doc="Dictionary of internal vertex properties. The keys are the property names.")
 
     # edge properties
     def __get_edge_properties(self):
@@ -1060,7 +1085,7 @@ class Graph(object):
                             lambda g, k, v: g.__set_property("e", k, v),
                             lambda g, k: g.__del_property("e", k))
     edge_properties = property(__get_edge_properties,
-                                 doc="Dictionary of edge properties")
+                                 doc="Dictionary of internal edge properties. The keys are the property names.")
 
     # graph properties
     def __get_graph_properties(self):
@@ -1069,10 +1094,10 @@ class Graph(object):
                             lambda g, k, v: g.__set_property("g", k, v),
                             lambda g, k: g.__del_property("g", k))
     graph_properties = property(__get_graph_properties,
-                                 doc="Dictionary of graph properties")
+                                 doc="Dictionary of internal graph properties. The keys are the property names.")
 
     def list_properties(self):
-        """List all internal properties.
+        """Print a list of all internal properties.
 
         Examples
         --------
@@ -1111,11 +1136,42 @@ class Graph(object):
     def _get_vertex_index(self):
         return self.__vertex_index
     vertex_index = property(_get_vertex_index,
-                            doc="Vertex index map. This map is immutable.")
+                            doc="""Vertex index map.
+
+                            It maps for each vertex in the graph an unique
+                            integer in the range [0, :meth:`~graph_tool.Graph.num_vertices` - 1].
+
+                            .. note::
+
+                                This is a special instance of a :class:`~graph_tool.PropertyMap`
+                                class, which is **immutable**, and cannot be
+                                accessed as an array.""")
 
     def _get_edge_index(self):
         return self.__edge_index
-    edge_index = property(_get_edge_index, doc="Edge index map.")
+    edge_index = property(_get_edge_index, doc="""Edge index map.
+
+                            It maps for each edge in the graph an unique
+                            integer.
+
+                            .. warning::
+
+                                Differently from :attr:`~graph_tool.Graph.vertex_index`,
+                                this is a **regular** instance of a :class:`~graph_tool.PropertyMap`
+                                class, and is therefore **mutable**!
+
+                                Additionally, the indexes may not necessarily
+                                lie in the range [0, :meth:`~graph_tool.Graph.num_edges` - 1].
+                                However this will always happen whenever no
+                                edges are deleted from the graph.
+
+                                The internal consistency expected by most
+                                algorithms and the proper functioning of
+                                property maps assume that the indexes are unique
+                                and constant, which is guaranteed by the
+                                library.  Therefore it is recommended **never**
+                                to modify these values, unless you know what you
+                                are doing.""")
 
     def _get_max_edge_index(self):
         return self.__graph.GetMaxEdgeIndex()
@@ -1132,8 +1188,8 @@ class Graph(object):
 
            Calling this function will invalidate all existing edge property
            maps, if the index ordering is modified! The property maps will still
-           be usable, but their contents will still be tied to the old indices,
-           and thus may be scrambled.
+           be usable, but their contents will still be tied to the old indexes,
+           and thus may become scrambled.
         """
         self.__graph.ReIndexEdges()
 
@@ -1405,11 +1461,23 @@ class Graph(object):
     # ======================
 
     def num_vertices(self):
-        """Get the number of vertices."""
+        """Get the number of vertices.
+
+        .. note::
+
+            If the vertices are being filtered, this operation is
+            :math:`O(N)`. Otherwise it is :math:`O(1)`.
+        """
         return self.__graph.GetNumberOfVertices()
 
     def num_edges(self):
-        """Get the number of edges."""
+        """Get the number of edges.
+
+        .. note::
+
+            If the edges are being filtered, this operation is
+            :math:`O(E)`. Otherwise it is :math:`O(1)`.
+        """
         return self.__graph.GetNumberOfEdges()
 
     # Pickling support
@@ -1467,7 +1535,11 @@ from libgraph_tool_core import Vertex, Edge
 
 Vertex.__doc__ = """Vertex descriptor.
 
-This class represents a vertex in a :class:`~graph_tool.Graph`."""
+This class represents a vertex in a :class:`~graph_tool.Graph` instance.
+
+:class:`~graph_tool.Vertex` instances are hashable, and are convertible to
+integers, corresponding to its index (see :attr:`~graph_tool.Graph.vertex_index`).
+"""
 
 
 def _out_neighbours(self):
@@ -1510,7 +1582,11 @@ Vertex.__repr__ = _vertex_repr
 
 _edge_doc = """Edge descriptor.
 
-This class represents an edge in a :class:`~graph_tool.Graph`."""
+This class represents an edge in a :class:`~graph_tool.Graph`.
+
+:class:`~graph_tool.Edge` instances are hashable, and are convertible to a
+tuple, which contains the source and target vertices.
+"""
 
 
 def _edge_iter(self):
@@ -1578,7 +1654,8 @@ class GraphView(Graph):
 
     This class uses shared data from another :class:`~graph_tool.Graph`
     instance, but allows for local filtering of vertices and/or edges, edge
-    directionality or reversal.
+    directionality or reversal. See :ref:`sec_graph_views` for more details and
+    examples.
 
     The existence of a :class:`~graph_tool.GraphView` object does not affect the
     original graph, except if the graph view is modified (addition or removal of

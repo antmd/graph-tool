@@ -223,10 +223,12 @@ latex_elements = {
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'http://docs.python.org': None,
-                       'http://docs.scipy.org/doc/numpy': None,
-                       'http://docs.scipy.org/doc/scipy/reference': None,
-                       'http://matplotlib.sourceforge.net': None}
+intersphinx_mapping = {'python': ('http://docs.python.org', None),
+                       'numpy': ('http://docs.scipy.org/doc/numpy', None),
+                       'scipy': ('http://docs.scipy.org/doc/scipy/reference',
+                                 None),
+                       'matplotlib': ('http://matplotlib.sourceforge.net',
+                                      None)}
 
 extlinks = {'ticket': ('http://projects.skewed.de/graph-tool/ticket/%s',
                        'ticket '),

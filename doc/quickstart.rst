@@ -361,6 +361,8 @@ Property maps with scalar value types can also be accessed as a
     # or more conveniently (this is equivalent to the above)
     vprop_double.a = random(g.num_vertices())
 
+.. _sec_internal_props:
+
 Internal property maps
 ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -381,6 +383,7 @@ type):
     >>> g.list_properties()
     some name      (edge)    (type: string)
 
+.. _sec_graph_io:
 
 Graph I/O
 ---------
@@ -467,6 +470,8 @@ use the :func:`~graph_tool.draw.graph_draw` function.
 
    A Price network with :math:`10^5` nodes. The vertex colors represent
    the age of the vertex, from older (red) to newer (blue).
+
+.. _sec_graph_filtering:
 
 Graph filtering
 ---------------
@@ -561,6 +566,8 @@ operation, which does not really modify the graph.
 
 As mentioned previously, the directedness of the graph can also be changed
 "on-the-fly" with the :meth:`~graph_tool.Graph.set_directed` method.
+
+.. _sec_graph_views:
 
 Graph views
 ^^^^^^^^^^^

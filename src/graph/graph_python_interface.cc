@@ -311,11 +311,11 @@ struct export_python_interface
         class_<PythonEdge<Graph> >
             ("Edge", no_init)
             .def("source", &PythonEdge<Graph>::GetSource,
-                 "Return the source vertex")
+                 "Return the source vertex.")
             .def("target", &PythonEdge<Graph>::GetTarget,
-                 "Return the target vertex")
+                 "Return the target vertex.")
             .def("is_valid", &PythonEdge<Graph>::IsValid,
-                 "Return whether the edge is valid")
+                 "Return whether the edge is valid.")
             .def(python::self == python::self)
             .def(python::self != python::self)
             .def("__str__", &PythonEdge<Graph>::GetString)
@@ -391,15 +391,15 @@ void export_python_interface()
     class_<PythonVertex>
         ("Vertex", no_init)
         .def("in_degree", &PythonVertex::GetInDegree,
-             "Return the in-degree")
+             "Return the in-degree.")
         .def("out_degree", &PythonVertex::GetOutDegree,
-             "Return the out-degree")
+             "Return the out-degree.")
         .def("out_edges", &PythonVertex::OutEdges,
-             "Return an iterator over the out-edges")
+             "Return an iterator over the out-edges.")
         .def("in_edges", &PythonVertex::InEdges,
-             "Return an iterator over the in-edges")
+             "Return an iterator over the in-edges.")
         .def("is_valid", &PythonVertex::IsValid,
-             "Return whether the vertex is valid")
+             "Return whether the vertex is valid.")
         .def(python::self == python::self)
         .def(python::self != python::self)
         .def("__str__", &PythonVertex::GetString)
