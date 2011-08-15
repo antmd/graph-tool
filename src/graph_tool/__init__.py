@@ -961,8 +961,13 @@ class Graph(object):
         """Add a vertex to the graph, and return it. If ``n > 1``, ``n``
         vertices are inserted and a list is returned."""
         self.__check_perms("add_vertex")
-        vlist = [libcore.add_vertex(weakref.ref(self.__graph)) \
-                 for i in xrange(0, n)]
+        vlist = []
+        vfilt = self.get_vertex_filter()
+        for i in xrange(n):
+            v = libcore.add_vertex(weakref.ref(self.__graph))
+            if vfilt[0] is not None:
+                vfilt[0][v] = not vfilt[1]
+            vlist.append(v)
         if n == 1:
             return vlist[0]
         return vlist
@@ -998,7 +1003,11 @@ class Graph(object):
         """Add a new edge from ``source`` to ``target`` to the graph, and return
         it."""
         self.__check_perms("add_edge")
-        return libcore.add_edge(weakref.ref(self.__graph), source, target)
+        e = libcore.add_edge(weakref.ref(self.__graph), source, target)
+        efilt = self.get_edge_filter()
+        if efilt[0] is not None:
+            efilt[0][e] = not efilt[1]
+        return e
 
     def remove_edge(self, edge):
         """Remove an edge from the graph."""
