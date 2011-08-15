@@ -947,7 +947,7 @@ class Graph(object):
         .. note::
 
            The order of the edges traversed by the iterator **does not**
-           necessesarly correspond to the edge index ordering, as given by the
+           necessarily correspond to the edge index ordering, as given by the
            :attr:`~graph_tool.Graph.edge_index` property map. This will only
            happen after :meth:`~graph_tool.Graph.reindex_edges` is called, or in
            certain situations such as just after a graph is loaded from a
