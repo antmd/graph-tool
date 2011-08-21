@@ -43,6 +43,7 @@ import scipy.sparse
 
 __all__ = ["adjacency", "laplacian", "incidence"]
 
+
 def adjacency(g, sparse=True, weight=None):
     r"""Return the adjacency matrix of the graph.
 
@@ -86,8 +87,8 @@ def adjacency(g, sparse=True, weight=None):
      [ 0.  0.  0. ...,  0.  0.  0.]
      [ 0.  0.  0. ...,  0.  0.  0.]
      ..., 
-     [ 0.  0.  0. ...,  0.  1.  0.]
-     [ 0.  0.  0. ...,  0.  0.  0.]
+     [ 0.  0.  0. ...,  0.  0.  1.]
+     [ 0.  0.  1. ...,  0.  0.  0.]
      [ 0.  1.  0. ...,  0.  0.  0.]]
 
     References
@@ -194,8 +195,8 @@ def laplacian(g, deg="total", normalized=True, sparse=True, weight=None):
      [ 0.    1.    0.   ...,  0.    0.    0.  ]
      [ 0.    0.    1.   ...,  0.    0.    0.  ]
      ..., 
-     [ 0.    0.    0.   ...,  1.    0.05  0.  ]
-     [ 0.    0.    0.   ...,  0.    1.    0.  ]
+     [ 0.    0.    0.   ...,  1.    0.    0.05]
+     [ 0.    0.    0.05 ...,  0.    1.    0.  ]
      [ 0.    0.05  0.   ...,  0.    0.    1.  ]]
 
     References
@@ -279,7 +280,7 @@ def incidence(g, sparse=True):
     >>> print m.todense()
     [[ 0.  0.  0. ...,  0.  0.  0.]
      [ 0.  0.  0. ...,  0.  0.  0.]
-     [ 0.  0.  0. ..., -1.  0.  0.]
+     [ 0.  0.  0. ...,  0.  0.  0.]
      ..., 
      [ 0.  0.  0. ...,  0.  0.  0.]
      [ 0.  0.  0. ...,  0.  0.  0.]

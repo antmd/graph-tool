@@ -145,33 +145,6 @@ struct swap_edge
 {
     template <class Graph>
     static bool
-    parallel_check_source (size_t e, pair<size_t, bool> se,
-                           vector<typename graph_traits<Graph>::edge_descriptor>& edges,
-                           const Graph &g)
-    {
-        // We want to check that if we swap the source of 'e' with the source of
-        // 'se', as such
-        //
-        //  (s)    -e--> (t)          (ns)   -e--> (t)
-        //  (ns)   -se-> (se_t)   =>  (s)    -se-> (se_t)
-        //
-        // no parallel edges are introduced.
-
-        typename graph_traits<Graph>::vertex_descriptor
-            s = source(edges[e], g),          // current source
-            t = target(edges[e], g),          // current target
-            ns = source(se, edges, g),        // new source
-            se_t = target(se, edges, g);      // source edge target
-
-        if (is_adjacent(ns,  t, g))
-            return true; // e would clash with an existing (new) edge
-        if (is_adjacent(s, se_t, g))
-            return true; // se would clash with an existing (new) edge
-        return false; // the coast is clear - hooray!
-    }
-
-    template <class Graph>
-    static bool
     parallel_check_target (size_t e, const pair<size_t, bool>& te,
                            vector<typename graph_traits<Graph>::edge_descriptor>& edges,
                            const Graph &g)
@@ -195,36 +168,6 @@ struct swap_edge
         if (is_adjacent(te_s, t, g))
             return true; // te would clash with an existing (new) edge
         return false; // the coast is clear - hooray!
-    }
-
-    template <class Graph, class EdgeIndexMap>
-    static void swap_source (size_t e, pair<size_t, bool>& se,
-                             vector<typename graph_traits<Graph>::edge_descriptor>& edges,
-                             EdgeIndexMap edge_index, Graph& g)
-    {
-        // swap the source of the edge 'e' with the source of edge 'se', as
-        // such:
-        //
-        //  (s)    -e--> (t)          (ns)   -e--> (t)
-        //  (ns)   -se-> (se_t)   =>  (s)    -se-> (se_t)
-
-        if (e == se.first)
-            return;
-
-        // new edges which will replace the old ones
-        typename graph_traits<Graph>::edge_descriptor ne, nse;
-        ne = add_edge(source(se, edges, g), target(edges[e], g), g).first;
-        if (!se.second)
-            nse = add_edge(source(edges[e], g), target(se, edges, g), g).first;
-        else // keep invertedness (only for undirected graphs)
-            nse = add_edge(target(se, edges, g), source(edges[e], g),  g).first;
-        edge_index[nse] = se.first;
-        remove_edge(edges[se.first], g);
-        edges[se.first] = nse;
-
-        edge_index[ne] = e;
-        remove_edge(edges[e], g);
-        edges[e] = ne;
     }
 
     template <class Graph, class EdgeIndexMap>
@@ -262,7 +205,26 @@ struct swap_edge
 };
 
 // used for verbose display
-void print_progress(size_t current, size_t total, stringstream& str);
+void print_progress(size_t i, size_t n_iter, size_t current, size_t total,
+                    stringstream& str)
+{
+    size_t atom = (total > 200) ? total / 100 : 1;
+    if ( ( (current+1) % atom == 0) || (current + 1) == total)
+    {
+        size_t size = str.str().length();
+        for (size_t j = 0; j < str.str().length(); ++j)
+            cout << "\b";
+        str.str("");
+        str << "(" << i + 1 << " / " << n_iter << ") "
+            << current + 1 << " of " << total << " ("
+            << (current + 1) * 100 / total << "%)";
+        for (int j = 0; j < int(size - str.str().length()); ++j)
+            str << " ";
+        cout << str.str() << flush;
+    }
+}
+
+
 
 // main rewire loop
 template <template <class Graph, class EdgeIndexMap, class CorrProb>
@@ -271,8 +233,10 @@ struct graph_rewire
 {
     template <class Graph, class EdgeIndexMap, class CorrProb>
     void operator()(Graph& g, EdgeIndexMap edge_index, CorrProb corr_prob,
-                    rng_t& rng, bool self_loops, bool parallel_edges,
-                    bool verbose) const
+                    bool self_loops, bool parallel_edges,
+                    pair<size_t, bool> iter_sweep, bool verbose, size_t& pcount,
+                    rng_t& rng)
+        const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
@@ -295,21 +259,33 @@ struct graph_rewire
                                             rng_t>
             random_edge_iter;
 
-        random_edge_iter
-            ei(edges_sequence.begin(), edges_sequence.end(), rng),
-            ei_end(edges_sequence.end(), edges_sequence.end(), rng);
-
+        size_t niter;
+        bool no_sweep;
+        tie(niter, no_sweep) = iter_sweep;
+        pcount = 0;
         if (verbose)
             cout << "rewiring edges: ";
-
         stringstream str;
-        size_t count = 0;
-        // for each edge rewire its source or target
-        for (; ei != ei_end; ++ei)
+        for (size_t i = 0; i < niter; ++i)
         {
-            if (verbose)
-                print_progress(count++, edges_sequence.size(), str);
-            rewire(*ei, self_loops, parallel_edges);
+            random_edge_iter
+                ei(edges_sequence.begin(), edges_sequence.end(), rng),
+                ei_end(edges_sequence.end(), edges_sequence.end(), rng);
+
+            size_t count = 0;
+            // for each edge rewire its source or target
+            for (; ei != ei_end; ++ei)
+            {
+                if (verbose)
+                    print_progress(i, niter, count++, 
+                                   no_sweep ? 1 : edges_sequence.size(), str);
+                bool success = rewire(*ei, self_loops, parallel_edges);
+                if (!success)
+                    ++pcount;
+
+                if (no_sweep)
+                    break;
+            }
         }
         if (verbose)
             cout << endl;
@@ -337,31 +313,36 @@ public:
             *(viter++) = *v;
     }
 
-    void operator()(size_t e, bool self_loops, bool parallel_edges)
+    bool operator()(size_t e, bool self_loops, bool parallel_edges)
     {
-        //try randomly drawn pairs of vertices until one satisfies all the
-        //consistency checks
+        //try randomly drawn pairs of vertices
         typedef random_permutation_iterator
             <typename graph_traits<Graph>::vertex_iterator, rng_t>
             random_vertex_iter;
 
-        tr1::uniform_int<size_t> sample(0, _vertices.size()-1);
+        tr1::uniform_int<size_t> sample(0, _vertices.size() - 1);
         typename graph_traits<Graph>::vertex_descriptor s, t;
         while (true)
         {
             s = sample(_rng);
             t = sample(_rng);
 
-            if(s == t && !self_loops) // reject self-loops if not allowed
+            // reject self-loops if not allowed
+            if(s == t && !self_loops)
                 continue;
-            if (!parallel_edges && is_adjacent(s, t, _g))
-                continue;  // reject parallel edges if not allowed
             break;
         }
+
+        // reject parallel edges if not allowed
+        if (!parallel_edges && is_adjacent(s, t, _g))
+            return false;
+
         edge_t ne = add_edge(s, t, _g).first;
         _edge_index[ne] = e;
         remove_edge(_edges[e], _g);
         _edges[e] = ne;
+
+        return true;
     }
 
 private:
@@ -389,82 +370,41 @@ public:
                        rng_t& rng)
         : _g(g), _edge_index(edge_index), _edges(edges),  _rng(rng) {}
 
-    void operator()(size_t e, bool self_loops, bool parallel_edges)
+    bool operator()(size_t e, bool self_loops, bool parallel_edges)
     {
         RewireStrategy& self = *static_cast<RewireStrategy*>(this);
-        tr1::bernoulli_distribution coin;
 
-        //try randomly drawn pairs of edges until one satisfies all the
-        //consistency checks
-        pair<size_t, bool> es, et;
+        // try randomly drawn pairs of edges and check if they satisfy all the
+        // consistency checks
 
-        while (true)
+        // rewire target
+        pair<size_t, bool> et = self.get_target_edge(e);
+
+        if (!self_loops) // reject self-loops if not allowed
         {
-            es.first = et.first = e;
-            es.second = et.second = false;
-
-            if (coin(_rng))
-            {
-                // rewire source
-                es = self.get_source_edge(e);
-
-                if(!self_loops) // reject self-loops if not allowed
-                {
-                    if((source(_edges[e], _g) == target(es, _edges, _g)) ||
-                       (target(_edges[e], _g) == source(es, _edges, _g)))
-                        continue;
-                }
-
-                // reject parallel edges if not allowed
-                if (!parallel_edges && (es.first != e))
-                {
-                    if (swap_edge::parallel_check_source(e, es, _edges, _g))
-                        continue;
-                }
-
-                if (e != es.first)
-                {
-                    self.update_edge(e, false, true);
-                    self.update_edge(es.first, false, false);
-
-                    swap_edge::swap_source(e, es, _edges, _edge_index, _g);
-
-                    self.update_edge(e, true, true);
-                    self.update_edge(es.first, true, false);
-                }
-            }
-            else
-            {
-                // rewire target
-                et = self.get_target_edge(e);
-
-                if (!self_loops) // reject self-loops if not allowed
-                {
-                    if((source(_edges[e], _g) == target(et, _edges, _g)) ||
-                       (target(_edges[e], _g) == source(et, _edges, _g)))
-                        continue;
-                }
-
-                // reject parallel edges if not allowed
-                if (!parallel_edges && (et.first != e))
-                {
-                    if (swap_edge::parallel_check_target(e, et, _edges, _g))
-                        continue;
-                }
-
-                if (e != et.first)
-                {
-                    self.update_edge(e, false, true);
-                    self.update_edge(et.first, false, false);
-
-                    swap_edge::swap_target(e, et, _edges, _edge_index, _g);
-
-                    self.update_edge(e, true, true);
-                    self.update_edge(et.first, true, false);
-                }
-            }
-            break;
+            if((source(_edges[e], _g) == target(et, _edges, _g)) ||
+               (target(_edges[e], _g) == source(et, _edges, _g)))
+                return false;
         }
+
+        // reject parallel edges if not allowed
+        if (!parallel_edges && (et.first != e))
+        {
+            if (swap_edge::parallel_check_target(e, et, _edges, _g))
+                return false;
+        }
+
+        if (e != et.first)
+        {
+            self.update_edge(e, false);
+            self.update_edge(et.first, false);
+            
+            swap_edge::swap_target(e, et, _edges, _edge_index, _g);
+
+            self.update_edge(e, true);
+            self.update_edge(et.first, true);
+        }
+        return true;
     }
 
 protected:
@@ -514,15 +454,8 @@ public:
         typename graph_traits<Graph>::vertex_iterator v_i, v_i_end;
         for (tie(v_i, v_i_end) = vertices(g); v_i != v_i_end; ++v_i)
         {
-            if (out_degree(*v_i, _g) > E/3)
-            {
+            if (out_degree(*v_i, _g) > E / 3)
                 _hub_non_adjacent[*v_i] = edge_set_t();
-                if(!is_directed::apply<Graph>::type::value)
-                    _hub_non_incident[*v_i] = edge_set_t();
-            }
-
-            if (in_degreeS()(*v_i, _g) > E/3)
-                _hub_non_incident[*v_i] = edge_set_t();
         }
 
         typename graph_traits<Graph>::edge_iterator e_i, e_i_end;
@@ -539,15 +472,12 @@ public:
         }
     }
 
-    pair<size_t,bool> get_edge(size_t e, bool src)
+    pair<size_t,bool> get_target_edge(size_t e)
     {
-        tr1::unordered_map<size_t, edge_set_t>& hub =
-            (src || !is_directed::apply<Graph>::type::value) ?
-            _hub_non_adjacent : _hub_non_incident;
+        tr1::unordered_map<size_t, edge_set_t>& hub = _hub_non_adjacent;
 
         typeof(hub.begin()) iter =
-            hub.find(src ? target(base_t::_edges[e], _g) :
-                     source(base_t::_edges[e], _g));
+            hub.find(source(base_t::_edges[e], _g));
         if (iter != hub.end())
         {
             edge_set_t& eset = iter->second;
@@ -560,20 +490,10 @@ public:
                 return *(eset.get<random_index>().begin() + i);
         }
 
-        tr1::uniform_int<> sample(0, _all_edges.size()-1);
+        tr1::uniform_int<> sample(0, _all_edges.size() - 1);
         return _all_edges[sample(base_t::_rng)];
     }
 
-
-    pair<size_t,bool> get_source_edge(size_t e)
-    {
-        return get_edge(e, true);
-    }
-
-    pair<size_t,bool> get_target_edge(size_t e)
-    {
-        return get_edge(e, false);
-    }
 
     void update_edge_list(index_t v, const pair<size_t, bool>& e,
                           edge_set_t& edge_set, bool src, bool insert)
@@ -589,7 +509,7 @@ public:
         }
     }
 
-    void update_edge(size_t e, bool insert, bool final = false)
+    void update_edge(size_t e, bool insert)
     {
         for (typeof(_hub_non_adjacent.begin()) iter = _hub_non_adjacent.begin();
              iter != _hub_non_adjacent.end(); ++iter)
@@ -600,16 +520,6 @@ public:
                 update_edge_list(iter->first, make_pair(e, true), iter->second,
                                  true, insert);
         }
-
-        for (typeof(_hub_non_incident.begin()) iter = _hub_non_incident.begin();
-             iter != _hub_non_incident.end(); ++iter)
-        {
-            update_edge_list(iter->first, make_pair(e, false), iter->second,
-                             false, insert);
-            if (!is_directed::apply<Graph>::type::value)
-                update_edge_list(iter->first, make_pair(e, true), iter->second,
-                                 false, insert);
-        }
     }
 
 private:
@@ -617,8 +527,7 @@ private:
     EdgeIndexMap _edge_index;
     vector<pair<index_t,bool> > _all_edges;
 
-    tr1::unordered_map<size_t, edge_set_t>  _hub_non_incident;
-    tr1::unordered_map<size_t, edge_set_t>  _hub_non_adjacent;
+    tr1::unordered_map<size_t, edge_set_t> _hub_non_adjacent;
 };
 
 
@@ -654,11 +563,6 @@ public:
             // target, and each edge will appear _twice_ in the lists below,
             // once for each different ordering of source and target.
 
-            _edges_by_source
-                [make_pair(in_degreeS()(source(*e_i, _g), _g),
-                           out_degree(source(*e_i, _g), _g))]
-                .push_back(make_pair(edge_index[*e_i], false));
-
             _edges_by_target
                 [make_pair(in_degreeS()(target(*e_i, _g), _g),
                            out_degree(target(*e_i, _g), _g))]
@@ -666,10 +570,6 @@ public:
 
             if (!is_directed::apply<Graph>::type::value)
             {
-                _edges_by_source
-                    [make_pair(in_degreeS()(target(*e_i, _g), _g),
-                               out_degree(target(*e_i, _g), _g))]
-                    .push_back(make_pair(edge_index[*e_i], true));
                 _edges_by_target
                     [make_pair(in_degreeS()(source(*e_i, _g), _g),
                                out_degree(source(*e_i, _g), _g))]
@@ -678,37 +578,25 @@ public:
         }
     }
 
-    pair<size_t,bool> get_edge(size_t e, bool src)
+    pair<size_t,bool> get_target_edge(size_t e)
     {
         pair<size_t, size_t> deg =
-            make_pair(in_degreeS()(src ? source(base_t::_edges[e], _g)
-                                   : target(base_t::_edges[e], _g), _g),
-                      out_degree(src ? source(base_t::_edges[e], _g) :
-                                 target(base_t::_edges[e], _g), _g));
-        edges_by_end_deg_t& edges = src ? _edges_by_source : _edges_by_target;
+            make_pair(in_degreeS()(target(base_t::_edges[e], _g), _g),
+                      out_degree(target(base_t::_edges[e], _g), _g));
+        edges_by_end_deg_t& edges = _edges_by_target;
         typename edges_by_end_deg_t::mapped_type& elist = edges[deg];
-        tr1::uniform_int<> sample(0, elist.size()-1);
+        tr1::uniform_int<> sample(0, elist.size() - 1);
         return elist[sample(base_t::_rng)];
     }
 
-    pair<size_t,bool> get_source_edge(size_t e)
-    {
-        return get_edge(e, true);
-    }
-
-    pair<size_t,bool> get_target_edge(size_t e)
-    {
-        return get_edge(e, false);
-    }
-
-    void update_edge(size_t e, bool insert, bool) {}
+    void update_edge(size_t e, bool insert) {}
 
 private:
     typedef tr1::unordered_map<pair<size_t, size_t>,
                                vector<pair<index_t, bool> >,
                                hash<pair<size_t, size_t> > >
         edges_by_end_deg_t;
-    edges_by_end_deg_t _edges_by_source, _edges_by_target;
+    edges_by_end_deg_t _edges_by_target;
 
 protected:
     const Graph& _g;
@@ -722,8 +610,8 @@ class ProbabilisticRewireStrategy:
 {
 public:
     typedef RewireStrategyBase<Graph, EdgeIndexMap,
-                                ProbabilisticRewireStrategy<Graph, EdgeIndexMap,
-                                                            CorrProb> >
+                               ProbabilisticRewireStrategy<Graph, EdgeIndexMap,
+                                                           CorrProb> >
         base_t;
 
     typedef Graph graph_t;
@@ -740,13 +628,8 @@ public:
                                 CorrProb corr_prob, rng_t& rng)
         : base_t(g, edge_index, edges, rng), _g(g)
     {
-        typename graph_traits<Graph>::vertex_iterator v_i, v_i_end;
-        for (tie(v_i, v_i_end) = boost::vertices(g); v_i != v_i_end; ++v_i)
-            _deg_count[get_deg(*v_i, g)]++;
-
-
-        typename graph_traits<Graph>::edge_iterator e_i, e_i_end;
         set<pair<size_t, size_t> > deg_set;
+        typename graph_traits<Graph>::edge_iterator e_i, e_i_end;
         for (tie(e_i, e_i_end) = boost::edges(g); e_i != e_i_end; ++e_i)
         {
             update_edge(_edge_index[*e_i], true);
@@ -756,24 +639,15 @@ public:
 
         for (typeof(deg_set.begin()) s_iter = deg_set.begin();
              s_iter != deg_set.end(); ++s_iter)
-        {
-             _sample_source_deg[*s_iter] = Sampler<deg_t>(true);
-             _sample_target_deg[*s_iter] = Sampler<deg_t>(true);
-        }
-
-        for (typeof(deg_set.begin()) s_iter = deg_set.begin();
-             s_iter != deg_set.end(); ++s_iter)
             for (typeof(deg_set.begin()) t_iter = deg_set.begin();
                  t_iter != deg_set.end(); ++t_iter)
-        {
-            double p = corr_prob(*s_iter, *t_iter);
-            if (!is_directed::apply<Graph>::type::value ||
-                (s_iter->second > 0 && t_iter->first > 0))
             {
-                _sample_source_deg[*t_iter].Insert(*s_iter, p);
+                double p = corr_prob(*s_iter, *t_iter);
+                if (isnan(p) || isinf(p))
+                    p = 0;
+                _probs[make_pair(*s_iter, *t_iter)] = p;
                 _sample_target_deg[*s_iter].Insert(*t_iter, p);
             }
-        }
     }
 
     deg_t get_deg(vertex_t v, Graph& g)
@@ -781,65 +655,57 @@ public:
         return make_pair(in_degreeS()(v, g), out_degree(v,g));
     }
 
-    pair<size_t,bool> get_source_edge(size_t e)
-    {
-        deg_t t_deg = get_deg(target(base_t::_edges[e],_g),_g), deg;
-        while (true)
-        {
-            deg = _sample_source_deg[t_deg](base_t::_rng);
-            if (_sample_edge_by_source_deg[deg].Empty())
-                _sample_source_deg[t_deg].Remove(deg);
-            else
-                break;
-        }
-        pair<size_t, bool> ep = _sample_edge_by_source_deg[deg](base_t::_rng);
-        //assert(get_deg(source(ep, base_t::_edges, _g), _g) == deg);
-        return ep;
-    }
 
     pair<size_t, bool> get_target_edge(size_t e)
     {
-        deg_t s_deg = get_deg(source(base_t::_edges[e],_g),_g), deg;
-        while (true)
-        {
-            deg = _sample_target_deg[s_deg](base_t::_rng);
-            if (_sample_edge_by_target_deg[deg].Empty())
-                _sample_target_deg[s_deg].Remove(deg);
-            else
-                break;
-        }
+        deg_t s_deg = get_deg(source(base_t::_edges[e], _g), _g);
+        deg_t t_deg = get_deg(target(base_t::_edges[e], _g), _g);
+     
+        deg_t deg = _sample_target_deg[s_deg](base_t::_rng);
         pair<size_t, bool> ep = _sample_edge_by_target_deg[deg](base_t::_rng);
-        //assert(get_deg(target(ep, base_t::_edges, _g), _g) == deg);
+
+        deg_t ep_s_deg = get_deg(source(ep, base_t::_edges, _g), _g);
+        deg_t ep_t_deg = get_deg(target(ep, base_t::_edges, _g), _g);
+
+        double pi = _probs[make_pair(ep_s_deg, ep_t_deg)];
+        double pf = _probs[make_pair(ep_s_deg, t_deg)];
+   
+        if (pi > pf && pf > 0)
+        {
+            double a = exp(log(pf) - log(pi));
+   
+            tr1::variate_generator<rng_t&, tr1::uniform_real<> >
+                sample(base_t::_rng, tr1::uniform_real<>(0.0, 1.0));
+            double r = sample();
+            if (r > a)
+                return make_pair(e, false); // reject
+        }
+        
         return ep;
     }
 
-    void update_edge(size_t e, bool insert, bool final = false)
+    void update_edge(size_t e, bool insert)
     {
-        deg_t s_deg = get_deg(source(base_t::_edges[e], _g), _g),
-            t_deg = get_deg(target(base_t::_edges[e], _g), _g);
+        deg_t s_deg = get_deg(source(base_t::_edges[e], _g), _g);
+        deg_t t_deg = get_deg(target(base_t::_edges[e], _g), _g);
 
         pair<size_t, bool> ep = make_pair(e, false);
 
-        if (insert && !final)
+        if (insert)
         {
-            _sample_edge_by_source_deg[s_deg].Insert(ep);
             _sample_edge_by_target_deg[t_deg].Insert(ep);
             if (!is_directed::apply<Graph>::type::value)
             {
                 ep.second = true;
-                _sample_edge_by_source_deg[t_deg].Insert(ep);
                 _sample_edge_by_target_deg[s_deg].Insert(ep);
             }
         }
-
-        if (!insert)
+        else
         {
-            _sample_edge_by_source_deg[s_deg].Remove(ep);
             _sample_edge_by_target_deg[t_deg].Remove(ep);
             if (!is_directed::apply<Graph>::type::value)
             {
                 ep.second = true;
-                _sample_edge_by_source_deg[t_deg].Remove(ep);
                 _sample_edge_by_target_deg[s_deg].Remove(ep);
             }
         }
@@ -849,22 +715,16 @@ private:
     Graph& _g;
     EdgeIndexMap _edge_index;
 
-    typedef tr1::unordered_map<pair<deg_t, deg_t>, double,
-                               hash<pair<deg_t, deg_t> > > corr_prob_t;
-    typedef tr1::unordered_map<deg_t, Sampler<deg_t>, hash<deg_t> >
+    typedef tr1::unordered_map<deg_t, WeightedSampler<deg_t>, hash<deg_t> >
         deg_sampler_t;
 
-    typedef tr1::unordered_map<deg_t, Sampler<pair<size_t,bool> >,
-                               hash<deg_t> >
+    typedef tr1::unordered_map<deg_t, Sampler<pair<size_t, bool> >, hash<deg_t> >
         edge_sampler_t;
 
-    edge_sampler_t _sample_edge_by_source_deg;
     edge_sampler_t _sample_edge_by_target_deg;
-
-    deg_sampler_t _sample_source_deg;
     deg_sampler_t _sample_target_deg;
-
-    tr1::unordered_map<deg_t, size_t, hash<deg_t> > _deg_count;
+    tr1::unordered_map<pair<deg_t, deg_t>, double, hash<pair<deg_t, deg_t> > >
+        _probs;
 };
 
 } // graph_tool namespace

@@ -106,9 +106,10 @@ def assortativity(g, deg):
     ...     return k
     ...
     >>> g = gt.random_graph(1000, lambda: sample_k(40),
-    ...                     lambda i,k: 1.0/(1+abs(i-k)), directed=False)
+    ...                     lambda i,k: 1.0 / (1 + abs(i - k)), directed=False,
+    ...                     mix_time=100)
     >>> gt.assortativity(g, "out")
-    (0.15254237288135594, 0.005229351128632439)
+    (0.12973425402803934, 0.004896761863480971)
 
     References
     ----------
@@ -176,14 +177,14 @@ def scalar_assortativity(g, deg):
     ...     return k
     ...
     >>> g = gt.random_graph(1000, lambda: sample_k(40), lambda i,k: abs(i-k),
-    ...                     directed=False)
+    ...                     directed=False, mix_time=100)
     >>> gt.scalar_assortativity(g, "out")
-    (-0.45180067377519767, 0.010346379229268765)
+    (-0.3786743856734846, 0.01193890427539548)
     >>> g = gt.random_graph(1000, lambda: sample_k(40),
-    ...                     lambda i,k: 1.0/(1+abs(i-k)),
-    ...                     directed=False)
+    ...                     lambda i, k: 1.0 / (1 + abs(i - k)),
+    ...                     directed=False, mix_time=100)
     >>> gt.scalar_assortativity(g, "out")
-    (0.6245182572712221, 0.011132275391353953)
+    (0.551341394873777, 0.012430151900034204)
 
     References
     ----------
@@ -263,8 +264,8 @@ def corr_hist(g, deg_source, deg_target, bins=[[0, 1], [0, 1]], weight=None,
     ...     return k
     ...
     >>> g = gt.random_graph(10000, lambda: sample_k(40),
-    ...                     lambda i,j: (sin(i/pi)*sin(j/pi)+1)/2,
-    ...                     directed=False)
+    ...                     lambda i, j: (sin(i / pi) * sin(j / pi) + 1) / 2,
+    ...                     directed=False, mix_time=100)
     >>> h = gt.corr_hist(g, "out", "out")
     >>> clf()
     >>> xlabel("source out-degree")
@@ -345,9 +346,9 @@ def combined_corr_hist(g, deg1, deg2, bins=[[0, 1], [0, 1]], float_count=True):
     >>> def sample_k(max):
     ...     accept = False
     ...     while not accept:
-    ...         i = randint(1,max+1)
-    ...         j = randint(1,max+1)
-    ...         accept = random() < (sin(i/pi)*sin(j/pi)+1)/2
+    ...         i = randint(1, max + 1)
+    ...         j = randint(1, max + 1)
+    ...         accept = random() < (sin(i / pi) * sin(j / pi) + 1) / 2
     ...     return i,j
     ...
     >>> g = gt.random_graph(10000, lambda: sample_k(40))
@@ -437,12 +438,12 @@ def avg_neighbour_corr(g, deg_source, deg_target, bins=[0, 1], weight=None):
     ...     accept = False
     ...     while not accept:
     ...         k = randint(1,max+1)
-    ...         accept = random() < 1.0/k
+    ...         accept = random() < 1.0 / k
     ...     return k
     ...
     >>> g = gt.random_graph(10000, lambda: sample_k(40),
-    ...                     lambda i,j: (sin(i/pi)*sin(j/pi)+1)/2,
-    ...                     directed=False)
+    ...                     lambda i, j: (sin(i / pi) * sin(j / pi) + 1) / 2,
+    ...                     directed=False, mix_time=100)
     >>> h = gt.avg_neighbour_corr(g, "out", "out")
     >>> clf()
     >>> xlabel("source out-degree")

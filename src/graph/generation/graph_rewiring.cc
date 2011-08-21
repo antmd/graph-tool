@@ -48,37 +48,43 @@ private:
     python::object _o;
 };
 
-void random_rewire(GraphInterface& gi, string strat, bool self_loops,
-                   bool parallel_edges, python::object corr_prob, size_t seed,
-                   bool verbose)
+size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
+                     bool no_sweep, bool self_loops, bool parallel_edges,
+                     python::object corr_prob, size_t seed, bool verbose)
 {
     rng_t rng(static_cast<rng_t::result_type>(seed));
     PythonFuncWrap corr(corr_prob);
+    size_t pcount = 0;
 
     if (strat == "erdos")
         run_action<graph_tool::detail::never_reversed>()
             (gi, boost::bind<void>(graph_rewire<ErdosRewireStrategy>(),
                                    _1, gi.GetEdgeIndex(), boost::ref(corr),
-                                   boost::ref(rng), self_loops, parallel_edges,
-                                   verbose))();
+                                   self_loops, parallel_edges,
+                                   make_pair(niter, no_sweep), verbose,
+                                   boost::ref(pcount), boost::ref(rng)))();
     else if (strat == "uncorrelated")
         run_action<graph_tool::detail::never_reversed>()
             (gi, boost::bind<void>(graph_rewire<RandomRewireStrategy>(),
                                    _1, gi.GetEdgeIndex(), boost::ref(corr),
-                                   boost::ref(rng), self_loops, parallel_edges,
-                                   verbose))();
+                                   self_loops, parallel_edges,
+                                   make_pair(niter, no_sweep), verbose,
+                                   boost::ref(pcount), boost::ref(rng)))();
     else if (strat == "correlated")
         run_action<graph_tool::detail::never_reversed>()
             (gi, boost::bind<void>(graph_rewire<CorrelatedRewireStrategy>(),
                                    _1, gi.GetEdgeIndex(), boost::ref(corr),
-                                   boost::ref(rng), self_loops, parallel_edges,
-                                   verbose))();
+                                   self_loops, parallel_edges,
+                                   make_pair(niter, no_sweep), verbose,
+                                   boost::ref(pcount), boost::ref(rng)))();
     else if (strat == "probabilistic")
         run_action<>()
             (gi, boost::bind<void>(graph_rewire<ProbabilisticRewireStrategy>(),
                                    _1, gi.GetEdgeIndex(), boost::ref(corr),
-                                   boost::ref(rng), self_loops, parallel_edges,
-                                   verbose))();
+                                   self_loops, parallel_edges,
+                                   make_pair(niter, no_sweep), verbose,
+                                   boost::ref(pcount), boost::ref(rng)))();
     else
         throw ValueException("invalid random rewire strategy: " + strat);
+    return pcount;
 }

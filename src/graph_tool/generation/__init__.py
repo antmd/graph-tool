@@ -45,7 +45,7 @@ Contents
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_generation")
 
-from .. import Graph, _check_prop_scalar, _prop, _limit_args
+from .. import Graph, GraphView, _check_prop_scalar, _prop, _limit_args
 from .. stats import label_parallel_edges, label_self_loops
 import sys, numpy, numpy.random
 
@@ -56,7 +56,7 @@ __all__ = ["random_graph", "random_rewire", "predecessor_tree", "line_graph",
 
 def random_graph(N, deg_sampler, deg_corr=None, directed=True,
                  parallel_edges=False, self_loops=False, random=True,
-                 verbose=False):
+                 mix_time=10, verbose=False):
     r"""
     Generate a random graph, with a given degree distribution and correlation.
 
@@ -85,6 +85,10 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
         If True, self-loops are allowed.
     random : bool (optional, default: True)
         If True, the returned graph is randomized.
+    mix_time : int (optional, default: 10)
+        Number of edge sweeps to perform in order to mix the graph. This value
+        is ignored if ``parallel_edges == self_loops == True`` and
+        ``strat != "probabilistic"``.
     verbose : bool (optional, default: False)
         If True, verbose information is displayed.
 
@@ -102,15 +106,43 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     The algorithm makes sure the degree sequence is graphical (i.e. realizable)
     and keeps re-sampling the degrees if is not. With a valid degree sequence,
     the edges are placed deterministically, and later the graph is shuffled with
-    the :func:`~graph_tool.generation.random_rewire` function.
+    the :func:`~graph_tool.generation.random_rewire` function, with the
+    ``mix_time`` parameter passed as ``n_iter``.
 
-    The complexity is :math:`O(V+E)` if parallel edges are allowed, and
-    :math:`O(V+E\log N_k)` if parallel edges are not allowed, where :math:`N_k <
-    V` is the number of different degrees sampled (or in,out-degree pairs).
+    The complexity is :math:`O(V + E)` if parallel edges are allowed, and
+    :math:`O(V + E \times\text{mix_time})` if parallel edges are not allowed.
+
+
+    .. note ::
+
+        If ``parallel_edges == False`` this algorithm only guarantees that the
+        returned graph will be a random sample from the desired ensemble if
+        ``mix_time`` is sufficiently large. The algorithm implements an
+        efficient Markov chain based on edge swaps, with a mixing time which
+        depends on the degree distribution and correlations desired. If degree
+        correlations are provided, the mixing time tends to be larger.
+
+        If ``strat == "probabilistic"``, the Markov chain still needs to be
+        mixed, even if parallel edges and self-loops are allowed. In this case
+        the Markov chain is implemented using a mixture of the alias method
+        [ripley-stochastic-1987]_ for direct sampling of target degrees, and
+        Metropolis-Hastings [metropolis-equations-1953]_
+        [hastings-monte-carlo-1970]_ acceptance/rejection sampling of edge
+        swaps.
 
     References
     ----------
-    [deg-sequence] http://en.wikipedia.org/wiki/Degree_%28graph_theory%29#Degree_sequence
+    .. [deg-sequence] http://en.wikipedia.org/wiki/Degree_%28graph_theory%29#Degree_sequence
+    .. [metropolis-equations-1953]  Metropolis, N.; Rosenbluth, A.W.;
+       Rosenbluth, M.N.; Teller, A.H.; Teller, E. "Equations of State
+       Calculations by Fast Computing Machines". Journal of Chemical Physics 21
+       (6): 1087–1092 (1953). :doi:`10.1063/1.1699114`
+    .. [hastings-monte-carlo-1970] Hastings, W.K. "Monte Carlo Sampling Methods
+       Using Markov Chains and Their Applications". Biometrika 57 (1): 97–109 (1970).
+       :doi:`10.1093/biomet/57.1.97`
+    .. [ripley-stochastic-1987]  B. D Ripley, Stochastic simulation, vol. 183
+       (Wiley Online  Library, 1987). :doi:`10.1002/9780470316726.fmatter`
+
 
     Examples
     --------
@@ -139,9 +171,10 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
         P(i,k) \propto \frac{1}{1+|i-k|}
 
     >>> g = gt.random_graph(1000, lambda: sample_k(40),
-    ...                     lambda i,k: 1.0/(1+abs(i-k)), directed=False)
+    ...                     lambda i, k: 1.0 / (1 + abs(i - k)), directed=False,
+    ...                     mix_time=100)
     >>> gt.scalar_assortativity(g, "out")
-    (0.6298689448198855, 0.011101504846821255)
+    (0.5149626775363764, 0.01291310404121864)
 
     The following samples an in,out-degree pair from the joint distribution:
 
@@ -194,8 +227,9 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
 
     >>> p = scipy.stats.poisson
     >>> g = gt.random_graph(20000, lambda: (sample_k(19), sample_k(19)),
-    ...                                     lambda a,b: (p.pmf(a[0],b[1])*
-    ...                                                  p.pmf(a[1],20-b[0])))
+    ...                     lambda a,b: (p.pmf(a[0], b[1]) *
+    ...                                  p.pmf(a[1], 20 - b[0])),
+    ...                     mix_time=100)
 
     Lets plot the average degree correlations to check.
 
@@ -232,63 +266,90 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
 
         Average nearest neighbour correlations.
     """
+
     seed = numpy.random.randint(0, sys.maxint)
     g = Graph()
     if deg_corr == None:
         uncorrelated = True
     else:
         uncorrelated = False
-    libgraph_tool_generation.gen_random_graph(g._Graph__graph, N, deg_sampler,
-                                              uncorrelated, not parallel_edges,
-                                              not self_loops, not directed,
-                                              seed, verbose, True)
+    libgraph_tool_generation.gen_graph(g._Graph__graph, N, deg_sampler,
+                                       uncorrelated, not parallel_edges,
+                                       not self_loops, not directed,
+                                       seed, verbose, True)
+
+    if parallel_edges and self_loops and strat != "probabilistic":
+        mix_time = 1
     g.set_directed(directed)
     if random:
-        random_rewire(g, parallel_edges=parallel_edges,
-                      self_loops=self_loops, verbose=verbose)
-        if deg_corr != None:
-            random_rewire(g, strat="probabilistic",
+        if deg_corr is not None:
+            random_rewire(g, strat="probabilistic", n_iter=mix_time,
                           parallel_edges=parallel_edges, deg_corr=deg_corr,
                           self_loops=self_loops, verbose=verbose)
+        else:
+            random_rewire(g, parallel_edges=parallel_edges, n_iter=mix_time,
+                          self_loops=self_loops, verbose=verbose)
+
     return g
 
 
 @_limit_args({"strat": ["erdos", "correlated", "uncorrelated", "probabilistic"]})
-def random_rewire(g, strat="uncorrelated", parallel_edges=False,
-                  self_loops=False, deg_corr=None, verbose=False):
+def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
+                  parallel_edges=False, self_loops=False, deg_corr=None,
+                  ret_fail=False, verbose=False):
     r"""
-    Shuffle the graph in-place. If `strat` != "erdos", the degrees (either in or
-    out) of each vertex are always the same, but otherwise the edges are
-    randomly placed. If `strat` = "correlated", the degree correlations are
-    also maintained: The new source and target of each edge both have the same
-    in and out-degree. If `strat` = "probabilistic", than edges are rewired
-    according to the degree correlation given by the parameter `deg_corr`.
+    Shuffle the graph in-place.
+
+    If ``strat != "erdos"``, the degrees (either in or out) of each vertex are
+    always the same, but otherwise the edges are randomly placed. If
+    ``strat == "correlated"``, the degree correlations are also maintained: The
+    new source and target of each edge both have the same in and out-degree. If
+    ``strat == "probabilistic"``, then edges are rewired according to the degree
+    correlation given by the parameter ``deg_corr``.
 
     Parameters
     ----------
     g : :class:`~graph_tool.Graph`
         Graph to be shuffled. The graph will be modified.
-    strat : string (optional, default: "uncorrelated")
-        If `strat` = "erdos", the resulting graph will be entirely random. If
-        `strat` = "uncorrelated" only the degrees of the vertices will be
-        maintained, nothing else. If `strat` = "correlated", additionally the
+    strat : string (optional, default: ``"uncorrelated"``)
+        If ``strat == "erdos"``, the resulting graph will be entirely random. If
+        ``strat == "uncorrelated"`` only the degrees of the vertices will be
+        maintained, nothing else. If ``strat == "correlated"``, additionally the
         new source and target of each edge both have the same in and out-degree.
-        If `strat` = "probabilistic", than edges are rewired according to the
-        degree correlation given by the parameter `deg_corr`.
-    parallel : bool (optional, default: False)
-        If True, parallel edges are allowed.
-    self_loops : bool (optional, default: False)
-        If True, self-loops are allowed.
-    deg_corr : function (optional, default: None)
+        If ``strat == "probabilistic"``, than edges are rewired according to the
+        degree correlation given by the parameter ``deg_corr``.
+    n_iter : int (optional, default: ``1``)
+        Number of iterations. If ``edge_sweep == True``, each iteration
+        corresponds to an entire "sweep" over all edges. Otherwise this
+        corresponds to the total number of edges which are randomly chosen for a
+        swap attempt (which may repeat).
+    edge_sweep : bool (optional, default: ``True``)
+        If ``True``, each iteration will perform an entire "sweep" over the
+        edges, where each edge is visited once in random order, and a edge swap
+        is attempted.
+    parallel : bool (optional, default: ``False``)
+        If ``True``, parallel edges are allowed.
+    self_loops : bool (optional, default: ``False``)
+        If ``True``, self-loops are allowed.
+    deg_corr : function (optional, default: ``None``)
         A function which gives the degree correlation of the graph. It should be
         callable with two parameters: the in,out-degree pair of the source
         vertex an edge, and the in,out-degree pair of the target of the same
         edge (for undirected graphs, both parameters are single values). The
         function should return a number proportional to the probability of such
         an edge existing in the generated graph. This parameter is ignored,
-        unless `strat` = "probabilistic".
-    verbose : bool (optional, default: False)
-        If True, verbose information is displayed.
+        unless ``strat == "probabilistic"``.
+    ret_fail : bool (optional, default: ``False``)
+        If ``True``, the number of failed edge moves (due to parallel edges or
+        self-loops) is returned.
+    verbose : bool (optional, default: ``False``)
+        If ``True``, verbose information is displayed.
+
+
+    Returns
+    -------
+    fail_count : int
+        Number of failed edge moves (due to parallel edges or self-loops).
 
     See Also
     --------
@@ -300,17 +361,39 @@ def random_rewire(g, strat="uncorrelated", parallel_edges=False,
     swap its target or source with the target or source of another edge.
 
     .. note::
-        If `parallel_edges` = False, parallel edges are not placed during
-        rewiring. In this case, for some special graphs it may be necessary to
-        call the function more than once to obtain a graph which corresponds to
-        a uniform sample from the ensemble. But typically, if the graph is
-        sufficiently large, a single call should be enough.
 
-    Each edge gets swapped at least once, so the overall complexity is
-    :math:`O(E)`. If `strat` = "probabilistic" the complexity is
-    :math:`O(E\log N_k)`,  where :math:`N_k < V` is the number of different
-    degrees (or in,out-degree pairs).
+        If ``parallel_edges = False``, parallel edges are not placed during
+        rewiring. In this case, the returned graph will be a uncorrelated sample
+        from the desired ensemble only if ``n_iter`` is sufficiently large. The
+        algorithm implements an efficient Markov chain based on edge swaps, with
+        a mixing time which depends on the degree distribution and correlations
+        desired. If degree probabilistic correlations are provided, the mixing
+        time tends to be larger.
 
+        If ``strat == "probabilistic"``, the Markov chain still needs to be
+        mixed, even if parallel edges and self-loops are allowed. In this case
+        the Markov chain is implemented using a mixture of the alias method
+        [ripley-stochastic-1987]_ for direct sampling of target degrees, and
+        Metropolis-Hastings [metropolis-equations-1953]_
+        [hastings-monte-carlo-1970]_ acceptance/rejection sampling of edge
+        swaps.
+
+
+    Each edge is tentatively swapped once per iteration, so the overall
+    complexity is :math:`O(V + E \times \text{n_iter})`. If ``edge_sweep ==
+    False``, the complexity becomes :math:`O(V + E + \text{n_iter})`.
+
+    References
+    ----------
+    .. [metropolis-equations-1953]  Metropolis, N.; Rosenbluth, A.W.;
+       Rosenbluth, M.N.; Teller, A.H.; Teller, E. "Equations of State
+       Calculations by Fast Computing Machines". Journal of Chemical Physics 21
+       (6): 1087–1092 (1953). :doi:`10.1063/1.1699114`
+    .. [hastings-monte-carlo-1970] Hastings, W.K. "Monte Carlo Sampling Methods
+       Using Markov Chains and Their Applications". Biometrika 57 (1): 97–109 (1970).
+       :doi:`10.1093/biomet/57.1.97`
+    .. [ripley-stochastic-1987]  B. D Ripley, Stochastic simulation, vol. 183
+       (Wiley Online  Library, 1987). :doi:`10.1002/9780470316726.fmatter`
 
     Examples
     --------
@@ -340,8 +423,8 @@ def random_rewire(g, strat="uncorrelated", parallel_edges=False,
     .. image:: rewire_uncorr.png
     .. image:: rewire_erdos.png
 
-    *From left to right:* Original graph; Shuffled graph, with degree
-    correlations; Shuffled graph, without degree correlations; Shuffled graph,
+    *From left to right:* Original graph --- Shuffled graph, with degree
+    correlations --- Shuffled graph, without degree correlations --- Shuffled graph,
     with random degrees.
 
     We can try some larger graphs to get better statistics.
@@ -349,7 +432,8 @@ def random_rewire(g, strat="uncorrelated", parallel_edges=False,
     >>> figure()
     <...>
     >>> g = gt.random_graph(30000, lambda: sample_k(20),
-    ...                     lambda i,j: exp(abs(i-j)), directed=False)
+    ...                     lambda i, j: exp(abs(i-j)), directed=False,
+    ...                     mix_time=100)
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label="original")
     (...)
@@ -385,7 +469,8 @@ def random_rewire(g, strat="uncorrelated", parallel_edges=False,
 
     >>> p = scipy.stats.poisson
     >>> g = gt.random_graph(20000, lambda: (sample_k(19), sample_k(19)),
-    ...                     lambda a,b: (p.pmf(a[0],b[1])*p.pmf(a[1],20-b[0])))
+    ...                     lambda a, b: (p.pmf(a[0], b[1]) * p.pmf(a[1], 20 - b[0])),
+    ...                     mix_time=100)
     >>> figure(figsize=(6,3))
     <...>
     >>> axes([0.1,0.15,0.6,0.8])
@@ -447,20 +532,19 @@ def random_rewire(g, strat="uncorrelated", parallel_edges=False,
                              "without self-loops if it already contains" +
                              " self-loops!")
 
-    if deg_corr != None and  not g.is_directed():
+    if deg_corr is not None and not g.is_directed():
         corr = lambda i, j: deg_corr(i[1], j[1])
     else:
         corr = deg_corr
 
-    if corr == None:
-        g.stash_filter(reversed=True)
-    try:
-        libgraph_tool_generation.random_rewire(g._Graph__graph, strat,
-                                               self_loops, parallel_edges,
-                                               corr, seed, verbose)
-    finally:
-        if corr == None:
-            g.pop_filter(reversed=True)
+    if strat != "probabilistic":
+        g = GraphView(g, reversed=False)
+    pcount = libgraph_tool_generation.random_rewire(g._Graph__graph, strat,
+                                                    n_iter, not edge_sweep,
+                                                    self_loops, parallel_edges,
+                                                    corr, seed, verbose)
+    if ret_fail:
+        return pcount
 
 
 def predecessor_tree(g, pred_map):

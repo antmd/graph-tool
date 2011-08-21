@@ -48,11 +48,11 @@ private:
     python::object _o;
 };
 
-void generate_random_graph(GraphInterface& gi, size_t N,
-                           python::object deg_sample,
-                           bool uncorrelated, bool no_parallel,
-                           bool no_self_loops, bool undirected,
-                           size_t seed, bool verbose, bool verify)
+void generate_graph(GraphInterface& gi, size_t N,
+                    python::object deg_sample,
+                    bool uncorrelated, bool no_parallel,
+                    bool no_self_loops, bool undirected,
+                    size_t seed, bool verbose, bool verify)
 {
     typedef graph_tool::detail::get_all_graph_views::apply<
     graph_tool::detail::scalar_pairs, mpl::bool_<false>,
@@ -65,7 +65,7 @@ void generate_random_graph(GraphInterface& gi, size_t N,
     if (uncorrelated)
     {
         run_action<graph_views>()
-            (gi, bind<void>(gen_random_graph(), _1, N,
+            (gi, bind<void>(gen_graph(), _1, N,
                             PythonFuncWrap(deg_sample),
                             no_parallel, no_self_loops,
                             seed, verbose, verify))();
@@ -73,7 +73,7 @@ void generate_random_graph(GraphInterface& gi, size_t N,
     else
     {
         run_action<graph_views>()
-            (gi, bind<void>(gen_random_graph(), _1, N,
+            (gi, bind<void>(gen_graph(), _1, N,
                             PythonFuncWrap(deg_sample),
                             no_parallel, no_self_loops,
                             seed, verbose, verify))();
@@ -81,9 +81,9 @@ void generate_random_graph(GraphInterface& gi, size_t N,
     gi.ReIndexEdges();
 }
 
-void random_rewire(GraphInterface& gi, string strat, bool self_loops,
-                   bool parallel_edges, python::object corr_prob, size_t seed,
-                   bool verbose);
+size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
+                     bool no_sweep, bool self_loops, bool parallel_edges,
+                     python::object corr_prob, size_t seed, bool verbose);
 void predecessor_graph(GraphInterface& gi, GraphInterface& gpi,
                        boost::any pred_map);
 void line_graph(GraphInterface& gi, GraphInterface& lgi,
@@ -107,7 +107,7 @@ using namespace boost::python;
 
 BOOST_PYTHON_MODULE(libgraph_tool_generation)
 {
-    def("gen_random_graph", &generate_random_graph);
+    def("gen_graph", &generate_graph);
     def("random_rewire", &random_rewire);
     def("predecessor_graph", &predecessor_graph);
     def("line_graph", &line_graph);
