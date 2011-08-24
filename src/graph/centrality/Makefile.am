@@ -16,13 +16,15 @@ libgraph_tool_centrality_la_LDFLAGS = $(MOD_LDFLAGS)
 
 libgraph_tool_centrality_la_SOURCES = \
     graph_betweenness.cc \
-    graph_pagerank.cc \
+    graph_centrality_bind.cc \
     graph_eigentrust.cc \
-    graph_trust_transitivity.cc \
-    graph_centrality_bind.cc
+    graph_eigenvector.cc \
+    graph_pagerank.cc \
+    graph_trust_transitivity.cc
 
 libgraph_tool_centrality_la_include_HEADERS = \
-    graph_pagerank.hh \
     graph_eigentrust.hh \
+    graph_eigenvector.hh \
+    graph_pagerank.hh \
     graph_trust_transitivity.hh \
     minmax.hh

@@ -33,6 +33,7 @@ Summary
    pagerank
    betweenness
    central_point_dominance
+   eigenvector
    eigentrust
    trust_transitivity
 
@@ -48,7 +49,7 @@ import sys
 import numpy
 
 __all__ = ["pagerank", "betweenness", "central_point_dominance", "eigentrust",
-           "trust_transitivity"]
+           "eigenvector", "trust_transitivity"]
 
 
 def pagerank(g, damping=0.85, pers=None, weight=None, prop=None, epsilon=1e-6,
@@ -360,6 +361,112 @@ def central_point_dominance(g, betweenness):
     return libgraph_tool_centrality.\
            get_central_point_dominance(g._Graph__graph,
                                        _prop("v", g, betweenness))
+
+
+def eigenvector(g, weight=None, vprop=None, epsilon=1e-6, max_iter=None):
+    r"""
+    Calculate the eigenvector centrality of each vertex in the graph, as well as
+    the largest eigenvalue.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    weights : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        Edge property map with the edge weights.
+    vprop : :class:`~graph_tool.PropertyMap`, optional (default: ``None``)
+        Vertex property map where the values of eigenvector must be stored.
+    epsilon : float, optional (default: ``1e-6``)
+        Convergence condition. The iteration will stop if the total delta of all
+        vertices are below this value.
+    max_iter : int, optional (default: ``None``)
+        If supplied, this will limit the total number of iterations.
+
+    Returns
+    -------
+    eigenvalue : float
+        The largest eigenvalue of the (weighted) adjacency matrix.
+    eigenvector : :class:`~graph_tool.PropertyMap`
+        A vertex property map containing the eigenvector values.
+
+    See Also
+    --------
+    betweenness: betweenness centrality
+    pagerank: PageRank centrality
+    trust_transitivity: pervasive trust transitivity
+
+    Notes
+    -----
+
+    The eigenvector centrality :math:`\mathbf{x}` is the eigenvector of the
+    (weighted) adjacency matrix with the largest eigenvalue :math:`\lambda`,
+    i.e. it is the solution of
+
+    .. math::
+
+        \mathbf{A}\mathbf{x} = \lambda\mathbf{x},
+
+
+    where :math:`\mathbf{A}` is the (weighted) adjacency matrix and
+    :math:`\lambda` is the largest eigenvalue.
+
+    The algorithm uses the power method which has a topology-dependent complexity of
+    :math:`O\left(N\times\frac{-\log\epsilon}{\log|\lambda_1/\lambda_2|}\right)`,
+    where :math:`N` is the number of vertices, :math:`\epsilon` is the ``epsilon``
+    parameter, and :math:`\lambda_1` and :math:`\lambda_2` are the largest and
+    second largest eigenvalues of the (weighted) adjacency matrix, respectively.
+
+    If enabled during compilation, this algorithm runs in parallel.
+
+    Examples
+    --------
+    >>> from numpy.random import poisson, random, seed
+    >>> seed(42)
+    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
+    >>> w = g.new_edge_property("double")
+    >>> w.a = random(g.num_edges()) * 42
+    >>> x = gt.eigenvector(g, w)
+    >>> print x[0]
+    0.0160851991895
+    >>> print x[1].a
+    [ 0.1376411   0.07207366  0.02727508  0.05805304  0.          0.10690994
+      0.04315491  0.01040908  0.02300252  0.08874163  0.04968119  0.06718114
+      0.05526028  0.20449371  0.02337425  0.07581173  0.19993899  0.14718912
+      0.08464664  0.08474977  0.          0.04843894  0.          0.0089388
+      0.16831573  0.00138653  0.11741616  0.          0.13455019  0.03642682
+      0.06729803  0.06229526  0.08937098  0.05693976  0.0793375   0.04076743
+      0.22176891  0.07717256  0.00518048  0.05722748  0.          0.00055799
+      0.04541778  0.06420469  0.06189998  0.08011859  0.05377224  0.29979873
+      0.01211309  0.15503588  0.02804072  0.1692873   0.01420732  0.02507
+      0.02959899  0.02702304  0.1652933   0.01434992  0.1073001   0.04582697
+      0.04618913  0.0220902   0.01421926  0.09891276  0.04522928  0.
+      0.00236599  0.07686829  0.03243909  0.00346715  0.1954776   0.
+      0.25583217  0.11710921  0.07804282  0.21188464  0.04800656  0.00321866
+      0.0552824   0.11204116  0.11420818  0.24071304  0.15451676  0.
+      0.00475456  0.10680434  0.17054333  0.18945499  0.15673649  0.03405238
+      0.01653319  0.02563015  0.00186129  0.12061027  0.11449362  0.11114196
+      0.06779788  0.00595725  0.09127559  0.02380386]
+
+    References
+    ----------
+
+    .. [eigenvector-centrality] http://en.wikipedia.org/wiki/Centrality#Eigenvector_centrality
+    .. [power-method] http://en.wikipedia.org/wiki/Power_iteration
+    .. [langville-survey-2005] A. N. Langville, C. D. Meyer, "A Survey of
+       Eigenvector Methods for Web Information Retrieval", SIAM Review, vol. 47,
+       no. 1, pp. 135-161, 2005, :DOI:`10.1137/S0036144503424786`
+
+
+    """
+
+    if vprop == None:
+        vprop = g.new_vertex_property("double")
+    if max_iter is None:
+        max_iter = 0
+    ee = libgraph_tool_centrality.\
+         get_eigenvector(g._Graph__graph, _prop("e", g, weight),
+                         _prop("v", g, vprop), epsilon, max_iter)
+    return ee, vprop
 
 
 def eigentrust(g, trust_map, vprop=None, norm=False, epsilon=1e-6, max_iter=0,

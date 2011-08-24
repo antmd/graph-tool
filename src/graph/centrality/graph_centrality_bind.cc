@@ -21,6 +21,7 @@ using namespace boost;
 
 void export_betweenness();
 void export_eigentrust();
+void export_eigenvector();
 void export_trust_transitivity();
 void export_pagerank();
 
@@ -28,6 +29,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_centrality)
 {
     export_betweenness();
     export_eigentrust();
+    export_eigenvector();
     export_trust_transitivity();
     export_pagerank();
 }
