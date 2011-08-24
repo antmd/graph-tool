@@ -57,7 +57,69 @@ __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
            "min_spanning_tree", "dominator_tree", "topological_sort",
            "transitive_closure", "label_components", "label_largest_component",
            "label_biconnected_components", "shortest_distance",
-           "shortest_path", "is_planar"]
+           "shortest_path", "is_planar", "similarity"]
+
+
+def similarity(g1, g2, label1=None, label2=None, norm=True):
+    r"""Return the adjacency similarity between the two graphs.
+
+    Parameters
+    ----------
+    g1 : :class:`~graph_tool.Graph`
+        First graph to be compared.
+    g2 : :class:`~graph_tool.Graph`
+        second graph to be compared.
+    label1 : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        Vertex labels for the first graph to be used in comparison. If not
+        supplied, the vertex indexes are used.
+    label2 : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        Vertex labels for the second graph to be used in comparison. If not
+        supplied, the vertex indexes are used.
+    norm : bool (optional, default: ``True``)
+        If ``True``, the returned value is normalized by the total number of
+        edges.
+
+    Returns
+    -------
+    similarity : float
+        Adjacency similarity value.
+
+    Notes
+    -----
+    The adjacency similarity is the sum of equal entries in the adjacency
+    matrix, given a vertex ordering determined by the vertex labels. In other
+    words it counts the number of edges which have the same source and target
+    labels in both graphs.
+
+    The algorithm runs with complexity :math:`O(E_1 + V_1 + E_2 + V_2)`.
+
+    Examples
+    --------
+    >>> from numpy.random import seed
+    >>> seed(42)
+    >>> g = gt.random_graph(100, lambda: (3,3))
+    >>> u = g.copy()
+    >>> gt.similarity(u, g)
+    1.0
+    >>> gt.random_rewire(u);
+    >>> gt.similarity(u, g)
+    0.03333333333333333
+    """
+
+    if label1 is None:
+        label1 = g1.vertex_index
+    if label2 is None:
+        label2 = g2.vertex_index
+    if label1.value_type() != label2.value_type():
+        raise ValueError("label property maps must be of the same type")
+    s = libgraph_tool_topology.\
+           similarity(g1._Graph__graph, g2._Graph__graph,
+                      _prop("v", g1, label1), _prop("v", g1, label2))
+    if not g1.is_directed() or not g2.is_directed():
+        s /= 2
+    if norm:
+        s /= float(max(g1.num_edges(), g2.num_edges()))
+    return s
 
 
 def isomorphism(g1, g2, isomap=False):

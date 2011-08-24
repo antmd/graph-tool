@@ -39,6 +39,7 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
                           size_t n_max, size_t seed);
 
 void export_components();
+void export_similarity();
 void export_dists();
 void export_all_dists();
 
@@ -53,6 +54,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_topology)
     def("transitive_closure", &transitive_closure);
     def("is_planar", &is_planar);
     export_components();
+    export_similarity();
     export_dists();
     export_all_dists();
 }
