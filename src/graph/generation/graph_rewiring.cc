@@ -44,13 +44,38 @@ public:
         return python::extract<double>(ret);
     }
 
+    template <class Type>
+    double operator()(const Type& deg1, const Type& deg2) const
+    {
+        python::object ret = _o(python::object(deg1),
+                                python::object(deg2));
+        return python::extract<double>(ret);
+    }
+
 private:
     python::object _o;
 };
 
+
+struct graph_rewire_block
+{
+    template <class Graph, class EdgeIndexMap, class CorrProb, class BlockProp>
+    void operator()(Graph& g, EdgeIndexMap edge_index, CorrProb corr_prob,
+                    pair<bool, bool> rest, BlockProp block_prop,
+                    pair<size_t, bool> iter_sweep, bool verbose, size_t& pcount,
+                    rng_t& rng) const
+    {
+        graph_rewire<ProbabilisticRewireStrategy>()
+            (g, edge_index, corr_prob, rest.first, rest.second, iter_sweep,
+             verbose, pcount, rng, PropertyBlock<BlockProp>(block_prop));
+    }
+};
+
+
 size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
                      bool no_sweep, bool self_loops, bool parallel_edges,
-                     python::object corr_prob, size_t seed, bool verbose)
+                     python::object corr_prob, boost::any block,
+                     size_t seed, bool verbose)
 {
     rng_t rng(static_cast<rng_t::result_type>(seed));
     PythonFuncWrap corr(corr_prob);
@@ -84,6 +109,14 @@ size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
                                    self_loops, parallel_edges,
                                    make_pair(niter, no_sweep), verbose,
                                    boost::ref(pcount), boost::ref(rng)))();
+    else if (strat == "blockmodel")
+        run_action<>()
+            (gi, boost::bind<void>(graph_rewire_block(),
+                                   _1, gi.GetEdgeIndex(), boost::ref(corr),
+                                   make_pair(self_loops, parallel_edges), _2,
+                                   make_pair(niter, no_sweep), verbose,
+                                   boost::ref(pcount), boost::ref(rng)),
+             vertex_properties())(block);
     else
         throw ValueException("invalid random rewire strategy: " + strat);
     return pcount;

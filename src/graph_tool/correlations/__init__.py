@@ -109,7 +109,7 @@ def assortativity(g, deg):
     ...                     lambda i,k: 1.0 / (1 + abs(i - k)), directed=False,
     ...                     mix_time=100)
     >>> gt.assortativity(g, "out")
-    (0.12973425402803934, 0.004896761863480971)
+    (0.15024063611634234, 0.0051996387349654925)
 
     References
     ----------
@@ -179,12 +179,13 @@ def scalar_assortativity(g, deg):
     >>> g = gt.random_graph(1000, lambda: sample_k(40), lambda i,k: abs(i-k),
     ...                     directed=False, mix_time=100)
     >>> gt.scalar_assortativity(g, "out")
-    (-0.3786743856734846, 0.01193890427539548)
+    (-0.4569707008340512, 0.010227503673605132)
+
     >>> g = gt.random_graph(1000, lambda: sample_k(40),
     ...                     lambda i, k: 1.0 / (1 + abs(i - k)),
     ...                     directed=False, mix_time=100)
     >>> gt.scalar_assortativity(g, "out")
-    (0.551341394873777, 0.012430151900034204)
+    (0.5921961942149022, 0.011625836226217939)
 
     References
     ----------

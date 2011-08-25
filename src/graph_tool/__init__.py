@@ -196,6 +196,25 @@ def _python_type(type_name):
     return object
 
 
+def _gt_type(obj):
+    t = type(obj)
+    if t is numpy.longlong or t is numpy.uint64:
+        return "long long"
+    if t is int or issubclass(t, numpy.int):
+        return "int"
+    if t is numpy.float128:
+        return "long double"
+    if t is float or issubclass(t, numpy.float):
+        return "double"
+    if t is str:
+        return "string"
+    if t is bool:
+        return "bool"
+    if issubclass(t, list) or issubclass(t, numpy.ndarray):
+        return "vector<%s>" % _gt_type(obj[0])
+    return "object"
+
+
 def _convert(prop, val):
     # attempt to convert to a compatible python type. This is useful,
     # for instance, when dealing with numpy types.

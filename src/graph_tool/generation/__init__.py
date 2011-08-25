@@ -45,8 +45,10 @@ Contents
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_generation")
 
-from .. import Graph, GraphView, _check_prop_scalar, _prop, _limit_args
+from .. import Graph, GraphView, _check_prop_scalar, _prop, _limit_args, _gt_type
 from .. stats import label_parallel_edges, label_self_loops
+import inspect
+import types
 import sys, numpy, numpy.random
 
 __all__ = ["random_graph", "random_rewire", "predecessor_tree", "line_graph",
@@ -55,8 +57,8 @@ __all__ = ["random_graph", "random_rewire", "predecessor_tree", "line_graph",
 
 
 def random_graph(N, deg_sampler, deg_corr=None, directed=True,
-                 parallel_edges=False, self_loops=False, random=True,
-                 mix_time=10, verbose=False):
+                 parallel_edges=False, self_loops=False, blockmodel=None,
+                 random=True, mix_time=10, verbose=False):
     r"""
     Generate a random graph, with a given degree distribution and correlation.
 
@@ -70,32 +72,54 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
         a single int for undirected graphs, representing the out-degree). This
         function is called once per vertex, but may be called more times, if the
         degree sequence cannot be used to build a graph.
-    deg_corr : function (optional, default: None)
+
+        Optionally, you can also pass a function which receives one argument. In
+        this case the argument passed will be the index of the vertex which will
+        receive the degree. If ``blockmodel != None``, the value passed will be
+        the block value of the respective vertex instead.
+    deg_corr : function (optional, default: ``None``)
         A function which gives the degree correlation of the graph. It should be
         callable with two parameters: the in,out-degree pair of the source
         vertex an edge, and the in,out-degree pair of the target of the same
         edge (for undirected graphs, both parameters are single values). The
         function should return a number proportional to the probability of such
         an edge existing in the generated graph.
-    directed : bool (optional, default: True)
+
+        If ``blockmodel != None``, the value passed to the function will be the
+        block value of the respective vertices, not the in/out-degree pairs.
+    directed : bool (optional, default: ``True``)
         Whether the generated graph should be directed.
-    parallel_edges : bool (optional, default: False)
-        If True, parallel edges are allowed.
-    self_loops : bool (optional, default: False)
-        If True, self-loops are allowed.
-    random : bool (optional, default: True)
-        If True, the returned graph is randomized.
-    mix_time : int (optional, default: 10)
+    parallel_edges : bool (optional, default: ``False``)
+        If ``True``, parallel edges are allowed.
+    self_loops : bool (optional, default: ``False``)
+        If ``True``, self-loops are allowed.
+    blockmodel : list or :class:`~numpy.ndarray` or function (optional, default: ``None``)
+        If supplied, the graph will be sampled from a blockmodel ensemble. If
+        the value is a list or a :class:`~numpy.ndarray`, it must have
+        ``len(block_model) == N``, and the values will define to which block
+        each vertex belongs.
+
+        If this value is a function, it will be used to sample the block
+        types. It must be callable either with no arguments or with a single
+        argument which will be the vertex index. In either case it must return
+        an integer.
+    random : bool (optional, default: ``True``)
+        If ``True``, the returned graph is randomized. Otherwise a deterministic
+        placement of the edges will be used.
+    mix_time : int (optional, default: ``10``)
         Number of edge sweeps to perform in order to mix the graph. This value
         is ignored if ``parallel_edges == self_loops == True`` and
         ``strat != "probabilistic"``.
-    verbose : bool (optional, default: False)
-        If True, verbose information is displayed.
+    verbose : bool (optional, default: ``False``)
+        If ``True``, verbose information is displayed.
 
     Returns
     -------
     random_graph : :class:`~graph_tool.Graph`
         The generated graph.
+    blocks : :class:`~graph_tool.PropertyMap`
+        A vertex property map with the block values. This is only returned if
+        ``blockmodel != None``.
 
     See Also
     --------
@@ -124,32 +148,15 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
 
         If ``strat == "probabilistic"``, the Markov chain still needs to be
         mixed, even if parallel edges and self-loops are allowed. In this case
-        the Markov chain is implemented using a mixture of the alias method
-        [ripley-stochastic-1987]_ for direct sampling of target degrees, and
-        Metropolis-Hastings [metropolis-equations-1953]_
-        [hastings-monte-carlo-1970]_ acceptance/rejection sampling of edge
-        swaps.
-
-    References
-    ----------
-    .. [deg-sequence] http://en.wikipedia.org/wiki/Degree_%28graph_theory%29#Degree_sequence
-    .. [metropolis-equations-1953]  Metropolis, N.; Rosenbluth, A.W.;
-       Rosenbluth, M.N.; Teller, A.H.; Teller, E. "Equations of State
-       Calculations by Fast Computing Machines". Journal of Chemical Physics 21
-       (6): 1087–1092 (1953). :doi:`10.1063/1.1699114`
-    .. [hastings-monte-carlo-1970] Hastings, W.K. "Monte Carlo Sampling Methods
-       Using Markov Chains and Their Applications". Biometrika 57 (1): 97–109 (1970).
-       :doi:`10.1093/biomet/57.1.97`
-    .. [ripley-stochastic-1987]  B. D Ripley, Stochastic simulation, vol. 183
-       (Wiley Online  Library, 1987). :doi:`10.1002/9780470316726.fmatter`
-
+        the Markov chain is implemented using the Metropolis-Hastings
+        [metropolis-equations-1953]_ [hastings-monte-carlo-1970]_
+        acceptance/rejection algorithm.
 
     Examples
     --------
-
     >>> from numpy.random import randint, random, seed, poisson
     >>> from pylab import *
-    >>> seed(42)
+    >>> seed(43)
 
     This is a degree sampler which uses rejection sampling to sample from the
     distribution :math:`P(k)\propto 1/k`, up to a maximum.
@@ -174,7 +181,7 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     ...                     lambda i, k: 1.0 / (1 + abs(i - k)), directed=False,
     ...                     mix_time=100)
     >>> gt.scalar_assortativity(g, "out")
-    (0.5149626775363764, 0.01291310404121864)
+    (0.6279771609121966, 0.010942827982112517)
 
     The following samples an in,out-degree pair from the joint distribution:
 
@@ -265,6 +272,51 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
         :align: center
 
         Average nearest neighbour correlations.
+
+
+    **Blockmodels**
+
+
+    The following example shows how a blockmodel [#]_ can be generated. We will
+    consider a system of 10 blocks, which form communities. The connection
+    probability will be given by
+
+    >>> def corr(a, b):
+    ...    if a == b:
+    ...        return 0.999
+    ...    else:
+    ...        return 0.001
+
+    The blockmodel can be generated as follows.
+
+    >>> g, bm = gt.random_graph(1000, lambda: poisson(10), directed=False,
+    ...                         blockmodel=lambda: randint(10), deg_corr=corr,
+    ...                         mix_time=500)
+    >>> gt.graph_draw(g, vcolor=bm, layout="sfdp", output="blockmodel.png")
+    <...>
+
+    .. figure:: blockmodel.png
+        :align: center
+
+        Simple blockmodel with 10 blocks.
+
+
+    .. [#] Blockmodels are equivalent to the hidden variable model
+       [boguna-correlated-2003]_.
+
+
+    References
+    ----------
+    .. [metropolis-equations-1953]  Metropolis, N.; Rosenbluth, A.W.;
+       Rosenbluth, M.N.; Teller, A.H.; Teller, E. "Equations of State
+       Calculations by Fast Computing Machines". Journal of Chemical Physics 21
+       (6): 1087–1092 (1953). :doi:`10.1063/1.1699114`
+    .. [hastings-monte-carlo-1970] Hastings, W.K. "Monte Carlo Sampling Methods
+       Using Markov Chains and Their Applications". Biometrika 57 (1): 97–109 (1970).
+       :doi:`10.1093/biomet/57.1.97`
+    .. [boguna-correlated-2003] M. Boguñá and R. Pastor-Satorras, "Class of
+       correlated random networks with hidden variables" Physical Review E
+       68, 036112 (2003) :doi:`10.1103/PhysRevE.68.036112`
     """
 
     seed = numpy.random.randint(0, sys.maxint)
@@ -273,30 +325,70 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
         uncorrelated = True
     else:
         uncorrelated = False
-    libgraph_tool_generation.gen_graph(g._Graph__graph, N, deg_sampler,
+
+    if (type(blockmodel) is types.FunctionType or
+        type(blockmodel) is types.LambdaType):
+        bm = numpy.zeros(N, dtype="int")
+        if len(inspect.getargspec(blockmodel)[0]) == 0:
+            for i in xrange(N):
+                bm[i] = blockmodel()
+        else:
+            for i in xrange(N):
+                bm[i] = blockmodel(i)
+        blockmodel = numpy.array(bm)
+
+    if len(inspect.getargspec(deg_sampler)[0]) > 0:
+        if blockmodel is not None:
+            sampler = lambda i: deg_sampler(blockmodel[i])
+        else:
+            sample = deg_sampler
+    else:
+        sampler = lambda i: deg_sampler()
+
+    libgraph_tool_generation.gen_graph(g._Graph__graph, N, sampler,
                                        uncorrelated, not parallel_edges,
                                        not self_loops, not directed,
                                        seed, verbose, True)
+    g.set_directed(directed)
+
+    if blockmodel is not None:
+        btype = _gt_type(blockmodel[0])
+        bm = g.new_vertex_property(btype)
+        if btype in ["object", "string"] or "vector" in btype:
+            for v in g.vertices():
+                bm[v] = blockmodel[int(v)]
+        else:
+            try:
+                bm.a = blockmodel
+            except ValueError:
+                bm = g.new_vertex_property("object")
+                for v in g.vertices():
+                    bm[v] = blockmodel[int(v)]
+    else:
+        bm = None
 
     if parallel_edges and self_loops and strat != "probabilistic":
         mix_time = 1
-    g.set_directed(directed)
     if random:
         if deg_corr is not None:
             random_rewire(g, strat="probabilistic", n_iter=mix_time,
                           parallel_edges=parallel_edges, deg_corr=deg_corr,
-                          self_loops=self_loops, verbose=verbose)
+                          self_loops=self_loops, blockmodel=bm,
+                          verbose=verbose)
         else:
             random_rewire(g, parallel_edges=parallel_edges, n_iter=mix_time,
                           self_loops=self_loops, verbose=verbose)
 
-    return g
+    if bm is None:
+        return g
+    else:
+        return g, bm
 
 
 @_limit_args({"strat": ["erdos", "correlated", "uncorrelated", "probabilistic"]})
 def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
                   parallel_edges=False, self_loops=False, deg_corr=None,
-                  ret_fail=False, verbose=False):
+                  blockmodel=None, ret_fail=False, verbose=False):
     r"""
     Shuffle the graph in-place.
 
@@ -339,6 +431,13 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
         function should return a number proportional to the probability of such
         an edge existing in the generated graph. This parameter is ignored,
         unless ``strat == "probabilistic"``.
+
+        If ``blockmodel != None``, the value passed to the function will be the
+        block value of the respective vertices, not the in/out-degree pairs.
+    blockmodel : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        If supplied, the graph will be rewired to conform to a blockmodel
+        ensemble. The value must be a vertex property map which defines the
+        block of each vertex.
     ret_fail : bool (optional, default: ``False``)
         If ``True``, the number of failed edge moves (due to parallel edges or
         self-loops) is returned.
@@ -372,28 +471,14 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
 
         If ``strat == "probabilistic"``, the Markov chain still needs to be
         mixed, even if parallel edges and self-loops are allowed. In this case
-        the Markov chain is implemented using a mixture of the alias method
-        [ripley-stochastic-1987]_ for direct sampling of target degrees, and
-        Metropolis-Hastings [metropolis-equations-1953]_
-        [hastings-monte-carlo-1970]_ acceptance/rejection sampling of edge
-        swaps.
+        the Markov chain is implemented using the Metropolis-Hastings
+        [metropolis-equations-1953]_ [hastings-monte-carlo-1970]_
+        acceptance/rejection algorithm.
 
 
     Each edge is tentatively swapped once per iteration, so the overall
     complexity is :math:`O(V + E \times \text{n_iter})`. If ``edge_sweep ==
     False``, the complexity becomes :math:`O(V + E + \text{n_iter})`.
-
-    References
-    ----------
-    .. [metropolis-equations-1953]  Metropolis, N.; Rosenbluth, A.W.;
-       Rosenbluth, M.N.; Teller, A.H.; Teller, E. "Equations of State
-       Calculations by Fast Computing Machines". Journal of Chemical Physics 21
-       (6): 1087–1092 (1953). :doi:`10.1063/1.1699114`
-    .. [hastings-monte-carlo-1970] Hastings, W.K. "Monte Carlo Sampling Methods
-       Using Markov Chains and Their Applications". Biometrika 57 (1): 97–109 (1970).
-       :doi:`10.1093/biomet/57.1.97`
-    .. [ripley-stochastic-1987]  B. D Ripley, Stochastic simulation, vol. 183
-       (Wiley Online  Library, 1987). :doi:`10.1002/9780470316726.fmatter`
 
     Examples
     --------
@@ -402,7 +487,7 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
 
     >>> from numpy.random import random, seed
     >>> from pylab import *
-    >>> seed(42)
+    >>> seed(43)
     >>> g, pos = gt.triangulation(random((1000,2)))
     >>> gt.graph_draw(g, layout="arf", output="rewire_orig.png", size=(6,6))
     <...>
@@ -515,8 +600,18 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
         Average degree correlations for the different shuffled and non-shuffled
         directed graphs. The shuffled graph with correlations displays exactly
         the same correlation as the original graph.
-    """
 
+    References
+    ----------
+    .. [metropolis-equations-1953]  Metropolis, N.; Rosenbluth, A.W.;
+       Rosenbluth, M.N.; Teller, A.H.; Teller, E. "Equations of State
+       Calculations by Fast Computing Machines". Journal of Chemical Physics 21
+       (6): 1087–1092 (1953). :doi:`10.1063/1.1699114`
+    .. [hastings-monte-carlo-1970] Hastings, W.K. "Monte Carlo Sampling Methods
+       Using Markov Chains and Their Applications". Biometrika 57 (1): 97–109 (1970).
+       :doi:`10.1093/biomet/57.1.97`
+
+    """
     seed = numpy.random.randint(0, sys.maxint)
 
     if not parallel_edges:
@@ -532,17 +627,20 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
                              "without self-loops if it already contains" +
                              " self-loops!")
 
-    if deg_corr is not None and not g.is_directed():
+    if (deg_corr is not None and not g.is_directed()) and blockmodel is None:
         corr = lambda i, j: deg_corr(i[1], j[1])
     else:
         corr = deg_corr
 
     if strat != "probabilistic":
         g = GraphView(g, reversed=False)
+    elif blockmodel is not None:
+        strat = "blockmodel"
     pcount = libgraph_tool_generation.random_rewire(g._Graph__graph, strat,
                                                     n_iter, not edge_sweep,
                                                     self_loops, parallel_edges,
-                                                    corr, seed, verbose)
+                                                    corr, _prop("v", g, blockmodel),
+                                                    seed, verbose)
     if ret_fail:
         return pcount
 
@@ -599,12 +697,12 @@ def graph_union(g1, g2, props=None, include=False):
        First graph in the union.
     g2 : :class:`~graph_tool.Graph`
        Second graph in the union.
-    props : list of tuples of :class:`~graph_tool.PropertyMap` (optional, default: [])
+    props : list of tuples of :class:`~graph_tool.PropertyMap` (optional, default: ``[]``)
        Each element in this list must be a tuple of two PropertyMap objects. The
        first element must be a property of `g1`, and the second of `g2`. The
        values of the property maps are propagated into the union graph, and
        returned.
-    include : bool (optional, default: False)
+    include : bool (optional, default: ``False``)
        If true, graph `g2` is inserted into `g1` which is modified. If false, a
        new graph is created, and both graphs remain unmodified.
 
@@ -688,11 +786,11 @@ def triangulation(points, type="simple", periodic=False):
     points : :class:`~numpy.ndarray`
         Point set for the triangulation. It may be either a N x d array, where N
         is the number of points, and d is the space dimension (either 2 or 3).
-    type : string (optional, default: 'simple')
+    type : string (optional, default: ``'simple'``)
         Type of triangulation. May be either 'simple' or 'delaunay'.
-    periodic : bool (optional, default: False)
-        If True, periodic boundary conditions will be used. This is parameter is
-        valid only for type="delaunay", and is otherwise ignored.
+    periodic : bool (optional, default: ``False``)
+        If ``True``, periodic boundary conditions will be used. This is
+        parameter is valid only for type="delaunay", and is otherwise ignored.
 
     Returns
     -------
@@ -790,7 +888,7 @@ def lattice(shape, periodic=False):
     ----------
     shape : list or :class:`~numpy.ndarray`
         List of sizes in each dimension.
-    periodic : bool (optional, default: False)
+    periodic : bool (optional, default: ``False``)
         If ``True``, periodic boundary conditions will be used.
 
     Returns
@@ -845,7 +943,7 @@ def geometric_graph(points, radius, ranges=None):
     radius : float
         Pairs of points with an euclidean distance lower than this parameters
         will be connected.
-    ranges : list or :class:`~numpy.ndarray` (optional, default: None)
+    ranges : list or :class:`~numpy.ndarray` (optional, default: ``None``)
         If provided, periodic boundary conditions will be assumed, and the
         values of this parameter it will be used as the ranges in all
         dimensions. It must be a two-dimensional array, where each row will
@@ -924,17 +1022,17 @@ def price_network(N, m=1, c=None, gamma=1, directed=True, seed_graph=None):
     ----------
     N : int
         Size of the network.
-    m : int (optional, default: 1)
+    m : int (optional, default: ``1``)
         Out-degree of newly added vertices.
-    c : float (optional, default: 1 if ``directed==True`` else 0)
+    c : float (optional, default: ``1 if directed == True else 0``)
         Constant factor added to the probability of a vertex receiving an edge
         (see notes below).
-    gamma : float (optional, default: 1)
+    gamma : float (optional, default: ``1``)
         Preferential attachment power (see notes below).
-    directed : bool (optional, default: True)
+    directed : bool (optional, default: ``True``)
         If ``True``, a Price network is generated. If ``False``, a
         Barabási-Albert network is generated.
-    seed_graph : :class:`~graph_tool.Graph` (optional, default: None)
+    seed_graph : :class:`~graph_tool.Graph` (optional, default: ``None``)
         If provided, this graph will be used as the starting point of the
         algorithm.
 

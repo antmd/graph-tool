@@ -32,15 +32,15 @@ class PythonFuncWrap
 public:
     PythonFuncWrap(python::object o): _o(o) {}
 
-    pair<size_t, size_t> operator()() const
+    pair<size_t, size_t> operator()(size_t i) const
     {
-        python::object ret = _o();
+        python::object ret = _o(i);
         return python::extract<pair<size_t,size_t> >(ret);
     }
 
-    size_t operator()(bool) const
+    size_t operator()(size_t i, bool) const
     {
-        python::object ret = _o();
+        python::object ret = _o(i);
         return python::extract<size_t>(ret);
     }
 
@@ -48,11 +48,9 @@ private:
     python::object _o;
 };
 
-void generate_graph(GraphInterface& gi, size_t N,
-                    python::object deg_sample,
-                    bool uncorrelated, bool no_parallel,
-                    bool no_self_loops, bool undirected,
-                    size_t seed, bool verbose, bool verify)
+void generate_graph(GraphInterface& gi, size_t N, python::object deg_sample,
+                    bool uncorrelated, bool no_parallel, bool no_self_loops,
+                    bool undirected, size_t seed, bool verbose, bool verify)
 {
     typedef graph_tool::detail::get_all_graph_views::apply<
     graph_tool::detail::scalar_pairs, mpl::bool_<false>,
@@ -83,7 +81,8 @@ void generate_graph(GraphInterface& gi, size_t N,
 
 size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
                      bool no_sweep, bool self_loops, bool parallel_edges,
-                     python::object corr_prob, size_t seed, bool verbose);
+                     python::object corr_prob, boost::any block,
+                     size_t seed, bool verbose);
 void predecessor_graph(GraphInterface& gi, GraphInterface& gpi,
                        boost::any pred_map);
 void line_graph(GraphInterface& gi, GraphInterface& lgi,

@@ -185,7 +185,7 @@ public:
             dvertex_t& v = vertices[i];
             do
             {
-                tie(v.in_degree, v.out_degree) = deg_sample();
+                tie(v.in_degree, v.out_degree) = deg_sample(i);
             }
             while (_no_parallel &&
                    (v.in_degree > _max_deg || v.out_degree > _max_deg));
@@ -209,7 +209,8 @@ public:
               (_no_self_loops && !_no_parallel &&
                !is_graphical_parallel(_deg_seq)))
         {
-            dvertex_t& v = vertices[vertex_sample(rng)];
+            size_t i = vertex_sample(rng);
+            dvertex_t& v = vertices[i];
             if (_no_parallel || _no_self_loops)
             {
                 typeof(_deg_seq.begin()) iter =
@@ -223,7 +224,7 @@ public:
             sum_k -= v.out_degree;
             do
             {
-                tie(v.in_degree, v.out_degree) = deg_sample();
+                tie(v.in_degree, v.out_degree) = deg_sample(i);
             }
             while (_no_parallel &&
                    (v.in_degree > _max_deg || v.out_degree > _max_deg));
@@ -326,7 +327,7 @@ public:
             dvertex_t& v = vertices[i];
             do
             {
-                v.out_degree = deg_sample(true);
+                v.out_degree = deg_sample(i, true);
             }
             while (_no_parallel && v.out_degree > _max_deg);
             sum_k += v.out_degree;
@@ -349,7 +350,8 @@ public:
                (_no_self_loops && !_no_parallel &&
                 !is_graphical_parallel(_deg_seq)))
         {
-            dvertex_t& v = vertices[vertex_sample(rng)];
+            size_t i = vertex_sample(rng);
+            dvertex_t& v = vertices[i];
             if (_no_parallel || _no_self_loops)
             {
                 typeof(_deg_seq.begin()) iter = _deg_seq.find(v.out_degree);
@@ -360,7 +362,7 @@ public:
             sum_k -= v.out_degree;
             do
             {
-                v.out_degree = deg_sample(true);
+                v.out_degree = deg_sample(i, true);
             }
             while (_no_parallel && (v.out_degree > _max_deg));
             sum_k +=  v.out_degree;
