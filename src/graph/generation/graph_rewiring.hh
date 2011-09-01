@@ -245,13 +245,18 @@ struct graph_rewire
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
 
         vector<edge_t> edges;
-        typedef random_permutation_iterator<typename vector<edge_t>::iterator,
+        vector<size_t> edge_pos;
+        typedef random_permutation_iterator<typename vector<size_t>::iterator,
                                             rng_t>
             random_edge_iter;
 
         typename graph_traits<Graph>::edge_iterator e, e_end;
         for (tie(e, e_end) = boost::edges(g); e != e_end; ++e)
+        {
             edges.push_back(*e);
+            edge_pos.push_back(edge_pos.size());
+        }
+    
 
         RewireStrategy<Graph, EdgeIndexMap, CorrProb, BlockDeg>
             rewire(g, edge_index, edges, corr_prob, bd, rng);
@@ -266,8 +271,8 @@ struct graph_rewire
         for (size_t i = 0; i < niter; ++i)
         {
             random_edge_iter 
-                ei_begin(edges.begin(), edges.end(), rng),
-                ei_end(edges.end(), edges.end(), rng);
+                ei_begin(edge_pos.begin(), edge_pos.end(), rng),
+                ei_end(edge_pos.end(), edge_pos.end(), rng);
 
             // for each edge rewire its source or target
             for (random_edge_iter ei = ei_begin; ei != ei_end; ++ei)
@@ -276,7 +281,7 @@ struct graph_rewire
                 if (verbose)
                     print_progress(i, niter, e_pos, no_sweep ? 1 : edges.size(),
                                    str);
-                bool success = rewire(e_pos, self_loops, parallel_edges);
+                bool success = rewire(*ei, self_loops, parallel_edges);
                 if (!success)
                     ++pcount;
 
@@ -492,11 +497,9 @@ public:
         base_t;
 
     typedef Graph graph_t;
-    typedef EdgeIndexMap edge_index_t;
 
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
     typedef typename graph_traits<Graph>::edge_descriptor edge_t;
-    typedef typename EdgeIndexMap::value_type index_t;
 
     CorrelatedRewireStrategy(Graph& g, EdgeIndexMap edge_index,
                              vector<edge_t>& edges, CorrProb, BlockDeg,
@@ -506,40 +509,42 @@ public:
         for (size_t ei = 0; ei < base_t::_edges.size(); ++ei)
         {
             // For undirected graphs, there is no difference between source and
-            // target, and each edge will appear _twice_ in the lists below,
+            // target, and each edge will appear _twice_ in the list below,
             // once for each different ordering of source and target.
             edge_t& e = base_t::_edges[ei];
 
-            _edges_by_target[make_pair(in_degreeS()(target(e, _g), _g),
-                                       out_degree(target(e, _g), _g))]
-                .push_back(make_pair(ei, false));
+            vertex_t t = target(e, _g);
+            deg_t tdeg = make_pair(in_degreeS()(t, _g), out_degree(t, _g));
+            _edges_by_target[tdeg].push_back(make_pair(ei, false));
 
             if (!is_directed::apply<Graph>::type::value)
             {
-                _edges_by_target[make_pair(in_degreeS()(source(e, _g), _g),
-                                           out_degree(source(e, _g), _g))]
-                    .push_back(make_pair(ei, true));
+                t = source(e, _g);
+                tdeg = make_pair(in_degreeS()(t, _g), out_degree(t, _g));
+                _edges_by_target[tdeg].push_back(make_pair(ei, true));
             }
         }
     }
 
     pair<size_t,bool> get_target_edge(size_t ei)
     {
-        pair<size_t, size_t> deg =
-            make_pair(in_degreeS()(target(base_t::_edges[ei], _g), _g),
-                      out_degree(target(base_t::_edges[ei], _g), _g));
-        edges_by_end_deg_t& edges = _edges_by_target;
-        typename edges_by_end_deg_t::mapped_type& elist = edges[deg];
+        edge_t& e = base_t::_edges[ei];
+        vertex_t t = target(e, _g);
+        deg_t tdeg = make_pair(in_degreeS()(t, _g), out_degree(t, _g));
+        typename edges_by_end_deg_t::mapped_type& elist =
+            _edges_by_target[tdeg];
         tr1::uniform_int<> sample(0, elist.size() - 1);
+
         return elist[sample(base_t::_rng)];
     }
 
     void update_edge(size_t e, bool insert) {}
 
 private:
-    typedef tr1::unordered_map<pair<size_t, size_t>,
-                               vector<pair<index_t, bool> >,
-                               hash<pair<size_t, size_t> > >
+    typedef pair<size_t, size_t> deg_t;
+    typedef tr1::unordered_map<deg_t,
+                               vector<pair<size_t, bool> >,
+                               hash<deg_t> >
         edges_by_end_deg_t;
     edges_by_end_deg_t _edges_by_target;
 

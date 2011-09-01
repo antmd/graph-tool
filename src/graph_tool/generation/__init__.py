@@ -181,7 +181,7 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     ...                     lambda i, k: 1.0 / (1 + abs(i - k)), directed=False,
     ...                     mix_time=100)
     >>> gt.scalar_assortativity(g, "out")
-    (0.6279771609121966, 0.010942827982112517)
+    (0.6435658697163692, 0.010420519538259333)
 
     The following samples an in,out-degree pair from the joint distribution:
 

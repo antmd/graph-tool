@@ -371,12 +371,10 @@ def distance_histogram(g, weight=None, bins=[0, 1], samples=None,
     >>> g = gt.random_graph(100, lambda: (3, 3))
     >>> hist = gt.distance_histogram(g)
     >>> print hist
-    [array([  0.00000000e+00,   3.00000000e+02,   8.44000000e+02,
-             2.12300000e+03,   3.76100000e+03,   2.62500000e+03,
-             2.46000000e+02,   1.00000000e+00]), array([0, 1, 2, 3, 4, 5, 6, 7, 8], dtype=uint64)]
+    [array([    0.,   300.,   861.,  2165.,  3801.,  2576.,   197.]), array([0, 1, 2, 3, 4, 5, 6, 7], dtype=uint64)]
     >>> hist = gt.distance_histogram(g, samples=10)
     >>> print hist
-    [array([   0.,   30.,   83.,  213.,  377.,  257.,   30.]), array([0, 1, 2, 3, 4, 5, 6, 7], dtype=uint64)]
+    [array([   0.,   30.,   87.,  221.,  395.,  234.,   23.]), array([0, 1, 2, 3, 4, 5, 6, 7], dtype=uint64)]
     """
 
     if samples != None:
