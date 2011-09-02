@@ -118,8 +118,8 @@ void GraphInterface::CopyVertexProperty(const GraphInterface& src,
                                         boost::any prop_tgt)
 {
     run_action<>()
-        (*this, bind<void>(copy_property<vertex_selector,vertex_properties>(),
-                           _1, _2, _3, prop_src),
+        (*this, boost::bind<void>(copy_property<vertex_selector,vertex_properties>(),
+                                  _1, _2, _3, prop_src),
          graph_views(), writable_vertex_properties())
         (src.GetGraphView(), prop_tgt);
 }
@@ -129,8 +129,8 @@ void GraphInterface::CopyEdgeProperty(const GraphInterface& src,
                                       boost::any prop_tgt)
 {
     run_action<>()
-        (*this, bind<void>(copy_property<edge_selector,edge_properties>(),
-                           _1, _2, _3, prop_src),
+        (*this, boost::bind<void>(copy_property<edge_selector,edge_properties>(),
+                                  _1, _2, _3, prop_src),
          graph_views(), writable_edge_properties())
         (src.GetGraphView(), prop_tgt);
 }
