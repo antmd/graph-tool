@@ -134,7 +134,7 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     ``mix_time`` parameter passed as ``n_iter``.
 
     The complexity is :math:`O(V + E)` if parallel edges are allowed, and
-    :math:`O(V + E \times\text{mix_time})` if parallel edges are not allowed.
+    :math:`O(V + E \times\text{mix-time})` if parallel edges are not allowed.
 
 
     .. note ::
@@ -213,9 +213,9 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     <...>
     >>> ylabel("out-degree")
     <...>
-    >>> savefig("combined-deg-hist.png")
+    >>> savefig("combined-deg-hist.pdf")
 
-    .. figure:: combined-deg-hist.png
+    .. figure:: combined-deg-hist.*
         :align: center
 
         Combined degree histogram.
@@ -266,9 +266,9 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     <...>
     >>> ylabel("average target degree")
     <...>
-    >>> savefig("deg-corr-dir.png")
+    >>> savefig("deg-corr-dir.pdf")
 
-    .. figure:: deg-corr-dir.png
+    .. figure:: deg-corr-dir.*
         :align: center
 
         Average nearest neighbour correlations.
@@ -292,10 +292,10 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     >>> g, bm = gt.random_graph(1000, lambda: poisson(10), directed=False,
     ...                         blockmodel=lambda: randint(10), deg_corr=corr,
     ...                         mix_time=500)
-    >>> gt.graph_draw(g, vcolor=bm, layout="sfdp", output="blockmodel.png")
+    >>> gt.graph_draw(g, vcolor=bm, layout="sfdp", output="blockmodel.pdf")
     <...>
 
-    .. figure:: blockmodel.png
+    .. figure:: blockmodel.*
         :align: center
 
         Simple blockmodel with 10 blocks.
@@ -477,8 +477,8 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
 
 
     Each edge is tentatively swapped once per iteration, so the overall
-    complexity is :math:`O(V + E \times \text{n_iter})`. If ``edge_sweep ==
-    False``, the complexity becomes :math:`O(V + E + \text{n_iter})`.
+    complexity is :math:`O(V + E \times \text{n-iter})`. If ``edge_sweep ==
+    False``, the complexity becomes :math:`O(V + E + \text{n-iter})`.
 
     Examples
     --------
@@ -489,24 +489,24 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
     >>> from pylab import *
     >>> seed(43)
     >>> g, pos = gt.triangulation(random((1000,2)))
-    >>> gt.graph_draw(g, layout="arf", output="rewire_orig.png", size=(6,6))
+    >>> gt.graph_draw(g, layout="arf", output="rewire_orig.pdf", size=(6,6))
     <...>
     >>> gt.random_rewire(g, "correlated")
-    >>> gt.graph_draw(g, layout="arf", output="rewire_corr.png", size=(6,6))
+    >>> gt.graph_draw(g, layout="arf", output="rewire_corr.pdf", size=(6,6))
     <...>
     >>> gt.random_rewire(g)
-    >>> gt.graph_draw(g, layout="arf", output="rewire_uncorr.png", size=(6,6))
+    >>> gt.graph_draw(g, layout="arf", output="rewire_uncorr.pdf", size=(6,6))
     <...>
     >>> gt.random_rewire(g, "erdos")
-    >>> gt.graph_draw(g, layout="arf", output="rewire_erdos.png", size=(6,6))
+    >>> gt.graph_draw(g, layout="arf", output="rewire_erdos.pdf", size=(6,6))
     <...>
 
     Some `ridiculograms <http://www.youtube.com/watch?v=YS-asmU3p_4>`_ :
 
-    .. image:: rewire_orig.png
-    .. image:: rewire_corr.png
-    .. image:: rewire_uncorr.png
-    .. image:: rewire_erdos.png
+    .. image:: rewire_orig.*
+    .. image:: rewire_corr.*
+    .. image:: rewire_uncorr.*
+    .. image:: rewire_erdos.*
 
     *From left to right:* Original graph --- Shuffled graph, with degree
     correlations --- Shuffled graph, without degree correlations --- Shuffled graph,
@@ -540,9 +540,9 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
     <...>
     >>> legend(loc="best")
     <...>
-    >>> savefig("shuffled-stats.png")
+    >>> savefig("shuffled-stats.pdf")
 
-    .. figure:: shuffled-stats.png
+    .. figure:: shuffled-stats.*
         :align: center
 
         Average degree correlations for the different shuffled and non-shuffled
@@ -592,9 +592,9 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
     <...>
     >>> ylabel("average target degree")
     <...>
-    >>> savefig("shuffled-deg-corr-dir.png")
+    >>> savefig("shuffled-deg-corr-dir.pdf")
 
-    .. figure:: shuffled-deg-corr-dir.png
+    .. figure:: shuffled-deg-corr-dir.*
         :align: center
 
         Average degree correlations for the different shuffled and non-shuffled
@@ -722,16 +722,16 @@ def graph_union(g1, g2, props=None, include=False):
     >>> g = gt.triangulation(random((300,2)))[0]
     >>> ug = gt.graph_union(g, g)
     >>> uug = gt.graph_union(g, ug)
-    >>> gt.graph_draw(g, layout="arf", size=(8,8), output="graph_original.png")
+    >>> gt.graph_draw(g, layout="arf", size=(8,8), output="graph_original.pdf")
     <...>
-    >>> gt.graph_draw(ug, layout="arf", size=(8,8), output="graph_union.png")
+    >>> gt.graph_draw(ug, layout="arf", size=(8,8), output="graph_union.pdf")
     <...>
-    >>> gt.graph_draw(uug, layout="arf", size=(8,8), output="graph_union2.png")
+    >>> gt.graph_draw(uug, layout="arf", size=(8,8), output="graph_union2.pdf")
     <...>
 
-    .. image:: graph_original.png
-    .. image:: graph_union.png
-    .. image:: graph_union2.png
+    .. image:: graph_original.*
+    .. image:: graph_union.*
+    .. image:: graph_union2.*
 
     """
     if props == None:
@@ -837,7 +837,7 @@ def triangulation(points, type="simple", periodic=False):
     >>> b = gt.betweenness(g, weight=weight)
     >>> b[1].a *= 100
     >>> gt.graph_draw(g, pos=pos, pin=True, size=(8,8), vsize=0.07, vcolor=b[0],
-    ...               eprops={"penwidth":b[1]}, output="triang.png")
+    ...               eprops={"penwidth":b[1]}, output="triang.pdf")
     <...>
     >>> g, pos = gt.triangulation(points, type="delaunay")
     >>> weight = g.new_edge_property("double")
@@ -847,13 +847,13 @@ def triangulation(points, type="simple", periodic=False):
     >>> b = gt.betweenness(g, weight=weight)
     >>> b[1].a *= 120
     >>> gt.graph_draw(g, pos=pos, pin=True, size=(8,8), vsize=0.07, vcolor=b[0],
-    ...               eprops={"penwidth":b[1]}, output="triang-delaunay.png")
+    ...               eprops={"penwidth":b[1]}, output="triang-delaunay.pdf")
     <...>
 
     2D triangulation of random points:
 
-    .. image:: triang.png
-    .. image:: triang-delaunay.png
+    .. image:: triang.*
+    .. image:: triang-delaunay.*
 
     *Left:* Simple triangulation. *Right:* Delaunay triangulation. The vertex
     colors and the edge thickness correspond to the weighted betweenness
@@ -904,18 +904,18 @@ def lattice(shape, periodic=False):
     Examples
     --------
     >>> g = gt.lattice([10,10])
-    >>> gt.graph_draw(g, size=(8,8), output="lattice.png")
+    >>> gt.graph_draw(g, size=(8,8), output="lattice.pdf")
     <...>
     >>> g = gt.lattice([10,20], periodic=True)
-    >>> gt.graph_draw(g, size=(8,8), output="lattice_periodic.png")
+    >>> gt.graph_draw(g, size=(8,8), output="lattice_periodic.pdf")
     <...>
     >>> g = gt.lattice([10,10,10])
-    >>> gt.graph_draw(g, size=(8,8), output="lattice_3d.png")
+    >>> gt.graph_draw(g, size=(8,8), output="lattice_3d.pdf")
     <...>
 
-    .. image:: lattice.png
-    .. image:: lattice_periodic.png
-    .. image:: lattice_3d.png
+    .. image:: lattice.*
+    .. image:: lattice_periodic.*
+    .. image:: lattice_3d.*
 
     *Left:* 10x10 2D lattice. *Middle:* 10x20 2D periodic lattice (torus).
     *Right:* 10x10x10 3D lattice.
@@ -974,14 +974,14 @@ def geometric_graph(points, radius, ranges=None):
     >>> seed(42)
     >>> points = random((500, 2)) * 4
     >>> g, pos = gt.geometric_graph(points, 0.3)
-    >>> gt.graph_draw(g, pos=pos, pin=True, size=(8,8), output="geometric.png")
+    >>> gt.graph_draw(g, pos=pos, pin=True, size=(8,8), output="geometric.pdf")
     <...>
     >>> g, pos = gt.geometric_graph(points, 0.3, [(0,4), (0,4)])
-    >>> gt.graph_draw(g, size=(8,8), output="geometric_periodic.png")
+    >>> gt.graph_draw(g, size=(8,8), output="geometric_periodic.pdf")
     <...>
 
-    .. image:: geometric.png
-    .. image:: geometric_periodic.png
+    .. image:: geometric.*
+    .. image:: geometric_periodic.*
 
     *Left:* Geometric network with random points. *Right:* Same network, but
      with periodic boundary conditions.
@@ -1092,15 +1092,15 @@ def price_network(N, m=1, c=None, gamma=1, directed=True, seed_graph=None):
     >>> seed(42)
     >>> g = gt.price_network(100000)
     >>> gt.graph_draw(g, layout="sfdp", size=(12,12), vcolor=g.vertex_index,
-    ...               output="price-network.png")
+    ...               output="price-network.pdf")
     <...>
     >>> g = gt.price_network(100000, c=0.1)
     >>> gt.graph_draw(g, layout="sfdp", size=(12,12), vcolor=g.vertex_index,
-    ...               output="price-network-broader.png")
+    ...               output="price-network-broader.pdf")
     <...>
 
-    .. image:: price-network.png
-    .. image:: price-network-broader.png
+    .. image:: price-network.*
+    .. image:: price-network-broader.*
 
     Price networks with :math:`N=10^5` nodes. **Left:** :math:`c=1`, **Right:**
     :math:`c=0.1`. The colors represent the order in which vertices were

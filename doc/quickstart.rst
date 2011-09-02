@@ -83,10 +83,10 @@ visualize the graph we created so far with the
 
 .. doctest::
 
-   >>> graph_draw(g, vprops={"label": g.vertex_index}, output="two-nodes.png")
+   >>> graph_draw(g, vprops={"label": g.vertex_index}, output="two-nodes.pdf")
    <...>
 
-.. figure:: two-nodes.png
+.. figure:: two-nodes.*
    :align: center
 
    A simple directed graph with two vertices and one edge, created by
@@ -451,7 +451,7 @@ This is the degree distribution, with 100000 nodes. If you want to see a broader
 power law, try to increase the number of vertices to something like :math:`10^6`
 or :math:`10^7`.
 
-.. figure:: deg-hist.png
+.. figure:: deg-hist.*
    :align: center
 
    In-degree distribution of a price network with 100000 nodes.
@@ -463,9 +463,9 @@ use the :func:`~graph_tool.draw.graph_draw` function.
 
    g = load_graph("price.xml.gz")
    age = g.vertex_properties["age"]
-   graph_draw(g, size=(15,15), vcolor=age, output="price.png")
+   graph_draw(g, size=(15,15), vcolor=age, output="price.pdf")
 
-.. figure:: price.png
+.. figure:: price.*
    :align: center
 
    A Price network with :math:`10^5` nodes. The vertex colors represent
@@ -508,13 +508,13 @@ edge filtering.
 
    g, pos = triangulation(random((500, 2)) * 4, type="delaunay")
    tree = min_spanning_tree(g)
-   graph_draw(g, pos=pos, pin=True, size=(8, 8), ecolor=tree, output="min_tree.png")
+   graph_draw(g, pos=pos, pin=True, size=(8, 8), ecolor=tree, output="min_tree.pdf")
 
 The ``tree`` property map has a bool type, with value "1" if the edge belongs to
 the tree, and "0" otherwise. Below is an image of the original graph, with the
 marked edges.
 
-.. figure:: min_tree.png
+.. figure:: min_tree.*
    :align: center
 
 We can now filter out the edges which don't belong to the minimum spanning tree.
@@ -522,11 +522,11 @@ We can now filter out the edges which don't belong to the minimum spanning tree.
 .. testcode::
 
     g.set_edge_filter(tree)
-    graph_draw(g, pos=pos, pin=True, size=(8, 8), output="min_tree_filtered.png")
+    graph_draw(g, pos=pos, pin=True, size=(8, 8), output="min_tree_filtered.pdf")
 
 This is how the graph looks when filtered:
 
-.. figure:: min_tree_filtered.png
+.. figure:: min_tree_filtered.*
    :align: center
 
 Everything should work transparently on the filtered graph, simply as if the
@@ -539,9 +539,9 @@ and draws them as colors and line thickness in the graph.
     bv, be = betweenness(g)
     be.a *= 10
     graph_draw(g, pos=pos, pin=True, size=(8,8), vsize=0.07, vcolor=bv,
-               eprops={"penwidth":be}, output="filtered-bt.png")
+               eprops={"penwidth":be}, output="filtered-bt.pdf")
 
-.. figure:: filtered-bt.png
+.. figure:: filtered-bt.*
    :align: center
 
 
@@ -553,9 +553,9 @@ The original graph can be recovered by setting the edge filter to ``None``.
     bv, be = betweenness(g)
     be.a *= 10
     graph_draw(g, pos=pos, pin=True, size=(8,8), vsize=0.07, vcolor=bv,
-               eprops={"penwidth":be}, output="nonfiltered-bt.png")
+               eprops={"penwidth":be}, output="nonfiltered-bt.pdf")
 
-.. figure:: nonfiltered-bt.png
+.. figure:: nonfiltered-bt.*
    :align: center
 
 Everything works in analogous fashion with vertex filtering.
@@ -609,11 +609,11 @@ Like above, the result should be the isolated minimum spanning tree:
     >>> bv, be = betweenness(tv)
     >>> be.a *= 10
     >>> graph_draw(tv, pos=pos, pin=True, size=(8,8), vsize=0.07, vcolor=bv,
-    ...            eprops={"penwidth":be}, output="mst-view.png")
+    ...            eprops={"penwidth":be}, output="mst-view.pdf")
     <...>
 
 
-.. figure:: mst-view.png
+.. figure:: mst-view.*
    :align: center
 
    A view of the Delaunay graph, isolating only the minimum spanning tree.
@@ -654,10 +654,10 @@ The graph view constructed above can be visualized as
 .. doctest::
 
     >>> graph_draw(u, pos=pos, pin=True, size=(8,8), vsize=0.07, vcolor=bv,
-    ...            output="central-edges-view.png")
+    ...            output="central-edges-view.pdf")
     <...>
 
-.. figure:: central-edges-view.png
+.. figure:: central-edges-view.*
    :align: center
 
    A view of the Delaunay graph, isolating only the edges with
@@ -682,10 +682,10 @@ The resulting graph view can be visualized as
 .. doctest::
 
     >>> graph_draw(u, pos=pos, pin=True, size=(8,8), vsize=0.07,
-    ...            output="composed-filter.png")
+    ...            output="composed-filter.pdf")
     <...>
 
-.. figure:: composed-filter.png
+.. figure:: composed-filter.*
    :align: center
 
    A composed view, obtained as the minimum spanning tree of all vertices

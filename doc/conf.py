@@ -215,12 +215,19 @@ latex_documents = [
    ur'Tiago de Paula Peixoto', 'manual'),
 ]
 
-#latex_logo = "graph-draw.png"
+latex_preamble = """
+\setcounter{tocdepth}{2}
+"""
+
+latex_show_pagerefs = True
+latex_show_urls = False
+latex_paper_size = "a4"
+
+latex_logo = "blockmodel.pdf"
 
 latex_elements = {
     'papersize': "a4paper",
-    'fontpkg': r"\usepackage{palatino}\usepackage{eulervm}"}
-
+    'fontpkg': r"\usepackage{bookman}"}
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'python': ('http://docs.python.org', None),

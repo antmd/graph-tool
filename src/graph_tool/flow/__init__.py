@@ -59,10 +59,10 @@ The following network will be used as an example throughout the documentation.
     g.edge_properties["cap"] = cap
     g.vertex_properties["pos"] = pos
     g.save("flow-example.xml.gz")
-    gt.graph_draw(g, pos=pos, pin=True, penwidth=cap, output="flow-example.png")
+    gt.graph_draw(g, pos=pos, pin=True, penwidth=cap, output="flow-example.pdf")
 
 
-.. figure:: flow-example.png
+.. figure:: flow-example.*
     :align: center
 
     Example network used in the documentation below. The edge capacities are
@@ -129,10 +129,10 @@ def edmonds_karp_max_flow(g, source, target, capacity, residual=None):
     >>> print max_flow
     6.92759897841
     >>> pos = g.vertex_properties["pos"]
-    >>> gt.graph_draw(g, pos=pos, pin=True, penwidth=res, output="example-edmonds-karp.png")
+    >>> gt.graph_draw(g, pos=pos, pin=True, penwidth=res, output="example-edmonds-karp.pdf")
     <...>
 
-    .. figure:: example-edmonds-karp.png
+    .. figure:: example-edmonds-karp.*
         :align: center
 
         Edge flows obtained with the Edmonds-Karp algorithm. The source and
@@ -205,10 +205,10 @@ def push_relabel_max_flow(g, source, target, capacity, residual=None):
     >>> print max_flow
     6.92759897841
     >>> pos = g.vertex_properties["pos"]
-    >>> gt.graph_draw(g, pos=pos, pin=True, penwidth=res, output="example-push-relabel.png")
+    >>> gt.graph_draw(g, pos=pos, pin=True, penwidth=res, output="example-push-relabel.pdf")
     <...>
 
-    .. figure:: example-push-relabel.png
+    .. figure:: example-push-relabel.*
         :align: center
 
 
@@ -282,10 +282,10 @@ def boykov_kolmogorov_max_flow(g, source, target, capacity, residual=None):
     >>> print max_flow
     6.92759897841
     >>> pos = g.vertex_properties["pos"]
-    >>> gt.graph_draw(g, pos=pos, pin=True, penwidth=res, output="example-kolmogorov.png")
+    >>> gt.graph_draw(g, pos=pos, pin=True, penwidth=res, output="example-kolmogorov.pdf")
     <...>
 
-    .. figure:: example-kolmogorov.png
+    .. figure:: example-kolmogorov.*
         :align: center
 
         Edge flows obtained with the Boykov-Kolmogorov algorithm. The source and
@@ -353,10 +353,10 @@ def max_cardinality_matching(g, match=None):
     >>> res = gt.max_cardinality_matching(g)
     >>> print res[1]
     True
-    >>> gt.graph_draw(g, ecolor=res[0], output="max_card_match.png")
+    >>> gt.graph_draw(g, ecolor=res[0], output="max_card_match.pdf")
     <...>
 
-    .. figure:: max_card_match.png
+    .. figure:: max_card_match.*
         :align: center
 
         Edges belonging to the matching are in red.

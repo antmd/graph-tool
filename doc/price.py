@@ -66,7 +66,7 @@ gca().set_xlim(0.8, 1e3)
 subplots_adjust(left=0.2, bottom=0.2)
 xlabel("$k_{in}$")
 ylabel("$NP(k_{in})$")
-savefig("deg-hist.png")
+savefig("deg-hist.pdf")
 
 # let's do a random walk on the graph and print the age of the vertices we find,
 # just for fun.

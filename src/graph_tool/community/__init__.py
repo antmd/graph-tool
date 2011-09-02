@@ -149,13 +149,13 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
     >>> spins = gt.community_structure(g, 10000, 20, t_range=(5, 0.1),
     ...                                history_file="community-history1")
     >>> gt.graph_draw(g, pos=pos, pin=True, vsize=0.3, vcolor=spins,
-    ...               output="comm1.png", size=(10,10))
+    ...               output="comm1.pdf", size=(10,10))
     <...>
     >>> spins = gt.community_structure(g, 10000, 40, t_range=(5, 0.1),
     ...                                gamma=2.5,
     ...                                history_file="community-history2")
     >>> gt.graph_draw(g, pos=pos, pin=True, vsize=0.3, vcolor=spins,
-    ...               output="comm2.png", size=(10,10))
+    ...               output="comm2.pdf", size=(10,10))
     <...>
     >>> clf()
     >>> xlabel("iterations")
@@ -165,7 +165,7 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
     >>> a = loadtxt("community-history1").transpose()
     >>> plot(a[0], a[2])
     [...]
-    >>> savefig("comm1-hist.png")
+    >>> savefig("comm1-hist.pdf")
     >>> clf()
     >>> xlabel("iterations")
     <...>
@@ -174,18 +174,18 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
     >>> a = loadtxt("community-history2").transpose()
     >>> plot(a[0], a[2])
     [...]
-    >>> savefig("comm2-hist.png")
+    >>> savefig("comm2-hist.pdf")
 
 
     The community structure with :math:`\gamma=1`:
 
-    .. image:: comm1.png
-    .. image:: comm1-hist.png
+    .. image:: comm1.*
+    .. image:: comm1-hist.*
 
     The community structure with :math:`\gamma=2.5`:
 
-    .. image:: comm2.png
-    .. image:: comm2-hist.png
+    .. image:: comm2.*
+    .. image:: comm2-hist.*
 
 
     References
@@ -328,10 +328,10 @@ def condensation_graph(g, prop, weight=None):
     >>> size.a = log(ng[1].a+1)
     >>> gt.graph_draw(ng[0], vsize=size, vcolor=size, splines=True,
     ...               eprops={"len":20, "penwidth":10}, vprops={"penwidth":10},
-    ...               output="comm-network.png", size=(10,10))
+    ...               output="comm-network.pdf", size=(10,10))
     <...>
 
-    .. figure:: comm-network.png
+    .. figure:: comm-network.*
         :align: center
 
         Community network of a random graph. The color and sizes of the nodes

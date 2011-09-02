@@ -283,10 +283,10 @@ def graph_draw(g, pos=None, size=(15, 15), pin=False, layout=None, maxiter=None,
     >>> ebet.a += 10
     >>> gt.graph_draw(g, vsize=deg, vcolor=deg, vorder=deg, elen=10,
     ...               ecolor=ebet, eorder=ebet, penwidth=ebet,
-    ...               overlap="prism", output="graph-draw.png")
+    ...               overlap="prism", output="graph-draw.pdf")
     <...>
 
-    .. figure:: graph-draw.png
+    .. figure:: graph-draw.*
         :align: center
 
         Kamada-Kawai force-directed layout of a graph with a power-law degree
@@ -686,10 +686,10 @@ def fruchterman_reingold_layout(g, weight=None, a=None, r=1., scale=None,
     >>> seed(42)
     >>> g = gt.price_network(300)
     >>> pos = gt.fruchterman_reingold_layout(g, n_iter=1000)
-    >>> gt.graph_draw(g, pos=pos, pin=True, output="graph-draw-fr.png")
+    >>> gt.graph_draw(g, pos=pos, pin=True, output="graph-draw-fr.pdf")
     <...>
 
-    .. figure:: graph-draw-fr.png
+    .. figure:: graph-draw-fr.*
         :align: center
 
         Fruchterman-Reingold layout of a Price network.
@@ -767,10 +767,10 @@ def arf_layout(g, weight=None, d=0.5, a=10, dt=0.001, epsilon=1e-6,
     >>> seed(42)
     >>> g = gt.price_network(300)
     >>> pos = gt.arf_layout(g, max_iter=0)
-    >>> gt.graph_draw(g, pos=pos, pin=True, output="graph-draw-arf.png")
+    >>> gt.graph_draw(g, pos=pos, pin=True, output="graph-draw-arf.pdf")
     <...>
 
-    .. figure:: graph-draw-arf.png
+    .. figure:: graph-draw-arf.*
         :align: center
 
         ARF layout of a Price network.

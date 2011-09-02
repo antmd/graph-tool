@@ -277,9 +277,9 @@ def corr_hist(g, deg_source, deg_target, bins=[[0, 1], [0, 1]], weight=None,
     <...>
     >>> colorbar()
     <...>
-    >>> savefig("corr.png")
+    >>> savefig("corr.pdf")
 
-    .. figure:: corr.png
+    .. figure:: corr.*
         :align: center
 
         Out/out-degree correlation histogram.
@@ -363,9 +363,9 @@ def combined_corr_hist(g, deg1, deg2, bins=[[0, 1], [0, 1]], float_count=True):
     <...>
     >>> colorbar()
     <...>
-    >>> savefig("combined_corr.png")
+    >>> savefig("combined_corr.pdf")
 
-    .. figure:: combined_corr.png
+    .. figure:: combined_corr.*
         :align: center
 
         Combined in/out-degree correlation histogram.
@@ -453,9 +453,9 @@ def avg_neighbour_corr(g, deg_source, deg_target, bins=[0, 1], weight=None):
     <...>
     >>> errorbar(h[2][:-1], h[0], yerr=h[1], fmt="o")
     (...)
-    >>> savefig("avg_corr.png")
+    >>> savefig("avg_corr.pdf")
 
-    .. figure:: avg_corr.png
+    .. figure:: avg_corr.*
         :align: center
 
         Average out/out degree correlation.
@@ -530,9 +530,9 @@ def avg_combined_corr(g, deg1, deg2, bins=[0, 1]):
     <...>
     >>> errorbar(h[2][:-1], h[0], yerr=h[1], fmt="o")
     (...)
-    >>> savefig("combined_avg_corr.png")
+    >>> savefig("combined_avg_corr.pdf")
 
-    .. figure:: combined_avg_corr.png
+    .. figure:: combined_avg_corr.*
         :align: center
 
         Average combined in/out-degree correlation.

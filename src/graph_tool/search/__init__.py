@@ -60,10 +60,10 @@ In this module, most documentation examples will make use of the network
 >>> gt.graph_draw(g, vprops={"label": name, "shape": "doublecircle",
 ...                          "fillcolor": "#729fcf"},
 ...               penwidth=weight, overlap=False, splines=True,
-...               output="search_example.png")
+...               output="search_example.pdf")
 <...>
 
-.. figure:: search_example.png
+.. figure:: search_example.*
    :alt: search example
    :align: center
 
@@ -1358,10 +1358,10 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
     >>> gt.graph_draw(g, pos=pos, pin=True, size=(8,8), vsize=0.07,
     ...               vcolor=touch_v, vcmap=matplotlib.cm.binary,
     ...               eprops={"color": ecolor}, penwidth=ewidth,
-    ...               output="astar-delaunay.png")
+    ...               output="astar-delaunay.pdf")
     <...>
 
-    .. figure:: astar-delaunay.png
+    .. figure:: astar-delaunay.*
        :align: center
 
        The shortest path is shown in red. The visited edges are shown in blue,
@@ -1465,10 +1465,10 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
     >>> vcolor[v] = "black"
     >>> gt.graph_draw(g, size=(10,10), vsize=0.25, vprops={"fillcolor": vcolor},
     ...               eprops={"color": ecolor}, penwidth=ewidth,
-    ...               output="astar-implicit.png")
+    ...               output="astar-implicit.pdf")
     <...>
 
-    .. figure:: astar-implicit.png
+    .. figure:: astar-implicit.*
        :align: center
 
        The shortest path is shown in red, and the vertices which belong to it

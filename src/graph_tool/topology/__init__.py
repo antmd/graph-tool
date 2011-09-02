@@ -187,13 +187,13 @@ def subgraph_isomorphism(sub, g, max_n=0, random=True):
     >>> ewidth.a *= 1.5
     >>> ewidth.a += 0.5
     >>> gt.graph_draw(g, vcolor=vmask, ecolor=emask, penwidth=ewidth,
-    ...               output="subgraph-iso-embed.png")
+    ...               output="subgraph-iso-embed.pdf")
     <...>
-    >>> gt.graph_draw(sub, output="subgraph-iso.png")
+    >>> gt.graph_draw(sub, output="subgraph-iso.pdf")
     <...>
 
-    .. image:: subgraph-iso.png
-    .. image:: subgraph-iso-embed.png
+    .. image:: subgraph-iso.*
+    .. image:: subgraph-iso-embed.*
 
     *Left:* Subgraph searched, *Right:* One isomorphic subgraph found in main
      graph.
@@ -303,16 +303,16 @@ def min_spanning_tree(g, weights=None, root=None, tree_map=None):
     >>> for e in g.edges():
     ...    weight[e] = linalg.norm(pos[e.target()].a - pos[e.source()].a)
     >>> tree = gt.min_spanning_tree(g, weights=weight)
-    >>> gt.graph_draw(g, pos=pos, pin=True, output="triang_orig.png")
+    >>> gt.graph_draw(g, pos=pos, pin=True, output="triang_orig.pdf")
     <...>
     >>> g.set_edge_filter(tree)
-    >>> gt.graph_draw(g, pos=pos, pin=True, output="triang_min_span_tree.png")
+    >>> gt.graph_draw(g, pos=pos, pin=True, output="triang_min_span_tree.pdf")
     <...>
 
 
-    .. image:: triang_orig.png
+    .. image:: triang_orig.*
         :width: 400px
-    .. image:: triang_min_span_tree.png
+    .. image:: triang_min_span_tree.*
         :width: 400px
 
     *Left:* Original graph, *Right:* The minimum spanning tree.
@@ -977,10 +977,10 @@ def is_planar(g, embedding=False, kuratowski=False):
     >>> print p
     False
     >>> g.set_edge_filter(kur, True)
-    >>> gt.graph_draw(g, output="kuratowski.png")
+    >>> gt.graph_draw(g, output="kuratowski.pdf")
     <...>
 
-    .. figure:: kuratowski.png
+    .. figure:: kuratowski.*
         :align: center
 
         Obstructing Kuratowski subgraph of a random graph.
