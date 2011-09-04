@@ -69,7 +69,7 @@ def similarity(g1, g2, label1=None, label2=None, norm=True):
     g1 : :class:`~graph_tool.Graph`
         First graph to be compared.
     g2 : :class:`~graph_tool.Graph`
-        second graph to be compared.
+        Second graph to be compared.
     label1 : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         Vertex labels for the first graph to be used in comparison. If not
         supplied, the vertex indexes are used.
