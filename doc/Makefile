@@ -1,6 +1,6 @@
 PDFIMAGES = $(shell ls *.pdf)
 PNGIMAGES = ${PDFIMAGES:.pdf=.png}
-HUGEIMAGES = $(shell find . -name "*.pdf"  -size +1000k)
+HUGEIMAGES = $(shell find . -maxdepth 1 -name "*.pdf"  -size +1000k)
 ORIGIMAGES = ${HUGEIMAGES:.pdf=.pdf-orig}
 
 PNGCONV = gm convert -density 600 -resample 50 -trim -antialias -quality 9 -filter Cubic
@@ -27,4 +27,7 @@ push:
 
 push-dev:
 	rsync -rEvpLz build/* root@skewed.de:/var/www/graph-tool-doc/dev/
+
+clean:
+	rm -rf build
 
