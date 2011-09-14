@@ -425,6 +425,10 @@ class PropertyMap(object):
         return ("<PropertyMap object with key type '%s' and value type '%s',"
                 + " for %s, at 0x%x>") % (k, self.value_type(), g, id(self))
 
+    def copy(self):
+        """Return a copy of the property map."""
+        return self.get_graph().copy_property(self)
+
     def get_graph(self):
         """Get the graph class to which the map refers."""
         g = self.__g()
