@@ -580,7 +580,7 @@ public:
                                 BlockDeg blockdeg, rng_t& rng)
         : base_t(g, edge_index, edges, rng), _g(g), _blockdeg(blockdeg)
     {
-        unordered_set<deg_t, hash<deg_t> > deg_set;
+        tr1::unordered_set<deg_t, hash<deg_t> > deg_set;
         for (size_t ei = 0; ei < base_t::_edges.size(); ++ei)
         {
             edge_t& e = base_t::_edges[ei];
