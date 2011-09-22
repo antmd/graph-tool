@@ -59,7 +59,7 @@ libgraph_tool_core.OStream.write = OStream_write
 # define and set the pickler/unpickler functions
 def pickler(stream, obj):
     sstream = StringIO()
-    pickle.dump(obj, sstream)
+    pickle.dump(obj, sstream, -1)
     stream.write(base64.b64encode(sstream.getvalue()))
 
 
