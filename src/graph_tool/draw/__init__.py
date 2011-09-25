@@ -84,6 +84,7 @@ try:
     libgv.agnode.restype = ptype
     libgv.agedge.restype = ptype
     libgv.agget.restype = ptype
+    libgv.agstrdup_html.restype = ptype
     # create a context to use the whole time (if we keep freeing and recreating
     # it, we will hit a memory leak in graphviz)
     gvc = libgv.gvContext()
@@ -96,8 +97,14 @@ __all__ = ["graph_draw", "fruchterman_reingold_layout", "arf_layout",
            "random_layout"]
 
 
+def htmlize(val):
+    if len(val) >= 2 and val[0] == "<" and val[-1] == ">":
+        return ctypes.string_at(libgv.agstrdup_html(val[1:-1]))
+    return val
+
+
 def aset(elem, attr, value):
-    v = str(value)
+    v = htmlize(str(value))
     libgv.agsafeset(elem, str(attr), v, v)
 
 
