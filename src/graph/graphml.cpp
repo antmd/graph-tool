@@ -33,8 +33,8 @@ std::string protect_xml_string(const std::string& os)
 class graphml_reader
 {
 public:
-    graphml_reader(mutate_graph& g)
-        : m_g(g), m_canonical_vertices(false) { }
+    graphml_reader(mutate_graph& g, bool store_ids)
+        : m_g(g), m_canonical_vertices(false), m_store_ids(store_ids) { }
 
     void run(std::istream& in)
     {
@@ -111,7 +111,7 @@ private:
             }
 
             self->m_active_descriptor = self->m_edge.size();
-            self->handle_edge(source, target);
+            self->handle_edge(id, source, target);
         }
         else if (name == "node")
         {
@@ -202,6 +202,10 @@ private:
                 {
                     self->m_canonical_vertices = (value == "canonical");
                 }
+                else if (name == "parse.edgeids")
+                {
+                    self->m_canonical_edges = (value == "canonical");
+                }
             }
             self->m_active_descriptor = "";
         }
@@ -282,6 +286,10 @@ private:
                 if (m_keys[iter->first] == node_key)
                     handle_property(iter->first, v, iter->second);
             }
+            if (m_store_ids && !m_canonical_vertices)
+                m_g.set_vertex_property("_graphml_vertex_id",
+                                        get_vertex_descriptor(v),
+                                        v, "string");
         }
     }
 
@@ -301,7 +309,8 @@ private:
     }
 
     void
-    handle_edge(const std::string& u, const std::string& v)
+    handle_edge(const std::string& id, const std::string& u,
+                const std::string& v)
     {
         handle_vertex(u);
         handle_vertex(v);
@@ -325,6 +334,11 @@ private:
             if (m_keys[iter->first] == edge_key)
                 handle_property(iter->first, e, iter->second);
         }
+
+        if (m_store_ids && !m_canonical_edges)
+            m_g.set_edge_property("_graphml_edge_id", get_edge_descriptor(e),
+                                  id, "string");
+
     }
 
     void handle_property(const std::string& key_id,
@@ -381,15 +395,16 @@ private:
     std::string m_character_data;
     bool m_canonical_vertices;
     bool m_canonical_edges;
+    bool m_store_ids;
     XML_Parser m_parser;
 };
 
 namespace boost
 {
 void
-read_graphml(std::istream& in, mutate_graph& g)
+read_graphml(std::istream& in, mutate_graph& g, bool store_ids)
 {
-    graphml_reader reader(g);
+    graphml_reader reader(g, store_ids);
     reader.run(in);
 }
 }

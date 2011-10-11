@@ -367,10 +367,7 @@ void build_stream
 python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
                                            string format)
 {
-    bool graphviz = false;
-    if (format == "dot")
-        graphviz = true;
-    else if (format != "xml")
+    if (format != "dot" && format != "xml" && format != "auto")
         throw ValueException("error reading from file '" + file +
                              "': requested invalid format '" + format + "'");
     try
@@ -390,10 +387,10 @@ python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
         _directed = true;
         try
         {
-            if (graphviz)
+            if (format == "dot")
                 read_graphviz(stream, wg, dp, "vertex_name");
             else
-                read_graphml(stream, wg, dp);
+                read_graphml(stream, wg, dp, true);
         }
         catch (const undirected_graph_error&)
         {
@@ -407,10 +404,10 @@ python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
             build_stream(stream, file, pfile, file_stream);
             FakeUndirGraph<GraphEdgeIndexWrap<multigraph_t,edge_index_map_t> >
                 ug(wg);
-            if (graphviz)
+            if (format == "dot")
                 read_graphviz(stream, ug, dp, "vertex_name");
             else
-                read_graphml(stream, ug, dp);
+                read_graphml(stream, ug, dp, true);
         }
         _state->_nedges = num_edges(_state->_mg);
         _state->_max_edge_index = (_state->_nedges > 0) ?

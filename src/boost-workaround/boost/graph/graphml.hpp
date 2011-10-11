@@ -244,14 +244,14 @@ const char* mutate_graph_impl<MutableGraph>::m_type_names[] =
  "python_object"};
 
 void
-read_graphml(std::istream& in, mutate_graph& g);
+read_graphml(std::istream& in, mutate_graph& g, bool store_ids);
 
 template<typename MutableGraph>
 void
-read_graphml(std::istream& in, MutableGraph& g, dynamic_properties& dp)
+read_graphml(std::istream& in, MutableGraph& g, dynamic_properties& dp, bool store_ids)
 {
     mutate_graph_impl<MutableGraph> mg(g,dp);
-    read_graphml(in, mg);
+    read_graphml(in, mg, store_ids);
 }
 
 template <typename Types>
@@ -339,9 +339,24 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
 
     out << "  <!-- property keys -->\n";
 
+    bool has_vertex_ids = false;
+    bool has_edge_ids = false;
+
     // Output keys
     for (dynamic_properties::const_iterator i = dp.begin(); i != dp.end(); ++i)
     {
+        if (i->first == "_graphml_vertex_id")
+        {
+            has_vertex_ids = true;
+            continue;
+        }
+        
+        if (i->first == "_graphml_edge_id")
+        {
+            has_edge_ids = true;
+            continue;
+        }
+
         std::string key_id = "key" + lexical_cast<std::string>(key_count++);
         if (i->second->key() == typeid(graph_property_tag))
             graph_key_ids[i->first] = key_id;
@@ -364,11 +379,15 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
             << " />\n";
     }
 
+    bool canonical_vertices = ordered_vertices && !has_vertex_ids;
+    bool canonical_edges = !has_edge_ids;
+
     out << "\n  <graph id=\"G\" edgedefault=\""
         << (graph_is_directed ? "directed" : "undirected") << "\""
-        << " parse.nodeids=\"" << (ordered_vertices ? "canonical" : "free")
+        << " parse.nodeids=\"" << (canonical_vertices ? "canonical" : "free")
         << "\""
-        << " parse.edgeids=\"canonical\" parse.order=\"nodesfirst\">\n\n";
+        << " parse.edgeids=\"" << (canonical_edges ? "canonical" : "free")
+        << "\" parse.order=\"nodesfirst\">\n\n";
 
     out << "   <!-- graph properties -->\n";
     // Output graph data
@@ -392,11 +411,20 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
     vertex_iterator v, v_end;
     for (tie(v, v_end) = vertices(g); v != v_end; ++v)
     {
-        out << "    <node id=\"n" << get(vertex_index, *v) << "\">\n";
+        out << "    <node id=\"";
+        if (has_vertex_ids)
+            out << protect_xml_string(get("_graphml_vertex_id", dp, *v));
+        else
+            out << "n" << get(vertex_index, *v);
+        out << "\">\n";
+
         // Output data
         for (dynamic_properties::const_iterator i = dp.begin(); i != dp.end();
              ++i)
         {
+            if (i->first == "_graphml_vertex_id")
+                continue;
+
             if (i->second->key() == typeid(vertex_descriptor))
             {
                 std::string val = protect_xml_string
@@ -417,14 +445,34 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
     typename graph_traits<Graph>::edges_size_type edge_count = 0;
     for (tie(e, e_end) = edges(g); e != e_end; ++e)
     {
-        out << "    <edge id=\"e" << edge_count++ << "\" source=\"n"
-            << get(vertex_index, source(*e, g)) << "\" target=\"n"
-            << get(vertex_index, target(*e, g)) << "\">\n";
+        out << "    <edge id=\"";
+        if (has_edge_ids)
+            out << protect_xml_string(get("_graphml_edge_id", dp, *e));
+        else
+            out << "e" << edge_count;
+        edge_count++;
+        
+        out << "\" source=\"";
+        if (has_vertex_ids)
+            out << protect_xml_string(get("_graphml_vertex_id", dp,
+                                           source(*e, g)));
+        else
+            out << "n" << get(vertex_index, source(*e, g));        
+        out << "\" target=\"";
+        if (has_vertex_ids)
+            out << protect_xml_string(get("_graphml_vertex_id", dp,
+                                          target(*e, g)));
+        else
+            out << "n" << get(vertex_index, target(*e, g));
+        out<< "\">\n";
 
         // Output data
         for (dynamic_properties::const_iterator i = dp.begin(); i != dp.end();
              ++i)
         {
+            if (i->first == "_graphml_edge_id")
+                continue;
+
             if (i->second->key() == typeid(edge_descriptor))
             {
                 std::string val = protect_xml_string
