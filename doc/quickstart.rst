@@ -391,13 +391,14 @@ Graph I/O
 Graphs can be saved and loaded in three formats: `graphml
 <http://graphml.graphdrawing.org/>`_, `dot
 <http://www.graphviz.org/doc/info/lang.html>`_ and
-`gml <http://www.fim.uni-passau.de/en/fim/faculty/chairs/theoretische-informatik/projects.html>_`.
-``Graphml`` is the default and preferred format. The ``dot`` and ``gml``
-formats are fully supported, but since they contains no precise type
-information, all properties are read later as strings (or also as
-double, in the case of ``gml``), and must be converted per
-hand. Therefore you should always use graphml, except when interfacing
-with another software which expects ``dot`` or ``gml`` format.
+`gml <http://www.fim.uni-passau.de/en/fim/faculty/chairs/theoretische-informatik/projects.html>`_.
+``Graphml`` is the default and preferred format, since it is by far the
+most complete. The ``dot`` and ``gml`` formats are fully supported, but
+since they contain no precise type information, all properties are read
+as strings (or also as double, in the case of ``gml``), and must be
+converted per hand. Therefore you should always use graphml, except when
+interfacing with other software, or existing data, which uses ``dot`` or
+``gml``.
 
 A graph can be saved or loaded to a file with the :attr:`~graph_tool.Graph.save`
 and :attr:`~graph_tool.Graph.load` methods, which take either a file name or a
