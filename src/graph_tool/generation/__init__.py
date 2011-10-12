@@ -341,7 +341,7 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
         if blockmodel is not None:
             sampler = lambda i: deg_sampler(blockmodel[i])
         else:
-            sample = deg_sampler
+            sampler = deg_sampler
     else:
         sampler = lambda i: deg_sampler()
 
