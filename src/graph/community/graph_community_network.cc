@@ -34,7 +34,9 @@ using namespace graph_tool;
 
 
 void community_network(GraphInterface& gi, GraphInterface& cgi,
-                       boost::any community_property, boost::any vertex_count,
+                       boost::any community_property,
+                       boost::any condensed_community_property,
+                       boost::any vertex_count,
                        boost::any edge_count, boost::any weight)
 {
     typedef DynamicPropertyMapWrap<double,GraphInterface::edge_t> weight_map_t;
@@ -70,6 +72,7 @@ void community_network(GraphInterface& gi, GraphInterface& cgi,
      run_action<>()(gi, bind<void>(get_community_network(), _1,
                                    ref(cgi.GetGraph()), cgi.GetVertexIndex(),
                                    cgi.GetEdgeIndex(), _2,
+                                   condensed_community_property,
                                    _3, vcount, _4),
                    vertex_properties(), weight_properties(),
                    ecount_properties())

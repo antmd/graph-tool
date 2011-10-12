@@ -41,7 +41,7 @@ struct get_community_network
               class VertexProperty, class EdgeProperty>
     void operator()(const Graph& g, CommunityGraph& cg,
                     VertexIndex cvertex_index, EdgeIndex cedge_index,
-                    CommunityMap s_map, WeightMap weight,
+                    CommunityMap s_map, boost::any acs_map, WeightMap weight,
                     VertexProperty vertex_count, EdgeProperty edge_count) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
@@ -52,6 +52,11 @@ struct get_community_network
             cedge_t;
         typedef typename boost::property_traits<CommunityMap>::value_type
             s_type;
+
+        typedef typename get_prop_type<CommunityMap, VertexIndex>::type
+            comm_map_t;
+
+        comm_map_t cs_map = boost::any_cast<comm_map_t>(acs_map);
 
         tr1::unordered_map<s_type, vector<vertex_t>, hash<s_type> >
             comms;
@@ -68,6 +73,10 @@ struct get_community_network
             cvertex_t v = add_vertex(cg);
             vertex_count[v] = iter->second.size();
             comm_vertices[iter->first] = v;
+            put_dispatch(cs_map, v, iter->first,
+                         typename boost::is_convertible
+                            <typename property_traits<CommunityMap>::category,
+                             writable_property_map_tag>::type());
         }
 
         // create edges
@@ -105,6 +114,51 @@ struct get_community_network
             }
         }
     }
+
+    struct get_checked_t
+    {
+        template <class PropertyMap>
+        struct apply
+        {
+            typedef typename PropertyMap::checked_t type;
+        };
+    };
+
+    struct get_identity
+    {
+        template <class PropertyMap>
+        struct apply
+        {
+            typedef PropertyMap type;
+        };
+    };
+
+    template <class PropertyMap, class IndexMap>
+    struct get_prop_type
+    {
+        typedef typename mpl::if_<typename is_same<PropertyMap, IndexMap>::type,
+                                  get_identity,
+                                  get_checked_t>::type extract;
+        typedef typename extract::template apply<PropertyMap>::type type;
+    };
+        
+    template <class PropertyMap>
+    void put_dispatch(PropertyMap cs_map,
+                      const typename property_traits<PropertyMap>::key_type& v,
+                      const typename property_traits<PropertyMap>::value_type& val,
+                      mpl::true_ is_writable) const
+    {
+        put(cs_map, v, val);
+    }
+
+    template <class PropertyMap>
+    void put_dispatch(PropertyMap cs_map,
+                      const typename property_traits<PropertyMap>::key_type& v,
+                      const typename property_traits<PropertyMap>::value_type& val,
+                      mpl::false_ is_writable) const
+    {
+    }
+
 };
 
 } // graph_tool namespace

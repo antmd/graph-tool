@@ -298,6 +298,8 @@ def condensation_graph(g, prop, weight=None):
     -------
     condensation_graph : :class:`~graph_tool.Graph`
         The community network
+    prop : :class:`~graph_tool.PropertyMap`
+        The community values.
     vcount : :class:`~graph_tool.PropertyMap`
         A vertex property map with the vertex count for each community.
     ecount : :class:`~graph_tool.PropertyMap`
@@ -312,7 +314,7 @@ def condensation_graph(g, prop, weight=None):
     Notes
     -----
     Each vertex in the condensation graph represents one community in the
-    original graph (vertices with the same 'prop' value'), and the edges
+    original graph (vertices with the same 'prop' value), and the edges
     represent existent edges between vertices of the respective communities in
     the original graph.
 
@@ -325,8 +327,8 @@ def condensation_graph(g, prop, weight=None):
     >>> spins = gt.community_structure(g, 10000, 100)
     >>> ng = gt.condensation_graph(g, spins)
     >>> size = ng[0].new_vertex_property("double")
-    >>> size.a = log(ng[1].a+1)
-    >>> gt.graph_draw(ng[0], vsize=size, vcolor=size, splines=True,
+    >>> size.a = log(ng[2].a+1)
+    >>> gt.graph_draw(ng[0], vsize=size, vcolor=ng[1], splines=True,
     ...               eprops={"len":20, "penwidth":10}, vprops={"penwidth":10},
     ...               output="comm-network.pdf", size=(10,10))
     <...>
@@ -334,8 +336,8 @@ def condensation_graph(g, prop, weight=None):
     .. figure:: comm-network.*
         :align: center
 
-        Community network of a random graph. The color and sizes of the nodes
-        indicate the size of the corresponding community.
+        Community network of a random graph. The sizes of the nodes indicate the
+        size of the corresponding community.
     """
     gp = Graph()
     vcount = gp.new_vertex_property("int32_t")
@@ -343,10 +345,12 @@ def condensation_graph(g, prop, weight=None):
         ecount = gp.new_edge_property("double")
     else:
         ecount = gp.new_edge_property("int32_t")
+    cprop = gp.new_vertex_property(prop.value_type())
     libgraph_tool_community.community_network(g._Graph__graph,
                                               gp._Graph__graph,
                                               _prop("v", g, prop),
+                                              _prop("v", gp, cprop),
                                               _prop("v", gp, vcount),
                                               _prop("e", gp, ecount),
                                               _prop("e", g, weight))
-    return gp, vcount, ecount
+    return gp, cprop, vcount, ecount

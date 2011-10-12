@@ -98,6 +98,7 @@ using namespace boost::python;
 
 extern void community_network(GraphInterface& gi, GraphInterface& cgi,
                               boost::any community_property,
+                              boost::any condensed_community_property,
                               boost::any vertex_count,
                               boost::any edge_count, boost::any weight);
 
