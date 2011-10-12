@@ -799,14 +799,15 @@ bool read_graphviz(std::istream& in, mutate_graph& graph);
 template <typename MutableGraph>
 bool read_graphviz(std::istream& in, MutableGraph& graph,
                    dynamic_properties& dp,
-                   std::string const& node_id = "node_id")
+                   std::string const& node_id = "node_id",
+                   bool ignore_directedness = false)
 {
   std::string data;
   in >> std::noskipws;
   std::copy(std::istream_iterator<char>(in),
             std::istream_iterator<char>(),
             std::back_inserter(data));
-  return read_graphviz(data,graph,dp,node_id);
+  return read_graphviz(data,graph,dp,node_id,ignore_directedness);
 }
 
 } // namespace boost

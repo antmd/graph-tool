@@ -414,7 +414,7 @@ namespace read_graphviz_detail {
       boost::throw_exception(parse_error(str, peek()));
     }
 
-    void parse_graph(bool want_directed) {
+    void parse_graph(int want_directed) {
       bool is_strict = false;
       bool is_directed = false;
       std::string name;
@@ -426,7 +426,7 @@ namespace read_graphviz_detail {
       }
       r.graph_is_directed = is_directed; // Used to check edges
       r.graph_is_strict = is_strict;
-      if (want_directed != r.graph_is_directed) {
+      if (want_directed != 2 && want_directed != r.graph_is_directed) {
         if (want_directed) {
           boost::throw_exception(boost::undirected_graph_error());
         } else {
@@ -736,7 +736,7 @@ namespace read_graphviz_detail {
     }
   };
 
-  void parse_graphviz_from_string(const std::string& str, parser_result& result, bool want_directed) {
+  void parse_graphviz_from_string(const std::string& str, parser_result& result, int want_directed) {
     parser p(str, result);
     p.parse_graph(want_directed);
   }
@@ -795,11 +795,12 @@ namespace read_graphviz_detail {
 namespace detail {
   namespace graph {
 
-    bool read_graphviz(const std::string& str, boost::detail::graph::mutate_graph* mg) {
+  bool read_graphviz(const std::string& str, boost::detail::graph::mutate_graph* mg, bool ignore_directedness) {
       read_graphviz_detail::parser_result parsed_file;
-      read_graphviz_detail::parse_graphviz_from_string(str, parsed_file, mg->is_directed());
+      read_graphviz_detail::parse_graphviz_from_string(str, parsed_file,
+                                                       ignore_directedness ? 2 : mg->is_directed());
       read_graphviz_detail::translate_results_to_graph(parsed_file, mg);
-      return true;
+      return parsed_file.graph_is_directed;
     }
 
   } // end namespace graph

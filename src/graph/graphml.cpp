@@ -100,13 +100,15 @@ private:
                 else if (name == "directed")
                 {
                     bool edge_is_directed = (value == "directed");
-                    if (edge_is_directed != self->m_g.is_directed())
+                    if (self->m_g.is_directed() != 2 &&
+                        edge_is_directed != self->m_g.is_directed())
                     {
                         if (edge_is_directed)
                             throw directed_graph_error();
                         else
                             throw undirected_graph_error();
                     }
+                    self->m_g.flip_directed(edge_is_directed);
                 }
             }
 
@@ -190,13 +192,15 @@ private:
                 if (name == "edgedefault")
                 {
                     bool edge_is_directed = (value == "directed");
-                    if (edge_is_directed != self->m_g.is_directed())
+                    if ( self->m_g.is_directed() != 2 &&
+                         edge_is_directed != self->m_g.is_directed())
                     {
                         if (edge_is_directed)
                             throw directed_graph_error();
                         else
                             throw undirected_graph_error();
                     }
+                    self->m_g.flip_directed(edge_is_directed);
                 }
                 else if (name == "parse.nodeids")
                 {
@@ -396,6 +400,7 @@ private:
     bool m_canonical_vertices;
     bool m_canonical_edges;
     bool m_store_ids;
+    bool m_ignore_directedness;
     XML_Parser m_parser;
 };
 

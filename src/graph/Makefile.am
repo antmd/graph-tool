@@ -45,6 +45,7 @@ libgraph_tool_core_la_includedir = $(pythondir)/graph_tool/include
 libgraph_tool_core_la_include_HEADERS = \
     ../../config.h \
     fast_vector_property_map.hh \
+    gml.hh \
     graph.hh \
     graph_adaptor.hh \
     graph_exceptions.hh \

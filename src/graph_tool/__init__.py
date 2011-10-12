@@ -1313,28 +1313,33 @@ class Graph(object):
 
     # I/O operations
     # ==============
-    def load(self, file_name, file_format="auto"):
+    def __get_file_format(self, file_name):
+        fmt = None
+        for f in ["xml", "dot", "gml"]:
+            names = ["." + f, ".%s.gz" % f, ".%s.bz2" % f]
+            for name in names:
+                if file_name.endswith(name):
+                    fmt = f
+                    break
+        if fmt is None:
+            raise ValueError("cannot determine file format of: " + file_name)
+        return fmt
+
+    def load(self, file_name, fmt="auto"):
         """Load graph from ``file_name`` (which can be either a string or a
         file-like object). The format is guessed from ``file_name``, or can be
-        specified by ``file_format``, which can be either "xml" or "dot". """
+        specified by ``fmt``, which can be either "xml", "dot" or "gml". """
 
         if type(file_name) == str:
             file_name = os.path.expanduser(file_name)
-        if file_format == 'auto' and isinstance(file_name, str):
-            if file_name.endswith(".xml") or file_name.endswith(".xml.gz") or \
-                   file_name.endswith(".xml.bz2"):
-                file_format = "xml"
-            elif file_name.endswith(".dot") or file_name.endswith(".dot.gz") or \
-                     file_name.endswith(".dot.bz2"):
-                file_format = "dot"
-            else:
-                raise ValueError("cannot determine file format of: " + file_name)
-        elif file_format == "auto":
-            file_format = "xml"
+        if fmt == 'auto' and isinstance(file_name, str):
+            fmt = self.__get_file_format(file_name)
+        elif fmt == "auto":
+            fmt = "xml"
         if isinstance(file_name, str):
-            props = self.__graph.ReadFromFile(file_name, None, file_format)
+            props = self.__graph.ReadFromFile(file_name, None, fmt)
         else:
-            props = self.__graph.ReadFromFile("", file_name, file_format)
+            props = self.__graph.ReadFromFile("", file_name, fmt)
         for name, prop in props[0].iteritems():
             self.vertex_properties[name] = PropertyMap(prop, self, "v")
         for name, prop in props[1].iteritems():
@@ -1343,30 +1348,23 @@ class Graph(object):
             self.graph_properties[name] = PropertyMap(prop, self, "g",
                                                       lambda k: k.__graph)
 
-    def save(self, file_name, file_format="auto"):
+    def save(self, file_name, fmt="auto"):
         """Save graph to ``file_name`` (which can be either a string or a
         file-like object). The format is guessed from the ``file_name``, or can
-        be specified by ``file_format``, which can be either "xml" or "dot". """
+        be specified by ``fmt``, which can be either "xml", "dot" or "gml". """
 
         if type(file_name) == str:
             file_name = os.path.expanduser(file_name)
-        if file_format == 'auto' and isinstance(file_name, str):
-            if file_name.endswith(".xml") or file_name.endswith(".xml.gz") or \
-                   file_name.endswith(".xml.bz2"):
-                file_format = "xml"
-            elif file_name.endswith(".dot") or file_name.endswith(".dot.gz") or \
-                     file_name.endswith(".dot.bz2"):
-                file_format = "dot"
-            else:
-                raise ValueError("cannot determine file file_format of: " + file_name)
-        elif file_format == "auto":
-            file_format = "xml"
+        if fmt == 'auto' and isinstance(file_name, str):
+            fmt = self.__get_file_format(file_name)
+        elif fmt == "auto":
+            fmt = "xml"
         props = [(name[1], prop._PropertyMap__map) for name, prop in \
                  self.__properties.iteritems()]
         if isinstance(file_name, str):
-            self.__graph.WriteToFile(file_name, None, file_format, props)
+            self.__graph.WriteToFile(file_name, None, fmt, props)
         else:
-            self.__graph.WriteToFile("", file_name, file_format, props)
+            self.__graph.WriteToFile("", file_name, fmt, props)
 
     # Directedness
     # ============
@@ -1546,15 +1544,15 @@ class Graph(object):
             self.set_edge_filter(eprop, state["efilt"])
 
 
-def load_graph(file_name, file_format="auto"):
+def load_graph(file_name, fmt="auto"):
     """
     Load a graph from ``file_name`` (which can be either a string or a file-like object).
 
     The format is guessed from ``file_name``, or can be specified by
-    ``file_format``, which can be either "xml" or "dot".
+    ``fmt``, which can be either "xml", "dot" or "gml".
     """
     g = Graph()
-    g.load(file_name, file_format=file_format)
+    g.load(file_name, fmt)
     return g
 
 

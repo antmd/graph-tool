@@ -49,7 +49,9 @@ class mutate_graph
 {
 public:
     virtual ~mutate_graph() {}
-    virtual bool is_directed() const = 0;
+    virtual int is_directed() const = 0;
+    virtual void flip_directed(bool) = 0;
+    virtual bool get_directed() const = 0;
 
     virtual boost::any do_add_vertex() = 0;
     virtual std::pair<boost::any,bool> do_add_edge(boost::any source,
@@ -79,14 +81,29 @@ class mutate_graph_impl : public mutate_graph
         edge_descriptor;
 
 public:
-    mutate_graph_impl(MutableGraph& g, dynamic_properties& dp)
-        : m_g(g), m_dp(dp) { }
+    mutate_graph_impl(MutableGraph& g, dynamic_properties& dp,
+                      bool ignore_directedness)
+        : m_g(g), m_dp(dp), m_ignore_directedness(ignore_directedness),
+          m_is_directed(false) { }
 
-    bool is_directed() const
+    virtual int is_directed() const
     {
+        if (m_ignore_directedness)
+            return 2;
         return is_convertible
             <typename graph_traits<MutableGraph>::directed_category,
             directed_tag>::value;
+    }
+
+    virtual void flip_directed(bool directed)
+    {
+        if (!m_is_directed)
+            m_is_directed = directed;
+    }
+
+    virtual bool get_directed() const
+    {
+        return m_is_directed;
     }
 
     virtual any do_add_vertex()
@@ -228,6 +245,8 @@ public:
 protected:
     MutableGraph& m_g;
     dynamic_properties& m_dp;
+    bool m_ignore_directedness;
+    bool m_is_directed;
     typedef mpl::vector<uint8_t, int32_t, int64_t, double, long double,
                         std::vector<uint8_t>, std::vector<int32_t>,
                         std::vector<int64_t>, std::vector<double>,
@@ -247,11 +266,13 @@ void
 read_graphml(std::istream& in, mutate_graph& g, bool store_ids);
 
 template<typename MutableGraph>
-void
-read_graphml(std::istream& in, MutableGraph& g, dynamic_properties& dp, bool store_ids)
+bool
+read_graphml(std::istream& in, MutableGraph& g, dynamic_properties& dp,
+             bool store_ids, bool ignore_directedness)
 {
-    mutate_graph_impl<MutableGraph> mg(g,dp);
+    mutate_graph_impl<MutableGraph> mg(g,dp,ignore_directedness);
     read_graphml(in, mg, store_ids);
+    return mg.get_directed();
 }
 
 template <typename Types>

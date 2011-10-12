@@ -35,6 +35,8 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/xpressive/xpressive.hpp>
 
+#include "gml.hh"
+
 #include "graph_python_interface.hh"
 #include "str_repr.hh"
 
@@ -290,6 +292,24 @@ class graph_traits<GraphEdgeIndexWrap<Graph,EdgeIndexMap> >
     : public graph_traits<Graph> {};
 }
 
+template <class Graph, class EdgeIndexMap>
+inline
+typename graph_traits
+    <GraphEdgeIndexWrap<Graph,EdgeIndexMap> >::vertex_descriptor
+num_vertices(GraphEdgeIndexWrap<Graph,EdgeIndexMap>& g)
+{
+    return num_vertices(g._g);
+}
+
+template <class Graph, class EdgeIndexMap>
+inline
+typename graph_traits
+    <GraphEdgeIndexWrap<Graph,EdgeIndexMap> >::vertex_descriptor
+vertex(size_t i, GraphEdgeIndexWrap<Graph,EdgeIndexMap>& g)
+{
+    return vertex(i, g._g);
+}
+
 // this graph wraps an UndirectedAdaptor, but overrides the underlying
 // edge_descriptor type with the original type. This will make the edge property
 // maps compatible with the original graph, but will break some things which
@@ -318,6 +338,7 @@ struct FakeEdgeIterator:
     }
 
 };
+
 
 namespace boost {
 template <class Graph>
@@ -367,7 +388,7 @@ void build_stream
 python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
                                            string format)
 {
-    if (format != "dot" && format != "xml" && format != "auto")
+    if (format != "dot" && format != "xml" && format != "gml")
         throw ValueException("error reading from file '" + file +
                              "': requested invalid format '" + format + "'");
     try
@@ -384,31 +405,13 @@ python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
 
         GraphEdgeIndexWrap<multigraph_t,edge_index_map_t> wg(_state->_mg,
                                                              _edge_index);
-        _directed = true;
-        try
-        {
-            if (format == "dot")
-                read_graphviz(stream, wg, dp, "vertex_name");
-            else
-                read_graphml(stream, wg, dp, true);
-        }
-        catch (const undirected_graph_error&)
-        {
-            _directed = false;
-            file_stream.close();
-            if (pfile != python::object())
-            {
-                python_file_device src(pfile);
-                src.seek(0, std::ios_base::beg);
-            }
-            build_stream(stream, file, pfile, file_stream);
-            FakeUndirGraph<GraphEdgeIndexWrap<multigraph_t,edge_index_map_t> >
-                ug(wg);
-            if (format == "dot")
-                read_graphviz(stream, ug, dp, "vertex_name");
-            else
-                read_graphml(stream, ug, dp, true);
-        }
+        if (format == "dot")
+            _directed = read_graphviz(stream, wg, dp, "vertex_name", true);
+        else if (format == "xml")
+            _directed = read_graphml(stream, wg, dp, true, true);
+        else if (format == "gml")
+            _directed = read_gml(stream, wg, dp);
+
         _state->_nedges = num_edges(_state->_mg);
         _state->_max_edge_index = (_state->_nedges > 0) ?
             _state->_nedges - 1 : 0;
@@ -433,6 +436,10 @@ python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
         throw IOException("error reading from file '" + file + "':" + e.what());
     }
     catch (parse_error &e)
+    {
+        throw IOException("error reading from file '" + file + "':" + e.what());
+    }
+    catch (gml_parse_error &e)
     {
         throw IOException("error reading from file '" + file + "':" + e.what());
     }
@@ -463,20 +470,23 @@ struct write_to_file
 {
     template <class Graph, class IndexMap>
     void operator()(ostream& stream, Graph& g, IndexMap index_map,
-                    dynamic_properties& dp, bool graphviz) const
+                    dynamic_properties& dp, const string& format) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
-        if (graphviz)
+        if (format == "dot")
         {
             string name = graphviz_insert_index(dp, index_map, false);
             write_graphviz(stream, g, dp, name);
         }
-        else
+        else if (format == "xml")
         {
             write_graphml(stream, g, index_map, dp, true);
         }
-
+        else if (format == "gml")
+        {
+            write_gml(stream, g, index_map, dp);
+        }
     }
 };
 
@@ -484,11 +494,11 @@ struct write_to_file_fake_undir: public write_to_file
 {
     template <class Graph, class IndexMap>
     void operator()(ostream& stream, Graph& g, IndexMap index_map,
-                    dynamic_properties& dp, bool graphviz) const
+                    dynamic_properties& dp, const string& format) const
     {
         typedef typename Graph::original_graph_t graph_t;
         FakeUndirGraph<graph_t> ug(g);
-        write_to_file(*this)(stream, ug, index_map, dp, graphviz);
+        write_to_file(*this)(stream, ug, index_map, dp, format);
     }
 };
 
@@ -507,10 +517,7 @@ struct generate_index
 void GraphInterface::WriteToFile(string file, python::object pfile,
                                  string format, python::list props)
 {
-    bool graphviz = false;
-    if (format == "dot")
-        graphviz = true;
-    else if (format != "xml")
+    if (format != "xml" && format != "dot" && format != "gml")
         throw ValueException("error writing to file '" + file +
                              "': requested invalid format '" + format + "'");
     try
@@ -559,7 +566,7 @@ void GraphInterface::WriteToFile(string file, python::object pfile,
             associative_property_map<map_t> index_map(vertex_to_index);
             run_action<>()(*this, boost::bind<void>(generate_index(),
                                                     _1, index_map))();
-            if (graphviz)
+            if (format == "dot")
                 graphviz_insert_index(dp, index_map);
 
             if (GetDirected())
@@ -567,16 +574,16 @@ void GraphInterface::WriteToFile(string file, python::object pfile,
                     (*this, boost::bind<void>(write_to_file(),
                                               boost::ref(stream), _1,
                                               index_map, boost::ref(dp),
-                                              graphviz))();
+                                              format))();
             else
                 run_action<detail::never_directed>()
                     (*this,boost::bind<void>(write_to_file_fake_undir(),
                                              boost::ref(stream), _1, index_map,
-                                             boost::ref(dp), graphviz))();
+                                             boost::ref(dp), format))();
         }
         else
         {
-            if (graphviz)
+            if (format == "dot")
                 graphviz_insert_index(dp, _vertex_index);
 
             if (GetDirected())
@@ -584,13 +591,13 @@ void GraphInterface::WriteToFile(string file, python::object pfile,
                     (*this, boost::bind<void>(write_to_file(),
                                               boost::ref(stream), _1,
                                               _vertex_index,  boost::ref(dp),
-                                              graphviz))();
+                                              format))();
             else
                 run_action<detail::never_directed>()
                     (*this,boost::bind<void>(write_to_file_fake_undir(),
                                              boost::ref(stream), _1,
                                              _vertex_index, boost::ref(dp),
-                                             graphviz))();
+                                             format))();
         }
         stream.reset();
     }

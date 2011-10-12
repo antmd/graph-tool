@@ -86,7 +86,7 @@ namespace read_graphviz_detail {
   };
 
   // The actual parser, from libs/graph/src/read_graphviz_new.cpp
-  void parse_graphviz_from_string(const std::string& str, parser_result& result, bool want_directed);
+  void parse_graphviz_from_string(const std::string& str, parser_result& result, int want_directed);
 
   // Translate from those results to a graph
   void translate_results_to_graph(const parser_result& r, ::boost::detail::graph::mutate_graph* mg);
@@ -96,23 +96,27 @@ namespace read_graphviz_detail {
 // This is also in boost/graph/graphviz.hpp
 namespace detail {
   namespace graph {
-    BOOST_GRAPH_DECL bool read_graphviz(const std::string& str, boost::detail::graph::mutate_graph* mg);
+    BOOST_GRAPH_DECL bool read_graphviz(const std::string& str, boost::detail::graph::mutate_graph* mg,
+                                        bool ignore_directedness);
   } // end namespace graph
 } // end namespace detail
 
 template <typename MutableGraph>
 bool read_graphviz(const std::string& str,
                    MutableGraph& graph, boost::dynamic_properties& dp,
-                   std::string const& node_id = "node_id") {
+                   std::string const& node_id = "node_id",
+                   bool ignore_directedness = false) {
   boost::detail::graph::mutate_graph_impl<MutableGraph> mg(graph, dp, node_id);
-  return detail::graph::read_graphviz(str, &mg);
+  return detail::graph::read_graphviz(str, &mg, ignore_directedness);
 }
 
 template <typename InputIter, typename MutableGraph>
 bool read_graphviz(InputIter begin, InputIter end,
                    MutableGraph& graph, boost::dynamic_properties& dp,
-                   std::string const& node_id = "node_id") {
-  return read_graphviz(std::string(begin, end), graph, dp, node_id);
+                   std::string const& node_id = "node_id",
+                   bool ignore_directedness = false) {
+   return read_graphviz(std::string(begin, end), graph, dp, node_id,
+                        ignore_directedness);
 }
 
 } // namespace boost
