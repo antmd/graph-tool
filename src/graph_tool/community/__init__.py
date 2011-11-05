@@ -339,7 +339,7 @@ def condensation_graph(g, prop, weight=None):
         Community network of a random graph. The sizes of the nodes indicate the
         size of the corresponding community.
     """
-    gp = Graph()
+    gp = Graph(directed=g.is_directed())
     vcount = gp.new_vertex_property("int32_t")
     if weight != None:
         ecount = gp.new_edge_property("double")
