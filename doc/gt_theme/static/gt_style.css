@@ -70,13 +70,20 @@ table.citation td, table.citation th, table.citation {
 }
 
 div.admonition {
-    margin-left: 0em;
+    margin-left: auto;
+    margin-right: auto;
     padding-left: 1em;
     width: 80%;
 }
 
 div.admonition p.admonition-title + p {
     margin-top: 0.5em;
+}
+
+div.seealso {
+    margin-left: 0;
+    background-color: #EEEEEE;
+    border: None;
 }
 
 dl dl pre {

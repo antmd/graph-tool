@@ -246,3 +246,4 @@ extlinks = {'ticket': ('http://projects.skewed.de/graph-tool/ticket/%s',
 # autodoc_default_flags = ['members']
 numpydoc_show_class_members = False
 autodoc_member_order = 'bysource'
+autodoc_docstring_signature = False
