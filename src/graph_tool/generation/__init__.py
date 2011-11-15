@@ -367,7 +367,7 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     else:
         bm = None
 
-    if parallel_edges and self_loops and strat != "probabilistic":
+    if parallel_edges and self_loops and deg_corr is None:
         mix_time = 1
     if random:
         if deg_corr is not None:
