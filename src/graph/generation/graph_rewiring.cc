@@ -37,18 +37,18 @@ class PythonFuncWrap
 public:
     PythonFuncWrap(python::object o): _o(o) {}
 
-    double operator()(pair<size_t, size_t> deg, pair<size_t, size_t> degl) const
+    double operator()(pair<size_t, size_t> deg1, pair<size_t, size_t> deg2)
+        const
     {
-        python::object ret = _o(python::make_tuple(deg.first, deg.second),
-                                python::make_tuple(degl.first, degl.second));
+        python::object ret = _o(python::make_tuple(deg1.first, deg1.second),
+                                python::make_tuple(deg2.first, deg2.second));
         return python::extract<double>(ret);
     }
 
     template <class Type>
     double operator()(const Type& deg1, const Type& deg2) const
     {
-        python::object ret = _o(python::object(deg1),
-                                python::object(deg2));
+        python::object ret = _o(python::object(deg1), python::object(deg2));
         return python::extract<double>(ret);
     }
 

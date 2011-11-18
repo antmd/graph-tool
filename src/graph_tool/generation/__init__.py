@@ -58,6 +58,7 @@ __all__ = ["random_graph", "random_rewire", "predecessor_tree", "line_graph",
 
 def random_graph(N, deg_sampler, deg_corr=None, directed=True,
                  parallel_edges=False, self_loops=False, blockmodel=None,
+                 block_type="int", degree_block=False,
                  random=True, mix_time=10, verbose=False):
     r"""
     Generate a random graph, with a given degree distribution and correlation.
@@ -73,10 +74,12 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
         function is called once per vertex, but may be called more times, if the
         degree sequence cannot be used to build a graph.
 
-        Optionally, you can also pass a function which receives one argument. In
-        this case the argument passed will be the index of the vertex which will
-        receive the degree. If ``blockmodel != None``, the value passed will be
-        the block value of the respective vertex instead.
+        Optionally, you can also pass a function which receives one or two
+        arguments: If ``blockmodel == None``, the single argument passed will
+        be the index of the vertex which will receive the degree.
+        If ``blockmodel != None``, the first value passed will be the vertex
+        index, and the second will be the block value of the vertex.
+        
     deg_corr : function (optional, default: ``None``)
         A function which gives the degree correlation of the graph. It should be
         callable with two parameters: the in,out-degree pair of the source
@@ -102,7 +105,14 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
         If this value is a function, it will be used to sample the block
         types. It must be callable either with no arguments or with a single
         argument which will be the vertex index. In either case it must return
-        an integer.
+        a type compatible with the ``block_type`` parameter.
+    block_type : string (optional, default: ``"int"``)
+        Value type of block labels. Valid only if ``blockmodel != None``.
+    degree_block : bool (optional, default: ``False``)
+        If ``True``, the degree of each vertex will be appended to block labels
+        when constructing the blockmodel, such that the resulting block type
+        will be a pair :math:`(r, k)`, where :math:`r` is the original block
+        label.
     random : bool (optional, default: ``True``)
         If ``True``, the returned graph is randomized. Otherwise a deterministic
         placement of the edges will be used.
@@ -277,8 +287,9 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     **Blockmodels**
 
 
-    The following example shows how a blockmodel [#]_ can be generated. We will
-    consider a system of 10 blocks, which form communities. The connection
+    The following example shows how a stochastic blockmodel
+    [holland-stochastic-1983]_ [karrer-stochastic-2011]_ can be generated. We
+    will consider a system of 10 blocks, which form communities. The connection
     probability will be given by
 
     >>> def corr(a, b):
@@ -301,10 +312,6 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
         Simple blockmodel with 10 blocks.
 
 
-    .. [#] Blockmodels are equivalent to the hidden variable model
-       [boguna-correlated-2003]_.
-
-
     References
     ----------
     .. [metropolis-equations-1953]  Metropolis, N.; Rosenbluth, A.W.;
@@ -314,9 +321,12 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     .. [hastings-monte-carlo-1970] Hastings, W.K. "Monte Carlo Sampling Methods
        Using Markov Chains and Their Applications". Biometrika 57 (1): 97–109 (1970).
        :doi:`10.1093/biomet/57.1.97`
-    .. [boguna-correlated-2003] M. Boguñá and R. Pastor-Satorras, "Class of
-       correlated random networks with hidden variables" Physical Review E
-       68, 036112 (2003) :doi:`10.1103/PhysRevE.68.036112`
+    .. [holland-stochastic-1983] Paul W. Holland, Kathryn Blackmond Laskey, and
+       Samuel Leinhardt, "Stochastic blockmodels: First steps," Social Networks
+       5, no. 2: 109-13 (1983) :doi:`10.1016/0378-8733(83)90021-7`
+    .. [karrer-stochastic-2011] Brian Karrer and M. E. J. Newman, "Stochastic
+       blockmodels and community structure in networks," Physical Review E 83,
+       no. 1: 016107 (2011) :doi:`10.1103/PhysRevE.83.016107` :arxiv:`1008.3926`
     """
 
     seed = numpy.random.randint(0, sys.maxint)
@@ -328,18 +338,21 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
 
     if (type(blockmodel) is types.FunctionType or
         type(blockmodel) is types.LambdaType):
-        bm = numpy.zeros(N, dtype="int")
+        btype = block_type
+        bm = []
         if len(inspect.getargspec(blockmodel)[0]) == 0:
             for i in xrange(N):
-                bm[i] = blockmodel()
+                bm.append(blockmodel())
         else:
             for i in xrange(N):
-                bm[i] = blockmodel(i)
-        blockmodel = numpy.array(bm)
+                bm.append(blockmodel(i))
+        blockmodel = bm
+    else:
+        btype = _gt_type(blockmodel[0])
 
     if len(inspect.getargspec(deg_sampler)[0]) > 0:
         if blockmodel is not None:
-            sampler = lambda i: deg_sampler(blockmodel[i])
+            sampler = lambda i: deg_sampler(i, blockmodel[i])
         else:
             sampler = deg_sampler
     else:
@@ -351,12 +364,30 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
                                        seed, verbose, True)
     g.set_directed(directed)
 
+    if degree_block:
+        if btype in ["object", "string"] or "vector" in btype:
+            btype = "object"
+        elif btype in ["int", "int32_t", "bool"]:
+            btype = "vector<int32_t>"
+        elif btype in ["long", "int64_t"]:
+            btype = "vector<int64_t>"
+        elif btype in ["double"]:
+            btype = "vector<double>"
+        elif btype in ["long double"]:
+            btype = "vector<long double>"
+
     if blockmodel is not None:
-        btype = _gt_type(blockmodel[0])
         bm = g.new_vertex_property(btype)
         if btype in ["object", "string"] or "vector" in btype:
             for v in g.vertices():
-                bm[v] = blockmodel[int(v)]
+                if not degree_block:
+                    bm[v] = blockmodel[int(v)]
+                else:
+                    if g.is_directed():
+                        bm[v] = (blockmodel[int(v)], v.in_degree(),
+                                 v.out_degree())
+                    else:
+                        bm[v] = (blockmodel[int(v)], v.out_degree())
         else:
             try:
                 bm.a = blockmodel
@@ -385,7 +416,8 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
         return g, bm
 
 
-@_limit_args({"strat": ["erdos", "correlated", "uncorrelated", "probabilistic"]})
+@_limit_args({"strat": ["erdos", "correlated", "uncorrelated",
+                        "probabilistic"]})
 def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
                   parallel_edges=False, self_loops=False, deg_corr=None,
                   blockmodel=None, ret_fail=False, verbose=False):
@@ -610,6 +642,12 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
     .. [hastings-monte-carlo-1970] Hastings, W.K. "Monte Carlo Sampling Methods
        Using Markov Chains and Their Applications". Biometrika 57 (1): 97–109 (1970).
        :doi:`10.1093/biomet/57.1.97`
+    .. [holland-stochastic-1983] Paul W. Holland, Kathryn Blackmond Laskey, and
+       Samuel Leinhardt, "Stochastic blockmodels: First steps," Social Networks
+       5, no. 2: 109-13 (1983) :doi:`10.1016/0378-8733(83)90021-7`
+    .. [karrer-stochastic-2011] Brian Karrer and M. E. J. Newman, "Stochastic
+       blockmodels and community structure in networks," Physical Review E 83,
+       no. 1: 016107 (2011) :doi:`10.1103/PhysRevE.83.016107` :arxiv:`1008.3926`
 
     """
     seed = numpy.random.randint(0, sys.maxint)
