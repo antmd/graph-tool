@@ -347,7 +347,7 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
             for i in xrange(N):
                 bm.append(blockmodel(i))
         blockmodel = bm
-    else:
+    elif blockmodel is not None:
         btype = _gt_type(blockmodel[0])
 
     if len(inspect.getargspec(deg_sampler)[0]) > 0:
