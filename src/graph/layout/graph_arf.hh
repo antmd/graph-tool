@@ -106,6 +106,7 @@ struct get_arf_layout
                     }
                 }
 
+                #pragma omp critical
                 for (size_t j = 0; j < dim; ++j)
                 {
                     pos[v][j] += dt*delta_pos[j];
