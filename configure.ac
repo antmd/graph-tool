@@ -191,7 +191,7 @@ fi
 
 dnl CGAL
 AC_CHECK_LIB(CGAL,main)
-[CGAL_LIBADD="-lCGAL"]
+[CGAL_LIBADD="-lCGAL -lgmp"]
 AC_SUBST(CGAL_LIBADD)
 [CGAL_FLAGS="-frounding-math"]
 AC_SUBST(CGAL_FLAGS)
@@ -230,6 +230,12 @@ dnl cgal
 AC_CHECK_HEADER([CGAL/version.h],
                 [],
                 [AC_MSG_ERROR([CGAL headers not found])])
+
+dnl cairo
+PKG_CHECK_MODULES([CAIROMM], [cairomm-1.0])
+AC_SUBST([CAIROMM_CFLAGS])
+AC_SUBST([CAIROMM_LIBS])
+AC_PYTHON_MODULE(cairo, fatal)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 dnl Checks for library functions.
@@ -337,6 +343,7 @@ src/graph/topology/Makefile
 src/graph/flow/Makefile
 src/graph/layout/Makefile
 src/graph/search/Makefile
+src/graph/draw/Makefile
 src/graph_tool/Makefile
 ])
 AC_OUTPUT
