@@ -26,6 +26,7 @@
 #include <boost/spirit/include/phoenix_stl.hpp>
 #include <boost/fusion/include/adapt_struct.hpp>
 #include <boost/variant/recursive_variant.hpp>
+#include <boost/variant/get.hpp>
 #include <boost/spirit/include/support_istream_iterator.hpp>
 #include <boost/foreach.hpp>
 #include <boost/type_traits.hpp>
@@ -46,7 +47,7 @@ public:
     gml_parse_error(const string& w): _what(w) {}
     ~gml_parse_error() throw() {}
     std::string what() {return _what;}
-    
+
 private:
     std::string _what;
 };
@@ -60,7 +61,7 @@ public:
         : _g(g), _dp(dp), _directed(false) {}
 
     typedef boost::variant<std::string, int, double> val_t;
-    
+
     // key / value mechanics
     void push_key(const std::string& key)
     {
@@ -91,11 +92,11 @@ public:
                 throw gml_parse_error("node does not have an id");
             try
             {
-                id = get<double>(_stack.back().second["id"]);
+                id = boost::get<double>(_stack.back().second["id"]);
             }
             catch (bad_get)
             {
-                throw gml_parse_error("invalid node id");    
+                throw gml_parse_error("invalid node id");
             }
 
             typename graph_traits<Graph>::vertex_descriptor v = get_vertex(id);
@@ -107,12 +108,12 @@ public:
                 if (iter->first == "id")
                     continue;
                 try
-                {    
-                    put(iter->first, _dp, v, get<string>(iter->second));
+                {
+                    put(iter->first, _dp, v, boost::get<string>(iter->second));
                 }
                 catch (bad_get)
                 {
-                    put(iter->first, _dp, v, get<double>(iter->second));
+                    put(iter->first, _dp, v, boost::get<double>(iter->second));
                 }
             }
         }
@@ -126,8 +127,8 @@ public:
                 throw gml_parse_error("edge does not have source and target ids");
             try
             {
-                source = get<double>(_stack.back().second["source"]);
-                target = get<double>(_stack.back().second["target"]);
+                source = boost::get<double>(_stack.back().second["source"]);
+                target = boost::get<double>(_stack.back().second["target"]);
             }
             catch (bad_get)
             {
@@ -148,15 +149,15 @@ public:
                 if (iter->first == "id" || iter->first == "source" || iter->first == "target")
                     continue;
                 try
-                {    
-                    put(iter->first, _dp, e, get<string>(iter->second));
+                {
+                    put(iter->first, _dp, e, boost::get<string>(iter->second));
                 }
                 catch (bad_get)
                 {
-                    put(iter->first, _dp, e, get<double>(iter->second));
+                    put(iter->first, _dp, e, boost::get<double>(iter->second));
                 }
             }
-            
+
         }
         else if (k == "graph")
         {
@@ -165,17 +166,17 @@ public:
                  iter != _stack.back().second.end(); ++iter)
             {
                 if (iter->first == "directed")
-                    _directed = get<double>(iter->second);
+                    _directed = boost::get<double>(iter->second);
                 try
-                {    
-                    put(iter->first, _dp, graph_property_tag(), get<string>(iter->second));
+                {
+                    put(iter->first, _dp, graph_property_tag(), boost::get<string>(iter->second));
                 }
                 catch (bad_get)
                 {
-                    put(iter->first, _dp, graph_property_tag(), get<double>(iter->second));
+                    put(iter->first, _dp, graph_property_tag(), boost::get<double>(iter->second));
                 }
             }
-            
+
         }
         _stack.pop_back();
     }
@@ -186,13 +187,13 @@ public:
             _vmap[index] = add_vertex(_g);
         return _vmap[index];
     }
-    
 
-    bool is_directed() 
+
+    bool is_directed()
     {
         return _directed;
     }
-    
+
 
 private:
     Graph& _g;
@@ -238,7 +239,7 @@ struct gml : spirit::qi::grammar<Iterator, void(), Skipper>
     spirit::qi::rule<Iterator, val_t(), Skipper> value, value_identifier;
     spirit::qi::rule<Iterator, void(), Skipper> list, list_identifier;
     spirit::qi::rule<Iterator, void(), Skipper> start;
-    
+
     gml_state<Graph> _state;
 };
 
@@ -279,7 +280,7 @@ struct get_str
     template <typename ValueType>
     void operator()(const boost::any& val, std::string& sval, ValueType) const
     {
-        try 
+        try
         {
             ValueType v = any_cast<ValueType>(val);
             if (is_same<ValueType, python::object>::value)
@@ -297,7 +298,7 @@ struct get_str
             {
                 replace_all(sval, "\"", "\\\"");
                 sval = "\"" + sval + "\"";
-            }            
+            }
         }
         catch (bad_any_cast)
         {
