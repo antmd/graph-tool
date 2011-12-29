@@ -343,7 +343,6 @@ src/graph/topology/Makefile
 src/graph/flow/Makefile
 src/graph/layout/Makefile
 src/graph/search/Makefile
-src/graph/draw/Makefile
 src/graph_tool/Makefile
 ])
 AC_OUTPUT
