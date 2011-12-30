@@ -21,10 +21,16 @@
 import sys
 try:
     from DLFCN import RTLD_LAZY, RTLD_GLOBAL
+    dl_flags = RTLD_LAZY | RTLD_GLOBAL
 except ImportError:
     # handle strange python installations, by importing from the deprecated dl
-    # module
-    from dl import RTLD_LAZY, RTLD_GLOBAL
+    # module, otherwise from ctypes
+    try:
+        from dl import RTLD_LAZY, RTLD_GLOBAL
+        dl_flags = RTLD_LAZY | RTLD_GLOBAL
+    except ImportError:
+        from ctypes import RTLD_GLOBAL
+        dl_flags = RTLD_GLOBAL
 
 __all__ = ["dl_import"]
 
@@ -41,7 +47,7 @@ def dl_import(import_expr):
     # work properly across DSO boundaries. See http://gcc.gnu.org/faq.html#dso
 
     orig_dlopen_flags = sys.getdlopenflags()
-    sys.setdlopenflags(RTLD_LAZY | RTLD_GLOBAL)
+    sys.setdlopenflags(dl_flags)
 
     exec import_expr in local_dict, global_dict
 
