@@ -231,11 +231,6 @@ AC_CHECK_HEADER([CGAL/version.h],
                 [],
                 [AC_MSG_ERROR([CGAL headers not found])])
 
-dnl cairo
-PKG_CHECK_MODULES([CAIROMM], [cairomm-1.0])
-AC_SUBST([CAIROMM_CFLAGS])
-AC_SUBST([CAIROMM_LIBS])
-AC_PYTHON_MODULE(cairo, fatal)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 dnl Checks for library functions.
