@@ -316,7 +316,7 @@ struct convert
             if (is_same<T1, uint8_t>::value)
                 return convert<T1,int>()(lexical_cast<int>(v));
             else
-                return lexical_cast<Type1>(v);
+                return lexical_cast<T1>(v);
         }
     };
 
@@ -368,7 +368,8 @@ struct convert<string,python::object>::specific_convert<string,python::object>
 // to the desired Key and Value type, which may cause a performance impact,
 // since virtual functions are used. Should be used only when property map
 // access time is not crucial
-template <class Value, class Key>
+template <class Value, class Key,
+          template <class T1, class T2> class Converter = convert>
 class DynamicPropertyMapWrap
 {
 public:
@@ -437,7 +438,7 @@ private:
         {
             return _c_get(boost::get(pmap, k));
         }
-        
+
         template <class PMap>
         Value get_dispatch(PMap pmap, const typename property_traits<PMap>::key_type& k,
                            mpl::bool_<false>)
@@ -460,11 +461,11 @@ private:
         {
             throw ValueException("Property map is not writable.");
         }
-        
+
     private:
         PropertyMap _pmap;
-        convert<Value, val_t> _c_get;
-        convert<val_t, Value> _c_put;
+        Converter<Value, val_t> _c_get;
+        Converter<val_t, Value> _c_put;
     };
 
     struct choose_converter
