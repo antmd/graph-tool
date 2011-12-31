@@ -1675,6 +1675,7 @@ vector_types = [Vector_bool, Vector_int32_t, Vector_int64_t, Vector_double,
 for vt in vector_types:
     vt.a = property(_get_array_view, _set_array_view,
                     doc=r"""Shortcut to the `get_array` method as an attribute.""")
+    vt.__repr__ = lambda self: self.a.__repr__()
 Vector_string.a = None
 Vector_string.get_array = lambda self: None
 
