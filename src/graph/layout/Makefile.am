@@ -17,7 +17,9 @@ libgraph_tool_layout_la_LDFLAGS = $(MOD_LDFLAGS)
 libgraph_tool_layout_la_SOURCES = \
     graph_arf.cc \
     graph_fruchterman_reingold.cc \
+    graph_sfdp.cc \
     graph_bind_layout.cc
 
 libgraph_tool_layout_la_include_HEADERS = \
-    graph_arf.hh
+    graph_arf.hh \
+    graph_sfdp.hh

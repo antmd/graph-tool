@@ -31,6 +31,7 @@ Summary
    graph_draw
    fruchterman_reingold_layout
    arf_layout
+   sfdp_layout
    random_layout
 
 Contents
@@ -72,6 +73,7 @@ try:
 except OSError:
     pass
 
+
 try:
     libname = ctypes.util.find_library("gvc")
     if libname is None:
@@ -94,7 +96,7 @@ except OSError:
 
 
 __all__ = ["graph_draw", "fruchterman_reingold_layout", "arf_layout",
-           "random_layout"]
+           "sfdp_layout", "random_layout", "interactive_window", "cairo_draw"]
 
 
 def htmlize(val):
@@ -739,23 +741,8 @@ def arf_layout(g, weight=None, d=0.5, a=10, dt=0.001, epsilon=1e-6,
     ----------
     g : :class:`~graph_tool.Graph`
         Graph to be used.
-    weight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
-        An edge property map with the respective weights.
-    d : float (optional, default: ``0.5``)
-        Opposing force between vertices.
-    a : float (optional, default: ``10``)
-        Attracting force between adjacent vertices.
-    dt : float (optional, default: ``0.001``)
-        Iteration step size.
-    epsilon : float (optional, default: ``1e-6``)
-        Convergence criterion.
-    max_iter : int (optional, default: ``1000``)
-        Maximum number of iterations. If this value is ``0``, it runs until
-        convergence.
-    pos : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
-        Vector vertex property maps where the coordinates should be stored.
-    dim : int (optional, default: ``2``)
-        Number of coordinates per vertex.
+    weight : :class:`~graph_tool.PropertyMap` (optional,
+    default: ``None``) An edge property map with the respective weights. d : float (optional, default: ``0.5``) Opposing force between vertices. a : float (optional, default: ``10``) Attracting force between adjacent vertices. dt : float (optional, default: ``0.001``) Iteration step size. epsilon : float (optional, default: ``1e-6``) Convergence criterion. max_iter : int (optional, default: ``1000``) Maximum number of iterations. If this value is ``0``, it runs until convergence. pos : :class:` ~ graph_tool.PropertyMap` (optional, default: ``None``) Vector vertex property maps where the coordinates should be stored. dim : int (optional, default: ``2``) Number of coordinates per vertex.
 
     Returns
     -------
@@ -803,3 +790,83 @@ def arf_layout(g, weight=None, d=0.5, a=10, dt=0.001, epsilon=1e-6,
                                     _prop("e", g, weight), d, a, dt, max_iter,
                                     epsilon, dim)
     return pos
+
+
+def sfdp_layout(g, weight=None, pin=None, C=0.2, K=None, p=2., theta=1.2,
+                init_step=None, step_schedule=0.9, max_level=9, epsilon=1e-8,
+                max_iter=0, pos=None, verbose=False):
+    r"""Calculate the sfdp spring-block layout of the graph.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    weight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        An edge property map with the respective weights.
+    epsilon : float (optional, default: ``1e-6``)
+        Convergence criterion.
+    max_iter : int (optional, default: ``1000``)
+        Maximum number of iterations. If this value is ``0``, it runs until
+        convergence.
+    pos : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        Vector vertex property maps where the coordinates should be stored.
+
+    Returns
+    -------
+    pos : :class:`~graph_tool.PropertyMap`
+        A vector-valued vertex property map with the coordinates of the
+        vertices.
+
+    Notes
+    -----
+    This algorithm is defined in [geipel-self-organization-2007]_, and has
+    complexity :math:`O(V^2)`.
+
+    Examples
+    --------
+    >>> from numpy.random import seed, zipf
+    >>> seed(42)
+    >>> g = gt.price_network(300)
+    >>> pos = gt.arf_layout(g, max_iter=0)
+    >>> gt.graph_draw(g, pos=pos, pin=True, output="graph-draw-arf.pdf")
+    <...>
+
+    .. figure:: graph-draw-arf.*
+        :align: center
+
+        ARF layout of a Price network.
+
+    References
+    ----------
+    .. [geipel-self-organization-2007] Markus M. Geipel, "Self-Organization
+       applied to Dynamic Network Layout", International Journal of Modern
+       Physics C vol. 18, no. 10 (2007), pp. 1537-1549,
+       :doi:`10.1142/S0129183107011558`, :arxiv:`0704.1748v5`
+    .. _arf: http://www.sg.ethz.ch/research/graphlayout
+    """
+
+    if pos is None:
+        pos = random_layout(g, dim=2)
+    _check_prop_vector(pos, name="pos", floating=True)
+
+    if pin is not None and pin.value_type() != "bool":
+        raise ValueError("'pin' property must be of type 'bool'.")
+
+    if K is None:
+        px, py = ungroup_vector_property(pos, [0, 1])
+        K = sqrt((px.a.max() -  px.a.min()) * (py.a.max() -  py.a.min()) /
+                 g.num_vertices())
+
+    if init_step is None:
+        px, py = ungroup_vector_property(pos, [0, 1])
+        init_step = sqrt((px.a.max() -  px.a.min()) * (py.a.max() -  py.a.min())) / 10
+
+    ug = GraphView(g, directed=False)
+    libgraph_tool_layout.fdp_layout(ug._Graph__graph, _prop("v", g, pos),
+                                    _prop("e", g, weight), _prop("v", g, pin),
+                                    C, K, p, theta, init_step, step_schedule,
+                                    max_level, epsilon, max_iter, verbose)
+    return pos
+
+
+from cairo_draw import *

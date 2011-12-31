@@ -20,10 +20,11 @@
 using namespace boost::python;
 void export_arf();
 void export_fruchterman_reingold();
+void export_sfdp();
 
 BOOST_PYTHON_MODULE(libgraph_tool_layout)
 {
     export_arf();
     export_fruchterman_reingold();
+    export_sfdp();
 }
-
