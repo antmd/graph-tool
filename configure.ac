@@ -140,6 +140,19 @@ AC_ARG_ENABLE([openmp], [AS_HELP_STRING([--enable-openmp],[enable openmp [defaul
         )
 AC_SUBST(OPENMP_LDFLAGS)
 
+[USING_CAIRO=yes]
+AC_MSG_CHECKING(whether to enable cairo drawing...)
+AC_ARG_ENABLE([cairo], [AS_HELP_STRING([--disable-cairo],[disable cairo drawing [default=enabled] ])],
+        if test $enableval = no; then
+           [USING_CAIRO=no]
+           [AC_MSG_RESULT(no)]
+        else
+           [AC_MSG_RESULT(yes)]
+        fi
+        ,
+        [AC_MSG_RESULT(yes)]
+        )
+
 dnl Override prefix with default value if not set
 if test "x${prefix}" = "xNONE"; then
   prefix=${ac_default_prefix}
@@ -231,6 +244,16 @@ AC_CHECK_HEADER([CGAL/version.h],
                 [],
                 [AC_MSG_ERROR([CGAL headers not found])])
 
+
+
+dnl cairo
+if test "$USING_CAIRO" = "yes"; then
+   PKG_CHECK_MODULES(CAIROMM, [cairomm-1.0], AC_DEFINE([HAVE_CAIROMM], [1],
+                     [Cairomm is available]), [])
+   AC_SUBST(CAIROMM_CFLAGS)
+   AC_SUBST(CAIROMM_LIBS)
+   AC_PYTHON_MODULE(cairo)
+fi
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 dnl Checks for library functions.
@@ -338,6 +361,7 @@ src/graph/topology/Makefile
 src/graph/flow/Makefile
 src/graph/layout/Makefile
 src/graph/search/Makefile
+src/graph/draw/Makefile
 src/graph_tool/Makefile
 ])
 AC_OUTPUT
