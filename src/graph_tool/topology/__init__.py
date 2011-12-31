@@ -30,6 +30,7 @@ Summary
 
    shortest_distance
    shortest_path
+   pseudo_diameter
    similarity
    isomorphism
    subgraph_isomorphism
@@ -58,7 +59,7 @@ __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
            "min_spanning_tree", "dominator_tree", "topological_sort",
            "transitive_closure", "label_components", "label_largest_component",
            "label_biconnected_components", "shortest_distance",
-           "shortest_path", "is_planar", "similarity"]
+           "shortest_path", "pseudo_diameter", "is_planar", "similarity"]
 
 
 def similarity(g1, g2, label1=None, label2=None, norm=True):
@@ -844,8 +845,7 @@ def shortest_path(g, source, target, weights=None, pred_map=None):
     target : :class:`~graph_tool.Vertex`
         Target vertex of the search.
     weights : :class:`~graph_tool.PropertyMap` (optional, default: None)
-        The edge weights. If provided, the minimum spanning tree will minimize
-        the edge weights.
+        The edge weights.
     pred_map :  :class:`~graph_tool.PropertyMap` (optional, default: None)
         Vertex property map with the predecessors in the search tree. If this is
         provided, the shortest paths are not computed, and are obtained directly
@@ -924,6 +924,76 @@ def shortest_path(g, source, target, weights=None, pred_map=None):
         vlist.insert(0, p)
         v = p
     return vlist, elist
+
+
+def pseudo_diameter(g, source=None, weights=None):
+    """
+    Compute the pseudo-diameter of the graph.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    source : :class:`~graph_tool.Vertex` (optional, default: `None`)
+        Source vertex of the search. If not supplied, the first vertex
+        in the graph will be chosen.
+    weights : :class:`~graph_tool.PropertyMap` (optional, default: `None`)
+        The edge weights.
+
+    Returns
+    -------
+    pseudo_diameter : int
+        The pseudo-diameter of the graph.
+    end_points : pair of :class:`~graph_tool.Vertex`
+        The two vertices which correspond to the pseudo-diameter found.
+
+    Notes
+    -----
+
+    The pseudo-diameter is an approximate graph diameter. It is obtained by
+    starting from a vertex `source`, and finds a vertex `target` that is
+    farthest away from `source`. This process is repeated by treating
+    `target` as the new starting vertex, and ends when the graph distance no
+    longer increases. A vertex from the last level set that has the smallest
+    degree is chosen as the final starting vertex u, and a traversal is done
+    to see if the graph distance can be increased. This graph distance is
+    taken to be the pseudo-diameter.
+
+    The paths are computed with a breadth-first search (BFS) or Dijkstra's
+    algorithm [dijkstra]_, if weights are given.
+
+    The algorithm runs in :math:`O(V + E)` time, or :math:`O(V \log V)` if
+    weights are given.
+
+    Examples
+    --------
+    >>> from numpy.random import seed, poisson
+    >>> seed(42)
+    >>> g = gt.random_graph(300, lambda: (poisson(3), poisson(3)))
+    >>> dist, ends = gt.pseudo_diameter(g)
+    >>> print dist
+    >>> print end
+
+    References
+    ----------
+    .. [pseudo-diameter] http://en.wikipedia.org/wiki/Distance_%28graph_theory%29
+    """
+
+    if source is None:
+        source = g.vertex(0)
+    dist, target = 0, source
+    while True:
+        new_source = target
+        new_target, new_dist = libgraph_tool_topology.get_diam(g._Graph__graph,
+                                                               int(new_source),
+                                                               _prop("e", g, weights))
+        if new_dist > dist:
+            target = new_target
+            source = new_source
+            dist = new_dist
+        else:
+            break
+    return dist, (g.vertex(source), g.vertex(target))
 
 
 def is_planar(g, embedding=False, kuratowski=False):

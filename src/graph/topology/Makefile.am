@@ -18,6 +18,7 @@ libgraph_tool_topology_la_SOURCES = \
     graph_all_distances.cc \
     graph_components.cc \
     graph_distance.cc \
+    graph_diameter.cc \
     graph_dominator_tree.cc \
     graph_isomorphism.cc \
     graph_minimum_spanning_tree.cc \

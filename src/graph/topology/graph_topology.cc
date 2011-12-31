@@ -42,6 +42,7 @@ void export_components();
 void export_similarity();
 void export_dists();
 void export_all_dists();
+void export_diam();
 
 BOOST_PYTHON_MODULE(libgraph_tool_topology)
 {
@@ -57,4 +58,5 @@ BOOST_PYTHON_MODULE(libgraph_tool_topology)
     export_similarity();
     export_dists();
     export_all_dists();
+    export_diam();
 }
