@@ -371,7 +371,7 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
             has_vertex_ids = true;
             continue;
         }
-        
+
         if (i->first == "_graphml_edge_id")
         {
             has_edge_ids = true;
@@ -472,13 +472,13 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
         else
             out << "e" << edge_count;
         edge_count++;
-        
+
         out << "\" source=\"";
         if (has_vertex_ids)
             out << protect_xml_string(get("_graphml_vertex_id", dp,
                                            source(*e, g)));
         else
-            out << "n" << get(vertex_index, source(*e, g));        
+            out << "n" << get(vertex_index, source(*e, g));
         out << "\" target=\"";
         if (has_vertex_ids)
             out << protect_xml_string(get("_graphml_vertex_id", dp,

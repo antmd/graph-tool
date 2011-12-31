@@ -51,5 +51,3 @@ void export_arf()
 {
     python::def("arf_layout", &arf_layout);
 }
-
-
