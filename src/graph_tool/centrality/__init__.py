@@ -364,7 +364,7 @@ def eigenvector(g, weight=None, vprop=None, epsilon=1e-6, max_iter=None):
     ----------
     g : :class:`~graph_tool.Graph`
         Graph to be used.
-    weights : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+    weight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         Edge property map with the edge weights.
     vprop : :class:`~graph_tool.PropertyMap`, optional (default: ``None``)
         Vertex property map where the values of eigenvector must be stored.

@@ -56,7 +56,7 @@ struct get_eigenvector
         }
 
         t_type norm = 0;
-        
+
 
         t_type delta = epsilon + 1;
         size_t iter = 0;
@@ -118,7 +118,7 @@ struct get_eigenvector
                 c[v] = c_temp[v];
             }
         }
-        
+
         eig = 1. / norm;
     }
 };

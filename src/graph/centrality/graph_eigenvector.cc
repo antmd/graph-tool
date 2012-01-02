@@ -36,7 +36,7 @@ long double eigenvector(GraphInterface& g, boost::any w, boost::any c,
         throw ValueException("vertex property must be of floating point"
                              " value type");
 
-    typedef ConstantPropertyMap<int, GraphInterface::vertex_t> weight_map_t;
+    typedef ConstantPropertyMap<int, GraphInterface::edge_t> weight_map_t;
     typedef mpl::push_back<writable_edge_scalar_properties, weight_map_t>::type
         weight_props_t;
 
@@ -49,7 +49,7 @@ long double eigenvector(GraphInterface& g, boost::any w, boost::any c,
          (get_eigenvector(),
           _1, g.GetVertexIndex(), g.GetEdgeIndex(), _2,
           _3, epsilon, max_iter, ref(eig)),
-         writable_edge_scalar_properties(),
+         weight_props_t(),
          vertex_floating_properties())(w, c);
     return eig;
 }
