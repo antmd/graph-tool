@@ -1133,6 +1133,10 @@ class Graph(object):
     graph_properties = property(__get_graph_properties,
                                  doc="Dictionary of internal graph properties. The keys are the property names.")
 
+    def own_property(self, prop):
+        """'Own' property map 'prop', which may belong to another graph."""
+        return PropertyMap(prop._PropertyMap__map, self, prop.key_type())
+
     def list_properties(self):
         """Print a list of all internal properties.
 
