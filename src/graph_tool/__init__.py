@@ -513,15 +513,19 @@ class PropertyMap(object):
             filt = g.get_vertex_filter()
         elif self.__key_type == 'e':
             filt = g.get_edge_filter()
-        if filt[0] is None or a is None:
-            if get:
-                return a
-            else:
-                return
         if get:
+            if a is None:
+                return a
+            if filt[0] is None:
+                return a
             return a[filt[0].a == (not filt[1])]
         else:
-            a[filt[0].a == (not filt[1])] = v
+            if a is None:
+                return
+            if filt[0] is None:
+                a[:] = v
+            else:
+                a[filt[0].a == (not filt[1])] = v
 
     fa = property(__get_set_f_array,
                   lambda self, v: self.__get_set_f_array(v, False),
