@@ -44,6 +44,7 @@ namespace boost {
       typedef typename graph_traits<Graph1>::vertex_descriptor vertex1_t;
       typedef typename graph_traits<Graph2>::vertex_descriptor vertex2_t;
       typedef typename graph_traits<Graph1>::edge_descriptor edge1_t;
+      typedef typename graph_traits<Graph2>::edge_descriptor edge2_t;
       typedef typename graph_traits<Graph1>::vertices_size_type size_type;
       typedef typename Invariant1::result_type invar1_value;
       typedef typename Invariant2::result_type invar2_value;
@@ -208,7 +209,7 @@ namespace boost {
       bool match(edge_iter iter, int dfs_num_k)
       {
         if (iter != ordered_edges.end()) {
-          vertex1_t i = source(*iter, G1), j = target(*iter, G2);
+          vertex1_t i = source(edge1_t(*iter), G1), j = target(edge2_t(*iter), G2);
           if (dfs_num[i] > dfs_num_k) {
             vertex1_t kp1 = dfs_vertices[dfs_num_k + 1];
             BGL_FORALL_VERTICES_T(u, G2, Graph2) {
@@ -289,7 +290,8 @@ namespace boost {
   size_t get_num_vertices(const Graph& g)
   {
       size_t n = 0;
-      BGL_FORALL_VERTICES_T(v, g, Graph)
+      typename boost::graph_traits<Graph>::vertex_iterator v, v_end;
+      for(tie(v, v_end) = vertices(g); v != v_end; ++v)
           n++;
       return n;
   }
@@ -298,7 +300,8 @@ namespace boost {
   size_t get_num_edges(const Graph& g)
   {
       size_t n = 0;
-      BGL_FORALL_EDGES_T(e, g, Graph)
+      typename boost::graph_traits<Graph>::edge_iterator e, e_end;
+      for(tie(e, e_end) = edges(g); e != e_end; ++e)
           n++;
       return n;
   }

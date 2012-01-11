@@ -55,4 +55,3 @@ void ungroup_vector_property(GraphInterface& g, boost::any vector_prop,
              vertex_vector_properties(), writable_vertex_properties())
             (vector_prop, prop);
 }
-

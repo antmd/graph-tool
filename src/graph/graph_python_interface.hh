@@ -279,7 +279,8 @@ public:
                         const edge_descriptor& edge, python::object& vertex)
             const
         {
-            vertex = python::object(PythonVertex(pg, source(edge, g)));
+            typedef typename graph_traits<GraphType>::edge_descriptor edge_t;
+            vertex = python::object(PythonVertex(pg, source(edge_t(edge), g)));
         }
     };
 
@@ -300,7 +301,8 @@ public:
                         const edge_descriptor& edge, python::object& vertex)
             const
         {
-            vertex = python::object(PythonVertex(pg, target(edge, g)));
+            typedef typename graph_traits<GraphType>::edge_descriptor edge_t;
+            vertex = python::object(PythonVertex(pg, target(edge_t(edge), g)));
         }
     };
 
@@ -318,7 +320,7 @@ public:
     {
         PythonVertex src = python::extract<PythonVertex>(GetSource());
         PythonVertex tgt = python::extract<PythonVertex>(GetTarget());
-        return "(" + src.GetString() + "," + tgt.GetString() + ")";
+        return "(" + src.GetString() + ", " + tgt.GetString() + ")";
     }
 
     size_t GetHash() const

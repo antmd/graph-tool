@@ -36,7 +36,7 @@ public:
     typedef typename property_traits<Label2>::value_type value_type2;
 
     bool operator()(typename graph_traits<Graph1>::vertex_descriptor v1,
-                    typename graph_traits<Graph1>::vertex_descriptor v2) const
+                    typename graph_traits<Graph2>::vertex_descriptor v2) const
     {
         if (in_degreeS()(v2, _g2) < in_degreeS()(v1, _g1) ||
             out_degree(v2, _g2) < out_degree(v1, _g1))
@@ -45,7 +45,7 @@ public:
     }
 
     bool operator()(typename graph_traits<Graph1>::edge_descriptor e1,
-                    typename graph_traits<Graph1>::edge_descriptor e2) const
+                    typename graph_traits<Graph2>::edge_descriptor e2) const
     {
         return _label1[e1] == _label2[e2];
     }
@@ -102,6 +102,8 @@ struct get_mapping
                     VertexMap vmapping, EdgeMap emapping,
                     EdgeIndexMap edge_index2, vector<size_t>& vlist) const
     {
+        typedef typename graph_traits<Graph1>::edge_descriptor edge1_t;
+        typedef typename graph_traits<Graph2>::edge_descriptor edge2_t;
         typedef PropLabelling<Graph1,Graph2,EdgeLabel,EdgeLabel>
             elabelling_t;
         elabelling_t edge_labelling(sub, *g, edge_label1,
@@ -123,7 +125,7 @@ struct get_mapping
                          out_edges(vertex(vlist[F[i].second], *g), *g);
                      e2 != e2_end; ++e2)
                 {
-                    if (target(*e2, *g) ==
+                    if (target(edge2_t(*e2), *g) ==
                         vertex(vlist[F[target(*e, sub)].second], *g) &&
                         edge_labelling(*e, *e2))
                     {
