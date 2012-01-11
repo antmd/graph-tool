@@ -72,7 +72,7 @@ struct find_vertices
         range.second = python::extract<value_type>(prange[1]);
 
         #ifdef USING_OPENMP
-        size_t nt = omp_get_num_threads();
+        size_t __attribute__ ((unused)) nt = omp_get_num_threads();
         if (is_convertible<value_type,python::object>::value)
             nt = 1; // python is not thread-safe
         #endif
@@ -114,7 +114,7 @@ struct find_edges
         tr1::unordered_set<size_t> edge_set;
 
         #ifdef USING_OPENMP
-        size_t nt = omp_get_num_threads();
+        size_t __attribute__ ((unused)) nt = omp_get_num_threads();
         if (is_convertible<value_type,python::object>::value)
             nt = 1; // python is not thread-safe
         #endif
