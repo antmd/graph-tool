@@ -36,6 +36,12 @@
 #include <string>
 #include <vector>
 
+#if (GCC_VERSION >= 40400)
+#   include <tr1/unordered_map>
+#else
+#   include <boost/tr1/unordered_map.hpp>
+#endif
+
 namespace graph_tool{
 
 using namespace std;
@@ -199,10 +205,10 @@ private:
     Graph& _g;
     dynamic_properties& _dp;
     bool _directed;
-    unordered_map<int, typename graph_traits<Graph>::vertex_descriptor> _vmap;
+    tr1::unordered_map<int, typename graph_traits<Graph>::vertex_descriptor> _vmap;
 
     // the stack holds the keys, and its properties (but omits nested lists)
-    typedef unordered_map<std::string, val_t> prop_list_t;
+    typedef tr1::unordered_map<std::string, val_t> prop_list_t;
     vector<pair<std::string,  prop_list_t> > _stack;
 };
 
