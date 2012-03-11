@@ -70,7 +70,7 @@ ac_cv_boost_python,
  using namespace boost::python;
  BOOST_PYTHON_MODULE(test) { throw "Boost::Python test."; }]],
  			   [[return 0;]]),
-  			   ac_cv_boost_python=yes, ac_cv_boost_python=no)
+                           ac_cv_boost_python=yes, ac_cv_boost_python=no)
  AC_LANG_RESTORE
  CPPFLAGS="$CPPFLAGS_SAVE"
 ])
@@ -82,8 +82,12 @@ if test "$ac_cv_boost_python" = "yes"; then
      ax_python_lib=$with_boost_python
      ax_boost_python_lib=boost_python-$with_boost_python
    fi])
-  for ax_lib in $ax_python_lib $ax_boost_python_lib boost_python boost_python-mt boost_python-mt-py2.5; do
+  for ax_lib in $ax_python_lib $ax_boost_python_lib boost_python boost_python-mt; do
     AC_CHECK_LIB($ax_lib, exit, [BOOST_PYTHON_LIB=$ax_lib break])
+    ax_lib_alt=${ax_lib}-py$PYTHON_VERSION
+    AC_CHECK_LIB($ax_lib_alt, exit, [BOOST_PYTHON_LIB=$ax_lib_alt break])
+    ax_lib_alt=${ax_lib}-$PYTHON_VERSION
+    AC_CHECK_LIB($ax_lib_alt, exit, [BOOST_PYTHON_LIB=$ax_lib_alt break])
   done
   AC_SUBST(BOOST_PYTHON_LIB)
 fi
