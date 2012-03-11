@@ -37,11 +37,13 @@ using namespace boost;
 struct get_community_network
 {
     template <class Graph, class CommunityGraph, class CommunityMap,
-              class WeightMap, class EdgeIndex, class VertexIndex,
-              class VertexProperty, class EdgeProperty>
+              class CCommunityMap,
+              class VertexWeightMap, class EdgeWeightMap, class EdgeIndex,
+              class VertexIndex, class VertexProperty, class EdgeProperty>
     void operator()(const Graph& g, CommunityGraph& cg,
                     VertexIndex cvertex_index, EdgeIndex cedge_index,
-                    CommunityMap s_map, boost::any acs_map, WeightMap weight,
+                    CommunityMap s_map, CCommunityMap cs_map,
+                    VertexWeightMap vweight, EdgeWeightMap eweight,
                     VertexProperty vertex_count, EdgeProperty edge_count) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
@@ -52,17 +54,18 @@ struct get_community_network
             cedge_t;
         typedef typename boost::property_traits<CommunityMap>::value_type
             s_type;
+        typedef typename boost::property_traits<VertexProperty>::value_type
+            vprop_type;
 
-        typedef typename get_prop_type<CommunityMap, VertexIndex>::type
-            comm_map_t;
-
-        comm_map_t cs_map = boost::any_cast<comm_map_t>(acs_map);
-
-        tr1::unordered_map<s_type, vector<vertex_t>, hash<s_type> >
+        tr1::unordered_map<s_type, pair<vector<vertex_t>, vprop_type>, hash<s_type> >
             comms;
         typename graph_traits<Graph>::vertex_iterator v, v_end;
         for (tie(v, v_end) = vertices(g); v != v_end; ++v)
-            comms[get(s_map, *v)].push_back(*v);
+        {
+            pair<vector<vertex_t>, vprop_type>& m = comms[get(s_map, *v)];
+            m.first.push_back(*v);
+            m.second += get(vweight, *v);
+        }
 
         // create vertices
         tr1::unordered_map<s_type, cvertex_t, hash<s_type> >
@@ -71,7 +74,7 @@ struct get_community_network
              ++iter)
         {
             cvertex_t v = add_vertex(cg);
-            vertex_count[v] = iter->second.size();
+            put(vertex_count, v, iter->second.second);
             comm_vertices[iter->first] = v;
             put_dispatch(cs_map, v, iter->first,
                          typename boost::is_convertible
@@ -87,9 +90,9 @@ struct get_community_network
              ++iter)
         {
             cvertex_t cs = comm_vertices[iter->first];
-            for (size_t i = 0; i < iter->second.size(); ++i)
+            for (size_t i = 0; i < iter->second.first.size(); ++i)
             {
-                vertex_t s = iter->second[i];
+                vertex_t s = iter->second.first[i];
                 typename graph_traits<Graph>::out_edge_iterator e, e_end;
                 for (tie(e, e_end) = out_edges(s, g); e != e_end; ++e)
                 {
@@ -107,41 +110,14 @@ struct get_community_network
                     {
                         ce = add_edge(cs, ct, cg).first;
                         comm_edges[make_pair(cs, ct)] = ce;
-                        cedge_index[ce] = comm_edges.size() - 1;
+                        put(cedge_index, ce, comm_edges.size() - 1);
                     }
-                    edge_count[ce] += get(weight, *e);
+                    put(edge_count, ce, get(edge_count, ce) + get(eweight, *e));
                 }
             }
         }
     }
 
-    struct get_checked_t
-    {
-        template <class PropertyMap>
-        struct apply
-        {
-            typedef typename PropertyMap::checked_t type;
-        };
-    };
-
-    struct get_identity
-    {
-        template <class PropertyMap>
-        struct apply
-        {
-            typedef PropertyMap type;
-        };
-    };
-
-    template <class PropertyMap, class IndexMap>
-    struct get_prop_type
-    {
-        typedef typename mpl::if_<typename is_same<PropertyMap, IndexMap>::type,
-                                  get_identity,
-                                  get_checked_t>::type extract;
-        typedef typename extract::template apply<PropertyMap>::type type;
-    };
-        
     template <class PropertyMap>
     void put_dispatch(PropertyMap cs_map,
                       const typename property_traits<PropertyMap>::key_type& v,
@@ -164,4 +140,3 @@ struct get_community_network
 } // graph_tool namespace
 
 #endif // GRAPH_COMMUNITY_NETWORK_HH
-

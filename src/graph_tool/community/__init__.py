@@ -278,7 +278,7 @@ def modularity(g, prop, weight=None):
     return m
 
 
-def condensation_graph(g, prop, weight=None):
+def condensation_graph(g, prop, vweight=None, eweight=None):
     r"""
     Obtain the condensation graph, where each vertex with the same 'prop' value
     is condensed in one vertex.
@@ -289,7 +289,9 @@ def condensation_graph(g, prop, weight=None):
         Graph to be used.
     prop : :class:`~graph_tool.PropertyMap`
         Vertex property map with the community partition.
-    weight : :class:`~graph_tool.PropertyMap` (optional, default: None)
+    vweight : :class:`~graph_tool.PropertyMap` (optional, default: None)
+        Vertex property map with the optional vertex weights.
+    eweight : :class:`~graph_tool.PropertyMap` (optional, default: None)
         Edge property map with the optional edge weights.
 
     Returns
@@ -337,11 +339,14 @@ def condensation_graph(g, prop, weight=None):
         size of the corresponding community.
     """
     gp = Graph(directed=g.is_directed())
-    vcount = gp.new_vertex_property("int32_t")
-    if weight != None:
-        ecount = gp.new_edge_property("double")
+    if vweight is None:
+        vcount = gp.new_vertex_property("int32_t")
     else:
+        vcount = gp.new_vertex_property(vweight.value_type())
+    if eweight is None:
         ecount = gp.new_edge_property("int32_t")
+    else:
+        ecount = gp.new_edge_property(eweight.value_type())
     cprop = gp.new_vertex_property(prop.value_type())
     libgraph_tool_community.community_network(g._Graph__graph,
                                               gp._Graph__graph,
@@ -349,5 +354,6 @@ def condensation_graph(g, prop, weight=None):
                                               _prop("v", gp, cprop),
                                               _prop("v", gp, vcount),
                                               _prop("e", gp, ecount),
-                                              _prop("e", g, weight))
+                                              _prop("v", g, vweight),
+                                              _prop("e", g, eweight))
     return gp, cprop, vcount, ecount

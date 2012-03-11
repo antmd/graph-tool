@@ -100,7 +100,8 @@ extern void community_network(GraphInterface& gi, GraphInterface& cgi,
                               boost::any community_property,
                               boost::any condensed_community_property,
                               boost::any vertex_count,
-                              boost::any edge_count, boost::any weight);
+                              boost::any edge_count, boost::any vweight,
+                              boost::any eweight);
 
 BOOST_PYTHON_MODULE(libgraph_tool_community)
 {

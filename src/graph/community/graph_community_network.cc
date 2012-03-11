@@ -32,50 +32,130 @@ using namespace boost;
 
 using namespace graph_tool;
 
+typedef ConstantPropertyMap<int32_t,GraphInterface::edge_t> no_eweight_map_t;
+typedef ConstantPropertyMap<int32_t,GraphInterface::vertex_t> no_vweight_map_t;
+typedef DynamicPropertyMapWrap<int32_t,GraphInterface::vertex_t> viweight_map_t;
+typedef DynamicPropertyMapWrap<double,GraphInterface::vertex_t> vweight_map_t;
+typedef DynamicPropertyMapWrap<int32_t,GraphInterface::edge_t> eiweight_map_t;
+typedef DynamicPropertyMapWrap<double,GraphInterface::edge_t> eweight_map_t;
+typedef DynamicPropertyMapWrap<python::object,GraphInterface::vertex_t> voweight_map_t;
+typedef DynamicPropertyMapWrap<python::object,GraphInterface::edge_t> eoweight_map_t;
+
+struct get_community_network_dispatch
+{
+    template <class Graph, class CommunityGraph, class CommunityMap,
+              class VertexWeightMap, class EdgeWeightMap, class EdgeIndex,
+              class VertexIndex>
+    void operator()(const Graph& g, CommunityGraph& cg,
+                    VertexIndex cvertex_index, EdgeIndex cedge_index,
+                    CommunityMap s_map, boost::any acs_map,
+                    VertexWeightMap vweight, EdgeWeightMap eweight,
+                    pair<boost::any,boost::any> count) const
+    {
+        typedef typename get_prop_type<CommunityMap, VertexIndex>::type
+            comm_t;
+        comm_t cs_map = boost::any_cast<comm_t>(acs_map);
+
+        typedef typename mpl::if_<is_same<no_vweight_map_t, VertexWeightMap>,
+                                  viweight_map_t, VertexWeightMap>::type vweight_t;
+        typedef typename mpl::if_<is_same<no_eweight_map_t, EdgeWeightMap>,
+                                  eiweight_map_t, EdgeWeightMap>::type eweight_t;
+
+        vweight_t vertex_count = boost::any_cast<vweight_t>(count.first);
+        eweight_t edge_count = boost::any_cast<eweight_t>(count.second);
+
+        get_community_network()(g, cg, cvertex_index, cedge_index, s_map,
+                                cs_map, vweight, eweight, vertex_count,
+                                edge_count);
+    }
+
+    struct get_checked_t
+    {
+        template <class PropertyMap>
+        struct apply
+        {
+            typedef typename PropertyMap::checked_t type;
+        };
+    };
+
+    struct get_identity
+    {
+        template <class PropertyMap>
+        struct apply
+        {
+            typedef PropertyMap type;
+        };
+    };
+
+    template <class PropertyMap, class IndexMap>
+    struct get_prop_type
+    {
+        typedef typename mpl::if_<typename is_same<PropertyMap, IndexMap>::type,
+                                  get_identity,
+                                  get_checked_t>::type extract;
+        typedef typename extract::template apply<PropertyMap>::type type;
+    };
+
+};
+
 
 void community_network(GraphInterface& gi, GraphInterface& cgi,
                        boost::any community_property,
                        boost::any condensed_community_property,
                        boost::any vertex_count,
-                       boost::any edge_count, boost::any weight)
+                       boost::any edge_count, boost::any vweight,
+                       boost::any eweight)
 {
-    typedef DynamicPropertyMapWrap<double,GraphInterface::edge_t> weight_map_t;
-    typedef ConstantPropertyMap<double,GraphInterface::edge_t> no_weight_map_t;
-    typedef mpl::vector<weight_map_t,no_weight_map_t> weight_properties;
+    typedef typename mpl::vector<vweight_map_t, voweight_map_t, no_vweight_map_t>::type
+        vweight_properties;
+    typedef typename mpl::vector<eweight_map_t, eoweight_map_t, no_eweight_map_t>::type
+        eweight_properties;
 
-    if (weight.empty())
-        weight = no_weight_map_t(1.0);
+    if (eweight.empty())
+    {
+        eweight = no_eweight_map_t(1);
+        edge_count = eiweight_map_t(edge_count, edge_scalar_properties());
+    }
     else
-        weight = weight_map_t(weight, edge_scalar_properties());
-
-    typedef property_map_type::apply<int32_t,
-                                     GraphInterface::vertex_index_map_t>::type
-        vcount_t;
-    vcount_t vcount(gi.GetVertexIndex());
-    try
     {
-        vcount = any_cast<vcount_t>(vertex_count);
-    }
-    catch (bad_any_cast&)
-    {
-        throw ValueException("invalid vertex count property");
+        try
+        {
+            eweight = eweight_map_t(eweight, edge_scalar_properties());
+            edge_count = eweight_map_t(edge_count, edge_scalar_properties());
+        }
+        catch (...)
+        {
+            eweight = eoweight_map_t(eweight, edge_properties());
+            edge_count = eoweight_map_t(edge_count, edge_properties());
+        }
     }
 
-    typedef property_map_types::apply<mpl::vector<int32_t,double>,
-                                      GraphInterface::edge_index_map_t,
-                                      mpl::bool_<false> >::type
-        ecount_properties;
+    if (vweight.empty())
+    {
+        vweight = no_vweight_map_t(1);
+        vertex_count = viweight_map_t(vertex_count, vertex_scalar_properties());
+    }
+    else
+    {
+        try
+        {
+            vweight = vweight_map_t(vweight, vertex_scalar_properties());
+            vertex_count = vweight_map_t(vertex_count, vertex_scalar_properties());
+        }
+        catch (...)
+        {
+            vweight = voweight_map_t(vweight, vertex_properties());
+            vertex_count = voweight_map_t(vertex_count, vertex_properties());
+        }
+    }
 
-    if (!belongs<ecount_properties>()(edge_count))
-        throw ValueException("invalid edge count property");
-
-     run_action<>()(gi, bind<void>(get_community_network(), _1,
+     run_action<>()(gi, bind<void>(get_community_network_dispatch(), _1,
                                    ref(cgi.GetGraph()), cgi.GetVertexIndex(),
                                    cgi.GetEdgeIndex(), _2,
                                    condensed_community_property,
-                                   _3, vcount, _4),
-                   vertex_properties(), weight_properties(),
-                   ecount_properties())
-        (community_property, weight, edge_count);
+                                   _3, _4, make_pair(vertex_count, edge_count)),
+                    vertex_scalar_properties(), vweight_properties(),
+                    eweight_properties())
+        (community_property, vweight, eweight);
      cgi.ReIndexEdges();
 }
