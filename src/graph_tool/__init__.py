@@ -113,6 +113,7 @@ __all__ = ["Graph", "GraphView", "Vertex", "Edge", "Vector_bool",
            "PropertyMap", "group_vector_property", "ungroup_vector_property",
            "show_config", "PropertyArray", "__author__", "__copyright__",
            "__URL__", "__version__"]
+           "infect_vertex_property", "edge_difference", "show_config",
 
 # this is rather pointless, but it works around a sphinx bug
 graph_tool = sys.modules[__name__]
@@ -754,6 +755,35 @@ def ungroup_vector_property(vprop, pos, props=None):
             props[i][g] = vprop[g][pos[i]]
     return props
 
+
+def infect_vertex_property(g, prop, vals=None):
+    """Propagate the `prop` values of vertices with value `val` to all their
+    out-neighbours.
+
+    Parameters
+    ----------
+    prop : :class:`~graph_tool.PropertyMap`
+        Property map to be modified.
+    vals : list (optional, default: `None`)
+        List of values to be propagated. If not provided, all values
+        will be propagated.
+
+    Returns
+    -------
+    None
+
+    Examples
+    --------
+    >>> from numpy.random import seed
+    >>> seed(42)
+    >>> g = gt.random_graph(100, lambda: (3, 3))
+    >>> prop = g.copy_property(g.vertex_index)
+    >>> gt.infect_vertex_property(g, prop, [10])
+    >>> print sum(prop.a == 10)
+    3
+    """
+    libcore.infect_vertex_property(g._Graph__graph, _prop("v", g, prop),
+                                   vals)
 
 class PropertyDict(dict):
     """Wrapper for the dict of vertex, graph or edge properties, which sets the

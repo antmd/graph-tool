@@ -21,6 +21,12 @@
 #include "graph_selectors.hh"
 #include "graph_util.hh"
 
+#if (GCC_VERSION >= 40400)
+#   include <tr1/unordered_set>
+#else
+#   include <boost/tr1/unordered_set.hpp>
+#endif
+
 #include <boost/mpl/for_each.hpp>
 
 #include <boost/python/extract.hpp>
@@ -68,4 +74,71 @@ void GraphInterface::ShiftVertexProperty(boost::any prop, size_t index) const
         throw GraphException("invalid writable property map");
 }
 
+
 } // graph_tool namespace
+
+
+struct do_infect_vertex_property
+{
+    template <class Graph, class IndexMap, class PropertyMap>
+    void operator()(Graph& g, IndexMap index, PropertyMap prop,
+                    python::object oval) const
+    {
+        typedef typename property_traits<PropertyMap>::value_type val_t;
+        bool all = false;
+
+        tr1::unordered_set<val_t, boost::hash<val_t> > vals;
+        if (oval == python::object())
+        {
+            all = true;
+        }
+        else
+        {
+            for (int i = 0; i < len(oval); ++i)
+            {
+                val_t val = python::extract<val_t>(oval[i]);
+                vals.insert(val);
+            }
+        }
+
+        unchecked_vector_property_map<uint8_t, IndexMap>
+            marked(index, num_vertices(g));
+
+        int i, N = num_vertices(g);
+        #pragma omp parallel for default(shared) private(i)
+        for (i = 0; i < N; ++i)
+        {
+            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+            bool skip;
+            {
+                #pragma omp critical
+                skip = marked[v];
+            }
+            if (skip)
+                continue;
+            if (!all && vals.find(prop[v]) == vals.end())
+                continue;
+            typename graph_traits<Graph>::adjacency_iterator a, a_end;
+            for (tie(a, a_end) = adjacent_vertices(v, g); a != a_end; ++a)
+            {
+                if (prop[*a] == prop[v])
+                    continue;
+                {
+                    #pragma omp critical
+                    marked[*a] = true;
+                }
+                prop[*a] = prop[v];
+            }
+        }
+    }
+};
+
+void infect_vertex_property(GraphInterface& gi, boost::any prop,
+                            python::object val)
+{
+    run_action<>()(gi, bind<void>(do_infect_vertex_property(), _1,
+                                  gi.GetVertexIndex(), _2, val),
+                   writable_vertex_properties())(prop);
+}
