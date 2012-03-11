@@ -782,7 +782,7 @@ class PropertyDict(dict):
 # The main graph interface
 ################################################################################
 
-from libgraph_tool_core import Vertex, Edge, Vector_bool, Vector_int32_t, \
+from libgraph_tool_core import Vertex, EdgeBase, Vector_bool, Vector_int32_t, \
      Vector_int64_t, Vector_double, Vector_long_double, Vector_string, \
      new_vertex_property, new_edge_property, new_graph_property
 
@@ -934,7 +934,7 @@ class Graph(object):
         >>> assert(vlist == vlist2)
 
         """
-        return libcore.get_vertices(weakref.ref(self.__graph))
+        return libcore.get_vertices(weakref.ref(self))
 
     def vertex(self, i, use_index=True):
         """Return the vertex with index ``i``. If ``use_index=False``, the
@@ -943,7 +943,7 @@ class Graph(object):
         if use_index:
             self.stash_filter(vertex=True)
         try:
-            v = libcore.get_vertex(weakref.ref(self.__graph), int(i))
+            v = libcore.get_vertex(weakref.ref(self), int(i))
         finally:
             if use_index:
                 self.pop_filter(vertex=True)
@@ -983,7 +983,7 @@ class Graph(object):
            ordering.
 
         """
-        return libcore.get_edges(weakref.ref(self.__graph))
+        return libcore.get_edges(weakref.ref(self))
 
     def add_vertex(self, n=1):
         """Add a vertex to the graph, and return it. If ``n > 1``, ``n``
@@ -992,7 +992,7 @@ class Graph(object):
         vlist = []
         vfilt = self.get_vertex_filter()
         for i in xrange(n):
-            v = libcore.add_vertex(weakref.ref(self.__graph))
+            v = libcore.add_vertex(weakref.ref(self))
             if vfilt[0] is not None:
                 vfilt[0][v] = not vfilt[1]
             vlist.append(v)
@@ -1031,7 +1031,7 @@ class Graph(object):
         """Add a new edge from ``source`` to ``target`` to the graph, and return
         it."""
         self.__check_perms("add_edge")
-        e = libcore.add_edge(weakref.ref(self.__graph), source, target)
+        e = libcore.add_edge(weakref.ref(self), source, target)
         efilt = self.get_edge_filter()
         if efilt[0] is not None:
             efilt[0][e] = not efilt[1]
@@ -1040,7 +1040,7 @@ class Graph(object):
     def remove_edge(self, edge):
         """Remove an edge from the graph."""
         self.__check_perms("del_edge")
-        return libcore.remove_edge(self.__graph, edge)
+        return libcore.remove_edge(self, edge)
 
     def remove_edge_if(self, predicate):
         """Remove all edges from the graph, for which ``predicate(e)`` evaluates
@@ -1570,7 +1570,7 @@ def value_types():
 
 # Vertex and Edge Types
 # =====================
-from libgraph_tool_core import Vertex, Edge
+from libgraph_tool_core import Vertex, Edge, EdgeBase
 
 Vertex.__doc__ = """Vertex descriptor.
 
@@ -1644,6 +1644,7 @@ def _edge_repr(self):
 
 # There are several edge classes... me must cycle through them all to modify
 # them.
+
 def init_edge_classes():
     for directed in [True, False]:
         for e_reversed in [True, False]:
@@ -1668,9 +1669,17 @@ def init_edge_classes():
 
 init_edge_classes()
 
+# some shenanigans to make it seem there is only a single edge class
+EdgeBase.__doc__ = Edge.__doc__
+EdgeBase.source = Edge.source
+EdgeBase.target = Edge.target
+EdgeBase.is_valid = Edge.is_valid
+EdgeBase.get_graph = Edge.get_graph
+Edge = EdgeBase
+Edge.__name__ = "Edge"
+
+
 # Add convenience function to vector classes
-
-
 def _get_array_view(self):
     return self.get_array()[:]
 

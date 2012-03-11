@@ -84,7 +84,7 @@ public:
     {
         if (_g().ptr() == Py_None)
             return false;
-        GraphInterface& gi = python::extract<GraphInterface&>(_g());
+        GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
         return _valid &&
             (_v != graph_traits<GraphInterface::multigraph_t>::null_vertex()) &&
             (_v < num_vertices(gi._state->_mg));
@@ -100,6 +100,11 @@ public:
         if (!IsValid())
             throw ValueException("invalid vertex descriptor: " +
                                  lexical_cast<string>(_v));
+    }
+
+    python::object GetGraph() const
+    {
+        return _g();
     }
 
     GraphInterface::vertex_t GetDescriptor() const
@@ -122,7 +127,7 @@ public:
     size_t GetInDegree() const
     {
         CheckValid();
-        GraphInterface& gi = python::extract<GraphInterface&>(_g());
+        GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
         size_t in_deg;
         run_action<>()(gi, bind<void>(get_degree<in_degreeS>(),
                                       _1, _v,
@@ -133,7 +138,7 @@ public:
     size_t GetOutDegree() const
     {
         CheckValid();
-        GraphInterface& gi = python::extract<GraphInterface&>(_g());
+        GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
         size_t out_deg;
         run_action<>()(gi, bind<void>(get_degree<out_degreeS>(), _1, _v,
                                       ref(out_deg)))();
@@ -161,7 +166,7 @@ public:
     OutEdges() const
     {
         CheckValid();
-        GraphInterface& gi = python::extract<GraphInterface&>(_g());
+        GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
         python::object iter;
         run_action<>()(gi, bind<void>(get_out_edges(), _1,
                                       ref(_g), _v, ref(iter)))();
@@ -187,7 +192,7 @@ public:
     InEdges() const
     {
         CheckValid();
-        GraphInterface& gi = python::extract<GraphInterface&>(_g());
+        GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
         python::object iter;
         run_action<>()(gi, bind<void>(get_in_edges(), _1, ref(_g), _v,
                                       ref(iter)))();
@@ -208,7 +213,7 @@ public:
     size_t GetIndex() const
     {
         CheckValid();
-        GraphInterface& gi = python::extract<GraphInterface&>(_g());
+        GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
         return gi._vertex_index[_v];
     }
 
@@ -234,8 +239,10 @@ private:
 
 // below are classes related to the PythonEdge type
 
+class EdgeBase {}; // useful to unite all edge types
+
 template <class Graph>
-class PythonEdge
+class PythonEdge : public EdgeBase
 {
 public:
     typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
@@ -249,7 +256,7 @@ public:
     {
         if (_g().ptr() == Py_None)
             return false;
-        GraphInterface& gi = python::extract<GraphInterface&>(_g());
+        GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
         GraphInterface::edge_t e(_e);
         return (_valid &&
                 PythonVertex(_g, source(e, gi._state->_mg)).IsValid() &&
@@ -265,6 +272,11 @@ public:
     {
         if (!IsValid())
             throw ValueException("invalid edge descriptor");
+    }
+
+    python::object GetGraph() const
+    {
+        return _g();
     }
 
     GraphInterface::edge_t GetDescriptor() const
@@ -287,7 +299,7 @@ public:
     python::object GetSource() const
     {
         CheckValid();
-        GraphInterface& gi = python::extract<GraphInterface&>(_g());
+        GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
         python::object v;
         run_action<>()(gi, bind<void>(get_source(), _1, ref(_g), ref(_e),
                                       ref(v)))();
@@ -309,7 +321,7 @@ public:
     python::object GetTarget() const
     {
         CheckValid();
-        GraphInterface& gi = python::extract<GraphInterface&>(_g());
+        GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
         python::object v;
         run_action<>()(gi, bind<void>(get_target(), _1, ref(_g), ref(_e),
                                       ref(v)))();
@@ -326,7 +338,7 @@ public:
     size_t GetHash() const
     {
         CheckValid();
-        GraphInterface& gi = python::extract<GraphInterface&>(_g());
+        GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
         return hash<size_t>()(gi._edge_index[_e]);
     }
 

@@ -321,7 +321,7 @@ def bfs_search(g, source, visitor=BFSVisitor()):
 
     try:
         libgraph_tool_search.bfs_search(g._Graph__graph,
-                                        weakref.ref(g._Graph__graph),
+                                        weakref.ref(g),
                                         int(source), visitor)
     except StopSearch:
         pass
@@ -556,7 +556,7 @@ def dfs_search(g, source, visitor=DFSVisitor()):
 
     try:
         libgraph_tool_search.dfs_search(g._Graph__graph,
-                                        weakref.ref(g._Graph__graph),
+                                        weakref.ref(g),
                                         int(source), visitor)
     except StopSearch:
         pass
@@ -832,7 +832,7 @@ def dijkstra_search(g, source, weight, visitor=DijkstraVisitor(), dist_map=None,
 
     try:
         libgraph_tool_search.dijkstra_search(g._Graph__graph,
-                                             weakref.ref(g._Graph__graph),
+                                             weakref.ref(g),
                                              int(source),
                                              _prop("v", g, dist_map),
                                              _prop("v", g, pred_map),
@@ -1078,7 +1078,7 @@ def bellman_ford_search(g, source, weight, visitor=BellmanFordVisitor(),
     try:
         minimized = \
             libgraph_tool_search.bellman_ford_search(g._Graph__graph,
-                                                     weakref.ref(g._Graph__graph),
+                                                     weakref.ref(g),
                                                      int(source),
                                                      _prop("v", g, dist_map),
                                                      _prop("v", g, pred_map),
@@ -1508,7 +1508,7 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
                                     "add_edge": False})
 
             libgraph_tool_search.astar_search(g._Graph__graph,
-                                              weakref.ref(g._Graph__graph),
+                                              weakref.ref(g),
                                               int(source), _prop("v", g, dist_map),
                                               _prop("v", g, pred_map),
                                               _prop("e", g, weight), visitor,
@@ -1522,7 +1522,7 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
                                  " dist_map.")
             g._Graph__perms.update({"del_vertex": False})
             libgraph_tool_search.astar_search_implicit\
-                (g._Graph__graph, weakref.ref(g._Graph__graph), int(source),
+                (g._Graph__graph, weakref.ref(g), int(source),
                  _prop("v", g, dist_map), _prop("v", g, pred_map),
                  _prop("v", g, cost_map), _prop("e", g, weight), visitor,
                  compare, combine, zero, infinity, h)
