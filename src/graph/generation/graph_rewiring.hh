@@ -29,11 +29,6 @@
 
 #include <iostream>
 
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/random_access_index.hpp>
-#include <boost/multi_index/identity.hpp>
-
 #include "graph.hh"
 #include "graph_filtering.hh"
 #include "graph_util.hh"
@@ -43,7 +38,6 @@ namespace graph_tool
 {
 using namespace std;
 using namespace boost;
-using namespace boost::multi_index;
 
 // returns true if vertices u and v are adjacent. This is O(k(u)).
 template <class Graph>
@@ -84,60 +78,6 @@ target(const pair<size_t, bool>& e,
         return target(edges[e.first], g);
 }
 
-// This will iterate over a random permutation of a random access sequence, by
-// swapping the values of the sequence as it iterates
-template <class RandomAccessIterator, class RNG,
-          class RandomDist = tr1::uniform_int<size_t> >
-class random_permutation_iterator : public
-    std::iterator<input_iterator_tag, typename RandomAccessIterator::value_type>
-{
-public:
-    random_permutation_iterator(RandomAccessIterator begin,
-                                RandomAccessIterator end, RNG& rng)
-        : _i(begin), _end(end), _rng(&rng)
-    {
-        if(_i != _end)
-        {
-            RandomDist random(0,  _end - _i - 1);
-            std::iter_swap(_i, _i + random(*_rng));
-        }
-    }
-
-    typename RandomAccessIterator::value_type operator*()
-    {
-        return *_i;
-    }
-
-    random_permutation_iterator& operator++()
-    {
-        ++_i;
-        if(_i != _end)
-        {
-            RandomDist random(0,  _end - _i - 1);
-            std::iter_swap(_i, _i + random(*_rng));
-        }
-        return *this;
-    }
-
-    bool operator==(const random_permutation_iterator& ri)
-    {
-        return _i == ri._i;
-    }
-
-    bool operator!=(const random_permutation_iterator& ri)
-    {
-        return _i != ri._i;
-    }
-
-    size_t operator-(const random_permutation_iterator& ri)
-    {
-        return _i - ri._i;
-    }
-
-private:
-    RandomAccessIterator _i, _end;
-    RNG* _rng;
-};
 
 // this functor will swap the source of the edge e with the source of edge se
 // and the target of edge e with the target of te

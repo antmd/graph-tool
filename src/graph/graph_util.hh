@@ -34,6 +34,12 @@
 #include <boost/type_traits/is_convertible.hpp>
 #include <string>
 
+#if (GCC_VERSION >= 40400)
+#   include <tr1/random>
+#else
+#   include <boost/tr1/random.hpp>
+#endif
+
 namespace graph_tool
 {
 using namespace boost;
@@ -365,6 +371,62 @@ public:
 
 private:
     std::istream& _s;
+};
+
+
+// This will iterate over a random permutation of a random access sequence, by
+// swapping the values of the sequence as it iterates
+template <class RandomAccessIterator, class RNG,
+          class RandomDist = std::tr1::uniform_int<size_t> >
+class random_permutation_iterator : public
+    std::iterator<std::input_iterator_tag, typename RandomAccessIterator::value_type>
+{
+public:
+    random_permutation_iterator(RandomAccessIterator begin,
+                                RandomAccessIterator end, RNG& rng)
+        : _i(begin), _end(end), _rng(&rng)
+    {
+        if(_i != _end)
+        {
+            RandomDist random(0,  _end - _i - 1);
+            std::iter_swap(_i, _i + random(*_rng));
+        }
+    }
+
+    typename RandomAccessIterator::value_type operator*()
+    {
+        return *_i;
+    }
+
+    random_permutation_iterator& operator++()
+    {
+        ++_i;
+        if(_i != _end)
+        {
+            RandomDist random(0,  _end - _i - 1);
+            std::iter_swap(_i, _i + random(*_rng));
+        }
+        return *this;
+    }
+
+    bool operator==(const random_permutation_iterator& ri)
+    {
+        return _i == ri._i;
+    }
+
+    bool operator!=(const random_permutation_iterator& ri)
+    {
+        return _i != ri._i;
+    }
+
+    size_t operator-(const random_permutation_iterator& ri)
+    {
+        return _i - ri._i;
+    }
+
+private:
+    RandomAccessIterator _i, _end;
+    RNG* _rng;
 };
 
 
