@@ -215,6 +215,3 @@ private:
 } //namespace graph_tool
 
 #endif
-
-
-

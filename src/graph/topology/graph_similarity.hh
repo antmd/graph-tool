@@ -52,7 +52,7 @@ struct get_similarity
         const Graph2& g2 = *g2p;
 
         typedef typename property_traits<LabelMap>::value_type label_t;
-        
+
         tr1::unordered_map<label_t, typename graph_traits<Graph1>::vertex_descriptor>
             lmap1;
         tr1::unordered_map<label_t, typename graph_traits<Graph2>::vertex_descriptor>
@@ -85,7 +85,7 @@ struct get_similarity
                 adj1.insert(get(l1, *a1));
                 keys.insert(get(l1, *a1));
             }
-            
+
             typename graph_traits<Graph2>::adjacency_iterator a2, a2_end;
             for(tie(a2, a2_end) = adjacent_vertices(v2, g2); a2 != a2_end; ++a2)
             {

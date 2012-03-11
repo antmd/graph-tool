@@ -196,7 +196,6 @@ struct graph_rewire
             edges.push_back(*e);
             edge_pos.push_back(edge_pos.size());
         }
-    
 
         RewireStrategy<Graph, EdgeIndexMap, CorrProb, BlockDeg>
             rewire(g, edge_index, edges, corr_prob, bd, rng);
@@ -210,7 +209,7 @@ struct graph_rewire
         stringstream str;
         for (size_t i = 0; i < niter; ++i)
         {
-            random_edge_iter 
+            random_edge_iter
                 ei_begin(edge_pos.begin(), edge_pos.end(), rng),
                 ei_end(edge_pos.end(), edge_pos.end(), rng);
 
@@ -352,7 +351,7 @@ public:
         {
             self.update_edge(ei, false);
             self.update_edge(et.first, false);
-            
+
             swap_edge::swap_target(ei, et, _edges, _edge_index, _g);
 
             self.update_edge(ei, true);
@@ -362,7 +361,7 @@ public:
         {
             return false;
         }
-        
+
         return true;
     }
 
@@ -550,7 +549,7 @@ public:
     {
         deg_t s_deg = get_deg(source(base_t::_edges[ei], _g), _g);
         deg_t t_deg = get_deg(target(base_t::_edges[ei], _g), _g);
-     
+
         tr1::uniform_int<> sample(0, base_t::_edges.size() - 1);
         size_t epi = sample(base_t::_rng);
         pair<size_t, bool> ep = make_pair(epi, false);
@@ -568,15 +567,15 @@ public:
                      _probs[make_pair(ep_s_deg, ep_t_deg)]);
         double pf = (_probs[make_pair(s_deg, ep_t_deg)] *
                      _probs[make_pair(ep_s_deg, t_deg)]);
-        
+
         if (pf >= pi)
             return ep;
 
         if (pf == 0)
             return make_pair(ei, false); // reject
-   
+
         double a = exp(log(pf) - log(pi));
-   
+
         tr1::variate_generator<rng_t&, tr1::uniform_real<> >
             rsample(base_t::_rng, tr1::uniform_real<>(0.0, 1.0));
         double r = rsample();
@@ -601,7 +600,7 @@ class DegreeBlock
 {
 public:
     typedef pair<size_t, size_t> block_t;
-    
+
     template <class Graph>
     block_t get_block(typename graph_traits<Graph>::vertex_descriptor v,
                       const Graph& g) const
@@ -616,7 +615,7 @@ class PropertyBlock
 {
 public:
     typedef typename property_traits<PropertyMap>::value_type block_t;
-    
+
     PropertyBlock(PropertyMap p): _p(p) {}
 
     template <class Graph>

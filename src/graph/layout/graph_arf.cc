@@ -37,7 +37,6 @@ void arf_layout(GraphInterface& g, boost::any pos, boost::any weight, double d,
 
     if(weight.empty())
         weight = weight_map_t(1);
-
     run_action<graph_tool::detail::never_directed>()
         (g,
          lambda::bind<void>(get_arf_layout(), lambda::_1, lambda::_2,
