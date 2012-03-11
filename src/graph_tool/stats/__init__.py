@@ -19,8 +19,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-``graph_tool.stats`` - Graph Statistics
----------------------------------------
+``graph_tool.stats`` - Miscellaneous statistics
+-----------------------------------------------
 
 Summary
 +++++++
@@ -278,15 +278,21 @@ def remove_labeled_edges(g, label):
     g.pop_filter(all=False, directed=True, reversed=True)
 
 
-def label_parallel_edges(g, eprop=None):
+def label_parallel_edges(g, mark_only=False, count_all=False, eprop=None):
     r"""Label edges which are parallel, i.e, have the same source and target
     vertices. For each parallel edge set :math:`PE`, the labelling starts from 0
-    to :math:`|PE|-1`. If the `eprop` parameter is given (a
-    :class:`~graph_tool.PropertyMap`), the labelling is stored there."""
-    if eprop == None:
-        eprop = g.new_edge_property("int32_t")
+    to :math:`|PE|-1`. (If `count_all==True`, the range is 0 to :math:`|PE|`
+    instead). If `mark_only==True`, all parallel edges are simply marked with
+    the value 1. If the `eprop` parameter is given
+    (a :class:`~graph_tool.PropertyMap`), the labelling is stored there."""
+    if eprop is None:
+        if mark_only:
+            eprop = g.new_edge_property("bool")
+        else:
+            eprop = g.new_edge_property("int32_t")
     libgraph_tool_stats.\
-          label_parallel_edges(g._Graph__graph, _prop("e", g, eprop))
+          label_parallel_edges(g._Graph__graph, _prop("e", g, eprop),
+                               mark_only, count_all)
     return eprop
 
 

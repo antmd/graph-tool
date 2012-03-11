@@ -33,7 +33,7 @@ struct label_parallel_edges
 {
     template <class Graph, class EdgeIndexMap, class ParallelMap>
     void operator()(const Graph& g, EdgeIndexMap edge_index,
-                    ParallelMap parallel) const
+                    ParallelMap parallel, bool mark_only, bool count_all) const
     {
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
 
@@ -45,14 +45,11 @@ struct label_parallel_edges
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
 
-            tr1::unordered_set<edge_t,DescriptorHash<EdgeIndexMap> >
-                p_edges(0, DescriptorHash<EdgeIndexMap>(edge_index));
-
             typename graph_traits<Graph>::out_edge_iterator e1, e2,
                 e_end1, e_end2;
             for (tie(e1, e_end1) = out_edges(v, g); e1 != e_end1; ++e1)
             {
-                if (p_edges.find(*e1) != p_edges.end())
+                if (get(parallel, *e1) != 0)
                     continue;
 
                 // do not visit edges twice in undirected graphs
@@ -60,14 +57,11 @@ struct label_parallel_edges
                     target(*e1, g) < v)
                     continue;
 
-                size_t n = 0;
+                size_t n = count_all ? 1 : 0;
                 put(parallel, *e1, n);
                 for (tie(e2, e_end2) = out_edges(v, g); e2 != e_end2; ++e2)
                     if (*e2 != *e1 && target(*e1, g) == target(*e2, g))
-                    {
-                        put(parallel, *e2, ++n);
-                        p_edges.insert(*e2);
-                    }
+                        put(parallel, *e2, mark_only ? 1 : ++n);
             }
         }
     }
