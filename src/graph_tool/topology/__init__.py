@@ -35,6 +35,8 @@ Summary
    isomorphism
    subgraph_isomorphism
    mark_subgraph
+   max_cardinality_matching
+   max_independent_vertex_set
    min_spanning_tree
    dominator_tree
    topological_sort
@@ -60,8 +62,8 @@ __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
            "max_cardinality_matching", "max_independent_vertex_set",
            "min_spanning_tree", "dominator_tree", "topological_sort",
            "transitive_closure", "label_components", "label_largest_component",
-           "label_biconnected_components", "shortest_distance",
-           "shortest_path", "pseudo_diameter", "is_planar", "similarity"]
+           "label_biconnected_components", "shortest_distance", "shortest_path",
+           "pseudo_diameter", "is_planar", "similarity"]
 
 
 def similarity(g1, g2, label1=None, label2=None, norm=True):
@@ -1174,3 +1176,70 @@ def max_cardinality_matching(g, heuristic=False, weight=None, minimize=True,
                 random_matching(u._Graph__graph, _prop("e", u, weight),
                                  _prop("e", u, match), minimize, seed)
         return match
+
+
+def max_independent_vertex_set(g, high_deg=False, mivs=None):
+    r"""Find the maximum cardinality matching in the graph.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    high_deg : bool (optional, default: `False`)
+        If `True`, vertices with high degree will be included first in the set,
+        otherwise they will be included last.
+    mivs : :class:`~graph_tool.PropertyMap` (optional, default: `None`)
+        Vertex property map where the vertex set will be specified.
+
+    Returns
+    -------
+    match : :class:`~graph_tool.PropertyMap`
+        Boolean edge property map where the matching is specified.
+    is_maximal : bool
+        True if the matching is indeed maximal, or False otherwise. This is only
+        returned if ``heuristic == False``.
+
+    Notes
+    -----
+    A *matching* is a subset of the edges of a graph such that no two edges
+    share a common vertex. A *maximum cardinality matching* has maximum size
+    over all matchings in the graph.
+
+    For a more detailed description, see [boost-max-matching]_.
+
+    Examples
+    --------
+    >>> from numpy.random import seed, random
+    >>> seed(43)
+    >>> g = gt.random_graph(100, lambda: (2,2))
+    >>> res = gt.max_cardinality_matching(g)
+    >>> print res[1]
+    True
+    >>> gt.graph_draw(g, ecolor=res[0], output="max_card_match.pdf")
+    <...>
+
+    .. figure:: max_card_match.*
+        :align: center
+
+        Edges belonging to the matching are in red.
+
+    References
+    ----------
+    .. [boost-max-matching] http://www.boost.org/libs/graph/doc/maximum_matching.html
+    .. [matching-heuristic] B. Hendrickson and R. Leland. "A Multilevel Algorithm
+       for Partitioning Graphs." In S. Karin, editor, Proc. Supercomputing ’95,
+       San Diego. ACM Press, New York, 1995, :doi:`10.1145/224170.224228`
+
+    """
+    if mivs is None:
+        mivs = g.new_vertex_property("bool")
+    _check_prop_scalar(mivs, "mivs")
+    _check_prop_writable(mivs, "mivs")
+
+    seed = numpy.random.randint(0, sys.maxint)
+    u = GraphView(g, directed=False)
+    libgraph_tool_topology.\
+        maximal_vertex_set(u._Graph__graph, _prop("v", u, mivs), high_deg,
+                           seed)
+    mivs = g.own_property(mivs)
+    return mivs

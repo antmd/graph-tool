@@ -63,4 +63,5 @@ BOOST_PYTHON_MODULE(libgraph_tool_topology)
     export_all_dists();
     export_diam();
     export_random_matching();
+    export_maximal_vertex_set();
 }
