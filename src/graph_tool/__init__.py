@@ -575,6 +575,11 @@ class PropertyMap(object):
         """Return True if the property is writable."""
         return self.__map.is_writable()
 
+    def __call__(self, a):
+        p = self.copy()
+        p.fa = a
+        return p
+
 
 def _check_prop_writable(prop, name=None):
     if not prop.is_writable():
