@@ -587,7 +587,7 @@ struct action_wrap
     void operator()(const T1& a1, const T2& a2, const T3& a3, const T4& a4,
                     const T5& a5) const
     { _a(wrap(a1,Wrap()), uncheck(a2, Wrap()), uncheck(a3, Wrap()),
-         uncheck(a4, Wrap()), uncheck(a5), Wrap()); }
+         uncheck(a4, Wrap()), uncheck(a5, Wrap())); }
 
     Action _a;
     reference_wrapper<GraphInterface> _g;
