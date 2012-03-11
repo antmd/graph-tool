@@ -213,9 +213,10 @@ dnl Checks for header files.
 
 dnl numpy
 AC_PYTHON_MODULE(numpy, fatal)
-[NUMPY_DIR="${PYTHON_SITE_PKG}/numpy"]
+dnl [NUMPY_DIR="${PYTHON_SITE_PKG}/numpy"]
+[NUMPY_DIR=`$PYTHON -c "import os, numpy; print os.path.dirname(numpy.__file__)"`]
 AC_ARG_WITH([numpy], [AS_HELP_STRING([--with-numpy=DIR],[directory where numpy is installed
-                      [default=${PYTHON_SITE_PKG}/numpy] ])],
+                      [default="autodetected"] ])],
         NUMPY_DIR=$withval)
 [NUMPY_DIR="${NUMPY_DIR}/core/include/numpy"]
 AC_CHECK_HEADER([${NUMPY_DIR}/arrayobject.h],
@@ -225,7 +226,8 @@ AC_CHECK_HEADER([${NUMPY_DIR}/arrayobject.h],
 
 dnl scipy
 AC_PYTHON_MODULE(scipy, fatal)
-[SCIPY_DIR="${PYTHON_SITE_PKG}/scipy"]
+dnl [SCIPY_DIR="${PYTHON_SITE_PKG}/scipy"]
+[SCIPY_DIR=`$PYTHON -c "import os, scipy; print os.path.dirname(scipy.__file__)"`]
 AC_ARG_WITH([scipy], [AS_HELP_STRING([--with-scipy=DIR],[scipy install directory
                       [default=${PYTHON_SITE_PKG}/scipy] ])],
             [SCIPY_DIR=$withval])
