@@ -37,12 +37,13 @@ void do_label_parallel_edges(GraphInterface& gi, boost::any property,
                    edge_scalar_properties())(property);
 }
 
-void do_label_self_loops(GraphInterface& gi, boost::any property)
+void do_label_self_loops(GraphInterface& gi, boost::any property,
+                         bool mark_only)
 {
     GraphInterface::edge_index_map_t edge_index =
         any_cast<GraphInterface::edge_index_map_t>(gi.GetEdgeIndex());
     run_action<>()(gi, bind<void>(label_self_loops(), _1,
-                                  edge_index, _2),
+                                  edge_index, _2, mark_only),
                    edge_scalar_properties())(property);
 }
 

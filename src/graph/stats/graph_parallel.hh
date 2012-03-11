@@ -72,7 +72,7 @@ struct label_self_loops
 {
     template <class Graph, class EdgeIndexMap, class SelfMap>
     void operator()(const Graph& g, EdgeIndexMap edge_index,
-                    SelfMap self) const
+                    SelfMap self, bool mark_only) const
     {
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
 
@@ -89,7 +89,7 @@ struct label_self_loops
             for (tie(e, e_end) = out_edges(v, g); e != e_end; ++e)
             {
                 if (target(*e, g) == v)
-                    put(self, *e, n++);
+                    put(self, *e, mark_only ? 1 : n++);
                 else
                     put(self, *e, 0);
             }

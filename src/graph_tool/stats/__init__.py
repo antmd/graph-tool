@@ -303,16 +303,21 @@ def remove_parallel_edges(g):
     remove_labeled_edges(g, eprop)
 
 
-def label_self_loops(g, eprop=None):
+def label_self_loops(g, mark_only=False, eprop=None):
     """Label edges which are self-loops, i.e, the source and target vertices are
-    the same. Self-loops are labeled with 1 and others with 0. If the `eprop`
-    parameter is given (a :class:`~graph_tool.PropertyMap`), the labelling is
-    stored there."""
+    the same. For each self-loop edge set :math:`SL`, the labelling starts from 0
+    to :math:`|SL|-1`. If `mark_only == True`, self-loops are labeled with 1
+    and others with 0. If the `eprop` parameter is given
+    (a :class:`~graph_tool.PropertyMap`), the labelling is stored there."""
 
-    if eprop == None:
-        eprop = g.new_edge_property("int32_t")
+    if eprop is None:
+        if mark_only:
+            eprop = g.new_edge_property("bool")
+        else:
+            eprop = g.new_edge_property("int32_t")
     libgraph_tool_stats.\
-          label_self_loops(g._Graph__graph, _prop("e", g, eprop))
+          label_self_loops(g._Graph__graph, _prop("e", g, eprop),
+                           mark_only)
     return eprop
 
 
