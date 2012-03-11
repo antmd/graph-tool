@@ -28,7 +28,6 @@ import ctypes.util
 import tempfile
 from .. import PropertyMap, group_vector_property, ungroup_vector_property
 import numpy.random
-from numpy import *
 import copy
 
 from .. draw import arf_layout
