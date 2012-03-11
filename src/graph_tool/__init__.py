@@ -1838,11 +1838,8 @@ class GraphView(Graph):
             else:
                 vmap = self.new_vertex_property("bool")
                 if issubclass(type(vfilt), numpy.ndarray):
-                    vmap.a = vfilt
+                    vmap.fa = vfilt
                 else:
-                    omap, inv = g.get_vertex_filter()
-                    if omap is not None:
-                        vmap.a = omap.a if not inv else omap.a ^ 1
                     for v in g.vertices():
                         vmap[v] = vfilt(v)
                 self.set_vertex_filter(vmap)
@@ -1853,11 +1850,8 @@ class GraphView(Graph):
             else:
                 emap = self.new_edge_property("bool")
                 if issubclass(type(efilt), numpy.ndarray):
-                    vmap.a = efilt
+                    emap.fa = efilt
                 else:
-                    omap, inv = g.get_edge_filter()
-                    if omap is not None:
-                        emap.a = omap.a if not inv else omap.a ^ 1
                     for e in g.edges():
                         emap[e] = efilt(e)
                 self.set_edge_filter(emap)
