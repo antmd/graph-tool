@@ -179,3 +179,52 @@ void infect_vertex_property(GraphInterface& gi, boost::any prop,
                                   gi.GetVertexIndex(), _2, val),
                    writable_vertex_properties())(prop);
 }
+
+template <class Value>
+vector<Value> operator-(const vector<Value>& a, const vector<Value>& b)
+{
+    vector<Value> c(a);
+    c.resize(max(a.size(), b.size()), Value(0));
+    for (size_t i = 0; i < b.size(); ++i)
+        c[i] = a[i] - b[i];
+    return c;
+}
+
+struct do_edge_difference
+{
+    template <class Graph, class EdgeIndexMap, class VertexPropertyMap>
+    void operator()(Graph& g, EdgeIndexMap edge_index, VertexPropertyMap prop,
+                    boost::any eprop) const
+    {
+        typedef typename property_traits<VertexPropertyMap>::value_type vval_t;
+        typedef typename mpl::if_<is_same<vval_t, size_t>, int32_t, vval_t>::type
+            val_t;
+        typedef typename property_map_type::apply<val_t, EdgeIndexMap>::type
+            eprop_t;
+        eprop_t ediff = any_cast<eprop_t>(eprop);
+        ediff.reserve(num_edges(g));
+
+        int i, N = num_vertices(g);
+        #pragma omp parallel for default(shared) private(i)
+        for (i = 0; i < N; ++i)
+        {
+            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+            typename graph_traits<Graph>::out_edge_iterator e, e_end;
+            for (tie(e, e_end) = out_edges(v, g); e != e_end; ++e)
+                ediff[*e] = prop[target(*e, g)] - prop[source(*e, g)];
+        }
+    }
+};
+
+void edge_difference(GraphInterface& gi, boost::any prop,
+                     boost::any eprop)
+{
+    typedef typename mpl::insert_range<vertex_scalar_properties,
+                                       mpl::end<vertex_scalar_properties>::type,
+                                       vertex_scalar_vector_properties>::type vprops_t;
+    run_action<>()(gi, bind<void>(do_edge_difference(), _1,
+                                  gi.GetEdgeIndex(), _2, eprop),
+                   vprops_t())(prop);
+}

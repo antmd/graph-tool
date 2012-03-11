@@ -111,9 +111,9 @@ __all__ = ["Graph", "GraphView", "Vertex", "Edge", "Vector_bool",
            "Vector_int32_t", "Vector_int64_t", "Vector_double",
            "Vector_long_double", "Vector_string", "value_types", "load_graph",
            "PropertyMap", "group_vector_property", "ungroup_vector_property",
-           "show_config", "PropertyArray", "__author__", "__copyright__",
-           "__URL__", "__version__"]
            "infect_vertex_property", "edge_difference", "show_config",
+           "PropertyArray", "__author__", "__copyright__", "__URL__",
+           "__version__"]
 
 # this is rather pointless, but it works around a sphinx bug
 graph_tool = sys.modules[__name__]
@@ -784,6 +784,46 @@ def infect_vertex_property(g, prop, vals=None):
     """
     libcore.infect_vertex_property(g._Graph__graph, _prop("v", g, prop),
                                    vals)
+
+
+def edge_difference(g, prop, ediff=None):
+    """Return an edge property map corresponding to the difference between the
+    values of `prop` of target and source vertices of each edge.
+
+    Parameters
+    ----------
+    prop : :class:`~graph_tool.PropertyMap`
+        Vertex property map to be used to compute the difference..
+    ediff : :class:`~graph_tool.PropertyMap` (optional, default: `None`)
+        If not provided, the difference values will be stored in this property
+        map.
+
+    Returns
+    -------
+    ediff : :class:`~graph_tool.PropertyMap`
+        Edge differences.
+
+    Examples
+    --------
+    >>> from numpy.random import seed
+    >>> seed(42)
+    >>> g = gt.random_graph(100, lambda: (3, 3))
+    >>> ediff = gt.edge_difference(g, g.vertex_index)
+    >>> print ediff.a
+    3
+    """
+    val_t = prop.value_type()
+    if val_t == "unsigned long":
+        val_t = "int32_t"
+    if ediff is None:
+        ediff = g.new_edge_property(val_t)
+    if ediff.value_type() != val_t:
+        raise ValueError("'ediff' must be of the same value type as 'prop': " +
+                         val_t)
+    libcore.edge_difference(g._Graph__graph, _prop("v", g, prop),
+                            _prop("e", g, ediff))
+    return ediff
+
 
 class PropertyDict(dict):
     """Wrapper for the dict of vertex, graph or edge properties, which sets the

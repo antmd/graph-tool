@@ -320,6 +320,8 @@ void group_vector_property(GraphInterface& g, boost::any vector_prop,
                            boost::any prop, size_t pos, bool edge);
 void infect_vertex_property(GraphInterface& gi, boost::any prop,
                             python::object val);
+void edge_difference(GraphInterface& gi, boost::any prop,
+                     boost::any eprop);
 void export_python_interface();
 
 BOOST_PYTHON_MODULE(libgraph_tool_core)
@@ -409,6 +411,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
     def("group_vector_property", &group_vector_property);
     def("ungroup_vector_property", &ungroup_vector_property);
     def("infect_vertex_property", &infect_vertex_property);
+    def("edge_difference", &edge_difference);
 
     class_<LibInfo>("mod_info")
         .add_property("name", &LibInfo::GetName)
