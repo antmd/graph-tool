@@ -54,8 +54,10 @@ dl_import("import libgraph_tool_topology")
 
 from .. import _prop, Vector_int32_t, _check_prop_writable, \
      _check_prop_scalar, _check_prop_vector, Graph, PropertyMap, GraphView
-import random, sys, numpy, weakref
+from .. flow import libgraph_tool_flow
+import random, sys, numpy
 __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
+           "max_cardinality_matching", "max_independent_vertex_set",
            "min_spanning_tree", "dominator_tree", "topological_sort",
            "transitive_closure", "label_components", "label_largest_component",
            "label_biconnected_components", "shortest_distance",
@@ -1092,3 +1094,83 @@ def is_planar(g, embedding=False, kuratowski=False):
         return ret[0]
     else:
         return tuple(ret)
+
+
+def max_cardinality_matching(g, heuristic=False, weight=None, minimize=True,
+                             match=None):
+    r"""Find the maximum cardinality matching in the graph.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    heuristic : bool (optional, default: `False`)
+        If true, a random heuristic will be used, which runs in linear time.
+    weight : :class:`~graph_tool.PropertyMap` (optional, default: `None`)
+        If provided, the matching will minimize the edge weights (or maximize
+        if ``minimize == False``. This option has no effect if
+        ``heuristic == False``.
+    minimize : bool (optional, default: `True`)
+        If `True`, the matching will minimize the weights, otherwise they will
+        be maximized. This option has no effect if ``heuristic == False``.
+    match : :class:`~graph_tool.PropertyMap` (optional, default: `None`)
+        Edge property map where the matching will be specified.
+
+    Returns
+    -------
+    match : :class:`~graph_tool.PropertyMap`
+        Boolean edge property map where the matching is specified.
+    is_maximal : bool
+        True if the matching is indeed maximal, or False otherwise. This is only
+        returned if ``heuristic == False``.
+
+    Notes
+    -----
+    A *matching* is a subset of the edges of a graph such that no two edges
+    share a common vertex. A *maximum cardinality matching* has maximum size
+    over all matchings in the graph.
+
+    For a more detailed description, see [boost-max-matching]_.
+
+    Examples
+    --------
+    >>> from numpy.random import seed, random
+    >>> seed(43)
+    >>> g = gt.random_graph(100, lambda: (2,2))
+    >>> res = gt.max_cardinality_matching(g)
+    >>> print res[1]
+    True
+    >>> gt.graph_draw(g, ecolor=res[0], output="max_card_match.pdf")
+    <...>
+
+    .. figure:: max_card_match.*
+        :align: center
+
+        Edges belonging to the matching are in red.
+
+    References
+    ----------
+    .. [boost-max-matching] http://www.boost.org/libs/graph/doc/maximum_matching.html
+    .. [matching-heuristic] B. Hendrickson and R. Leland. "A Multilevel Algorithm
+       for Partitioning Graphs." In S. Karin, editor, Proc. Supercomputing ’95,
+       San Diego. ACM Press, New York, 1995, :doi:`10.1145/224170.224228`
+
+    """
+    if match is None:
+        match = g.new_edge_property("bool")
+    _check_prop_scalar(match, "match")
+    _check_prop_writable(match, "match")
+    if weight is not None:
+        _check_prop_scalar(weight, "weight")
+
+    seed = numpy.random.randint(0, sys.maxint)
+    u = GraphView(g, directed=False)
+    if not heuristic:
+        check = libgraph_tool_flow.\
+                max_cardinality_matching(u._Graph__graph, _prop("e", u, match))
+        return match, check
+    else:
+        libgraph_tool_topology.\
+                random_matching(u._Graph__graph, _prop("e", u, weight),
+                                 _prop("e", u, match), minimize, seed)
+        return match

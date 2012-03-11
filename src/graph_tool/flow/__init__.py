@@ -31,7 +31,6 @@ Summary
    edmonds_karp_max_flow
    push_relabel_max_flow
    boykov_kolmogorov_max_flow
-   max_cardinality_matching
 
 Contents
 ++++++++
@@ -75,7 +74,7 @@ dl_import("import libgraph_tool_flow")
 
 from .. import _prop, _check_prop_scalar, _check_prop_writable
 __all__ = ["edmonds_karp_max_flow", "push_relabel_max_flow",
-           "boykov_kolmogorov_max_flow", "max_cardinality_matching"]
+           "boykov_kolmogorov_max_flow"]
 
 
 def edmonds_karp_max_flow(g, source, target, capacity, residual=None):
@@ -318,64 +317,3 @@ def boykov_kolmogorov_max_flow(g, source, target, capacity, residual=None):
                                    _prop("e", g, capacity),
                                    _prop("e", g, residual))
     return residual
-
-
-def max_cardinality_matching(g, match=None):
-    r"""Find the maximum cardinality matching in the graph.
-
-    Parameters
-    ----------
-    g : :class:`~graph_tool.Graph`
-        Graph to be used.
-    match : :class:`~graph_tool.PropertyMap` (optional, default: none)
-        Edge property map where the matching will be specified.
-
-    Returns
-    -------
-    match : :class:`~graph_tool.PropertyMap`
-        Boolean edge property map where the matching is specified.
-    is_maximal : bool
-        True if the matching is indeed maximal, or False otherwise.
-
-    Notes
-    -----
-    A *matching* is a subset of the edges of a graph such that no two edges
-    share a common vertex. A *maximum cardinality matching* has maximum size
-    over all matchings in the graph.
-
-    For a more detailed description, see [boost-max-matching]_.
-
-    Examples
-    --------
-    >>> from numpy.random import seed, random
-    >>> seed(43)
-    >>> g = gt.random_graph(100, lambda: (2,2))
-    >>> res = gt.max_cardinality_matching(g)
-    >>> print res[1]
-    True
-    >>> gt.graph_draw(g, ecolor=res[0], output="max_card_match.pdf")
-    <...>
-
-    .. figure:: max_card_match.*
-        :align: center
-
-        Edges belonging to the matching are in red.
-
-    References
-    ----------
-    .. [boost-max-matching] http://www.boost.org/libs/graph/doc/maximum_matching.html
-    """
-    if match == None:
-        match = g.new_edge_property("bool")
-    _check_prop_scalar(match, "match")
-    _check_prop_writable(match, "match")
-
-    try:
-        g.stash_filter(directed=True)
-        g.set_directed(False)
-        check = libgraph_tool_flow.\
-                max_cardinality_matching(g._Graph__graph, _prop("e", g, match))
-    finally:
-        g.pop_filter(directed=True)
-
-    return match, check

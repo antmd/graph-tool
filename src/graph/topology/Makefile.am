@@ -23,6 +23,7 @@ libgraph_tool_topology_la_SOURCES = \
     graph_isomorphism.cc \
     graph_minimum_spanning_tree.cc \
     graph_planar.cc \
+    graph_random_matching.cc \
     graph_similarity.cc \
     graph_subgraph_isomorphism.cc \
     graph_topological_sort.cc \
