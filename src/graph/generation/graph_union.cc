@@ -27,7 +27,7 @@
 using namespace graph_tool;
 using namespace boost;
 
-typedef property_map_type::apply<GraphInterface::vertex_t,
+typedef property_map_type::apply<int32_t,
                                  GraphInterface::vertex_index_map_t>::type
     vprop_t;
 
@@ -45,14 +45,15 @@ struct get_pointers
     };
 };
 
-python::tuple graph_union(GraphInterface& ugi, GraphInterface& gi)
+python::tuple graph_union(GraphInterface& ugi, GraphInterface& gi,
+                          boost::any avprop)
 {
-    vprop_t vprop(gi.GetVertexIndex());
+    vprop_t vprop = boost::any_cast<vprop_t>(avprop);
     eprop_t eprop(gi.GetEdgeIndex());
     run_action<graph_tool::detail::always_directed,mpl::true_>()
         (ugi, bind<void>(graph_tool::graph_union(),
                          _1, _2, vprop, eprop),
          get_pointers::apply<graph_tool::detail::always_directed>::type())
         (gi.GetGraphView());
-    return python::make_tuple(boost::any(vprop),boost::any(eprop));
+    return python::make_tuple(avprop, boost::any(eprop));
 }

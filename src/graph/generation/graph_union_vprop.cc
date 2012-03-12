@@ -27,7 +27,7 @@
 using namespace graph_tool;
 using namespace boost;
 
-typedef property_map_type::apply<GraphInterface::vertex_t,
+typedef property_map_type::apply<int32_t,
                                  GraphInterface::vertex_index_map_t>::type
     vprop_t;
 
@@ -59,5 +59,3 @@ void vertex_property_union(GraphInterface& ugi, GraphInterface& gi,
          writable_vertex_properties())
         (gi.GetGraphView(), uprop);
 }
-
-

@@ -729,7 +729,7 @@ def line_graph(g):
     return lg, vertex_map
 
 
-def graph_union(g1, g2, props=None, include=False):
+def graph_union(g1, g2, intersection=None, props=None, include=False):
     """Return the union of graphs g1 and g2, composed of all edges and vertices
     of g1 and g2, without overlap.
 
@@ -739,6 +739,11 @@ def graph_union(g1, g2, props=None, include=False):
        First graph in the union.
     g2 : :class:`~graph_tool.Graph`
        Second graph in the union.
+    intersection : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+       Vertex property map owned by `g1` which maps each of each of its vertices
+       to vertex indexes belonging to `g2`. Negative values mean no mapping
+       exists, and thus both vertices in `g1` and `g2` will be present in the
+       union graph.
     props : list of tuples of :class:`~graph_tool.PropertyMap` (optional, default: ``[]``)
        Each element in this list must be a tuple of two PropertyMap objects. The
        first element must be a property of `g1`, and the second of `g2`. The
@@ -783,6 +788,14 @@ def graph_union(g1, g2, props=None, include=False):
         props = []
     if not include:
         g1 = Graph(g1)
+    if intersection is None:
+        intersection = g1.new_vertex_property("int32_t")
+        intersection.a = 0
+    else:
+        intersection = intersection.copy("int32_t")
+        intersection.a[intersection.a >= 0] += 1
+        intersection.a[intersection.a < 0] = 0
+
     g1.stash_filter(directed=True)
     g1.set_directed(True)
     g2.stash_filter(directed=True)
@@ -791,9 +804,10 @@ def graph_union(g1, g2, props=None, include=False):
 
     try:
         vmap, emap = libgraph_tool_generation.graph_union(g1._Graph__graph,
-                                                          g2._Graph__graph)
-        for p in props:
-            p1, p2 = p
+                                                          g2._Graph__graph,
+                                                          _prop("v", g1,
+                                                                intersection))
+        for p1, p2 in props:
             if not include:
                 p1 = g1.copy_property(p1)
             if p2.value_type() != p1.value_type():

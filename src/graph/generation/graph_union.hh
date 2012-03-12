@@ -36,12 +36,27 @@ struct graph_union
         Graph& g = *gp;
         typename graph_traits<Graph>::vertex_iterator v, v_end;
         for (tie(v,v_end) = vertices(g); v != v_end; ++v)
-            vmap[*v] = add_vertex(ug);
+        {
+            if (vmap[*v] == 0)
+            {
+                vmap[*v] = add_vertex(ug);
+            }
+            else
+            {
+                typename graph_traits<UnionGraph>::vertex_descriptor w =
+                    vertex(vmap[*v] - 1, ug);
+                if (w == graph_traits<UnionGraph>::null_vertex() ||
+                    w >= num_vertices(g))
+                    vmap[*v] = add_vertex(ug);
+                else
+                    vmap[*v] = w;
+            }
+        }
 
         typename graph_traits<Graph>::edge_iterator e, e_end;
         for (tie(e,e_end) = edges(g); e != e_end; ++e)
-            emap[*e] = add_edge(vmap[source(*e,g)],
-                                vmap[target(*e,g)], ug).first;
+            emap[*e] = add_edge(vertex(vmap[source(*e,g)], g),
+                                vertex(vmap[target(*e,g)], g), ug).first;
     }
 };
 
@@ -54,7 +69,8 @@ struct property_union
                     UnionProp uprop, boost::any aprop) const
     {
         Graph& g = *gp;
-        UnionProp prop = any_cast<UnionProp>(aprop);
+        typename UnionProp::checked_t prop =
+            any_cast<typename UnionProp::checked_t>(aprop);
         dispatch(ug, g, vmap, emap, uprop, prop,
                  is_same<typename property_traits<UnionProp>::key_type,
                          typename graph_traits<Graph>::vertex_descriptor>());
@@ -67,7 +83,7 @@ struct property_union
     {
         typename graph_traits<Graph>::vertex_iterator v, v_end;
         for (tie(v,v_end) = vertices(g); v != v_end; ++v)
-            uprop[vmap[*v]] = prop[*v];
+            uprop[vertex(vmap[*v], g)] = prop[*v];
     }
 
     template <class UnionGraph, class Graph, class VertexMap, class EdgeMap,

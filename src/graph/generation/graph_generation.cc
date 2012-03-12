@@ -87,7 +87,8 @@ void predecessor_graph(GraphInterface& gi, GraphInterface& gpi,
                        boost::any pred_map);
 void line_graph(GraphInterface& gi, GraphInterface& lgi,
                 boost::any edge_index);
-python::tuple graph_union(GraphInterface& ugi, GraphInterface& gi);
+python::tuple graph_union(GraphInterface& ugi, GraphInterface& gi,
+                          boost::any avprop);
 void vertex_property_union(GraphInterface& ugi, GraphInterface& gi,
                            boost::any p_vprop, boost::any p_eprop,
                            boost::any uprop, boost::any prop);
