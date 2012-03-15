@@ -82,7 +82,7 @@ void generate_graph(GraphInterface& gi, size_t N, python::object deg_sample,
 size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
                      bool no_sweep, bool self_loops, bool parallel_edges,
                      python::object corr_prob, boost::any block,
-                     size_t seed, bool verbose);
+                     bool cache, size_t seed, bool verbose);
 void predecessor_graph(GraphInterface& gi, GraphInterface& gpi,
                        boost::any pred_map);
 void line_graph(GraphInterface& gi, GraphInterface& lgi,

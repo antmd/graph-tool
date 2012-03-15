@@ -56,7 +56,7 @@ __all__ = ["random_graph", "random_rewire", "predecessor_tree", "line_graph",
            "price_network"]
 
 
-def random_graph(N, deg_sampler, deg_corr=None, directed=True,
+def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
                  parallel_edges=False, self_loops=False, blockmodel=None,
                  block_type="int", degree_block=False,
                  random=True, mix_time=10, verbose=False):
@@ -79,7 +79,6 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
         be the index of the vertex which will receive the degree.
         If ``blockmodel != None``, the first value passed will be the vertex
         index, and the second will be the block value of the vertex.
-        
     deg_corr : function (optional, default: ``None``)
         A function which gives the degree correlation of the graph. It should be
         callable with two parameters: the in,out-degree pair of the source
@@ -90,6 +89,13 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
 
         If ``blockmodel != None``, the value passed to the function will be the
         block value of the respective vertices, not the in/out-degree pairs.
+    cache_probs : bool (optional, default: ``True``)
+        If ``True``, the probabilities returned by the ``deg_corr`` parameter
+        will be cached internally. This is crucial for good performance, since
+        in this case the supplied python function is called only a few times,
+        and not at every attempted edge rewire move. However, in the case were
+        the different parameter combinations to the probability function is very
+        large, the memory requirements to keep the cache may be very large.
     directed : bool (optional, default: ``True``)
         Whether the generated graph should be directed.
     parallel_edges : bool (optional, default: ``False``)
@@ -405,8 +411,8 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
         if deg_corr is not None:
             random_rewire(g, strat="probabilistic", n_iter=mix_time,
                           parallel_edges=parallel_edges, deg_corr=deg_corr,
-                          self_loops=self_loops, blockmodel=bm,
-                          verbose=verbose)
+                          cache_probs=cache_probs, self_loops=self_loops,
+                          blockmodel=bm, verbose=verbose)
         else:
             random_rewire(g, parallel_edges=parallel_edges, n_iter=mix_time,
                           self_loops=self_loops, verbose=verbose)
@@ -421,7 +427,8 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
                         "probabilistic"]})
 def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
                   parallel_edges=False, self_loops=False, deg_corr=None,
-                  blockmodel=None, ret_fail=False, verbose=False):
+                  cache_probs=True, blockmodel=None, ret_fail=False,
+                  verbose=False):
     r"""
     Shuffle the graph in-place.
 
@@ -467,6 +474,13 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
 
         If ``blockmodel != None``, the value passed to the function will be the
         block value of the respective vertices, not the in/out-degree pairs.
+    cache_probs : bool (optional, default: ``True``)
+        If ``True``, the probabilities returned by the ``deg_corr`` parameter
+        will be cached internally. This is crucial for good performance, since
+        in this case the supplied python function is called only a few times,
+        and not at every attempted edge rewire move. However, in the case were
+        the different parameter combinations to the probability function is very
+        large, the memory requirements to keep the cache may be very large.
     blockmodel : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         If supplied, the graph will be rewired to conform to a blockmodel
         ensemble. The value must be a vertex property map which defines the
@@ -682,6 +696,7 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
                                                     n_iter, not edge_sweep,
                                                     self_loops, parallel_edges,
                                                     corr, _prop("v", g, blockmodel),
+                                                    cache_probs,
                                                     seed, verbose)
     if ret_fail:
         return pcount

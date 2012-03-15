@@ -177,12 +177,15 @@ struct graph_rewire
               class BlockDeg>
     void operator()(Graph& g, EdgeIndexMap edge_index, CorrProb corr_prob,
                     bool self_loops, bool parallel_edges,
-                    pair<size_t, bool> iter_sweep, bool verbose, size_t& pcount,
-                    rng_t& rng, BlockDeg bd)
+                    pair<size_t, bool> iter_sweep,
+                    pair<bool, bool> cache_verbose,
+                    size_t& pcount, rng_t& rng, BlockDeg bd)
         const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
+        bool cache = cache_verbose.first;
+        bool verbose = cache_verbose.second;
 
         vector<edge_t> edges;
         vector<size_t> edge_pos;
@@ -198,7 +201,7 @@ struct graph_rewire
         }
 
         RewireStrategy<Graph, EdgeIndexMap, CorrProb, BlockDeg>
-            rewire(g, edge_index, edges, corr_prob, bd, rng);
+            rewire(g, edge_index, edges, corr_prob, bd, cache, rng);
 
         size_t niter;
         bool no_sweep;
@@ -235,12 +238,13 @@ struct graph_rewire
     template <class Graph, class EdgeIndexMap, class CorrProb>
     void operator()(Graph& g, EdgeIndexMap edge_index, CorrProb corr_prob,
                     bool self_loops, bool parallel_edges,
-                    pair<size_t, bool> iter_sweep, bool verbose, size_t& pcount,
-                    rng_t& rng)
+                    pair<size_t, bool> iter_sweep,
+                    pair<bool, bool> cache_verbose,
+                    size_t& pcount, rng_t& rng)
         const
     {
         operator()(g, edge_index, corr_prob, self_loops, parallel_edges,
-                   iter_sweep, verbose, pcount, rng, DegreeBlock());
+                   iter_sweep, cache_verbose, pcount, rng, DegreeBlock());
     }
 };
 
@@ -256,7 +260,7 @@ public:
 
     ErdosRewireStrategy(Graph& g, EdgeIndexMap edge_index,
                         vector<edge_t>& edges, CorrProb, BlockDeg,
-                        rng_t& rng)
+                        bool, rng_t& rng)
         : _g(g), _edge_index(edge_index), _edges(edges),
           _vertices(HardNumVertices()(g)), _rng(rng)
     {
@@ -398,7 +402,7 @@ public:
 
     RandomRewireStrategy(Graph& g, EdgeIndexMap edge_index,
                          vector<edge_t>& edges, CorrProb, BlockDeg,
-                         rng_t& rng)
+                         bool, rng_t& rng)
         : base_t(g, edge_index, edges, rng), _g(g) {}
 
     pair<size_t,bool> get_target_edge(size_t e)
@@ -442,7 +446,7 @@ public:
 
     CorrelatedRewireStrategy(Graph& g, EdgeIndexMap edge_index,
                              vector<edge_t>& edges, CorrProb, BlockDeg,
-                             rng_t& rng)
+                             bool, rng_t& rng)
         : base_t(g, edge_index, edges, rng), _g(g)
     {
         for (size_t ei = 0; ei < base_t::_edges.size(); ++ei)
@@ -516,8 +520,9 @@ public:
 
     ProbabilisticRewireStrategy(Graph& g, EdgeIndexMap edge_index,
                                 vector<edge_t>& edges, CorrProb corr_prob,
-                                BlockDeg blockdeg, rng_t& rng)
-        : base_t(g, edge_index, edges, rng), _g(g), _blockdeg(blockdeg)
+                                BlockDeg blockdeg, bool cache, rng_t& rng)
+        : base_t(g, edge_index, edges, rng), _g(g), _corr_prob(corr_prob),
+          _blockdeg(blockdeg)
     {
         tr1::unordered_set<deg_t, hash<deg_t> > deg_set;
         for (size_t ei = 0; ei < base_t::_edges.size(); ++ei)
@@ -527,17 +532,32 @@ public:
             deg_set.insert(get_deg(target(e, g), g));
         }
 
-        // cache probabilities
-        for (typeof(deg_set.begin()) s_iter = deg_set.begin();
-             s_iter != deg_set.end(); ++s_iter)
-            for (typeof(deg_set.begin()) t_iter = deg_set.begin();
-                 t_iter != deg_set.end(); ++t_iter)
-            {
-                double p = corr_prob(*s_iter, *t_iter);
-                if (isnan(p) || isinf(p))
-                    p = 0;
-                _probs[make_pair(*s_iter, *t_iter)] = p;
-            }
+        if (cache)
+        {
+            // cache probabilities
+            for (typeof(deg_set.begin()) s_iter = deg_set.begin();
+                 s_iter != deg_set.end(); ++s_iter)
+                for (typeof(deg_set.begin()) t_iter = deg_set.begin();
+                     t_iter != deg_set.end(); ++t_iter)
+                {
+                    double p = _corr_prob(*s_iter, *t_iter);
+                    if (isnan(p) || isinf(p) || p < 0)
+                        p = 0;
+                    _probs[make_pair(*s_iter, *t_iter)] = p;
+                }
+        }
+    }
+
+    double get_prob(const deg_t& s_deg, const deg_t& t_deg)
+    {
+        if (_probs.empty())
+        {
+            double p = _corr_prob(s_deg, t_deg);
+            if (isnan(p) || isinf(p) || p < 0)
+                p = 0;
+            return p;
+        }
+        return _probs[make_pair(s_deg, t_deg)];
     }
 
     deg_t get_deg(vertex_t v, Graph& g)
@@ -563,12 +583,12 @@ public:
         deg_t ep_s_deg = get_deg(source(ep, base_t::_edges, _g), _g);
         deg_t ep_t_deg = get_deg(target(ep, base_t::_edges, _g), _g);
 
-        double pi = (_probs[make_pair(s_deg, t_deg)] *
-                     _probs[make_pair(ep_s_deg, ep_t_deg)]);
-        double pf = (_probs[make_pair(s_deg, ep_t_deg)] *
-                     _probs[make_pair(ep_s_deg, t_deg)]);
+        double pi = (get_prob(s_deg, t_deg) *
+                     get_prob(ep_s_deg, ep_t_deg));
+        double pf = (get_prob(s_deg, ep_t_deg) *
+                     get_prob(ep_s_deg, t_deg));
 
-        if (pf >= pi)
+        if (pf >= pi || pi == 0)
             return ep;
 
         if (pf == 0)
@@ -590,6 +610,7 @@ public:
 private:
     Graph& _g;
     EdgeIndexMap _edge_index;
+    CorrProb _corr_prob;
     BlockDeg _blockdeg;
     tr1::unordered_map<pair<deg_t, deg_t>, double, hash<pair<deg_t, deg_t> > >
         _probs;
