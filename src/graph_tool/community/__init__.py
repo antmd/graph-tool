@@ -278,7 +278,7 @@ def modularity(g, prop, weight=None):
     return m
 
 
-def condensation_graph(g, prop, vweight=None, eweight=None):
+def condensation_graph(g, prop, vweight=None, eweight=None, self_loops=False):
     r"""
     Obtain the condensation graph, where each vertex with the same 'prop' value
     is condensed in one vertex.
@@ -293,6 +293,9 @@ def condensation_graph(g, prop, vweight=None, eweight=None):
         Vertex property map with the optional vertex weights.
     eweight : :class:`~graph_tool.PropertyMap` (optional, default: None)
         Edge property map with the optional edge weights.
+    self_loops : ``bool`` (optional, default: ``False``)
+        If ``True``, self-loops due to intra-block edges are also included in
+        the condensation graph.
 
     Returns
     -------
@@ -355,5 +358,6 @@ def condensation_graph(g, prop, vweight=None, eweight=None):
                                               _prop("v", gp, vcount),
                                               _prop("e", gp, ecount),
                                               _prop("v", g, vweight),
-                                              _prop("e", g, eweight))
+                                              _prop("e", g, eweight),
+                                              self_loops)
     return gp, cprop, vcount, ecount

@@ -44,7 +44,8 @@ struct get_community_network
                     VertexIndex cvertex_index, EdgeIndex cedge_index,
                     CommunityMap s_map, CCommunityMap cs_map,
                     VertexWeightMap vweight, EdgeWeightMap eweight,
-                    VertexProperty vertex_count, EdgeProperty edge_count) const
+                    VertexProperty vertex_count, EdgeProperty edge_count,
+                    bool self_loops) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
@@ -98,7 +99,7 @@ struct get_community_network
                 {
                     vertex_t t = target(*e, g);
                     cvertex_t ct = comm_vertices[get(s_map, t)];
-                    if (ct == cs) // self-loops are pointless
+                    if (ct == cs && !self_loops)
                         continue;
                     cedge_t ce;
                     if (comm_edges.find(make_pair(cs, ct)) != comm_edges.end())

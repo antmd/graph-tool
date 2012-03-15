@@ -43,6 +43,9 @@ typedef DynamicPropertyMapWrap<python::object,GraphInterface::edge_t> eoweight_m
 
 struct get_community_network_dispatch
 {
+    get_community_network_dispatch(bool self_loops): _self_loops(self_loops) {}
+    bool _self_loops;
+
     template <class Graph, class CommunityGraph, class CommunityMap,
               class VertexWeightMap, class EdgeWeightMap, class EdgeIndex,
               class VertexIndex>
@@ -66,7 +69,7 @@ struct get_community_network_dispatch
 
         get_community_network()(g, cg, cvertex_index, cedge_index, s_map,
                                 cs_map, vweight, eweight, vertex_count,
-                                edge_count);
+                                edge_count, _self_loops);
     }
 
     struct get_checked_t
@@ -104,7 +107,7 @@ void community_network(GraphInterface& gi, GraphInterface& cgi,
                        boost::any condensed_community_property,
                        boost::any vertex_count,
                        boost::any edge_count, boost::any vweight,
-                       boost::any eweight)
+                       boost::any eweight, bool self_loops)
 {
     typedef typename mpl::vector<vweight_map_t, voweight_map_t, no_vweight_map_t>::type
         vweight_properties;
@@ -149,8 +152,8 @@ void community_network(GraphInterface& gi, GraphInterface& cgi,
         }
     }
 
-     run_action<>()(gi, bind<void>(get_community_network_dispatch(), _1,
-                                   ref(cgi.GetGraph()), cgi.GetVertexIndex(),
+     run_action<>()(gi, bind<void>(get_community_network_dispatch(self_loops),
+                                   _1, ref(cgi.GetGraph()), cgi.GetVertexIndex(),
                                    cgi.GetEdgeIndex(), _2,
                                    condensed_community_property,
                                    _3, _4, make_pair(vertex_count, edge_count)),
