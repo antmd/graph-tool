@@ -298,10 +298,7 @@ def arf_layout(g, weight=None, d=0.5, a=10, dt=0.001, epsilon=1e-6,
     """
 
     if pos is None:
-        if dim != 2:
-            pos = random_layout(g, dim=dim)
-        else:
-            pos = graph_draw(g, output=None)
+        pos = random_layout(g, dim=dim)
     _check_prop_vector(pos, name="pos", floating=True)
 
     ug = GraphView(g, directed=False)
@@ -362,7 +359,10 @@ def _propagate_pos(g, cg, c, cc, cpos, delta, mivs):
 
 
 def _avg_edge_distance(g, pos):
-    return libgraph_tool_layout.avg_dist(g._Graph__graph, _prop("v", g, pos))
+    ad = libgraph_tool_layout.avg_dist(g._Graph__graph, _prop("v", g, pos))
+    if numpy.isnan(ad):
+        ad = 1.
+    return ad
 
 
 def coarse_graphs(g, method="hybrid", mivs_thres=0.9, ec_thres=0.75,
