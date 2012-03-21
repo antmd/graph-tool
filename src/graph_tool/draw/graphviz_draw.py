@@ -242,7 +242,7 @@ def graphviz_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
 
     Notes
     -----
-    This function is a wrapper for the [graphviz] routines. Extensive additional
+    This function is a wrapper for the [graphviz]_ routines. Extensive additional
     documentation for the graph, vertex and edge properties is available at:
     http://www.graphviz.org/doc/info/attrs.html.
 

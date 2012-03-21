@@ -215,6 +215,8 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     >>> g = gt.random_graph(20000, deg_sample)
     >>>
     >>> hist = gt.combined_corr_hist(g, "in", "out")
+    >>>
+    >>> clf()
     >>> imshow(hist[0], interpolation="nearest")
     <...>
     >>> colorbar()
@@ -250,31 +252,30 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
 
     Lets plot the average degree correlations to check.
 
-    >>> figure(figsize=(6,3))
-    <...>
+    >>> clf()
     >>> axes([0.1,0.15,0.63,0.8])
     <...>
     >>> corr = gt.avg_neighbour_corr(g, "in", "in")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...         label=r"$\left<\text{in}\right>$ vs in")
-    (...)
+    <...>
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...         label=r"$\left<\text{out}\right>$ vs in")
-    (...)
+    <...>
     >>> corr = gt.avg_neighbour_corr(g, "out", "in")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{in}\right>$ vs out")
-    (...)
+    <...>
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{out}\right>$ vs out")
-    (...)
-    >>> legend(loc=(1.05,0.5))
     <...>
-    >>> xlabel("source degree")
+    >>> legend(bbox_to_anchor=(1.01, 0.5), loc="center left", borderaxespad=0.)
     <...>
-    >>> ylabel("average target degree")
+    >>> xlabel("Source degree")
+    <...>
+    >>> ylabel("Average target degree")
     <...>
     >>> savefig("deg-corr-dir.pdf")
 
@@ -303,7 +304,7 @@ def random_graph(N, deg_sampler, deg_corr=None, directed=True,
     >>> g, bm = gt.random_graph(1000, lambda: poisson(10), directed=False,
     ...                         blockmodel=lambda: randint(10), deg_corr=corr,
     ...                         mix_time=500)
-    >>> gt.graph_draw(g, vcolor=bm, layout="sfdp", output="blockmodel.pdf")
+    >>> gt.graph_draw(g, vertex_fill_color=bm, output="blockmodel.pdf")
     <...>
 
     .. figure:: blockmodel.*
@@ -521,16 +522,20 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
     >>> from pylab import *
     >>> seed(43)
     >>> g, pos = gt.triangulation(random((1000,2)))
-    >>> gt.graph_draw(g, layout="arf", output="rewire_orig.pdf", size=(6,6))
+    >>> pos = gt.arf_layout(g)
+    >>> gt.graph_draw(g, pos=pos, output="rewire_orig.pdf", output_size=(200, 200))
     <...>
     >>> gt.random_rewire(g, "correlated")
-    >>> gt.graph_draw(g, layout="arf", output="rewire_corr.pdf", size=(6,6))
+    >>> pos = gt.arf_layout(g)
+    >>> gt.graph_draw(g, pos=pos, output="rewire_corr.pdf", output_size=(200, 200))
     <...>
     >>> gt.random_rewire(g)
-    >>> gt.graph_draw(g, layout="arf", output="rewire_uncorr.pdf", size=(6,6))
+    >>> pos = gt.arf_layout(g)
+    >>> gt.graph_draw(g, pos=pos, output="rewire_uncorr.pdf", output_size=(200, 200))
     <...>
     >>> gt.random_rewire(g, "erdos")
-    >>> gt.graph_draw(g, layout="arf", output="rewire_erdos.pdf", size=(6,6))
+    >>> pos = gt.arf_layout(g)
+    >>> gt.graph_draw(g, pos=pos, output="rewire_erdos.pdf", output_size=(200, 200))
     <...>
 
     Some `ridiculograms <http://www.youtube.com/watch?v=YS-asmU3p_4>`_ :
@@ -540,11 +545,10 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
     .. image:: rewire_uncorr.*
     .. image:: rewire_erdos.*
 
-    *From left to right:* Original graph --- Shuffled graph, with degree
-    correlations --- Shuffled graph, without degree correlations --- Shuffled graph,
-    with random degrees.
+    **From left to right**: Original graph; Shuffled graph, with degree correlations;
+    Shuffled graph, without degree correlations; Shuffled graph, with random degrees.
 
-    We can try some larger graphs to get better statistics.
+    We can try with larger graphs to get better statistics, as follows.
 
     >>> figure()
     <...>
@@ -552,20 +556,20 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
     ...                     lambda i, j: exp(abs(i-j)), directed=False,
     ...                     mix_time=100)
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
-    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label="original")
-    (...)
+    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label="Original")
+    <...>
     >>> gt.random_rewire(g, "correlated")
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
-    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="*", label="correlated")
-    (...)
+    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="*", label="Correlated")
+    <...>
     >>> gt.random_rewire(g)
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
-    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label="uncorrelated")
-    (...)
+    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label="Uncorrelated")
+    <...>
     >>> gt.random_rewire(g, "erdos")
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
-    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label="Erdos")
-    (...)
+    >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label=r"Erd\H{o}s")
+    <...>
     >>> xlabel("$k$")
     <...>
     >>> ylabel(r"$\left<k_{nn}\right>$")
@@ -588,41 +592,41 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
     >>> g = gt.random_graph(20000, lambda: (sample_k(19), sample_k(19)),
     ...                     lambda a, b: (p.pmf(a[0], b[1]) * p.pmf(a[1], 20 - b[0])),
     ...                     mix_time=100)
-    >>> figure(figsize=(6,3))
+    >>> figure()
     <...>
     >>> axes([0.1,0.15,0.6,0.8])
     <...>
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{o}\right>$ vs i")
-    (...)
+    <...>
     >>> corr = gt.avg_neighbour_corr(g, "out", "in")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{i}\right>$ vs o")
-    (...)
+    <...>
     >>> gt.random_rewire(g, "correlated")
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{o}\right>$ vs i, corr.")
-    (...)
+    <...>
     >>> corr = gt.avg_neighbour_corr(g, "out", "in")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{i}\right>$ vs o, corr.")
-    (...)
+    <...>
     >>> gt.random_rewire(g, "uncorrelated")
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{o}\right>$ vs i, uncorr.")
-    (...)
+    <...>
     >>> corr = gt.avg_neighbour_corr(g, "out", "in")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{i}\right>$ vs o, uncorr.")
-    (...)
-    >>> legend(loc=(1.05,0.45))
     <...>
-    >>> xlabel("source degree")
+    >>> legend(bbox_to_anchor=(1.01, 0.5), loc="center left", borderaxespad=0.)
     <...>
-    >>> ylabel("average target degree")
+    >>> xlabel("Source degree")
+    <...>
+    >>> ylabel("Average target degree")
     <...>
     >>> savefig("shuffled-deg-corr-dir.pdf")
 
@@ -760,11 +764,14 @@ def graph_union(g1, g2, props=None, include=False):
     >>> g = gt.triangulation(random((300,2)))[0]
     >>> ug = gt.graph_union(g, g)
     >>> uug = gt.graph_union(g, ug)
-    >>> gt.graph_draw(g, layout="arf", size=(8,8), output="graph_original.pdf")
+    >>> pos = gt.arf_layout(g)
+    >>> gt.graph_draw(g, pos=pos, output_size=(300,300), output="graph_original.pdf")
     <...>
-    >>> gt.graph_draw(ug, layout="arf", size=(8,8), output="graph_union.pdf")
+    >>> pos = gt.arf_layout(ug)
+    >>> gt.graph_draw(ug, pos=pos, output_size=(300,300), output="graph_union.pdf")
     <...>
-    >>> gt.graph_draw(uug, layout="arf", size=(8,8), output="graph_union2.pdf")
+    >>> pos = gt.arf_layout(uug)
+    >>> gt.graph_draw(uug, pos=pos, output_size=(300,300), output="graph_union2.pdf")
     <...>
 
     .. image:: graph_original.*
@@ -874,8 +881,8 @@ def triangulation(points, type="simple", periodic=False):
     ...                          array(pos[e.target()]))**2))
     >>> b = gt.betweenness(g, weight=weight)
     >>> b[1].a *= 100
-    >>> gt.graph_draw(g, pos=pos, pin=True, size=(8,8), vsize=0.07, vcolor=b[0],
-    ...               eprops={"penwidth":b[1]}, output="triang.pdf")
+    >>> gt.graph_draw(g, pos=pos, output_size=(300,300), vertex_fill_color=b[0],
+    ...               edge_pen_width=b[1], output="triang.pdf")
     <...>
     >>> g, pos = gt.triangulation(points, type="delaunay")
     >>> weight = g.new_edge_property("double")
@@ -884,8 +891,8 @@ def triangulation(points, type="simple", periodic=False):
     ...                          array(pos[e.target()]))**2))
     >>> b = gt.betweenness(g, weight=weight)
     >>> b[1].a *= 120
-    >>> gt.graph_draw(g, pos=pos, pin=True, size=(8,8), vsize=0.07, vcolor=b[0],
-    ...               eprops={"penwidth":b[1]}, output="triang-delaunay.pdf")
+    >>> gt.graph_draw(g, pos=pos, output_size=(300,300), vertex_fill_color=b[0],
+    ...               edge_pen_width=b[1], output="triang-delaunay.pdf")
     <...>
 
     2D triangulation of random points:
@@ -942,13 +949,16 @@ def lattice(shape, periodic=False):
     Examples
     --------
     >>> g = gt.lattice([10,10])
-    >>> gt.graph_draw(g, size=(8,8), output="lattice.pdf")
+    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, cooling_step=0.99, epsilon=1e-3),
+    ...               output_size=(300,300), output="lattice.pdf")
     <...>
     >>> g = gt.lattice([10,20], periodic=True)
-    >>> gt.graph_draw(g, size=(8,8), output="lattice_periodic.pdf")
+    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, cooling_step=0.99, epsilon=1e-3, multilevel=True),
+    ...               output_size=(300,300), output="lattice_periodic.pdf")
     <...>
     >>> g = gt.lattice([10,10,10])
-    >>> gt.graph_draw(g, size=(8,8), output="lattice_3d.pdf")
+    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, cooling_step=0.99, epsilon=1e-3, multilevel=True),
+    ...               output_size=(300,300), output="lattice_3d.pdf")
     <...>
 
     .. image:: lattice.*
@@ -1012,10 +1022,10 @@ def geometric_graph(points, radius, ranges=None):
     >>> seed(42)
     >>> points = random((500, 2)) * 4
     >>> g, pos = gt.geometric_graph(points, 0.3)
-    >>> gt.graph_draw(g, pos=pos, pin=True, size=(8,8), output="geometric.pdf")
+    >>> gt.graph_draw(g, pos=pos, output_size=(300,300), output="geometric.pdf")
     <...>
     >>> g, pos = gt.geometric_graph(points, 0.3, [(0,4), (0,4)])
-    >>> gt.graph_draw(g, size=(8,8), output="geometric_periodic.pdf")
+    >>> gt.graph_draw(g, output_size=(300,300), output="geometric_periodic.pdf")
     <...>
 
     .. image:: geometric.*
@@ -1126,23 +1136,29 @@ def price_network(N, m=1, c=None, gamma=1, directed=True, seed_graph=None):
 
     Examples
     --------
-    >>> from numpy.random import seed, random
-    >>> seed(42)
     >>> g = gt.price_network(100000)
-    >>> gt.graph_draw(g, layout="sfdp", size=(12,12), vcolor=g.vertex_index,
-    ...               output="price-network.pdf")
+    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, epsilon=1e-3, cooling_step=0.99),
+    ...               vertex_fill_color=g.vertex_index, vertex_size=2,
+    ...               edge_pen_width=1, output="price-network.png")
     <...>
     >>> g = gt.price_network(100000, c=0.1)
-    >>> gt.graph_draw(g, layout="sfdp", size=(12,12), vcolor=g.vertex_index,
-    ...               output="price-network-broader.pdf")
+    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, epsilon=1e-3, cooling_step=0.99),
+    ...               vertex_fill_color=g.vertex_index, vertex_size=2,
+    ...               edge_pen_width=1, output="price-network-broader.png")
     <...>
 
-    .. image:: price-network.*
-    .. image:: price-network-broader.*
+    .. figure:: price-network.png
+        :align: center
 
-    Price networks with :math:`N=10^5` nodes. **Left:** :math:`c=1`, **Right:**
-    :math:`c=0.1`. The colors represent the order in which vertices were
-    added.
+        Price network with :math:`N=10^5` nodes and :math:`c=1`.  The colors
+        represent the order in which vertices were added.
+
+    .. figure:: price-network-broader.png
+        :align: center
+
+        Price network with :math:`N=10^5` nodes and :math:`c=0.1`.  The colors
+        represent the order in which vertices were added.
+
 
     References
     ----------

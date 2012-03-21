@@ -58,7 +58,8 @@ The following network will be used as an example throughout the documentation.
     g.edge_properties["cap"] = cap
     g.vertex_properties["pos"] = pos
     g.save("flow-example.xml.gz")
-    gt.graph_draw(g, pos=pos, pin=True, penwidth=cap, output="flow-example.pdf")
+    cap.a /= cap.a.max() / 10
+    gt.graph_draw(g, pos=pos, edge_pen_width=cap, output="flow-example.pdf")
 
 
 .. figure:: flow-example.*
@@ -128,7 +129,8 @@ def edmonds_karp_max_flow(g, source, target, capacity, residual=None):
     >>> print max_flow
     6.92759897841
     >>> pos = g.vertex_properties["pos"]
-    >>> gt.graph_draw(g, pos=pos, pin=True, penwidth=res, output="example-edmonds-karp.pdf")
+    >>> res.a /= res.a.max() / 10
+    >>> gt.graph_draw(g, pos=pos, edge_pen_width=res, output="example-edmonds-karp.pdf")
     <...>
 
     .. figure:: example-edmonds-karp.*
@@ -204,7 +206,8 @@ def push_relabel_max_flow(g, source, target, capacity, residual=None):
     >>> print max_flow
     6.92759897841
     >>> pos = g.vertex_properties["pos"]
-    >>> gt.graph_draw(g, pos=pos, pin=True, penwidth=res, output="example-push-relabel.pdf")
+    >>> res.a /= res.a.max() / 10
+    >>> gt.graph_draw(g, pos=pos, edge_pen_width=res, output="example-push-relabel.pdf")
     <...>
 
     .. figure:: example-push-relabel.*
@@ -281,7 +284,8 @@ def boykov_kolmogorov_max_flow(g, source, target, capacity, residual=None):
     >>> print max_flow
     6.92759897841
     >>> pos = g.vertex_properties["pos"]
-    >>> gt.graph_draw(g, pos=pos, pin=True, penwidth=res, output="example-kolmogorov.pdf")
+    >>> res.a /= res.a.max() / 10
+    >>> gt.graph_draw(g, pos=pos, edge_pen_width=res, output="example-kolmogorov.pdf")
     <...>
 
     .. figure:: example-kolmogorov.*

@@ -4,8 +4,7 @@
          xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
 
   <!-- property keys -->
-  <key id="key0" for="node" attr.name="pos_x" attr.type="float" />
-  <key id="key1" for="node" attr.name="pos_y" attr.type="float" />
+  <key id="key0" for="node" attr.name="pos" attr.type="vector_float" />
 
   <graph id="G" edgedefault="undirected" parse.nodeids="canonical" parse.edgeids="canonical" parse.order="nodesfirst">
 
@@ -13,1028 +12,772 @@
 
    <!-- vertices -->
     <node id="n0">
-      <data key="key0">0x0p+0</data>
-      <data key="key1">0x0p+0</data>
+      <data key="key0">0x1.ep+5, 0x1.ep+5</data>
     </node>
     <node id="n1">
-      <data key="key0">0x0p+0</data>
-      <data key="key1">0x1p+0</data>
+      <data key="key0">0x1.ep+5, 0x1.4p+6</data>
     </node>
     <node id="n2">
-      <data key="key0">0x0p+0</data>
-      <data key="key1">0x1p+1</data>
+      <data key="key0">0x1.ep+5, 0x1.9p+6</data>
     </node>
     <node id="n3">
-      <data key="key0">0x0p+0</data>
-      <data key="key1">0x1.8p+1</data>
+      <data key="key0">0x1.ep+5, 0x1.ep+6</data>
     </node>
     <node id="n4">
-      <data key="key0">0x0p+0</data>
-      <data key="key1">0x1p+2</data>
+      <data key="key0">0x1.ep+5, 0x1.18p+7</data>
     </node>
     <node id="n5">
-      <data key="key0">0x0p+0</data>
-      <data key="key1">0x1.4p+2</data>
+      <data key="key0">0x1.ep+5, 0x1.4p+7</data>
     </node>
     <node id="n6">
-      <data key="key0">0x0p+0</data>
-      <data key="key1">0x1.8p+2</data>
+      <data key="key0">0x1.ep+5, 0x1.68p+7</data>
     </node>
     <node id="n7">
-      <data key="key0">0x0p+0</data>
-      <data key="key1">0x1.cp+2</data>
+      <data key="key0">0x1.ep+5, 0x1.9p+7</data>
     </node>
     <node id="n8">
-      <data key="key0">0x1p+0</data>
-      <data key="key1">0x0p+0</data>
+      <data key="key0">0x1.4p+6, 0x1.ep+5</data>
     </node>
     <node id="n9">
-      <data key="key0">0x1p+0</data>
-      <data key="key1">0x1p+0</data>
+      <data key="key0">0x1.4p+6, 0x1.4p+6</data>
     </node>
     <node id="n10">
-      <data key="key0">0x1p+0</data>
-      <data key="key1">0x1p+1</data>
+      <data key="key0">0x1.4p+6, 0x1.9p+6</data>
     </node>
     <node id="n11">
-      <data key="key0">0x1p+0</data>
-      <data key="key1">0x1.8p+1</data>
+      <data key="key0">0x1.4p+6, 0x1.ep+6</data>
     </node>
     <node id="n12">
-      <data key="key0">0x1p+0</data>
-      <data key="key1">0x1p+2</data>
+      <data key="key0">0x1.4p+6, 0x1.18p+7</data>
     </node>
     <node id="n13">
-      <data key="key0">0x1p+0</data>
-      <data key="key1">0x1.4p+2</data>
+      <data key="key0">0x1.4p+6, 0x1.4p+7</data>
     </node>
     <node id="n14">
-      <data key="key0">0x1p+0</data>
-      <data key="key1">0x1.8p+2</data>
+      <data key="key0">0x1.4p+6, 0x1.68p+7</data>
     </node>
     <node id="n15">
-      <data key="key0">0x1p+0</data>
-      <data key="key1">0x1.cp+2</data>
+      <data key="key0">0x1.4p+6, 0x1.9p+7</data>
     </node>
     <node id="n16">
-      <data key="key0">0x1p+1</data>
-      <data key="key1">0x0p+0</data>
+      <data key="key0">0x1.9p+6, 0x1.ep+5</data>
     </node>
     <node id="n17">
-      <data key="key0">0x1p+1</data>
-      <data key="key1">0x1p+0</data>
+      <data key="key0">0x1.9p+6, 0x1.4p+6</data>
     </node>
     <node id="n18">
-      <data key="key0">0x1p+1</data>
-      <data key="key1">0x1p+1</data>
+      <data key="key0">0x1.9p+6, 0x1.9p+6</data>
     </node>
     <node id="n19">
-      <data key="key0">0x1p+1</data>
-      <data key="key1">0x1.8p+1</data>
+      <data key="key0">0x1.9p+6, 0x1.ep+6</data>
     </node>
     <node id="n20">
-      <data key="key0">0x1p+1</data>
-      <data key="key1">0x1p+2</data>
+      <data key="key0">0x1.9p+6, 0x1.18p+7</data>
     </node>
     <node id="n21">
-      <data key="key0">0x1p+1</data>
-      <data key="key1">0x1.4p+2</data>
+      <data key="key0">0x1.9p+6, 0x1.4p+7</data>
     </node>
     <node id="n22">
-      <data key="key0">0x1p+1</data>
-      <data key="key1">0x1.8p+2</data>
+      <data key="key0">0x1.9p+6, 0x1.68p+7</data>
     </node>
     <node id="n23">
-      <data key="key0">0x1p+1</data>
-      <data key="key1">0x1.cp+2</data>
+      <data key="key0">0x1.9p+6, 0x1.9p+7</data>
     </node>
     <node id="n24">
-      <data key="key0">0x1.8p+1</data>
-      <data key="key1">0x0p+0</data>
+      <data key="key0">0x1.ep+6, 0x1.ep+5</data>
     </node>
     <node id="n25">
-      <data key="key0">0x1.8p+1</data>
-      <data key="key1">0x1p+0</data>
+      <data key="key0">0x1.ep+6, 0x1.4p+6</data>
     </node>
     <node id="n26">
-      <data key="key0">0x1.8p+1</data>
-      <data key="key1">0x1p+1</data>
+      <data key="key0">0x1.ep+6, 0x1.9p+6</data>
     </node>
     <node id="n27">
-      <data key="key0">0x1.8p+1</data>
-      <data key="key1">0x1.8p+1</data>
+      <data key="key0">0x1.ep+6, 0x1.ep+6</data>
     </node>
     <node id="n28">
-      <data key="key0">0x1.8p+1</data>
-      <data key="key1">0x1p+2</data>
+      <data key="key0">0x1.ep+6, 0x1.18p+7</data>
     </node>
     <node id="n29">
-      <data key="key0">0x1.8p+1</data>
-      <data key="key1">0x1.4p+2</data>
+      <data key="key0">0x1.ep+6, 0x1.4p+7</data>
     </node>
     <node id="n30">
-      <data key="key0">0x1.8p+1</data>
-      <data key="key1">0x1.8p+2</data>
+      <data key="key0">0x1.ep+6, 0x1.68p+7</data>
     </node>
     <node id="n31">
-      <data key="key0">0x1.8p+1</data>
-      <data key="key1">0x1.cp+2</data>
+      <data key="key0">0x1.ep+6, 0x1.9p+7</data>
     </node>
     <node id="n32">
-      <data key="key0">0x1p+2</data>
-      <data key="key1">0x0p+0</data>
+      <data key="key0">0x1.18p+7, 0x1.ep+5</data>
     </node>
     <node id="n33">
-      <data key="key0">0x1p+2</data>
-      <data key="key1">0x1p+0</data>
+      <data key="key0">0x1.18p+7, 0x1.4p+6</data>
     </node>
     <node id="n34">
-      <data key="key0">0x1p+2</data>
-      <data key="key1">0x1p+1</data>
+      <data key="key0">0x1.18p+7, 0x1.9p+6</data>
     </node>
     <node id="n35">
-      <data key="key0">0x1p+2</data>
-      <data key="key1">0x1.8p+1</data>
+      <data key="key0">0x1.18p+7, 0x1.ep+6</data>
     </node>
     <node id="n36">
-      <data key="key0">0x1p+2</data>
-      <data key="key1">0x1p+2</data>
+      <data key="key0">0x1.18p+7, 0x1.18p+7</data>
     </node>
     <node id="n37">
-      <data key="key0">0x1p+2</data>
-      <data key="key1">0x1.4p+2</data>
+      <data key="key0">0x1.18p+7, 0x1.4p+7</data>
     </node>
     <node id="n38">
-      <data key="key0">0x1p+2</data>
-      <data key="key1">0x1.8p+2</data>
+      <data key="key0">0x1.18p+7, 0x1.68p+7</data>
     </node>
     <node id="n39">
-      <data key="key0">0x1p+2</data>
-      <data key="key1">0x1.cp+2</data>
+      <data key="key0">0x1.18p+7, 0x1.9p+7</data>
     </node>
     <node id="n40">
-      <data key="key0">0x1.4p+2</data>
-      <data key="key1">0x0p+0</data>
+      <data key="key0">0x1.4p+7, 0x1.ep+5</data>
     </node>
     <node id="n41">
-      <data key="key0">0x1.4p+2</data>
-      <data key="key1">0x1p+0</data>
+      <data key="key0">0x1.4p+7, 0x1.4p+6</data>
     </node>
     <node id="n42">
-      <data key="key0">0x1.4p+2</data>
-      <data key="key1">0x1p+1</data>
+      <data key="key0">0x1.4p+7, 0x1.9p+6</data>
     </node>
     <node id="n43">
-      <data key="key0">0x1.4p+2</data>
-      <data key="key1">0x1.8p+1</data>
+      <data key="key0">0x1.4p+7, 0x1.ep+6</data>
     </node>
     <node id="n44">
-      <data key="key0">0x1.4p+2</data>
-      <data key="key1">0x1p+2</data>
+      <data key="key0">0x1.4p+7, 0x1.18p+7</data>
     </node>
     <node id="n45">
-      <data key="key0">0x1.4p+2</data>
-      <data key="key1">0x1.4p+2</data>
+      <data key="key0">0x1.4p+7, 0x1.4p+7</data>
     </node>
     <node id="n46">
-      <data key="key0">0x1.4p+2</data>
-      <data key="key1">0x1.8p+2</data>
+      <data key="key0">0x1.4p+7, 0x1.68p+7</data>
     </node>
     <node id="n47">
-      <data key="key0">0x1.4p+2</data>
-      <data key="key1">0x1.cp+2</data>
+      <data key="key0">0x1.4p+7, 0x1.9p+7</data>
     </node>
     <node id="n48">
-      <data key="key0">0x1.8p+2</data>
-      <data key="key1">0x0p+0</data>
+      <data key="key0">0x1.68p+7, 0x1.ep+5</data>
     </node>
     <node id="n49">
-      <data key="key0">0x1.8p+2</data>
-      <data key="key1">0x1p+0</data>
+      <data key="key0">0x1.68p+7, 0x1.4p+6</data>
     </node>
     <node id="n50">
-      <data key="key0">0x1.8p+2</data>
-      <data key="key1">0x1p+1</data>
+      <data key="key0">0x1.68p+7, 0x1.9p+6</data>
     </node>
     <node id="n51">
-      <data key="key0">0x1.8p+2</data>
-      <data key="key1">0x1.8p+1</data>
+      <data key="key0">0x1.68p+7, 0x1.ep+6</data>
     </node>
     <node id="n52">
-      <data key="key0">0x1.8p+2</data>
-      <data key="key1">0x1p+2</data>
+      <data key="key0">0x1.68p+7, 0x1.18p+7</data>
     </node>
     <node id="n53">
-      <data key="key0">0x1.8p+2</data>
-      <data key="key1">0x1.4p+2</data>
+      <data key="key0">0x1.68p+7, 0x1.4p+7</data>
     </node>
     <node id="n54">
-      <data key="key0">0x1.8p+2</data>
-      <data key="key1">0x1.8p+2</data>
+      <data key="key0">0x1.68p+7, 0x1.68p+7</data>
     </node>
     <node id="n55">
-      <data key="key0">0x1.8p+2</data>
-      <data key="key1">0x1.cp+2</data>
+      <data key="key0">0x1.68p+7, 0x1.9p+7</data>
     </node>
     <node id="n56">
-      <data key="key0">0x1.cp+2</data>
-      <data key="key1">0x0p+0</data>
+      <data key="key0">0x1.9p+7, 0x1.ep+5</data>
     </node>
     <node id="n57">
-      <data key="key0">0x1.cp+2</data>
-      <data key="key1">0x1p+0</data>
+      <data key="key0">0x1.9p+7, 0x1.4p+6</data>
     </node>
     <node id="n58">
-      <data key="key0">0x1.cp+2</data>
-      <data key="key1">0x1p+1</data>
+      <data key="key0">0x1.9p+7, 0x1.9p+6</data>
     </node>
     <node id="n59">
-      <data key="key0">0x1.cp+2</data>
-      <data key="key1">0x1.8p+1</data>
+      <data key="key0">0x1.9p+7, 0x1.ep+6</data>
     </node>
     <node id="n60">
-      <data key="key0">0x1.cp+2</data>
-      <data key="key1">0x1p+2</data>
+      <data key="key0">0x1.9p+7, 0x1.18p+7</data>
     </node>
     <node id="n61">
-      <data key="key0">0x1.cp+2</data>
-      <data key="key1">0x1.4p+2</data>
+      <data key="key0">0x1.9p+7, 0x1.4p+7</data>
     </node>
     <node id="n62">
-      <data key="key0">0x1.cp+2</data>
-      <data key="key1">0x1.8p+2</data>
+      <data key="key0">0x1.9p+7, 0x1.68p+7</data>
     </node>
     <node id="n63">
-      <data key="key0">0x1.cp+2</data>
-      <data key="key1">0x1.cp+2</data>
+      <data key="key0">0x1.9p+7, 0x1.9p+7</data>
     </node>
     <node id="n64">
-      <data key="key0">0x1.ap+3</data>
-      <data key="key1">0x1.cp+3</data>
+      <data key="key0">0x1.4p+8, 0x1.54p+8</data>
     </node>
     <node id="n65">
-      <data key="key0">0x1p+1</data>
-      <data key="key1">0x1.8p+3</data>
+      <data key="key0">0x1.9p+6, 0x1.2cp+8</data>
     </node>
     <node id="n66">
-      <data key="key0">0x1.cp+2</data>
-      <data key="key1">0x1.4p+3</data>
+      <data key="key0">0x1.9p+7, 0x1.04p+8</data>
     </node>
     <node id="n67">
-      <data key="key0">0x1.ep+3</data>
-      <data key="key1">0x1.8p+2</data>
+      <data key="key0">0x1.68p+8, 0x1.68p+7</data>
     </node>
     <node id="n68">
-      <data key="key0">0x1.cp+3</data>
-      <data key="key1">0x1.ep+3</data>
+      <data key="key0">0x1.54p+8, 0x1.68p+8</data>
     </node>
     <node id="n69">
-      <data key="key0">0x1p+3</data>
-      <data key="key1">0x1.8p+1</data>
+      <data key="key0">0x1.b8p+7, 0x1.ep+6</data>
     </node>
     <node id="n70">
-      <data key="key0">0x1.8p+1</data>
-      <data key="key1">0x1.8p+3</data>
+      <data key="key0">0x1.ep+6, 0x1.2cp+8</data>
     </node>
     <node id="n71">
-      <data key="key0">0x1p+3</data>
-      <data key="key1">0x1.cp+2</data>
+      <data key="key0">0x1.b8p+7, 0x1.9p+7</data>
     </node>
     <node id="n72">
-      <data key="key0">0x1.4p+3</data>
-      <data key="key1">0x1.8p+1</data>
+      <data key="key0">0x1.04p+8, 0x1.ep+6</data>
     </node>
     <node id="n73">
-      <data key="key0">0x1.8p+2</data>
-      <data key="key1">0x1.6p+3</data>
+      <data key="key0">0x1.68p+7, 0x1.18p+8</data>
     </node>
     <node id="n74">
-      <data key="key0">0x1.2p+3</data>
-      <data key="key1">0x1.cp+3</data>
+      <data key="key0">0x1.ep+7, 0x1.54p+8</data>
     </node>
     <node id="n75">
-      <data key="key0">0x1.4p+3</data>
-      <data key="key1">0x1.4p+2</data>
+      <data key="key0">0x1.04p+8, 0x1.4p+7</data>
     </node>
     <node id="n76">
-      <data key="key0">0x1.ap+3</data>
-      <data key="key1">0x1p+2</data>
+      <data key="key0">0x1.4p+8, 0x1.18p+7</data>
     </node>
     <node id="n77">
-      <data key="key0">0x1.4p+3</data>
-      <data key="key1">0x1.4p+3</data>
+      <data key="key0">0x1.04p+8, 0x1.04p+8</data>
     </node>
     <node id="n78">
-      <data key="key0">0x1.4p+3</data>
-      <data key="key1">0x1.cp+3</data>
+      <data key="key0">0x1.04p+8, 0x1.54p+8</data>
     </node>
     <node id="n79">
-      <data key="key0">0x1p+2</data>
-      <data key="key1">0x1.2p+3</data>
+      <data key="key0">0x1.18p+7, 0x1.ep+7</data>
     </node>
     <node id="n80">
-      <data key="key0">0x0p+0</data>
-      <data key="key1">0x1.6p+3</data>
+      <data key="key0">0x1.ep+5, 0x1.18p+8</data>
     </node>
     <node id="n81">
-      <data key="key0">0x1.8p+1</data>
-      <data key="key1">0x1.ep+3</data>
+      <data key="key0">0x1.ep+6, 0x1.68p+8</data>
     </node>
     <node id="n82">
-      <data key="key0">0x1.4p+3</data>
-      <data key="key1">0x1p+0</data>
+      <data key="key0">0x1.04p+8, 0x1.4p+6</data>
     </node>
     <node id="n83">
-      <data key="key0">0x1.6p+3</data>
-      <data key="key1">0x1.2p+3</data>
+      <data key="key0">0x1.18p+8, 0x1.ep+7</data>
     </node>
     <node id="n84">
-      <data key="key0">0x1.ep+3</data>
-      <data key="key1">0x1.cp+2</data>
+      <data key="key0">0x1.68p+8, 0x1.9p+7</data>
     </node>
     <node id="n85">
-      <data key="key0">0x1.ap+3</data>
-      <data key="key1">0x1p+0</data>
+      <data key="key0">0x1.4p+8, 0x1.4p+6</data>
     </node>
     <node id="n86">
-      <data key="key0">0x1.8p+2</data>
-      <data key="key1">0x1.cp+3</data>
+      <data key="key0">0x1.68p+7, 0x1.54p+8</data>
     </node>
     <node id="n87">
-      <data key="key0">0x1.cp+3</data>
-      <data key="key1">0x1.6p+3</data>
+      <data key="key0">0x1.54p+8, 0x1.18p+8</data>
     </node>
     <node id="n88">
-      <data key="key0">0x1.8p+3</data>
-      <data key="key1">0x1.ep+3</data>
+      <data key="key0">0x1.2cp+8, 0x1.68p+8</data>
     </node>
     <node id="n89">
-      <data key="key0">0x1.8p+3</data>
-      <data key="key1">0x1.4p+2</data>
+      <data key="key0">0x1.2cp+8, 0x1.4p+7</data>
     </node>
     <node id="n90">
-      <data key="key0">0x1.cp+3</data>
-      <data key="key1">0x1.cp+2</data>
+      <data key="key0">0x1.54p+8, 0x1.9p+7</data>
     </node>
     <node id="n91">
-      <data key="key0">0x1p+0</data>
-      <data key="key1">0x1.4p+3</data>
+      <data key="key0">0x1.4p+6, 0x1.04p+8</data>
     </node>
     <node id="n92">
-      <data key="key0">0x1p+1</data>
-      <data key="key1">0x1.ap+3</data>
+      <data key="key0">0x1.9p+6, 0x1.4p+8</data>
     </node>
     <node id="n93">
-      <data key="key0">0x1.4p+3</data>
-      <data key="key1">0x1.6p+3</data>
+      <data key="key0">0x1.04p+8, 0x1.18p+8</data>
     </node>
     <node id="n94">
-      <data key="key0">0x1p+3</data>
-      <data key="key1">0x1.4p+2</data>
+      <data key="key0">0x1.b8p+7, 0x1.4p+7</data>
     </node>
     <node id="n95">
-      <data key="key0">0x1.8p+1</data>
-      <data key="key1">0x1.2p+3</data>
+      <data key="key0">0x1.ep+6, 0x1.ep+7</data>
     </node>
     <node id="n96">
-      <data key="key0">0x1.6p+3</data>
-      <data key="key1">0x1p+1</data>
+      <data key="key0">0x1.18p+8, 0x1.9p+6</data>
     </node>
     <node id="n97">
-      <data key="key0">0x1.8p+3</data>
-      <data key="key1">0x1.2p+3</data>
+      <data key="key0">0x1.2cp+8, 0x1.ep+7</data>
     </node>
     <node id="n98">
-      <data key="key0">0x1.4p+3</data>
-      <data key="key1">0x1p+3</data>
+      <data key="key0">0x1.04p+8, 0x1.b8p+7</data>
     </node>
     <node id="n99">
-      <data key="key0">0x0p+0</data>
-      <data key="key1">0x1.8p+3</data>
+      <data key="key0">0x1.ep+5, 0x1.2cp+8</data>
     </node>
     <node id="n100">
-      <data key="key0">0x1.6p+3</data>
-      <data key="key1">0x1.6p+3</data>
+      <data key="key0">0x1.18p+8, 0x1.18p+8</data>
     </node>
     <node id="n101">
-      <data key="key0">0x1.4p+2</data>
-      <data key="key1">0x1.cp+3</data>
+      <data key="key0">0x1.4p+7, 0x1.54p+8</data>
     </node>
     <node id="n102">
-      <data key="key0">0x0p+0</data>
-      <data key="key1">0x1.4p+3</data>
+      <data key="key0">0x1.ep+5, 0x1.04p+8</data>
     </node>
     <node id="n103">
-      <data key="key0">0x1.ap+3</data>
-      <data key="key1">0x1.8p+3</data>
+      <data key="key0">0x1.4p+8, 0x1.2cp+8</data>
     </node>
     <node id="n104">
-      <data key="key0">0x1.8p+1</data>
-      <data key="key1">0x1.4p+3</data>
+      <data key="key0">0x1.ep+6, 0x1.04p+8</data>
     </node>
     <node id="n105">
-      <data key="key0">0x1.ep+3</data>
-      <data key="key1">0x1.ap+3</data>
+      <data key="key0">0x1.68p+8, 0x1.4p+8</data>
     </node>
     <node id="n106">
-      <data key="key0">0x1.6p+3</data>
-      <data key="key1">0x1.ap+3</data>
+      <data key="key0">0x1.18p+8, 0x1.4p+8</data>
     </node>
     <node id="n107">
-      <data key="key0">0x1.4p+3</data>
-      <data key="key1">0x1.8p+3</data>
+      <data key="key0">0x1.04p+8, 0x1.2cp+8</data>
     </node>
     <node id="n108">
-      <data key="key0">0x1.6p+3</data>
-      <data key="key1">0x1.8p+3</data>
+      <data key="key0">0x1.18p+8, 0x1.2cp+8</data>
     </node>
     <node id="n109">
-      <data key="key0">0x1.2p+3</data>
-      <data key="key1">0x0p+0</data>
+      <data key="key0">0x1.ep+7, 0x1.ep+5</data>
     </node>
     <node id="n110">
-      <data key="key0">0x1.8p+2</data>
-      <data key="key1">0x1.4p+3</data>
+      <data key="key0">0x1.68p+7, 0x1.04p+8</data>
     </node>
     <node id="n111">
-      <data key="key0">0x1.2p+3</data>
-      <data key="key1">0x1.cp+2</data>
+      <data key="key0">0x1.ep+7, 0x1.9p+7</data>
     </node>
     <node id="n112">
-      <data key="key0">0x1.ap+3</data>
-      <data key="key1">0x1.2p+3</data>
+      <data key="key0">0x1.4p+8, 0x1.ep+7</data>
     </node>
     <node id="n113">
-      <data key="key0">0x1.8p+2</data>
-      <data key="key1">0x1.8p+3</data>
+      <data key="key0">0x1.68p+7, 0x1.2cp+8</data>
     </node>
     <node id="n114">
-      <data key="key0">0x1.cp+3</data>
-      <data key="key1">0x1p+1</data>
+      <data key="key0">0x1.54p+8, 0x1.9p+6</data>
     </node>
     <node id="n115">
-      <data key="key0">0x1.2p+3</data>
-      <data key="key1">0x1.ap+3</data>
+      <data key="key0">0x1.ep+7, 0x1.4p+8</data>
     </node>
     <node id="n116">
-      <data key="key0">0x1p+3</data>
-      <data key="key1">0x1p+0</data>
+      <data key="key0">0x1.b8p+7, 0x1.4p+6</data>
     </node>
     <node id="n117">
-      <data key="key0">0x1.4p+2</data>
-      <data key="key1">0x1.8p+3</data>
+      <data key="key0">0x1.4p+7, 0x1.2cp+8</data>
     </node>
     <node id="n118">
-      <data key="key0">0x1.8p+3</data>
-      <data key="key1">0x1.6p+3</data>
+      <data key="key0">0x1.2cp+8, 0x1.18p+8</data>
     </node>
     <node id="n119">
-      <data key="key0">0x1.ep+3</data>
-      <data key="key1">0x1.cp+3</data>
+      <data key="key0">0x1.68p+8, 0x1.54p+8</data>
     </node>
     <node id="n120">
-      <data key="key0">0x1.6p+3</data>
-      <data key="key1">0x1.ep+3</data>
+      <data key="key0">0x1.18p+8, 0x1.68p+8</data>
     </node>
     <node id="n121">
-      <data key="key0">0x1.cp+2</data>
-      <data key="key1">0x1.2p+3</data>
+      <data key="key0">0x1.9p+7, 0x1.ep+7</data>
     </node>
     <node id="n122">
-      <data key="key0">0x1.8p+3</data>
-      <data key="key1">0x1.cp+3</data>
+      <data key="key0">0x1.2cp+8, 0x1.54p+8</data>
     </node>
     <node id="n123">
-      <data key="key0">0x1.8p+3</data>
-      <data key="key1">0x1p+0</data>
+      <data key="key0">0x1.2cp+8, 0x1.4p+6</data>
     </node>
     <node id="n124">
-      <data key="key0">0x1p+1</data>
-      <data key="key1">0x1.ep+3</data>
+      <data key="key0">0x1.9p+6, 0x1.68p+8</data>
     </node>
     <node id="n125">
-      <data key="key0">0x1.cp+3</data>
-      <data key="key1">0x1.4p+2</data>
+      <data key="key0">0x1.54p+8, 0x1.4p+7</data>
     </node>
     <node id="n126">
-      <data key="key0">0x1.6p+3</data>
-      <data key="key1">0x1p+3</data>
+      <data key="key0">0x1.18p+8, 0x1.b8p+7</data>
     </node>
     <node id="n127">
-      <data key="key0">0x0p+0</data>
-      <data key="key1">0x1.2p+3</data>
+      <data key="key0">0x1.ep+5, 0x1.ep+7</data>
     </node>
     <node id="n128">
-      <data key="key0">0x1p+2</data>
-      <data key="key1">0x1.4p+3</data>
+      <data key="key0">0x1.18p+7, 0x1.04p+8</data>
     </node>
     <node id="n129">
-      <data key="key0">0x1.ep+3</data>
-      <data key="key1">0x1p+0</data>
+      <data key="key0">0x1.68p+8, 0x1.4p+6</data>
     </node>
     <node id="n130">
-      <data key="key0">0x1.ep+3</data>
-      <data key="key1">0x1.4p+2</data>
+      <data key="key0">0x1.68p+8, 0x1.4p+7</data>
     </node>
     <node id="n131">
-      <data key="key0">0x1.ep+3</data>
-      <data key="key1">0x0p+0</data>
+      <data key="key0">0x1.68p+8, 0x1.ep+5</data>
     </node>
     <node id="n132">
-      <data key="key0">0x1.ep+3</data>
-      <data key="key1">0x1p+3</data>
+      <data key="key0">0x1.68p+8, 0x1.b8p+7</data>
     </node>
     <node id="n133">
-      <data key="key0">0x1p+3</data>
-      <data key="key1">0x0p+0</data>
+      <data key="key0">0x1.b8p+7, 0x1.ep+5</data>
     </node>
     <node id="n134">
-      <data key="key0">0x1.cp+3</data>
-      <data key="key1">0x1.8p+3</data>
+      <data key="key0">0x1.54p+8, 0x1.2cp+8</data>
     </node>
     <node id="n135">
-      <data key="key0">0x1.8p+1</data>
-      <data key="key1">0x1p+3</data>
+      <data key="key0">0x1.ep+6, 0x1.b8p+7</data>
     </node>
     <node id="n136">
-      <data key="key0">0x1.cp+3</data>
-      <data key="key1">0x1.8p+1</data>
+      <data key="key0">0x1.54p+8, 0x1.ep+6</data>
     </node>
     <node id="n137">
-      <data key="key0">0x1p+1</data>
-      <data key="key1">0x1.4p+3</data>
+      <data key="key0">0x1.9p+6, 0x1.04p+8</data>
     </node>
     <node id="n138">
-      <data key="key0">0x1p+3</data>
-      <data key="key1">0x1.8p+3</data>
+      <data key="key0">0x1.b8p+7, 0x1.2cp+8</data>
     </node>
     <node id="n139">
-      <data key="key0">0x1.cp+2</data>
-      <data key="key1">0x1.6p+3</data>
+      <data key="key0">0x1.9p+7, 0x1.18p+8</data>
     </node>
     <node id="n140">
-      <data key="key0">0x1.4p+2</data>
-      <data key="key1">0x1.ep+3</data>
+      <data key="key0">0x1.4p+7, 0x1.68p+8</data>
     </node>
     <node id="n141">
-      <data key="key0">0x1.2p+3</data>
-      <data key="key1">0x1.4p+2</data>
+      <data key="key0">0x1.ep+7, 0x1.4p+7</data>
     </node>
     <node id="n142">
-      <data key="key0">0x1p+0</data>
-      <data key="key1">0x1.ep+3</data>
+      <data key="key0">0x1.4p+6, 0x1.68p+8</data>
     </node>
     <node id="n143">
-      <data key="key0">0x1.2p+3</data>
-      <data key="key1">0x1.8p+2</data>
+      <data key="key0">0x1.ep+7, 0x1.68p+7</data>
     </node>
     <node id="n144">
-      <data key="key0">0x1.6p+3</data>
-      <data key="key1">0x1.4p+2</data>
+      <data key="key0">0x1.18p+8, 0x1.4p+7</data>
     </node>
     <node id="n145">
-      <data key="key0">0x1.4p+2</data>
-      <data key="key1">0x1p+3</data>
+      <data key="key0">0x1.4p+7, 0x1.b8p+7</data>
     </node>
     <node id="n146">
-      <data key="key0">0x1.2p+3</data>
-      <data key="key1">0x1.4p+3</data>
+      <data key="key0">0x1.ep+7, 0x1.04p+8</data>
     </node>
     <node id="n147">
-      <data key="key0">0x1.4p+3</data>
-      <data key="key1">0x1.cp+2</data>
+      <data key="key0">0x1.04p+8, 0x1.9p+7</data>
     </node>
     <node id="n148">
-      <data key="key0">0x1p+3</data>
-      <data key="key1">0x1.6p+3</data>
+      <data key="key0">0x1.b8p+7, 0x1.18p+8</data>
     </node>
     <node id="n149">
-      <data key="key0">0x1.4p+3</data>
-      <data key="key1">0x1.8p+2</data>
+      <data key="key0">0x1.04p+8, 0x1.68p+7</data>
     </node>
     <node id="n150">
-      <data key="key0">0x1.6p+3</data>
-      <data key="key1">0x1.cp+2</data>
+      <data key="key0">0x1.18p+8, 0x1.9p+7</data>
     </node>
     <node id="n151">
-      <data key="key0">0x1.ep+3</data>
-      <data key="key1">0x1.8p+1</data>
+      <data key="key0">0x1.68p+8, 0x1.ep+6</data>
     </node>
     <node id="n152">
-      <data key="key0">0x1.8p+3</data>
-      <data key="key1">0x1.8p+2</data>
+      <data key="key0">0x1.2cp+8, 0x1.68p+7</data>
     </node>
     <node id="n153">
-      <data key="key0">0x1p+3</data>
-      <data key="key1">0x1.4p+3</data>
+      <data key="key0">0x1.b8p+7, 0x1.04p+8</data>
     </node>
     <node id="n154">
-      <data key="key0">0x1.4p+3</data>
-      <data key="key1">0x1.2p+3</data>
+      <data key="key0">0x1.04p+8, 0x1.ep+7</data>
     </node>
     <node id="n155">
-      <data key="key0">0x1.8p+2</data>
-      <data key="key1">0x1.2p+3</data>
+      <data key="key0">0x1.68p+7, 0x1.ep+7</data>
     </node>
     <node id="n156">
-      <data key="key0">0x1p+1</data>
-      <data key="key1">0x1.2p+3</data>
+      <data key="key0">0x1.9p+6, 0x1.ep+7</data>
     </node>
     <node id="n157">
-      <data key="key0">0x1.6p+3</data>
-      <data key="key1">0x1.8p+1</data>
+      <data key="key0">0x1.18p+8, 0x1.ep+6</data>
     </node>
     <node id="n158">
-      <data key="key0">0x1.8p+1</data>
-      <data key="key1">0x1.ap+3</data>
+      <data key="key0">0x1.ep+6, 0x1.4p+8</data>
     </node>
     <node id="n159">
-      <data key="key0">0x1.4p+2</data>
-      <data key="key1">0x1.ap+3</data>
+      <data key="key0">0x1.4p+7, 0x1.4p+8</data>
     </node>
     <node id="n160">
-      <data key="key0">0x1p+3</data>
-      <data key="key1">0x1.cp+3</data>
+      <data key="key0">0x1.b8p+7, 0x1.54p+8</data>
     </node>
     <node id="n161">
-      <data key="key0">0x1.cp+2</data>
-      <data key="key1">0x1.ap+3</data>
+      <data key="key0">0x1.9p+7, 0x1.4p+8</data>
     </node>
     <node id="n162">
-      <data key="key0">0x1.cp+3</data>
-      <data key="key1">0x1.cp+3</data>
+      <data key="key0">0x1.54p+8, 0x1.54p+8</data>
     </node>
     <node id="n163">
-      <data key="key0">0x1p+2</data>
-      <data key="key1">0x1p+3</data>
+      <data key="key0">0x1.18p+7, 0x1.b8p+7</data>
     </node>
     <node id="n164">
-      <data key="key0">0x1.6p+3</data>
-      <data key="key1">0x0p+0</data>
+      <data key="key0">0x1.18p+8, 0x1.ep+5</data>
     </node>
     <node id="n165">
-      <data key="key0">0x1.8p+1</data>
-      <data key="key1">0x1.6p+3</data>
+      <data key="key0">0x1.ep+6, 0x1.18p+8</data>
     </node>
     <node id="n166">
-      <data key="key0">0x0p+0</data>
-      <data key="key1">0x1.ep+3</data>
+      <data key="key0">0x1.ep+5, 0x1.68p+8</data>
     </node>
     <node id="n167">
-      <data key="key0">0x0p+0</data>
-      <data key="key1">0x1.cp+3</data>
+      <data key="key0">0x1.ep+5, 0x1.54p+8</data>
     </node>
     <node id="n168">
-      <data key="key0">0x1p+3</data>
-      <data key="key1">0x1.ap+3</data>
+      <data key="key0">0x1.b8p+7, 0x1.4p+8</data>
     </node>
     <node id="n169">
-      <data key="key0">0x1p+2</data>
-      <data key="key1">0x1.ap+3</data>
+      <data key="key0">0x1.18p+7, 0x1.4p+8</data>
     </node>
     <node id="n170">
-      <data key="key0">0x1.ep+3</data>
-      <data key="key1">0x1p+2</data>
+      <data key="key0">0x1.68p+8, 0x1.18p+7</data>
     </node>
     <node id="n171">
-      <data key="key0">0x1p+3</data>
-      <data key="key1">0x1.2p+3</data>
+      <data key="key0">0x1.b8p+7, 0x1.ep+7</data>
     </node>
     <node id="n172">
-      <data key="key0">0x1.cp+2</data>
-      <data key="key1">0x1.ep+3</data>
+      <data key="key0">0x1.9p+7, 0x1.68p+8</data>
     </node>
     <node id="n173">
-      <data key="key0">0x1.ep+3</data>
-      <data key="key1">0x1.6p+3</data>
+      <data key="key0">0x1.68p+8, 0x1.18p+8</data>
     </node>
     <node id="n174">
-      <data key="key0">0x1.2p+3</data>
-      <data key="key1">0x1.8p+3</data>
+      <data key="key0">0x1.ep+7, 0x1.2cp+8</data>
     </node>
     <node id="n175">
-      <data key="key0">0x1.ap+3</data>
-      <data key="key1">0x1.8p+2</data>
+      <data key="key0">0x1.4p+8, 0x1.68p+7</data>
     </node>
     <node id="n176">
-      <data key="key0">0x1.2p+3</data>
-      <data key="key1">0x1.2p+3</data>
+      <data key="key0">0x1.ep+7, 0x1.ep+7</data>
     </node>
     <node id="n177">
-      <data key="key0">0x1p+1</data>
-      <data key="key1">0x1.cp+3</data>
+      <data key="key0">0x1.9p+6, 0x1.54p+8</data>
     </node>
     <node id="n178">
-      <data key="key0">0x1.cp+2</data>
-      <data key="key1">0x1.8p+3</data>
+      <data key="key0">0x1.9p+7, 0x1.2cp+8</data>
     </node>
     <node id="n179">
-      <data key="key0">0x1.cp+3</data>
-      <data key="key1">0x1.4p+3</data>
+      <data key="key0">0x1.54p+8, 0x1.04p+8</data>
     </node>
     <node id="n180">
-      <data key="key0">0x1p+0</data>
-      <data key="key1">0x1p+3</data>
+      <data key="key0">0x1.4p+6, 0x1.b8p+7</data>
     </node>
     <node id="n181">
-      <data key="key0">0x1.ap+3</data>
-      <data key="key1">0x1.6p+3</data>
+      <data key="key0">0x1.4p+8, 0x1.18p+8</data>
     </node>
     <node id="n182">
-      <data key="key0">0x1.8p+3</data>
-      <data key="key1">0x1.ap+3</data>
+      <data key="key0">0x1.2cp+8, 0x1.4p+8</data>
     </node>
     <node id="n183">
-      <data key="key0">0x1.ep+3</data>
-      <data key="key1">0x1p+1</data>
+      <data key="key0">0x1.68p+8, 0x1.9p+6</data>
     </node>
     <node id="n184">
-      <data key="key0">0x1.8p+3</data>
-      <data key="key1">0x1p+1</data>
+      <data key="key0">0x1.2cp+8, 0x1.9p+6</data>
     </node>
     <node id="n185">
-      <data key="key0">0x1.6p+3</data>
-      <data key="key1">0x1p+2</data>
+      <data key="key0">0x1.18p+8, 0x1.18p+7</data>
     </node>
     <node id="n186">
-      <data key="key0">0x1.8p+3</data>
-      <data key="key1">0x1.8p+1</data>
+      <data key="key0">0x1.2cp+8, 0x1.ep+6</data>
     </node>
     <node id="n187">
-      <data key="key0">0x1p+2</data>
-      <data key="key1">0x1.ep+3</data>
+      <data key="key0">0x1.18p+7, 0x1.68p+8</data>
     </node>
     <node id="n188">
-      <data key="key0">0x1.ap+3</data>
-      <data key="key1">0x1p+3</data>
+      <data key="key0">0x1.4p+8, 0x1.b8p+7</data>
     </node>
     <node id="n189">
-      <data key="key0">0x1.2p+3</data>
-      <data key="key1">0x1p+2</data>
+      <data key="key0">0x1.ep+7, 0x1.18p+7</data>
     </node>
     <node id="n190">
-      <data key="key0">0x1.cp+3</data>
-      <data key="key1">0x1.ap+3</data>
+      <data key="key0">0x1.54p+8, 0x1.4p+8</data>
     </node>
     <node id="n191">
-      <data key="key0">0x1.cp+3</data>
-      <data key="key1">0x1.2p+3</data>
+      <data key="key0">0x1.54p+8, 0x1.ep+7</data>
     </node>
     <node id="n192">
-      <data key="key0">0x0p+0</data>
-      <data key="key1">0x1.ap+3</data>
+      <data key="key0">0x1.ep+5, 0x1.4p+8</data>
     </node>
     <node id="n193">
-      <data key="key0">0x1.ap+3</data>
-      <data key="key1">0x1.4p+2</data>
+      <data key="key0">0x1.4p+8, 0x1.4p+7</data>
     </node>
     <node id="n194">
-      <data key="key0">0x1.4p+2</data>
-      <data key="key1">0x1.4p+3</data>
+      <data key="key0">0x1.4p+7, 0x1.04p+8</data>
     </node>
     <node id="n195">
-      <data key="key0">0x1.ep+3</data>
-      <data key="key1">0x1.4p+3</data>
+      <data key="key0">0x1.68p+8, 0x1.04p+8</data>
     </node>
     <node id="n196">
-      <data key="key0">0x1.2p+3</data>
-      <data key="key1">0x1p+0</data>
+      <data key="key0">0x1.ep+7, 0x1.4p+6</data>
     </node>
     <node id="n197">
-      <data key="key0">0x1.cp+3</data>
-      <data key="key1">0x1.8p+2</data>
+      <data key="key0">0x1.54p+8, 0x1.68p+7</data>
     </node>
     <node id="n198">
-      <data key="key0">0x1.ap+3</data>
-      <data key="key1">0x1p+1</data>
+      <data key="key0">0x1.4p+8, 0x1.9p+6</data>
     </node>
     <node id="n199">
-      <data key="key0">0x1p+1</data>
-      <data key="key1">0x1p+3</data>
+      <data key="key0">0x1.9p+6, 0x1.b8p+7</data>
     </node>
     <node id="n200">
-      <data key="key0">0x1p+0</data>
-      <data key="key1">0x1.8p+3</data>
+      <data key="key0">0x1.4p+6, 0x1.2cp+8</data>
     </node>
     <node id="n201">
-      <data key="key0">0x1.ap+3</data>
-      <data key="key1">0x1.8p+1</data>
+      <data key="key0">0x1.4p+8, 0x1.ep+6</data>
     </node>
     <node id="n202">
-      <data key="key0">0x1.2p+3</data>
-      <data key="key1">0x1p+3</data>
+      <data key="key0">0x1.ep+7, 0x1.b8p+7</data>
     </node>
     <node id="n203">
-      <data key="key0">0x1p+3</data>
-      <data key="key1">0x1p+2</data>
+      <data key="key0">0x1.b8p+7, 0x1.18p+7</data>
     </node>
     <node id="n204">
-      <data key="key0">0x1.6p+3</data>
-      <data key="key1">0x1p+0</data>
+      <data key="key0">0x1.18p+8, 0x1.4p+6</data>
     </node>
     <node id="n205">
-      <data key="key0">0x1p+3</data>
-      <data key="key1">0x1p+3</data>
+      <data key="key0">0x1.b8p+7, 0x1.b8p+7</data>
     </node>
     <node id="n206">
-      <data key="key0">0x1.ep+3</data>
-      <data key="key1">0x1.8p+3</data>
+      <data key="key0">0x1.68p+8, 0x1.2cp+8</data>
     </node>
     <node id="n207">
-      <data key="key0">0x1.cp+2</data>
-      <data key="key1">0x1.cp+3</data>
+      <data key="key0">0x1.9p+7, 0x1.54p+8</data>
     </node>
     <node id="n208">
-      <data key="key0">0x1.cp+3</data>
-      <data key="key1">0x1p+0</data>
+      <data key="key0">0x1.54p+8, 0x1.4p+6</data>
     </node>
     <node id="n209">
-      <data key="key0">0x1.ep+3</data>
-      <data key="key1">0x1.ep+3</data>
+      <data key="key0">0x1.68p+8, 0x1.68p+8</data>
     </node>
     <node id="n210">
-      <data key="key0">0x1.8p+3</data>
-      <data key="key1">0x1.4p+3</data>
+      <data key="key0">0x1.2cp+8, 0x1.04p+8</data>
     </node>
     <node id="n211">
-      <data key="key0">0x1.4p+2</data>
-      <data key="key1">0x1.6p+3</data>
+      <data key="key0">0x1.4p+7, 0x1.18p+8</data>
     </node>
     <node id="n212">
-      <data key="key0">0x1p+2</data>
-      <data key="key1">0x1.8p+3</data>
+      <data key="key0">0x1.18p+7, 0x1.2cp+8</data>
     </node>
     <node id="n213">
-      <data key="key0">0x1.8p+3</data>
-      <data key="key1">0x1p+3</data>
+      <data key="key0">0x1.2cp+8, 0x1.b8p+7</data>
     </node>
     <node id="n214">
-      <data key="key0">0x1.8p+2</data>
-      <data key="key1">0x1p+3</data>
+      <data key="key0">0x1.68p+7, 0x1.b8p+7</data>
     </node>
     <node id="n215">
-      <data key="key0">0x1.2p+3</data>
-      <data key="key1">0x1p+1</data>
+      <data key="key0">0x1.ep+7, 0x1.9p+6</data>
     </node>
     <node id="n216">
-      <data key="key0">0x1.ep+3</data>
-      <data key="key1">0x1.2p+3</data>
+      <data key="key0">0x1.68p+8, 0x1.ep+7</data>
     </node>
     <node id="n217">
-      <data key="key0">0x1.8p+2</data>
-      <data key="key1">0x1.ep+3</data>
+      <data key="key0">0x1.68p+7, 0x1.68p+8</data>
     </node>
     <node id="n218">
-      <data key="key0">0x1.4p+3</data>
-      <data key="key1">0x1.ep+3</data>
+      <data key="key0">0x1.04p+8, 0x1.68p+8</data>
     </node>
     <node id="n219">
-      <data key="key0">0x1.4p+3</data>
-      <data key="key1">0x1p+2</data>
+      <data key="key0">0x1.04p+8, 0x1.18p+7</data>
     </node>
     <node id="n220">
-      <data key="key0">0x1p+3</data>
-      <data key="key1">0x1.ep+3</data>
+      <data key="key0">0x1.b8p+7, 0x1.68p+8</data>
     </node>
     <node id="n221">
-      <data key="key0">0x1.2p+3</data>
-      <data key="key1">0x1.6p+3</data>
+      <data key="key0">0x1.ep+7, 0x1.18p+8</data>
     </node>
     <node id="n222">
-      <data key="key0">0x1.cp+3</data>
-      <data key="key1">0x0p+0</data>
+      <data key="key0">0x1.54p+8, 0x1.ep+5</data>
     </node>
     <node id="n223">
-      <data key="key0">0x1p+0</data>
-      <data key="key1">0x1.ap+3</data>
+      <data key="key0">0x1.4p+6, 0x1.4p+8</data>
     </node>
     <node id="n224">
-      <data key="key0">0x1.8p+3</data>
-      <data key="key1">0x1.8p+3</data>
+      <data key="key0">0x1.2cp+8, 0x1.2cp+8</data>
     </node>
     <node id="n225">
-      <data key="key0">0x1p+2</data>
-      <data key="key1">0x1.6p+3</data>
+      <data key="key0">0x1.18p+7, 0x1.18p+8</data>
     </node>
     <node id="n226">
-      <data key="key0">0x1.cp+3</data>
-      <data key="key1">0x1p+3</data>
+      <data key="key0">0x1.54p+8, 0x1.b8p+7</data>
     </node>
     <node id="n227">
-      <data key="key0">0x1.2p+3</data>
-      <data key="key1">0x1.8p+1</data>
+      <data key="key0">0x1.ep+7, 0x1.ep+6</data>
     </node>
     <node id="n228">
-      <data key="key0">0x1.ap+3</data>
-      <data key="key1">0x1.ap+3</data>
+      <data key="key0">0x1.4p+8, 0x1.4p+8</data>
     </node>
     <node id="n229">
-      <data key="key0">0x1.8p+3</data>
-      <data key="key1">0x1.cp+2</data>
+      <data key="key0">0x1.2cp+8, 0x1.9p+7</data>
     </node>
     <node id="n230">
-      <data key="key0">0x1.6p+3</data>
-      <data key="key1">0x1.8p+2</data>
+      <data key="key0">0x1.18p+8, 0x1.68p+7</data>
     </node>
     <node id="n231">
-      <data key="key0">0x1p+0</data>
-      <data key="key1">0x1.cp+3</data>
+      <data key="key0">0x1.4p+6, 0x1.54p+8</data>
     </node>
     <node id="n232">
-      <data key="key0">0x1.8p+1</data>
-      <data key="key1">0x1.cp+3</data>
+      <data key="key0">0x1.ep+6, 0x1.54p+8</data>
     </node>
     <node id="n233">
-      <data key="key0">0x1.ap+3</data>
-      <data key="key1">0x1.ep+3</data>
+      <data key="key0">0x1.4p+8, 0x1.68p+8</data>
     </node>
     <node id="n234">
-      <data key="key0">0x1.4p+3</data>
-      <data key="key1">0x1.ap+3</data>
+      <data key="key0">0x1.04p+8, 0x1.4p+8</data>
     </node>
     <node id="n235">
-      <data key="key0">0x1.4p+3</data>
-      <data key="key1">0x0p+0</data>
+      <data key="key0">0x1.04p+8, 0x1.ep+5</data>
     </node>
     <node id="n236">
-      <data key="key0">0x1.ap+3</data>
-      <data key="key1">0x1.cp+2</data>
+      <data key="key0">0x1.4p+8, 0x1.9p+7</data>
     </node>
     <node id="n237">
-      <data key="key0">0x1p+0</data>
-      <data key="key1">0x1.2p+3</data>
+      <data key="key0">0x1.4p+6, 0x1.ep+7</data>
     </node>
     <node id="n238">
-      <data key="key0">0x1p+2</data>
-      <data key="key1">0x1.cp+3</data>
+      <data key="key0">0x1.18p+7, 0x1.54p+8</data>
     </node>
     <node id="n239">
-      <data key="key0">0x1.4p+2</data>
-      <data key="key1">0x1.2p+3</data>
+      <data key="key0">0x1.4p+7, 0x1.ep+7</data>
     </node>
     <node id="n240">
-      <data key="key0">0x1p+3</data>
-      <data key="key1">0x1.8p+2</data>
+      <data key="key0">0x1.b8p+7, 0x1.68p+7</data>
     </node>
     <node id="n241">
-      <data key="key0">0x1p+1</data>
-      <data key="key1">0x1.6p+3</data>
+      <data key="key0">0x1.9p+6, 0x1.18p+8</data>
     </node>
     <node id="n242">
-      <data key="key0">0x1.8p+3</data>
-      <data key="key1">0x0p+0</data>
+      <data key="key0">0x1.2cp+8, 0x1.ep+5</data>
     </node>
     <node id="n243">
-      <data key="key0">0x1p+0</data>
-      <data key="key1">0x1.6p+3</data>
+      <data key="key0">0x1.4p+6, 0x1.18p+8</data>
     </node>
     <node id="n244">
-      <data key="key0">0x1.6p+3</data>
-      <data key="key1">0x1.cp+3</data>
+      <data key="key0">0x1.18p+8, 0x1.54p+8</data>
     </node>
     <node id="n245">
-      <data key="key0">0x1.cp+3</data>
-      <data key="key1">0x1p+2</data>
+      <data key="key0">0x1.54p+8, 0x1.18p+7</data>
     </node>
     <node id="n246">
-      <data key="key0">0x1.2p+3</data>
-      <data key="key1">0x1.ep+3</data>
+      <data key="key0">0x1.ep+7, 0x1.68p+8</data>
     </node>
     <node id="n247">
-      <data key="key0">0x1.ap+3</data>
-      <data key="key1">0x0p+0</data>
+      <data key="key0">0x1.4p+8, 0x1.ep+5</data>
     </node>
     <node id="n248">
-      <data key="key0">0x1.ap+3</data>
-      <data key="key1">0x1.4p+3</data>
+      <data key="key0">0x1.4p+8, 0x1.04p+8</data>
     </node>
     <node id="n249">
-      <data key="key0">0x1.6p+3</data>
-      <data key="key1">0x1.4p+3</data>
+      <data key="key0">0x1.18p+8, 0x1.04p+8</data>
     </node>
     <node id="n250">
-      <data key="key0">0x1.4p+3</data>
-      <data key="key1">0x1p+1</data>
+      <data key="key0">0x1.04p+8, 0x1.9p+6</data>
     </node>
     <node id="n251">
-      <data key="key0">0x1.8p+3</data>
-      <data key="key1">0x1p+2</data>
+      <data key="key0">0x1.2cp+8, 0x1.18p+7</data>
     </node>
     <node id="n252">
-      <data key="key0">0x1.cp+2</data>
-      <data key="key1">0x1p+3</data>
+      <data key="key0">0x1.9p+7, 0x1.b8p+7</data>
     </node>
     <node id="n253">
-      <data key="key0">0x1.8p+2</data>
-      <data key="key1">0x1.ap+3</data>
+      <data key="key0">0x1.68p+7, 0x1.4p+8</data>
     </node>
     <node id="n254">
-      <data key="key0">0x0p+0</data>
-      <data key="key1">0x1p+3</data>
+      <data key="key0">0x1.ep+5, 0x1.b8p+7</data>
     </node>
     <node id="n255">
-      <data key="key0">0x1p+3</data>
-      <data key="key1">0x1p+1</data>
+      <data key="key0">0x1.b8p+7, 0x1.9p+6</data>
     </node>
 
    <!-- edges -->

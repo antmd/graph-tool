@@ -26,7 +26,8 @@ sys.path.append(os.path.abspath('.'))
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest',
               'sphinx.ext.intersphinx', 'mathjax', 'sphinx.ext.autosummary',
-              'sphinxext.numpydoc', 'sphinx.ext.extlinks']
+              'sphinxext.numpydoc', 'sphinx.ext.extlinks',
+              'matplotlib.sphinxext.plot_directive']
 
 mathjax_path = "MathJax/MathJax.js"
 
@@ -92,47 +93,7 @@ pygments_style = 'sphinx'
 
 # doctest
 
-doctest_global_setup = \
-r"""
-from matplotlib import rc
-from matplotlib import rcParams
-
-font_size=12
-rcParams["figure.figsize"] = (4,3)
-rcParams["font.family"] = "serif"
-rcParams["font.serif"] = ["Palatino"]
-rcParams["font.size"] = font_size
-rcParams["axes.labelsize"] = font_size
-rcParams["xtick.labelsize"] = font_size
-rcParams["ytick.labelsize"] = font_size
-rcParams["legend.numpoints"] = 1
-rcParams["legend.fontsize"] = "small"
-rcParams["lines.markersize"] = 4
-rcParams["figure.subplot.right"] = 0.95
-rcParams["figure.subplot.top"] = 0.95
-rcParams["figure.subplot.right"] = 0.95
-rcParams["figure.subplot.top"] = 0.95
-rcParams["figure.subplot.left"] = 0.2
-rcParams["figure.subplot.bottom"] = 0.2
-
-rcParams["text.usetex"] = True
-
-rcParams["ps.usedistiller"] = "xpdf"
-rcParams["pdf.compression"] = 9
-rcParams["ps.useafm"] = True
-rcParams["path.simplify"] = True
-rcParams["text.latex.preamble"] = ["\usepackage{times}",
-                                   #"\usepackage{euler}",
-                                   "\usepackage{amssymb}",
-                                   "\usepackage{amsmath}"]
-
-from numpy import *
-import scipy
-import scipy.stats
-from math import *
-import numpy as np
-import graph_tool.all as gt
-"""
+doctest_global_setup = open("pyenv.py").read()
 
 # Options for HTML outputs
 # -----------------------
@@ -232,10 +193,9 @@ latex_elements = {
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'python': ('http://docs.python.org', None),
                        'numpy': ('http://docs.scipy.org/doc/numpy', None),
-                       'scipy': ('http://docs.scipy.org/doc/scipy/reference',
-                                 None),
-                       'matplotlib': ('http://matplotlib.sourceforge.net',
-                                      None)}
+                       'scipy': ('http://docs.scipy.org/doc/scipy/reference', None),
+                       'matplotlib': ('http://matplotlib.sourceforge.net', None),
+                       'cairo': ('http://www.cairographics.org/documentation/pycairo/3/', None)}
 
 extlinks = {'ticket': ('http://projects.skewed.de/graph-tool/ticket/%s',
                        'ticket '),
@@ -247,3 +207,8 @@ extlinks = {'ticket': ('http://projects.skewed.de/graph-tool/ticket/%s',
 numpydoc_show_class_members = False
 autodoc_member_order = 'bysource'
 autodoc_docstring_signature = False
+
+# plot directive
+import pyenv
+plot_rcparams = pyenv.rcParams
+#plot_pre_code = open("pyenv.py").read()

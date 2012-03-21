@@ -38,6 +38,7 @@ import numpy as np
 import gzip
 import bz2
 import zipfile
+import copy
 from collections import defaultdict
 
 from .. import GraphView, PropertyMap, ungroup_vector_property,\
@@ -204,7 +205,8 @@ def get_attr(attr, d, attrs, defaults):
         return p
 
 
-def position_parallel_edges(g):
+def position_parallel_edges(g, pos, loop_angle=float("nan"),
+                            parallel_distance=1):
     lp = label_parallel_edges(GraphView(g, directed=False))
     ll = label_self_loops(g)
     g = GraphView(g, directed=True)
@@ -213,8 +215,11 @@ def position_parallel_edges(g):
     else:
         spline = g.new_edge_property("vector<double>")
         libgraph_tool_draw.put_parallel_splines(g._Graph__graph,
+                                                _prop("v", g, pos),
                                                 _prop("e", g, lp),
-                                                _prop("e", g, spline))
+                                                _prop("e", g, spline),
+                                                loop_angle,
+                                                parallel_distance)
         return spline
 
 
@@ -231,71 +236,57 @@ def parse_props(prefix, args):
 
 def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
                nodesfirst=False, vcmap=matplotlib.cm.jet,
-               ecmap=matplotlib.cm.jet, **kwargs):
+               ecmap=matplotlib.cm.jet, loop_angle=float("nan"),
+               parallel_distance=None, **kwargs):
     r"""
+    Draw a graph to a :mod:`cairo` context.
 
-    Vertex attributes
-
-    .. table::
-
-        +---------------+---------------------------------------------------+------------------------+------------------------------+
-        | Name          | Description                                       | Accepted types         | Default Value                |
-        +===============+===================================================+========================+==============================+
-        | shape         | The vertex shape. Can be one of the following     | ``str`` or ``int``     | ``"circle"``                 |
-        |               | strings: "circle", "triangle", "square",          |                        |                              |
-        |               | "pentagon", "hexagon", "heptagon", "octagon"      |                        |                              |
-        |               | "double_circle", "double_triangle",               |                        |                              |
-        |               | "double_square", "double_pentagon",               |                        |                              |
-        |               | "double_hexagon", "double_heptagon",              |                        |                              |
-        |               | "double_octagon".                                 |                        |                              |
-        |               | Optionally, this might take a numeric value       |                        |                              |
-        |               | corresponding to position in the list above.      |                        |                              |
-        +---------------+---------------------------------------------------+------------------------+------------------------------+
-        | color         | Color used to stroke the lines of the vertex.     | ``str`` or list of     | ``[0., 0., 0., 1]``          |
-        |               |                                                   | floats                 |                              |
-        +---------------+---------------------------------------------------+------------------------+------------------------------+
-        | fill_color    | Color used to fill the interior of the vertex.    | ``str`` or list of     | ``[0.640625, 0, 0, 0.9]``    |
-        |               |                                                   | floats                 |                              |
-        +---------------+---------------------------------------------------+------------------------+------------------------------+
-        | size          | The size of the vertex, in the default units of   | ``float`` or ``int``   | ``5``                        |
-        |               | the output format (normally either pixels or      |                        |                              |
-        |               | points).                                          |                        |                              |
-        +---------------+---------------------------------------------------+------------------------+------------------------------+
-        | pen_width     | Width of the lines used to draw the vertex, in    | ``float`` or ``int``   | ``0.8``                      |
-        |               | the default units of the output format (normally  |                        |                              |
-        |               | either pixels or points).                         |                        |                              |
-        +---------------+---------------------------------------------------+------------------------+------------------------------+
-        | halo          | Whether to draw a circular halo around the        | ``bool`                | ``False``                    |
-        |               | vertex.                                           |                        |                              |
-        +---------------+---------------------------------------------------+------------------------+------------------------------+
-        | halo_color    | Color used to draw the halo.                      | ``str`` or list of     | ``[0., 0., 1., 0.5]``        |
-        |               |                                                   | floats                 |                              |
-        +---------------+---------------------------------------------------+------------------------+------------------------------+
-        | text          | Text to draw together with the vertex.            | ``str``                | ``""``                       |
-        +---------------+---------------------------------------------------+------------------------+------------------------------+
-        | text_color    | Color used to draw the text.                      | ``str`` or list of     | ``[0., 0., 0., 1.]``         |
-        |               |                                                   | floats                 |                              |
-        +---------------+---------------------------------------------------+------------------------+------------------------------+
-        | text_position | Position of the text relative to the vertex.      | ``float`` or ``int``   | ``-1``                       |
-        |               | If the passed value is positive, it will          |                        |                              |
-        |               | correspond to an angle in radians, which will     |                        |                              |
-        |               | determine where the text will be placed outside   |                        |                              |
-        |               | the vertex. If the value is negative, the text    |                        |                              |
-        |               | will be placed inside the vertex.                 |                        |                              |
-        +---------------+---------------------------------------------------+------------------------+------------------------------+
-        | font_family   | Font family used to draw the text.                | ``str``                | ``"serif"``                  |
-        +---------------+---------------------------------------------------+------------------------+------------------------------+
-        | font_slant    | Font slant used to draw the text.                 | ``cairo.FONT_SLANT_*`` | ``cairo.FONT_SLANT_NORMAL``  |
-        +---------------+---------------------------------------------------+------------------------+------------------------------+
-        | font_weight   | Font weight used to draw the text.                | ``cairo.FONT_WEIGHT_*``| ``cairo.FONT_WEIGHT_NORMAL`` |
-        +---------------+---------------------------------------------------+------------------------+------------------------------+
-        | font_size     | Font size used to draw the text.                  | ``float`` or ``int``   | ``12``                       |
-        +---------------+---------------------------------------------------+------------------------+------------------------------+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be drawn.
+    pos : :class:`~graph_tool.PropertyMap`
+        Vector-valued vertex property map containing the x and y coordinates of
+        the vertices.
+    cr : :class:`~cairo.Context`
+        A :class:`~cairo.Context` instance.
+    vprops : dict (optional, default: ``None``)
+        Dictionary with the vertex properties. Individual properties may also be
+        given via the ``vertex_<prop-name>`` parameters, where ``<prop-name>`` is
+        the name of the property.
+    eprops : dict (optional, default: ``None``)
+        Dictionary with the vertex properties. Individual properties may also be
+        given via the ``edge_<prop-name>`` parameters, where ``<prop-name>`` is
+        the name of the property.
+    vorder : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        If provided, defines the relative order in which the vertices are drawn.
+    eorder : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        If provided, defines the relative order in which the edges are drawn.
+    nodesfirst : bool (optional, default: ``False``)
+        If ``True``, the vertices are drawn first, otherwise the edges are.
+    vcmap : :class:`matplotlib.colors.Colormap` (default: :class:`matplotlib.cm.jet`)
+        Vertex color map.
+    ecmap : :class:`matplotlib.colors.Colormap` (default: :class:`matplotlib.cm.jet`)
+        Edge color map.
+    loop_angle : float (optional, default: ``nan``)
+        Angle used to draw self-loops. If ``nan`` is given, they will be placed
+        radially from the center of the layout.
+    parallel_distance : float (optional, default: ``None``)
+        Distance used between parallel edges. If not provided, it will be
+        determined automatically.
+    vertex_* : :class:`~graph_tool.PropertyMap` or arbitrary types (optional, default: ``None``)
+        Parameters following the pattern ``vertex_<prop-name>`` specify the
+        vertex property with name ``<prop-name>``, as an alternative to the
+        ``vprops`` parameter.
+    edge_* : :class:`~graph_tool.PropertyMap` or arbitrary types (optional, default: ``None``)
+        Parameters following the pattern ``edge_<prop-name>`` specify the edge
+        property with name ``<prop-name>``, as an alternative to the ``eprops``
+        parameter.
 
     """
 
-    vprops = {} if vprops is None else vprops
-    eprops = {} if eprops is None else eprops
+    vprops = {} if vprops is None else copy.copy(vprops)
+    eprops = {} if eprops is None else copy.copy(eprops)
 
     props, kwargs = parse_props("vertex", kwargs)
     vprops.update(props)
@@ -305,7 +296,16 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
         warnings.warn("Unknown parameter: " + k, UserWarning)
 
     if "control_points" not in eprops:
-        eprops["control_points"] = position_parallel_edges(g)
+        if parallel_distance is None:
+            parallel_distance = vprops.get("size", _vdefaults["size"])
+            if isinstance(parallel_distance, PropertyMap):
+                parallel_distance = parallel_distance.fa.mean()
+            parallel_distance /= 1.5
+            M = cr.get_matrix()
+            scale = transform_scale(M, 1,)
+            parallel_distance /= scale
+        eprops["control_points"] = position_parallel_edges(g, pos, loop_angle,
+                                                           parallel_distance)
     if g.is_directed() and "end_marker" not in eprops:
         eprops["end_marker"] = "arrow"
     vattrs, vdefaults = _attrs(vprops, "v", g, vcmap)
@@ -314,6 +314,13 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
     vdefs.update(vdefaults)
     edefs = _attrs(_edefaults, "e", g, ecmap)[1]
     edefs.update(edefaults)
+
+    if "control_points" not in eprops:
+        if parallel_distance is None:
+            parallel_distance = _defaults
+        eprops["control_points"] = position_parallel_edges(g, pos, loop_angle,
+                                                           parallel_distance)
+
     g = GraphView(g, directed=True)
     libgraph_tool_draw.cairo_draw(g._Graph__graph, _prop("v", g, pos),
                                   _prop("v", g, vorder), _prop("e", g, eorder),
@@ -385,6 +392,10 @@ def fit_to_view(g, pos, geometry, size, pen_width, M=None, text=None,
                                                 font_size, cr)
     zoom_x = (geometry[0] - sum(x_delta)) / (x_range[1] - x_range[0])
     zoom_y = (geometry[1] - sum(y_delta)) / (y_range[1] - y_range[0])
+    if np.isnan(zoom_x) or np.isinf(zoom_x) or zoom_x == 0:
+        zoom_x = 1
+    if np.isnan(zoom_y) or np.isinf(zoom_y) or zoom_y == 0:
+        zoom_y = 1
     pad = 0.95
     zoom = min(zoom_x, zoom_y) * pad
     empty_x = (geometry[0] - sum(x_delta)) - (x_range[1] - x_range[0]) * zoom
@@ -540,9 +551,82 @@ def apply_transforms(g, pos, m):
 
 
 class GraphWidget(Gtk.DrawingArea):
+    r"""Interactive GTK+ widget displaying a given graph.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be drawn.
+    pos : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        Vector-valued vertex property map containing the x and y coordinates of
+        the vertices. If not given, it will be computed using :func:`sfdp_layout`.
+    vprops : dict (optional, default: ``None``)
+        Dictionary with the vertex properties. Individual properties may also be
+        given via the ``vertex_<prop-name>`` parameters, where ``<prop-name>`` is
+        the name of the property.
+    eprops : dict (optional, default: ``None``)
+        Dictionary with the vertex properties. Individual properties may also be
+        given via the ``edge_<prop-name>`` parameters, where ``<prop-name>`` is
+        the name of the property.
+    vorder : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        If provided, defines the relative order in which the vertices are drawn.
+    eorder : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        If provided, defines the relative order in which the edges are drawn.
+    nodesfirst : bool (optional, default: ``False``)
+        If ``True``, the vertices are drawn first, otherwise the edges are.
+    update_layout : bool (optional, default: ``True``)
+        If ``True``, the layout will be updated dynamically.
+    layout_K : float (optional, default: ``1.0``)
+        Parameter ``K`` passed to :func:`~graph_tool.draw.sfdp_layout`.
+    multilevel : bool (optional, default: ``False``)
+        Parameter ``multilevel`` passed to :func:`~graph_tool.draw.sfdp_layout`.
+    display_props : list of :class:`~graph_tool.PropertyMap` instances (optional, default: ``None``)
+        List of properties to be displayed when the mouse passes over a vertex.
+    display_props_size : float (optional, default: ``11``)
+        Font size used to display the vertex properties.
+    bg_color : str or sequence (optional, default: ``None``)
+        Background color. The default is white.
+    vertex_* : :class:`~graph_tool.PropertyMap` or arbitrary types (optional, default: ``None``)
+        Parameters following the pattern ``vertex_<prop-name>`` specify the
+        vertex property with name ``<prop-name>``, as an alternative to the
+        ``vprops`` parameter.
+    edge_* : :class:`~graph_tool.PropertyMap` or arbitrary types (optional, default: ``None``)
+        Parameters following the pattern ``edge_<prop-name>`` specify the edge
+        property with name ``<prop-name>``, as an alternative to the ``eprops``
+        parameter.
+    **kwargs
+        Any extra parameters are passed to :func:`~graph_tool.draw.cairo_draw`.
+
+    Notes
+    -----
+
+    The graph drawing can be panned by dragging with the middle mouse button
+    pressed. The graph may be zoomed by scrolling with the mouse wheel, or
+    equivalent (if the "shift" key is held, the vertex/edge sizes are scaled
+    accordingly). The layout may be rotated by dragging while holding the
+    "control" key. Pressing the "r" key centers and zooms the layout around the
+    graph.  By pressing the "a" key, the current translation, scaling and
+    rotation transformations are applied to the vertex positions themselves, and
+    the transformation matrix is reset (if this is never done, the given
+    position properties are never modified).
+
+    Individual vertices may be selected by pressing the left mouse button. The
+    currently selected vertex follows the mouse pointer. To stop the selection,
+    the right mouse button must be pressed. Alternatively, a group of vertices
+    may be selected by holding the "shift" button while the pointer is dragged
+    while pressing the left button. The selected vertices may be moved by
+    dragging the pointer with the left button pressed. They may be rotated by
+    holding the "control" key and scrolling with the mouse. If the key "z" is
+    pressed, the layout is zoomed to fit the selected vertices only.
+
+    If the key "s" is pressed, the dynamic spring-block layout is
+    activated. Vertices which are currently selected do are not updated.
+
+    """
+
     def __init__(self, g, pos, vprops=None, eprops=None, vorder=None,
                  eorder=None, nodesfirst=False, update_layout=False,
-                 layout_K=1, multilevel=False, display_props=None,
+                 layout_K=1., multilevel=False, display_props=None,
                  display_props_size=11, bg_color=None, **kwargs):
         Gtk.DrawingArea.__init__(self)
 
@@ -553,8 +637,7 @@ class GraphWidget(Gtk.DrawingArea):
         vprops.update(props)
         props, kwargs = parse_props("edge", kwargs)
         eprops.update(props)
-        for k in kwargs:
-            warnings.warn("Unknown parameter: " + k, UserWarning)
+        self.kwargs = kwargs
 
         self.g = g
         self.pos = pos
@@ -629,6 +712,7 @@ class GraphWidget(Gtk.DrawingArea):
         self.connect("draw", self.draw)
 
     def cleanup(self):
+        """Cleanup callbacks."""
         if self.layout_callback_id is not None:
             ret = gobject.source_remove(self.layout_callback_id)
             if not ret:
@@ -641,6 +725,7 @@ class GraphWidget(Gtk.DrawingArea):
     # Layout update
 
     def reset_layout(self):
+        """Reset the layout algorithm."""
         if self.layout_callback_id is not None:
             gobject.source_remove(self.layout_callback_id)
             self.layout_callback_id = None
@@ -648,6 +733,7 @@ class GraphWidget(Gtk.DrawingArea):
         self.layout_callback_id = gobject.idle_add(self.layout_callback)
 
     def layout_callback(self):
+        """Perform one step of the layout algorithm."""
         if self.layout_callback_id is None:
             return False
         pos_temp = ungroup_vector_property(self.pos, [0, 1])
@@ -706,6 +792,8 @@ class GraphWidget(Gtk.DrawingArea):
     # Actual drawing
 
     def regenerate_surface(self, lazy=True, timeout=350):
+        r"""Redraw the graph surface. If lazy is True, the actual redrawing will
+        be performed after the specified timeout."""
         if lazy:
             if self.surface_callback is not None:
                 gobject.source_remove(self.surface_callback)
@@ -734,7 +822,7 @@ class GraphWidget(Gtk.DrawingArea):
             cr.paint()
             cr.set_matrix(self.tmatrix)
             cairo_draw(self.g, self.pos, cr, self.vprops, self.eprops,
-                       self.vorder, self.eorder, self.nodesfirst)
+                       self.vorder, self.eorder, self.nodesfirst, **self.kwargs)
             self.smatrix = cairo.Matrix()
             self.smatrix.translate(-self.get_allocated_width(),
                                    -self.get_allocated_height())
@@ -745,6 +833,8 @@ class GraphWidget(Gtk.DrawingArea):
             return False
 
     def draw(self, da, cr):
+        r"""Redraw the widget."""
+
         geometry = [self.get_allocated_width(),
                     self.get_allocated_height()]
 
@@ -763,6 +853,7 @@ class GraphWidget(Gtk.DrawingArea):
             self.regenerate_surface()
 
         if self.background is None:
+            # draw checkerboard
             self.background = cairo.ImageSurface(cairo.FORMAT_ARGB32, 14, 14)
             bcr = cairo.Context(self.background)
             bcr.rectangle(0, 0, 7, 7)
@@ -851,6 +942,7 @@ class GraphWidget(Gtk.DrawingArea):
     # Position and transforms
 
     def pos_to_device(self, pos, dist=False, surface=False, cr=None):
+        """Convert a position from the graph space to the widget space."""
         if cr is None:
             cr = Gdk.cairo_create(self.get_root_window())
             if surface:
@@ -863,6 +955,7 @@ class GraphWidget(Gtk.DrawingArea):
             return cr.user_to_device(pos[0], pos[1])
 
     def pos_from_device(self, pos, dist=False, surface=False, cr=None):
+        """Convert a position from the widget space to the device space."""
         if cr is None:
             cr = Gdk.cairo_create(self.get_root_window())
             if surface:
@@ -875,6 +968,7 @@ class GraphWidget(Gtk.DrawingArea):
             return cr.device_to_user(pos[0], pos[1])
 
     def apply_transform(self):
+        r"""Apply current transform matrix to vertex coordinates."""
         zoom = self.pos_from_device((1, 0), dist=True)[0]
         apply_transforms(self.g, self.pos, self.smatrix * self.tmatrix)
         self.tmatrix = cairo.Matrix()
@@ -890,6 +984,7 @@ class GraphWidget(Gtk.DrawingArea):
         self.queue_draw()
 
     def fit_to_window(self, ink=False, g=None):
+        r"""Fit graph to window."""
         geometry = [self.get_allocated_width(), self.get_allocated_height()]
         if g is None:
             g = self.g
@@ -916,6 +1011,7 @@ class GraphWidget(Gtk.DrawingArea):
     # Picking vertices
 
     def init_picked(self):
+        r"""Init picked vertices."""
         self.selected.fa = False
         p = self.pos_from_device(self.pointer)
         if self.vertex_matrix is None:
@@ -927,6 +1023,7 @@ class GraphWidget(Gtk.DrawingArea):
     # Key and pointer bindings
 
     def button_press_event(self, widget, event):
+        r"""Handle button press."""
         x = event.x
         y = event.y
         state = event.state
@@ -959,6 +1056,7 @@ class GraphWidget(Gtk.DrawingArea):
             return True
 
     def button_release_event(self, widget, event):
+        r"""Handle button release."""
         state = event.state
         if event.button == 1:
             if self.srect is not None:
@@ -999,6 +1097,7 @@ class GraphWidget(Gtk.DrawingArea):
             return True
 
     def motion_notify_event(self, widget, event):
+        r"""Handle pointer motion."""
         if event.is_hint:
             x, y, state = event.window.get_pointer()[1:]
         else:
@@ -1057,6 +1156,7 @@ class GraphWidget(Gtk.DrawingArea):
         return True
 
     def scroll_event(self, widget, event):
+        r"""Handle scrolling."""
         state = event.state
 
         angle = 0
@@ -1126,6 +1226,8 @@ class GraphWidget(Gtk.DrawingArea):
         return True
 
     def key_press_event(self, widget, event):
+        r"""Handle key press."""
+
         #print event.keyval
         if event.keyval == 114:
             self.fit_to_window()
@@ -1152,6 +1254,7 @@ class GraphWidget(Gtk.DrawingArea):
         return True
 
     def key_release_event(self, widget, event):
+        r"""Handle release event."""
         #print event.keyval
         if event.keyval == 65507:
             if self.moved_picked:
@@ -1162,6 +1265,37 @@ class GraphWidget(Gtk.DrawingArea):
 
 
 class GraphWindow(Gtk.Window):
+    r"""Interactive GTK+ window containing a :class:`~graph_tool.draw.GraphWidget`.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be drawn.
+    pos : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        Vector-valued vertex property map containing the x and y coordinates of
+        the vertices. If not given, it will be computed using :func:`sfdp_layout`.
+    geometry : tuple
+        Widget geometry.
+    vprops : dict (optional, default: ``None``)
+        Dictionary with the vertex properties. Individual properties may also be
+        given via the ``vertex_<prop-name>`` parameters, where ``<prop-name>`` is
+        the name of the property.
+    eprops : dict (optional, default: ``None``)
+        Dictionary with the vertex properties. Individual properties may also be
+        given via the ``edge_<prop-name>`` parameters, where ``<prop-name>`` is
+        the name of the property.
+    vorder : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        If provided, defines the relative order in which the vertices are drawn.
+    eorder : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        If provided, defines the relative order in which the edges are drawn.
+    nodesfirst : bool (optional, default: ``False``)
+        If ``True``, the vertices are drawn first, otherwise the edges are.
+    update_layout : bool (optional, default: ``True``)
+        If ``True``, the layout will be updated dynamically.
+    **kwargs
+        Any extra parameters are passed to :class:`~graph_tool.draw.GraphWidget` and
+        :func:`~graph_tool.draw.cairo_draw`.
+    """
 
     def __init__(self, g, pos, geometry, vprops=None, eprops=None, vorder=None,
                  eorder=None, nodesfirst=False, update_layout=False, **kwargs):
@@ -1182,6 +1316,55 @@ class GraphWindow(Gtk.Window):
 def interactive_window(g, pos=None, vprops=None, eprops=None, vorder=None,
                        eorder=None, nodesfirst=False, geometry=(500, 400),
                        update_layout=True, async=False, **kwargs):
+    r"""
+    Display an interactive GTK+ window containing the given graph.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be drawn.
+    pos : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        Vector-valued vertex property map containing the x and y coordinates of
+        the vertices. If not given, it will be computed using :func:`sfdp_layout`.
+    vprops : dict (optional, default: ``None``)
+        Dictionary with the vertex properties. Individual properties may also be
+        given via the ``vertex_<prop-name>`` parameters, where ``<prop-name>`` is
+        the name of the property.
+    eprops : dict (optional, default: ``None``)
+        Dictionary with the vertex properties. Individual properties may also be
+        given via the ``edge_<prop-name>`` parameters, where ``<prop-name>`` is
+        the name of the property.
+    vorder : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        If provided, defines the relative order in which the vertices are drawn.
+    eorder : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        If provided, defines the relative order in which the edges are drawn.
+    nodesfirst : bool (optional, default: ``False``)
+        If ``True``, the vertices are drawn first, otherwise the edges are.
+    geometry : tuple (optional, default: ``(500, 400)``)
+        Window geometry.
+    update_layout : bool (optional, default: ``True``)
+        If ``True``, the layout will be updated dynamically.
+    async : bool (optional, default: ``False``)
+        If ``True``, run asynchronously. (Requires :mod:`IPython`)
+    **kwargs
+        Any extra parameters are passed to :class:`~graph_tool.draw.GraphWindow`,
+        :class:`~graph_tool.draw.GraphWidget` and :func:`~graph_tool.draw.cairo_draw`.
+
+    Returns
+    -------
+    pos : :class:`~graph_tool.PropertyMap`
+        Vector vertex property map with the x and y coordinates of the vertices.
+    selected : :class:`~graph_tool.PropertyMap` (optional, only if ``output is None``)
+        Boolean-valued vertex property map marking the vertices which were
+        selected interactively.
+
+    Notes
+    -----
+
+    See documentation of :class:`~graph_tool.draw.GraphWidget` for key bindings
+    information.
+
+    """
     if pos is None:
         if update_layout:
             pos = random_layout(g, [1, 1])
@@ -1204,7 +1387,176 @@ def interactive_window(g, pos=None, vprops=None, eprops=None, vorder=None,
 
 def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                nodesfirst=False, output_size=(600, 600), fit_view=True,
-               output="interactive", fmt="auto", **kwargs):
+               output=None, fmt="auto", **kwargs):
+    r"""Draw a graph to screen or to a file using :mod:`cairo`.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be drawn.
+    pos : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        Vector-valued vertex property map containing the x and y coordinates of
+        the vertices. If not given, it will be computed using :func:`sfdp_layout`.
+    vprops : dict (optional, default: ``None``)
+        Dictionary with the vertex properties. Individual properties may also be
+        given via the ``vertex_<prop-name>`` parameters, where ``<prop-name>`` is
+        the name of the property.
+    eprops : dict (optional, default: ``None``)
+        Dictionary with the vertex properties. Individual properties may also be
+        given via the ``edge_<prop-name>`` parameters, where ``<prop-name>`` is
+        the name of the property.
+    vorder : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        If provided, defines the relative order in which the vertices are drawn.
+    eorder : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        If provided, defines the relative order in which the edges are drawn.
+    nodesfirst : bool (optional, default: ``False``)
+        If ``True``, the vertices are drawn first, otherwise the edges are.
+    output_size : tuple of scalars (optional, default: ``(600,600)``)
+        Size of the drawing canvas. The units will depend on the output format
+        (pixels for the screen, points for PDF, etc).
+    fit_view : bool (optional, default: ``True``)
+        If ``True``, the layout will be scaled to fit the entire display area.
+    output : string (optional, default: ``None``)
+        Output file name. If not given, the graph will be displayed via
+        :func:`interactive_window`.
+    fmt : string (default: ``"auto"``)
+        Output file format. Possible values are ``"auto"``, ``"ps"``, ``"pdf"``,
+        ``"svg"``, and ``"png"``. If the value is ``"auto"``, the format is
+        guessed from the ``output`` parameter.
+    vertex_* : :class:`~graph_tool.PropertyMap` or arbitrary types (optional, default: ``None``)
+        Parameters following the pattern ``vertex_<prop-name>`` specify the
+        vertex property with name ``<prop-name>``, as an alternative to the
+        ``vprops`` parameter.
+    edge_* : :class:`~graph_tool.PropertyMap` or arbitrary types (optional, default: ``None``)
+        Parameters following the pattern ``edge_<prop-name>`` specify the edge
+        property with name ``<prop-name>``, as an alternative to the ``eprops``
+        parameter.
+    **kwargs
+        Any extra parameters are passed to :func:`~graph_tool.draw.interactive_window`,
+        :class:`~graph_tool.draw.GraphWindow`, :class:`~graph_tool.draw.GraphWidget`
+        and :func:`~graph_tool.draw.cairo_draw`.
+
+    Returns
+    -------
+    pos : :class:`~graph_tool.PropertyMap`
+        Vector vertex property map with the x and y coordinates of the vertices.
+    selected : :class:`~graph_tool.PropertyMap` (optional, only if ``output is None``)
+        Boolean-valued vertex property map marking the vertices which were
+        selected interactively.
+
+    Notes
+    -----
+
+
+    .. table:: **List of vertex properties**
+
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
+        | Name          | Description                                       | Accepted types         | Default Value                    |
+        +===============+===================================================+========================+==================================+
+        | shape         | The vertex shape. Can be one of the following     | ``str`` or ``int``     | ``"circle"``                     |
+        |               | strings: "circle", "triangle", "square",          |                        |                                  |
+        |               | "pentagon", "hexagon", "heptagon", "octagon"      |                        |                                  |
+        |               | "double_circle", "double_triangle",               |                        |                                  |
+        |               | "double_square", "double_pentagon",               |                        |                                  |
+        |               | "double_hexagon", "double_heptagon",              |                        |                                  |
+        |               | "double_octagon".                                 |                        |                                  |
+        |               | Optionally, this might take a numeric value       |                        |                                  |
+        |               | corresponding to position in the list above.      |                        |                                  |
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
+        | color         | Color used to stroke the lines of the vertex.     | ``str`` or list of     | ``[0., 0., 0., 1]``              |
+        |               |                                                   | ``floats``             |                                  |
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
+        | fill_color    | Color used to fill the interior of the vertex.    | ``str`` or list of     | ``[0.640625, 0, 0, 0.9]``        |
+        |               |                                                   | ``floats``             |                                  |
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
+        | size          | The size of the vertex, in the default units of   | ``float`` or ``int``   | ``5``                            |
+        |               | the output format (normally either pixels or      |                        |                                  |
+        |               | points).                                          |                        |                                  |
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
+        | pen_width     | Width of the lines used to draw the vertex, in    | ``float`` or ``int``   | ``0.8``                          |
+        |               | the default units of the output format (normally  |                        |                                  |
+        |               | either pixels or points).                         |                        |                                  |
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
+        | halo          | Whether to draw a circular halo around the        | ``bool``               | ``False``                        |
+        |               | vertex.                                           |                        |                                  |
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
+        | halo_color    | Color used to draw the halo.                      | ``str`` or list of     | ``[0., 0., 1., 0.5]``            |
+        |               |                                                   | ``floats``             |                                  |
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
+        | text          | Text to draw together with the vertex.            | ``str``                | ``""``                           |
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
+        | text_color    | Color used to draw the text.                      | ``str`` or list of     | ``[0., 0., 0., 1.]``             |
+        |               |                                                   | ``floats``             |                                  |
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
+        | text_position | Position of the text relative to the vertex.      | ``float`` or ``int``   | ``-1``                           |
+        |               | If the passed value is positive, it will          |                        |                                  |
+        |               | correspond to an angle in radians, which will     |                        |                                  |
+        |               | determine where the text will be placed outside   |                        |                                  |
+        |               | the vertex. If the value is negative, the text    |                        |                                  |
+        |               | will be placed inside the vertex.                 |                        |                                  |
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
+        | font_family   | Font family used to draw the text.                | ``str``                | ``"serif"``                      |
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
+        | font_slant    | Font slant used to draw the text.                 | ``cairo.FONT_SLANT_*`` | :data:`cairo.FONT_SLANT_NORMAL`  |
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
+        | font_weight   | Font weight used to draw the text.                | ``cairo.FONT_WEIGHT_*``| :data:`cairo.FONT_WEIGHT_NORMAL` |
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
+        | font_size     | Font size used to draw the text.                  | ``float`` or ``int``   | ``12``                           |
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
+
+
+    .. table:: **List of edge properties**
+
+        +----------------+---------------------------------------------------+------------------------+----------------------------------+
+        | Name           | Description                                       | Accepted types         | Default Value                    |
+        +================+===================================================+========================+==================================+
+        | color          | Color used to stroke the edge lines.              | ``str`` or list of     | ``[0.179, 0.203,0.210, 0.8]``    |
+        |                |                                                   | floats                 |                                  |
+        +----------------+---------------------------------------------------+------------------------+----------------------------------+
+        | pen_width      | Width of the line used to draw the edge, in       | ``float`` or ``int``   | ``1.0``                          |
+        |                | the default units of the output format (normally  |                        |                                  |
+        |                | either pixels or points).                         |                        |                                  |
+        +----------------+---------------------------------------------------+------------------------+----------------------------------+
+        | start_marker,  | Edge markers. Can be one of "none", "arrow",      | ``str`` or ``int``     | ``-1``                           |
+        | mid_marker,    | "circle", "square", "diamond", or "bar".          |                        |                                  |
+        | end_marker     | Optionally, this might take a numeric value       |                        |                                  |
+        |                | corresponding to position in the list above.      |                        |                                  |
+        +----------------+---------------------------------------------------+------------------------+----------------------------------+
+        | marker_size    | Size of edge markers, in units appropriate to the | ``float`` or ``int``   | ``4``                            |
+        |                | output format (normally either pixels or points). |                        |                                  |
+        +----------------+---------------------------------------------------+------------------------+----------------------------------+
+        | control_points | Control points of a Bézier spline used to draw    | sequence of ``floats`` | ``[]``                           |
+        |                | the edge.                                         |                        |                                  |
+        +----------------+---------------------------------------------------+------------------------+----------------------------------+
+
+    Examples
+    --------
+    >>> from numpy import *
+    >>> from numpy.random import seed, zipf
+    >>> seed(42)
+    >>> g = gt.random_graph(1000, lambda: min(zipf(2.4), 40),
+    ...                     lambda i, j: exp(abs(i - j)), directed=False)
+    >>> # extract largest component
+    >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(g))
+    >>> deg = g.degree_property_map("out")
+    >>> deg.a = 2 * (sqrt(deg.a) * 0.5 + 0.4)
+    >>> ebet = gt.betweenness(g)[1]
+    >>> ebet.a /= ebet.a.max() / 10.
+    >>> gt.graph_draw(g, vertex_size=deg, vertex_fill_color=deg, vorder=deg,
+    ...               edge_color=ebet, eorder=ebet, edge_pen_width=ebet,
+    ...               output="graph-draw.pdf")
+    <...>
+
+    .. figure:: graph-draw.*
+        :align: center
+
+        SFDP force-directed layout of a graph with a power-law degree
+        distribution, and dissortative degree correlation. The vertex size and
+        color indicate the degree, and the edge color and width the edge
+        betweeness centrality.
+
+    """
+
     vprops = vprops.copy() if vprops is not None else {}
     eprops = eprops.copy() if eprops is not None else {}
 
@@ -1214,7 +1566,7 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
     eprops.update(props)
 
     if pos is None:
-        if (g.num_vertices() > 2 and output == "interactive" and
+        if (g.num_vertices() > 2 and output is None and
             kwargs.get("update_layout", True)):
             L = np.sqrt(g.num_vertices())
             pos = random_layout(g, [L, L])
@@ -1225,13 +1577,13 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                 kwargs["layout_K"] = _avg_edge_distance(g, pos) / 10
         else:
             pos = sfdp_layout(g)
-    elif output == "interactive":
+    elif output is None:
         if "layout_K" not in kwargs:
             kwargs["layout_K"] = _avg_edge_distance(g, pos)
         if "update_layout" not in kwargs:
             kwargs["update_layout"] = False
 
-    if output == "interactive":
+    if output is None:
         return interactive_window(g, pos, vprops, eprops, vorder, eorder,
                                   nodesfirst, **kwargs)
     else:

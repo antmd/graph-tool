@@ -53,14 +53,13 @@ In this module, most documentation examples will make use of the network
 :download:`search_example.xml <search_example.xml>`, shown below.
 
 >>> import numpy.random
->>> numpy.random.seed(13)
+>>> numpy.random.seed(42)
 >>> g = gt.load_graph("search_example.xml")
 >>> name = g.vertex_properties["name"]
 >>> weight = g.edge_properties["weight"]
->>> gt.graph_draw(g, vprops={"label": name, "shape": "doublecircle",
-...                          "fillcolor": "#729fcf"},
-...               penwidth=weight, overlap=False, splines=True,
-...               output="search_example.pdf")
+>>> gt.graph_draw(g, vertex_text=name, vertex_font_size=12, vertex_shape="double_circle",
+...               vertex_fill_color="#729fcf", vertex_pen_width=3,
+...               edge_pen_width=weight, output="search_example.pdf")
 <...>
 
 .. figure:: search_example.*
@@ -1352,13 +1351,12 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
     ...     p = g.vertex(pred[v])
     ...     for e in v.out_edges():
     ...         if e.target() == p:
-    ...             ecolor[e] = "red"
+    ...             ecolor[e] = "#a40000"
     ...             ewidth[e] = 3
     ...     v = p
-    >>> gt.graph_draw(g, pos=pos, pin=True, size=(8,8), vsize=0.07,
-    ...               vcolor=touch_v, vcmap=matplotlib.cm.binary,
-    ...               eprops={"color": ecolor}, penwidth=ewidth,
-    ...               output="astar-delaunay.pdf")
+    >>> gt.graph_draw(g, pos=pos, output_size=(300, 300), vertex_fill_color=touch_v,
+    ...               vcmap=matplotlib.cm.binary, edge_color=ecolor,
+    ...               edge_pen_width=ewidth, output="astar-delaunay.pdf")
     <...>
 
     .. figure:: astar-delaunay.*
@@ -1429,6 +1427,7 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
     With the above class defined, we can perform the :math:`A^*` search as
     follows.
 
+    >>> numpy.random.seed(42)
     >>> g = gt.Graph(directed=False)
     >>> state = g.new_vertex_property("vector<bool>")
     >>> v = g.add_vertex()
@@ -1448,7 +1447,7 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
     >>> ecolor = g.new_edge_property("string")
     >>> vcolor = g.new_vertex_property("string")
     >>> ewidth = g.new_edge_property("double")
-    >>> ewidth.a = 2
+    >>> ewidth.a = 1
     >>> for e in g.edges():
     ...    ecolor[e] = "black"
     >>> for v in g.vertices():
@@ -1459,13 +1458,12 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
     ...     p = g.vertex(pred[v])
     ...     for e in v.out_edges():
     ...         if e.target() == p:
-    ...             ecolor[e] = "red"
-    ...             ewidth[e] = 4
+    ...             ecolor[e] = "#a40000"
+    ...             ewidth[e] = 3
     ...     v = p
     >>> vcolor[v] = "black"
-    >>> gt.graph_draw(g, size=(10,10), vsize=0.25, vprops={"fillcolor": vcolor},
-    ...               eprops={"color": ecolor}, penwidth=ewidth,
-    ...               output="astar-implicit.pdf")
+    >>> gt.graph_draw(g, output_size=(300, 300), vertex_fill_color=vcolor, edge_color=ecolor,
+    ...               edge_pen_width=ewidth, output="astar-implicit.pdf")
     <...>
 
     .. figure:: astar-implicit.*

@@ -269,9 +269,9 @@ def corr_hist(g, deg_source, deg_target, bins=[[0, 1], [0, 1]], weight=None,
     ...                     directed=False, mix_time=100)
     >>> h = gt.corr_hist(g, "out", "out")
     >>> clf()
-    >>> xlabel("source out-degree")
+    >>> xlabel("Source out-degree")
     <...>
-    >>> ylabel("target out-degree")
+    >>> ylabel("Target out-degree")
     <...>
     >>> imshow(h[0], interpolation="nearest")
     <...>
@@ -355,9 +355,9 @@ def combined_corr_hist(g, deg1, deg2, bins=[[0, 1], [0, 1]], float_count=True):
     >>> g = gt.random_graph(10000, lambda: sample_k(40))
     >>> h = gt.combined_corr_hist(g, "in", "out")
     >>> clf()
-    >>> xlabel("in-degree")
+    >>> xlabel("In-degree")
     <...>
-    >>> ylabel("out-degree")
+    >>> ylabel("Out-degree")
     <...>
     >>> imshow(h[0], interpolation="nearest")
     <...>
@@ -447,12 +447,12 @@ def avg_neighbour_corr(g, deg_source, deg_target, bins=[0, 1], weight=None):
     ...                     directed=False, mix_time=100)
     >>> h = gt.avg_neighbour_corr(g, "out", "out")
     >>> clf()
-    >>> xlabel("source out-degree")
+    >>> xlabel("Source out-degree")
     <...>
-    >>> ylabel("target out-degree")
+    >>> ylabel("Target out-degree")
     <...>
     >>> errorbar(h[2][:-1], h[0], yerr=h[1], fmt="o")
-    (...)
+    <...>
     >>> savefig("avg_corr.pdf")
 
     .. figure:: avg_corr.*
@@ -524,12 +524,12 @@ def avg_combined_corr(g, deg1, deg2, bins=[0, 1]):
     >>> g = gt.random_graph(10000, lambda: sample_k(40))
     >>> h = gt.avg_combined_corr(g, "in", "out")
     >>> clf()
-    >>> xlabel("in-degree")
+    >>> xlabel("In-degree")
     <...>
-    >>> ylabel("out-degree")
+    >>> ylabel("Out-degree")
     <...>
     >>> errorbar(h[2][:-1], h[0], yerr=h[1], fmt="o")
-    (...)
+    <...>
     >>> savefig("combined_avg_corr.pdf")
 
     .. figure:: combined_avg_corr.*

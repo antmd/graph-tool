@@ -19,8 +19,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-``graph_tool.topology`` - Important functions for assessing graph topology
---------------------------------------------------------------------------
+``graph_tool.topology`` - Assessing graph topology
+--------------------------------------------------
 
 Summary
 +++++++
@@ -178,7 +178,7 @@ def subgraph_isomorphism(sub, g, max_n=0, random=False):
     >>> sub = gt.random_graph(10, lambda: (poisson(1.8), poisson(1.9)))
     >>> vm, em = gt.subgraph_isomorphism(sub, g)
     >>> print len(vm)
-    79
+    102
     >>> for i in xrange(len(vm)):
     ...   g.set_vertex_filter(None)
     ...   g.set_edge_filter(None)
@@ -191,17 +191,19 @@ def subgraph_isomorphism(sub, g, max_n=0, random=False):
     >>> ewidth = g.copy_property(emask, value_type="double")
     >>> ewidth.a *= 1.5
     >>> ewidth.a += 0.5
-    >>> gt.graph_draw(g, vcolor=vmask, ecolor=emask, penwidth=ewidth,
+    >>> gt.graph_draw(g, vertex_fill_color=vmask, edge_color=emask, edge_pen_width=ewidth,
     ...               output="subgraph-iso-embed.pdf")
     <...>
     >>> gt.graph_draw(sub, output="subgraph-iso.pdf")
     <...>
 
-    .. image:: subgraph-iso.*
-    .. image:: subgraph-iso-embed.*
+    .. figure:: subgraph-iso.*
 
-    *Left:* Subgraph searched, *Right:* One isomorphic subgraph found in main
-     graph.
+       Subgraph searched
+
+    .. figure:: subgraph-iso-embed.*
+
+       One isomorphic subgraph found in main graph.
 
     Notes
     -----
@@ -308,10 +310,10 @@ def min_spanning_tree(g, weights=None, root=None, tree_map=None):
     >>> for e in g.edges():
     ...    weight[e] = linalg.norm(pos[e.target()].a - pos[e.source()].a)
     >>> tree = gt.min_spanning_tree(g, weights=weight)
-    >>> gt.graph_draw(g, pos=pos, pin=True, output="triang_orig.pdf")
+    >>> gt.graph_draw(g, pos=pos, output="triang_orig.pdf")
     <...>
     >>> g.set_edge_filter(tree)
-    >>> gt.graph_draw(g, pos=pos, pin=True, output="triang_min_span_tree.pdf")
+    >>> gt.graph_draw(g, pos=pos, output="triang_min_span_tree.pdf")
     <...>
 
 
@@ -880,7 +882,7 @@ def shortest_path(g, source, target, weights=None, pred_map=None):
     >>> print [str(v) for v in vlist]
     ['10', '222', '246', '0', '50', '257', '12', '242', '11']
     >>> print [str(e) for e in elist]
-    ['(10,222)', '(222,246)', '(246,0)', '(0,50)', '(50,257)', '(257,12)', '(12,242)', '(242,11)']
+    ['(10, 222)', '(222, 246)', '(246, 0)', '(0, 50)', '(50, 257)', '(257, 12)', '(12, 242)', '(242, 11)']
 
     References
     ----------
@@ -976,7 +978,9 @@ def pseudo_diameter(g, source=None, weights=None):
     >>> g = gt.random_graph(300, lambda: (poisson(3), poisson(3)))
     >>> dist, ends = gt.pseudo_diameter(g)
     >>> print dist
-    >>> print end
+    9.0
+    >>> print int(ends[0]), int(ends[1])
+    0 255
 
     References
     ----------
@@ -1142,7 +1146,7 @@ def max_cardinality_matching(g, heuristic=False, weight=None, minimize=True,
     >>> res = gt.max_cardinality_matching(g)
     >>> print res[1]
     True
-    >>> gt.graph_draw(g, ecolor=res[0], output="max_card_match.pdf")
+    >>> gt.graph_draw(g, edge_color=res[0], output="max_card_match.pdf")
     <...>
 
     .. figure:: max_card_match.*
@@ -1215,7 +1219,7 @@ def max_independent_vertex_set(g, high_deg=False, mivs=None):
     >>> res = gt.max_cardinality_matching(g)
     >>> print res[1]
     True
-    >>> gt.graph_draw(g, ecolor=res[0], output="max_card_match.pdf")
+    >>> gt.graph_draw(g, edge_color=res[0], output="max_card_match.pdf")
     <...>
 
     .. figure:: max_card_match.*

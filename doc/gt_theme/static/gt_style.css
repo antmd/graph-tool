@@ -1,11 +1,17 @@
 @import url("flasky.css");
 
+table.docutils {
+    margin-left:1em; 
+    margin-right:1em;
+}
+
 table.docutils td {
     padding-left: 0.5em;
 }
 
-table.docutils.field-list
-{
+table.docutils.field-list {
+    margin-left: 0; 
+    margin-right: 0;
     border-collapse: separate; 
     border-spacing: 0em 1em;
 }
@@ -14,6 +20,12 @@ table.docutils td.field-body  {
     border-left: 1px solid #BBBBBB !important;
     border-collapse: separate !important;
     padding-left: 1em;
+}
+
+table.docutils.citation
+{
+    margin-left: 0; 
+    margin-right: 0;
 }
 
 /* stupid workaround to hide ugly c++ signature stuff from sphinx*/

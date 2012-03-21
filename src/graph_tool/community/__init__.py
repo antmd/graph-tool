@@ -87,9 +87,9 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
 
     See Also
     --------
-    community_structure: obtain the community structure
-    modularity: calculate the network modularity
-    condensation_graph: network of communities
+    community_structure: Obtain the community structure
+    modularity: Calculate the network modularity
+    condensation_graph: Network of communities, or blocks
 
     Notes
     -----
@@ -145,19 +145,17 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
     >>> from numpy.random import seed
     >>> seed(42)
     >>> g = gt.load_graph("community.xml")
-    >>> pos = (g.vertex_properties["pos_x"], g.vertex_properties["pos_y"])
+    >>> pos = g.vertex_properties["pos"]
     >>> spins = gt.community_structure(g, 10000, 20, t_range=(5, 0.1),
     ...                                history_file="community-history1")
-    >>> gt.graph_draw(g, pos=pos, pin=True, vsize=0.3, vcolor=spins,
-    ...               output="comm1.pdf", size=(10,10))
+    >>> gt.graph_draw(g, pos=pos, vertex_fill_color=spins, output_size=(420, 420), output="comm1.pdf")
     <...>
     >>> spins = gt.community_structure(g, 10000, 40, t_range=(5, 0.1),
-    ...                                gamma=2.5,
-    ...                                history_file="community-history2")
-    >>> gt.graph_draw(g, pos=pos, pin=True, vsize=0.3, vcolor=spins,
-    ...               output="comm2.pdf", size=(10,10))
+    ...                                gamma=2.5, history_file="community-history2")
+    >>> gt.graph_draw(g, pos=pos, vertex_fill_color=spins, output_size=(420, 420), output="comm2.pdf")
     <...>
-    >>> clf()
+    >>> figure(figsize=(6, 4))
+    <...>
     >>> xlabel("iterations")
     <...>
     >>> ylabel("number of communities")
@@ -239,7 +237,7 @@ def modularity(g, prop, weight=None):
     --------
     community_structure: obtain the community structure
     modularity: calculate the network modularity
-    condensation_graph: network of communities
+    condensation_graph: Network of communities, or blocks
 
     Notes
     -----
@@ -307,9 +305,9 @@ def condensation_graph(g, prop, weight=None):
 
     See Also
     --------
-    community_structure: obtain the community structure
-    modularity: calculate the network modularity
-    condensation_graph:  network of communities
+    community_structure: Obtain the community structure
+    modularity: Calculate the network modularity
+    condensation_graph: Network of communities, or blocks
 
     Notes
     -----
@@ -324,13 +322,12 @@ def condensation_graph(g, prop, weight=None):
     >>> from numpy.random import poisson, seed
     >>> seed(42)
     >>> g = gt.random_graph(1000, lambda: poisson(3), directed=False)
+    >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(g))
     >>> spins = gt.community_structure(g, 10000, 100)
     >>> ng = gt.condensation_graph(g, spins)
     >>> size = ng[0].new_vertex_property("double")
-    >>> size.a = log(ng[2].a+1)
-    >>> gt.graph_draw(ng[0], vsize=size, vcolor=ng[1], splines=True,
-    ...               eprops={"len":20, "penwidth":10}, vprops={"penwidth":10},
-    ...               output="comm-network.pdf", size=(10,10))
+    >>> size.a = 50 * ng[2].a / ng[2].a.max()
+    >>> gt.graph_draw(ng[0], vertex_fill_color=ng[1], vertex_size=size, output="comm-network.pdf")
     <...>
 
     .. figure:: comm-network.*

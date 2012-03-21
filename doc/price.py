@@ -52,21 +52,6 @@ for i in xrange(1, N):
     vlist.append(v)
 
 # now we have a graph!
-# let's calculate its in-degree distribution and plot it to a file
-
-in_hist = vertex_hist(g, "in")
-
-figure(figsize=(4, 3))
-errorbar(in_hist[1][:-1], in_hist[0], fmt="o", yerr=sqrt(in_hist[0]),
-         label="in")
-gca().set_yscale("log")
-gca().set_xscale("log")
-gca().set_ylim(1e-1, 1e5)
-gca().set_xlim(0.8, 1e3)
-subplots_adjust(left=0.2, bottom=0.2)
-xlabel("$k_{in}$")
-ylabel("$NP(k_{in})$")
-savefig("deg-hist.pdf")
 
 # let's do a random walk on the graph and print the age of the vertices we find,
 # just for fun.

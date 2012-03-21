@@ -19,22 +19,44 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-``graph_tool.draw`` - Graph drawing
------------------------------------
+``graph_tool.draw`` - Graph drawing and layout
+----------------------------------------------
 
 Summary
 +++++++
+
+Layout algorithms
+=================
+
+.. autosummary::
+   :nosignatures:
+
+   sfdp_layout
+   fruchterman_reingold_layout
+   arf_layout
+   random_layout
+
+
+Graph drawing
+=============
 
 .. autosummary::
    :nosignatures:
 
    graph_draw
-   sfdp_layout
-   fruchterman_reingold_layout
-   arf_layout
-   random_layout
-   cairo_draw
    graphviz_draw
+
+
+Low-level graph drawing
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autosummary::
+   :nosignatures:
+
+   cairo_draw
+   interactive_window
+   GraphWidget
+   GraphWindow
 
 Contents
 ++++++++
@@ -177,7 +199,7 @@ def fruchterman_reingold_layout(g, weight=None, a=None, r=1., scale=None,
     >>> seed(42)
     >>> g = gt.price_network(300)
     >>> pos = gt.fruchterman_reingold_layout(g, n_iter=1000)
-    >>> gt.graph_draw(g, pos=pos, pin=True, output="graph-draw-fr.pdf")
+    >>> gt.graph_draw(g, pos=pos, output="graph-draw-fr.pdf")
     <...>
 
     .. figure:: graph-draw-fr.*
@@ -258,7 +280,7 @@ def arf_layout(g, weight=None, d=0.5, a=10, dt=0.001, epsilon=1e-6,
     >>> seed(42)
     >>> g = gt.price_network(300)
     >>> pos = gt.arf_layout(g, max_iter=0)
-    >>> gt.graph_draw(g, pos=pos, pin=True, output="graph-draw-arf.pdf")
+    >>> gt.graph_draw(g, pos=pos, output="graph-draw-arf.pdf")
     <...>
 
     .. figure:: graph-draw-arf.*

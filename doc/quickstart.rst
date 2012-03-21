@@ -83,7 +83,8 @@ visualize the graph we created so far with the
 
 .. doctest::
 
-   >>> graph_draw(g, vprops={"label": g.vertex_index}, output="two-nodes.pdf")
+   >>> graph_draw(g, vertex_text=g.vertex_index, vertex_font_size=18,
+   ...            output_size=(200, 200), output="two-nodes.pdf")
    <...>
 
 .. figure:: two-nodes.*
@@ -140,11 +141,11 @@ Edges and vertices can also be removed at any time with the
 .. note::
 
    Removing a vertex is an :math:`O(N)` operation. The vertices are
-   internally stored in a STL vector, so removing an element somewhere
-   in the middle of the list requires the shifting of the rest of the
-   list. Thus, fast :math:`O(1)` removals are only possible if one can
-   guarantee that only vertices in the end of the list are removed (the
-   ones last added to the graph).
+   internally stored in a `STL vector <http://en.wikipedia.org/wiki/Vector_%28STL%29>`_,
+   so removing an element somewhere in the middle of the list requires
+   the shifting of the rest of the list. Thus, fast :math:`O(1)`
+   removals are only possible if one can guarantee that only vertices in
+   the end of the list are removed (the ones last added to the graph).
 
    Removing an edge is an :math:`O(k_{s} + k_{t})` operation, where
    :math:`k_{s}` is the out-degree of the source vertex, and
@@ -455,10 +456,35 @@ This is the degree distribution, with 100000 nodes. If you want to see a broader
 power law, try to increase the number of vertices to something like :math:`10^6`
 or :math:`10^7`.
 
-.. figure:: deg-hist.*
+.. plot::
+   :context:
    :align: center
 
-   In-degree distribution of a price network with 100000 nodes.
+   #from pyenv import *
+   from pylab import *
+   import graph_tool.all as gt
+
+   g = gt.load_graph("price.xml.gz")
+
+   in_hist = gt.vertex_hist(g, "in")
+
+   figure()
+   y = in_hist[0]
+   err = sqrt(in_hist[0])
+   err[err >= y] = y[err >= y] - 1e-2
+   errorbar(in_hist[1][:-1], in_hist[0], fmt="o", yerr=err,
+            label="in")
+   gca().set_yscale("log")
+   gca().set_xscale("log")
+   gca().set_ylim(1e-1, 1e5)
+   gca().set_xlim(0.8, 1e3)
+   subplots_adjust(left=0.2, bottom=0.2)
+   xlabel("$k_{in}$")
+   ylabel("$NP(k_{in})$")
+   Title ("In-degree distribution of a price network with $10^5$ nodes.")
+   tight_layout()
+   show()
+
 
 We can draw the graph to see some other features of its topology. For that we
 use the :func:`~graph_tool.draw.graph_draw` function.
@@ -467,7 +493,9 @@ use the :func:`~graph_tool.draw.graph_draw` function.
 
    g = load_graph("price.xml.gz")
    age = g.vertex_properties["age"]
-   graph_draw(g, size=(15,15), vcolor=age, output="price.pdf")
+   graph_draw(g, output_size=(1000, 1000), vertex_color=age,
+              vertex_fill_color=age, vertex_size=2.5, edge_pen_width=1.5,
+              output="price.png")
 
 .. figure:: price.*
    :align: center
@@ -512,7 +540,8 @@ edge filtering.
 
    g, pos = triangulation(random((500, 2)) * 4, type="delaunay")
    tree = min_spanning_tree(g)
-   graph_draw(g, pos=pos, pin=True, size=(8, 8), ecolor=tree, output="min_tree.pdf")
+   graph_draw(g, pos=pos, edge_color=tree, output_size=(400, 400),
+              output="min_tree.pdf")
 
 The ``tree`` property map has a bool type, with value "1" if the edge belongs to
 the tree, and "0" otherwise. Below is an image of the original graph, with the
@@ -526,7 +555,7 @@ We can now filter out the edges which don't belong to the minimum spanning tree.
 .. testcode::
 
     g.set_edge_filter(tree)
-    graph_draw(g, pos=pos, pin=True, size=(8, 8), output="min_tree_filtered.pdf")
+    graph_draw(g, pos=pos, output_size=(400, 400), output="min_tree_filtered.pdf")
 
 This is how the graph looks when filtered:
 
@@ -541,9 +570,9 @@ and draws them as colors and line thickness in the graph.
 .. testcode::
 
     bv, be = betweenness(g)
-    be.a *= 10
-    graph_draw(g, pos=pos, pin=True, size=(8,8), vsize=0.07, vcolor=bv,
-               eprops={"penwidth":be}, output="filtered-bt.pdf")
+    be.a /= be.a.max() / 5
+    graph_draw(g, pos=pos, vertex_fill_color=bv, edge_pen_width=be,
+               output_size=(400, 400), output="filtered-bt.pdf")
 
 .. figure:: filtered-bt.*
    :align: center
@@ -555,9 +584,9 @@ The original graph can be recovered by setting the edge filter to ``None``.
 
     g.set_edge_filter(None)
     bv, be = betweenness(g)
-    be.a *= 10
-    graph_draw(g, pos=pos, pin=True, size=(8,8), vsize=0.07, vcolor=bv,
-               eprops={"penwidth":be}, output="nonfiltered-bt.pdf")
+    be.a /= be.a.max() / 5
+    graph_draw(g, pos=pos, vertex_fill_color=bv, edge_pen_width=be,
+               output_size=(400, 400), output="nonfiltered-bt.pdf")
 
 .. figure:: nonfiltered-bt.*
    :align: center
@@ -611,9 +640,10 @@ Like above, the result should be the isolated minimum spanning tree:
 .. doctest::
 
     >>> bv, be = betweenness(tv)
-    >>> be.a *= 10
-    >>> graph_draw(tv, pos=pos, pin=True, size=(8,8), vsize=0.07, vcolor=bv,
-    ...            eprops={"penwidth":be}, output="mst-view.pdf")
+    >>> be.a /= be.a.max() / 5
+    >>> graph_draw(tv, pos=pos, vertex_fill_color=bv,
+    ...            edge_pen_width=be, output_size=(400, 400),
+    ...            output="mst-view.pdf")
     <...>
 
 
@@ -643,22 +673,23 @@ edges, we can do:
 .. doctest::
 
     >>> bv, be = betweenness(g)
-    >>> u = GraphView(g, efilt=lambda e: be[e] > 0.01)
+    >>> u = GraphView(g, efilt=lambda e: be[e] > be.a.max() / 2)
 
 This creates a graph view ``u`` which contains only the edges of ``g``
-which have a normalized betweenness centrality larger than 0.01. Note
-that, differently from the case above, this is an :math:`O(E)`
-operation, where :math:`E` is the number of edges, since the supplied
-function must be called :math:`E` times to construct a filter property
-map. Thus, supplying a constructed filter map is always faster, but
-supplying a function can be more convenient.
+which have a normalized betweenness centrality larger than half of the
+maximum value. Note that, differently from the case above, this is an
+:math:`O(E)` operation, where :math:`E` is the number of edges, since
+the supplied function must be called :math:`E` times to construct a
+filter property map. Thus, supplying a constructed filter map is always
+faster, but supplying a function can be more convenient.
 
 The graph view constructed above can be visualized as
 
 .. doctest::
 
-    >>> graph_draw(u, pos=pos, pin=True, size=(8,8), vsize=0.07, vcolor=bv,
-    ...            output="central-edges-view.pdf")
+    >>> be.a /= be.a.max() / 5
+    >>> graph_draw(u, pos=pos, vertex_fill_color=bv, output_size=(400, 400),
+    ... output="central-edges-view.pdf")
     <...>
 
 .. figure:: central-edges-view.*
@@ -671,10 +702,10 @@ Composing graph views
 """""""""""""""""""""
 
 Since graph views are regular graphs, one can just as easily create
-graph views of graph views. This provides a convenient way of composing
-filters. For instance, in order to isolate the minimum spanning tree of
-all vertices of the example above which have a degree larger than four,
-one can do:
+graph views `of graph views`. This provides a convenient way of
+composing filters. For instance, in order to isolate the minimum
+spanning tree of all vertices of the example above which have a degree
+larger than four, one can do:
 
 
     >>> u = GraphView(g, vfilt=lambda v: v.out_degree() > 4)
@@ -685,8 +716,7 @@ The resulting graph view can be visualized as
 
 .. doctest::
 
-    >>> graph_draw(u, pos=pos, pin=True, size=(8,8), vsize=0.07,
-    ...            output="composed-filter.pdf")
+    >>> graph_draw(u, pos=pos, output_size=(400, 400), output="composed-filter.pdf")
     <...>
 
 .. figure:: composed-filter.*
