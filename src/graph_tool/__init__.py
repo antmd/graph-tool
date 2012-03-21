@@ -1040,7 +1040,7 @@ class Graph(object):
     def remove_edge(self, edge):
         """Remove an edge from the graph."""
         self.__check_perms("del_edge")
-        return libcore.remove_edge(self, edge)
+        return libcore.remove_edge(self.__graph, edge)
 
     def remove_edge_if(self, predicate):
         """Remove all edges from the graph, for which ``predicate(e)`` evaluates
