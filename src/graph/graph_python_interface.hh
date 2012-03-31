@@ -254,13 +254,21 @@ public:
 
     bool IsValid() const
     {
-        if (_g().ptr() == Py_None)
+        if (_g().ptr() == Py_None || !_valid)
             return false;
         GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
         GraphInterface::edge_t e(_e);
-        return (_valid &&
-                PythonVertex(_g, source(e, gi._state->_mg)).IsValid() &&
-                PythonVertex(_g, target(e, gi._state->_mg)).IsValid());
+        bool valid = PythonVertex(_g, source(e, gi._state->_mg)).IsValid() &&
+            PythonVertex(_g, target(e, gi._state->_mg)).IsValid();
+        if (!valid)
+            return false;
+        valid = false;
+        graph_traits<GraphInterface::multigraph_t>::out_edge_iterator ei, ei_end;
+        for (tie(ei, ei_end) = out_edges(source(e, gi._state->_mg), gi._state->_mg);
+             ei != ei_end; ++ei)
+            if (*ei == e)
+                valid = true;
+        return valid;
     }
 
     void SetValid(bool valid)
