@@ -157,4 +157,3 @@ private:
 };
 
 } // namespace graph_tool
-

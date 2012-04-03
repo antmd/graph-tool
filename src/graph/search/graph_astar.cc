@@ -31,28 +31,39 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
+template <class T>
+python::object operator |(const python::object& a, const T& b)
+{
+}
+
 struct do_astar_search
 {
-    template <class Graph, class DistanceMap, class WeightMap>
+    template <class Graph, class DistanceMap>
     void operator()(const Graph& g, size_t s, DistanceMap dist,
-                    boost::any pred_map, WeightMap weight,
+                    boost::any pred_map, boost::any aweight,
                     AStarVisitorWrapper vis, pair<AStarCmp, AStarCmb> cmp,
                     pair<python::object, python::object> range,
                     pair<python::object, python::object> h) const
     {
+        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
         typedef typename property_traits<DistanceMap>::value_type dtype_t;
         dtype_t z = python::extract<dtype_t>(range.first);
         dtype_t i = python::extract<dtype_t>(range.second);
         typedef typename property_map_type::
             apply<int32_t, typeof(get(vertex_index, g))>::type pred_t;
         pred_t pred = any_cast<pred_t>(pred_map);
+        checked_vector_property_map<default_color_type,
+                                    typeof(get(vertex_index, g))>
+            color(get(vertex_index, g._g));
+        checked_vector_property_map<dtype_t,
+                                    typeof(get(vertex_index, g))>
+            cost(get(vertex_index, g._g));
+        DynamicPropertyMapWrap<dtype_t, edge_t> weight(aweight,
+                                                       edge_properties());
         astar_search(g, vertex(s, g), AStarH<dtype_t>(h.first, h.second),
-                     visitor(vis).weight_map(weight).
-                     predecessor_map(pred).
-                     distance_map(dist).distance_compare(cmp.first).
-                     distance_combine(cmp.second).distance_inf(i).
-                     distance_zero(z));
-    }
+                     vis, pred, cost, dist, weight, get(vertex_index, g), color,
+                     cmp.first, cmp.second, i, z);
+   }
 };
 
 
@@ -62,13 +73,11 @@ void a_star_search(GraphInterface& g, python::object gi, size_t source,
                    python::object zero, python::object inf, python::object h)
 {
     run_action<graph_tool::detail::all_graph_views,mpl::true_>()
-        (g, bind<void>(do_astar_search(), _1, source, _2, pred_map, _3,
+        (g, bind<void>(do_astar_search(), _1, source, _2, pred_map, weight,
                         AStarVisitorWrapper(gi, vis), make_pair(AStarCmp(cmp),
                                                                 AStarCmb(cmb)),
                         make_pair(zero, inf), make_pair(gi, h)),
-         writable_vertex_scalar_properties(),
-         edge_scalar_properties())
-        (dist_map, weight);
+         writable_vertex_properties())(dist_map);
 }
 
 void export_astar()

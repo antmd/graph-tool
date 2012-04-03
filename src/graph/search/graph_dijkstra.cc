@@ -118,9 +118,9 @@ private:
 
 struct do_djk_search
 {
-    template <class Graph, class DistanceMap, class WeightMap>
+    template <class Graph, class DistanceMap>
     void operator()(const Graph& g, size_t s, DistanceMap dist,
-                    boost::any pred_map, WeightMap weight,
+                    boost::any pred_map, boost::any aweight,
                     DJKVisitorWrapper vis, const DJKCmp& cmp, const DJKCmb& cmb,
                     pair<python::object, python::object> range) const
     {
@@ -130,6 +130,9 @@ struct do_djk_search
         typedef typename property_map_type::
             apply<int32_t, typeof(get(vertex_index, g))>::type pred_t;
         pred_t pred = any_cast<pred_t>(pred_map);
+        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
+        DynamicPropertyMapWrap<dtype_t, edge_t> weight(aweight,
+                                                       edge_properties());
         dijkstra_shortest_paths_no_color_map
             (g, vertex(s, g), visitor(vis).weight_map(weight).
              predecessor_map(pred).
@@ -146,12 +149,10 @@ void dijkstra_search(GraphInterface& g, python::object gi, size_t source,
                      python::object inf)
 {
     run_action<graph_tool::detail::all_graph_views,mpl::true_>()
-        (g, bind<void>(do_djk_search(), _1, source, _2, pred_map, _3,
+        (g, bind<void>(do_djk_search(), _1, source, _2, pred_map, weight,
                         DJKVisitorWrapper(gi, vis), DJKCmp(cmp), DJKCmb(cmb),
                        make_pair(zero, inf)),
-         writable_vertex_scalar_properties(),
-         edge_scalar_properties())
-        (dist_map, weight);
+         writable_vertex_properties())(dist_map);
 }
 
 void export_dijkstra()

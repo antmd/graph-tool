@@ -34,13 +34,14 @@ using namespace graph_tool;
 
 struct do_astar_search
 {
-    template <class Graph, class DistanceMap, class WeightMap>
+    template <class Graph, class DistanceMap>
     void operator()(const Graph& g, size_t s, DistanceMap dist,
-                    pair<boost::any, boost::any> pc, WeightMap weight,
+                    pair<boost::any, boost::any> pc, boost::any aweight,
                     AStarVisitorWrapper vis, pair<AStarCmp, AStarCmb> cmp,
                     pair<python::object, python::object> range,
                     pair<python::object, python::object> h) const
     {
+
         typedef typename property_traits<DistanceMap>::value_type dtype_t;
         dtype_t z = python::extract<dtype_t>(range.first);
         dtype_t i = python::extract<dtype_t>(range.second);
@@ -50,6 +51,9 @@ struct do_astar_search
             color(get(vertex_index, g._g));
         typedef typename property_map_type::
             apply<int32_t, typeof(get(vertex_index, g))>::type pred_t;
+        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
+        DynamicPropertyMapWrap<dtype_t, edge_t> weight(aweight,
+                                                       edge_properties());
         astar_search_no_init(g, vertex(s, g),
                              AStarH<dtype_t>(h.first, h.second), vis,
                              any_cast<pred_t>(pc.first),
@@ -69,13 +73,11 @@ void a_star_search_implicit(GraphInterface& g, python::object gi, size_t source,
 {
     run_action<graph_tool::detail::all_graph_views,mpl::true_>()
         (g, bind<void>(do_astar_search(), _1, source, _2, make_pair(pred, cost),
-                       _3,
+                       weight,
                        AStarVisitorWrapper(gi, vis), make_pair(AStarCmp(cmp),
                                                                AStarCmb(cmb)),
                        make_pair(zero, inf), make_pair(gi, h)),
-         writable_vertex_scalar_properties(),
-         edge_scalar_properties())
-        (dist_map, weight);
+         writable_vertex_properties())(dist_map);
 }
 
 void export_astar_implicit()

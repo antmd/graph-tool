@@ -1500,7 +1500,7 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
     if dist_type is not object:
         h = lambda v: dist_type(heuristic(v))
     else:
-        h = heurustic
+        h = heuristic
 
     try:
         if not implicit:

@@ -108,10 +108,10 @@ private:
 
 struct do_bf_search
 {
-    template <class Graph, class DistanceMap, class WeightMap>
+    template <class Graph, class DistanceMap>
     void operator()(const Graph& g, size_t s, DistanceMap dist,
-                    boost::any pred_map, WeightMap weight, BFVisitorWrapper vis,
-                    pair<BFCmp, BFCmb> cm,
+                    boost::any pred_map, boost::any aweight,
+                    BFVisitorWrapper vis, pair<BFCmp, BFCmb> cm,
                     pair<python::object, python::object> range, bool& ret) const
     {
         typedef typename property_traits<DistanceMap>::value_type dtype_t;
@@ -121,6 +121,9 @@ struct do_bf_search
         typedef typename property_map_type::
             apply<int32_t, typeof(get(vertex_index, g))>::type pred_t;
         pred_t pred = any_cast<pred_t>(pred_map);
+        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
+        DynamicPropertyMapWrap<dtype_t, edge_t> weight(aweight,
+                                                       edge_properties());
         ret = bellman_ford_shortest_paths
             (g, HardNumVertices()(g),
              root_vertex(vertex(s, g)).visitor(vis).weight_map(weight).
@@ -141,13 +144,12 @@ bool bellman_ford_search(GraphInterface& g, python::object gi, size_t source,
 {
     bool ret = false;
     run_action<graph_tool::detail::all_graph_views,mpl::true_>()
-        (g, bind<void>(do_bf_search(), _1, source, _2, pred_map, _3,
-                        BFVisitorWrapper(gi, vis),
-                        make_pair(BFCmp(cmp), BFCmb(cmb)), make_pair(zero, inf),
-                        ref(ret)),
-         writable_vertex_scalar_properties(),
-         edge_scalar_properties())
-        (dist_map, weight);
+        (g, bind<void>(do_bf_search(), _1, source, _2, pred_map, weight,
+                       BFVisitorWrapper(gi, vis),
+                       make_pair(BFCmp(cmp), BFCmb(cmb)), make_pair(zero, inf),
+                       ref(ret)),
+         writable_vertex_properties())
+        (dist_map);
     return ret;
 }
 
