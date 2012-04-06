@@ -26,6 +26,8 @@ libgraph_tool_core_la_SOURCES = \
     ../boost-workaround/boost/graph/kamada_kawai_spring_layout.hpp \
     ../boost-workaround/boost/graph/overloading.hpp \
     ../boost-workaround/boost/graph/push_relabel_max_flow.hpp \
+    ../boost-workaround/boost/graph/copy_alt.hpp \
+    ../boost-workaround/boost/graph/reverse_graph_alt.hpp \
     graph.cc \
     graph_bind.cc \
     graph_copy.cc \
