@@ -57,9 +57,9 @@ struct get_communities
     template <class Graph, class VertexIndex, class WeightMap,
               class CommunityMap>
     void operator()(const Graph& g, VertexIndex vertex_index, WeightMap weights,
-                    CommunityMap s, double gamma, size_t n_iter, pair<double,
-                    double> Tinterval, size_t n_spins, size_t seed, pair<bool,
-                    string> verbose) const
+                    CommunityMap s, double gamma, size_t n_iter,
+                    pair<double, double> Tinterval, size_t n_spins, size_t seed,
+                    pair<bool, string> verbose) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
@@ -505,7 +505,6 @@ struct get_modularity
         typedef typename property_traits<CommunityMap>::value_type s_val_t;
 
         modularity = 0.0;
-        size_t E = 0;
         double W = 0;
 
         typename graph_traits<Graph>::edge_iterator e, e_end;
@@ -513,7 +512,6 @@ struct get_modularity
             if (target(*e,g) != source(*e,g))
             {
                 W += get(weights, *e);
-                E++;
                 if (get(s, target(*e,g)) == get(s, source(*e,g)))
                     modularity += 2 * get(weights, weight_key_t(*e));
             }
@@ -522,10 +520,10 @@ struct get_modularity
 
         typename graph_traits<Graph>::vertex_iterator v, v_end;
         for (tie(v,v_end) = vertices(g); v != v_end; ++v)
-            Ks[get(s, *v)] += out_degree_no_loops(*v, g);
+            Ks[get(s, *v)] += out_degree_no_loops_weighted(*v, weights, g);
 
         for (typeof(Ks.begin()) iter = Ks.begin(); iter != Ks.end(); ++iter)
-            modularity -= (iter->second*iter->second)/double(2*E);
+            modularity -= (iter->second*iter->second)/double(2*W);
 
         modularity /= 2*W;
     }

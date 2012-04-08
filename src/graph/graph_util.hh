@@ -115,6 +115,20 @@ out_degree_no_loops(typename graph_traits<Graph>::vertex_descriptor v,
     return k;
 }
 
+// computes the out-degree of a graph, ignoring self-edges
+template <class Graph, class Weights>
+inline typename property_traits<Weights>::value_type
+out_degree_no_loops_weighted(typename graph_traits<Graph>::vertex_descriptor v,
+                             Weights w, const Graph &g)
+{
+    typename property_traits<Weights>::value_type k = 0;
+    typename graph_traits<Graph>::out_edge_iterator e, e_end;
+    for (tie(e, e_end) = out_edges(v, g); e != e_end; ++e)
+        if (target(*e, g) != v)
+            k += get(w, *e);
+    return k;
+}
+
 
 
 } // namespace graph_tool
