@@ -214,9 +214,6 @@ void find_mappings(const Graph1& sub, const Graph2& g, matrix_t& M0,
     for (last_i = num_vertices(sub) - 1; last_i >= 0; --last_i)
         if (vertex(i, sub) != graph_traits<Graph1>::null_vertex())
             break;
-    for (; i < vlist.size(); ++i)
-        if (vertex(vlist[i], g) != graph_traits<Graph2>::null_vertex())
-            break;
 
     Mapping F;
     list<tuple<matrix_t, size_t,
