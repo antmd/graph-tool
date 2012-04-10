@@ -502,6 +502,7 @@ struct get_modularity
                     double& modularity) const
     {
         typedef typename property_traits<WeightMap>::key_type weight_key_t;
+        typedef typename property_traits<WeightMap>::value_type weight_val_t;
         typedef typename property_traits<CommunityMap>::value_type s_val_t;
 
         modularity = 0.0;
@@ -516,7 +517,7 @@ struct get_modularity
                     modularity += 2 * get(weights, weight_key_t(*e));
             }
 
-        unordered_map<s_val_t, size_t> Ks;
+        unordered_map<s_val_t, weight_val_t> Ks;
 
         typename graph_traits<Graph>::vertex_iterator v, v_end;
         for (tie(v,v_end) = vertices(g); v != v_end; ++v)
