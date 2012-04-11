@@ -74,6 +74,43 @@ void GraphInterface::ShiftVertexProperty(boost::any prop, size_t index) const
         throw GraphException("invalid writable property map");
 }
 
+struct reindex_vertex_property
+{
+    template <class PropertyMap, class IndexMap>
+    void operator()(PropertyMap, const GraphInterface::multigraph_t& g,
+                    boost::any map, IndexMap old_index, bool& found) const
+    {
+        try
+        {
+            PropertyMap pmap = any_cast<PropertyMap>(map);
+            for (size_t i = 0; i < num_vertices(g); ++i)
+            {
+                GraphInterface::vertex_t v = vertex(i, g);
+                pmap[v] = pmap[vertex(old_index[v], g)];
+            }
+            found = true;
+        }
+        catch (bad_any_cast&) {}
+    }
+};
+
+
+void GraphInterface::ReIndexVertexProperty(boost::any map,
+                                           boost::any aold_index) const
+{
+    typedef property_map_type::apply<int32_t,
+                                     GraphInterface::vertex_index_map_t>::type
+        index_prop_t;
+    index_prop_t old_index = any_cast<index_prop_t>(aold_index);
+
+    bool found = false;
+    mpl::for_each<writable_vertex_properties>
+        (bind<void>(reindex_vertex_property(), _1, ref(_state->_mg),
+                    map, old_index, ref(found)));
+    if (!found)
+        throw GraphException("invalid writable property map");
+
+}
 
 } // graph_tool namespace
 

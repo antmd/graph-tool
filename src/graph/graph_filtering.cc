@@ -243,12 +243,17 @@ void GraphInterface::PurgeEdges()
 }
 
 
-// this will definitively remove all the verticess from the graph, which are
+// this will definitively remove all the vertices from the graph, which are
 // being currently filtered out. This will also disable the vertex filter
-void GraphInterface::PurgeVertices()
+void GraphInterface::PurgeVertices(boost::any aold_index)
 {
     if (!IsVertexFilterActive())
         return;
+
+    typedef property_map_type::apply<int32_t,
+                                     GraphInterface::vertex_index_map_t>::type
+        index_prop_t;
+    index_prop_t old_index = any_cast<index_prop_t>(aold_index);
 
     MaskFilter<vertex_filter_t> filter(_vertex_filter_map,
                                        _vertex_filter_invert);
@@ -256,6 +261,7 @@ void GraphInterface::PurgeVertices()
     vector<bool> deleted(N, false);
     for (size_t i = 0; i < N; ++i)
         deleted[i] = !filter(vertex(i, _state->_mg));
+    vector<int> old_indexes;
 
     vector<graph_traits<multigraph_t>::edge_descriptor> edges;
 
@@ -278,6 +284,16 @@ void GraphInterface::PurgeVertices()
             remove_vertex(v, _state->_mg);
             edges.clear();
         }
+        else
+        {
+            old_indexes.push_back(i);
+        }
+    }
+
+    N = old_indexes.size();
+    for (int i = N-1; i >= 0; --i)
+    {
+        old_index[vertex((N - 1) - i, _state->_mg)] = old_indexes[i];
     }
 }
 

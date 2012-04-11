@@ -91,11 +91,12 @@ public:
     // graph modification
     void InsertPropertyMap(string name, boost::any map);
     void ReIndexEdges();
-    void PurgeVertices(); // removes filtered vertices
+    void PurgeVertices(boost::any old_index); // removes filtered vertices
     void PurgeEdges();    // removes filtered edges
     void Clear();
     void ClearEdges();
     void ShiftVertexProperty(boost::any map, size_t index) const;
+    void ReIndexVertexProperty(boost::any map, boost::any old_index) const;
     void CopyVertexProperty(const GraphInterface& src, boost::any prop_src,
                             boost::any prop_tgt);
     void CopyEdgeProperty(const GraphInterface& src, boost::any prop_src,

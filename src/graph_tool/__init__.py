@@ -1463,13 +1463,19 @@ class Graph(object):
 
     def purge_vertices(self):
         """Remove all vertices of the graph which are currently being filtered
-        out, and return it to the unfiltered state."""
-        self.__graph.PurgeVertices()
+        out, and return it to the unfiltered state. This operation is not
+        reversible."""
+        old_indexes = self.vertex_index.copy("int32_t")
+        self.__graph.PurgeVertices(_prop("v", self, old_indexes))
         self.set_vertex_filter(None)
+        for pmap in self.__known_properties:
+            if pmap[0] == "v" and pmap[1]() != None and pmap[1]().is_writable():
+                self.__graph.ReIndexVertexProperty(pmap[1]().get_map(),
+                                                   _prop("v", self, old_indexes))
 
     def purge_edges(self):
         """Remove all edges of the graph which are currently being filtered out,
-        and return it to the unfiltered state."""
+        and return it to the unfiltered state. This operation is not reversible."""
         self.__graph.PurgeEdges()
         self.set_edge_filter(None)
 
