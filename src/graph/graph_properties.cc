@@ -221,9 +221,9 @@ struct do_edge_difference
 void edge_difference(GraphInterface& gi, boost::any prop,
                      boost::any eprop)
 {
-    typedef typename mpl::insert_range<vertex_scalar_properties,
-                                       mpl::end<vertex_scalar_properties>::type,
-                                       vertex_scalar_vector_properties>::type vprops_t;
+    typedef mpl::insert_range<vertex_scalar_properties,
+                              mpl::end<vertex_scalar_properties>::type,
+                              vertex_scalar_vector_properties>::type vprops_t;
     run_action<>()(gi, bind<void>(do_edge_difference(), _1,
                                   gi.GetEdgeIndex(), _2, eprop),
                    vprops_t())(prop);
