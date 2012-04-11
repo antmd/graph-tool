@@ -86,7 +86,8 @@ struct reindex_vertex_property
             for (size_t i = 0; i < num_vertices(g); ++i)
             {
                 GraphInterface::vertex_t v = vertex(i, g);
-                pmap[v] = pmap[vertex(old_index[v], g)];
+                if (old_index[v] != int(i))
+                    pmap[v] = pmap[vertex(old_index[v], g)];
             }
             found = true;
         }
