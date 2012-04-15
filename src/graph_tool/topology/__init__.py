@@ -153,7 +153,7 @@ def isomorphism(g1, g2, isomap=False):
         return iso
 
 
-def subgraph_isomorphism(sub, g, max_n=0, random=True):
+def subgraph_isomorphism(sub, g, max_n=0, random=False):
     r"""
     Obtain all subgraph isomorphisms of `sub` in `g` (or at most `max_n`
     subgraphs, if `max_n > 0`).

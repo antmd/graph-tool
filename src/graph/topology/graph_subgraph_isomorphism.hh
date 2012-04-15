@@ -177,10 +177,10 @@ bool refine_check(const Graph1& sub, const Graph2& g, matrix_t& M, size_t count,
                 size_t l = *li;
                 if (already_mapped.find(l) != already_mapped.end())
                     continue;
-                bool valid = check_adjacency()
-                    (vertex(k, sub), vertex(vlist[l], g), M, edge_labelling,
-                     sub, g, vindex,
-                     typename graph_tool::is_directed::apply<Graph1>::type());
+                bool valid = check_adjacency()(vertex(k, sub),
+                                               vertex(vlist[l], g), M,
+                                               edge_labelling, sub, g, vindex,
+                                               typename graph_tool::is_directed::apply<Graph1>::type());
                 if (valid)
                     m_new.insert(l);
             }
@@ -210,14 +210,16 @@ void find_mappings(const Graph1& sub, const Graph2& g, matrix_t& M0,
     for (i = 0; i < num_vertices(sub); ++i)
         if (vertex(i, sub) != graph_traits<Graph1>::null_vertex())
             break;
-    int last_i = 0;
-    for (last_i = num_vertices(sub) - 1; last_i >= 0; --last_i)
-        if (vertex(i, sub) != graph_traits<Graph1>::null_vertex())
+    int last_i = num_vertices(sub) - 1;
+    for (; last_i >= 0; --last_i)
+        if (vertex(last_i, sub) != graph_traits<Graph1>::null_vertex())
             break;
 
     Mapping F;
-    list<tuple<matrix_t, size_t,
-               typename matrix_t::value_type::const_iterator> > Mstack;
+    // [current M] [current sub vertex] [current mapping vertex]
+    typedef tuple<matrix_t, size_t,
+                  typename matrix_t::value_type::const_iterator> state_t;
+    list<state_t> Mstack;
     Mstack.push_back(make_tuple(M0, i, M0[i].begin()));
     get<2>(Mstack.back()) = get<0>(Mstack.back())[i].begin();
     tr1::unordered_set<size_t> already_mapped;
@@ -225,14 +227,13 @@ void find_mappings(const Graph1& sub, const Graph2& g, matrix_t& M0,
     // perform depth-first search of combination space
     while (!Mstack.empty() && (max_n == 0 || FF.size() < max_n))
     {
-        const matrix_t& M = get<0>(Mstack.back());
-        size_t& i = get<1>(Mstack.back());
-        typename matrix_t::value_type::const_iterator& mi =
-            get<2>(Mstack.back());
+        state_t& state = Mstack.back();
+        const matrix_t& M = get<0>(state);
+        size_t& i = get<1>(state);
+        typename matrix_t::value_type::const_iterator& mi = get<2>(state);
 
-        if (mi == M[i].end())
+        if (mi == M[i].end()) // no more candidate mappings available
         {
-            // dead end
             Mstack.pop_back();
             if (!F.empty())
             {
@@ -281,7 +282,6 @@ void find_mappings(const Graph1& sub, const Graph2& g, matrix_t& M0,
                 }
 
                 // we are done which this tree node
-                mi = M[i].end();
                 F.pop_back();
                 already_mapped.erase(c_mi);
             }
