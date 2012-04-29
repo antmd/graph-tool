@@ -100,8 +100,8 @@ public:
 
     double get_w()
     {
-        return max(_ur[0] - _ll[0],
-                   _ur[1] - _ll[1]);
+        return sqrt(pow(_ur[0] - _ll[0], 2) +
+                    pow(_ur[1] - _ll[1], 2));
     }
 
     Weight get_count()
@@ -176,22 +176,22 @@ inline double norm(Pos& x)
 
 struct get_sfdp_layout
 {
-    get_sfdp_layout(double C, double K, double p, double theta, double init_step,
-                    double step_schedule, size_t max_level, double epsilon,
-                    size_t max_iter, bool simple)
-        : C(C), K(K), p(p), theta(theta), init_step(init_step),
+    get_sfdp_layout(double C, double K, double p, double theta, double gamma,
+                    double init_step, double step_schedule, size_t max_level,
+                    double epsilon, size_t max_iter, bool simple)
+        : C(C), K(K), p(p), theta(theta), gamma(gamma), init_step(init_step),
           step_schedule(step_schedule), epsilon(epsilon),
           max_level(max_level), max_iter(max_iter), simple(simple) {}
 
-    double C, K, p, theta, init_step, step_schedule, epsilon;
+    double C, K, p, theta, gamma, init_step, step_schedule, epsilon;
     size_t max_level, max_iter;
     bool simple;
 
     template <class Graph, class VertexIndex, class PosMap, class VertexWeightMap,
-              class EdgeWeightMap, class PinMap>
+              class EdgeWeightMap, class PinMap, class GroupMap>
     void operator()(Graph& g, VertexIndex vertex_index, PosMap pos,
                     VertexWeightMap vweight, EdgeWeightMap eweight, PinMap pin,
-                    bool verbose) const
+                    GroupMap group, bool verbose) const
     {
         typedef typename property_traits<PosMap>::value_type pos_t;
         typedef typename property_traits<PosMap>::value_type::value_type val_t;
@@ -201,22 +201,45 @@ struct get_sfdp_layout
         pos_t ll(2, numeric_limits<val_t>::max()),
             ur(2, -numeric_limits<val_t>::max());
 
-        int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i)
+        vector<pos_t> group_cm, group_cm_tmp;
+        vector<vweight_t> group_size;
+
+        int i, N = num_vertices(g), HN=0;
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v =
                 vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
-            pos[v].resize(2);
+            pos[v].resize(2, 0);
+            size_t s = group[v];
+
+            {
+                if (s >= group_cm.size())
+                {
+                    group_cm.resize(s + 1);
+                    group_cm_tmp.resize(s + 1);
+                    group_size.resize(s + 1, 0);
+                }
+                group_cm[s].resize(2, 0);
+                group_cm_tmp[s].resize(2, 0);
+                group_size[s] += get(vweight, v);
+            }
 
             for (size_t j = 0; j < 2; ++j)
             {
-                #pragma omp critical
                 ll[j] = min(pos[v][j], ll[j]);
                 ur[j] = max(pos[v][j], ur[j]);
+                group_cm[s][j] += pos[v][j] * get(vweight, v);
             }
+            HN++;
+        }
+
+        for (size_t s = 0; s < group_size.size(); ++s)
+        {
+            group_cm[s].resize(2, 0);
+            for (size_t j = 0; j < 2; ++j)
+                group_cm[s][j] /= group_size[s];
         }
 
         val_t delta = epsilon * K + 1, E = 0, E0;
@@ -261,9 +284,19 @@ struct get_sfdp_layout
                     continue;
 
                 if (pin[v])
+                {
+                    #pragma omp critical
+                    group_cm_tmp[group[v]].resize(2, 0);
+                    for (size_t l = 0; l < 2; ++l)
+                    {
+                        group_cm_tmp[group[v]][l] += pos[v][l] * get(vweight, v);
+                    }
                     continue;
+                }
 
                 ftot[0] = ftot[1] = 0;
+
+                // global repulsive forces
                 Q.clear();
                 Q.push_back(ref(qt));
                 while (!Q.empty())
@@ -292,7 +325,7 @@ struct get_sfdp_layout
                         double w = q.get_w();
                         q.get_cm(cm);
                         double d = get_diff(cm, pos[v], diff);
-                        if (w / d > theta)
+                        if (w > theta * d)
                         {
                             for(size_t j = 0; j < 4; ++j)
                             {
@@ -314,6 +347,7 @@ struct get_sfdp_layout
                     }
                 }
 
+                // local attractive forces
                 typename graph_traits<Graph>::out_edge_iterator e, e_end;
                 for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
                 {
@@ -333,10 +367,27 @@ struct get_sfdp_layout
                         ftot[l] += f * diff[l];
                 }
 
+                // inter-group attractive forces
+                for (size_t s = 0; s < group_cm.size(); ++s)
+                {
+                    if (s == size_t(group[v]))
+                        continue;
+                    val_t d = get_diff(group_cm[s], pos[v], diff);
+                    if (d == 0)
+                        continue;
+                    double Kp = K * pow(HN, 2);
+                    val_t f = f_a(Kp, group_cm[s], pos[v]) * gamma * \
+                        group_size[s] * get(vweight, v);
+                    for (size_t l = 0; l < 2; ++l)
+                        ftot[l] += f * diff[l];
+                }
+
+
                 E += pow(norm(ftot), 2);
 
                 {
                     #pragma omp critical
+                    group_cm_tmp[group[v]].resize(2, 0);
                     for (size_t l = 0; l < 2; ++l)
                     {
                         ftot[l] *= step;
@@ -344,6 +395,8 @@ struct get_sfdp_layout
 
                         nll[l] = min(pos[v][l], ll[l]);
                         nur[l] = max(pos[v][l], ur[l]);
+
+                        group_cm_tmp[group[v]][l] += pos[v][l] * get(vweight, v);
                     }
                 }
                 delta += norm(ftot);
@@ -353,6 +406,17 @@ struct get_sfdp_layout
             ll = nll;
             ur = nur;
             delta /= nmoves;
+
+            for (size_t s = 0; s < group_size.size(); ++s)
+            {
+                for (size_t j = 0; j < 2; ++j)
+                {
+                    group_cm_tmp[s][j] /= group_size[s];
+                    group_cm[s][j] = 0;
+                }
+            }
+            group_cm.swap(group_cm_tmp);
+
 
             if (verbose)
                 cout << n_iter << " " << E << " " << step << " "

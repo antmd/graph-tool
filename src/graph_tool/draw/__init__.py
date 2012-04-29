@@ -366,16 +366,17 @@ def _avg_edge_distance(g, pos):
 
 
 def coarse_graphs(g, method="hybrid", mivs_thres=0.9, ec_thres=0.75,
-                  weighted_coarse=False, verbose=False):
+                  weighted_coarse=False, eweight=None, vweight=None,
+                  verbose=False):
     cg = [[g, None, None, None, None, None]]
+    if weighted_coarse:
+        cg[-1][2], cg[-1][3] = vweight, eweight
     mivs = not (method in ["hybrid", "ec"])
     while True:
         u = _coarse_graph(cg[-1][0], cg[-1][2], cg[-1][3], mivs)
-        if (mivs and
-            u[0].num_vertices() > mivs_thres * cg[-1][0].num_vertices()):
-            break
-        if u[0].num_vertices() > ec_thres * cg[-1][0].num_vertices():
-            if method == "hybrid":
+        thres = mivs_thres if mivs else ec_thres
+        if u[0].num_vertices() >= thres * cg[-1][0].num_vertices():
+            if method == "hybrid" and not mivs:
                 mivs = True
             else:
                 break
@@ -422,26 +423,66 @@ def coarse_graphs(g, method="hybrid", mivs_thres=0.9, ec_thres=0.75,
 
 
 def sfdp_layout(g, vweight=None, eweight=None, pin=None, C=0.2, K=None, p=2.,
-                theta=0.6, init_step=None, cooling_step=0.9,
-                adaptive_cooling=True, max_level=11, epsilon=1e-1, max_iter=0,
-                pos=None, multilevel=None, coarse_method="hybrid",
-                mivs_thres=0.9, ec_thres=0.75,
-                weighted_coarse=False, verbose=False):
-    r"""Calculate the sfdp spring-block layout of the graph.
+                theta=0.6, max_level=11, gamma=1., init_step=None,
+                cooling_step=0.9, adaptive_cooling=True, epsilon=1e-1,
+                max_iter=0, pos=None, multilevel=None, coarse_method="hybrid",
+                mivs_thres=0.9, ec_thres=0.75, weighted_coarse=False,
+                verbose=False):
+    r"""Obtain the SFDP spring-block layout of the graph.
 
     Parameters
     ----------
     g : :class:`~graph_tool.Graph`
         Graph to be used.
-    weight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+    vweight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        A vertex property map with the respective weights.
+    eweight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         An edge property map with the respective weights.
-    epsilon : float (optional, default: ``1e-6``)
-        Convergence criterion.
-    max_iter : int (optional, default: ``1000``)
+    pin : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        A vertex property map with with boolean values, which, if given,
+        specifies the vertices which will not have their positions modified.
+    C : float (optional, default: ``0.2``)
+        Relative strength of repulsive forces.
+    K : float (optional, default: ``None``)
+        Optimal edge length. If not provided, it will be taken to be the average
+        edge distance in the initial layout.
+    p : float (optional, default: ``2``)
+        Repulsive force exponent.
+    theta : float (optional, default: ``0.6``)
+        Quadtree opening parameter, a.k.a. Barnes–Hut opening criterion.
+    max_level : int (optional, default: ``11``)
+        Maximum quadtree level.
+    gamma : float (optional, default: ``1.0``)
+        Strength of the attractive force between connected components.
+    init_step : float (optional, default: ``None``)
+        Initial update step. If not provided, it will be chosen automatically.
+    cooling_step : float (optional, default: ``0.9``)
+        Cooling update step.
+    adaptive_cooling : bool (optional, default: ``True``)
+        Use an adaptive cooling scheme.
+    epsilon : float (optional, default: ``0.1``)
+        Relative convergence criterion.
+    max_iter : int (optional, default: ``0``)
         Maximum number of iterations. If this value is ``0``, it runs until
         convergence.
     pos : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
-        Vector vertex property maps where the coordinates should be stored.
+        Initial vertex layout. If not provided, it will be randomly chosen.
+    multilevel : bool (optional, default: ``None``)
+        Use a multilevel layout algorithm. If ``None`` is given, it will be
+        activated based on the size of the graph.
+    coarse_method : str (optional, default: ``"hybrid"``)
+        Coarsening method used if ``multilevel == True``. Allowed methods are
+        ``"hybrid"``, ``"mivs"`` and ``"ec"``.
+    mivs_thres : float (optional, default: ``0.9``)
+        If the relative size of the MIVS coarse graph is above this value, the
+        coarsening stops.
+    ec_thres : float (optional, default: ``0.75``)
+        If the relative size of the EC coarse graph is above this value, the
+        coarsening stops.
+    weighted_coarse : bool (optional, default: ``False``)
+        Use weighted coarse graphs.
+    verbose : bool (optional, default: ``False``)
+        Provide verbose information.
 
     Returns
     -------
@@ -451,30 +492,28 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, C=0.2, K=None, p=2.,
 
     Notes
     -----
-    This algorithm is defined in [geipel-self-organization-2007]_, and has
-    complexity :math:`O(V^2)`.
+    This algorithm is defined in [hu-multilevel-2005]_, and has
+    complexity :math:`O(V\log V)`.
 
     Examples
     --------
     >>> from numpy.random import seed, zipf
     >>> seed(42)
-    >>> g = gt.price_network(300)
-    >>> pos = gt.arf_layout(g, max_iter=0)
-    >>> gt.graph_draw(g, pos=pos, pin=True, output="graph-draw-arf.pdf")
+    >>> g = gt.price_network(3000)
+    >>> pos = gt.sfdp_layout(g)
+    >>> gt.graph_draw(g, pos=pos, output="graph-draw-sfdp.pdf")
     <...>
 
-    .. figure:: graph-draw-arf.*
+    .. figure:: graph-draw-sfdp.*
         :align: center
 
-        ARF layout of a Price network.
+        SFDP layout of a Price network.
 
     References
     ----------
-    .. [geipel-self-organization-2007] Markus M. Geipel, "Self-Organization
-       applied to Dynamic Network Layout", International Journal of Modern
-       Physics C vol. 18, no. 10 (2007), pp. 1537-1549,
-       :doi:`10.1142/S0129183107011558`, :arxiv:`0704.1748v5`
-    .. _arf: http://www.sg.ethz.ch/research/graphlayout
+    .. [hu-multilevel-2005] Yifan Hu, "Efficient and High Quality Force-Directed
+       Graph", Mathematica Journal, vol. 10, Issue 1, pp. 37-71, (2005)
+       http://www.mathematica-journal.com/issue/v10i1/graph_draw.html
     """
 
     if pos is None:
@@ -496,10 +535,14 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, C=0.2, K=None, p=2.,
         multilevel = g.num_vertices() > 1000
 
     if multilevel:
+        if eweight is not None or vweight is not None:
+            weighted_coarse = True
         cgs = coarse_graphs(g, method=coarse_method,
                             mivs_thres=mivs_thres,
                             ec_thres=ec_thres,
                             weighted_coarse=weighted_coarse,
+                            eweight=eweight,
+                            vweight=vweight,
                             verbose=verbose)
         count = 0
         for u, pos, K, vcount, ecount in cgs:
@@ -512,7 +555,7 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, C=0.2, K=None, p=2.,
                               vweight=vcount if weighted_coarse else None,
                               eweight=ecount if weighted_coarse else None,
                               C=C, K=K, p=p,
-                              theta=theta, epsilon=epsilon,
+                              theta=theta, gamma=gamma, epsilon=epsilon,
                               max_iter=max_iter,
                               cooling_step=cooling_step,
                               adaptive_cooling=False,
@@ -532,11 +575,13 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, C=0.2, K=None, p=2.,
         return pos
     if g.num_vertices() <= 50:
         max_level = 0
+    groups = label_components(g)[0]
     libgraph_tool_layout.sfdp_layout(g._Graph__graph, _prop("v", g, pos),
                                      _prop("v", g, vweight),
                                      _prop("e", g, eweight),
-                                     _prop("v", g, pin), (C, K, p), theta,
-                                     init_step, cooling_step, max_level,
+                                     _prop("v", g, pin),
+                                     (C, K, p, gamma, _prop("v", g, groups)),
+                                     theta, init_step, cooling_step, max_level,
                                      epsilon, max_iter, not adaptive_cooling,
                                      verbose)
     return pos

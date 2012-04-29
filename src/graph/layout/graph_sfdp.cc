@@ -49,14 +49,22 @@ void sfdp_layout(GraphInterface& g, boost::any pos, boost::any vweight,
     typedef mpl::push_back<edge_scalar_properties, eweight_map_t>::type
         edge_props_t;
 
+    typedef typename property_map_type::apply<int32_t,
+                                              GraphInterface::vertex_index_map_t>::type
+        group_map_t;
+
     double C = python::extract<double>(spring_parms[0]);
     double K = python::extract<double>(spring_parms[1]);
     double p = python::extract<double>(spring_parms[2]);
+    double gamma = python::extract<double>(spring_parms[3]);
+    group_map_t groups =
+        any_cast<group_map_t>(python::extract<any>(spring_parms[4]));
 
     if(vweight.empty())
         vweight = vweight_map_t(1);
     if(eweight.empty())
         eweight = eweight_map_t(1);
+
 
     typedef ConstantPropertyMap<bool,GraphInterface::vertex_t> pin_map_t;
     typedef mpl::vector<typename property_map_type::apply
@@ -69,10 +77,10 @@ void sfdp_layout(GraphInterface& g, boost::any pos, boost::any vweight,
         pin = pin_map_t(false);
     run_action<graph_tool::detail::never_directed>()
         (g,
-         bind<void>(get_sfdp_layout(C, K, p, theta, init_step,
+         bind<void>(get_sfdp_layout(C, K, p, theta, gamma, init_step,
                                     step_schedule, max_level, epsilon,
                                     max_iter, adaptive),
-                    _1, g.GetVertexIndex(), _2, _3, _4, _5, verbose),
+                    _1, g.GetVertexIndex(), _2, _3, _4, _5, groups, verbose),
          vertex_floating_vector_properties(), vertex_props_t(), edge_props_t(),
          pin_props_t())(pos, vweight, eweight, pin);
 }
