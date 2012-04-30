@@ -52,7 +52,7 @@ try:
     libname = ctypes.util.find_library("gvc")
     if libname is None:
         raise OSError()
-    libgv = ctypes.CDLL(libname)
+    libgv = ctypes.CDLL(libname, ctypes.RTLD_GLOBAL)
     # properly set the return types of certain functions
     ptype = ctypes.POINTER(ctypes.c_char)
     libgv.gvContext.restype = ptype
