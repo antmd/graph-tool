@@ -452,38 +452,14 @@ The following is what should happen when the program is run.
     vertex: 0 in-degree: 210 out-degree: 0 age: 0
     Nowhere else to go... We found the main hub!
 
-This is the degree distribution, with 100000 nodes. If you want to see a broader
-power law, try to increase the number of vertices to something like :math:`10^6`
-or :math:`10^7`.
+Below is the degree distribution, with 100000 nodes. If you want to see
+a broader power law, try to increase the number of vertices to something
+like :math:`10^6` or :math:`10^7`.
 
-.. plot::
-   :context:
+.. figure:: price-deg-dist.*
    :align: center
 
-   #from pyenv import *
-   from pylab import *
-   import graph_tool.all as gt
-
-   g = gt.load_graph("price.xml.gz")
-
-   in_hist = gt.vertex_hist(g, "in")
-
-   figure()
-   y = in_hist[0]
-   err = sqrt(in_hist[0])
-   err[err >= y] = y[err >= y] - 1e-2
-   errorbar(in_hist[1][:-1], in_hist[0], fmt="o", yerr=err,
-            label="in")
-   gca().set_yscale("log")
-   gca().set_xscale("log")
-   gca().set_ylim(1e-1, 1e5)
-   gca().set_xlim(0.8, 1e3)
-   subplots_adjust(left=0.2, bottom=0.2)
-   xlabel("$k_{in}$")
-   ylabel("$NP(k_{in})$")
-   Title ("In-degree distribution of a price network with $10^5$ nodes.")
-   tight_layout()
-   show()
+   In-degree distribution of a price network with :math:`10^5` nodes.
 
 
 We can draw the graph to see some other features of its topology. For that we

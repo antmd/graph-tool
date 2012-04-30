@@ -189,21 +189,20 @@ def subgraph_isomorphism(sub, g, max_n=0, random=False):
     >>> g.set_vertex_filter(None)
     >>> g.set_edge_filter(None)
     >>> ewidth = g.copy_property(emask, value_type="double")
-    >>> ewidth.a *= 1.5
     >>> ewidth.a += 0.5
-    >>> gt.graph_draw(g, vertex_fill_color=vmask, edge_color=emask, edge_pen_width=ewidth,
+    >>> ewidth.a *= 2
+    >>> gt.graph_draw(g, vertex_fill_color=vmask, edge_color=emask,
+    ...               edge_pen_width=ewidth, output_size=(200, 200),
     ...               output="subgraph-iso-embed.pdf")
     <...>
-    >>> gt.graph_draw(sub, output="subgraph-iso.pdf")
+    >>> gt.graph_draw(sub, output_size=(200, 200), output="subgraph-iso.pdf")
     <...>
 
-    .. figure:: subgraph-iso.*
+    .. image:: subgraph-iso.*
+    .. image:: subgraph-iso-embed.*
 
-       Subgraph searched
 
-    .. figure:: subgraph-iso-embed.*
-
-       One isomorphic subgraph found in main graph.
+    **Left:** Subgraph searched, **Right:** One isomorphic subgraph found in main graph.
 
     Notes
     -----
@@ -1055,7 +1054,7 @@ def is_planar(g, embedding=False, kuratowski=False):
     >>> print p
     False
     >>> g.set_edge_filter(kur, True)
-    >>> gt.graph_draw(g, output="kuratowski.pdf")
+    >>> gt.graph_draw(g, output_size=(300, 300), output="kuratowski.pdf")
     <...>
 
     .. figure:: kuratowski.*
@@ -1104,7 +1103,7 @@ def is_planar(g, embedding=False, kuratowski=False):
 
 def max_cardinality_matching(g, heuristic=False, weight=None, minimize=True,
                              match=None):
-    r"""Find the maximum cardinality matching in the graph.
+    r"""Find a maximum cardinality matching in the graph.
 
     Parameters
     ----------
@@ -1136,17 +1135,24 @@ def max_cardinality_matching(g, heuristic=False, weight=None, minimize=True,
     share a common vertex. A *maximum cardinality matching* has maximum size
     over all matchings in the graph.
 
+    This algorithm runs in time :math:`O(EV\times\alpha(E,V))`, where
+    :math:`\alpha(m,n)` is a slow growing function that is at most 4 for any
+    feasible input. If `heuristic == True`, the algorithm runs in time :math:`O(V + E)`.
+
     For a more detailed description, see [boost-max-matching]_.
 
     Examples
     --------
-    >>> from numpy.random import seed, random
+    >>> from numpy.random import seed
     >>> seed(43)
-    >>> g = gt.random_graph(100, lambda: (2,2))
+    >>> g = gt.GraphView(gt.price_network(300), directed=False)
     >>> res = gt.max_cardinality_matching(g)
     >>> print res[1]
     True
-    >>> gt.graph_draw(g, edge_color=res[0], output="max_card_match.pdf")
+    >>> w = res[0].copy("double")
+    >>> w.a = 2 * w.a + 2
+    >>> gt.graph_draw(g, edge_color=res[0], edge_pen_width=w, vertex_fill_color="grey",
+    ...               output="max_card_match.pdf")
     <...>
 
     .. figure:: max_card_match.*
@@ -1183,7 +1189,7 @@ def max_cardinality_matching(g, heuristic=False, weight=None, minimize=True,
 
 
 def max_independent_vertex_set(g, high_deg=False, mivs=None):
-    r"""Find the maximum cardinality matching in the graph.
+    r"""Find a maximal independent vertex set in the graph.
 
     Parameters
     ----------
@@ -1197,42 +1203,38 @@ def max_independent_vertex_set(g, high_deg=False, mivs=None):
 
     Returns
     -------
-    match : :class:`~graph_tool.PropertyMap`
-        Boolean edge property map where the matching is specified.
-    is_maximal : bool
-        True if the matching is indeed maximal, or False otherwise. This is only
-        returned if ``heuristic == False``.
+    mivs : :class:`~graph_tool.PropertyMap`
+        Boolean vertex property map where the set is specified.
 
     Notes
     -----
-    A *matching* is a subset of the edges of a graph such that no two edges
-    share a common vertex. A *maximum cardinality matching* has maximum size
-    over all matchings in the graph.
+    A maximal independent vertex set is an independent set such that adding any
+    other vertex to the set forces the set to contain an edge between two
+    vertices of the set.
 
-    For a more detailed description, see [boost-max-matching]_.
+    This implements the algorithm described in [mivs-luby]_, which runs in time
+    :math:`O(V + E)`.
 
     Examples
     --------
-    >>> from numpy.random import seed, random
+    >>> from numpy.random import seed
     >>> seed(43)
-    >>> g = gt.random_graph(100, lambda: (2,2))
-    >>> res = gt.max_cardinality_matching(g)
-    >>> print res[1]
-    True
-    >>> gt.graph_draw(g, edge_color=res[0], output="max_card_match.pdf")
+    >>> g = gt.GraphView(gt.price_network(300), directed=False)
+    >>> res = gt.max_independent_vertex_set(g)
+    >>> gt.graph_draw(g, vertex_fill_color=res, output="mivs.pdf")
     <...>
 
-    .. figure:: max_card_match.*
+    .. figure:: mivs.*
         :align: center
 
-        Edges belonging to the matching are in red.
+        Vertices belonging to the set are in red.
 
     References
     ----------
-    .. [boost-max-matching] http://www.boost.org/libs/graph/doc/maximum_matching.html
-    .. [matching-heuristic] B. Hendrickson and R. Leland. "A Multilevel Algorithm
-       for Partitioning Graphs." In S. Karin, editor, Proc. Supercomputing ’95,
-       San Diego. ACM Press, New York, 1995, :doi:`10.1145/224170.224228`
+    .. [mivs-wikipedia] http://en.wikipedia.org/wiki/Independent_set_%28graph_theory%29
+    .. [mivs-luby] Luby, M., "A simple parallel algorithm for the maximal independent set problem",
+       Proc. 17th Symposium on Theory of Computing, Association for Computing Machinery, pp. 1–10, (1985)
+       :doi:`10.1145/22145.22146`.
 
     """
     if mivs is None:

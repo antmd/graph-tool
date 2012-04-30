@@ -638,20 +638,20 @@ def dijkstra_search(g, source, weight, visitor=DijkstraVisitor(), dist_map=None,
         Source vertex.
     weight : :class:`~graph_tool.PropertyMap`
         Edge property map with weight values.
-    visitor : :class:`~graph_tool.search.DijkstraVisitor` (optional, default: DijkstraVisitor())
+    visitor : :class:`~graph_tool.search.DijkstraVisitor` (optional, default: ``DijkstraVisitor()``)
         A visitor object that is invoked at the event points inside the
         algorithm. This should be a subclass of
         :class:`~graph_tool.search.DijkstraVisitor`.
-    dist_map : :class:`~graph_tool.PropertyMap` (optional, default: None)
+    dist_map : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         A vertex property map where the distances from the source will be
         stored.
-    pred_map : :class:`~graph_tool.PropertyMap` (optional, default: None)
+    pred_map : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         A vertex property map where the predecessor map will be
         stored (must have value type "int").
-    combine : binary function (optional, default: lambda a, b: a + b)
+    combine : binary function (optional, default: ``lambda a, b: a + b``)
         This function is used to combine distances to compute the distance of a
         path.
-    compare : binary function (optional, default: lambda a, b: a < b)
+    compare : binary function (optional, default: ``lambda a, b: a < b``)
         This function is use to compare distances to determine which vertex is
         closer to the source vertex.
 
@@ -905,20 +905,20 @@ def bellman_ford_search(g, source, weight, visitor=BellmanFordVisitor(),
         Source vertex.
     weight : :class:`~graph_tool.PropertyMap`
         Edge property map with weight values.
-    visitor : :class:`~graph_tool.search.DijkstraVisitor` (optional, default: DijkstraVisitor())
+    visitor : :class:`~graph_tool.search.DijkstraVisitor` (optional, default: ``DijkstraVisitor()``)
         A visitor object that is invoked at the event points inside the
         algorithm. This should be a subclass of
         :class:`~graph_tool.search.DijkstraVisitor`.
-    dist_map : :class:`~graph_tool.PropertyMap` (optional, default: None)
+    dist_map : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         A vertex property map where the distances from the source will be
         stored.
-    pred_map : :class:`~graph_tool.PropertyMap` (optional, default: None)
+    pred_map : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         A vertex property map where the predecessor map will be
         stored (must have value type "int").
-    combine : binary function (optional, default: lambda a, b: a + b)
+    combine : binary function (optional, default: ``lambda a, b: a + b``)
         This function is used to combine distances to compute the distance of a
         path.
-    compare : binary function (optional, default: lambda a, b: a < b)
+    compare : binary function (optional, default: ``lambda a, b: a < b``)
         This function is use to compare distances to determine which vertex is
         closer to the source vertex.
 
@@ -926,7 +926,7 @@ def bellman_ford_search(g, source, weight, visitor=BellmanFordVisitor(),
     Returns
     -------
     minimized : bool
-        True if all edges were successfully minimize, or False if there is a
+        True if all edges were successfully minimized, or False if there is a
         negative loop in the graph.
     dist_map : :class:`~graph_tool.PropertyMap`
         A vertex property map with the computed distances from the source.
@@ -1178,7 +1178,7 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
         Source vertex.
     weight : :class:`~graph_tool.PropertyMap`
         Edge property map with weight values.
-    visitor : :class:`~graph_tool.search.AStarVisitor` (optional, default: AStarVisitor())
+    visitor : :class:`~graph_tool.search.AStarVisitor` (optional, default: ``AStarVisitor()``)
         A visitor object that is invoked at the event points inside the
         algorithm. This should be a subclass of
         :class:`~graph_tool.search.AStarVisitor`.
@@ -1186,13 +1186,13 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
         The heuristic function that guides the search. It should take a single
         argument which is a :class:`~graph_tool.Vertex`, and output an estimated
         distance from the source vertex.
-    dist_map : :class:`~graph_tool.PropertyMap` (optional, default: None)
+    dist_map : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         A vertex property map where the distances from the source will be
         stored.
-    pred_map : :class:`~graph_tool.PropertyMap` (optional, default: None)
+    pred_map : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         A vertex property map where the predecessor map will be
         stored (must have value type "int").
-    cost_map : :class:`~graph_tool.PropertyMap` (optional, default: None)
+    cost_map : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         A vertex property map where the vertex costs will be stored. It must
         have the same value type as ``dist_map``. This parameter is only used if
         ``implicit`` is True.
@@ -1202,7 +1202,7 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
     compare : binary function (optional, default: ``lambda a, b: a < b``)
         This function is use to compare distances to determine which vertex is
         closer to the source vertex.
-    implicit : bool (optional, default: False)
+    implicit : bool (optional, default: ``False``)
         If true, the underlying graph will be assumed to be implicit
         (i.e. constructed during the search).
 
