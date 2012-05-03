@@ -38,7 +38,7 @@
 #include <cairommconfig.h>
 #include <cairomm/context.h>
 #include <cairomm/surface.h>
-#include "pycairo/pycairo.h"
+#include <pycairo/pycairo.h>
 
 #include <boost/mpl/map/map50.hpp>
 

@@ -255,6 +255,14 @@ if test "$USING_CAIRO" = "yes"; then
    AC_SUBST(CAIROMM_CFLAGS)
    AC_SUBST(CAIROMM_LIBS)
    AC_PYTHON_MODULE(cairo)
+   [OLD_CXXFLAGS="${CXXFLAGS}"]
+   [OLD_CPPFLAGS="${CPPFLAGS}"]
+   [CXXFLAGS="${CXXFLAGS} ${CAIROMM_CFLAGS}"]
+   [CPPFLAGS="${CPPFLAGS} ${CAIROMM_CFLAGS}"]
+   AC_CHECK_HEADER([pycairo/pycairo.h], [],	
+        	   [AC_MSG_ERROR([pycairo headers not found])])
+   [CXXFLAGS="${OLD_CXXFLAGS}"]
+   [CPPFLAGS="${OLD_CPPFLAGS}"]
 fi
 
 dnl Checks for typedefs, structures, and compiler characteristics.
