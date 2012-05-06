@@ -39,7 +39,8 @@ for d in [p + "/graph_tool" for p in sys_path]:
         break
 
 inc_prefix = prefix + "/include"
-cxxflags = libgraph_tool_core.mod_info().cxxflags + " -I%s" % inc_prefix
+cxxflags = libgraph_tool_core.mod_info().cxxflags + " -I%s" % inc_prefix + \
+    " -I%s" % inc_prefix + "/boost-workaround"
 
 # this is the code template which defines the action function object
 support_template = open(prefix + "/run_action/run_action_support.hh").read()
@@ -47,8 +48,14 @@ code_template = open(prefix + "/run_action/run_action_template.hh").read()
 
 # hash all the headers to force recompilation if code changes
 headers_hash = ""
-for inc in glob.glob(inc_prefix + "/*"):
-    headers_hash = hashlib.md5(headers_hash + open(inc).read()).hexdigest()
+incs = glob.glob(inc_prefix + "/*")
+while len(incs) > 0:
+    inc = incs[0]
+    del incs[0]
+    if os.path.isdir(inc):
+        incs += glob.glob(inc + "/*")
+    else:
+        headers_hash = hashlib.md5(headers_hash + open(inc).read()).hexdigest()
 
 # property map types
 props = """

@@ -18,16 +18,6 @@ libgraph_tool_coredir = $(pythondir)/graph_tool
 libgraph_tool_core_LTLIBRARIES = libgraph_tool_core.la
 
 libgraph_tool_core_la_SOURCES = \
-    ../boost-workaround/boost/graph/betweenness_centrality.hpp \
-    ../boost-workaround/boost/graph/detail/read_graphviz_new.hpp \
-    ../boost-workaround/boost/graph/graphml.hpp \
-    ../boost-workaround/boost/graph/graphviz.hpp \
-    ../boost-workaround/boost/graph/isomorphism.hpp \
-    ../boost-workaround/boost/graph/kamada_kawai_spring_layout.hpp \
-    ../boost-workaround/boost/graph/overloading.hpp \
-    ../boost-workaround/boost/graph/push_relabel_max_flow.hpp \
-    ../boost-workaround/boost/graph/copy_alt.hpp \
-    ../boost-workaround/boost/graph/reverse_graph_alt.hpp \
     graph.cc \
     graph_bind.cc \
     graph_copy.cc \
@@ -63,6 +53,19 @@ libgraph_tool_core_la_include_HEADERS = \
     numpy_bind.hh \
     str_repr.hh \
     shared_map.hh
+
+libgraph_tool_core_la_workarounddir = $(pythondir)/graph_tool/include/boost-workaround/boost/graph/
+libgraph_tool_core_la_workaround_HEADERS = \
+    ../boost-workaround/boost/graph/betweenness_centrality.hpp \
+    ../boost-workaround/boost/graph/detail/read_graphviz_new.hpp \
+    ../boost-workaround/boost/graph/graphml.hpp \
+    ../boost-workaround/boost/graph/graphviz.hpp \
+    ../boost-workaround/boost/graph/isomorphism.hpp \
+    ../boost-workaround/boost/graph/kamada_kawai_spring_layout.hpp \
+    ../boost-workaround/boost/graph/overloading.hpp \
+    ../boost-workaround/boost/graph/push_relabel_max_flow.hpp \
+    ../boost-workaround/boost/graph/copy_alt.hpp \
+    ../boost-workaround/boost/graph/reverse_graph_alt.hpp
 
 libgraph_tool_core_la_LIBADD = $(MOD_LIBADD)
 libgraph_tool_core_la_LDFLAGS = $(MOD_LDFLAGS)
