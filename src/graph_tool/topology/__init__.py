@@ -45,6 +45,7 @@ Summary
    label_biconnected_components
    label_largest_component
    is_planar
+   edge_reciprocity
 
 Contents
 ++++++++
@@ -63,7 +64,7 @@ __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
            "min_spanning_tree", "dominator_tree", "topological_sort",
            "transitive_closure", "label_components", "label_largest_component",
            "label_biconnected_components", "shortest_distance", "shortest_path",
-           "pseudo_diameter", "is_planar", "similarity"]
+           "pseudo_diameter", "is_planar", "similarity", "edge_reciprocity"]
 
 
 def similarity(g1, g2, label1=None, label2=None, norm=True):
@@ -1249,3 +1250,56 @@ def max_independent_vertex_set(g, high_deg=False, mivs=None):
                            seed)
     mivs = g.own_property(mivs)
     return mivs
+
+
+def edge_reciprocity(g):
+    r"""Calculate the edge reciprocity of the graph.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used
+        edges.
+
+    Returns
+    -------
+    reciprocity : float
+        The reciprocity value.
+
+    Notes
+    -----
+
+    The edge [reciprocity]_ is defined as :math:`E^\leftrightarrow/E`, where
+    :math:`E^\leftrightarrow` and :math:`E` are the number of bidirectional and
+    all edges in the graph, respectively.
+
+    The algorithm runs with complexity :math:`O(E + V)`.
+
+    Examples
+    --------
+
+    >>> g = gt.Graph()
+    >>> g.add_vertex(2)
+    [<Vertex object with index '0' at 0x1254dd0>,
+     <Vertex object with index '1' at 0x1254bd0>]
+    >>> g.add_edge(g.vertex(0), g.vertex(1))
+    <Edge object with source '0' and target '1' at 0x33bc710>
+    >>> gt.edge_reciprocity(g)
+    0.0
+    >>> g.add_edge(g.vertex(1), g.vertex(0))
+    <Edge object with source '1' and target '0' at 0x33bc7a0>
+    >>> gt.edge_reciprocity(g)
+    1.0
+
+    References
+    ----------
+    .. [reciprocity] S. Wasserman and K. Faust, "Social Network Analysis".
+       (Cambridge University Press, Cambridge, 1994)
+    .. [lopez_reciprocity_2007] Gorka Zamora-López, Vinko Zlatić, Changsong Zhou, Hrvoje Štefančić, and Jürgen Kurths
+       "Reciprocity of networks with degree correlations and arbitrary degree sequences", Phys. Rev. E 77, 016106 (2008)
+       :doi:`10.1103/PhysRevE.77.016106`, :arxiv:`0706.3372`
+
+    """
+
+    r = libgraph_tool_topology.reciprocity(g._Graph__graph)
+    return r

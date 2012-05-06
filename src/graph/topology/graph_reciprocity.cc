@@ -28,11 +28,9 @@ using namespace graph_tool;
 struct get_reciprocity
 {
     template <class Graph>
-    void operator()(const Graph* gp, double& reciprocity) const
+    void operator()(const Graph& g, double& reciprocity) const
     {
-        const Graph& g = *gp;
-        size_t L = 0;
-        double Lbd = 0.0;
+        size_t L = 0, Lbd = 0;
 
         int i, NV = num_vertices(g);
         #pragma omp parallel for default(shared) private(i) reduction(+:L,Lbd) \
@@ -47,44 +45,28 @@ struct get_reciprocity
             tie(e_begin,e_end) = out_edges(v,g);
             for(e = e_begin; e != e_end; ++e)
             {
-                typename graph_traits<Graph>::vertex_descriptor s,t;
-                s = v;
-                t = target(*e,g);
+                typename graph_traits<Graph>::vertex_descriptor t;
+                t = target(*e, g);
 
-                size_t o = 0;
                 typename graph_traits<Graph>::adjacency_iterator a, a_end;
-                for (tie(a,a_end) = adjacent_vertices(s, g); a != a_end; ++a)
-                    if (*a == t)
-                        o++;
-
-                size_t j = 0;
                 for (tie(a, a_end) = adjacent_vertices(t, g); a != a_end; ++a)
-                    if (*a == s)
-                        j++;
-
-                Lbd += min(j/double(o),1.0);
+                    if (*a == v)
+                    {
+                        Lbd += 1;
+                        break;
+                    }
                 L++;
             }
         }
 
-        if(is_convertible<typename graph_traits<Graph>::directed_category,
-                          undirected_tag>::value)
-        {
-            L /= 2;
-            Lbd /= 2;
-        }
-
-        size_t N = HardNumVertices()(&g);
-        double a = L/double(N*(N-1));
-
-        reciprocity = (Lbd/L - a)/(1-a);
+        reciprocity = Lbd / double(L);
     }
 };
 
-double GraphInterface::GetReciprocity() const
+double reciprocity(GraphInterface& gi)
 {
     double reciprocity;
-    run_action<>()(*this, bind<void>(get_reciprocity(), _1,
-                                     var(reciprocity)))();
+    run_action<>()(gi, bind<void>(get_reciprocity(), _1,
+                                  ref(reciprocity)))();
     return reciprocity;
 }
