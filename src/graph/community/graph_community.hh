@@ -438,7 +438,7 @@ public:
 
     double operator()(size_t k, size_t s) const
     {
-        const typeof(_NNks[k])& nnks = _NNks.find(k)->second;
+        const unordered_map<size_t,double>& nnks = _NNks.find(k)->second;
         const typeof(nnks.begin()) iter = nnks.find(s);
         if (iter != nnks.end())
             return iter->second;

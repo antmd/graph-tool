@@ -20,6 +20,7 @@
 
 #include <vector>
 #include <utility>
+#include <algorithm>
 #include <boost/array.hpp>
 #define BOOST_DISABLE_ASSERTS
 #include <boost/multi_array.hpp>
@@ -118,7 +119,7 @@ public:
                         v[i] >= _data_range[i].second)
                         return; // out of bounds
                 }
-                
+
                 bin[i] = (v[i] - _data_range[i].first) / delta;
                 if (bin[i] >= _counts.shape()[i]) // modify shape
                 {
@@ -194,8 +195,8 @@ public:
 
                 typename Histogram::bin_t shape;
                 for (size_t i = 0; i <  this->_counts.num_dimensions(); ++i)
-                    shape[i] = max(this->_counts.shape()[i],
-                                   _sum->GetArray().shape()[i]);
+                    shape[i] = std::max(this->_counts.shape()[i],
+                                        _sum->GetArray().shape()[i]);
                 _sum->GetArray().resize(shape);
                 for (size_t i = 0; i < this->_counts.num_elements(); ++i)
                 {

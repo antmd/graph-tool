@@ -74,9 +74,6 @@ public:
                                 const IndexMap& index = IndexMap())
         : store(new std::vector<T>(initial_size)), index(index) {}
 
-    checked_vector_property_map(const unchecked_t& map)
-        : checked_vector_property_map(map.get_checked()) {}
-
     typename std::vector<T>::iterator storage_begin()
     {
         return store->begin();

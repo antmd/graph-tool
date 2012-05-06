@@ -98,9 +98,9 @@ struct get_sampled_distance_histogram
         for (i = 0; i < int(n_samples); ++i)
         {
             vertex_t v;
+            tr1::uniform_int<size_t> randint(0, sources.size()-1);
             {
                 #pragma omp critical
-                tr1::uniform_int<size_t> randint(0, sources.size()-1);
                 size_t i = randint(rng);
                 v = sources[i];
                 swap(sources[i], sources.back());
