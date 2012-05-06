@@ -52,7 +52,7 @@ nobase_dist_graphtooldoc_DATA = \
 	doc/gt_theme/static/gt_style.css \
 	doc/gt_theme/theme.conf 
 
-EXTRA_DIST = $(graphtooldoc_DATA)
+EXTRA_DIST = $(graphtooldoc_DATA) autogen.sh
 
 # Copy all the spec files. Of cource, only one is actually used.
 dist-hook:
