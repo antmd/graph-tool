@@ -19,6 +19,7 @@
 #define STR_REPR_HH
 
 #include <iostream>
+#include <clocale>
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
 
@@ -51,13 +52,64 @@ uint8_t lexical_cast<uint8_t,string>(const string& val)
 }
 
 // float, double and long double should be printed in hexadecimal format to
-// preserve internal representation
+// preserve internal representation. (we also need to make sure the
+// representation is locale-independent).
+
+template <class Val>
+int print_float(char*& str, Val val)
+{
+    char* locale = setlocale(LC_NUMERIC, NULL);
+    setlocale(LC_NUMERIC, "C");
+    int retval = print_float_dispatch(str, val);
+    setlocale(LC_NUMERIC, locale);
+    return retval;
+}
+
+int print_float_dispatch(char*& str, float val)
+{
+    return asprintf(&str, "%a", val);
+}
+
+int print_float_dispatch(char*& str, double val)
+{
+    return asprintf(&str, "%la", val);
+}
+
+int print_float_dispatch(char*& str, long double val)
+{
+    return asprintf(&str, "%La", val);
+}
+
+template <class Val>
+int scan_float(const char* str, Val& val)
+{
+    char* locale = setlocale(LC_NUMERIC, NULL);
+    setlocale(LC_NUMERIC, "C");
+    int retval = scan_float_dispatch(str, val);
+    setlocale(LC_NUMERIC, locale);
+    return retval;
+}
+
+int scan_float_dispatch(const char* str, float& val)
+{
+    return sscanf(str, "%a", &val);
+}
+
+int scan_float_dispatch(const char* str, double& val)
+{
+    return sscanf(str, "%la", &val);
+}
+
+int scan_float_dispatch(const char* str, long double& val)
+{
+    return sscanf(str, "%La", &val);
+}
 
 template <>
 string lexical_cast<string,float>(const float& val)
 {
     char* str = 0;
-    int retval = asprintf(&str, "%a", val);
+    int retval = print_float(str, val);
     if (retval == -1)
         throw bad_lexical_cast();
     std::string ret = str;
@@ -69,7 +121,7 @@ template <>
 float lexical_cast<float,string>(const string& val)
 {
     float ret;
-    int nc = sscanf(val.c_str(), "%a", &ret);
+    int nc = scan_float(val.c_str(), ret);
     if (nc != 1)
         throw bad_lexical_cast();
     return ret;
@@ -79,7 +131,7 @@ template <>
 string lexical_cast<string,double>(const double& val)
 {
     char* str = 0;
-    int retval = asprintf(&str, "%la", val);
+    int retval = print_float(str, val);
     if (retval == -1)
         throw bad_lexical_cast();
     std::string ret = str;
@@ -91,7 +143,7 @@ template <>
 double lexical_cast<double,string>(const string& val)
 {
     double ret;
-    int nc = sscanf(val.c_str(), "%la", &ret);
+    int nc = scan_float(val.c_str(), ret);
     if (nc != 1)
         throw bad_lexical_cast();
     return ret;
@@ -101,7 +153,7 @@ template <>
 string lexical_cast<string,long double>(const long double& val)
 {
     char* str = 0;
-    int retval = asprintf(&str, "%La", val);
+    int retval = print_float(str, val);
     if (retval == -1)
         throw bad_lexical_cast();
     std::string ret = str;
@@ -113,7 +165,7 @@ template <>
 long double lexical_cast<long double,string>(const string& val)
 {
     long double ret;
-    int nc = sscanf(val.c_str(), "%La", &ret);
+    int nc = scan_float(val.c_str(), ret);
     if (nc != 1)
         throw bad_lexical_cast();
     return ret;
