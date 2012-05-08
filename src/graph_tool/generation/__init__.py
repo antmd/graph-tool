@@ -307,7 +307,7 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
 
     The blockmodel can be generated as follows.
 
-    >>> g, bm = gt.random_graph(1000, lambda: poisson(10), directed=False,
+    >>> g, bm = gt.random_graph(5000, lambda: poisson(10), directed=False,
     ...                         blockmodel=lambda: randint(10), deg_corr=corr,
     ...                         mix_time=500)
     >>> gt.graph_draw(g, vertex_fill_color=bm, output="blockmodel.pdf")
@@ -978,15 +978,15 @@ def lattice(shape, periodic=False):
     Examples
     --------
     >>> g = gt.lattice([10,10])
-    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, cooling_step=0.99, epsilon=1e-3),
+    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, cooling_step=0.95, epsilon=1e-2),
     ...               output_size=(300,300), output="lattice.pdf")
     <...>
     >>> g = gt.lattice([10,20], periodic=True)
-    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, cooling_step=0.99, epsilon=1e-3, multilevel=True),
+    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, cooling_step=0.95, epsilon=1e-2, multilevel=True),
     ...               output_size=(300,300), output="lattice_periodic.pdf")
     <...>
     >>> g = gt.lattice([10,10,10])
-    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, cooling_step=0.99, epsilon=1e-3, multilevel=True),
+    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, cooling_step=0.95, epsilon=1e-2, multilevel=True),
     ...               output_size=(300,300), output="lattice_3d.pdf")
     <...>
 
@@ -1166,12 +1166,12 @@ def price_network(N, m=1, c=None, gamma=1, directed=True, seed_graph=None):
     Examples
     --------
     >>> g = gt.price_network(100000)
-    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, epsilon=1e-3, cooling_step=0.99),
+    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, epsilon=1e-2, cooling_step=0.95),
     ...               vertex_fill_color=g.vertex_index, vertex_size=2,
     ...               edge_pen_width=1, output="price-network.png")
     <...>
     >>> g = gt.price_network(100000, c=0.1)
-    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, epsilon=1e-3, cooling_step=0.99),
+    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, epsilon=1e-2, cooling_step=0.95),
     ...               vertex_fill_color=g.vertex_index, vertex_size=2,
     ...               edge_pen_width=1, output="price-network-broader.png")
     <...>
