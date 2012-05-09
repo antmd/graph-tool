@@ -50,7 +50,10 @@ nobase_dist_graphtooldoc_DATA = \
 	doc/sphinxext/tests/test_docscrape.py \
 	doc/gt_theme/static/flasky.css \
 	doc/gt_theme/static/gt_style.css \
-	doc/gt_theme/theme.conf 
+	doc/gt_theme/theme.conf \
+	doc/.static/graph-icon.png \
+	doc/.static/graph-icon.ico
+
 
 EXTRA_DIST = $(graphtooldoc_DATA) autogen.sh
 

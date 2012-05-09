@@ -68,3 +68,5 @@ graph_tool_spectraldir = $(MOD_DIR)/spectral
 graph_tool_search_PYTHON = \
     search/__init__.py
 graph_tool_searchdir = $(MOD_DIR)/search
+
+EXTRA_DIST = $(graph_tool_draw_DATA)
