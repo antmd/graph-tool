@@ -1059,7 +1059,7 @@ void cairo_draw(GraphInterface& gi,
                 python::object ocr)
 {
     attrs_t vattrs, eattrs, vdefaults, edefaults;
-    typedef typename graph_traits<GraphInterface::multigraph_t>::vertex_descriptor vertex_t;
+    typedef graph_traits<GraphInterface::multigraph_t>::vertex_descriptor vertex_t;
 
     populate_attrs<vertex_t, vertex_properties>(ovattrs, vattrs);
     populate_defaults(ovdefaults, vdefaults);
@@ -1068,9 +1068,9 @@ void cairo_draw(GraphInterface& gi,
         (gi, bind<void>(populate_edge_attrs(), _1, oeattrs,
                         ref(eattrs), oedefaults, ref(edefaults)))();
 
-    typedef typename mpl::push_back<vertex_scalar_properties, no_order>::type
+    typedef mpl::push_back<vertex_scalar_properties, no_order>::type
         vorder_t;
-    typedef typename mpl::push_back<edge_scalar_properties, no_order>::type
+    typedef mpl::push_back<edge_scalar_properties, no_order>::type
         eorder_t;
     if (vorder.empty())
         vorder = no_order();

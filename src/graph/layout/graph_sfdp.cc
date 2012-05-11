@@ -49,8 +49,8 @@ void sfdp_layout(GraphInterface& g, boost::any pos, boost::any vweight,
     typedef mpl::push_back<edge_scalar_properties, eweight_map_t>::type
         edge_props_t;
 
-    typedef typename property_map_type::apply<int32_t,
-                                              GraphInterface::vertex_index_map_t>::type
+    typedef property_map_type::apply<int32_t,
+                                     GraphInterface::vertex_index_map_t>::type
         group_map_t;
 
     double C = python::extract<double>(spring_parms[0]);
@@ -67,7 +67,7 @@ void sfdp_layout(GraphInterface& g, boost::any pos, boost::any vweight,
 
 
     typedef ConstantPropertyMap<bool,GraphInterface::vertex_t> pin_map_t;
-    typedef mpl::vector<typename property_map_type::apply
+    typedef mpl::vector<property_map_type::apply
                             <uint8_t,
                              GraphInterface::vertex_index_map_t>::type,
                         pin_map_t>::type
@@ -150,7 +150,7 @@ void propagate_pos(GraphInterface& gi, GraphInterface& cgi, boost::any vmap,
 {
     rng_t rng(static_cast<rng_t::result_type>(seed));
 
-    typedef mpl::vector<typename property_map_type::apply
+    typedef mpl::vector<property_map_type::apply
                             <int32_t,
                              GraphInterface::vertex_index_map_t>::type>::type
         vmaps_t;

@@ -109,9 +109,9 @@ void community_network(GraphInterface& gi, GraphInterface& cgi,
                        boost::any edge_count, boost::any vweight,
                        boost::any eweight, bool self_loops)
 {
-    typedef typename mpl::vector<vweight_map_t, voweight_map_t, no_vweight_map_t>::type
+    typedef mpl::vector<vweight_map_t, voweight_map_t, no_vweight_map_t>::type
         vweight_properties;
-    typedef typename mpl::vector<eweight_map_t, eoweight_map_t, no_eweight_map_t>::type
+    typedef mpl::vector<eweight_map_t, eoweight_map_t, no_eweight_map_t>::type
         eweight_properties;
 
     if (eweight.empty())
