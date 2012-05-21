@@ -44,6 +44,7 @@ graph_tool_communitydir = $(MOD_DIR)/community
 graph_tool_draw_PYTHON = \
     draw/__init__.py \
     draw/cairo_draw.py \
+    draw/gtk_draw.py \
     draw/graphviz_draw.py
 graph_tool_draw_DATA = \
     draw/graph-tool-logo.svg

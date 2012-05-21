@@ -71,7 +71,6 @@ from .. stats import label_parallel_edges
 import numpy.random
 from numpy import sqrt
 import sys
-import warnings
 
 from .. dl_import import dl_import
 dl_import("import libgraph_tool_layout")
@@ -79,8 +78,7 @@ dl_import("import libgraph_tool_layout")
 
 __all__ = ["graph_draw", "graphviz_draw", "fruchterman_reingold_layout",
            "arf_layout", "sfdp_layout", "random_layout",
-           "interactive_window", "cairo_draw", "GraphWidget",
-           "GraphWindow"]
+           "cairo_draw"]
 
 
 def random_layout(g, shape=None, pos=None, dim=2):
@@ -586,7 +584,13 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, C=0.2, K=None, p=2.,
                                      verbose)
     return pos
 
-from cairo_draw import graph_draw, GraphWidget, GraphWindow, \
-     interactive_window, cairo_draw
+from cairo_draw import graph_draw, cairo_draw
+
+try:
+    from cairo_draw import GraphWidget, GraphWindow, \
+        interactive_window
+    __all__ += ["interactive_window", "GraphWidget", "GraphWindow"]
+except ImportError:
+    pass
 
 from graphviz_draw import graphviz_draw
