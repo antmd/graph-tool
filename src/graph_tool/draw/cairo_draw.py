@@ -471,27 +471,31 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
     --------
     >>> from numpy import *
     >>> from numpy.random import seed, zipf
-    >>> seed(42)
-    >>> g = gt.random_graph(1000, lambda: min(zipf(2.4), 40),
-    ...                     lambda i, j: exp(abs(i - j)), directed=False)
-    >>> # extract largest component
-    >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(g))
-    >>> deg = g.degree_property_map("out")
-    >>> deg.a = 2 * (sqrt(deg.a) * 0.5 + 0.4)
+    >>> seed(43)
+    >>> g = gt.price_network(1500)
+    >>> deg = g.degree_property_map("in")
+    >>> deg.a = 4 * (sqrt(deg.a) * 0.5 + 0.4)
     >>> ebet = gt.betweenness(g)[1]
     >>> ebet.a /= ebet.a.max() / 10.
-    >>> gt.graph_draw(g, vertex_size=deg, vertex_fill_color=deg, vorder=deg,
-    ...               edge_color=ebet, eorder=ebet, edge_pen_width=ebet,
+    >>> eorder = ebet.copy()
+    >>> eorder.a *= -1
+    >>> pos = gt.sfdp_layout(g)
+    >>> control = g.new_edge_property("vector<double>")
+    >>> for e in g.edges():
+    ...     d = sqrt(sum((pos[e.source()].a - pos[e.target()].a) ** 2)) / 5
+    ...     control[e] = [0.3, d, 0.7, d]
+    >>> gt.graph_draw(g, pos=pos, vertex_size=deg, vertex_fill_color=deg, vorder=deg,
+    ...               edge_color=ebet, eorder=eorder, edge_pen_width=ebet,
+    ...               edge_control_points=control, # some curvy edges
     ...               output="graph-draw.pdf")
     <...>
 
     .. figure:: graph-draw.*
         :align: center
 
-        SFDP force-directed layout of a graph with a power-law degree
-        distribution, and dissortative degree correlation. The vertex size and
-        color indicate the degree, and the edge color and width the edge
-        betweeness centrality.
+        SFDP force-directed layout of a Price network with 1500 nodes. The
+        vertex size and color indicate the degree, and the edge color and width
+        the edge betweeness centrality.
 
     """
 

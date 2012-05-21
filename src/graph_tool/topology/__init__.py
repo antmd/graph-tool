@@ -1295,7 +1295,7 @@ def edge_reciprocity(g):
     ----------
     .. [reciprocity] S. Wasserman and K. Faust, "Social Network Analysis".
        (Cambridge University Press, Cambridge, 1994)
-    .. [lopez_reciprocity_2007] Gorka Zamora-López, Vinko Zlatić, Changsong Zhou, Hrvoje Štefančić, and Jürgen Kurths
+    .. [lopez-reciprocity-2007] Gorka Zamora-López, Vinko Zlatić, Changsong Zhou, Hrvoje Štefančić, and Jürgen Kurths
        "Reciprocity of networks with degree correlations and arbitrary degree sequences", Phys. Rev. E 77, 016106 (2008)
        :doi:`10.1103/PhysRevE.77.016106`, :arxiv:`0706.3372`
 

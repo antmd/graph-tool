@@ -256,27 +256,20 @@ def graphviz_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
     >>> from numpy import *
     >>> from numpy.random import seed, zipf
     >>> seed(42)
-    >>> g = gt.random_graph(1000, lambda: min(zipf(2.4), 40),
-    ...                     lambda i, j: exp(abs(i - j)), directed=False)
-    >>> # extract largest component
-    >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(g))
-    >>> deg = g.degree_property_map("out")
+    >>> g = gt.price_network(1500)
+    >>> deg = g.degree_property_map("in")
     >>> deg.a = 2 * (sqrt(deg.a) * 0.5 + 0.4)
     >>> ebet = gt.betweenness(g)[1]
-    >>> ebet.a *= 4000
-    >>> ebet.a += 10
-    >>> gt.graphviz_draw(g, vsize=deg, vcolor=deg, vorder=deg, elen=10,
-    ...                  ecolor=ebet, eorder=ebet, penwidth=ebet,
-    ...                  overlap="prism", output="graphviz-draw.pdf")
+    >>> gt.graphviz_draw(g, vcolor=deg, vorder=deg, elen=10,
+    ...                  ecolor=ebet, eorder=ebet, output="graphviz-draw.pdf")
     <...>
 
     .. figure:: graphviz-draw.*
         :align: center
 
-        Kamada-Kawai force-directed layout of a graph with a power-law degree
-        distribution, and dissortative degree correlation. The vertex size and
-        color indicate the degree, and the edge color and width the edge
-        betweeness centrality.
+        Kamada-Kawai force-directed layout of a Price network with 1500
+        nodes. The vertex size and color indicate the degree, and the edge color
+        corresponds to the edge betweeness centrality
 
     References
     ----------
