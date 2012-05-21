@@ -36,8 +36,9 @@ try:
     import matplotlib.cm
     import matplotlib.colors
 except ImportError:
-    warnings.warn("error importing matplotlib module... " + \
-                  "graphviz_draw() will not work.", ImportWarning)
+    msg = "Error importing matplotlib module... graphviz_draw() will not work."
+    warnings.filterwarnings("always", msg, ImportWarning)
+    warnings.warn(msg, ImportWarning)
 
 try:
     libname = ctypes.util.find_library("c")
@@ -45,6 +46,9 @@ try:
     if hasattr(libc, "open_memstream"):
         libc.open_memstream.restype = ctypes.POINTER(ctypes.c_char)
 except OSError:
+    msg = "Error importing C standard library... graphviz_draw() will not work."
+    warnings.filterwarnings("always", msg, ImportWarning)
+    warnings.warn(msg, ImportWarning)
     pass
 
 
@@ -65,8 +69,9 @@ try:
     # it, we will hit a memory leak in graphviz)
     gvc = libgv.gvContext()
 except OSError:
-    warnings.warn("error importing graphviz C library (libgvc)... " + \
-                  "graphviz_draw() will not work.", ImportWarning)
+    msg = "Error importing graphviz C library (libgvc)... graphviz_draw() will not work."
+    warnings.filterwarnings("always", msg, ImportWarning)
+    warnings.warn(msg, ImportWarning)
 
 
 def htmlize(val):
