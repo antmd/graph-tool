@@ -393,8 +393,8 @@ struct get_sfdp_layout
                         ftot[l] *= step;
                         pos[v][l] += ftot[l];
 
-                        nll[l] = min(pos[v][l], ll[l]);
-                        nur[l] = max(pos[v][l], ur[l]);
+                        nll[l] = min(pos[v][l], nll[l]);
+                        nur[l] = max(pos[v][l], nur[l]);
 
                         group_cm_tmp[group[v]][l] += pos[v][l] * get(vweight, v);
                     }
@@ -416,7 +416,6 @@ struct get_sfdp_layout
                 }
             }
             group_cm.swap(group_cm_tmp);
-
 
             if (verbose)
                 cout << n_iter << " " << E << " " << step << " "
