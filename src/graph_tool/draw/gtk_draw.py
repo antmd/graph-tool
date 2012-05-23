@@ -20,6 +20,8 @@
 
 from cairo_draw import *
 from cairo_draw import _vdefaults, _edefaults
+from .. draw import sfdp_layout, random_layout, _avg_edge_distance, \
+    coarse_graphs
 
 
 def point_in_poly(p, poly):
