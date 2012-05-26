@@ -206,7 +206,8 @@ def position_parallel_edges(g, pos, loop_angle=float("nan"),
     lp = label_parallel_edges(GraphView(g, directed=False))
     ll = label_self_loops(g)
     g = GraphView(g, directed=True)
-    if lp.fa.max() == 0 and ll.fa.max() == 0:
+    if ((len(lp.fa) == 0 or lp.fa.max() == 0) and
+        (len(ll.fa) == 0 or ll.fa.max() == 0)):
         return []
     else:
         spline = g.new_edge_property("vector<double>")
