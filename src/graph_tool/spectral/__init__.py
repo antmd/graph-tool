@@ -36,6 +36,8 @@ Contents
 ++++++++
 """
 
+from __future__ import division, absolute_import, print_function
+
 from .. import _degree, _prop, Graph, _limit_args
 from numpy import *
 import scipy.sparse
@@ -82,7 +84,7 @@ def adjacency(g, sparse=True, weight=None):
     >>> seed(42)
     >>> g = gt.random_graph(100, lambda: (10,10))
     >>> m = gt.adjacency(g)
-    >>> print m.todense()
+    >>> print(m.todense())
     [[ 0.  0.  0. ...,  0.  0.  0.]
      [ 0.  0.  0. ...,  0.  0.  0.]
      [ 0.  0.  0. ...,  0.  0.  0.]
@@ -190,7 +192,7 @@ def laplacian(g, deg="total", normalized=True, sparse=True, weight=None):
     >>> seed(42)
     >>> g = gt.random_graph(100, lambda: (10,10))
     >>> m = gt.laplacian(g)
-    >>> print m.todense()
+    >>> print(m.todense())
     [[ 1.    0.    0.   ...,  0.    0.    0.  ]
      [ 0.    1.    0.   ...,  0.    0.    0.  ]
      [ 0.    0.    1.   ...,  0.    0.    0.  ]
@@ -277,7 +279,7 @@ def incidence(g, sparse=True):
     >>> seed(42)
     >>> g = gt.random_graph(100, lambda: (2,2))
     >>> m = gt.incidence(g)
-    >>> print m.todense()
+    >>> print(m.todense())
     [[ 0.  0.  0. ...,  0.  0.  0.]
      [ 0.  0.  0. ...,  0.  0.  0.]
      [ 0.  0.  0. ...,  0.  0.  0.]
@@ -320,3 +322,4 @@ def incidence(g, sparse=True):
     if sparse:
         m = m.tocsr()
     return m
+

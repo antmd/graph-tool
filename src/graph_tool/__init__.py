@@ -75,6 +75,8 @@ Contents
 --------
 """
 
+from __future__ import division, absolute_import, print_function
+
 __author__ = "Tiago de Paula Peixoto <tiago@skewed.de>"
 __copyright__ = "Copyright 2007-2012 Tiago de Paula Peixoto"
 __license__ = "GPL version 3 or above"
@@ -88,12 +90,12 @@ import numpy.ma
 import scipy
 import scipy.stats
 
-from dl_import import *
-dl_import("import libgraph_tool_core as libcore")
-import libgraph_tool_core as libcore   # for pylint
+
+from .dl_import import *
+dl_import("from . import libgraph_tool_core as libcore")
 __version__ = libcore.mod_info().version
 
-import io  # sets up libcore io routines
+from . import io  # sets up libcore io routines
 
 import sys
 import os
@@ -103,8 +105,8 @@ import bz2
 import weakref
 import copy
 
-from StringIO import StringIO
-from decorators import _wraps, _require, _attrs, _limit_args
+from io import StringIO
+from .decorators import _wraps, _require, _attrs, _limit_args
 from inspect import ismethod
 
 __all__ = ["Graph", "GraphView", "Vertex", "Edge", "Vector_bool",
@@ -228,14 +230,14 @@ def _convert(prop, val):
 def show_config():
     """Show ``graph_tool`` build configuration."""
     info = libcore.mod_info()
-    print "version:", info.version
-    print "gcc version:", info.gcc_version
-    print "compilation flags:", info.cxxflags
-    print "install prefix:", info.install_prefix
-    print "python dir:", info.python_dir
-    print "graph filtering:", libcore.graph_filtering_enabled()
-    print "openmp:", libcore.openmp_enabled()
-    print "uname:", " ".join(os.uname())
+    print("version:", info.version)
+    print("gcc version:", info.gcc_version)
+    print("compilation flags:", info.cxxflags)
+    print("install prefix:", info.install_prefix)
+    print("python dir:", info.python_dir)
+    print("graph filtering:", libcore.graph_filtering_enabled())
+    print("openmp:", libcore.openmp_enabled())
+    print("uname:", " ".join(os.uname()))
 
 ################################################################################
 # Property Maps
@@ -640,13 +642,13 @@ def group_vector_property(props, value_type=None, vprop=None, pos=None):
     >>> from numpy import array
     >>> seed(42)
     >>> g = gt.random_graph(100, lambda: (3, 3))
-    >>> props = [g.new_vertex_property("int") for i in xrange(3)]
-    >>> for i in xrange(3):
+    >>> props = [g.new_vertex_property("int") for i in range(3)]
+    >>> for i in range(3):
     ...    props[i].a = randint(0, 100, g.num_vertices())
     >>> gprop = gt.group_vector_property(props)
-    >>> print gprop[g.vertex(0)].a
+    >>> print(gprop[g.vertex(0)].a)
     [71 40 96]
-    >>> print array([p[g.vertex(0)] for p in props])
+    >>> print(array([p[g.vertex(0)] for p in props]))
     [71 40 96]
     """
     g = props[0].get_graph()
@@ -723,9 +725,9 @@ def ungroup_vector_property(vprop, pos, props=None):
     >>> for v in g.vertices():
     ...    prop[v] = randint(0, 100, 3)
     >>> uprops = gt.ungroup_vector_property(prop, [0, 1, 2])
-    >>> print prop[g.vertex(0)].a
+    >>> print(prop[g.vertex(0)].a)
     [71 60 20]
-    >>> print array([p[g.vertex(0)] for p in uprops])
+    >>> print(array([p[g.vertex(0)] for p in uprops]))
     [71 60 20]
     """
 
@@ -784,7 +786,7 @@ def infect_vertex_property(g, prop, vals=None):
     >>> g = gt.random_graph(100, lambda: (3, 3))
     >>> prop = g.copy_property(g.vertex_index)
     >>> gt.infect_vertex_property(g, prop, [10])
-    >>> print sum(prop.a == 10)
+    >>> print(sum(prop.a == 10))
     3
     """
     libcore.infect_vertex_property(g._Graph__graph, _prop("v", g, prop),
@@ -814,7 +816,7 @@ def edge_difference(g, prop, ediff=None):
     >>> seed(42)
     >>> g = gt.random_graph(100, lambda: (3, 3))
     >>> ediff = gt.edge_difference(g, g.vertex_index)
-    >>> print ediff.a
+    >>> print(ediff.a)
     3
     """
     val_t = prop.value_type()
@@ -857,7 +859,7 @@ class PropertyDict(dict):
 # The main graph interface
 ################################################################################
 
-from libgraph_tool_core import Vertex, EdgeBase, Vector_bool, Vector_int32_t, \
+from .libgraph_tool_core import Vertex, EdgeBase, Vector_bool, Vector_int32_t, \
      Vector_int64_t, Vector_double, Vector_long_double, Vector_string, \
      new_vertex_property, new_edge_property, new_graph_property
 
@@ -907,7 +909,7 @@ class Graph(object):
             if not (vprune or eprune or rprune):
                 g.pop_filter(vertex=vprune, edge=vprune, reversed=rprune)
 
-            for k, v in g.__properties.iteritems():
+            for k, v in g.__properties.items():
                 new_p = self.new_property(v.key_type(), v.value_type())
                 self.copy_property(v, new_p, g=g)
                 self.properties[k] = new_p
@@ -917,12 +919,12 @@ class Graph(object):
             if not vprune:
                 v_filt, v_rev = g.__filter_state["vertex_filter"]
                 if v_filt != None:
-                    if v_filt not in g.vertex_properties.values():
+                    if v_filt not in list(g.vertex_properties.values()):
                         new_filt = self.new_vertex_property("bool")
                         self.copy_property(v_filt, new_filt)
 
                     else:
-                        for k, v in g.vertex_properties.iteritems():
+                        for k, v in g.vertex_properties.items():
                             if v == v_filt:
                                 new_filt = self.vertex_properties[k]
                     self.__stashed_filter_state[0]["vertex_filter"] = (new_filt,
@@ -930,12 +932,12 @@ class Graph(object):
             if not eprune:
                 e_filt, e_rev = g.__filter_state["edge_filter"]
                 if e_filt != None:
-                    if e_filt not in g.edge_properties.values():
+                    if e_filt not in list(g.edge_properties.values()):
                         new_filt = self.new_edge_property("bool")
                         self.copy_property(e_filt, new_filt)
 
                     else:
-                        for k, v in g.edge_properties.iteritems():
+                        for k, v in g.edge_properties.items():
                             if v == e_filt:
                                 new_filt = self.edge_properties[k]
                     self.__stashed_filter_state[0]["edge_filter"] = (new_filt,
@@ -1066,7 +1068,7 @@ class Graph(object):
         self.__check_perms("add_vertex")
         vlist = []
         vfilt = self.get_vertex_filter()
-        for i in xrange(n):
+        for i in range(n):
             v = libcore.add_vertex(weakref.ref(self))
             if vfilt[0] is not None:
                 vfilt[0][v] = not vfilt[1]
@@ -1089,7 +1091,7 @@ class Graph(object):
         """Remove all the vertices from the graph for which ``predicate(v)``
         evaluates to ``True``. """
         N = self.num_vertices()
-        for i in xrange(0, N):
+        for i in range(0, N):
             v = self.vertex(N - i - 1)
             if predicate(v):
                 self.remove_vertex(v)
@@ -1177,7 +1179,7 @@ class Graph(object):
     """)
 
     def __get_specific_properties(self, t):
-        props = dict([(k[1], v) for k, v in self.__properties.iteritems() \
+        props = dict([(k[1], v) for k, v in self.__properties.items() \
                       if k[0] == t])
         return props
 
@@ -1231,21 +1233,21 @@ class Graph(object):
 
         if len(self.__properties) == 0:
             return
-        w = max([len(x[0]) for x in self.__properties.keys()]) + 4
+        w = max([len(x[0]) for x in list(self.__properties.keys())]) + 4
         w = w if w > 14 else 14
 
-        for k, v in self.__properties.iteritems():
+        for k, v in self.__properties.items():
             if k[0] == "g":
-                print "%%-%ds (graph)   (type: %%s, val: %%s)" % w % \
-                      (k[1], v.value_type(), str(v[self]))
-        for k, v in self.__properties.iteritems():
+                print("%%-%ds (graph)   (type: %%s, val: %%s)" % w % \
+                      (k[1], v.value_type(), str(v[self])))
+        for k, v in self.__properties.items():
             if k[0] == "v":
-                print "%%-%ds (vertex)  (type: %%s)" % w % (k[1],
-                                                            v.value_type())
-        for k, v in self.__properties.iteritems():
+                print("%%-%ds (vertex)  (type: %%s)" % w % (k[1],
+                                                            v.value_type()))
+        for k, v in self.__properties.items():
             if k[0] == "e":
-                print "%%-%ds (edge)    (type: %%s)" % w % (k[1],
-                                                            v.value_type())
+                print("%%-%ds (edge)    (type: %%s)" % w % (k[1],
+                                                            v.value_type()))
 
     # index properties
 
@@ -1423,11 +1425,11 @@ class Graph(object):
             props = self.__graph.ReadFromFile(file_name, None, fmt)
         else:
             props = self.__graph.ReadFromFile("", file_name, fmt)
-        for name, prop in props[0].iteritems():
+        for name, prop in props[0].items():
             self.vertex_properties[name] = PropertyMap(prop, self, "v")
-        for name, prop in props[1].iteritems():
+        for name, prop in props[1].items():
             self.edge_properties[name] = PropertyMap(prop, self, "e")
-        for name, prop in props[2].iteritems():
+        for name, prop in props[2].items():
             self.graph_properties[name] = PropertyMap(prop, self, "g",
                                                       lambda k: k.__graph)
 
@@ -1443,7 +1445,7 @@ class Graph(object):
         elif fmt == "auto":
             fmt = "xml"
         props = [(name[1], prop._PropertyMap__map) for name, prop in \
-                 self.__properties.iteritems()]
+                 self.__properties.items()]
         if isinstance(file_name, str):
             self.__graph.WriteToFile(file_name, None, fmt, props)
         else:
@@ -1651,7 +1653,7 @@ def value_types():
 
 # Vertex and Edge Types
 # =====================
-from libgraph_tool_core import Vertex, Edge, EdgeBase
+from .libgraph_tool_core import Vertex, Edge, EdgeBase
 
 Vertex.__doc__ = """Vertex descriptor.
 
@@ -1743,7 +1745,7 @@ def init_edge_classes():
                         v_filter = g.new_vertex_property("bool")
                         v_filter.a = [1]
                         g.set_vertex_filter(v_filter)
-                    e = g.edges().next()
+                    e = next(g.edges())
                     e.__class__.__repr__ = _edge_repr
                     e.__class__.__iter__ = _edge_iter
                     e.__class__.__doc__ = _edge_doc
@@ -1864,3 +1866,4 @@ class GraphView(Graph):
     def __get_base(self):
         return self.__base
     base = property(__get_base, doc="Base graph.")
+

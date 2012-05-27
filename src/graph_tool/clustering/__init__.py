@@ -41,14 +41,16 @@ Contents
 ++++++++
 """
 
+from __future__ import division, absolute_import, print_function
+
 from .. dl_import import dl_import
-dl_import("import libgraph_tool_clustering as _gt")
+dl_import("from . import libgraph_tool_clustering as _gt")
 
 from .. import _degree, _prop, Graph, GraphView
 from .. topology import isomorphism
 from .. generation import random_rewire
 from .. stats import vertex_hist
-from itertools import izip
+
 from collections import defaultdict
 from numpy import *
 from numpy import random
@@ -114,7 +116,7 @@ def local_clustering(g, prop=None, undirected=True):
     >>> seed(42)
     >>> g = gt.random_graph(1000, lambda: (5,5))
     >>> clust = gt.local_clustering(g)
-    >>> print gt.vertex_average(g, clust)
+    >>> print(gt.vertex_average(g, clust))
     (0.00908888888888889, 0.0004449824521439575)
 
     References
@@ -171,7 +173,7 @@ def global_clustering(g):
     >>> from numpy.random import seed
     >>> seed(42)
     >>> g = gt.random_graph(1000, lambda: (5,5))
-    >>> print gt.global_clustering(g)
+    >>> print(gt.global_clustering(g))
     (0.009114059777509717, 0.0004464454368899158)
 
     References
@@ -244,9 +246,9 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
     >>> seed(42)
     >>> g = gt.random_graph(1000, lambda: (5,5))
     >>> clusts = gt.extended_clustering(g, max_depth=5)
-    >>> for i in xrange(0, 5):
-    ...    print gt.vertex_average(g, clusts[i])
-    ...
+    >>> for i in range(0, 5):
+    ...    print(gt.vertex_average(g, clusts[i]))
+    ... 
     (0.0058850000000000005, 0.0004726257592782405)
     (0.026346666666666668, 0.0009562588213100747)
     (0.11638833333333333, 0.002086419787711849)
@@ -263,7 +265,7 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
         g = GraphView(g, directed=False)
     if props == None:
         props = []
-        for i in xrange(0, max_depth):
+        for i in range(0, max_depth):
             props.append(g.new_vertex_property("double"))
     _gt.extended_clustering(g._Graph__graph,
                             [_prop("v", g, p) for p in props])
@@ -321,9 +323,9 @@ def motifs(g, k, p=1.0, motif_list=None):
     >>> seed(42)
     >>> g = gt.random_graph(1000, lambda: (5,5))
     >>> motifs, counts = gt.motifs(gt.GraphView(g, directed=False), 4)
-    >>> print len(motifs)
+    >>> print(len(motifs))
     11
-    >>> print counts
+    >>> print(counts)
     [115104, 389090, 724, 820, 1828, 3208, 791, 4, 12, 12, 3]
 
 
@@ -335,7 +337,7 @@ def motifs(g, k, p=1.0, motif_list=None):
        :doi:`10.1109/TCBB.2006.51`
     """
 
-    seed = random.randint(0, sys.maxint)
+    seed = random.randint(0, sys.maxsize)
 
     sub_list = []
     directed_motifs = g.is_directed()
@@ -373,7 +375,7 @@ def motifs(g, k, p=1.0, motif_list=None):
         temp.append(mg)
     sub_list = temp
 
-    list_hist = zip(sub_list, hist)
+    list_hist = list(zip(sub_list, hist))
     # sort according to in-degree sequence
     list_hist.sort(lambda x, y: cmp(sorted([v.in_degree() for v in x[0].vertices()]),
                                     sorted([v.in_degree() for v in y[0].vertices()])))
@@ -394,14 +396,14 @@ def motifs(g, k, p=1.0, motif_list=None):
 def _graph_sig(g):
     """return the graph signature, i.e., the in and out degree distribution as
     concatenated as a tuple."""
-    bins = range(0, g.num_vertices() + 1)
+    bins = list(range(0, g.num_vertices() + 1))
     in_dist = vertex_hist(g, "in", bins=bins if g.is_directed() else [0],
                           float_count=False)
     out_dist = vertex_hist(g, "out", bins=bins, float_count=False)
     sig = tuple([(in_dist[1][i], in_dist[0][i]) for \
-                 i in xrange(len(in_dist[0]))] +
+                 i in range(len(in_dist[0]))] +
                 [(out_dist[1][i], out_dist[0][i]) for\
-                 i in xrange(len(out_dist[0]))])
+                 i in range(len(out_dist[0]))])
     return sig
 
 
@@ -486,15 +488,15 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
     >>> random.seed(10)
     >>> g = gt.random_graph(100, lambda: (3,3))
     >>> motifs, zscores = gt.motif_significance(g, 3)
-    >>> print len(motifs)
+    >>> print(len(motifs))
     11
-    >>> print zscores
+    >>> print(zscores)
     [0.014875553792545083, 0.016154998074953769, 0.002455801898331304, -1.9579019397305546, 0.83542298414538518, 0.84715258999068244, -0.93385230436820643, -0.11, -0.1, -0.31, -0.14]
     """
 
     s_ms, counts = motifs(g, k, p, motif_list)
     if threshold > 0:
-        s_ms, counts = zip(*[x for x in zip(s_ms, counts) if x[1] > threshold])
+        s_ms, counts = list(zip(*[x for x in zip(s_ms, counts) if x[1] > threshold]))
         s_ms = list(s_ms)
         counts = list(counts)
     s_counts = [0] * len(s_ms)
@@ -502,19 +504,19 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
 
     # group subgraphs by number of edges
     m_e = defaultdict(lambda: [])
-    for i in xrange(len(s_ms)):
+    for i in range(len(s_ms)):
         m_e[_graph_sig(s_ms[i])].append(i)
 
     # get samples
     sg = g.copy()
-    for i in xrange(0, n_shuffles):
+    for i in range(0, n_shuffles):
         random_rewire(sg, shuffle_strategy, self_loops=self_loops,
                       parallel_edges=parallel_edges)
         m_temp, count_temp = motifs(sg, k, p, motif_list)
         if threshold > 0:
-            m_temp, count_temp = zip(*[x for x in zip(m_temp, count_temp) \
-                                       if x[1] > threshold])
-        for j in xrange(0, len(m_temp)):
+            m_temp, count_temp = list(zip(*[x for x in zip(m_temp, count_temp) \
+                                       if x[1] > threshold]))
+        for j in range(0, len(m_temp)):
             found = False
             for l in m_e[_graph_sig(m_temp[j])]:
                 if isomorphism(s_ms[l], m_temp[j]):
@@ -530,9 +532,9 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
 
     s_counts = [x / float(n_shuffles) for x in s_counts]
     s_dev = [max(sqrt(x[0] / float(n_shuffles) - x[1] ** 2), 1) \
-              for x in izip(s_dev, s_counts)]
+              for x in zip(s_dev, s_counts)]
 
-    list_hist = zip(s_ms, s_counts, s_dev)
+    list_hist = list(zip(s_ms, s_counts, s_dev))
     # sort according to in-degree sequence
     list_hist.sort(lambda x, y: cmp(sorted([v.in_degree()\
                                             for v in x[0].vertices()]),
@@ -548,11 +550,12 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
     # sort according to ascending number of edges
     list_hist.sort(lambda x, y: cmp(x[0].num_edges(), y[0].num_edges()))
 
-    s_ms, s_counts, s_dev = zip(*list_hist)
+    s_ms, s_counts, s_dev = list(zip(*list_hist))
 
-    zscore = [(x[0] - x[1]) / x[2] for x in izip(counts, s_counts, s_dev)]
+    zscore = [(x[0] - x[1]) / x[2] for x in zip(counts, s_counts, s_dev)]
 
     if full_output:
         return s_ms, zscore, counts, s_counts, s_dev
     else:
         return s_ms, zscore
+

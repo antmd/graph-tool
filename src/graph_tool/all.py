@@ -22,14 +22,20 @@
 Utility module which includes all the sub-modules in graph_tool
 """
 
+from __future__ import division, absolute_import, print_function
+
 from graph_tool import *
 import graph_tool
 from graph_tool.correlations import *
 import graph_tool.correlations
 from graph_tool.centrality import *
 import graph_tool.centrality
-from graph_tool.draw import *
-import graph_tool.draw
+try:
+    from graph_tool.draw import *
+    import graph_tool.draw
+except ImportError:
+    # Proceed despite errors with cairo, matplotlib, etc.
+    pass
 from graph_tool.stats import *
 import graph_tool.stats
 from graph_tool.generation import *

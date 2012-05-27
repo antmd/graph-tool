@@ -42,8 +42,10 @@ Contents
 ++++++++
 """
 
+from __future__ import division, absolute_import, print_function
+
 from .. dl_import import dl_import
-dl_import("import libgraph_tool_generation")
+dl_import("from . import libgraph_tool_generation")
 
 from .. import Graph, GraphView, _check_prop_scalar, _prop, _limit_args, _gt_type
 from .. stats import label_parallel_edges, label_self_loops
@@ -213,7 +215,7 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
     ...        return poisson(4), poisson(4)
     ...    else:
     ...        return poisson(20), poisson(20)
-    ...
+    ... 
 
     The following generates a random directed graph with this distribution, and
     plots the combined degree correlation.
@@ -336,7 +338,7 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
        no. 1: 016107 (2011) :doi:`10.1103/PhysRevE.83.016107` :arxiv:`1008.3926`
     """
 
-    seed = numpy.random.randint(0, sys.maxint)
+    seed = numpy.random.randint(0, sys.maxsize)
     g = Graph()
     if deg_corr == None:
         uncorrelated = True
@@ -348,10 +350,10 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
         btype = block_type
         bm = []
         if len(inspect.getargspec(blockmodel)[0]) == 0:
-            for i in xrange(N):
+            for i in range(N):
                 bm.append(blockmodel())
         else:
-            for i in xrange(N):
+            for i in range(N):
                 bm.append(blockmodel(i))
         blockmodel = bm
     elif blockmodel is not None:
@@ -668,7 +670,7 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
        no. 1: 016107 (2011) :doi:`10.1103/PhysRevE.83.016107` :arxiv:`1008.3926`
 
     """
-    seed = numpy.random.randint(0, sys.maxint)
+    seed = numpy.random.randint(0, sys.maxsize)
 
     if not parallel_edges:
         p = label_parallel_edges(g)
@@ -1221,6 +1223,7 @@ def price_network(N, m=1, c=None, gamma=1, directed=True, seed_graph=None):
         N -= g.num_vertices()
     else:
         g = seed_graph
-    seed = numpy.random.randint(0, sys.maxint)
+    seed = numpy.random.randint(0, sys.maxsize)
     libgraph_tool_generation.price(g._Graph__graph, N, gamma, c, m, seed)
     return g
+

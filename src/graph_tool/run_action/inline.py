@@ -17,16 +17,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import division, absolute_import, print_function
+
 import sys, string, hashlib, os.path, re, glob
 from .. import *
 from .. import libgraph_tool_core
 import numpy
 from .. dl_import import dl_flags
+import warnings
 
 try:
     import scipy.weave
-except ImportError:
-    raise ImportError("You need to have scipy installed to use 'run_action'.")
+except (ImportError, AttributeError) as e:
+    msg = "Error importing scipy.weave module'%s'; run_action.inline() will not work!" % str(e)
+    warnings.filterwarnings("always", msg, ImportWarning)
+    warnings.warn(msg, ImportWarning)
 
 
 # sys.path can be dirty and in unicode! :-p
@@ -55,7 +60,7 @@ while len(incs) > 0:
     if os.path.isdir(inc):
         incs += glob.glob(inc + "/*")
     else:
-        headers_hash = hashlib.md5(headers_hash + open(inc).read()).hexdigest()
+        headers_hash = hashlib.md5((headers_hash + open(inc).read()).encode('utf-8')).hexdigest()
 
 # property map types
 props = """
@@ -111,13 +116,13 @@ def inline(code, arg_names=None, local_dict=None,
     >>> g = gt.random_graph(100, lambda: (3, 3))
     >>> nv = 0
     >>> ret = gt.inline("nv = num_vertices(g);", ['g', 'nv'])
-    >>> print ret["nv"]
+    >>> print(ret["nv"])
     100
     >>> prop = g.new_vertex_property("vector<double>")
     >>> prop[g.vertex(0)] = [1.0, 4.2]
     >>> val = 0.0
     >>> ret = gt.inline("val = prop[vertex(0,g)][1];", ['g', 'prop', 'val'])
-    >>> print ret["val"]
+    >>> print(ret["val"])
     4.2
 
     References
@@ -159,9 +164,9 @@ def inline(code, arg_names=None, local_dict=None,
     arg_alias = []
     alias_dict = {}
     for arg in arg_names:
-        if arg not in local_dict.keys() and arg not in global_dict.keys():
+        if arg not in list(local_dict.keys()) and arg not in list(global_dict.keys()):
             raise ValueError("undefined variable: " + arg)
-        if arg in local_dict.keys():
+        if arg in list(local_dict.keys()):
             arg_val = local_dict[arg]
         else:
             arg_val = global_dict[arg]
@@ -216,7 +221,7 @@ def inline(code, arg_names=None, local_dict=None,
             alias_dict[alias] = arg_val
         else:
             arg_alias.append(arg)
-            if arg in local_dict.keys():
+            if arg in list(local_dict.keys()):
                 alias_dict[arg] = local_dict[arg]
             else:
                 alias_dict[arg] = global_dict[arg]
@@ -224,7 +229,7 @@ def inline(code, arg_names=None, local_dict=None,
     # handle returned values
     return_vals = ""
     for arg in arg_names:
-        if arg in local_dict.keys():
+        if arg in list(local_dict.keys()):
             arg_val = local_dict[arg]
         else:
             arg_val = global_dict[arg]
@@ -289,3 +294,4 @@ def inline(code, arg_names=None, local_dict=None,
             else:
                 global_dict[arg] = ret_vals[arg]
     return ret_vals
+

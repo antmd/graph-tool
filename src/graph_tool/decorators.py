@@ -21,17 +21,30 @@
 Some useful decorators
 """
 
+from __future__ import division, absolute_import, print_function
+
 __author__ = "Tiago de Paula Peixoto <tiago@skewed.de>"
-__copyright__ = "Copyright 2008 Tiago de Paula Peixoto"
+__copyright__ = "Copyright 2006-2012 Tiago de Paula Peixoto"
 __license__ = "GPL version 3 or above"
 
 import inspect
 import functools
+import sys
 
 ################################################################################
 # Decorators
 # Some useful function decorators which will be used
 ################################################################################
+
+# exec statement in python 2.7 and exec() function in 3.2 are mutually exclusive
+if sys.hexversion > 0x03000000:
+    def exec_function(source, filename, global_map):
+        exec(compile(source, filename, "exec"), global_map)
+else:
+    eval(compile("""\
+def exec_function(source, filename, global_map):
+    exec compile(source, filename, "exec") in global_map
+""","<exec_function>", "exec"))
 
 
 def _wraps(func):
@@ -43,7 +56,7 @@ def _wraps(func):
         ___wrap_defaults = defaults = argspec[-1]
         if defaults is not None:
             def_string = ["___wrap_defaults[%d]" % d for
-                          d in xrange(len(defaults))]
+                          d in range(len(defaults))]
             def_names = argspec[0][-len(defaults):]
         else:
             def_string = None
@@ -58,7 +71,7 @@ def _wraps(func):
                 wf = wf.replace("'%s'" % d, "%s" % d)
             for d in def_names:
                 wf = wf.replace("'%s'" % d, "%s" % d)
-        exec wf in locals()
+        exec_function(wf, __file__, locals())
         return functools.wraps(func)(locals()[func.__name__])
     return decorate
 
@@ -81,8 +94,8 @@ def _limit_args(allowed_vals):
         @_wraps(func)
         def wrap(*args, **kwargs):
             arg_names = inspect.getargspec(func)[0]
-            arguments = zip(arg_names, args)
-            arguments += [(k, kwargs[k]) for k in kwargs.keys()]
+            arguments = list(zip(arg_names, args))
+            arguments += [(k, kwargs[k]) for k in list(kwargs.keys())]
             for a in arguments:
                 if a[0] in allowed_vals:
                     if a[1] not in allowed_vals[a[0]]:
@@ -101,7 +114,7 @@ def _require(arg_name, *allowed_types):
         if hasattr(f, "wrapped_args"):
             wrapped_args = f.wrapped_args
         else:
-            code = f.func_code
+            code = f.__code__
             wrapped_args = list(code.co_varnames[:code.co_argcount])
 
         try:

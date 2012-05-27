@@ -41,8 +41,10 @@ Contents
 ++++++++
 """
 
+from __future__ import division, absolute_import, print_function
+
 from .. dl_import import dl_import
-dl_import("import libgraph_tool_centrality")
+dl_import("from . import libgraph_tool_centrality")
 
 from .. import _prop, ungroup_vector_property
 import sys
@@ -131,7 +133,7 @@ def pagerank(g, damping=0.85, pers=None, weight=None, prop=None, epsilon=1e-6,
     >>> seed(42)
     >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
     >>> pr = gt.pagerank(g)
-    >>> print pr.a
+    >>> print(pr.a)
     [ 0.00865316  0.0054067   0.00406312  0.00426668  0.0015      0.00991696
       0.00550065  0.00936397  0.00347917  0.00731864  0.00689843  0.00286274
       0.00508731  0.01020047  0.00562247  0.00584915  0.02457086  0.00438568
@@ -158,7 +160,7 @@ def pagerank(g, damping=0.85, pers=None, weight=None, prop=None, epsilon=1e-6,
     >>> p.a = random(g.num_vertices())
     >>> p.a /= p.a.sum()
     >>> pr = gt.pagerank(g, pers=p, weight=w)
-    >>> print pr.a
+    >>> print(pr.a)
     [ 0.00712999  0.00663336  0.00685722  0.00402663  0.00092715  0.01021926
       0.00269502  0.0073301   0.00449892  0.00582793  0.00580542  0.00275149
       0.00676363  0.01157972  0.00486918  0.00616345  0.02506695  0.00607967
@@ -258,7 +260,7 @@ def betweenness(g, vprop=None, eprop=None, weight=None, norm=True):
     >>> seed(42)
     >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
     >>> vb, eb = gt.betweenness(g)
-    >>> print vb.a
+    >>> print(vb.a)
     [ 0.04889806  0.07181892  0.0256799   0.02885791  0.          0.05060927
       0.04490836  0.03763462  0.02033383  0.03163202  0.02641248  0.03171598
       0.03771112  0.02194663  0.0374907   0.01072567  0.          0.03079281
@@ -340,7 +342,7 @@ def central_point_dominance(g, betweenness):
     >>> seed(42)
     >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
     >>> vb, eb = gt.betweenness(g)
-    >>> print gt.central_point_dominance(g, vb)
+    >>> print(gt.central_point_dominance(g, vb))
     0.0766473408634
 
     References
@@ -418,9 +420,9 @@ def eigenvector(g, weight=None, vprop=None, epsilon=1e-6, max_iter=None):
     >>> w = g.new_edge_property("double")
     >>> w.a = random(g.num_edges()) * 42
     >>> x = gt.eigenvector(g, w)
-    >>> print x[0]
+    >>> print(x[0])
     0.0160851991895
-    >>> print x[1].a
+    >>> print(x[1].a)
     [ 0.1376411   0.07207366  0.02727508  0.05805304  0.          0.10690994
       0.04315491  0.01040908  0.02300252  0.08874163  0.04968119  0.06718114
       0.05526028  0.20449371  0.02337425  0.07581173  0.19993899  0.14718912
@@ -524,7 +526,7 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epsilon=1e-6, max_iter=0,
     >>> trust = g.new_edge_property("double")
     >>> trust.a = random(g.num_edges())*42
     >>> t = gt.eigentrust(g, trust, norm=True)
-    >>> print t.a
+    >>> print(t.a)
     [  1.12095562e-02   3.97280231e-03   1.31675503e-02   9.61282478e-03
        0.00000000e+00   1.73295741e-02   3.53395497e-03   1.06203582e-02
        1.36906165e-03   8.64587777e-03   1.12049516e-02   3.18891993e-03
@@ -650,7 +652,7 @@ def trust_transitivity(g, trust_map, source=None, target=None, vprop=None):
     >>> trust = g.new_edge_property("double")
     >>> trust.a = random(g.num_edges())
     >>> t = gt.trust_transitivity(g, trust, source=g.vertex(0))
-    >>> print t.a
+    >>> print(t.a)
     [  1.00000000e+00   9.59916062e-02   4.27717883e-02   7.70755875e-02
        0.00000000e+00   2.04476926e-01   5.55315822e-02   2.82854665e-02
        5.08479257e-02   1.68128402e-01   3.28567434e-02   7.39525583e-02
@@ -707,3 +709,4 @@ def trust_transitivity(g, trust_map, source=None, target=None, vprop=None):
     if target != -1 and source != -1:
         return vprop.a[target]
     return vprop
+

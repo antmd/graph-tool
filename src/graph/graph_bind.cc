@@ -17,6 +17,7 @@
 
 #include <boost/python.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
+#include "bytesobject.h"
 
 #define NUMPY_EXPORT
 #include "numpy_bind.hh"
@@ -160,7 +161,7 @@ void graph_exception_translator(const Exception& e)
     if (is_same<Exception, ValueException>::value)
         error = PyExc_ValueError;
 
-    PyObject* message = PyString_FromString(e.what());
+    PyObject* message = PyUnicode_FromString(e.what());
     PyObject_SetAttrString(error, "message", message);
     PyErr_SetString(error, e.what());
 }
@@ -314,6 +315,13 @@ bool openmp_enabled()
 #endif
 }
 
+// numpy array interface weirdness
+void* do_import_array()
+{
+    import_array1(NULL);
+    return NULL;
+}
+
 void ungroup_vector_property(GraphInterface& g, boost::any vector_prop,
                              boost::any prop, size_t pos, bool edge);
 void group_vector_property(GraphInterface& g, boost::any vector_prop,
@@ -327,8 +335,7 @@ void export_python_interface();
 BOOST_PYTHON_MODULE(libgraph_tool_core)
 {
     // numpy
-    import_array();
-
+    do_import_array();
     export_python_interface();
 
     register_exception_translator<GraphException>

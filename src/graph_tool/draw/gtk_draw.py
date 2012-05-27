@@ -18,8 +18,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from cairo_draw import *
-from cairo_draw import _vdefaults, _edefaults
+from __future__ import division, absolute_import, print_function
+
+from .cairo_draw import *
+from .cairo_draw import _vdefaults, _edefaults
 from .. draw import sfdp_layout, random_layout, _avg_edge_distance, \
     coarse_graphs
 
@@ -53,8 +55,8 @@ class VertexMatrix(object):
             n = int(np.ceil(size / self.m_res))
             b = self.get_box(p)
             boxes = []
-            for i in xrange(-n, n):
-                for j in xrange(-n, n):
+            for i in range(-n, n):
+                for j in range(-n, n):
                     boxes.append((b[0] + i, b[1] + j))
             return boxes
 
@@ -91,8 +93,8 @@ class VertexMatrix(object):
         box = self.get_box(pos)
         dist = float("inf")
         clst = None
-        for i in xrange(-1, 2):
-            for j in xrange(-1, 2):
+        for i in range(-1, 2):
+            for j in range(-1, 2):
                 b = (box[0] + i, box[1] + j)
                 for v in self.m[b]:
                     ndist = ((pos - self.pos[v].a[:2]) ** 2).sum()
@@ -106,8 +108,8 @@ class VertexMatrix(object):
                 max([x[0] for x in points]), max([x[1] for x in points])]
         p1 = self.get_box(rect[:2])
         p2 = self.get_box(rect[2:])
-        for i in xrange(p1[0], p2[0] + 1):
-            for j in xrange(p1[1], p2[1] + 1):
+        for i in range(p1[0], p2[0] + 1):
+            for j in range(p1[1], p2[1] + 1):
                 for v in self.m[(i, j)]:
                     p = self.pos[v]
                     if not point_in_poly(p, points):
@@ -248,7 +250,7 @@ class GraphWidget(Gtk.DrawingArea):
 
         if multilevel:
             self.cgs = coarse_graphs(g)
-            u = self.cgs.next()
+            u = next(self.cgs)
             self.cg, self.cpos, self.layout_K, self.cvcount, self.cecount = u
             self.ag = self.g
             self.apos = self.pos
@@ -327,7 +329,7 @@ class GraphWidget(Gtk.DrawingArea):
         else:
             if self.multilevel_layout:
                 try:
-                    u = self.cgs.next()
+                    u = next(self.cgs)
                     self.cg, self.cpos, K, self.cvcount, self.cecount = u
                     self.layout_K *= 0.75
                     self.g = self.cg

@@ -18,6 +18,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import division, absolute_import, print_function
+
 import os
 import warnings
 
@@ -27,14 +29,17 @@ except ImportError:
     msg = "Error importing cairo. Graph drawing will not work."
     warnings.filterwarnings("always", msg, ImportWarning)
     warnings.warn(msg, ImportWarning)
+    raise
 
 try:
-    import matplotlib.cm
-    import matplotlib.colors
+    import matplotlib
+    #import matplotlib.cm
+    #import matplotlib.colors
 except ImportError:
     msg = "Error importing matplotlib module. Graph drawing will not work."
     warnings.filterwarnings("always", msg, ImportWarning)
     warnings.warn(msg, ImportWarning)
+    raise
 
 import numpy as np
 import gzip
@@ -48,9 +53,9 @@ from .. import GraphView, PropertyMap, ungroup_vector_property,\
 from .. stats import label_parallel_edges, label_self_loops
 
 from .. dl_import import dl_import
-dl_import("import libgraph_tool_draw")
+dl_import("from . import libgraph_tool_draw")
 try:
-    from libgraph_tool_draw import vertex_attrs, edge_attrs, vertex_shape,\
+    from .libgraph_tool_draw import vertex_attrs, edge_attrs, vertex_shape,\
         edge_marker
 except ImportError:
     msg = "Error importing cairo-based drawing library. " + \
@@ -98,7 +103,7 @@ def shape_from_prop(shape, enum):
             descs = shape.get_graph().edges()
             prop = shape.get_graph().new_edge_property("int")
         offset = min(enum.values.keys())
-        vals = dict([(k - offset, v) for k, v in enum.values.items()])
+        vals = dict([(k - offset, v) for k, v in list(enum.values.items())])
         for v in descs:
             if shape.value_type() == "string":
                 prop[v] = int(enum.__dict__[shape[v]])
@@ -174,7 +179,7 @@ def _convert(attr, val, cmap):
 def _attrs(attrs, d, g, cmap):
     nattrs = {}
     defaults = {}
-    for k, v in attrs.items():
+    for k, v in list(attrs.items()):
         try:
             if d == "v":
                 attr = vertex_attrs.__dict__[k]
@@ -223,7 +228,7 @@ def position_parallel_edges(g, pos, loop_angle=float("nan"),
 def parse_props(prefix, args):
     props = {}
     others = {}
-    for k, v in args.items():
+    for k, v in list(args.items()):
         if k.startswith(prefix + "_"):
             props[k.replace(prefix + "_", "")] = v
         else:
@@ -723,8 +728,8 @@ def transform_scale(M, scale):
 try:
     from gi.repository import Gtk, Gdk, GdkPixbuf
     import gobject
-    from gtk_draw import *
-except (ImportError, RuntimeError), e:
+    from .gtk_draw import *
+except (ImportError, RuntimeError) as e:
     msg = "Error importing Gtk module: %s; GTK+ drawing will not work." % str(e)
     warnings.filterwarnings("always", msg, ImportWarning)
     warnings.warn(msg, ImportWarning)

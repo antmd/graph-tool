@@ -37,6 +37,8 @@ Contents
 ++++++++
 """
 
+from __future__ import division, absolute_import, print_function
+
 __all__ = ["inline"]
 
-from inline import inline
+from .inline import inline

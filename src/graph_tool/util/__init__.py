@@ -37,9 +37,10 @@ Contents
 ++++++++
 """
 
+from __future__ import division, absolute_import, print_function
 
 from .. dl_import import dl_import
-dl_import("import libgraph_tool_util")
+dl_import("from . import libgraph_tool_util")
 
 from .. import _degree, _prop, _convert
 import weakref

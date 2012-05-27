@@ -18,7 +18,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import division, absolute_import, print_function
+
 import sys
+import os.path
+
 try:
     from DLFCN import RTLD_LAZY, RTLD_GLOBAL
     dl_flags = RTLD_LAZY | RTLD_GLOBAL
@@ -49,7 +53,9 @@ def dl_import(import_expr):
     orig_dlopen_flags = sys.getdlopenflags()
     sys.setdlopenflags(dl_flags)
 
-    exec import_expr in local_dict, global_dict
-
-    sys.setdlopenflags(orig_dlopen_flags)  # reset it to normal case to avoid
-                                           # unnecessary symbol collision
+    try:
+        exec(import_expr, local_dict, global_dict)
+    finally:
+        sys.setdlopenflags(orig_dlopen_flags)  # reset it to normal case to
+                                               # avoid unnecessary symbol
+                                               # collision

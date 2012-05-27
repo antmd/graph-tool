@@ -39,8 +39,10 @@ Contents
 ++++++++
 """
 
+from __future__ import division, absolute_import, print_function
+
 from .. dl_import import dl_import
-dl_import("import libgraph_tool_community")
+dl_import("from . import libgraph_tool_community")
 
 from .. import _degree, _prop, Graph, GraphView, libcore
 import random
@@ -204,7 +206,7 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
         new_spins = False
     if history_file == None:
         history_file = ""
-    seed = random.randint(0, sys.maxint)
+    seed = random.randint(0, sys.maxsize)
     ug = GraphView(g, directed=False)
     libgraph_tool_community.community_structure(ug._Graph__graph, gamma, corr,
                                                 n_iter, t_range[1], t_range[0],

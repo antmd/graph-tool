@@ -330,6 +330,8 @@ struct export_python_interface
             class_<PythonIterator<PythonVertex, vertex_iterator> >
                 ("VertexIterator", no_init)
                 .def("__iter__", objects::identity_function())
+                .def("__next__", &PythonIterator<PythonVertex,
+                                                 vertex_iterator>::Next)
                 .def("next", &PythonIterator<PythonVertex,
                                              vertex_iterator>::Next);
             v_iterators.insert(typeid(vertex_iterator).name());
@@ -339,6 +341,8 @@ struct export_python_interface
         class_<PythonIterator<PythonEdge<Graph>,
                               edge_iterator> >("EdgeIterator", no_init)
             .def("__iter__", objects::identity_function())
+            .def("__next__", &PythonIterator<PythonEdge<Graph>,
+                                         edge_iterator>::Next)
             .def("next", &PythonIterator<PythonEdge<Graph>,
                                          edge_iterator>::Next);
 
@@ -347,6 +351,8 @@ struct export_python_interface
         class_<PythonIterator<PythonEdge<Graph>,
                               out_edge_iterator> >("OutEdgeIterator", no_init)
             .def("__iter__", objects::identity_function())
+            .def("__next__", &PythonIterator<PythonEdge<Graph>,
+                                             out_edge_iterator>::Next)
             .def("next", &PythonIterator<PythonEdge<Graph>,
                                          out_edge_iterator>::Next);
 
@@ -360,6 +366,8 @@ struct export_python_interface
             class_<PythonIterator<PythonEdge<Graph>,
                                   in_edge_iterator> >("InEdgeIterator", no_init)
                 .def("__iter__", objects::identity_function())
+                .def("__next__", &PythonIterator<PythonEdge<Graph>,
+                                                 in_edge_iterator>::Next)
                 .def("next", &PythonIterator<PythonEdge<Graph>,
                                              in_edge_iterator>::Next);
         }

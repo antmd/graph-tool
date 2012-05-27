@@ -74,8 +74,10 @@ Contents
 ++++++++
 """
 
+from __future__ import division, absolute_import, print_function
+
 from .. dl_import import dl_import
-dl_import("import libgraph_tool_search")
+dl_import("from . import libgraph_tool_search")
 
 from .. import _prop
 from .. decorators import _wraps
@@ -125,7 +127,7 @@ def _perm_wrap(edge_members, vertex_members=[]):
             finally:
                 g._Graph__perms.update(perms)
 
-            for n, m in old_members.iteritems():
+            for n, m in old_members.items():
                 setattr(visitor, n, m)
             return ret
         return wrap
@@ -301,9 +303,9 @@ def bfs_search(g, source, visitor=BFSVisitor()):
     --> Dave has been discovered!
     Oscar has been examined...
     Dave has been examined...
-    >>> print dist.a
+    >>> print(dist.a)
     [0 2 2 1 1 3 1 1 3 2]
-    >>> print pred.a
+    >>> print(pred.a)
     [0 3 6 0 0 1 0 0 1 6]
 
 
@@ -537,9 +539,9 @@ def dfs_search(g, source, visitor=DFSVisitor()):
     edge (Bob, Chuck) has been examined...
     edge (Bob, Carlos) has been examined...
     edge (Bob, Isaac) has been examined...
-    >>> print time.a
+    >>> print(time.a)
     [0 7 5 6 3 9 1 2 8 4]
-    >>> print pred.a
+    >>> print(pred.a)
     [0 3 9 9 7 8 0 6 1 4]
 
 
@@ -803,11 +805,11 @@ def dijkstra_search(g, source, weight, visitor=DijkstraVisitor(), dist_map=None,
     edge (Oscar, Dave) has been examined...
     edge (Dave, Oscar) has been examined...
     edge (Dave, Alice) has been examined...
-    >>> print time.a
+    >>> print(time.a)
     [0 7 6 3 2 9 1 4 8 5]
-    >>> print pred.a
+    >>> print(pred.a)
     [0 3 6 0 0 1 0 0 1 6]
-    >>> print dist.a
+    >>> print(dist.a)
     [  0.           8.91915887   9.27141329   4.29277116   4.02118246
       12.23513866   3.23790211   3.45487436  11.04391549   7.74858396]
 
@@ -1048,11 +1050,11 @@ def bellman_ford_search(g, source, weight, visitor=BellmanFordVisitor(),
     edge (Dave, Oscar) has been minimized...
     edge (Eve, Isaac) has been minimized...
     edge (Eve, Imothep) has been minimized...
-    >>> print minimized
+    >>> print(minimized)
     True
-    >>> print pred.a
+    >>> print(pred.a)
     [3 3 9 1 6 1 3 6 1 3]
-    >>> print dist.a
+    >>> print(dist.a)
     [-28.42555934 -37.34471821 -25.20438243 -41.97110592 -35.20316571
      -34.02873843 -36.58860946 -33.55645565 -35.2199616  -36.0029274 ]
 
@@ -1537,3 +1539,4 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
 class StopSearch(Exception):
     """If this exception is raised from inside any search visitor object, the search is aborted."""
     pass
+

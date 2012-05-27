@@ -39,9 +39,10 @@ Contents
 ++++++++
 """
 
+from __future__ import division, absolute_import, print_function
 
 from .. dl_import import dl_import
-dl_import("import libgraph_tool_correlations")
+dl_import("from . import libgraph_tool_correlations")
 
 from .. import _degree, _prop
 from numpy import *

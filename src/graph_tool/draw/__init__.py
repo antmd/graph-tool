@@ -62,6 +62,8 @@ Contents
 ++++++++
 """
 
+from __future__ import division, absolute_import, print_function
+
 from .. import GraphView, _check_prop_vector, group_vector_property, \
      ungroup_vector_property, infect_vertex_property, _prop
 from .. topology import max_cardinality_matching, max_independent_vertex_set, \
@@ -73,10 +75,11 @@ from numpy import sqrt
 import sys
 
 from .. dl_import import dl_import
-dl_import("import libgraph_tool_layout")
+dl_import("from . import libgraph_tool_layout")
 
 
-__all__ = ["graph_draw", "graphviz_draw", "fruchterman_reingold_layout",
+__all__ = ["graph_draw", "graphviz_draw",
+           "fruchterman_reingold_layout",
            "arf_layout", "sfdp_layout", "random_layout",
            "cairo_draw"]
 
@@ -124,12 +127,12 @@ def random_layout(g, shape=None, pos=None, dim=2):
         pos = g.new_vertex_property("vector<double>")
     _check_prop_vector(pos, name="pos")
 
-    pos = ungroup_vector_property(pos, range(0, dim))
+    pos = ungroup_vector_property(pos, list(range(0, dim)))
 
     if shape == None:
         shape = [sqrt(g.num_vertices())] * dim
 
-    for i in xrange(dim):
+    for i in range(dim):
         if hasattr(shape[i], "__len__"):
             if len(shape[i]) != 2:
                 raise ValueError("The elements of 'shape' must have size 2.")
@@ -314,7 +317,7 @@ def _coarse_graph(g, vweight, eweight, mivs=False):
         c.fa += 1
         u = GraphView(g, directed=False)
         infect_vertex_property(u, c,
-                               range(1, c.fa.max() + 1))
+                               list(range(1, c.fa.max() + 1)))
         c = g.own_property(c)
     else:
         mivs = None
@@ -330,7 +333,7 @@ def _coarse_graph(g, vweight, eweight, mivs=False):
 
 
 def _propagate_pos(g, cg, c, cc, cpos, delta, mivs):
-    seed = numpy.random.randint(sys.maxint)
+    seed = numpy.random.randint(sys.maxsize)
     pos = g.new_vertex_property(cpos.value_type())
 
     if mivs is not None:
@@ -382,13 +385,13 @@ def coarse_graphs(g, method="hybrid", mivs_thres=0.9, ec_thres=0.75,
             break
         cg.append(u)
         if verbose:
-            print "Coarse level (%s):" % ("MIVS" if mivs else "EC"),
-            print len(cg), " num vertices:",
-            print u[0].num_vertices()
+            print("Coarse level (%s):" % ("MIVS" if mivs else "EC"), end=' ')
+            print(len(cg), " num vertices:", end=' ')
+            print(u[0].num_vertices())
     cg.reverse()
     Ks = []
     pos = random_layout(cg[0][0], dim=2)
-    for i in xrange(len(cg)):
+    for i in range(len(cg)):
         if i == 0:
             u = cg[i][0]
             K = _avg_edge_distance(u, pos)
@@ -405,17 +408,17 @@ def coarse_graphs(g, method="hybrid", mivs_thres=0.9, ec_thres=0.75,
             gamma = 0.75
         Ks.append(Ks[-1] * gamma)
 
-    for i in xrange(len(cg)):
+    for i in range(len(cg)):
         u, cc, vcount, ecount, c, mivs = cg[i]
         yield u, pos, Ks[i], vcount, ecount
 
         if verbose:
-            print "avg edge distance:", _avg_edge_distance(u, pos)
+            print("avg edge distance:", _avg_edge_distance(u, pos))
 
         if i < len(cg) - 1:
             if verbose:
-                print "propagating...",
-                print mivs.a.sum() if mivs is not None else ""
+                print("propagating...", end=' ')
+                print(mivs.a.sum() if mivs is not None else "")
             pos = _propagate_pos(cg[i + 1][0], u, c, cc, pos,
                                  Ks[i] / 1000, mivs)
 
@@ -545,8 +548,8 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, C=0.2, K=None, p=2.,
         count = 0
         for u, pos, K, vcount, ecount in cgs:
             if verbose:
-                print "Positioning level:", count, u.num_vertices(),
-                print "with K =", K, "..."
+                print("Positioning level:", count, u.num_vertices(), end=' ')
+                print("with K =", K, "...")
                 count += 1
             #graph_draw(u, pos)
             pos = sfdp_layout(u, pos=pos,
@@ -584,13 +587,19 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, C=0.2, K=None, p=2.,
                                      verbose)
     return pos
 
-from cairo_draw import graph_draw, cairo_draw
+try:
+    from .cairo_draw import graph_draw, cairo_draw
+except ImportError:
+    pass
 
 try:
-    from cairo_draw import GraphWidget, GraphWindow, \
+    from .cairo_draw import GraphWidget, GraphWindow, \
         interactive_window
     __all__ += ["interactive_window", "GraphWidget", "GraphWindow"]
 except ImportError:
     pass
 
-from graphviz_draw import graphviz_draw
+try:
+   from .graphviz_draw import graphviz_draw
+except ImportError:
+   pass

@@ -18,10 +18,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import division, absolute_import, print_function
+
 import pickle
 import base64
-from StringIO import StringIO
-import libgraph_tool_core
+from io import StringIO
+from . import libgraph_tool_core
 
 # IStream and OStream need to be tweaked a little to become a real file-like
 # object...

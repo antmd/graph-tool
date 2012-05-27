@@ -70,8 +70,10 @@ The following network will be used as an example throughout the documentation.
 
 """
 
+from __future__ import division, absolute_import, print_function
+
 from .. dl_import import dl_import
-dl_import("import libgraph_tool_flow")
+dl_import("from . import libgraph_tool_flow")
 
 from .. import _prop, _check_prop_scalar, _check_prop_writable
 __all__ = ["edmonds_karp_max_flow", "push_relabel_max_flow",
@@ -126,7 +128,7 @@ def edmonds_karp_max_flow(g, source, target, capacity, residual=None):
     >>> res = gt.edmonds_karp_max_flow(g, src, tgt, cap)
     >>> res.a = cap.a - res.a  # the actual flow
     >>> max_flow = sum(res[e] for e in tgt.in_edges())
-    >>> print max_flow
+    >>> print(max_flow)
     6.92759897841
     >>> pos = g.vertex_properties["pos"]
     >>> res.a /= res.a.max() / 10
@@ -203,7 +205,7 @@ def push_relabel_max_flow(g, source, target, capacity, residual=None):
     >>> res = gt.push_relabel_max_flow(g, src, tgt, cap)
     >>> res.a = cap.a - res.a  # the actual flow
     >>> max_flow = sum(res[e] for e in tgt.in_edges())
-    >>> print max_flow
+    >>> print(max_flow)
     6.92759897841
     >>> pos = g.vertex_properties["pos"]
     >>> res.a /= res.a.max() / 10
@@ -281,7 +283,7 @@ def boykov_kolmogorov_max_flow(g, source, target, capacity, residual=None):
     >>> res = gt.boykov_kolmogorov_max_flow(g, src, tgt, cap)
     >>> res.a = cap.a - res.a  # the actual flow
     >>> max_flow = sum(res[e] for e in tgt.in_edges())
-    >>> print max_flow
+    >>> print(max_flow)
     6.92759897841
     >>> pos = g.vertex_properties["pos"]
     >>> res.a /= res.a.max() / 10
@@ -321,3 +323,4 @@ def boykov_kolmogorov_max_flow(g, source, target, capacity, residual=None):
                                    _prop("e", g, capacity),
                                    _prop("e", g, residual))
     return residual
+

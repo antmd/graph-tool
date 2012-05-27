@@ -44,8 +44,10 @@ Contents
 
 """
 
+from __future__ import division, absolute_import, print_function
+
 from .. dl_import import dl_import
-dl_import("import libgraph_tool_stats")
+dl_import("from . import libgraph_tool_stats")
 
 from .. import _degree, _prop
 from numpy import *
@@ -105,7 +107,7 @@ def vertex_hist(g, deg, bins=[0, 1], float_count=True):
     >>> from numpy.random import poisson, seed
     >>> seed(42)
     >>> g = gt.random_graph(1000, lambda: (poisson(5), poisson(5)))
-    >>> print gt.vertex_hist(g, "out")
+    >>> print(gt.vertex_hist(g, "out"))
     [array([  10.,   30.,   86.,  138.,  166.,  154.,  146.,  129.,   68.,
              36.,   23.,    8.,    3.,    2.,    0.,    1.]), array([ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16], dtype=uint64)]
     """
@@ -164,7 +166,7 @@ def edge_hist(g, eprop, bins=[0, 1], float_count=True):
     >>> g = gt.random_graph(1000, lambda: (5, 5))
     >>> eprop = g.new_edge_property("double")
     >>> eprop.get_array()[:] = random(g.num_edges())
-    >>> print gt.edge_hist(g, eprop, linspace(0, 1, 11))
+    >>> print(gt.edge_hist(g, eprop, linspace(0, 1, 11)))
     [array([ 525.,  504.,  502.,  502.,  468.,  499.,  531.,  471.,  520.,  478.]), array([ 0. ,  0.1,  0.2,  0.3,  0.4,  0.5,  0.6,  0.7,  0.8,  0.9,  1. ])]
 
     """
@@ -213,7 +215,7 @@ def vertex_average(g, deg):
     >>> from numpy.random import poisson, seed
     >>> seed(42)
     >>> g = gt.random_graph(1000, lambda: (poisson(5), poisson(5)))
-    >>> print gt.vertex_average(g, "in")
+    >>> print(gt.vertex_average(g, "in"))
     (5.092, 0.07188557574367754)
     """
 
@@ -261,7 +263,7 @@ def edge_average(g, eprop):
     >>> g = gt.random_graph(1000, lambda: (5, 5))
     >>> eprop = g.new_edge_property("double")
     >>> eprop.get_array()[:] = random(g.num_edges())
-    >>> print gt.edge_average(g, eprop)
+    >>> print(gt.edge_average(g, eprop))
     (0.49674035434130187, 0.004094604069093868)
     """
 
@@ -381,15 +383,15 @@ def distance_histogram(g, weight=None, bins=[0, 1], samples=None,
     >>> seed(42)
     >>> g = gt.random_graph(100, lambda: (3, 3))
     >>> hist = gt.distance_histogram(g)
-    >>> print hist
+    >>> print(hist)
     [array([    0.,   300.,   861.,  2165.,  3801.,  2576.,   197.]), array([0, 1, 2, 3, 4, 5, 6, 7], dtype=uint64)]
     >>> hist = gt.distance_histogram(g, samples=10)
-    >>> print hist
+    >>> print(hist)
     [array([   0.,   30.,   87.,  221.,  395.,  234.,   23.]), array([0, 1, 2, 3, 4, 5, 6, 7], dtype=uint64)]
     """
 
     if samples != None:
-        seed = numpy.random.randint(0, sys.maxint)
+        seed = numpy.random.randint(0, sys.maxsize)
         ret = libgraph_tool_stats.\
               sampled_distance_histogram(g._Graph__graph,
                                          _prop("e", g, weight),
@@ -399,3 +401,4 @@ def distance_histogram(g, weight=None, bins=[0, 1], samples=None,
         ret = libgraph_tool_stats.\
               distance_histogram(g._Graph__graph, _prop("e", g, weight), bins)
     return [array(ret[0], dtype="float64") if float_count else ret[0], ret[1]]
+

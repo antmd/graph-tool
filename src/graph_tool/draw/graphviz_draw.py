@@ -18,6 +18,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import division, absolute_import, print_function
+
 import sys
 import os
 import os.path
@@ -36,9 +38,10 @@ try:
     import matplotlib.cm
     import matplotlib.colors
 except ImportError:
-    msg = "Error importing matplotlib module... graphviz_draw() will not work."
+    msg = "Error importing matplotlib module... graphviz_draw() will not work"
     warnings.filterwarnings("always", msg, ImportWarning)
     warnings.warn(msg, ImportWarning)
+    raise
 
 try:
     libname = ctypes.util.find_library("c")
@@ -337,11 +340,11 @@ def graphviz_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
         if maxiter is not None:
             aset(gvg, "maxiter", maxiter)
 
-        seed = numpy.random.randint(sys.maxint)
+        seed = numpy.random.randint(sys.maxsize)
         aset(gvg, "start", "%d" % seed)
 
         # apply all user supplied graph properties
-        for k, val in gprops.iteritems():
+        for k, val in gprops.items():
             if isinstance(val, PropertyMap):
                 aset(gvg, k, val[g])
             else:
@@ -424,7 +427,7 @@ def graphviz_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
                 aset(n, "pin", pin_val)
 
             # apply all user supplied properties
-            for k, val in vprops.iteritems():
+            for k, val in vprops.items():
                 if isinstance(val, PropertyMap):
                     aset(n, k, val[v])
                 else:
@@ -469,7 +472,7 @@ def graphviz_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
                     aset(ge, "penwidth", penwidth)
 
             # apply all user supplied properties
-            for k, v in eprops.iteritems():
+            for k, v in eprops.items():
                 if isinstance(v, PropertyMap):
                     aset(ge, k, v[e])
                 else:
