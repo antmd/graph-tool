@@ -76,7 +76,7 @@ Contents
 """
 
 __author__ = "Tiago de Paula Peixoto <tiago@skewed.de>"
-__copyright__ = "Copyright 2007-2011 Tiago de Paula Peixoto"
+__copyright__ = "Copyright 2007-2012 Tiago de Paula Peixoto"
 __license__ = "GPL version 3 or above"
 __URL__ = "http://graph-tool.skewed.de"
 
