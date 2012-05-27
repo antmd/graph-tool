@@ -1,10 +1,10 @@
 # ===========================================================================
-#            http://autoconf-archive.cryp.to/ac_python_module.html
+#     http://www.gnu.org/software/autoconf-archive/ax_python_module.html
 # ===========================================================================
 #
 # SYNOPSIS
 #
-#   AC_PYTHON_MODULE(modname[, fatal])
+#   AX_PYTHON_MODULE(modname[, fatal])
 #
 # DESCRIPTION
 #
@@ -12,24 +12,22 @@
 #
 #   If fatal is non-empty then absence of a module will trigger an error.
 #
-# LAST MODIFICATION
-#
-#   2008-04-12
-#
-# COPYLEFT
+# LICENSE
 #
 #   Copyright (c) 2008 Andrew Collier <colliera@ukzn.ac.za>
 #
 #   Copying and distribution of this file, with or without modification, are
 #   permitted in any medium without royalty provided the copyright notice
-#   and this notice are preserved.
+#   and this notice are preserved. This file is offered as-is, without any
+#   warranty.
 
-AC_DEFUN([AC_PYTHON_MODULE],[
-    if test -z $PYTHON_BIN;
+#serial 5
+
+AU_ALIAS([AC_PYTHON_MODULE], [AX_PYTHON_MODULE])
+AC_DEFUN([AX_PYTHON_MODULE],[
+    if test -z $PYTHON;
     then
         PYTHON="python"
-    else
-        PYTHON=$PYTHON_BIN
     fi
     PYTHON_NAME=`basename $PYTHON`
     AC_MSG_CHECKING($PYTHON_NAME module: $1)

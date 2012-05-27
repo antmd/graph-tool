@@ -56,7 +56,7 @@
 #   special exception to the GPL to apply to your modified version as well.
 
 AC_DEFUN([AX_BOOST_PYTHON],
-[AC_REQUIRE([AX_PYTHON])dnl
+[ dnl AC_REQUIRE([AX_PYTHON])dnl
 AC_CACHE_CHECK(whether the Boost::Python library is available,
 ac_cv_boost_python,
 [AC_LANG_SAVE
