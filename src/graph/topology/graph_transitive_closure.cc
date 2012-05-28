@@ -15,10 +15,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#include "graph.hh"
-#include "graph_filtering.hh"
-
 #include <boost/graph/transitive_closure.hpp>
+
+#include "graph_filtering.hh"
+#include "graph.hh"
+#include "graph_properties.hh"
 
 using namespace graph_tool;
 using namespace boost;

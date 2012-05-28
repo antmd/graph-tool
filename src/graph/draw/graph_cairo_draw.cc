@@ -128,7 +128,7 @@ typedef mpl::map21<
     mpl::pair<mpl::int_<EDGE_CONTROL_POINTS>, vector<double> > >
         attr_types;
 
-namespace boost
+namespace std
 {
 ostream& operator<<(ostream& out, const color_t& c)
 {
@@ -136,11 +136,27 @@ ostream& operator<<(ostream& out, const color_t& c)
     return out;
 }
 
-istream& operator>>(istream& in, const color_t& c)
+istream& operator>>(istream& in, color_t& c)
 {
     in >> get<0>(c) >> get<1>(c) >> get<2>(c) >>  get<3>(c);
     return in;
 }
+}
+
+istream& operator>>(istream& in, vertex_shape_t& c)
+{
+    int tmp;
+    in >> tmp;
+    c = vertex_shape_t(tmp);
+    return in;
+}
+
+istream& operator>>(istream& in, edge_marker_t& c)
+{
+    int tmp;
+    in >> tmp;
+    c = edge_marker_t(tmp);
+    return in;
 }
 
 template <class T1, class T2>
@@ -395,27 +411,27 @@ public:
 
     double get_size(Cairo::Context& cr)
     {
-        double size = _attrs.get<double>(VERTEX_SIZE);
+        double size = _attrs.template get<double>(VERTEX_SIZE);
         size *= get_user_dist(cr);
 
-        string text = _attrs.get<string>(VERTEX_TEXT);
+        string text = _attrs.template get<string>(VERTEX_TEXT);
         if (text != "")
         {
-            double text_pos = _attrs.get<double>(VERTEX_TEXT_POSITION);
+            double text_pos = _attrs.template get<double>(VERTEX_TEXT_POSITION);
             if (text_pos < 0)
             {
-                cr.select_font_face(_attrs.get<string>(VERTEX_FONT_FAMILY),
-                                    static_cast<Cairo::FontSlant>(_attrs.get<int32_t>(VERTEX_FONT_SLANT)),
-                                    static_cast<Cairo::FontWeight>(_attrs.get<int32_t>(VERTEX_FONT_WEIGHT)));
-                cr.set_font_size(_attrs.get<double>(VERTEX_FONT_SIZE) *
+                cr.select_font_face(_attrs.template get<string>(VERTEX_FONT_FAMILY),
+                                    static_cast<Cairo::FontSlant>(_attrs.template get<int32_t>(VERTEX_FONT_SLANT)),
+                                    static_cast<Cairo::FontWeight>(_attrs.template get<int32_t>(VERTEX_FONT_WEIGHT)));
+                cr.set_font_size(_attrs.template get<double>(VERTEX_FONT_SIZE) *
                                  get_user_dist(cr));
                 Cairo::TextExtents extents;
                 cr.get_text_extents(text, extents);
                 double s = max(extents.width, extents.height) * 1.4;
-                if (_attrs.get<vertex_shape_t>(VERTEX_SHAPE) >= SHAPE_DOUBLE_CIRCLE)
+                if (_attrs.template get<vertex_shape_t>(VERTEX_SHAPE) >= SHAPE_DOUBLE_CIRCLE)
                 {
                     s /= 0.7;
-                    double pw = _attrs.get<double>(VERTEX_PENWIDTH);
+                    double pw = _attrs.template get<double>(VERTEX_PENWIDTH);
                     pw *= get_user_dist(cr);
                     s += pw;
                 }
@@ -434,13 +450,13 @@ public:
         double r = get_size(cr) / 2;
         double dr = r;
 
-        double pw = _attrs.get<double>(VERTEX_PENWIDTH);
+        double pw = _attrs.template get<double>(VERTEX_PENWIDTH);
         pw *= get_user_dist(cr);
         r += pw / 2.5;
 
         pos_t anchor;
         size_t nsides = 0;
-        vertex_shape_t shape = _attrs.get<vertex_shape_t>(VERTEX_SHAPE);
+        vertex_shape_t shape = _attrs.template get<vertex_shape_t>(VERTEX_SHAPE);
         switch (shape)
         {
         case SHAPE_TRIANGLE:
@@ -466,7 +482,7 @@ public:
             break;
         default:
             throw ValueException("Invalid vertex shape: " +
-                                 lexical_cast<string>(int(_attrs.get<vertex_shape_t>(VERTEX_SHAPE))));
+                                 lexical_cast<string>(int(_attrs.template get<vertex_shape_t>(VERTEX_SHAPE))));
         }
 
         anchor = _pos;
@@ -486,39 +502,39 @@ public:
         double size, pw;
         size = get_size(cr);
 
-        string text = _attrs.get<string>(VERTEX_TEXT);
+        string text = _attrs.template get<string>(VERTEX_TEXT);
         double text_pos = 0;
         if (text != "")
         {
-            string text = _attrs.get<string>(VERTEX_TEXT);
-            cr.select_font_face(_attrs.get<string>(VERTEX_FONT_FAMILY),
-                                static_cast<Cairo::FontSlant>(_attrs.get<int32_t>(VERTEX_FONT_SLANT)),
-                                static_cast<Cairo::FontWeight>(_attrs.get<int32_t>(VERTEX_FONT_WEIGHT)));
-            cr.set_font_size(_attrs.get<double>(VERTEX_FONT_SIZE) *
+            string text = _attrs.template get<string>(VERTEX_TEXT);
+            cr.select_font_face(_attrs.template get<string>(VERTEX_FONT_FAMILY),
+                                static_cast<Cairo::FontSlant>(_attrs.template get<int32_t>(VERTEX_FONT_SLANT)),
+                                static_cast<Cairo::FontWeight>(_attrs.template get<int32_t>(VERTEX_FONT_WEIGHT)));
+            cr.set_font_size(_attrs.template get<double>(VERTEX_FONT_SIZE) *
                              get_user_dist(cr));
-            text_pos = _attrs.get<double>(VERTEX_TEXT_POSITION);
+            text_pos = _attrs.template get<double>(VERTEX_TEXT_POSITION);
         }
 
         cr.save();
         cr.translate(_pos.first, _pos.second);
 
-        if (_attrs.get<uint8_t>(VERTEX_HALO))
+        if (_attrs.template get<uint8_t>(VERTEX_HALO))
         {
-            color_t c = _attrs.get<color_t>(VERTEX_HALO_COLOR);
+            color_t c = _attrs.template get<color_t>(VERTEX_HALO_COLOR);
             cr.set_source_rgba(get<0>(c), get<1>(c), get<2>(c), get<3>(c));
             cr.arc(0, 0, size, 0, 2 * M_PI);
             cr.fill();
         }
 
-        pw =_attrs.get<double>(VERTEX_PENWIDTH);
+        pw =_attrs.template get<double>(VERTEX_PENWIDTH);
         pw *= get_user_dist(cr);
         cr.set_line_width(pw);
 
-        color = _attrs.get<color_t>(VERTEX_COLOR);
+        color = _attrs.template get<color_t>(VERTEX_COLOR);
         cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color),
                            get<3>(color));
         size_t nsides = 0;
-        vertex_shape_t shape = _attrs.get<vertex_shape_t>(VERTEX_SHAPE);
+        vertex_shape_t shape = _attrs.template get<vertex_shape_t>(VERTEX_SHAPE);
         switch (shape)
         {
         case SHAPE_CIRCLE:
@@ -558,10 +574,10 @@ public:
             break;
         default:
             throw ValueException("Invalid vertex shape: " +
-                                 lexical_cast<string>(int(_attrs.get<vertex_shape_t>(VERTEX_SHAPE))));
+                                 lexical_cast<string>(int(_attrs.template get<vertex_shape_t>(VERTEX_SHAPE))));
         }
 
-        fillcolor = _attrs.get<color_t>(VERTEX_FILL_COLOR);
+        fillcolor = _attrs.template get<color_t>(VERTEX_FILL_COLOR);
         cr.set_source_rgba(get<0>(fillcolor), get<1>(fillcolor),
                            get<2>(fillcolor), get<3>(fillcolor));
         cr.fill_preserve();
@@ -597,7 +613,7 @@ public:
                     anchor.second += extents.height;
                 cr.translate(anchor.first, anchor.second);
             }
-            color = _attrs.get<color_t>(VERTEX_TEXT_COLOR);
+            color = _attrs.template get<color_t>(VERTEX_TEXT_COLOR);
             cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color),
                                get<3>(color));
             cr.show_text(text);
@@ -625,7 +641,7 @@ public:
         pos_t pos_begin, pos_end;
 
         vector<double> controls =
-            _attrs.get<vector<double> >(EDGE_CONTROL_POINTS);
+            _attrs.template get<vector<double> >(EDGE_CONTROL_POINTS);
 
         pos_begin = _s.get_anchor(_t.get_pos(), cr);
         pos_end = _t.get_anchor(_s.get_pos(), cr);
@@ -676,9 +692,9 @@ public:
 
 
         pos_t pos_end_c = pos_end, pos_begin_c = pos_begin;
-        edge_marker_t start_marker = _attrs.get<edge_marker_t>(EDGE_START_MARKER);
-        edge_marker_t end_marker = _attrs.get<edge_marker_t>(EDGE_END_MARKER);
-        double marker_size = _attrs.get<double>(EDGE_MARKER_SIZE);
+        edge_marker_t start_marker = _attrs.template get<edge_marker_t>(EDGE_START_MARKER);
+        edge_marker_t end_marker = _attrs.template get<edge_marker_t>(EDGE_END_MARKER);
+        double marker_size = _attrs.template get<double>(EDGE_MARKER_SIZE);
         marker_size *= get_user_dist(cr);
 
         if (start_marker != MARKER_SHAPE_NONE && start_marker != MARKER_SHAPE_BAR)
@@ -686,10 +702,10 @@ public:
         if (end_marker != MARKER_SHAPE_NONE && end_marker != MARKER_SHAPE_BAR)
             move_radially(pos_end_c, _t.get_pos(), marker_size / 2);
 
-        color_t color = _attrs.get<color_t>(EDGE_COLOR);
+        color_t color = _attrs.template get<color_t>(EDGE_COLOR);
         cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color), 1);
         double pw;
-        pw = _attrs.get<double>(EDGE_PENWIDTH);
+        pw = _attrs.template get<double>(EDGE_PENWIDTH);
         pw *= get_user_dist(cr);
         cr.set_line_width(pw);
 
@@ -785,7 +801,7 @@ public:
 
     void draw_marker(edge_attr_t attr, double size, Cairo::Context& cr)
     {
-        edge_marker_t marker = _attrs.get<edge_marker_t>(attr);
+        edge_marker_t marker = _attrs.template get<edge_marker_t>(attr);
         switch (marker)
         {
         case MARKER_SHAPE_ARROW:
@@ -1207,11 +1223,12 @@ struct do_put_parallel_splines
                 double n = (pes.size() - 1.) / 2.;
                 for (size_t j = 0; j < pes.size(); ++j)
                 {
+                    typedef typename property_traits<SplinesMap>::value_type::value_type val_t;
                     double one = pes[j].second ? 1 : -1;
-                    sp[0] = 0.3;
-                    sp[1] = one * (j - n) * parallel_distance / n;
-                    sp[2] = 0.7;
-                    sp[3] = one * (j - n) * parallel_distance / n;
+                    sp[0] = val_t(0.3);
+                    sp[1] = val_t(one * (j - n) * parallel_distance / n);
+                    sp[2] = val_t(0.7);
+                    sp[3] = val_t(one * (j - n) * parallel_distance / n);
                     put(spline, skey_t(pes[j].first), sp);
                 }
             }

@@ -55,16 +55,6 @@ uint8_t lexical_cast<uint8_t,string>(const string& val)
 // preserve internal representation. (we also need to make sure the
 // representation is locale-independent).
 
-template <class Val>
-int print_float(char*& str, Val val)
-{
-    char* locale = setlocale(LC_NUMERIC, NULL);
-    setlocale(LC_NUMERIC, "C");
-    int retval = print_float_dispatch(str, val);
-    setlocale(LC_NUMERIC, locale);
-    return retval;
-}
-
 int print_float_dispatch(char*& str, float val)
 {
     return asprintf(&str, "%a", val);
@@ -81,11 +71,11 @@ int print_float_dispatch(char*& str, long double val)
 }
 
 template <class Val>
-int scan_float(const char* str, Val& val)
+int print_float(char*& str, Val val)
 {
     char* locale = setlocale(LC_NUMERIC, NULL);
     setlocale(LC_NUMERIC, "C");
-    int retval = scan_float_dispatch(str, val);
+    int retval = print_float_dispatch(str, val);
     setlocale(LC_NUMERIC, locale);
     return retval;
 }
@@ -104,6 +94,17 @@ int scan_float_dispatch(const char* str, long double& val)
 {
     return sscanf(str, "%La", &val);
 }
+
+template <class Val>
+int scan_float(const char* str, Val& val)
+{
+    char* locale = setlocale(LC_NUMERIC, NULL);
+    setlocale(LC_NUMERIC, "C");
+    int retval = scan_float_dispatch(str, val);
+    setlocale(LC_NUMERIC, locale);
+    return retval;
+}
+
 
 template <>
 string lexical_cast<string,float>(const float& val)

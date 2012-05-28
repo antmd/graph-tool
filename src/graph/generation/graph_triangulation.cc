@@ -20,10 +20,14 @@
 //  follow the requirements of the GNU GPL in regard to all of the
 //  software in the executable aside from CGAL.
 
-#if (GCC_VERSION < 40400)
+#if (GCC_VERSION < 40400 || defined __clang__)
 #   define CGAL_CFG_NO_TR1_ARRAY
 #   define CGAL_CFG_NO_TR1_TUPLE
 #endif
+#ifdef __clang__
+#   define CGAL_CFG_ARRAY_MEMBER_INITIALIZATION_BUG
+#endif
+
 
 #include <CGAL/version.h>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
@@ -33,7 +37,7 @@ typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
 typedef CGAL::Triangulation_3<Kernel> SimpleTriangulation;
 typedef CGAL::Delaunay_triangulation_3<Kernel> DelaunayTriangulation;
 
-namespace std
+namespace CGAL
 {
 bool operator==(const SimpleTriangulation::Vertex& a,
                 const SimpleTriangulation::Vertex& b)
@@ -49,7 +53,7 @@ bool operator==(const SimpleTriangulation::Vertex& a,
 typedef CGAL::Periodic_3_triangulation_traits_3<Kernel> GT;
 typedef CGAL::Periodic_3_Delaunay_triangulation_3<GT>
     PeriodicDelaunayTriangulation;
-namespace std
+namespace CGAL
 {
 bool operator==(const PeriodicDelaunayTriangulation::Vertex& a,
                 const PeriodicDelaunayTriangulation::Vertex& b)

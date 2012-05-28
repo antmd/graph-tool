@@ -164,7 +164,39 @@ void print_progress(size_t i, size_t n_iter, size_t current, size_t total,
     }
 }
 
-class DegreeBlock;
+//select blocks based on in/out degrees
+class DegreeBlock
+{
+public:
+    typedef pair<size_t, size_t> block_t;
+
+    template <class Graph>
+    block_t get_block(typename graph_traits<Graph>::vertex_descriptor v,
+                      const Graph& g) const
+    {
+        return make_pair(in_degreeS()(v, g), out_degree(v, g));
+    }
+};
+
+//select blocks based on property map
+template <class PropertyMap>
+class PropertyBlock
+{
+public:
+    typedef typename property_traits<PropertyMap>::value_type block_t;
+
+    PropertyBlock(PropertyMap p): _p(p) {}
+
+    template <class Graph>
+    block_t get_block(typename graph_traits<Graph>::vertex_descriptor v,
+                      const Graph& g) const
+    {
+        return get(_p, v);
+    }
+
+private:
+    PropertyMap _p;
+};
 
 // main rewire loop
 template <template <class Graph, class EdgeIndexMap, class CorrProb,
@@ -614,40 +646,6 @@ private:
     BlockDeg _blockdeg;
     tr1::unordered_map<pair<deg_t, deg_t>, double, hash<pair<deg_t, deg_t> > >
         _probs;
-};
-
-//select blocks based on in/out degrees
-class DegreeBlock
-{
-public:
-    typedef pair<size_t, size_t> block_t;
-
-    template <class Graph>
-    block_t get_block(typename graph_traits<Graph>::vertex_descriptor v,
-                      const Graph& g) const
-    {
-        return make_pair(in_degreeS()(v, g), out_degree(v, g));
-    }
-};
-
-//select blocks based on property map
-template <class PropertyMap>
-class PropertyBlock
-{
-public:
-    typedef typename property_traits<PropertyMap>::value_type block_t;
-
-    PropertyBlock(PropertyMap p): _p(p) {}
-
-    template <class Graph>
-    block_t get_block(typename graph_traits<Graph>::vertex_descriptor v,
-                      const Graph& g) const
-    {
-        return get(_p, v);
-    }
-
-private:
-    PropertyMap _p;
 };
 
 } // graph_tool namespace

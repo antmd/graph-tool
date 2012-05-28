@@ -52,7 +52,7 @@ class gml_parse_error: public std::exception
 public:
     gml_parse_error(const string& w): _what(w) {}
     ~gml_parse_error() throw() {}
-    std::string what() {return _what;}
+    virtual const char* what() const throw() {return _what.c_str();}
 
 private:
     std::string _what;

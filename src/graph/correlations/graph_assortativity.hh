@@ -44,7 +44,7 @@ struct get_assortativity_coefficient
         typedef typename mpl::if_<typename is_directed::apply<Graph>::type,
                                   size_t, double>::type count_t;
 
-        count_t c = (is_directed::apply<Graph>::type::value) ? 1.0 : 0.5;
+        count_t c = (is_directed::apply<Graph>::type::value) ? count_t(1) : count_t(0.5);
         count_t n_edges = 0;
         count_t e_kk = 0;
         tr1::unordered_map<double,count_t> a, b;
@@ -124,7 +124,7 @@ struct get_scalar_assortativity_coefficient
         typedef typename mpl::if_<typename is_directed::apply<Graph>::type,
                                   size_t, double>::type count_t;
 
-        count_t c = (is_directed::apply<Graph>::type::value) ? 1.0 : 0.5;
+        count_t c = (is_directed::apply<Graph>::type::value) ? count_t(1) : count_t(0.5);
         count_t n_edges = 0;
         double e_xy = 0.0;
         double a = 0.0, b = 0.0, da = 0.0, db = 0.0;

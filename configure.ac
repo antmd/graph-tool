@@ -83,11 +83,11 @@ AC_ARG_ENABLE([optimization], [AS_HELP_STRING([--disable-optimization],[disable 
         if test $enableval = no; then
            [AC_MSG_RESULT(no)]
 	else
-           [CXXFLAGS="${CXXFLAGS} -O99"]
+           [CXXFLAGS="${CXXFLAGS} -O3"]
 	   [AC_MSG_RESULT(yes)]
 	fi
         ,
-        [CXXFLAGS="${CXXFLAGS} -O99"]
+        [CXXFLAGS="${CXXFLAGS} -O3"]
         [AC_MSG_RESULT(yes)]
         )
 

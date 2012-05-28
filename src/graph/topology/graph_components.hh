@@ -155,7 +155,7 @@ struct label_biconnected_components
     {
         HistogramPropertyMap<CompMap> cm(comp_map, num_edges(g), hist);
         biconnected_components(g, cm,
-                               vertex_inserter<ArtMap>(art_map)).first;
+                               vertex_inserter<ArtMap>(art_map));
     }
 };
 
