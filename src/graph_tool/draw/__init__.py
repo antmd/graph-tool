@@ -395,6 +395,8 @@ def coarse_graphs(g, method="hybrid", mivs_thres=0.9, ec_thres=0.75,
         if i == 0:
             u = cg[i][0]
             K = _avg_edge_distance(u, pos)
+            if K == 0:
+                K = 1.
             Ks.append(K)
             continue
         if weighted_coarse:
@@ -420,7 +422,7 @@ def coarse_graphs(g, method="hybrid", mivs_thres=0.9, ec_thres=0.75,
                 print("propagating...", end=' ')
                 print(mivs.a.sum() if mivs is not None else "")
             pos = _propagate_pos(cg[i + 1][0], u, c, cc, pos,
-                                 Ks[i] / 1000, mivs)
+                                 Ks[i] / 1000., mivs)
 
 
 def sfdp_layout(g, vweight=None, eweight=None, pin=None, C=0.2, K=None, p=2.,

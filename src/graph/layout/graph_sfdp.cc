@@ -99,9 +99,10 @@ struct do_propagate_pos
             any_cast<typename VertexMap::checked_t>(acvmap);
         typedef typename property_traits<VertexMap>::value_type c_t;
         typedef typename property_traits<PosMap>::value_type pos_t;
+        typedef typename pos_t::value_type val_t;
 
-        tr1::variate_generator<RNG&, tr1::uniform_real<> >
-            noise(rng, tr1::uniform_real<>(-delta, delta));
+        tr1::variate_generator<RNG&, tr1::uniform_real<val_t> >
+            noise(rng, tr1::uniform_real<val_t>(-delta, delta));
 
         tr1::unordered_map<c_t, pos_t, boost::hash<c_t> >
             cmap(num_vertices(*cg));
@@ -126,9 +127,12 @@ struct do_propagate_pos
                 continue;
             pos[v] = cmap[vmap[v]];
             {
-                #pragma omp critical
-                for (size_t j = 0; j < pos[v].size(); ++j)
-                    pos[v][j] += noise();
+                if (delta > 0)
+                {
+                    #pragma omp critical
+                    for (size_t j = 0; j < pos[v].size(); ++j)
+                        pos[v][j] += noise();
+                }
             }
         }
     }
@@ -171,9 +175,10 @@ struct do_propagate_pos_mivs
     void operator()(Graph& g, MIVSMap mivs, PosMap pos, double delta, RNG& rng) const
     {
         typedef typename property_traits<PosMap>::value_type pos_t;
+        typedef typename pos_t::value_type val_t;
 
-        tr1::variate_generator<RNG&, tr1::uniform_real<> >
-            noise(rng, tr1::uniform_real<>(-delta, delta));
+        tr1::variate_generator<RNG&, tr1::uniform_real<val_t> >
+            noise(rng, tr1::uniform_real<val_t>(-delta, delta));
 
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i)
@@ -204,9 +209,12 @@ struct do_propagate_pos_mivs
 
             if (count == 1)
             {
-                #pragma omp critical
-                for (size_t j = 0; j < pos[v].size(); ++j)
-                    pos[v][j] += noise();
+                if (delta > 0)
+                {
+                    #pragma omp critical
+                    for (size_t j = 0; j < pos[v].size(); ++j)
+                        pos[v][j] += noise();
+                }
             }
             else
             {
