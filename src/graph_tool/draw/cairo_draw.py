@@ -32,9 +32,8 @@ except ImportError:
     raise
 
 try:
-    import matplotlib
-    #import matplotlib.cm
-    #import matplotlib.colors
+    import matplotlib.cm
+    import matplotlib.colors
 except ImportError:
     msg = "Error importing matplotlib module. Graph drawing will not work."
     warnings.filterwarnings("always", msg, ImportWarning)
