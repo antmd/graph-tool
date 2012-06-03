@@ -85,8 +85,8 @@ namespace boost {
       friend struct compare_multiplicity;
       struct compare_multiplicity
       {
-        compare_multiplicity(Invariant1 invariant1, size_type* multiplicity)
-          : invariant1(invariant1), multiplicity(multiplicity) { }
+        compare_multiplicity(Invariant1 inv1, size_type* mult)
+          : invariant1(inv1), multiplicity(mult) { }
         bool operator()(const vertex1_t& x, const vertex1_t& y) const {
           return multiplicity[invariant1(x)] < multiplicity[invariant1(y)];
         }
@@ -102,7 +102,7 @@ namespace boost {
         void discover_vertex(vertex1_t v, const Graph1&) const {
           vertices.push_back(v);
         }
-        void examine_edge(edge1_t e, const Graph1& G1) const {
+        void examine_edge(edge1_t e, const Graph1&) const {
           edges.push_back(e);
         }
         std::vector<vertex1_t>& vertices;
@@ -110,8 +110,8 @@ namespace boost {
       };
 
       struct edge_cmp {
-        edge_cmp(const Graph1& G1, DFSNumMap dfs_num)
-          : G1(G1), dfs_num(dfs_num) { }
+        edge_cmp(const Graph1& Gr1, DFSNumMap dfs_n)
+          : G1(Gr1), dfs_num(dfs_n) { }
         bool operator()(const edge1_t& e1, const edge1_t& e2) const {
           using namespace std;
           int u1 = dfs_num[source(e1,G1)], v1 = dfs_num[target(e1,G1)];
@@ -127,12 +127,12 @@ namespace boost {
       };
 
     public:
-      isomorphism_algo(const Graph1& G1, const Graph2& G2, IsoMapping f,
-                       Invariant1 invariant1, Invariant2 invariant2, std::size_t max_invariant,
-                       IndexMap1 index_map1, IndexMap2 index_map2)
-        : G1(G1), G2(G2), f(f), invariant1(invariant1), invariant2(invariant2),
-          max_invariant(max_invariant),
-          index_map1(index_map1), index_map2(index_map2)
+      isomorphism_algo(const Graph1& GG1, const Graph2& GG2, IsoMapping mf,
+                       Invariant1 inv1, Invariant2 inv2, std::size_t max_inv,
+                       IndexMap1 index1, IndexMap2 index2)
+        : G1(GG1), G2(GG2), f(mf), invariant1(inv1), invariant2(inv2),
+          max_invariant(max_inv),
+          index_map1(index1), index_map2(index2)
       {
         in_S_vec.resize(num_vertices(G1));
         in_S = make_safe_iterator_property_map
@@ -236,8 +236,8 @@ namespace boost {
               count_if(adjacent_vertices(f[k], G2), make_indirect_pmap(in_S));
 
             for (int jj = 0; jj < dfs_num_k; ++jj) {
-              vertex1_t j = dfs_vertices[jj];
-              num_edges_on_k -= count(adjacent_vertices(f[j], G2), f[k]);
+              vertex1_t vj = dfs_vertices[jj];
+              num_edges_on_k -= count(adjacent_vertices(f[vj], G2), f[k]);
             }
 
             if (num_edges_on_k != 0)

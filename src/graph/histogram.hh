@@ -120,7 +120,7 @@ public:
                         return; // out of bounds
                 }
 
-                bin[i] = (v[i] - _data_range[i].first) / delta;
+                bin[i] = size_t((v[i] - _data_range[i].first) / delta);
                 if (bin[i] >= _counts.shape()[i]) // modify shape
                 {
                     bin_t new_shape;

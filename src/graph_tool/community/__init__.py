@@ -199,18 +199,15 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
     .. _simulated annealing: http://en.wikipedia.org/wiki/Simulated_annealing
     """
 
-    if spins == None:
+    if spins is None:
         spins = g.new_vertex_property("int32_t")
-        new_spins = True
-    else:
-        new_spins = False
-    if history_file == None:
+    if history_file is None:
         history_file = ""
     seed = random.randint(0, sys.maxsize)
     ug = GraphView(g, directed=False)
     libgraph_tool_community.community_structure(ug._Graph__graph, gamma, corr,
                                                 n_iter, t_range[1], t_range[0],
-                                                n_spins, new_spins, seed,
+                                                n_spins, seed,
                                                 verbose, history_file,
                                                 _prop("e", ug, weight),
                                                 _prop("v", ug, spins))

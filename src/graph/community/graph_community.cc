@@ -33,9 +33,8 @@ using namespace graph_tool;
 
 void community_structure(GraphInterface& g, double gamma, string corr_name,
                          size_t n_iter, double Tmin, double Tmax, size_t Nspins,
-                         bool new_spins, size_t seed, bool verbose,
-                         string history_file, boost::any weight,
-                         boost::any property)
+                         size_t seed, bool verbose, string history_file,
+                         boost::any weight, boost::any property)
 {
     typedef property_map_types::apply<mpl::vector<int32_t,int64_t>,
                                       GraphInterface::vertex_index_map_t,

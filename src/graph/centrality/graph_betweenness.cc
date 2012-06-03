@@ -162,7 +162,7 @@ struct get_central_point_dominance
     void operator()(Graph& g, VertexBetweenness vertex_betweenness, double& c)
         const
     {
-        c = central_point_dominance(g, vertex_betweenness);
+        c = double(central_point_dominance(g, vertex_betweenness));
     }
 };
 

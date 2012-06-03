@@ -32,11 +32,11 @@ using namespace boost;
 
 struct get_eigenvector
 {
-    template <class Graph, class VertexIndex, class EdgeIndex, class WeightMap,
+    template <class Graph, class VertexIndex, class WeightMap,
               class CentralityMap>
-    void operator()(Graph& g, VertexIndex vertex_index,
-                    EdgeIndex edge_index, WeightMap w, CentralityMap c,
-                    double epsilon, size_t max_iter, long double& eig) const
+    void operator()(Graph& g, VertexIndex vertex_index, WeightMap w,
+                    CentralityMap c, double epsilon, size_t max_iter,
+                    long double& eig) const
     {
         typedef typename property_traits<WeightMap>::value_type c_type;
         typedef typename property_traits<CentralityMap>::value_type t_type;
@@ -57,13 +57,11 @@ struct get_eigenvector
 
         t_type norm = 0;
 
-
         t_type delta = epsilon + 1;
         size_t iter = 0;
         while (delta >= epsilon)
         {
             norm = 0;
-            int i, N = num_vertices(g);
             #pragma omp parallel for default(shared) private(i) \
                 schedule(dynamic) reduction(+:norm)
             for (i = 0; i < N; ++i)
@@ -109,7 +107,7 @@ struct get_eigenvector
         {
             #pragma omp parallel for default(shared) private(i)     \
                 schedule(dynamic)
-            for (int i = 0; i < N; ++i)
+            for (i = 0; i < N; ++i)
             {
                 typename graph_traits<Graph>::vertex_descriptor v =
                     vertex(i, g);

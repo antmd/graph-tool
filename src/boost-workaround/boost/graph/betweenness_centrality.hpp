@@ -51,14 +51,14 @@ namespace detail { namespace graph {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
     typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
 
-    brandes_dijkstra_visitor(std::stack<vertex_descriptor>& ordered_vertices,
-                             WeightMap weight,
-                             IncomingMap incoming,
-                             DistanceMap distance,
-                             PathCountMap path_count)
-      : ordered_vertices(ordered_vertices), weight(weight),
-        incoming(incoming), distance(distance),
-        path_count(path_count)
+    brandes_dijkstra_visitor(std::stack<vertex_descriptor>& iordered_vertices,
+                             WeightMap iweight,
+                             IncomingMap iincoming,
+                             DistanceMap idistance,
+                             PathCountMap ipath_count)
+      : ordered_vertices(iordered_vertices), weight(iweight),
+        incoming(iincoming), distance(idistance),
+        path_count(ipath_count)
     { }
 
     /**
@@ -117,8 +117,8 @@ namespace detail { namespace graph {
   template<typename WeightMap>
   struct brandes_dijkstra_shortest_paths
   {
-    brandes_dijkstra_shortest_paths(WeightMap weight_map)
-      : weight_map(weight_map) { }
+    brandes_dijkstra_shortest_paths(WeightMap iweight_map)
+      : weight_map(iweight_map) { }
 
     template<typename Graph, typename IncomingMap, typename DistanceMap,
              typename PathCountMap, typename VertexIndexMap>
@@ -165,11 +165,11 @@ namespace detail { namespace graph {
       typedef typename graph_traits<Graph>::vertex_descriptor
         vertex_descriptor;
 
-      visitor_type(IncomingMap incoming, DistanceMap distance,
-                   PathCountMap path_count,
-                   std::stack<vertex_descriptor>& ordered_vertices)
-        : incoming(incoming), distance(distance),
-          path_count(path_count), ordered_vertices(ordered_vertices) { }
+      visitor_type(IncomingMap iincoming, DistanceMap idistance,
+                   PathCountMap ipath_count,
+                   std::stack<vertex_descriptor>& iordered_vertices)
+        : incoming(iincoming), distance(idistance),
+          path_count(ipath_count), ordered_vertices(iordered_vertices) { }
 
       /// Keep track of vertices as they are reached
       void examine_vertex(vertex_descriptor v, Graph&)
@@ -344,7 +344,7 @@ namespace detail { namespace graph {
 
       while (!ordered_vertices.empty())
       {
-          vertex_descriptor w = ordered_vertices.top();
+          vertex_descriptor u = ordered_vertices.top();
           ordered_vertices.pop();
 
           typedef typename property_traits<IncomingMap>::value_type
@@ -353,18 +353,18 @@ namespace detail { namespace graph {
           typedef typename property_traits<DependencyMap>::value_type
               dependency_type;
 
-          for (incoming_iterator vw = incoming[w].begin();
-               vw != incoming[w].end(); ++vw) {
+          for (incoming_iterator vw = incoming[u].begin();
+               vw != incoming[u].end(); ++vw) {
               vertex_descriptor v = source(*vw, g);
               dependency_type factor = dependency_type(get(path_count, v))
-                  / dependency_type(get(path_count, w));
-              factor *= (dependency_type(1) + get(dependency, w));
+                  / dependency_type(get(path_count, u));
+              factor *= (dependency_type(1) + get(dependency, u));
               put(dependency, v, get(dependency, v) + factor);
               update_centrality(edge_centrality_map, *vw, factor);
           }
 
-          if (w != s) {
-              update_centrality(centrality, w, get(dependency, w));
+          if (u != s) {
+              update_centrality(centrality, u, get(dependency, u));
           }
       }
 

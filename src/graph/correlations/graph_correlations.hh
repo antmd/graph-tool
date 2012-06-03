@@ -44,7 +44,8 @@ public:
                     Hist& hist)
     {
         typename Hist::point_t k;
-        k[0] = deg1(v, g);
+        typedef typename Hist::point_t::value_type val_t;
+        k[0] = val_t(deg1(v, g));
         typename graph_traits<Graph>::out_edge_iterator e, e_end;
         for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
         {
@@ -92,7 +93,7 @@ public:
     template <class Graph, class Deg1, class Deg2, class Sum, class Count,
               class WeightMap>
     void operator()(typename graph_traits<Graph>::vertex_descriptor v,
-                    Deg1& deg1, Deg2& deg2, Graph& g, WeightMap& weight,
+                    Deg1& deg1, Deg2& deg2, Graph& g, WeightMap&,
                     Sum& sum, Sum& sum2, Count& count)
     {
         typename Sum::point_t k1;

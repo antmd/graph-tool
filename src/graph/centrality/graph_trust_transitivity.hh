@@ -47,7 +47,7 @@ public:
 
     template <class Graph>
     void examine_vertex(typename graph_traits<Graph>::vertex_descriptor u,
-                        Graph& g)
+                        Graph&)
     {
         // stop if all sources are found
         if (_source_map[u])
@@ -78,7 +78,7 @@ struct dist_combine
     template <class DistType, class WeightType>
     DistType operator()(const DistType& d, const WeightType& w) const
     {
-        return d*w;
+        return DistType(d * w);
     }
 };
 
@@ -94,12 +94,10 @@ struct filter_vertex_pred
 
 struct get_trust_transitivity
 {
-    template <class Graph, class VertexIndex, class EdgeIndex, class TrustMap,
+    template <class Graph, class VertexIndex, class TrustMap,
               class InferredTrustMap>
-    void operator()(Graph& g, VertexIndex vertex_index, EdgeIndex edge_index,
-                    size_t max_edge_index, int64_t source, int64_t target,
-                    TrustMap c, InferredTrustMap t)
-        const
+    void operator()(Graph& g, VertexIndex vertex_index, int64_t source,
+                    int64_t target, TrustMap c, InferredTrustMap t) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;

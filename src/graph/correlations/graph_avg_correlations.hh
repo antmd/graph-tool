@@ -79,7 +79,7 @@ struct get_avg_correlation
         s_sum2.Gather();
         s_count.Gather();
 
-        for (size_t i = 0; i < sum.GetArray().size(); ++i)
+        for (i = 0; i < int(sum.GetArray().size()); ++i)
         {
             sum.GetArray()[i] /= count.GetArray()[i];
             sum2.GetArray()[i] =

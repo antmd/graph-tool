@@ -50,7 +50,7 @@ struct get_community_network_dispatch
               class VertexWeightMap, class EdgeWeightMap, class EdgeIndex,
               class VertexIndex>
     void operator()(const Graph& g, CommunityGraph& cg,
-                    VertexIndex cvertex_index, EdgeIndex cedge_index,
+                    VertexIndex, EdgeIndex cedge_index,
                     CommunityMap s_map, boost::any acs_map,
                     VertexWeightMap vweight, EdgeWeightMap eweight,
                     pair<boost::any,boost::any> count) const
@@ -67,7 +67,7 @@ struct get_community_network_dispatch
         vweight_t vertex_count = boost::any_cast<vweight_t>(count.first);
         eweight_t edge_count = boost::any_cast<eweight_t>(count.second);
 
-        get_community_network()(g, cg, cvertex_index, cedge_index, s_map,
+        get_community_network()(g, cg, cedge_index, s_map,
                                 cs_map, vweight, eweight, vertex_count,
                                 edge_count, _self_loops);
     }

@@ -142,6 +142,7 @@ struct set_clustering_to_property
     template <class Graph, class ClustMap>
     void operator()(const Graph& g, ClustMap clust_map) const
     {
+        typedef typename property_traits<ClustMap>::value_type c_type;
         typename get_undirected_graph<Graph>::type ug(g);
         int i, N = num_vertices(g);
 
@@ -159,7 +160,7 @@ struct set_clustering_to_property
 
             #pragma omp critical
             {
-                clust_map[v] = clustering;
+                clust_map[v] = c_type(clustering);
             }
         }
     }

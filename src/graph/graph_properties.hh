@@ -199,7 +199,7 @@ class get_type_name
 {
 public:
     get_type_name(const char* names[] = type_names)
-        : _type_names(type_names)
+        : _type_names(names)
     {
         if (_all_names.empty())
         {
@@ -240,20 +240,17 @@ private:
     struct get_all_names
     {
         template <class Type>
-        void operator()(Type, const char** type_names,
+        void operator()(Type, const char** t_names,
                         vector<string>& names) const
         {
             size_t index = mpl::find<NamedSequence,Type>::type::pos::value;
-            names.push_back(type_names[index]);
+            names.push_back(t_names[index]);
         }
     };
 
     const char** _type_names;
     static vector<string> _all_names;
 };
-
-template <class TypeSequence, class NamedSequence>
-vector<string> get_type_name<TypeSequence,NamedSequence>::_all_names;
 
 //
 // Extra Property Map Types
@@ -284,7 +281,7 @@ struct convert
     template <class T1, class T2>
     struct specific_convert
     {
-        T1 operator()(const T2& v) const
+        T1 operator()(const T2&) const
         {
             throw bad_lexical_cast(); // default action
         }
@@ -408,6 +405,7 @@ private:
     public:
         virtual Value get(const Key& k) = 0;
         virtual void put(const Key& k, const Value& val) = 0;
+        virtual ~ValueConverter() {}
     };
 
     template <class PropertyMap>
@@ -415,6 +413,7 @@ private:
     {
     public:
         ValueConverterImp(PropertyMap pmap): _pmap(pmap) {}
+        virtual ~ValueConverterImp() {}
         typedef typename property_traits<PropertyMap>::value_type val_t;
         typedef typename property_traits<PropertyMap>::key_type key_t;
 
@@ -440,7 +439,7 @@ private:
         }
 
         template <class PMap>
-        Value get_dispatch(PMap pmap, const typename property_traits<PMap>::key_type& k,
+        Value get_dispatch(PMap, const typename property_traits<PMap>::key_type&,
                            mpl::bool_<false>)
         {
             throw graph_tool::ValueException("Property map is not readable.");
@@ -455,8 +454,8 @@ private:
         }
 
         template <class PMap>
-        void put_dispatch(PMap pmap, const typename property_traits<PMap>::key_type& k,
-                          typename property_traits<PMap>::value_type val,
+        void put_dispatch(PMap, const typename property_traits<PMap>::key_type&,
+                          typename property_traits<PMap>::value_type,
                           mpl::bool_<false>)
         {
             throw ValueException("Property map is not writable.");
@@ -600,7 +599,7 @@ public:
     ConstantPropertyMap(const value_type& c): _c(c) {}
     ConstantPropertyMap(){}
 
-    const value_type& operator[](const key_type& k) const { return _c; }
+    const value_type& operator[](const key_type&) const { return _c; }
 
 private:
     value_type _c;

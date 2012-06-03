@@ -95,7 +95,7 @@ struct in_degreeS
     }
 
     template <class Graph, class Vertex>
-    size_t get_in_degree(const Vertex& v, const Graph &g, boost::false_type)
+    size_t get_in_degree(const Vertex&, const Graph &, boost::false_type)
         const
     {
         return 0;
@@ -124,7 +124,7 @@ struct scalarS
 
     template <class Descriptor, class Graph>
     typename property_traits<PropertyMap>::value_type
-    operator()(const Descriptor& d, const Graph &g) const
+    operator()(const Descriptor& d, const Graph &) const
     {
         return get(_pmap, d);
     }
@@ -211,8 +211,8 @@ struct get_in_edges<Graph,boost::false_type>
     typedef typename graph_traits<Graph>::vertex_descriptor
         vertex_descriptor;
     typedef typename graph_traits<Graph>::out_edge_iterator type;
-    static std::pair<type,type> get_edges(vertex_descriptor v,
-                                          const Graph& g)
+    static std::pair<type,type> get_edges(vertex_descriptor,
+                                          const Graph&)
     {
         return make_pair(type(), type());
     }

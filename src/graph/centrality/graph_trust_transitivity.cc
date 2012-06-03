@@ -38,8 +38,7 @@ void trust_transitivity(GraphInterface& g, int64_t source, int64_t target,
 
     run_action<>()(g,
                    bind<void>(get_trust_transitivity(), _1, g.GetVertexIndex(),
-                              g.GetEdgeIndex(), g.GetMaxEdgeIndex(), source,
-                              target, _2, _3),
+                              source, target, _2, _3),
                    edge_floating_properties(),
                    vertex_floating_vector_properties())(c,t);
 }

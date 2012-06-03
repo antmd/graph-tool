@@ -128,7 +128,7 @@ inline double dist(const Pos& p1, const Pos& p2)
 {
     double r = 0;
     for (size_t i = 0; i < 2; ++i)
-        r += pow(p1[i] - p2[i], 2);
+        r += pow(p1[i] - p2[i], 2.);
     return sqrt(r);
 }
 
@@ -375,7 +375,7 @@ struct get_sfdp_layout
                     val_t d = get_diff(group_cm[s], pos[v], diff);
                     if (d == 0)
                         continue;
-                    double Kp = K * pow(HN, 2);
+                    double Kp = K * pow(HN, 2.);
                     val_t f = f_a(Kp, group_cm[s], pos[v]) * gamma * \
                         group_size[s] * get(vweight, v);
                     for (size_t l = 0; l < 2; ++l)

@@ -31,25 +31,28 @@ using namespace std;
 
 class GraphException : public std::exception
 {
-    string _error;
 public:
-    GraphException(const string& error) {_error = error;}
-    virtual ~GraphException() throw () {}
-    virtual const char * what () const throw () {return _error.c_str();}
+    GraphException(const string& error);
+    virtual ~GraphException() throw ();
+    virtual const char * what () const throw ();
 protected:
-    virtual void SetError(const string& error) {_error = error;}
+    virtual void SetError(const string& error);
+private:
+    string _error;
 };
 
 class IOException : public GraphException
 {
 public:
-    IOException(const string& error): GraphException(error) {}
+    IOException(const string& error);
+    virtual ~IOException() throw ();
 };
 
 class ValueException : public GraphException
 {
 public:
-    ValueException(const string& error): GraphException(error) {}
+    ValueException(const string& error);
+    virtual ~ValueException() throw ();
 };
 
 } // namespace std

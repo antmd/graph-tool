@@ -90,11 +90,11 @@ struct get_communities
 
         // init spins from [0,N-1] and global info
         tr1::uniform_int<size_t> sample_spin(0, n_spins-1);
-        typename graph_traits<Graph>::vertex_iterator v,v_end;
-        for (tie(v,v_end) = vertices(g); v != v_end; ++v)
+        typename graph_traits<Graph>::vertex_iterator vi,vi_end;
+        for (tie(vi,vi_end) = vertices(g); vi != vi_end; ++vi)
         {
-            s[*v] = temp_s[*v] = sample_spin(rng);
-            Ns[s[*v]]++;
+            s[*vi] = temp_s[*vi] = sample_spin(rng);
+            Ns[s[*vi]]++;
         }
 
         NNKS<Graph,CommunityMap> Nnnks(g, s); // this will retrieve the expected
@@ -233,11 +233,11 @@ struct get_communities
 
         // rename spins, starting from zero
         unordered_map<size_t,size_t> spins;
-        for (tie(v,v_end) = vertices(g); v != v_end; ++v)
+        for (tie(vi,vi_end) = vertices(g); vi != vi_end; ++vi)
         {
-            if (spins.find(s[*v]) == spins.end())
-                spins[s[*v]] = spins.size() - 1;
-            s[*v] = spins[s[*v]];
+            if (spins.find(s[*vi]) == spins.end())
+                spins[s[*vi]] = spins.size() - 1;
+            s[*vi] = spins[s[*vi]];
         }
 
     }
@@ -262,7 +262,7 @@ public:
         _p = _avg_k/(N*N);
     }
 
-    void Update(size_t k, size_t old_s, size_t s)
+    void Update(size_t, size_t old_s, size_t s)
     {
         _Ns[old_s]--;
         if (_Ns[old_s] == 0)
@@ -270,7 +270,7 @@ public:
         _Ns[s]++;
     }
 
-    double operator()(size_t k, size_t s) const
+    double operator()(size_t, size_t s) const
     {
         size_t ns = 0;
         typeof(_Ns.begin()) iter = _Ns.find(s);
@@ -343,14 +343,14 @@ public:
         typename graph_traits<Graph>::edge_iterator e,e_end;
         for (tie(e,e_end) = edges(_g); e != e_end; ++e)
         {
-            typename graph_traits<Graph>::vertex_descriptor s, t;
+            typename graph_traits<Graph>::vertex_descriptor src, tgt;
 
-            s = source(*e,g);
-            t = target(*e,g);
-            if (s != t)
+            src = source(*e,g);
+            tgt = target(*e,g);
+            if (src != tgt)
             {
-                size_t k1 = out_degree_no_loops(s, g);
-                size_t k2 = out_degree_no_loops(t, g);
+                size_t k1 = out_degree_no_loops(src, g);
+                size_t k2 = out_degree_no_loops(tgt, g);
                 _Pkk[k1][k2]++;
                 _Pkk[k2][k1]++;
                 E++;

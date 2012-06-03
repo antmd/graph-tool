@@ -37,11 +37,9 @@ using namespace boost;
 struct get_community_network
 {
     template <class Graph, class CommunityGraph, class CommunityMap,
-              class CCommunityMap,
-              class VertexWeightMap, class EdgeWeightMap, class EdgeIndex,
-              class VertexIndex, class VertexProperty, class EdgeProperty>
-    void operator()(const Graph& g, CommunityGraph& cg,
-                    VertexIndex cvertex_index, EdgeIndex cedge_index,
+              class CCommunityMap, class VertexWeightMap, class EdgeWeightMap,
+              class EdgeIndex, class VertexProperty, class EdgeProperty>
+    void operator()(const Graph& g, CommunityGraph& cg, EdgeIndex cedge_index,
                     CommunityMap s_map, CCommunityMap cs_map,
                     VertexWeightMap vweight, EdgeWeightMap eweight,
                     VertexProperty vertex_count, EdgeProperty edge_count,
@@ -60,12 +58,12 @@ struct get_community_network
 
         tr1::unordered_map<s_type, pair<vector<vertex_t>, vprop_type>, hash<s_type> >
             comms;
-        typename graph_traits<Graph>::vertex_iterator v, v_end;
-        for (tie(v, v_end) = vertices(g); v != v_end; ++v)
+        typename graph_traits<Graph>::vertex_iterator vi, vi_end;
+        for (tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
         {
-            pair<vector<vertex_t>, vprop_type>& m = comms[get(s_map, *v)];
-            m.first.push_back(*v);
-            m.second += get(vweight, *v);
+            pair<vector<vertex_t>, vprop_type>& m = comms[get(s_map, *vi)];
+            m.first.push_back(*vi);
+            m.second += get(vweight, *vi);
         }
 
         // create vertices
@@ -123,16 +121,16 @@ struct get_community_network
     void put_dispatch(PropertyMap cs_map,
                       const typename property_traits<PropertyMap>::key_type& v,
                       const typename property_traits<PropertyMap>::value_type& val,
-                      mpl::true_ is_writable) const
+                      mpl::true_ /*is_writable*/) const
     {
         put(cs_map, v, val);
     }
 
     template <class PropertyMap>
-    void put_dispatch(PropertyMap cs_map,
-                      const typename property_traits<PropertyMap>::key_type& v,
-                      const typename property_traits<PropertyMap>::value_type& val,
-                      mpl::false_ is_writable) const
+    void put_dispatch(PropertyMap,
+                      const typename property_traits<PropertyMap>::key_type&,
+                      const typename property_traits<PropertyMap>::value_type&,
+                      mpl::false_ /*is_writable*/) const
     {
     }
 

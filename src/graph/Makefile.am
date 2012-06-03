@@ -19,6 +19,7 @@ libgraph_tool_core_LTLIBRARIES = libgraph_tool_core.la
 
 libgraph_tool_core_la_SOURCES = \
     graph.cc \
+    graph_exceptions.cc \
     graph_bind.cc \
     graph_copy.cc \
     graph_filtering.cc \

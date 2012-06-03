@@ -32,7 +32,7 @@ using namespace graph_tool;
 struct null_copy
 {
     template <class T1, class T2>
-        void operator()(const T1& t1, const T2& t2) const {}
+        void operator()(const T1&, const T2&) const {}
 };
 
 struct append_to_list

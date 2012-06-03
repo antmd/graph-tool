@@ -67,12 +67,12 @@ public:
     typedef IndexMap index_map_t;
     typedef checked_vector_property_map<T,IndexMap> self_t;
 
-    checked_vector_property_map(const IndexMap& index = IndexMap())
-        : store(new std::vector<T>()), index(index) {}
+    checked_vector_property_map(const IndexMap& idx = IndexMap())
+        : store(new std::vector<T>()), index(idx) {}
 
     checked_vector_property_map(unsigned initial_size,
-                                const IndexMap& index = IndexMap())
-        : store(new std::vector<T>(initial_size)), index(index) {}
+                                const IndexMap& idx = IndexMap())
+        : store(new std::vector<T>(initial_size)), index(idx) {}
 
     typename std::vector<T>::iterator storage_begin()
     {

@@ -58,11 +58,11 @@ struct get_assortativity_coefficient
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
 
-            double k1 = deg(v, g);
+            double k1 = double(deg(v, g));
             typename graph_traits<Graph>::out_edge_iterator e, e_end;
             for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
             {
-                double k2 = deg(target(*e, g), g);
+                double k2 = double(deg(target(*e, g), g));
                 if (k1 == k2)
                     e_kk += c;
                 sa[k1] += c;
@@ -93,11 +93,11 @@ struct get_assortativity_coefficient
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
 
-            double k1 = deg(v, g);
+            double k1 = double(deg(v, g));
             typename graph_traits<Graph>::out_edge_iterator e, e_end;
             for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
             {
-                double k2 = deg(target(*e,g),g);
+                double k2 = double(deg(target(*e,g),g));
                 double tl2 = (t2*(n_edges*n_edges) - b[k1] - a[k2])/
                     ((n_edges-1)*(n_edges-1));
                 double tl1 = t1*n_edges;
@@ -137,11 +137,11 @@ struct get_scalar_assortativity_coefficient
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
 
-            double k1 = deg(v, g);
+            double k1 = double(deg(v, g));
             typename graph_traits<Graph>::out_edge_iterator e, e_end;
             for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
             {
-                double k2 = deg(target(*e,g),g);
+                double k2 = double(deg(target(*e,g),g));
                 a += k1*c;
                 da += k1*k1*c;
                 b += k2*c;
@@ -174,14 +174,14 @@ struct get_scalar_assortativity_coefficient
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
 
-            double k1 = deg(v, g);
+            double k1 = double(deg(v, g));
             double al = (a*n_edges - k1)/(n_edges-1);
             double dal = sqrt((da - k1*k1)/(n_edges-1) - al*al);
 
             typename graph_traits<Graph>::out_edge_iterator e, e_end;
             for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
             {
-                double k2 = deg(target(*e, g), g);
+                double k2 = double(deg(target(*e, g), g));
                 double bl = (b*n_edges - k2)/(n_edges-1);
                 double dbl = sqrt((db - k2*k2)/(n_edges-1) - bl*bl);
                 double t1l = (e_xy - k1*k2)/(n_edges-1);

@@ -46,8 +46,7 @@ long double eigenvector(GraphInterface& g, boost::any w, boost::any c,
     long double eig = 0;
     run_action<>()
         (g, bind<void>
-         (get_eigenvector(),
-          _1, g.GetVertexIndex(), g.GetEdgeIndex(), _2,
+         (get_eigenvector(), _1, g.GetEdgeIndex(), _2,
           _3, epsilon, max_iter, ref(eig)),
          weight_props_t(),
          vertex_floating_properties())(w, c);

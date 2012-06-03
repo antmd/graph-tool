@@ -343,7 +343,7 @@ public:
 
     void Write(const std::string& s, size_t n)
     {
-        _s.write(s.c_str(), n);
+        _s.write(s.c_str(), long(n));
     }
 
     void Flush()
@@ -363,7 +363,7 @@ public:
     std::string Read(size_t n)
     {
         char* buf = new char[n];
-        _s.read(buf, n);
+        _s.read(buf, long(n));
         std::string ret(buf, buf+_s.gcount());
         delete buf;
         return ret;

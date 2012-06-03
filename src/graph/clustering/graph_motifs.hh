@@ -172,9 +172,9 @@ struct sample_some
             r = random();
         }
         if (r < u)
-            n = ceil(nc*pd);
+            n = size_t(ceil(nc*pd));
         else
-            n = floor(nc*pd);
+            n = size_t(floor(nc*pd));
 
         if (n == extend.size())
             return;
@@ -339,9 +339,9 @@ struct get_all_motifs
 
             size_t n;
             if (random() < p)
-                n = ceil(V.size()*p);
+                n = size_t(ceil(V.size()*p));
             else
-                n = floor(V.size()*p);
+                n = size_t(floor(V.size()*p));
 
             typedef tr1::uniform_int<size_t> idist_t;
             for (size_t i = 0; i < n; ++i)

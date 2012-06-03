@@ -63,7 +63,6 @@ struct get_pagerank
         while (delta >= epsilon)
         {
             delta = 0;
-            int i, N = num_vertices(g);
             #pragma omp parallel for default(shared) private(i)     \
                 schedule(dynamic) reduction(+:delta)
             for (i = 0; i < N; ++i)
@@ -97,7 +96,7 @@ struct get_pagerank
         {
             #pragma omp parallel for default(shared) private(i)     \
                 schedule(dynamic)
-            for (int i = 0; i < N; ++i)
+            for (i = 0; i < N; ++i)
             {
                 typename graph_traits<Graph>::vertex_descriptor v =
                     vertex(i, g);
