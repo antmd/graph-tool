@@ -39,6 +39,9 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
                           size_t n_max, size_t seed);
 double reciprocity(GraphInterface& gi);
 bool is_bipartite(GraphInterface& gi, boost::any part_map);
+void get_random_spanning_tree(GraphInterface& gi, size_t root,
+                              boost::any weight_map, boost::any tree_map,
+                              size_t seed);
 
 void export_components();
 void export_similarity();
@@ -61,6 +64,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_topology)
     def("is_planar", &is_planar);
     def("reciprocity", &reciprocity);
     def("is_bipartite", &is_bipartite);
+    def("random_spanning_tree", &get_random_spanning_tree);
     export_components();
     export_similarity();
     export_dists();

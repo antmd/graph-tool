@@ -38,12 +38,14 @@ Summary
    max_cardinality_matching
    max_independent_vertex_set
    min_spanning_tree
+   random_spanning_tree
    dominator_tree
    topological_sort
    transitive_closure
    label_components
    label_biconnected_components
    label_largest_component
+   label_out_component
    is_bipartite
    is_planar
    edge_reciprocity
@@ -64,10 +66,12 @@ from .. flow import libgraph_tool_flow
 import random, sys, numpy
 __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
            "max_cardinality_matching", "max_independent_vertex_set",
-           "min_spanning_tree", "dominator_tree", "topological_sort",
-           "transitive_closure", "label_components", "label_largest_component",
-           "label_biconnected_components", "shortest_distance", "shortest_path",
-           "pseudo_diameter", "is_bipartite", "is_planar", "similarity", "edge_reciprocity"]
+           "min_spanning_tree", "random_spanning_tree", "dominator_tree",
+           "topological_sort", "transitive_closure", "label_components",
+           "label_largest_component", "label_biconnected_components",
+           "label_out_component", "shortest_distance", "shortest_path",
+           "pseudo_diameter", "is_bipartite", "is_planar", "similarity",
+           "edge_reciprocity"]
 
 
 def similarity(g1, g2, label1=None, label2=None, norm=True):
@@ -284,13 +288,13 @@ def min_spanning_tree(g, weights=None, root=None, tree_map=None):
     ----------
     g : :class:`~graph_tool.Graph`
         Graph to be used.
-    weights : :class:`~graph_tool.PropertyMap` (optional, default: None)
+    weights : :class:`~graph_tool.PropertyMap` (optional, default: `None`)
         The edge weights. If provided, the minimum spanning tree will minimize
         the edge weights.
-    root : :class:`~graph_tool.Vertex` (optional, default: None)
+    root : :class:`~graph_tool.Vertex` (optional, default: `None`)
         Root of the minimum spanning tree. If this is provided, Prim's algorithm
         is used. Otherwise, Kruskal's algorithm is used.
-    tree_map : :class:`~graph_tool.PropertyMap` (optional, default: None)
+    tree_map : :class:`~graph_tool.PropertyMap` (optional, default: `None`)
         If provided, the edge tree map will be written in this property map.
 
     Returns
@@ -358,6 +362,86 @@ def min_spanning_tree(g, weights=None, root=None, tree_map=None):
                                           _prop("e", g, tree_map))
     finally:
         g.pop_filter(directed=True)
+    return tree_map
+
+
+def random_spanning_tree(g, weights=None, root=None, tree_map=None):
+    """
+    Return a random spanning tree of a given graph, which can be directed or
+    undirected.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    weights : :class:`~graph_tool.PropertyMap` (optional, default: `None`)
+        The edge weights. If provided, the probability of a particular spanning
+        tree being selected is the product of its edge weights.
+    root : :class:`~graph_tool.Vertex` (optional, default: `None`)
+        Root of the spanning tree. If not provided, it will be selected randomly.
+    tree_map : :class:`~graph_tool.PropertyMap` (optional, default: `None`)
+        If provided, the edge tree map will be written in this property map.
+
+    Returns
+    -------
+    tree_map : :class:`~graph_tool.PropertyMap`
+        Edge property map with mark the tree edges: 1 for tree edge, 0
+        otherwise.
+
+    Notes
+    -----
+    The typical running time for random graphs is :math:`O(N\log N)`.
+
+    Examples
+    --------
+    >>> from numpy.random import seed, random
+    >>> seed(42)
+    >>> g, pos = gt.triangulation(random((400, 2)) * 10, type="delaunay")
+    >>> weight = g.new_edge_property("double")
+    >>> for e in g.edges():
+    ...    weight[e] = linalg.norm(pos[e.target()].a - pos[e.source()].a)
+    >>> tree = gt.random_spanning_tree(g, weights=weight)
+    >>> gt.graph_draw(g, pos=pos, output="rtriang_orig.pdf")
+    <...>
+    >>> g.set_edge_filter(tree)
+    >>> gt.graph_draw(g, pos=pos, output="triang_min_span_tree.pdf")
+    <...>
+
+
+    .. image:: rtriang_orig.*
+        :width: 400px
+    .. image:: triang_random_span_tree.*
+        :width: 400px
+
+    *Left:* Original graph, *Right:* A random spanning tree.
+
+    References
+    ----------
+
+    .. [wilson-generating-1996] David Bruce Wilson, "Generating random spanning
+       trees more quickly than the cover time", Proceedings of the twenty-eighth
+       annual ACM symposium on Theory of computing, Pages 296-303, ACM New York,
+       1996, :doi:`10.1145/237814.237880`
+    .. [boost-rst] http://www.boost.org/libs/graph/doc/random_spanning_tree.html
+    """
+    if tree_map is None:
+        tree_map = g.new_edge_property("bool")
+    if tree_map.value_type() != "bool":
+        raise ValueError("edge property 'tree_map' must be of value type bool.")
+
+    if root is None:
+        root = g.vertex(numpy.random.randint(0, g.num_vertices()),
+                        use_index=False)
+
+    # we need to restrict ourselves to the in-component of root
+    l = label_out_component(GraphView(g, reversed=True), root)
+    g = GraphView(g, vfilt=l)
+
+    seed = numpy.random.randint(0, sys.maxsize)
+    libgraph_tool_topology.\
+        random_spanning_tree(g._Graph__graph, int(root),
+                             _prop("e", g, weights),
+                             _prop("e", g, tree_map), seed)
     return tree_map
 
 
@@ -597,6 +681,54 @@ def label_largest_component(g, directed=None):
         label.a = c.a == h.argmax()
     else:
         label.a = (c.a == h.argmax()) & (vfilt.a ^ inv)
+    return label
+
+
+def label_out_component(g, root):
+    """
+    Label the out-component (or simply the component for undirected graphs) of a
+    root vertex.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    root : :class:`~graph_tool.Vertex`
+        The root vertex.
+
+    Returns
+    -------
+    comp : :class:`~graph_tool.PropertyMap`
+         Boolean vertex property map which labels the out-component.
+
+    Notes
+    -----
+    The algorithm runs in :math:`O(V + E)` time.
+
+    Examples
+    --------
+    >>> from numpy.random import seed, poisson
+    >>> seed(43)
+    >>> g = gt.random_graph(100, lambda: poisson(1), directed=False)
+    >>> l = gt.label_out_component(g, g.vertex(0))
+    >>> print(l.a)
+    [1 0 0 0 0 0 0 0 1 1 0 1 0 0 0 0 0 0 1 0 0 1 1 1 1 0 0 0 1 0 0 0 0 0 0 0 1
+     1 1 0 0 0 0 1 0 1 1 0 0 0 1 1 0 0 1 1 0 0 0 0 0 0 1 0 1 0 0 0 0 0 0 0 0 0
+     0 0 0 1 1 0 1 1 0 0 0 0 0 1 1 0 1 0 1 0 1 0 0 0 0 0]
+
+    The in-component can be obtained by reversing the graph.
+
+    >>> l = gt.label_out_component(GraphView(g, reversed=True), g.vertex(0))
+    >>> print(l.a)
+    [1 0 0 0 0 0 0 0 1 1 0 1 0 0 0 0 0 0 1 0 0 1 1 1 1 0 0 0 1 0 0 0 0 0 0 0 1
+     1 1 0 0 0 0 1 0 1 1 0 0 0 1 1 0 0 1 1 0 0 0 0 0 0 1 0 1 0 0 0 0 0 0 0 0 0
+     0 0 0 1 1 0 1 1 0 0 0 0 0 1 1 0 1 0 1 0 1 0 0 0 0 0]
+    """
+
+    label = g.new_vertex_property("bool")
+    libgraph_tool_topology.\
+             label_out_component(g._Graph__graph, int(root),
+                                 _prop("v", g, label))
     return label
 
 

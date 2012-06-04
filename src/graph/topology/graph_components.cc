@@ -50,9 +50,16 @@ do_label_biconnected_components(GraphInterface& gi, boost::any comp,
     return wrap_vector_owned(hist);
 }
 
+void do_label_out_component(GraphInterface& gi, size_t root, boost::any prop)
+{
+    run_action<>()(gi, bind<void>(label_out_component(), _1, _2, root),
+                   writable_vertex_scalar_properties())(prop);
+}
+
 void export_components()
 {
     python::def("label_components", &do_label_components);
     python::def("label_biconnected_components",
                 &do_label_biconnected_components);
+    python::def("label_out_component", &do_label_out_component);
 };

@@ -63,7 +63,7 @@ public:
         boost::put(_base_map, k, v);
 
         vector<size_t>& h = _hist;
-        size_t bin = v;        
+        size_t bin = v;
         if (bin > _max)
             return;
         if (bin >= h.size())
@@ -156,6 +156,33 @@ struct label_biconnected_components
         HistogramPropertyMap<CompMap> cm(comp_map, num_edges(g), hist);
         biconnected_components(g, cm,
                                vertex_inserter<ArtMap>(art_map));
+    }
+};
+
+
+struct label_out_component
+{
+    template <class CompMap>
+    class marker_visitor: public bfs_visitor<>
+    {
+    public:
+        marker_visitor() { }
+        marker_visitor(CompMap comp) : _comp(comp) { }
+
+        template <class Vertex, class Graph>
+        void discover_vertex(Vertex u, const Graph& g)
+        {
+            _comp[u] = true;
+        }
+    private:
+        CompMap _comp;
+    };
+
+    template <class Graph, class CompMap>
+    void operator()(const Graph& g, CompMap comp_map, size_t root) const
+    {
+        marker_visitor<CompMap> marker(comp_map);
+        breadth_first_search(g, vertex(root, g), visitor(marker));
     }
 };
 
