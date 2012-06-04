@@ -526,9 +526,16 @@ class PropertyMap(object):
             if a is None:
                 return
             if filt[0] is None:
-                a[:] = v
+                try:
+                    a[:] = v
+                except ValueError:
+                    a[:] = v[:len(a)]
             else:
-                a[filt[0].a == (not filt[1])] = v
+                m = filt[0].a == (not filt[1])
+                try:
+                    a[m] = v
+                except ValueError:
+                    a[m] = v[:len(m)][m]
 
     fa = property(__get_set_f_array,
                   lambda self, v: self.__get_set_f_array(v, False),
