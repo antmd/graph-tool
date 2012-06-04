@@ -62,7 +62,6 @@ dl_import("from . import libgraph_tool_topology")
 
 from .. import _prop, Vector_int32_t, _check_prop_writable, \
      _check_prop_scalar, _check_prop_vector, Graph, PropertyMap, GraphView
-from .. flow import libgraph_tool_flow
 import random, sys, numpy
 __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
            "max_cardinality_matching", "max_independent_vertex_set",
@@ -1498,3 +1497,4 @@ def edge_reciprocity(g):
     r = libgraph_tool_topology.reciprocity(g._Graph__graph)
     return r
 
+from .. flow import libgraph_tool_flow

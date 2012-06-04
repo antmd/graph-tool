@@ -31,6 +31,8 @@ Summary
    edmonds_karp_max_flow
    push_relabel_max_flow
    boykov_kolmogorov_max_flow
+   min_st_cut
+   min_cut
 
 Contents
 ++++++++
@@ -75,9 +77,10 @@ from __future__ import division, absolute_import, print_function
 from .. dl_import import dl_import
 dl_import("from . import libgraph_tool_flow")
 
-from .. import _prop, _check_prop_scalar, _check_prop_writable
+from .. import _prop, _check_prop_scalar, _check_prop_writable, GraphView
+
 __all__ = ["edmonds_karp_max_flow", "push_relabel_max_flow",
-           "boykov_kolmogorov_max_flow"]
+           "boykov_kolmogorov_max_flow", "min_st_cut", "min_cut"]
 
 
 def edmonds_karp_max_flow(g, source, target, capacity, residual=None):
@@ -324,3 +327,131 @@ def boykov_kolmogorov_max_flow(g, source, target, capacity, residual=None):
                                    _prop("e", g, residual))
     return residual
 
+def min_st_cut(g, source, residual):
+    r"""
+    Get the minimum source-target cut, given the residual capacity of the edges.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    source : Vertex
+        The source vertex.
+    residual : :class:`~graph_tool.PropertyMap`
+        Edge property map where the residual capacity is stored.
+
+    Returns
+    -------
+    min_cut : float
+        The value of the minimum cut.
+    partition : :class:`~graph_tool.PropertyMap`
+        Boolean-valued vertex property map with the cut partition. Vertices with
+        value `True` belong to the source side of the cut.
+
+    Notes
+    -----
+
+    The source-side of the cut set is obtained by following all vertices which
+    are reachable from the source via edges with nonzero residual capacity.
+
+    This algorithm runs in :math:`O(V+E)` time.
+
+    Examples
+    --------
+    >>> g = gt.load_graph("flow-example.xml.gz")
+    >>> cap = g.edge_properties["cap"]
+    >>> src, tgt = g.vertex(0), g.vertex(1)
+    >>> res = gt.boykov_kolmogorov_max_flow(g, src, tgt, cap)
+    >>> mc, part = gt.min_st_cut(g, src, res)
+    >>> print(mc)
+    6.92759897841
+    >>> pos = g.vertex_properties["pos"]
+    >>> res.a = cap.a - res.a  # the actual flow
+    >>> res.a /= res.a.max() / 10
+    >>> gt.graph_draw(g, pos=pos, edge_pen_width=res, vertex_fill_color=part,
+    ...               output="example-min-st-cut.pdf")
+    <...>
+
+    .. figure:: example-min-st-cut.*
+        :align: center
+
+        Edge flows obtained with the Boykov-Kolmogorov algorithm. The source and
+        target are on the lower left and upper right corners, respectively. The
+        edge flows are represented by the edge width. Vertices of the same color
+        are on the same side of a minimum cut.
+
+    References
+    ----------
+    .. [max-flow-min-cut] http://en.wikipedia.org/wiki/Max-flow_min-cut_theorem
+    """
+    if not g.is_directed():
+        raise ValueError("The graph provided must be directed!")
+    em = g.new_edge_property("bool")
+    em.a = residual.a[:len(em.a)] > 0
+    u = GraphView(g, efilt=em)
+    part = label_out_component(u, source)
+    g.own_property(part)
+    mc = sum(residual[e] for e in source.out_edges())
+    return mc, part
+
+
+def min_cut(g, weight):
+    r"""
+    Get the minimum cut of an undirected graph, given the weight of the edges.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    weight : :class:`~graph_tool.PropertyMap`
+        Edge property map with the edge weights.
+
+    Returns
+    -------
+    min_cut : float
+        The value of the minimum cut.
+    partition : :class:`~graph_tool.PropertyMap`
+        Boolean-valued vertex property map with the cut partition.
+
+    Notes
+    -----
+    The algorithm is defined in [stoer_simple_1997]_.
+
+    The time complexity is :math:`O(VE + V^2 \log V)`.
+
+    Examples
+    --------
+    >>> g = gt.load_graph("mincut-example.xml.gz")
+    >>> weight = g.edge_properties["weight"]
+    >>> mc, part = gt.min_cut(g, weight)
+    >>> print(mc)
+    4.0
+    >>> pos = g.vertex_properties["pos"]
+    >>> gt.graph_draw(g, pos=pos, edge_pen_width=weight, vertex_fill_color=part,
+    ...               output="example-min-cut.pdf")
+    <...>
+
+    .. figure:: example-min-cut.*
+        :align: center
+
+        Vertices of the same color are on the same side of a minimum cut. The
+        edge weights are represented by the edge width.
+
+    References
+    ----------
+
+    .. [stoer_simple_1997] Stoer, Mechthild and Frank Wagner, "A simple min-cut
+       algorithm". Journal of the ACM 44 (4), 585–591, 1997. :doi:`10.1145/263867.263872`
+    """
+
+    _check_prop_scalar(weight, "weight")
+    if g.is_directed():
+        raise ValueError("The graph provided must be undirected!")
+    part = g.new_vertex_property("bool")
+
+    mc = libgraph_tool_flow.min_cut(g._Graph__graph,
+                                    _prop("e", g, weight),
+                                    _prop("v", g, part))
+    return mc, part
+
+from .. topology import label_out_component

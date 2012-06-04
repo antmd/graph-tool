@@ -19,6 +19,7 @@ libgraph_tool_flow_la_SOURCES = \
     graph_push_relabel.cc \
     graph_kolmogorov.cc \
     graph_maximum_cardinality_matching.cc \
+    graph_minimum_cut.cc \
     graph_flow_bind.cc
 
 libgraph_tool_flow_la_include_HEADERS = \
