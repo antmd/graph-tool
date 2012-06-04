@@ -38,6 +38,7 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
                           python::list vmapping, python::list emapping,
                           size_t n_max, size_t seed);
 double reciprocity(GraphInterface& gi);
+bool is_bipartite(GraphInterface& gi, boost::any part_map);
 
 void export_components();
 void export_similarity();
@@ -59,6 +60,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_topology)
     def("transitive_closure", &transitive_closure);
     def("is_planar", &is_planar);
     def("reciprocity", &reciprocity);
+    def("is_bipartite", &is_bipartite);
     export_components();
     export_similarity();
     export_dists();

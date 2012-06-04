@@ -44,6 +44,7 @@ Summary
    label_components
    label_biconnected_components
    label_largest_component
+   is_bipartite
    is_planar
    edge_reciprocity
 
@@ -66,7 +67,7 @@ __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
            "min_spanning_tree", "dominator_tree", "topological_sort",
            "transitive_closure", "label_components", "label_largest_component",
            "label_biconnected_components", "shortest_distance", "shortest_path",
-           "pseudo_diameter", "is_planar", "similarity", "edge_reciprocity"]
+           "pseudo_diameter", "is_bipartite", "is_planar", "similarity", "edge_reciprocity"]
 
 
 def similarity(g1, g2, label1=None, label2=None, norm=True):
@@ -1004,6 +1005,65 @@ def pseudo_diameter(g, source=None, weights=None):
         else:
             break
     return dist, (g.vertex(source), g.vertex(target))
+
+
+def is_bipartite(g, partition=False):
+    """
+    Test if the graph is bipartite.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    partition : bool (optional, default: ``False``)
+        If ``True``, return the two partitions in case the graph is bipartite.
+
+    Returns
+    -------
+    is_bipartite : bool
+        Whether or not the graph is bipartite.
+    partition : :class:`~graph_tool.PropertyMap` (only if `partition=True`)
+        A vertex property map with the graph partitioning (or `None`) if the
+        graph is not bipartite.
+
+    Notes
+    -----
+
+    An undirected graph is bipartite if one can partition its set of vertices
+    into two sets, such that all edges go from one set to the other.
+
+    This algorithm runs in :math:`O(V + E)` time.
+
+    Examples
+    --------
+    >>> g = gt.lattice([10, 10])
+    >>> is_bi, part = gt.is_bipartite(g, partition=True)
+    >>> print(is_bi)
+    True
+    >>> gt.graph_draw(g, vertex_color=part, output_size=(300, 300), output="bipartite.pdf")
+    <...>
+
+    .. figure:: bipartite.*
+        :align: center
+
+        Bipartition of a 2D lattice.
+
+    References
+    ----------
+    .. [boost-bipartite] http://www.boost.org/libs/graph/doc/is_bipartite.html
+    """
+
+    if partition:
+        part = g.new_vertex_property("bool")
+    else:
+        part = None
+    g = GraphView(g, directed=False)
+    is_bi = libgraph_tool_topology.is_bipartite(g._Graph__graph,
+                                                _prop("v", g, part))
+    if partition:
+        return is_bi, part
+    else:
+        return is_bi
 
 
 def is_planar(g, embedding=False, kuratowski=False):
