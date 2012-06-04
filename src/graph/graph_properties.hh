@@ -211,7 +211,7 @@ public:
 
     const string& operator()(const std::type_info& type) const
     {
-        string* name;
+        string const* name;
         mpl::for_each<TypeSequence>
             (bind<void>(find_name(), _1, ref(type),
                         ref(_all_names), ref(name)));
@@ -228,8 +228,8 @@ private:
     {
         template <class Type>
         void operator()(Type, const std::type_info& type,
-                        vector<string>& all_names,
-                        string*& name) const
+                        const vector<string>& all_names,
+                        string const*& name) const
         {
             size_t index = mpl::find<TypeSequence,Type>::type::pos::value;
             if (type == typeid(Type))
@@ -249,7 +249,7 @@ private:
     };
 
     const char** _type_names;
-    static vector<string> _all_names;
+    vector<string> _all_names;
 };
 
 //

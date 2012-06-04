@@ -128,7 +128,7 @@ inline double dist(const Pos& p1, const Pos& p2)
 {
     double r = 0;
     for (size_t i = 0; i < 2; ++i)
-        r += pow(p1[i] - p2[i], 2.);
+        r += pow(double(p1[i] - p2[i]), 2.);
     return sqrt(r);
 }
 
