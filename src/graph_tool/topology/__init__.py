@@ -49,6 +49,7 @@ Summary
    label_largest_component
    label_out_component
    is_bipartite
+   is_DAG
    is_planar
    edge_reciprocity
 
@@ -72,8 +73,8 @@ __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
            "sequential_vertex_coloring", "label_components",
            "label_largest_component", "label_biconnected_components",
            "label_out_component", "shortest_distance", "shortest_path",
-           "pseudo_diameter", "is_bipartite", "is_planar", "similarity",
-           "edge_reciprocity"]
+           "pseudo_diameter", "is_bipartite", "is_DAG", "is_planar",
+           "similarity", "edge_reciprocity"]
 
 
 def similarity(g1, g2, label1=None, label2=None, norm=True):
@@ -537,9 +538,11 @@ def topological_sort(g):
     """
 
     topological_order = Vector_int32_t()
-    libgraph_tool_topology.\
-               topological_sort(g._Graph__graph, topological_order)
-    return numpy.array(topological_order)
+    is_DAG = libgraph_tool_topology.\
+        topological_sort(g._Graph__graph, topological_order)
+    if not is_DAG:
+        raise ValueError("Graph is not a directed acylic graph (DAG).");
+    return topological_order.a.copy()
 
 
 def transitive_closure(g):
@@ -1296,6 +1299,38 @@ def is_planar(g, embedding=False, kuratowski=False):
         return ret[0]
     else:
         return tuple(ret)
+
+def is_DAG(g):
+    """
+    Return `True` if the graph is a directed acyclic graph (DAG).
+
+    Notes
+    -----
+    The time complexity is :math:`O(V + E)`.
+
+    Examples
+    --------
+
+    >>> from numpy.random import seed
+    >>> seed(42)
+    >>> g = gt.random_graph(30, lambda: (3, 3))
+    >>> print(is_DAG(g))
+    False
+    >>> tree = gt.min_spanning_tree(g)
+    >>> g.set_edge_filter(tree)
+    >>> print(is_DAG(g))
+    True
+
+    References
+    ----------
+    .. [DAG-wiki] http://en.wikipedia.org/wiki/Directed_acyclic_graph
+
+    """
+
+    topological_order = Vector_int32_t()
+    is_DAG = libgraph_tool_topology.\
+        topological_sort(g._Graph__graph, topological_order)
+    return is_DAG
 
 
 def max_cardinality_matching(g, heuristic=False, weight=None, minimize=True,

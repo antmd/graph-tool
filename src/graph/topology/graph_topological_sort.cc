@@ -35,15 +35,16 @@ struct get_topological_sort
     }
 };
 
-void topological_sort(GraphInterface& gi, vector<int32_t>& sort)
+bool topological_sort(GraphInterface& gi, vector<int32_t>& sort)
 {
     try
     {
         run_action<>()
             (gi, bind<void>(get_topological_sort(), _1, ref(sort)))();
+        return true;
     }
     catch (not_a_dag& e)
     {
-        throw ValueException("graph is not a directed acylic graph (DAG).");
+        return false;
     }
 }
