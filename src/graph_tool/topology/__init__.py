@@ -43,6 +43,7 @@ Summary
    topological_sort
    transitive_closure
    tsp_tour
+   sequential_vertex_coloring
    label_components
    label_biconnected_components
    label_largest_component
@@ -68,10 +69,11 @@ __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
            "max_cardinality_matching", "max_independent_vertex_set",
            "min_spanning_tree", "random_spanning_tree", "dominator_tree",
            "topological_sort", "transitive_closure", "tsp_tour",
-           "label_components", "label_largest_component",
-           "label_biconnected_components", "label_out_component",
-           "shortest_distance", "shortest_path", "pseudo_diameter",
-           "is_bipartite", "is_planar", "similarity", "edge_reciprocity"]
+           "sequential_vertex_coloring", "label_components",
+           "label_largest_component", "label_biconnected_components",
+           "label_out_component", "shortest_distance", "shortest_path",
+           "pseudo_diameter", "is_bipartite", "is_planar", "similarity",
+           "edge_reciprocity"]
 
 
 def similarity(g1, g2, label1=None, label2=None, norm=True):
@@ -1539,12 +1541,56 @@ def tsp_tour(g, src, weight=None):
 
     """
 
-    if g.is_directed():
-        raise ValueError("Graph must be undirected.")
+def sequential_vertex_coloring(g, order=None, color=None):
+    """Returns a vertex coloring of the graph.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    order : :class:`~graph_tool.PropertyMap` (optional, default: None)
+        Order with which the vertices will be colored.
+    color : :class:`~graph_tool.PropertyMap` (optional, default: None)
+        Integer-valued vertex property map to store the colors.
+
+    Returns
+    -------
+    color : :class:`~graph_tool.PropertyMap`
+        Integer-valued vertex property map with the vertex colors.
+
+    Notes
+    -----
+
+    The time complexity is :math:`O(V(d+k))`, where :math:`V` is the number of
+    vertices, :math:`d` is the maximum degree of the vertices in the graph, and
+    :math:`k` is the number of colors used.
+
+    Examples
+    --------
+    >>> g = gt.lattice([20, 20])
+    >>> colors = gt.sequential_vertex_coloring(g, g.vertex(0))
+    >>> print(colors.a)
+    [0 1 0 1 0 1 0 1 0 1 1 0 1 0 1 0 1 0 1 0 0 1 0 1 0 1 0 1 0 1 1 0 1 0 1 0 1
+     0 1 0 0 1 0 1 0 1 0 1 0 1 1 0 1 0 1 0 1 0 1 0 0 1 0 1 0 1 0 1 0 1 1 0 1 0
+     1 0 1 0 1 0 0 1 0 1 0 1 0 1 0 1 1 0 1 0 1 0 1 0 1 0]
+
+    References
+    ----------
+    .. [sgc-bgl] http://www.boost.org/libs/graph/doc/sequential_vertex_coloring.html
+    .. [graph-coloring] http://en.wikipedia.org/wiki/Graph_coloring
+
+    """
+
+    if order is None:
+        order = g.vertex_index
+    if color is None:
+        color = g.new_vertex_property("int")
+
     tour = libgraph_tool_topology.\
-        get_tsp(g._Graph__graph, int(src),
-                _prop("e", g, weight))
-    return tour.a.copy()
+        sequential_coloring(g._Graph__graph,
+                            _prop("v", g, order),
+                            _prop("v", g, color))
+    return color
 
 
 from .. flow import libgraph_tool_flow

@@ -38,10 +38,13 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
                           python::list vmapping, python::list emapping,
                           size_t n_max, size_t seed);
 double reciprocity(GraphInterface& gi);
+size_t sequential_coloring(GraphInterface& gi, boost::any order,
+                           boost::any color);
 bool is_bipartite(GraphInterface& gi, boost::any part_map);
 void get_random_spanning_tree(GraphInterface& gi, size_t root,
                               boost::any weight_map, boost::any tree_map,
                               size_t seed);
+vector<int32_t> get_tsp(GraphInterface& gi, size_t src, boost::any weight_map);
 
 void export_components();
 void export_similarity();
@@ -63,8 +66,10 @@ BOOST_PYTHON_MODULE(libgraph_tool_topology)
     def("transitive_closure", &transitive_closure);
     def("is_planar", &is_planar);
     def("reciprocity", &reciprocity);
+    def("sequential_coloring", &sequential_coloring);
     def("is_bipartite", &is_bipartite);
     def("random_spanning_tree", &get_random_spanning_tree);
+    def("get_tsp", &get_tsp);
     export_components();
     export_similarity();
     export_dists();

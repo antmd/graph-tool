@@ -28,6 +28,7 @@ libgraph_tool_topology_la_SOURCES = \
     graph_random_matching.cc \
     graph_random_spanning_tree.cc \
     graph_reciprocity.cc \
+    graph_sequential_color.cc \
     graph_similarity.cc \
     graph_subgraph_isomorphism.cc \
     graph_topological_sort.cc \
