@@ -32,6 +32,7 @@ libgraph_tool_topology_la_SOURCES = \
     graph_subgraph_isomorphism.cc \
     graph_topological_sort.cc \
     graph_topology.cc \
+    graph_tsp.cc \
     graph_transitive_closure.cc
 
 

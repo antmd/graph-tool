@@ -42,6 +42,7 @@ Summary
    dominator_tree
    topological_sort
    transitive_closure
+   tsp_tour
    label_components
    label_biconnected_components
    label_largest_component
@@ -66,11 +67,11 @@ import random, sys, numpy
 __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
            "max_cardinality_matching", "max_independent_vertex_set",
            "min_spanning_tree", "random_spanning_tree", "dominator_tree",
-           "topological_sort", "transitive_closure", "label_components",
-           "label_largest_component", "label_biconnected_components",
-           "label_out_component", "shortest_distance", "shortest_path",
-           "pseudo_diameter", "is_bipartite", "is_planar", "similarity",
-           "edge_reciprocity"]
+           "topological_sort", "transitive_closure", "tsp_tour",
+           "label_components", "label_largest_component",
+           "label_biconnected_components", "label_out_component",
+           "shortest_distance", "shortest_path", "pseudo_diameter",
+           "is_bipartite", "is_planar", "similarity", "edge_reciprocity"]
 
 
 def similarity(g1, g2, label1=None, label2=None, norm=True):
@@ -1496,5 +1497,54 @@ def edge_reciprocity(g):
 
     r = libgraph_tool_topology.reciprocity(g._Graph__graph)
     return r
+
+
+def tsp_tour(g, src, weight=None):
+    """Return a traveling salesman tour of the graph, which is guaranteed to be
+    twice as long as the optimal tour in the worst case.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    src : :class:`~graph_tool.Vertex`
+        The source (and target) of the tour.
+    weight : :class:`~graph_tool.PropertyMap` (optional, default: None)
+        Edge weights.
+
+    Returns
+    -------
+    tour : :class:`numpy.ndarray`
+        List of vertex indexes corresponding to the tour.
+
+    Notes
+    -----
+    The algorithm runs with :math:`O(E\log V)` complexity.
+
+    Examples
+    --------
+    >>> g = gt.lattice([20, 20])
+    >>> tour = gt.tsp_tour(g, g.vertex(0))
+    >>> print(tour)
+    [ 0  1  2 11 12 21 22 31 32 41 42 51 52 61 62 71 72 81 82 83 73 63 53 43 33
+     23 13  3  4  5  6  7  8  9 19 29 39 49 59 69 79 89 14 24 34 44 54 64 74 84
+     91 92 93 94 95 85 75 65 55 45 35 25 15 16 17 18 27 28 37 38 47 48 57 58 67
+     68 77 78 87 88 97 98 99 26 36 46 56 66 76 86 96 10 20 30 40 50 60 70 80 90
+      0]
+
+    References
+    ----------
+    .. [tsp-bgl] http://www.boost.org/libs/graph/doc/metric_tsp_approx.html
+    .. [tsp] http://en.wikipedia.org/wiki/Travelling_salesman_problem
+
+    """
+
+    if g.is_directed():
+        raise ValueError("Graph must be undirected.")
+    tour = libgraph_tool_topology.\
+        get_tsp(g._Graph__graph, int(src),
+                _prop("e", g, weight))
+    return tour.a.copy()
+
 
 from .. flow import libgraph_tool_flow
