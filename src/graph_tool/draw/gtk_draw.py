@@ -20,6 +20,8 @@
 
 from __future__ import division, absolute_import, print_function
 
+from .. import GraphView, PropertyMap, ungroup_vector_property,\
+     group_vector_property, _prop
 from .cairo_draw import *
 from .cairo_draw import _vdefaults, _edefaults
 from .. draw import sfdp_layout, random_layout, _avg_edge_distance, \
