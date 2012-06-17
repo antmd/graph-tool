@@ -70,6 +70,7 @@ _vdefaults = {
     "color": [0, 0, 0, 1],
     "fill_color": [0.640625, 0, 0, 0.9],
     "size": 5,
+    "aspect": 1.,
     "pen_width": 0.8,
     "halo": 0,
     "halo_color": [0., 0., 1., 0.5],
@@ -79,7 +80,8 @@ _vdefaults = {
     "font_family": "serif",
     "font_slant": cairo.FONT_SLANT_NORMAL,
     "font_weight": cairo.FONT_WEIGHT_NORMAL,
-    "font_size": 12.
+    "font_size": 12.,
+    "surface": None
     }
 
 _edefaults = {
@@ -90,6 +92,7 @@ _edefaults = {
     "end_marker": "none",
     "marker_size": 4.,
     "control_points": [],
+    "dash_style": []
     }
 
 
@@ -120,10 +123,73 @@ def shape_from_prop(shape, enum):
     raise ValueError("Invalid value for attribute %s: %s" %
                      (repr(enum), repr(shape)))
 
+def open_file(name, mode="r"):
+    name = os.path.expanduser(name)
+    base, ext = os.path.splitext(name)
+    if ext == ".gz":
+        out = gzip.GzipFile(name, mode)
+        name = base
+    elif ext == ".bz2":
+        out = bz2.BZ2File(name, mode)
+        name = base
+    elif ext == ".zip":
+        out = zipfile.ZipFile(name, mode)
+        name = base
+    else:
+        out = open(name, mode)
+    fmt = os.path.splitext(name)[1].replace(".", "")
+    return name, fmt
+
+
+def gen_surface(name):
+    fobj, fmt = open_file(name)
+    if fmt == "png":
+        sfc = cairo.ImageSurface.create_from_png(fobj)
+        return sfc
+    else:
+        raise ValueError("Cannot guess format of file: " + name)
+
+
+def surface_from_prop(surface):
+    if isinstance(surface, PropertyMap):
+        if surface.key_type() == "v":
+            prop = surface.get_graph().new_vertex_property("object")
+            descs = surface.get_graph().vertices()
+        else:
+            descs = surface.get_graph().edges()
+            prop = surface.get_graph().new_edge_property("object")
+        surface_map = {}
+        for v in descs:
+            if surface.value_type() == "string":
+                if surface[v] not in surface_map:
+                    sfc = gen_surface(surface[v])
+                    surface_map[surface[v]] = sfc
+                else:
+                    prop[v] = surface_map[surface[v]]
+            elif surface.value_type() == "python::object":
+                if isinstance(surface[v], cairo.Surface):
+                    prop[v] = surface[v]
+                else:
+                    raise ValueError("Invalid value type for surface property: " +
+                                     str(type(surface[v])))
+            else:
+                raise ValueError("Invalid value type for surface property: " +
+                                 surface.value_type())
+        return prop
+
+    if isinstance(surface, str):
+        return gen_surface(surface)
+    elif isinstance(surface, cairo.Surface) or surface is None:
+        return surface
+
+    raise ValueError("Invalid value for attribute surface: " + repr(surface))
+
 
 def _convert(attr, val, cmap):
     if attr == vertex_attrs.shape:
         return shape_from_prop(val, vertex_shape)
+    if attr == vertex_attrs.surface:
+        return surface_from_prop(val)
     if attr in [edge_attrs.start_marker, edge_attrs.mid_marker,
                 edge_attrs.end_marker]:
         return shape_from_prop(val, edge_marker)
@@ -402,7 +468,7 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         |               | "double_circle", "double_triangle",               |                        |                                  |
         |               | "double_square", "double_pentagon",               |                        |                                  |
         |               | "double_hexagon", "double_heptagon",              |                        |                                  |
-        |               | "double_octagon".                                 |                        |                                  |
+        |               | "double_octagon" or "surface".                    |                        |                                  |
         |               | Optionally, this might take a numeric value       |                        |                                  |
         |               | corresponding to position in the list above.      |                        |                                  |
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
@@ -415,6 +481,8 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         | size          | The size of the vertex, in the default units of   | ``float`` or ``int``   | ``5``                            |
         |               | the output format (normally either pixels or      |                        |                                  |
         |               | points).                                          |                        |                                  |
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
+        | aspect        | The aspect ratio of the vertex.                   | ``float`` or ``int``   | ``1.0``                          |
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
         | pen_width     | Width of the lines used to draw the vertex, in    | ``float`` or ``int``   | ``0.8``                          |
         |               | the default units of the output format (normally  |                        |                                  |
@@ -446,6 +514,12 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
         | font_size     | Font size used to draw the text.                  | ``float`` or ``int``   | ``12``                           |
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
+        | surface       | The cairo surface used to draw the vertex. If     | :class:`cairo.Surface` | ``None``                         |
+        |               | the value passed is a string, it is interpreted   | or ``str``             |                                  |
+        |               | as a PNG image file name to be loaded. This       |                        |                                  |
+        |               | property is only used if `shape` is set to        |                        |                                  |
+        |               | "surface".                                        |                        |                                  |
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
 
 
     .. table:: **List of edge properties**
@@ -470,6 +544,12 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         +----------------+---------------------------------------------------+------------------------+----------------------------------+
         | control_points | Control points of a Bézier spline used to draw    | sequence of ``floats`` | ``[]``                           |
         |                | the edge.                                         |                        |                                  |
+        +----------------+---------------------------------------------------+------------------------+----------------------------------+
+        | dash_style     | Dash pattern is specified by an array of positive | sequence of ``floats`` | ``[]``                           |
+        |                | values. Each value provides the length of         |                        |                                  |
+        |                | alternate "on" and "off" portions of the stroke.  |                        |                                  |
+        |                | The last value specifies an offset into the       |                        |                                  |
+        |                | pattern at which the stroke begins.               |                        |                                  |
         +----------------+---------------------------------------------------+------------------------+----------------------------------+
 
     Examples
@@ -534,22 +614,10 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         return interactive_window(g, pos, vprops, eprops, vorder, eorder,
                                   nodesfirst, **kwargs)
     else:
-        output = os.path.expanduser(output)
-        base, ext = os.path.splitext(output)
-        if ext == ".gz":
-            out = gzip.GzipFile(output, "w")
-            output = base
-        elif ext == ".bz2":
-            out = bz2.BZ2File(output, "w")
-            output = base
-        elif ext == ".zip":
-            out = zipfile.ZipFile(output, "w")
-            output = base
-        else:
-            out = open(output, "w")
+        out, auto_fmt = open_file(output, mode="w")
 
         if fmt == "auto":
-            fmt = os.path.splitext(output)[1].replace(".", "")
+            fmt = auto_fmt
         if fmt == "pdf":
             srf = cairo.PDFSurface(out, output_size[0], output_size[1])
         elif fmt == "ps":

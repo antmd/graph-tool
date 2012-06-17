@@ -52,6 +52,7 @@ enum vertex_attr_t {
     VERTEX_COLOR,
     VERTEX_FILL_COLOR,
     VERTEX_SIZE,
+    VERTEX_ASPECT,
     VERTEX_PENWIDTH,
     VERTEX_HALO,
     VERTEX_HALO_COLOR,
@@ -61,7 +62,8 @@ enum vertex_attr_t {
     VERTEX_FONT_FAMILY,
     VERTEX_FONT_SLANT,
     VERTEX_FONT_WEIGHT,
-    VERTEX_FONT_SIZE
+    VERTEX_FONT_SIZE,
+    VERTEX_SURFACE
 };
 
 enum edge_attr_t {
@@ -71,7 +73,8 @@ enum edge_attr_t {
     EDGE_MID_MARKER,
     EDGE_END_MARKER,
     EDGE_MARKER_SIZE,
-    EDGE_CONTROL_POINTS
+    EDGE_CONTROL_POINTS,
+    EDGE_DASH_STYLE
 };
 
 enum vertex_shape_t {
@@ -88,7 +91,8 @@ enum vertex_shape_t {
     SHAPE_DOUBLE_PENTAGON,
     SHAPE_DOUBLE_HEXAGON,
     SHAPE_DOUBLE_HEPTAGON,
-    SHAPE_DOUBLE_OCTAGON
+    SHAPE_DOUBLE_OCTAGON,
+    SHAPE_SURFACE
 };
 
 enum edge_marker_t {
@@ -104,11 +108,12 @@ typedef pair<double, double> pos_t;
 typedef tuple<double, double, double, double> color_t;
 typedef tr1::unordered_map<int, boost::any> attrs_t;
 
-typedef mpl::map21<
+typedef mpl::map24<
     mpl::pair<mpl::int_<VERTEX_SHAPE>, vertex_shape_t>,
     mpl::pair<mpl::int_<VERTEX_COLOR>, color_t>,
     mpl::pair<mpl::int_<VERTEX_FILL_COLOR>, color_t>,
     mpl::pair<mpl::int_<VERTEX_SIZE>, double>,
+    mpl::pair<mpl::int_<VERTEX_ASPECT>, double>,
     mpl::pair<mpl::int_<VERTEX_PENWIDTH>, double>,
     mpl::pair<mpl::int_<VERTEX_HALO>, uint8_t>,
     mpl::pair<mpl::int_<VERTEX_HALO_COLOR>, color_t>,
@@ -119,13 +124,15 @@ typedef mpl::map21<
     mpl::pair<mpl::int_<VERTEX_FONT_SLANT>, int32_t>,
     mpl::pair<mpl::int_<VERTEX_FONT_WEIGHT>, int32_t>,
     mpl::pair<mpl::int_<VERTEX_FONT_SIZE>, double>,
+    mpl::pair<mpl::int_<VERTEX_SURFACE>, python::object>,
     mpl::pair<mpl::int_<EDGE_COLOR>, color_t>,
     mpl::pair<mpl::int_<EDGE_PENWIDTH>, double>,
     mpl::pair<mpl::int_<EDGE_START_MARKER>, edge_marker_t>,
     mpl::pair<mpl::int_<EDGE_MID_MARKER>, edge_marker_t>,
     mpl::pair<mpl::int_<EDGE_END_MARKER>, edge_marker_t>,
     mpl::pair<mpl::int_<EDGE_MARKER_SIZE>, double>,
-    mpl::pair<mpl::int_<EDGE_CONTROL_POINTS>, vector<double> > >
+    mpl::pair<mpl::int_<EDGE_CONTROL_POINTS>, vector<double> >,
+    mpl::pair<mpl::int_<EDGE_DASH_STYLE>, vector<double> > >
         attr_types;
 
 namespace std
@@ -398,6 +405,18 @@ double get_user_dist(Cairo::Context& cr)
     return sqrt(x * x + y * y);
 }
 
+void get_surface_size(Cairo::RefPtr<Cairo::Surface> sfc,
+                      double& width, double& height)
+{
+    Cairo::RefPtr<Cairo::Context> cr = Cairo::Context::create(sfc);
+    double x1, x2, y1, y2;
+
+    cr->get_clip_extents(x1, y1, x2, y2);
+
+    width = x2 - x1;
+    height = y2 - y1;
+}
+
 
 
 template <class Descriptor>
@@ -428,7 +447,8 @@ public:
                 Cairo::TextExtents extents;
                 cr.get_text_extents(text, extents);
                 double s = max(extents.width, extents.height) * 1.4;
-                if (_attrs.template get<vertex_shape_t>(VERTEX_SHAPE) >= SHAPE_DOUBLE_CIRCLE)
+                vertex_shape_t shape = _attrs.template get<vertex_shape_t>(VERTEX_SHAPE);
+                if (shape >= SHAPE_DOUBLE_CIRCLE && shape != SHAPE_SURFACE)
                 {
                     s /= 0.7;
                     double pw = _attrs.template get<double>(VERTEX_PENWIDTH);
@@ -480,14 +500,20 @@ public:
         case SHAPE_DOUBLE_CIRCLE:
             dr = r;
             break;
+        case SHAPE_SURFACE:
+            dr = get_polygon_anchor(4, r, angle);
+            break;
         default:
             throw ValueException("Invalid vertex shape: " +
                                  lexical_cast<string>(int(_attrs.template get<vertex_shape_t>(VERTEX_SHAPE))));
         }
 
+        double aspect = _attrs.template get<double>(VERTEX_ASPECT);
+
         anchor = _pos;
-        anchor.first -= dr * cos(angle);
+        anchor.first -= dr * cos(angle) * aspect;
         anchor.second -= dr * sin(angle);
+
         return anchor;
     }
 
@@ -499,14 +525,15 @@ public:
     void draw(Cairo::Context& cr)
     {
         color_t color, fillcolor;
-        double size, pw;
+        double size, pw, aspect;
         size = get_size(cr);
+        aspect = _attrs.template get<double>(VERTEX_ASPECT);
+
 
         string text = _attrs.template get<string>(VERTEX_TEXT);
         double text_pos = 0;
         if (text != "")
         {
-            string text = _attrs.template get<string>(VERTEX_TEXT);
             cr.select_font_face(_attrs.template get<string>(VERTEX_FONT_FAMILY),
                                 static_cast<Cairo::FontSlant>(_attrs.template get<int32_t>(VERTEX_FONT_SLANT)),
                                 static_cast<Cairo::FontWeight>(_attrs.template get<int32_t>(VERTEX_FONT_WEIGHT)));
@@ -522,7 +549,10 @@ public:
         {
             color_t c = _attrs.template get<color_t>(VERTEX_HALO_COLOR);
             cr.set_source_rgba(get<0>(c), get<1>(c), get<2>(c), get<3>(c));
+            cr.save();
+            cr.scale(aspect, 1.0);
             cr.arc(0, 0, size, 0, 2 * M_PI);
+            cr.restore();
             cr.fill();
         }
 
@@ -537,16 +567,48 @@ public:
         vertex_shape_t shape = _attrs.template get<vertex_shape_t>(VERTEX_SHAPE);
         switch (shape)
         {
+        case SHAPE_SURFACE:
+            {
+                python::object osrc = _attrs.template get<python::object>(VERTEX_SURFACE);
+                if (osrc != python::object())
+                {
+                    double swidth, sheight;
+                    PycairoSurface* src = (PycairoSurface*) osrc.ptr();
+                    Cairo::RefPtr<Cairo::Surface> surface(new Cairo::Surface(src->surface));
+                    get_surface_size(surface, swidth, sheight);
+                    Cairo::RefPtr<Cairo::SurfacePattern> pat(Cairo::SurfacePattern::create(surface));
+                    //pat->set_extend(Cairo::EXTEND_REPEAT);
+
+                    double r = size / sqrt(2);
+                    double scale = r / max(swidth / aspect, sheight);
+
+                    Cairo::Matrix m = Cairo::identity_matrix();
+                    m.translate(swidth / 2, sheight / 2);
+                    m.scale(1. / scale, 1. / scale);
+                    pat->set_matrix(m);
+
+                    cr.set_source(pat);
+                    cr.rectangle(-r * aspect / 2, -r / 2, r * aspect, r);
+                    cr.fill();
+                }
+            }
+            break;
         case SHAPE_CIRCLE:
         case SHAPE_DOUBLE_CIRCLE:
+            cr.save();
+            cr.scale(aspect, 1.0);
             cr.arc(0, 0, size / 2., 0, 2 * M_PI);
             cr.close_path();
+            cr.restore();
             if (shape == SHAPE_DOUBLE_CIRCLE)
             {
                 cr.stroke();
+                cr.save();
+                cr.scale(aspect, 1.0);
                 cr.arc(0, 0, min(size / 2 - 2 * pw,
                                  size * 0.8 / 2),
                        0, 2 * M_PI);
+                cr.restore();
             }
             break;
         case SHAPE_TRIANGLE:
@@ -564,12 +626,18 @@ public:
             nsides = shape - SHAPE_TRIANGLE + 3;
             if (nsides > 8)
                 nsides -= 7;
+            cr.save();
+            cr.scale(aspect, 1.0);
             draw_polygon(nsides, size / 2, cr);
+            cr.restore();
             if (shape >= SHAPE_DOUBLE_TRIANGLE)
             {
                 cr.stroke();
+                cr.save();
+                cr.scale(aspect, 1.0);
                 draw_polygon(nsides, min(size / 2 - 2 * pw,
                                          size * 0.8 / 2), cr);
+                cr.restore();
             }
             break;
         default:
@@ -577,14 +645,17 @@ public:
                                  lexical_cast<string>(int(_attrs.template get<vertex_shape_t>(VERTEX_SHAPE))));
         }
 
-        fillcolor = _attrs.template get<color_t>(VERTEX_FILL_COLOR);
-        cr.set_source_rgba(get<0>(fillcolor), get<1>(fillcolor),
-                           get<2>(fillcolor), get<3>(fillcolor));
-        cr.fill_preserve();
+        if (shape != SHAPE_SURFACE)
+        {
+            fillcolor = _attrs.template get<color_t>(VERTEX_FILL_COLOR);
+            cr.set_source_rgba(get<0>(fillcolor), get<1>(fillcolor),
+                               get<2>(fillcolor), get<3>(fillcolor));
+            cr.fill_preserve();
 
-        cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color),
-                           get<3>(color));
-        cr.stroke();
+            cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color),
+                               get<3>(color));
+            cr.stroke();
+        }
 
         if (text != "")
         {
@@ -725,6 +796,8 @@ public:
         cr.fill();
         draw_edge_line(pos_begin_c, pos_end_c, controls, cr);
         cr.stroke();
+        vector<double> empty;
+        cr.set_dash(empty, 0);
         cr.pop_group_to_source();
         cr.paint_with_alpha(get<3>(color));
         cr.reset_clip();
@@ -780,6 +853,15 @@ public:
                         vector<double>& controls, Cairo::Context& cr)
     {
         cr.move_to(pos_begin_c.first, pos_begin_c.second);
+        vector<double> dashes = _attrs.template get<vector<double> >(EDGE_DASH_STYLE);
+
+        if (dashes.size() > 2)
+        {
+            double offset = dashes.back();
+            dashes.pop_back();
+            cr.set_dash(dashes, offset);
+        }
+
         if (controls.size() >= 4)
         {
             size_t step = (controls.size() > 4) ? 6 : 4;
@@ -1338,6 +1420,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_draw)
         .value("color", VERTEX_COLOR)
         .value("fill_color", VERTEX_FILL_COLOR)
         .value("size", VERTEX_SIZE)
+        .value("aspect", VERTEX_ASPECT)
         .value("pen_width", VERTEX_PENWIDTH)
         .value("halo", VERTEX_HALO)
         .value("halo_color", VERTEX_HALO_COLOR)
@@ -1347,7 +1430,8 @@ BOOST_PYTHON_MODULE(libgraph_tool_draw)
         .value("font_family", VERTEX_FONT_FAMILY)
         .value("font_slant", VERTEX_FONT_SLANT)
         .value("font_weight", VERTEX_FONT_WEIGHT)
-        .value("font_size", VERTEX_FONT_SIZE);
+        .value("font_size", VERTEX_FONT_SIZE)
+        .value("surface", VERTEX_SURFACE);
 
     enum_<edge_attr_t>("edge_attrs")
         .value("color", EDGE_COLOR)
@@ -1356,7 +1440,8 @@ BOOST_PYTHON_MODULE(libgraph_tool_draw)
         .value("mid_marker", EDGE_MID_MARKER)
         .value("end_marker", EDGE_END_MARKER)
         .value("marker_size", EDGE_MARKER_SIZE)
-        .value("control_points", EDGE_CONTROL_POINTS);
+        .value("control_points", EDGE_CONTROL_POINTS)
+        .value("dash_style", EDGE_DASH_STYLE);
 
     enum_<vertex_shape_t>("vertex_shape")
         .value("circle", SHAPE_CIRCLE)
@@ -1372,7 +1457,8 @@ BOOST_PYTHON_MODULE(libgraph_tool_draw)
         .value("double_pentagon", SHAPE_DOUBLE_PENTAGON)
         .value("double_hexagon", SHAPE_DOUBLE_HEXAGON)
         .value("double_heptagon", SHAPE_DOUBLE_HEPTAGON)
-        .value("double_octagon", SHAPE_DOUBLE_OCTAGON);
+        .value("double_octagon", SHAPE_DOUBLE_OCTAGON)
+        .value("surface", SHAPE_SURFACE);
 
     enum_<edge_marker_t>("edge_marker")
         .value("none", MARKER_SHAPE_NONE)
