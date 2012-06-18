@@ -295,7 +295,7 @@ def parse_props(prefix, args):
 def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
                nodesfirst=False, vcmap=matplotlib.cm.jet,
                ecmap=matplotlib.cm.jet, loop_angle=float("nan"),
-               parallel_distance=None, **kwargs):
+               parallel_distance=None, fit_view=False, **kwargs):
     r"""
     Draw a graph to a :mod:`cairo` context.
 
@@ -332,6 +332,8 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
     parallel_distance : float (optional, default: ``None``)
         Distance used between parallel edges. If not provided, it will be
         determined automatically.
+    fit_view : bool (optional, default: ``True``)
+        If ``True``, the layout will be scaled to fit the entire clip region.
     vertex_* : :class:`~graph_tool.PropertyMap` or arbitrary types (optional, default: ``None``)
         Parameters following the pattern ``vertex_<prop-name>`` specify the
         vertex property with name ``<prop-name>``, as an alternative to the
@@ -352,6 +354,22 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
     eprops.update(props)
     for k in kwargs:
         warnings.warn("Unknown parameter: " + k, UserWarning)
+
+    cr.save()
+    if fit_view:
+        extents = cr.clip_extents()
+        output_size = (extents[2] - extents[0], extents[3] - extents[1])
+        offset, zoom = fit_to_view(g, pos, output_size,
+                                   vprops.get("size", _vdefaults["size"]),
+                                   vprops.get("pen_width", _vdefaults["pen_width"]),
+                                   None, vprops.get("text", None),
+                                   vprops.get("font_family",
+                                              _vdefaults["font_family"]),
+                                   vprops.get("font_size",
+                                              _vdefaults["font_size"]),
+                                   cr)
+        cr.translate(offset[0], offset[1])
+        cr.scale(zoom, zoom)
 
     if "control_points" not in eprops:
         if parallel_distance is None:
@@ -383,6 +401,7 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
     libgraph_tool_draw.cairo_draw(g._Graph__graph, _prop("v", g, pos),
                                   _prop("v", g, vorder), _prop("e", g, eorder),
                                   nodesfirst, vattrs, eattrs, vdefs, edefs, cr)
+    cr.restore()
 
 
 def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
