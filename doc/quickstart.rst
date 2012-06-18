@@ -100,7 +100,7 @@ out-degree of a vertex, we can simply call the
 
 .. doctest::
 
-   >>> print v1.out_degree()
+   >>> print(v1.out_degree())
    1
 
 Analogously, we could have used the :meth:`~graph_tool.Vertex.in_degree`
@@ -117,7 +117,7 @@ vertex of an edge, respectively.
 
 .. doctest::
 
-   >>> print e.source(), e.target()
+   >>> print(e.source(), e.target())
    0 1
 
 The :meth:`~graph_tool.Graph.add_vertex` method also accepts an optional
@@ -127,7 +127,7 @@ value is greater than 1, it returns a list of vertex descriptors:
 .. doctest::
 
    >>> vlist = g.add_vertex(10)
-   >>> print len(vlist)
+   >>> print(len(vlist))
    10
 
 Edges and vertices can also be removed at any time with the
@@ -160,9 +160,9 @@ converting the vertex descriptor to an ``int``.
 .. doctest::
 
    >>> v = g.add_vertex()
-   >>> print g.vertex_index[v]
+   >>> print(g.vertex_index[v])
    11
-   >>> print int(v)
+   >>> print(int(v))
    11
 
 .. note::
@@ -204,7 +204,7 @@ Like vertices, edges also have unique indexes, which are given by the
 .. doctest::
 
    >>> e = g.add_edge(g.vertex(0), g.vertex(1))
-   >>> print g.edge_index[e]
+   >>> print(g.edge_index[e])
    1
 
 Differently from vertices, edge indexes do not necessarily conform to
@@ -235,9 +235,9 @@ methods should be used:
 .. doctest::
 
    for v in g.vertices():
-       print v
+       print(v)
    for e in e.edges():
-       print e
+       print(e)
 
 The code above will print the vertices and edges of the graph in the order they
 are found.
@@ -255,9 +255,9 @@ and :meth:`~graph_tool.Vertex.in_neighbours` methods, respectively.
    from itertools import izip
    for v in g.vertices():
       for e in v.out_edges():
-          print e
+          print(e)
       for w in v.out_neighbours():
-          print w
+          print(w)
 
       # the edge and neighbours order always match
       for e,w in izip(v.out_edges(), v.out_neighbours()):

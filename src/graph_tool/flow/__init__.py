@@ -364,7 +364,7 @@ def min_st_cut(g, source, residual):
     >>> res = gt.boykov_kolmogorov_max_flow(g, src, tgt, cap)
     >>> mc, part = gt.min_st_cut(g, src, res)
     >>> print(mc)
-    6.92759897841
+    0.978910572896
     >>> pos = g.vertex_properties["pos"]
     >>> res.a = cap.a - res.a  # the actual flow
     >>> res.a /= res.a.max() / 10

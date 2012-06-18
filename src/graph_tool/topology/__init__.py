@@ -174,12 +174,37 @@ def subgraph_isomorphism(sub, g, max_n=0, random=False):
     Obtain all subgraph isomorphisms of `sub` in `g` (or at most `max_n`
     subgraphs, if `max_n > 0`).
 
-    If `random` = True, the vertices of `g` are indexed in random order before
-    the search.
 
-    It returns two lists, containing the vertex and edge property maps for `sub`
-    with the isomorphism mappings. The value of the properties are the
-    vertex/edge index of the corresponding vertex/edge in `g`.
+    Parameters
+    ----------
+    sub : :class:`~graph_tool.Graph`
+        Subgraph for which to be searched.
+    g : :class:`~graph_tool.Graph`
+        Graph in which the search is performed.
+    max_n : int (optional, default: 0)
+        Maximum number of matches to find. If `max_n == 0`, all matches are
+        found.
+    random : bool (optional, default: False)
+        If `True`, the vertices of `g` are indexed in random order before
+        the search.
+
+    Returns
+    -------
+    vertex_maps : list of :class:`~graph_tool.PropertyMap` objects
+        List containing vertex property map objects which indicate different
+        isomorphism mappings. The property maps vertices in `sub` to the
+        corresponding vertex index in `g`.
+    edge_maps : list of :class:`~graph_tool.PropertyMap` objects
+        List containing edge property map objects which indicate different
+        isomorphism mappings. The property maps edges in `sub` to the
+        corresponding edge index in `g`.
+
+    Notes
+    -----
+    The algorithm used is described in [ullmann-algorithm-1976]_. It has a
+    worse-case complexity of :math:`O(N_g^{N_{sub}})`, but for random graphs it
+    typically has a complexity of :math:`O(N_g^\gamma)` with :math:`\gamma`
+    depending sub-linearly on the size of `sub`.
 
     Examples
     --------
@@ -214,13 +239,6 @@ def subgraph_isomorphism(sub, g, max_n=0, random=False):
 
 
     **Left:** Subgraph searched, **Right:** One isomorphic subgraph found in main graph.
-
-    Notes
-    -----
-    The algorithm used is described in [ullmann-algorithm-1976]. It has
-    worse-case complexity of :math:`O(N_g^{N_{sub}})`, but for random graphs it
-    typically has a complexity of :math:`O(N_g^\gamma)` with :math:`\gamma`
-    depending sub-linearly on the size of `sub`.
 
     References
     ----------
@@ -407,7 +425,7 @@ def random_spanning_tree(g, weights=None, root=None, tree_map=None):
     >>> gt.graph_draw(g, pos=pos, output="rtriang_orig.pdf")
     <...>
     >>> g.set_edge_filter(tree)
-    >>> gt.graph_draw(g, pos=pos, output="triang_min_span_tree.pdf")
+    >>> gt.graph_draw(g, pos=pos, output="triang_random_span_tree.pdf")
     <...>
 
 
@@ -723,7 +741,7 @@ def label_out_component(g, root):
 
     The in-component can be obtained by reversing the graph.
 
-    >>> l = gt.label_out_component(GraphView(g, reversed=True), g.vertex(0))
+    >>> l = gt.label_out_component(gt.GraphView(g, reversed=True), g.vertex(0))
     >>> print(l.a)
     [1 0 0 0 0 0 0 0 1 1 0 1 0 0 0 0 0 0 1 0 0 1 1 1 1 0 0 0 1 0 0 0 0 0 0 0 1
      1 1 0 0 0 0 1 0 1 1 0 0 0 1 1 0 0 1 1 0 0 0 0 0 0 1 0 1 0 0 0 0 0 0 0 0 0
@@ -1120,7 +1138,7 @@ def pseudo_diameter(g, source=None, weights=None):
     >>> print(dist)
     9.0
     >>> print(int(ends[0]), int(ends[1]))
-    0 255
+    (0, 255)
 
     References
     ----------
@@ -1177,7 +1195,7 @@ def is_bipartite(g, partition=False):
     >>> is_bi, part = gt.is_bipartite(g, partition=True)
     >>> print(is_bi)
     True
-    >>> gt.graph_draw(g, vertex_color=part, output_size=(300, 300), output="bipartite.pdf")
+    >>> gt.graph_draw(g, vertex_fill_color=part, output_size=(300, 300), output="bipartite.pdf")
     <...>
 
     .. figure:: bipartite.*
@@ -1314,11 +1332,11 @@ def is_DAG(g):
     >>> from numpy.random import seed
     >>> seed(42)
     >>> g = gt.random_graph(30, lambda: (3, 3))
-    >>> print(is_DAG(g))
+    >>> print(gt.is_DAG(g))
     False
     >>> tree = gt.min_spanning_tree(g)
     >>> g.set_edge_filter(tree)
-    >>> print(is_DAG(g))
+    >>> print(gt.is_DAG(g))
     True
 
     References
@@ -1560,7 +1578,7 @@ def tsp_tour(g, src, weight=None):
 
     Examples
     --------
-    >>> g = gt.lattice([20, 20])
+    >>> g = gt.lattice([10, 10])
     >>> tour = gt.tsp_tour(g, g.vertex(0))
     >>> print(tour)
     [ 0  1  2 11 12 21 22 31 32 41 42 51 52 61 62 71 72 81 82 83 73 63 53 43 33
@@ -1575,6 +1593,11 @@ def tsp_tour(g, src, weight=None):
     .. [tsp] http://en.wikipedia.org/wiki/Travelling_salesman_problem
 
     """
+
+    tour = libgraph_tool_topology.\
+        get_tsp(g._Graph__graph, int(src), _prop("e", g, weight))
+    return tour.a.copy()
+
 
 def sequential_vertex_coloring(g, order=None, color=None):
     """Returns a vertex coloring of the graph.
@@ -1595,15 +1618,14 @@ def sequential_vertex_coloring(g, order=None, color=None):
 
     Notes
     -----
-
     The time complexity is :math:`O(V(d+k))`, where :math:`V` is the number of
     vertices, :math:`d` is the maximum degree of the vertices in the graph, and
     :math:`k` is the number of colors used.
 
     Examples
     --------
-    >>> g = gt.lattice([20, 20])
-    >>> colors = gt.sequential_vertex_coloring(g, g.vertex(0))
+    >>> g = gt.lattice([10, 10])
+    >>> colors = gt.sequential_vertex_coloring(g)
     >>> print(colors.a)
     [0 1 0 1 0 1 0 1 0 1 1 0 1 0 1 0 1 0 1 0 0 1 0 1 0 1 0 1 0 1 1 0 1 0 1 0 1
      0 1 0 0 1 0 1 0 1 0 1 0 1 1 0 1 0 1 0 1 0 1 0 0 1 0 1 0 1 0 1 0 1 1 0 1 0
@@ -1621,7 +1643,7 @@ def sequential_vertex_coloring(g, order=None, color=None):
     if color is None:
         color = g.new_vertex_property("int")
 
-    tour = libgraph_tool_topology.\
+    libgraph_tool_topology.\
         sequential_coloring(g._Graph__graph,
                             _prop("v", g, order),
                             _prop("v", g, color))
