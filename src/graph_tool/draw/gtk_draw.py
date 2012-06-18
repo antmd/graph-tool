@@ -310,7 +310,7 @@ class GraphWidget(Gtk.DrawingArea):
 
     def layout_callback(self):
         """Perform one step of the layout algorithm."""
-        if self.layout_callback_id is None:
+        if self.layout_callback_id is None or self.g.num_vertices() == 0:
             return False
         pos_temp = ungroup_vector_property(self.pos, [0, 1])
         sfdp_layout(self.g, K=self.layout_K,

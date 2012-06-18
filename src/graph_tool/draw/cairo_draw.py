@@ -738,6 +738,8 @@ def get_bb(g, pos, size, pen_width, size_scale=1, text=None, font_family=None,
 
 def fit_to_view(g, pos, geometry, size, pen_width, M=None, text=None,
                 font_family=None, font_size=None, cr=None):
+    if g.num_vertices() == 0:
+        return [0, 0], 1
     if M is not None:
         pos_x, pos_y = ungroup_vector_property(pos, [0, 1])
         P = np.zeros((2, len(pos_x.fa)))
