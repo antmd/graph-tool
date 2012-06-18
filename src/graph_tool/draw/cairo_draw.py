@@ -507,7 +507,7 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
         | surface       | The cairo surface used to draw the vertex. If     | :class:`cairo.Surface` | ``None``                         |
         |               | the value passed is a string, it is interpreted   | or ``str``             |                                  |
-        |               | as a PNG image file name to be loaded.            |                        |                                  |
+        |               | as an image file name to be loaded.               |                        |                                  |
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
 
 
