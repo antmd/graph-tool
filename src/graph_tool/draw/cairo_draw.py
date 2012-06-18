@@ -141,15 +141,6 @@ def open_file(name, mode="r"):
     return name, fmt
 
 
-def gen_surface(name):
-    fobj, fmt = open_file(name)
-    if fmt == "png":
-        sfc = cairo.ImageSurface.create_from_png(fobj)
-        return sfc
-    else:
-        raise ValueError("Cannot guess format of file: " + name)
-
-
 def surface_from_prop(surface):
     if isinstance(surface, PropertyMap):
         if surface.key_type() == "v":
@@ -468,7 +459,7 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         |               | "double_circle", "double_triangle",               |                        |                                  |
         |               | "double_square", "double_pentagon",               |                        |                                  |
         |               | "double_hexagon", "double_heptagon",              |                        |                                  |
-        |               | "double_octagon" or "surface".                    |                        |                                  |
+        |               | "double_octagon".                                 |                        |                                  |
         |               | Optionally, this might take a numeric value       |                        |                                  |
         |               | corresponding to position in the list above.      |                        |                                  |
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
@@ -516,9 +507,7 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
         | surface       | The cairo surface used to draw the vertex. If     | :class:`cairo.Surface` | ``None``                         |
         |               | the value passed is a string, it is interpreted   | or ``str``             |                                  |
-        |               | as a PNG image file name to be loaded. This       |                        |                                  |
-        |               | property is only used if `shape` is set to        |                        |                                  |
-        |               | "surface".                                        |                        |                                  |
+        |               | as a PNG image file name to be loaded.            |                        |                                  |
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
 
 
@@ -800,3 +789,17 @@ except (ImportError, RuntimeError) as e:
     msg = "Error importing Gtk module: %s; GTK+ drawing will not work." % str(e)
     warnings.filterwarnings("always", msg, ImportWarning)
     warnings.warn(msg, ImportWarning)
+
+def gen_surface(name):
+    fobj, fmt = open_file(name)
+    if fmt in ["png", "PNG"]:
+        sfc = cairo.ImageSurface.create_from_png(fobj)
+        return sfc
+    else:
+        pixbuf = GdkPixbuf.Pixbuf.new_from_file(name)
+        surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, pixbuf.get_width(),
+                                     pixbuf.get_height())
+        cr = cairo.Context(surface)
+        Gdk.cairo_set_source_pixbuf(cr, pixbuf, 0, 0)
+        cr.paint()
+        return surface

@@ -91,8 +91,7 @@ enum vertex_shape_t {
     SHAPE_DOUBLE_PENTAGON,
     SHAPE_DOUBLE_HEXAGON,
     SHAPE_DOUBLE_HEPTAGON,
-    SHAPE_DOUBLE_OCTAGON,
-    SHAPE_SURFACE
+    SHAPE_DOUBLE_OCTAGON
 };
 
 enum edge_marker_t {
@@ -448,7 +447,7 @@ public:
                 cr.get_text_extents(text, extents);
                 double s = max(extents.width, extents.height) * 1.4;
                 vertex_shape_t shape = _attrs.template get<vertex_shape_t>(VERTEX_SHAPE);
-                if (shape >= SHAPE_DOUBLE_CIRCLE && shape != SHAPE_SURFACE)
+                if (shape >= SHAPE_DOUBLE_CIRCLE)
                 {
                     s /= 0.7;
                     double pw = _attrs.template get<double>(VERTEX_PENWIDTH);
@@ -499,9 +498,6 @@ public:
         case SHAPE_CIRCLE:
         case SHAPE_DOUBLE_CIRCLE:
             dr = r;
-            break;
-        case SHAPE_SURFACE:
-            dr = get_polygon_anchor(4, r, angle);
             break;
         default:
             throw ValueException("Invalid vertex shape: " +
@@ -567,32 +563,6 @@ public:
         vertex_shape_t shape = _attrs.template get<vertex_shape_t>(VERTEX_SHAPE);
         switch (shape)
         {
-        case SHAPE_SURFACE:
-            {
-                python::object osrc = _attrs.template get<python::object>(VERTEX_SURFACE);
-                if (osrc != python::object())
-                {
-                    double swidth, sheight;
-                    PycairoSurface* src = (PycairoSurface*) osrc.ptr();
-                    Cairo::RefPtr<Cairo::Surface> surface(new Cairo::Surface(src->surface));
-                    get_surface_size(surface, swidth, sheight);
-                    Cairo::RefPtr<Cairo::SurfacePattern> pat(Cairo::SurfacePattern::create(surface));
-                    //pat->set_extend(Cairo::EXTEND_REPEAT);
-
-                    double r = size / sqrt(2);
-                    double scale = r / max(swidth / aspect, sheight);
-
-                    Cairo::Matrix m = Cairo::identity_matrix();
-                    m.translate(swidth / 2, sheight / 2);
-                    m.scale(1. / scale, 1. / scale);
-                    pat->set_matrix(m);
-
-                    cr.set_source(pat);
-                    cr.rectangle(-r * aspect / 2, -r / 2, r * aspect, r);
-                    cr.fill();
-                }
-            }
-            break;
         case SHAPE_CIRCLE:
         case SHAPE_DOUBLE_CIRCLE:
             cr.save();
@@ -645,7 +615,8 @@ public:
                                  lexical_cast<string>(int(_attrs.template get<vertex_shape_t>(VERTEX_SHAPE))));
         }
 
-        if (shape != SHAPE_SURFACE)
+        python::object osrc = _attrs.template get<python::object>(VERTEX_SURFACE);
+        if (osrc == python::object())
         {
             fillcolor = _attrs.template get<color_t>(VERTEX_FILL_COLOR);
             cr.set_source_rgba(get<0>(fillcolor), get<1>(fillcolor),
@@ -655,6 +626,27 @@ public:
             cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color),
                                get<3>(color));
             cr.stroke();
+        }
+        else
+        {
+            double swidth, sheight;
+            PycairoSurface* src = (PycairoSurface*) osrc.ptr();
+            Cairo::RefPtr<Cairo::Surface> surface(new Cairo::Surface(src->surface));
+            get_surface_size(surface, swidth, sheight);
+            Cairo::RefPtr<Cairo::SurfacePattern> pat(Cairo::SurfacePattern::create(surface));
+            //pat->set_extend(Cairo::EXTEND_REPEAT);
+
+            double r = size / sqrt(2);
+            double scale = r / max(swidth / aspect, sheight);
+
+            Cairo::Matrix m = Cairo::identity_matrix();
+            m.translate(swidth / 2, sheight / 2);
+            m.scale(1. / scale, 1. / scale);
+            pat->set_matrix(m);
+
+            cr.set_source(pat);
+            cr.rectangle(-r * aspect / 2, -r / 2, r * aspect, r);
+            cr.fill();
         }
 
         if (text != "")
@@ -1457,8 +1449,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_draw)
         .value("double_pentagon", SHAPE_DOUBLE_PENTAGON)
         .value("double_hexagon", SHAPE_DOUBLE_HEXAGON)
         .value("double_heptagon", SHAPE_DOUBLE_HEPTAGON)
-        .value("double_octagon", SHAPE_DOUBLE_OCTAGON)
-        .value("surface", SHAPE_SURFACE);
+        .value("double_octagon", SHAPE_DOUBLE_OCTAGON);
 
     enum_<edge_marker_t>("edge_marker")
         .value("none", MARKER_SHAPE_NONE)
