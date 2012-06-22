@@ -67,7 +67,8 @@ libgraph_tool_core_la_workaround_HEADERS = \
     ../boost-workaround/boost/graph/overloading.hpp \
     ../boost-workaround/boost/graph/push_relabel_max_flow.hpp \
     ../boost-workaround/boost/graph/copy_alt.hpp \
-    ../boost-workaround/boost/graph/reverse_graph_alt.hpp
+    ../boost-workaround/boost/graph/reverse_graph_alt.hpp \
+    ../boost-workaround/boost/graph/stoer_wagner_min_cut.hpp
 
 libgraph_tool_core_la_LIBADD = $(MOD_LIBADD)
 libgraph_tool_core_la_LDFLAGS = $(MOD_LDFLAGS)
