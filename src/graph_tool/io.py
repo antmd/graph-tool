@@ -22,7 +22,7 @@ from __future__ import division, absolute_import, print_function
 
 import pickle
 import base64
-from io import StringIO
+from io import BytesIO
 from . import libgraph_tool_core
 
 # IStream and OStream need to be tweaked a little to become a real file-like
@@ -60,13 +60,13 @@ libgraph_tool_core.OStream.write = OStream_write
 
 # define and set the pickler/unpickler functions
 def pickler(stream, obj):
-    sstream = StringIO()
+    sstream = BytesIO()
     pickle.dump(obj, sstream, -1)
     stream.write(base64.b64encode(sstream.getvalue()))
 
 
 def unpickler(stream):
-    sstream = StringIO(base64.b64decode(stream.read()))
+    sstream = BytesIO(base64.b64decode(stream.read()))
     return pickle.load(sstream)
 
 libgraph_tool_core.set_pickler(pickler)
