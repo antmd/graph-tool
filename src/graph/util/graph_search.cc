@@ -30,7 +30,7 @@ python::list
 find_vertex_range(python::object g, GraphInterface::deg_t deg,
                   python::tuple range)
 {
-    GraphInterface& gi = python::extract<GraphInterface&>(g());
+    GraphInterface& gi = python::extract<GraphInterface&>(g().attr("_Graph__graph"));
     python::list ret;
     run_action<>()(gi, bind<void>(find_vertices(), _1, ref(g), _2, ref(range),
                                   ref(ret)),
@@ -43,7 +43,7 @@ python::list
 find_edge_range(python::object g, boost::any eprop,
                 python::tuple range)
 {
-    GraphInterface& gi = python::extract<GraphInterface&>(g());
+    GraphInterface& gi = python::extract<GraphInterface&>(g().attr("_Graph__graph"));
     python::list ret;
     typedef property_map_types::apply<value_types,
                                       GraphInterface::edge_index_map_t,
