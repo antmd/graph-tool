@@ -48,7 +48,8 @@ import copy
 from collections import defaultdict
 
 from .. import GraphView, PropertyMap, ungroup_vector_property,\
-     group_vector_property, _prop
+     group_vector_property, _prop, _check_prop_vector
+
 from .. stats import label_parallel_edges, label_self_loops
 
 from .. dl_import import dl_import
@@ -612,11 +613,13 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                 kwargs["layout_K"] = _avg_edge_distance(g, pos) / 10
         else:
             pos = sfdp_layout(g)
-    elif output is None:
-        if "layout_K" not in kwargs:
-            kwargs["layout_K"] = _avg_edge_distance(g, pos)
-        if "update_layout" not in kwargs:
-            kwargs["update_layout"] = False
+    else:
+        _check_prop_vector(pos, name="pos", floating=True)
+        if output is None:
+            if "layout_K" not in kwargs:
+                kwargs["layout_K"] = _avg_edge_distance(g, pos)
+            if "update_layout" not in kwargs:
+                kwargs["update_layout"] = False
 
     if output is None:
         return interactive_window(g, pos, vprops, eprops, vorder, eorder,
