@@ -741,7 +741,8 @@ def label_out_component(g, root):
 
     The in-component can be obtained by reversing the graph.
 
-    >>> l = gt.label_out_component(gt.GraphView(g, reversed=True), g.vertex(0))
+    >>> l = gt.label_out_component(gt.GraphView(g, reversed=True, directed=True),
+    ...                            g.vertex(0))
     >>> print(l.a)
     [1 0 0 0 0 0 0 0 1 1 0 1 0 0 0 0 0 0 1 0 0 1 1 1 1 0 0 0 1 0 0 0 0 0 0 0 1
      1 1 0 0 0 0 1 0 1 1 0 0 0 1 1 0 0 1 1 0 0 0 0 0 0 1 0 1 0 0 0 0 0 0 0 0 0
