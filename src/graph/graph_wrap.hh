@@ -22,6 +22,8 @@
 #include "graph_util.hh"
 #include "graph_selectors.hh"
 
+#include <boost/graph/filtered_graph.hpp>
+
 // Graph wrapper which takes care of edge index housekeeping
 
 namespace boost
@@ -200,10 +202,9 @@ inline void remove_edge
 }
 
 template <class Graph>
-inline void remove_edge
-    (typename graph_traits<GraphWrap<Graph> >::vertex_descriptor u,
-     typename graph_traits<GraphWrap<Graph> >::vertex_descriptor v,
-     GraphWrap<Graph> g)
+inline void remove_edge(typename graph_traits<GraphWrap<Graph> >::vertex_descriptor u,
+                        typename graph_traits<GraphWrap<Graph> >::vertex_descriptor v,
+                        GraphWrap<Graph> g)
 {
     vector<typename graph_traits<GraphWrap<Graph> >::edge_descriptor>
         removed_edges;
@@ -226,40 +227,61 @@ add_vertex(GraphWrap<Graph> g)
 }
 
 template <class Graph>
-inline void clear_vertex
-    (typename graph_traits<GraphWrap<Graph> >::vertex_descriptor u,
-     GraphWrap<Graph> g)
+inline void clear_vertex(typename graph_traits<GraphWrap<Graph> >::vertex_descriptor u,
+                         GraphWrap<Graph> g)
 {
     typedef GraphWrap<Graph> graph_t;
     vector<typename graph_traits<graph_t>::edge_descriptor> del_es;
     typename graph_traits<graph_t>::out_edge_iterator e, e_end;
-    for (tie(e,e_end) == out_edges(u, g); e != e_end; ++e)
+    for (tie(e,e_end) = out_edges(u, g); e != e_end; ++e)
+    {
+        if (!del_es.empty() && *e == del_es.back()) // self-loops appear twice
+            continue;
         del_es.push_back(*e);
+    }
     if (graph_tool::is_directed::apply<graph_t>::type::value)
     {
         typename in_edge_iteratorS<graph_t>::type ie, ie_end;
-        for (tie(ie,ie_end) == in_edge_iteratorS<graph_t>::get_edges(u, g);
+        for (tie(ie,ie_end) = in_edge_iteratorS<graph_t>::get_edges(u, g);
              ie != ie_end; ++ie)
+        {
+            if (!del_es.empty() && *ie == del_es.back())  // self-loops appear twice
+                continue;
             del_es.push_back(*ie);
+        }
     }
     for (size_t i = 0; i < del_es.size(); ++i)
         remove_edge(del_es[i], g);
 }
 
+// filtered graphs lack a remove_vertex function...
+template <class Vertex, class Graph, class EdgePredicate, class VertexPredicate>
+inline void remove_vertex(Vertex u, const filtered_graph<Graph,EdgePredicate,VertexPredicate>& g)
+{
+    remove_vertex(u, const_cast<Graph&>(g.m_g));
+}
+
+// reverse graphs lack a remove_vertex function...
+template <class Vertex, class Graph>
+inline void remove_vertex(Vertex u, const reverse_graph<Graph>& g)
+{
+    remove_vertex(u, const_cast<Graph&>(g.m_g));
+}
+
 template <class Graph>
-inline void remove_vertex
-(typename graph_traits<GraphWrap<Graph> >::vertex_descriptor u,
- GraphWrap<Graph> g)
+inline void remove_vertex(typename graph_traits<GraphWrap<Graph> >::vertex_descriptor u,
+                          GraphWrap<Graph> g)
 {
     clear_vertex(u, g);
-    remove_vertex(u, g._g);
+    typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
+    remove_vertex(vertex_t(u), g._g);
 }
+
 
 template <class Graph, class Predicate>
 inline void
-remove_out_edge_if
-(typename graph_traits<GraphWrap<Graph> >::vertex_descriptor u,
- Predicate predicate, GraphWrap<Graph> g)
+remove_out_edge_if(typename graph_traits<GraphWrap<Graph> >::vertex_descriptor u,
+                   Predicate predicate, GraphWrap<Graph> g)
 {
     vector<typename graph_traits<GraphWrap<Graph> >::edge_descriptor>
         removed_edges;
