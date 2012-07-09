@@ -260,14 +260,9 @@ public:
         GraphInterface::edge_t e(_e);
         bool valid = PythonVertex(_g, source(e, gi._state->_mg)).IsValid() &&
             PythonVertex(_g, target(e, gi._state->_mg)).IsValid();
-        if (!valid)
-            return false;
-        valid = false;
-        graph_traits<GraphInterface::multigraph_t>::out_edge_iterator ei, ei_end;
-        for (tie(ei, ei_end) = out_edges(source(e, gi._state->_mg), gi._state->_mg);
-             ei != ei_end; ++ei)
-            if (*ei == e)
-                valid = true;
+
+        if (valid)
+            valid = gi.GetEdgeIndex()[e] <= gi.GetMaxEdgeIndex();
         return valid;
     }
 
