@@ -79,7 +79,7 @@ from __future__ import division, absolute_import, print_function
 from .. dl_import import dl_import
 dl_import("from . import libgraph_tool_search")
 
-from .. import _prop
+from .. import _prop, _python_type
 from .. decorators import _wraps
 import sys
 import weakref
@@ -656,7 +656,12 @@ def dijkstra_search(g, source, weight, visitor=DijkstraVisitor(), dist_map=None,
     compare : binary function (optional, default: ``lambda a, b: a < b``)
         This function is use to compare distances to determine which vertex is
         closer to the source vertex.
-
+    zero : int or float (optional, default: ``0``)
+         Value assumed to correspond to a distance of zero by the combine and
+         compare functions.
+    infinity : int or float (optional, default: ``float('inf')``)
+         Value assumed to correspond to a distance of infinity by the combine and
+         compare functions.
 
     Returns
     -------
@@ -832,6 +837,18 @@ def dijkstra_search(g, source, weight, visitor=DijkstraVisitor(), dist_map=None,
                              pred_map.value_type())
 
     try:
+        zero = _python_type(dist_map.value_type())(zero)
+    except OverflowError:
+        zero = (weight.a.max() + 1) * g.num_vertices()
+        zero = _python_type(dist_map.value_type())(zero)
+
+    try:
+        infinity = _python_type(dist_map.value_type())(infinity)
+    except OverflowError:
+        infinity = (weight.a.max() + 1) * g.num_vertices()
+        infinity = _python_type(dist_map.value_type())(infinity)
+
+    try:
         libgraph_tool_search.dijkstra_search(g._Graph__graph,
                                              weakref.ref(g),
                                              int(source),
@@ -923,6 +940,12 @@ def bellman_ford_search(g, source, weight, visitor=BellmanFordVisitor(),
     compare : binary function (optional, default: ``lambda a, b: a < b``)
         This function is use to compare distances to determine which vertex is
         closer to the source vertex.
+    zero : int or float (optional, default: ``0``)
+         Value assumed to correspond to a distance of zero by the combine and
+         compare functions.
+    infinity : int or float (optional, default: ``float('inf')``)
+         Value assumed to correspond to a distance of infinity by the combine and
+         compare functions.
 
 
     Returns
@@ -1075,6 +1098,19 @@ def bellman_ford_search(g, source, weight, visitor=BellmanFordVisitor(),
     if pred_map.value_type() != "int32_t":
         raise ValueError("pred_map must be of value type 'int32_t', not '%s'." % \
                              pred_map.value_type())
+
+    try:
+        zero = _python_type(dist_map.value_type())(zero)
+    except OverflowError:
+        zero = (weight.a.max() + 1) * g.num_vertices()
+        zero = _python_type(dist_map.value_type())(zero)
+
+    try:
+        infinity = _python_type(dist_map.value_type())(infinity)
+    except OverflowError:
+        infinity = (weight.a.max() + 1) * g.num_vertices()
+        infinity = _python_type(dist_map.value_type())(infinity)
+
     minimized = False
     try:
         minimized = \
@@ -1207,6 +1243,12 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
     implicit : bool (optional, default: ``False``)
         If true, the underlying graph will be assumed to be implicit
         (i.e. constructed during the search).
+    zero : int or float (optional, default: ``0``)
+         Value assumed to correspond to a distance of zero by the combine and
+         compare functions.
+    infinity : int or float (optional, default: ``float('inf')``)
+         Value assumed to correspond to a distance of infinity by the combine and
+         compare functions.
 
 
     Returns
@@ -1501,6 +1543,19 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
         h = lambda v: dist_type(heuristic(v))
     else:
         h = heuristic
+
+    try:
+        zero = _python_type(dist_map.value_type())(zero)
+    except OverflowError:
+        zero = (weight.a.max() + 1) * g.num_vertices()
+        zero = _python_type(dist_map.value_type())(zero)
+
+    try:
+        infinity = _python_type(dist_map.value_type())(infinity)
+    except OverflowError:
+        infinity = (weight.a.max() + 1) * g.num_vertices()
+        infinity = _python_type(dist_map.value_type())(infinity)
+
 
     try:
         if not implicit:
