@@ -239,16 +239,14 @@ inline void clear_vertex(typename graph_traits<GraphWrap<Graph> >::vertex_descri
             continue;
         del_es.push_back(*e);
     }
-    if (graph_tool::is_directed::apply<graph_t>::type::value)
+
+    typename in_edge_iteratorS<graph_t>::type ie, ie_end;
+    for (tie(ie,ie_end) = in_edge_iteratorS<graph_t>::get_edges(u, g);
+         ie != ie_end; ++ie)
     {
-        typename in_edge_iteratorS<graph_t>::type ie, ie_end;
-        for (tie(ie,ie_end) = in_edge_iteratorS<graph_t>::get_edges(u, g);
-             ie != ie_end; ++ie)
-        {
-            if (!del_es.empty() && *ie == del_es.back())  // self-loops appear twice
-                continue;
-            del_es.push_back(*ie);
-        }
+        if (target(*ie, g) == source(*ie, g))  // self-loops were already included
+            continue;
+        del_es.push_back(*ie);
     }
     for (size_t i = 0; i < del_es.size(); ++i)
         remove_edge(del_es[i], g);
