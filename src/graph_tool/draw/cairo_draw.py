@@ -139,7 +139,7 @@ def open_file(name, mode="r"):
     else:
         out = open(name, mode)
     fmt = os.path.splitext(name)[1].replace(".", "")
-    return name, fmt
+    return out, fmt
 
 
 def surface_from_prop(surface):
