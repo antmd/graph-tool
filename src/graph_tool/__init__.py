@@ -105,7 +105,7 @@ import bz2
 import weakref
 import copy
 
-from io import StringIO
+from io import BytesIO
 from .decorators import _wraps, _require, _attrs, _limit_args
 from inspect import ismethod
 
@@ -1614,7 +1614,7 @@ class Graph(object):
 
     def __getstate__(self):
         state = dict()
-        sio = StringIO()
+        sio = BytesIO()
         if libcore.graph_filtering_enabled():
             if self.get_vertex_filter()[0] != None:
                 self.vertex_properties["_Graph__pickle__vfilter"] = \
@@ -1632,7 +1632,7 @@ class Graph(object):
         self.__init__()
         blob = state["blob"]
         if blob != "":
-            sio = StringIO(blob)
+            sio = BytesIO(blob)
             self.load(sio, "xml")
         if "vfilt" in state:
             vprop = self.vertex_properties["_Graph__pickle__vfilter"]
