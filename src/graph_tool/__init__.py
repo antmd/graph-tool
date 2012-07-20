@@ -101,7 +101,6 @@ import sys
 import os
 import re
 import gzip
-import bz2
 import weakref
 import copy
 
@@ -1614,7 +1613,6 @@ class Graph(object):
 
     def __getstate__(self):
         state = dict()
-        sio = BytesIO()
         if libcore.graph_filtering_enabled():
             if self.get_vertex_filter()[0] != None:
                 self.vertex_properties["_Graph__pickle__vfilter"] = \
@@ -1624,7 +1622,10 @@ class Graph(object):
                 self.edge_properties["_Graph__pickle__efilter"] = \
                     self.get_edge_filter()[0]
                 state["efilter"] = self.get_edge_filter()[1]
-        self.save(sio, "xml")
+        sio = BytesIO()
+        stream = gzip.GzipFile(fileobj=sio, mode="w")
+        self.save(stream, "xml")
+        stream.close()
         state["blob"] = sio.getvalue()
         return state
 
@@ -1633,7 +1634,8 @@ class Graph(object):
         blob = state["blob"]
         if blob != "":
             sio = BytesIO(blob)
-            self.load(sio, "xml")
+            stream = gzip.GzipFile(fileobj=sio, mode="r")
+            self.load(stream, "xml")
         if "vfilt" in state:
             vprop = self.vertex_properties["_Graph__pickle__vfilter"]
             self.set_vertex_filter(vprop, state["vfilt"])
