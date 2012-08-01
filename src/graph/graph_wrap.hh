@@ -24,6 +24,14 @@
 
 #include <boost/graph/filtered_graph.hpp>
 
+#if (GCC_VERSION >= 40400)
+#   include <tr1/unordered_map>
+#else
+#   include <boost/tr1/unordered_map.hpp>
+#endif
+
+
+
 // Graph wrapper which takes care of edge index housekeeping
 
 namespace boost
@@ -231,25 +239,21 @@ inline void clear_vertex(typename graph_traits<GraphWrap<Graph> >::vertex_descri
                          GraphWrap<Graph> g)
 {
     typedef GraphWrap<Graph> graph_t;
-    vector<typename graph_traits<graph_t>::edge_descriptor> del_es;
+    GraphInterface::edge_index_map_t edge_index = g._gi.GetEdgeIndex();
+
+    tr1::unordered_map<size_t, typename graph_traits<graph_t>::edge_descriptor> del_es;
     typename graph_traits<graph_t>::out_edge_iterator e, e_end;
     for (tie(e,e_end) = out_edges(u, g); e != e_end; ++e)
-    {
-        if (!del_es.empty() && *e == del_es.back()) // self-loops appear twice
-            continue;
-        del_es.push_back(*e);
-    }
+        del_es[edge_index[*e]] = *e;
 
     typename in_edge_iteratorS<graph_t>::type ie, ie_end;
     for (tie(ie,ie_end) = in_edge_iteratorS<graph_t>::get_edges(u, g);
          ie != ie_end; ++ie)
-    {
-        if (target(*ie, g) == source(*ie, g))  // self-loops were already included
-            continue;
-        del_es.push_back(*ie);
-    }
-    for (size_t i = 0; i < del_es.size(); ++i)
-        remove_edge(del_es[i], g);
+        del_es[edge_index[*ie]] = *ie;
+
+    for (typeof(del_es.begin()) iter = del_es.begin(); iter != del_es.end();
+         ++iter)
+        remove_edge(iter->second, g);
 }
 
 // filtered graphs lack a remove_vertex function...
