@@ -39,21 +39,6 @@ namespace graph_tool
 using namespace std;
 using namespace boost;
 
-// returns true if vertices u and v are adjacent. This is O(k(u)).
-template <class Graph>
-bool is_adjacent(typename graph_traits<Graph>::vertex_descriptor u,
-                 typename graph_traits<Graph>::vertex_descriptor v,
-                 const Graph& g )
-{
-    typename graph_traits<Graph>::out_edge_iterator e, e_end;
-    for (tie(e, e_end) = out_edges(u, g); e != e_end; ++e)
-    {
-        if (target(*e,g) == v)
-            return true;
-    }
-    return false;
-}
-
 template <class Graph>
 typename graph_traits<Graph>::vertex_descriptor
 source(const pair<size_t, bool>& e,

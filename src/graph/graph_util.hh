@@ -107,6 +107,21 @@ struct SoftNumEdges
     size_t operator()(Graph& g) const { return num_edges(g); }
 };
 
+// returns true if vertices u and v are adjacent. This is O(k(u)).
+template <class Graph>
+bool is_adjacent(typename graph_traits<Graph>::vertex_descriptor u,
+                 typename graph_traits<Graph>::vertex_descriptor v,
+                 const Graph& g )
+{
+    typename graph_traits<Graph>::out_edge_iterator e, e_end;
+    for (tie(e, e_end) = out_edges(u, g); e != e_end; ++e)
+    {
+        if (target(*e,g) == v)
+            return true;
+    }
+    return false;
+}
+
 // computes the out-degree of a graph, ignoring self-edges
 template <class Graph>
 inline size_t

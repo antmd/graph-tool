@@ -86,17 +86,6 @@ void print_update(size_t current, stringstream& str)
     cout << str.str() << flush;
 }
 
-template <class Graph>
-bool is_adjacent(typename graph_traits<Graph>::vertex_descriptor u,
-                 typename graph_traits<Graph>::vertex_descriptor v,
-                 const Graph& g)
-{
-    typename graph_traits<Graph>::adjacency_iterator a, a_end;
-    for (tie(a, a_end) = adjacent_vertices(u, g); a != a_end; ++a)
-        if (*a == v)
-            return true;
-    return false;
-}
 
 //
 // Generation strategies
