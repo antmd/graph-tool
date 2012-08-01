@@ -231,26 +231,7 @@ void remove_edge(GraphInterface& gi, const python::object& e)
 void GraphInterface::RemoveEdgeIndex(const edge_t& e)
 {
     size_t index = _edge_index[e];
-    if (index == _state->_max_edge_index)
-    {
-        if (_state->_max_edge_index > 0)
-            _state->_max_edge_index--;
-
-        while (!_state->_free_indexes.empty() &&
-               _state->_max_edge_index == _state->_free_indexes.back())
-        {
-            _state->_free_indexes.pop_back();
-            if (_state->_max_edge_index > 0)
-                _state->_max_edge_index--;
-        }
-    }
-    else
-    {
-        typeof(_state->_free_indexes.begin()) pos =
-                lower_bound(_state->_free_indexes.begin(),
-                            _state->_free_indexes.end(), index);
-        _state->_free_indexes.insert(pos, index);
-    }
+    _state->_free_indexes.push_back(index);
     _state->_nedges--;
     remove_edge(e, _state->_mg);
 }
