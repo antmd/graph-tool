@@ -85,35 +85,26 @@ struct get_community_network
         tr1::unordered_map<pair<size_t, size_t>,
                            cedge_t, hash<pair<size_t, size_t> > >
             comm_edges;
-        for (typeof(comms.begin()) iter = comms.begin(); iter != comms.end();
-             ++iter)
+        typename graph_traits<Graph>::edge_iterator e, e_end;
+        for (tie(e, e_end) = edges(g); e != e_end; ++e)
         {
-            cvertex_t cs = comm_vertices[iter->first];
-            for (size_t i = 0; i < iter->second.first.size(); ++i)
+            cvertex_t cs = comm_vertices[get(s_map, source(*e, g))];
+            cvertex_t ct = comm_vertices[get(s_map, target(*e, g))];
+            if (ct == cs && !self_loops)
+                continue;
+            cedge_t ce;
+            if (comm_edges.find(make_pair(cs, ct)) != comm_edges.end())
+                ce = comm_edges[make_pair(cs, ct)];
+            else if (!is_directed::apply<Graph>::type::value &&
+                     comm_edges.find(make_pair(ct, cs)) != comm_edges.end())
+                ce = comm_edges[make_pair(ct, cs)];
+            else
             {
-                vertex_t s = iter->second.first[i];
-                typename graph_traits<Graph>::out_edge_iterator e, e_end;
-                for (tie(e, e_end) = out_edges(s, g); e != e_end; ++e)
-                {
-                    vertex_t t = target(*e, g);
-                    cvertex_t ct = comm_vertices[get(s_map, t)];
-                    if (ct == cs && !self_loops)
-                        continue;
-                    cedge_t ce;
-                    if (comm_edges.find(make_pair(cs, ct)) != comm_edges.end())
-                        ce = comm_edges[make_pair(cs, ct)];
-                    else if (!is_directed::apply<Graph>::type::value &&
-                             comm_edges.find(make_pair(ct, cs)) != comm_edges.end())
-                        ce = comm_edges[make_pair(ct, cs)];
-                    else
-                    {
-                        ce = add_edge(cs, ct, cg).first;
-                        comm_edges[make_pair(cs, ct)] = ce;
-                        put(cedge_index, ce, comm_edges.size() - 1);
-                    }
-                    put(edge_count, ce, get(edge_count, ce) + get(eweight, *e));
-                }
+                ce = add_edge(cs, ct, cg).first;
+                comm_edges[make_pair(cs, ct)] = ce;
+                put(cedge_index, ce, comm_edges.size() - 1);
             }
+            put(edge_count, ce, get(edge_count, ce) + get(eweight, *e));
         }
     }
 
