@@ -209,22 +209,6 @@ public:
                     int v = lexical_cast<int>(m_value);
                     put(m_name, m_dp, m_key, uint8_t(v));
                 }
-                else if (is_same<Value,double>::value)
-                {
-                    double v;
-                    int ret = sscanf(m_value.c_str(), "%la", &v);
-                    if (ret != 1)
-                        throw bad_lexical_cast();
-                    put(m_name, m_dp, m_key, v);
-                }
-                else if (is_same<Value,long double>::value)
-                {
-                    long double v;
-                    int ret = sscanf(m_value.c_str(), "%La", &v);
-                    if (ret != 1)
-                        throw bad_lexical_cast();
-                    put(m_name, m_dp, m_key, v);
-                }
                 else
                 {
                     put(m_name, m_dp, m_key, lexical_cast<Value>(m_value));
