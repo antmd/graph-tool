@@ -72,12 +72,15 @@ struct get_eigenvector
                     continue;
 
                 c_temp[v] = 0;
-                typename in_edge_iteratorS<Graph>::type e, e_end;
-                for (tie(e, e_end) = in_edge_iteratorS<Graph>::get_edges(v, g);
+                typename in_or_out_edge_iteratorS<Graph>::type e, e_end;
+                for (tie(e, e_end) = in_or_out_edge_iteratorS<Graph>::get_edges(v, g);
                      e != e_end; ++e)
                 {
-                    typename graph_traits<Graph>::vertex_descriptor s =
-                        source(*e,g);
+                    typename graph_traits<Graph>::vertex_descriptor s;
+                    if (is_directed::apply<Graph>::type::value)
+                        s = source(*e,g);
+                    else
+                        s = target(*e,g);
                     c_temp[v] += get(w, *e) * c[s];
                 }
                 norm += power(c_temp[v], 2);

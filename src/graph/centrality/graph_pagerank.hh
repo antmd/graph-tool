@@ -73,12 +73,15 @@ struct get_pagerank
                     continue;
 
                 rank_type r = 0;
-                typename in_edge_iteratorS<Graph>::type e, e_end;
-                for (tie(e, e_end) = in_edge_iteratorS<Graph>::get_edges(v, g);
+                typename in_or_out_edge_iteratorS<Graph>::type e, e_end;
+                for (tie(e, e_end) = in_or_out_edge_iteratorS<Graph>::get_edges(v, g);
                      e != e_end; ++e)
                 {
-                    typename graph_traits<Graph>::vertex_descriptor s =
-                        source(*e, g);
+                    typename graph_traits<Graph>::vertex_descriptor s;
+                    if (is_directed::apply<Graph>::type::value)
+                        s = source(*e, g);
+                    else
+                        s = target(*e, g);
                     r += (get(rank, s) * get(weight, *e)) / get(deg, s);
                 }
 

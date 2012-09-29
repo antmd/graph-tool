@@ -42,7 +42,7 @@ struct get_eigentrust
 
         // Norm c values
         InferredTrustMap c_sum(vertex_index);
-        if (typename is_directed::apply<Graph>::type())
+        if (is_directed::apply<Graph>::type::value)
         {
             TrustMap c_temp(edge_index, c.get_storage().size());
 
@@ -120,7 +120,7 @@ struct get_eigentrust
                 {
                     typename graph_traits<Graph>::vertex_descriptor s =
                         source(*e,g);
-                    if (!typename is_directed::apply<Graph>::type())
+                    if (!is_directed::apply<Graph>::type::value)
                         t_temp[v] += get(c, *e)*t[s]/abs(c_sum[s]);
                     else
                         t_temp[v] += get(c, *e)*t[s];
