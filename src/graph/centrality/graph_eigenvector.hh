@@ -43,22 +43,10 @@ struct get_eigenvector
 
         CentralityMap c_temp(vertex_index, num_vertices(g));
 
-        // init centrality
-        int i, N = num_vertices(g), V = HardNumVertices()(g);
-        #pragma omp parallel for default(shared) private(i)     \
-                schedule(dynamic)
-        for (i = 0; i < N; ++i)
-        {
-            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
-            if (v == graph_traits<Graph>::null_vertex())
-                continue;
-            c[v] = 1.0 / V;
-        }
-
         t_type norm = 0;
-
         t_type delta = epsilon + 1;
         size_t iter = 0;
+        int i, N = num_vertices(g);
         while (delta >= epsilon)
         {
             norm = 0;

@@ -40,7 +40,7 @@ struct get_pagerank
         RankMap r_temp(vertex_index, num_vertices(g));
         RankMap deg(vertex_index, num_vertices(g));
 
-        // init ranks
+        // init degs
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i)     \
                 schedule(dynamic)
@@ -49,10 +49,8 @@ struct get_pagerank
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
-            put(rank, v, get(pers, v));
-
-            typename graph_traits<Graph>::out_edge_iterator e, e_end;
             put(deg, v, 0);
+            typename graph_traits<Graph>::out_edge_iterator e, e_end;
             for (tie(e, e_end) = out_edges(v, g); e!= e_end; ++e)
                 put(deg, v, get(deg, v) + get(weight, *e));
         }

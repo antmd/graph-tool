@@ -73,7 +73,8 @@ def pagerank(g, damping=0.85, pers=None, weight=None, prop=None, epsilon=1e-6,
     weight : :class:`~graph_tool.PropertyMap`, optional (default: None)
         Edge weights. If omitted, a constant value of 1 will be used.
     prop : :class:`~graph_tool.PropertyMap`, optional (default: None)
-        Vertex property map to store the PageRank values.
+        Vertex property map to store the PageRank values. If supplied, it will
+        be used uninitialized.
     epsilon : float, optional (default: 1e-6)
         Convergence condition. The iteration will stop if the total delta of all
         vertices are below this value.
@@ -198,6 +199,8 @@ def pagerank(g, damping=0.85, pers=None, weight=None, prop=None, epsilon=1e-6,
         max_iter = 0
     if prop == None:
         prop = g.new_vertex_property("double")
+        N = len(prop.a)
+        prop.a = pers.a[:N] if pers is not None else 1. / g.num_vertices()
     ic = libgraph_tool_centrality.\
             get_pagerank(g._Graph__graph, _prop("v", g, prop),
                          _prop("v", g, pers), _prop("e", g, weight),
@@ -375,7 +378,8 @@ def eigenvector(g, weight=None, vprop=None, epsilon=1e-6, max_iter=None):
     weight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         Edge property map with the edge weights.
     vprop : :class:`~graph_tool.PropertyMap`, optional (default: ``None``)
-        Vertex property map where the values of eigenvector must be stored.
+        Vertex property map where the values of eigenvector must be stored. If
+        provided, it will be used uninitialized.
     epsilon : float, optional (default: ``1e-6``)
         Convergence condition. The iteration will stop if the total delta of all
         vertices are below this value.
@@ -460,8 +464,9 @@ def eigenvector(g, weight=None, vprop=None, epsilon=1e-6, max_iter=None):
 
     """
 
-    if vprop == None:
+    if vprop is None:
         vprop = g.new_vertex_property("double")
+        vprop.a = 1. / g.num_vertices()
     if max_iter is None:
         max_iter = 0
     ee = libgraph_tool_centrality.\
