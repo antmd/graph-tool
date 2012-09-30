@@ -20,6 +20,7 @@ libgraph_tool_centrality_la_SOURCES = \
     graph_eigentrust.cc \
     graph_eigenvector.cc \
     graph_hits.cc \
+    graph_katz.cc \
     graph_pagerank.cc \
     graph_trust_transitivity.cc
 
@@ -28,5 +29,6 @@ libgraph_tool_centrality_la_include_HEADERS = \
     graph_eigenvector.hh \
     graph_pagerank.hh \
     graph_hits.hh \
+    graph_katz.hh \
     graph_trust_transitivity.hh \
     minmax.hh

@@ -23,6 +23,7 @@ void export_betweenness();
 void export_eigentrust();
 void export_eigenvector();
 void export_hits();
+void export_katz();
 void export_trust_transitivity();
 void export_pagerank();
 
@@ -32,6 +33,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_centrality)
     export_eigentrust();
     export_eigenvector();
     export_hits();
+    export_katz();
     export_trust_transitivity();
     export_pagerank();
 }

@@ -34,6 +34,7 @@ Summary
    betweenness
    central_point_dominance
    eigenvector
+   katz
    hits
    eigentrust
    trust_transitivity
@@ -52,7 +53,7 @@ import sys
 import numpy
 
 __all__ = ["pagerank", "betweenness", "central_point_dominance", "eigentrust",
-           "eigenvector", "hits", "trust_transitivity"]
+           "eigenvector", "katz", "hits", "trust_transitivity"]
 
 
 def pagerank(g, damping=0.85, pers=None, weight=None, prop=None, epsilon=1e-6,
@@ -467,6 +468,122 @@ def eigenvector(g, weight=None, vprop=None, epsilon=1e-6, max_iter=None):
          get_eigenvector(g._Graph__graph, _prop("e", g, weight),
                          _prop("v", g, vprop), epsilon, max_iter)
     return ee, vprop
+
+
+def katz(g, alpha=0.01, beta=None, weight=None, vprop=None, epsilon=1e-6, max_iter=None):
+    r"""
+    Calculate the eigenvector centrality of each vertex in the graph, as well as
+    the largest eigenvalue.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    weight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        Edge property map with the edge weights.
+    alpha : float, optional (default: ``0.01``)
+        Free parameter :math:`\alpha`. This must be smaller than the largest
+        eigenvalue of the adjacency matrix.
+    beta : :class:`~graph_tool.PropertyMap`, optional (default: ``None``)
+        Vertex property map where the local personalization values. If not
+        provided, the global value of 1 will be used.
+    vprop : :class:`~graph_tool.PropertyMap`, optional (default: ``None``)
+        Vertex property map where the values of eigenvector must be stored. If
+        provided, it will be used uninitialized.
+    epsilon : float, optional (default: ``1e-6``)
+        Convergence condition. The iteration will stop if the total delta of all
+        vertices are below this value.
+    max_iter : int, optional (default: ``None``)
+        If supplied, this will limit the total number of iterations.
+
+    Returns
+    -------
+    centrality : :class:`~graph_tool.PropertyMap`
+        A vertex property map containing the Katz centrality values.
+
+    See Also
+    --------
+    betweenness: betweenness centrality
+    pagerank: PageRank centrality
+    eigenvector: eigenvector centrality
+    hits: hubs and authority centralities
+    trust_transitivity: pervasive trust transitivity
+
+    Notes
+    -----
+
+    The Katz centrality :math:`\mathbf{x}` is the solution of the nonhomogeneous
+    linear system
+
+    .. math::
+
+        \mathbf{x} = \alpha\mathbf{A}\mathbf{x} + \mathbf{\beta},
+
+
+    where :math:`\mathbf{A}` is the (weighted) adjacency matrix and
+    :math:`\mathbf{\beta}` is the personalization vector (if not supplied,
+    :math:`\mathbf{\beta} = \mathbf{1}` is assumed).
+
+    The algorithm uses successive iterations of the equation above, which has a
+    topology-dependent convergence complexity.
+
+    If enabled during compilation, this algorithm runs in parallel.
+
+    Examples
+    --------
+    >>> from numpy.random import poisson, random, seed
+    >>> seed(42)
+    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
+    >>> w = g.new_edge_property("double")
+    >>> w.a = random(g.num_edges()) * 42
+    >>> beta = g.new_vertex_property("double")
+    >>> beta.a = random(g.num_vertices())
+    >>> x = gt.katz(g, 1.2, beta, w)
+    >>> print(x.a)
+    [  1.37641115e-01   7.20736590e-02   2.72750802e-02   5.80530330e-02
+       2.01730812e-46   1.06909945e-01   4.31549123e-02   1.04090757e-02
+       2.30025193e-02   8.87416158e-02   4.96811868e-02   6.71811510e-02
+       5.52602884e-02   2.04493707e-01   2.33742500e-02   7.58117387e-02
+       1.99938991e-01   1.47189139e-01   8.46466442e-02   8.47497818e-02
+       1.51237905e-45   4.84389342e-02   5.44009790e-46   8.93879711e-03
+       1.68315739e-01   1.38653230e-03   1.17416178e-01   5.86769582e-45
+       1.34550186e-01   3.64268155e-02   6.72980215e-02   6.22952571e-02
+       8.93709730e-02   5.69397613e-02   7.93375017e-02   4.07674261e-02
+       2.21768916e-01   7.71725431e-02   5.18047531e-03   5.72274765e-02
+       3.24137925e-46   5.57993342e-04   4.54177794e-02   6.42046867e-02
+       6.18999821e-02   8.01185834e-02   5.37722396e-02   2.99798712e-01
+       1.21130890e-02   1.55035898e-01   2.80407226e-02   1.69287315e-01
+       1.42073265e-02   2.50699989e-02   2.95989919e-02   2.70230452e-02
+       1.65293284e-01   1.43499144e-02   1.07300107e-01   4.58269685e-02
+       4.61891303e-02   2.20902054e-02   1.42192559e-02   9.89127698e-02
+       4.52292816e-02   5.19593979e-46   2.36598546e-03   7.68682863e-02
+       3.24390891e-02   3.46714702e-03   1.95477600e-01   6.54634726e-46
+       2.55832162e-01   1.17109207e-01   7.80428298e-02   2.11884617e-01
+       4.80065642e-02   3.21866466e-03   5.52824029e-02   1.12041157e-01
+       1.14208195e-01   2.40713033e-01   1.54516765e-01   2.03810664e-46
+       4.75455657e-03   1.06804336e-01   1.70543325e-01   1.89454987e-01
+       1.56736484e-01   3.40523749e-02   1.65331867e-02   2.56301436e-02
+       1.86129309e-03   1.20610273e-01   1.14493631e-01   1.11141961e-01
+       6.77978870e-02   5.95724763e-03   9.12755850e-02   2.38038610e-02]
+
+    References
+    ----------
+
+    .. [katz-centrality] http://en.wikipedia.org/wiki/Katz_centrality
+    .. [katz-new] L. Katz, "A new status index derived from sociometric analysis",
+       Psychometrika 18, Number 1, 39-43, 1953, :DOI:`10.1007/BF02289026`
+    """
+
+    if vprop == None:
+        vprop = g.new_vertex_property("double")
+        N = len(vprop.a)
+        vprop.a = beta.a[:N] if beta is not None else 1.
+    if max_iter is None:
+        max_iter = 0
+    ee = libgraph_tool_centrality.\
+         get_katz(g._Graph__graph, _prop("e", g, weight), _prop("v", g, vprop),
+         _prop("v", beta, vprop), float(alpha), epsilon, max_iter)
+    return vprop
 
 
 def hits(g, weight=None, xprop=None, yprop=None, epsilon=1e-6, max_iter=None):
