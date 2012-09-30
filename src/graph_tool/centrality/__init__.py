@@ -34,6 +34,7 @@ Summary
    betweenness
    central_point_dominance
    eigenvector
+   hits
    eigentrust
    trust_transitivity
 
@@ -51,7 +52,7 @@ import sys
 import numpy
 
 __all__ = ["pagerank", "betweenness", "central_point_dominance", "eigentrust",
-           "eigenvector", "trust_transitivity"]
+           "eigenvector", "hits", "trust_transitivity"]
 
 
 def pagerank(g, damping=0.85, pers=None, weight=None, prop=None, epsilon=1e-6,
@@ -89,6 +90,8 @@ def pagerank(g, damping=0.85, pers=None, weight=None, prop=None, epsilon=1e-6,
     --------
     betweenness: betweenness centrality
     eigentrust: eigentrust centrality
+    eigenvector: eigenvector centrality
+    hits: hubs and authority centralities
     trust_transitivity: pervasive trust transitivity
 
     Notes
@@ -231,6 +234,8 @@ def betweenness(g, vprop=None, eprop=None, weight=None, norm=True):
     central_point_dominance: central point dominance of the graph
     pagerank: PageRank centrality
     eigentrust: eigentrust centrality
+    eigenvector: eigenvector centrality
+    hits: hubs and authority centralities
     trust_transitivity: pervasive trust transitivity
 
     Notes
@@ -387,6 +392,7 @@ def eigenvector(g, weight=None, vprop=None, epsilon=1e-6, max_iter=None):
     --------
     betweenness: betweenness centrality
     pagerank: PageRank centrality
+    hits: hubs and authority centralities
     trust_transitivity: pervasive trust transitivity
 
     Notes
@@ -461,6 +467,155 @@ def eigenvector(g, weight=None, vprop=None, epsilon=1e-6, max_iter=None):
          get_eigenvector(g._Graph__graph, _prop("e", g, weight),
                          _prop("v", g, vprop), epsilon, max_iter)
     return ee, vprop
+
+
+def hits(g, weight=None, xprop=None, yprop=None, epsilon=1e-6, max_iter=None):
+    r"""
+    Calculate the authority and hub centralities of each vertex in the graph.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    weight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        Edge property map with the edge weights.
+    xprop : :class:`~graph_tool.PropertyMap`, optional (default: ``None``)
+        Vertex property map where the authority centrality must be stored.
+    yprop : :class:`~graph_tool.PropertyMap`, optional (default: ``None``)
+        Vertex property map where the hub centrality must be stored.
+    epsilon : float, optional (default: ``1e-6``)
+        Convergence condition. The iteration will stop if the total delta of all
+        vertices are below this value.
+    max_iter : int, optional (default: ``None``)
+        If supplied, this will limit the total number of iterations.
+
+    Returns
+    -------
+    eig : `float`
+        The largest eigenvalue of the cocitation matrix.
+    x : :class:`~graph_tool.PropertyMap`
+        A vertex property map containing the authority centrality values.
+    y : :class:`~graph_tool.PropertyMap`
+        A vertex property map containing the hub centrality values.
+
+    See Also
+    --------
+    betweenness: betweenness centrality
+    eigenvector: eigenvector centrality
+    pagerank: PageRank centrality
+    trust_transitivity: pervasive trust transitivity
+
+    Notes
+    -----
+
+    The Hyperlink-Induced Topic Search (HITS) centrality assigns hub
+    (:math:`\mathbf{y}`) and authority (:math:`\mathbf{x}`) centralities to the
+    vertices, following:
+
+    .. math::
+
+        \begin{align}
+            \mathbf{x} &= \alpha\mathbf{A}\mathbf{y} \\
+            \mathbf{y} &= \beta\mathbf{A}^T\mathbf{x}
+        \end{align}
+
+
+    where :math:`\mathbf{A}` is the (weighted) adjacency matrix and
+    :math:`\lambda = 1/(\alpha\beta)` is the largest eigenvalue of the
+    cocitation matrix, :math:`\mathbf{A}\mathbf{A}^T`. (Without loss of
+    generality, we set :math:`\beta=1` in the algorithm.)
+
+    The algorithm uses the power method which has a topology-dependent complexity of
+    :math:`O\left(N\times\frac{-\log\epsilon}{\log|\lambda_1/\lambda_2|}\right)`,
+    where :math:`N` is the number of vertices, :math:`\epsilon` is the ``epsilon``
+    parameter, and :math:`\lambda_1` and :math:`\lambda_2` are the largest and
+    second largest eigenvalues of the (weighted) cocitation matrix, respectively.
+
+    If enabled during compilation, this algorithm runs in parallel.
+
+    Examples
+    --------
+    >>> from numpy.random import poisson, random, seed
+    >>> seed(42)
+    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
+    >>> w = g.new_edge_property("double")
+    >>> w.a = random(g.num_edges()) * 42
+    >>> l, x, y = gt.hits(g, w)
+    >>> print(l)
+    8.1281860004e-05
+    >>> print(x.a)
+    [  3.24207627e-02   9.86207526e-02   1.35737601e-03   2.81221883e-03
+       0.00000000e+00   3.50637929e-02   6.07494974e-03   1.73442186e-02
+       7.70292609e-02   3.16281170e-02   6.23685289e-03   5.33251236e-03
+       3.90261094e-03   1.39799492e-01   3.32727532e-03   2.75600277e-02
+       4.17864911e-03   1.35434601e-01   1.12371826e-01   3.14487794e-02
+       1.56239625e-03   1.53154844e-02   0.00000000e+00   9.76595823e-03
+       6.84470944e-02   3.99230637e-03   1.61380128e-02   6.30396302e-03
+       6.03036275e-02   1.32849969e-02   3.04151276e-02   5.42617854e-02
+       2.08833632e-02   2.28460202e-02   7.57731579e-02   1.83496779e-02
+       4.73479252e-01   9.24456456e-02   6.05629566e-04   6.52238551e-02
+       0.00000000e+00   8.29910892e-03   1.13757465e-02   4.83645107e-02
+       2.71118703e-02   5.49281707e-02   1.26313788e-03   1.55217802e-01
+       1.19145685e-02   5.68602825e-02   4.09272093e-02   6.21803861e-02
+       2.79433626e-03   6.33529895e-03   1.74347486e-02   4.77049040e-02
+       2.29321775e-01   9.82639314e-05   1.33196598e-01   1.07649933e-03
+       2.24082303e-02   2.90035582e-03   4.40055377e-03   1.81697665e-01
+       7.04846456e-03   0.00000000e+00   7.86454159e-03   7.11419961e-02
+       2.56300819e-02   2.56393002e-03   1.38263616e-01   0.00000000e+00
+       2.97294623e-01   3.87958584e-01   1.57869881e-02   1.78305749e-02
+       4.25241895e-02   8.25617611e-04   9.42672676e-03   1.12595761e-01
+       5.96375228e-02   3.60860657e-01   2.13119143e-02   0.00000000e+00
+       1.17954701e-04   2.64968422e-03   5.35828471e-65   1.82261998e-01
+       2.23512354e-01   1.18366359e-01   5.23661102e-02   1.33577328e-04
+       1.38032617e-02   5.00359873e-02   7.12945214e-03   4.82585969e-03
+       8.28225880e-02   2.45545154e-02   3.93940652e-02   2.36085882e-02]
+    >>> print(y.a)
+    [  1.19518911e+01   4.24393415e+01   1.99799643e+00   2.21936973e+00
+       4.05229016e+00   1.96921433e+00   5.28773128e+01   3.07583159e+00
+       3.84349214e+00   1.43864706e-01   1.15485811e+01   3.88897379e+01
+       1.25350058e+01   8.23442356e-01   5.16533892e+00   5.82076701e-01
+       0.00000000e+00   2.49809577e+01   3.01041295e+00   1.62691697e-01
+       2.07143530e+00   3.04855423e-01   4.29357896e+00   6.67497836e-01
+       6.87288592e-01   4.79338810e+00   1.91391421e+00   9.79201735e-01
+       5.05465736e+00   6.14454206e+00   1.74858481e+00   0.00000000e+00
+       3.73904255e+00   5.60767290e-01   1.09558455e+01   8.41912714e+00
+       1.43428505e+00   2.08906862e+01   2.95186438e+00   1.21143763e+00
+       1.57869686e+01   3.59363866e+00   1.64801081e-03   2.99040323e+00
+       7.22166777e-02   3.08057330e+00   0.00000000e+00   6.03006855e-63
+       0.00000000e+00   2.52297825e+01   3.54764499e+00   8.31117522e-01
+       1.79062457e+00   1.33432369e+01   8.55091617e-04   6.34751541e+00
+       2.59640589e+00   6.62572431e+00   8.55178204e-02   5.27425893e-01
+       4.33163271e+00   1.12133638e+00   1.34099527e+00   1.71416121e+01
+       1.24989675e+01   2.76622179e+00   2.88210334e-01   8.36393997e+00
+       2.93852144e-01   9.31043745e-01   9.47642397e-02   7.38290147e+00
+       5.91868714e+00   4.66993445e-01   1.98366671e+00   9.30041719e+00
+       4.53580404e-01   1.45961552e+00   1.07607675e+01   0.00000000e+00
+       1.50664001e+01   3.05884574e+00   0.00000000e+00   7.37716446e-01
+       8.67607706e-01   3.96919920e-01   6.28437918e-01   4.05469431e+01
+       1.05754629e+00   7.36234170e+00   7.89914973e+00   9.30338044e-02
+       5.47835232e+00   7.54663318e+00   2.48594880e+00   5.16658324e-01
+       0.00000000e+00   6.17005885e+00   9.42499389e+00   1.45784289e+00]
+
+    References
+    ----------
+
+    .. [hits-algorithm] http://en.wikipedia.org/wiki/HITS_algorithm
+    .. [kleinberg-authoritative] J. Kleinberg, "Authoritative sources in a
+       hyperlinked environment", Journal of the ACM 46 (5): 604–632, 1999,
+       :DOI:`10.1145/324133.324140`.
+    .. [power-method] http://en.wikipedia.org/wiki/Power_iteration
+    """
+
+    if xprop is None:
+        xprop = g.new_vertex_property("double")
+    if yprop is None:
+        yprop = g.new_vertex_property("double")
+    if max_iter is None:
+        max_iter = 0
+    l = libgraph_tool_centrality.\
+         get_hits(g._Graph__graph, _prop("e", g, weight), _prop("v", g, xprop),
+                  _prop("v", g, yprop), epsilon, max_iter)
+    return 1. / l, xprop, yprop
 
 
 def eigentrust(g, trust_map, vprop=None, norm=False, epsilon=1e-6, max_iter=0,
