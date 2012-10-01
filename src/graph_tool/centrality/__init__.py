@@ -486,8 +486,8 @@ def katz(g, alpha=0.01, beta=None, weight=None, vprop=None, epsilon=1e-6, max_it
     weight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         Edge property map with the edge weights.
     alpha : float, optional (default: ``0.01``)
-        Free parameter :math:`\alpha`. This must be smaller than the largest
-        eigenvalue of the adjacency matrix.
+        Free parameter :math:`\alpha`. This must be smaller than the inverse of
+        the largest eigenvalue of the adjacency matrix.
     beta : :class:`~graph_tool.PropertyMap`, optional (default: ``None``)
         Vertex property map where the local personalization values. If not
         provided, the global value of 1 will be used.
