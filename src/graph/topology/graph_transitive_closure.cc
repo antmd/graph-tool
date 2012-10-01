@@ -39,4 +39,5 @@ void transitive_closure(GraphInterface& gi, GraphInterface& tcgi)
     run_action<graph_tool::detail::always_directed>()
         (gi, bind<void>(get_transitive_closure(), _1,
                         ref(tcgi.GetGraph())))();
+    tcgi.ReIndexEdges();
 }
