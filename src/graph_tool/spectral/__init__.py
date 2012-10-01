@@ -78,6 +78,9 @@ def adjacency(g, sparse=True, weight=None):
     In the case of weighted edges, the value 1 is replaced the weight of the
     respective edge.
 
+    In the case of networks with parallel edges, the entries in the matrix
+    become simply the edge multiplicities.
+
     Examples
     --------
     >>> from numpy.random import seed, random
@@ -111,7 +114,7 @@ def adjacency(g, sparse=True, weight=None):
         m = matrix(zeros((N, N)))
     for v in g.vertices():
         for e in v.out_edges():
-            m[index[v], index[e.target()]] = 1 if weight == None else weight[e]
+            m[index[v], index[e.target()]] += 1 if weight is None else weight[e]
     if sparse:
         m = m.tocsr()
     return m
@@ -219,17 +222,17 @@ def laplacian(g, deg="total", normalized=True, sparse=True, weight=None):
         m = matrix(zeros((N, N)))
     for v in g.vertices():
         d = _get_deg(v, deg, weight)
+        for e in v.out_edges():
+            if not normalized:
+                m[index[v], index[e.target()]] += (-1 if weight is None
+                                                   else -weight[e])
+            else:
+                val = (d * _get_deg(e.target(), deg, weight)) ** (-0.5)
+                m[index[v], index[e.target()]] = val
         if not normalized:
             m[index[v], index[v]] = d
         elif d > 0:
             m[index[v], index[v]] = 1
-        for e in v.out_edges():
-            if not normalized:
-                m[index[v], index[e.target()]] = (-1 if weight == None
-                                                  else -weight[e])
-            else:
-                val = (d * _get_deg(e.target(), deg, weight)) ** (-0.5)
-                m[index[v], index[e.target()]] = val
     if sparse:
         m = m.tocsr()
     return m
@@ -322,4 +325,3 @@ def incidence(g, sparse=True):
     if sparse:
         m = m.tocsr()
     return m
-
