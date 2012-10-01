@@ -477,8 +477,7 @@ def eigenvector(g, weight=None, vprop=None, epsilon=1e-6, max_iter=None):
 
 def katz(g, alpha=0.01, beta=None, weight=None, vprop=None, epsilon=1e-6, max_iter=None):
     r"""
-    Calculate the eigenvector centrality of each vertex in the graph, as well as
-    the largest eigenvalue.
+    Calculate the Katz centrality of each vertex in the graph.
 
     Parameters
     ----------
