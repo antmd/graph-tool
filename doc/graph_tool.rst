@@ -104,7 +104,14 @@
        together with the graph itself. See :ref:`internal property maps <sec_internal_props>`
        for more details.
 
-       All dictionaries below are mutable.
+       .. note::
+
+           All dictionaries below are mutable. However, any dictionary
+           returned below is only an one-way proxy to the internally-kept
+           properties. If you modify this object, the change will be
+           propagated to the internal dictionary, but not
+           vice-versa. Keep this in mind if you intend to keep a copy of
+           the returned object.
 
        .. autoattribute:: properties
        .. autoattribute:: vertex_properties

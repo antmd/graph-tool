@@ -840,7 +840,15 @@ def edge_difference(g, prop, ediff=None):
 
 class PropertyDict(dict):
     """Wrapper for the dict of vertex, graph or edge properties, which sets the
-    value on the property map when changed in the dict."""
+    value on the property map when changed in the dict.
+
+    .. note::
+
+        The class is only an one-way proxy to the internally-kept properties. If
+        you modify this object, the change will be propagated to the internal
+        dictionary, but not vice-versa. Keep this in mind if you intend to keep
+        a copy of the class instance.
+    """
     def __init__(self, g, old, get_func, set_func, del_func):
         dict.__init__(self)
         dict.update(self, old)
@@ -848,6 +856,13 @@ class PropertyDict(dict):
         self.get_func = get_func
         self.set_func = set_func
         self.del_func = del_func
+
+    def __getitem__(self, key):
+        if self.get_func != None:
+            val = self.get_func(self.g, key)
+            dict.__setitem__(self, key, val)
+        else:
+            raise KeyError("Property dict cannot be gotten")
 
     def __setitem__(self, key, val):
         if self.set_func != None:
