@@ -861,6 +861,7 @@ class PropertyDict(dict):
         if self.get_func != None:
             val = self.get_func(self.g, key)
             dict.__setitem__(self, key, val)
+            return val
         else:
             raise KeyError("Property dict cannot be gotten")
 
