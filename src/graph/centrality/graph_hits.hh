@@ -65,7 +65,7 @@ struct get_hits
         {
             x_norm = 0;
             #pragma omp parallel for default(shared) private(i) \
-                schedule(dynamic) reduction(+:norm)
+                schedule(dynamic) reduction(+:x_norm)
             for (i = 0; i < N; ++i)
             {
                 typename graph_traits<Graph>::vertex_descriptor v =
