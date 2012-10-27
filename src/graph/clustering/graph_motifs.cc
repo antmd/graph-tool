@@ -20,6 +20,7 @@
 #include "graph.hh"
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
+#include "graph_util.hh"
 
 #include "graph_motifs.hh"
 
@@ -29,11 +30,6 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-struct null_copy
-{
-    template <class T1, class T2>
-        void operator()(const T1&, const T2&) const {}
-};
 
 struct append_to_list
 {
@@ -46,8 +42,7 @@ struct append_to_list
                                   u_graph_t>::type graph_t;
         vector<graph_t>& glist = any_cast<vector<graph_t>&>(list);
         glist.push_back(graph_t());
-        copy_graph(g, glist.back(), vertex_copy(null_copy()).
-                   edge_copy(null_copy()));
+        graph_copy(g, glist.back());
     }
 };
 
@@ -65,8 +60,7 @@ struct retrieve_from_list
             done = true;
             return;
         }
-        copy_graph(glist.back(), g, edge_copy(null_copy()));
-        glist.pop_back();
+        graph_copy(glist.back(), g);
     }
 };
 

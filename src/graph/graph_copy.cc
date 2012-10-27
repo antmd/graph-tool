@@ -26,7 +26,7 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-struct graph_copy
+struct do_graph_copy
 {
     template <class GraphDst, class GraphSrc, class DstVertexIndexMap,
               class SrcVertexIndexMap,  class DstEdgeIndexMap,
@@ -82,7 +82,7 @@ GraphInterface::GraphInterface(const GraphInterface& gi, bool keep_ref)
 
     run_action<>()
         (const_cast<GraphInterface&>(gi),
-         bind<void>(graph_copy(), _1, ref(_state->_mg),
+         bind<void>(do_graph_copy(), _1, ref(_state->_mg),
                     gi._vertex_index, _vertex_index, 
                     gi._edge_index, _edge_index))();
     // filters will be copied in python

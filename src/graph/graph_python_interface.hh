@@ -18,6 +18,15 @@
 #ifndef PYTHON_INTERFACE_HH
 #define PYTHON_INTERFACE_HH
 
+#include <boost/python.hpp>
+#include <boost/python/type_id.hpp>
+
+namespace boost
+{
+    size_t hash_value(const boost::python::object& o);
+}
+
+
 #include <boost/graph/graph_traits.hpp>
 #include <boost/mpl/logical.hpp>
 #include <boost/functional/hash.hpp>
@@ -28,8 +37,6 @@
 #include "graph_selectors.hh"
 #include "numpy_bind.hh"
 
-#include <boost/python.hpp>
-#include <boost/python/type_id.hpp>
 
 // this file includes a simple python interface for the internally kept
 // graph. It defines a PythonVertex, PythonEdge and PythonIterator template

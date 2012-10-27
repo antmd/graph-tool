@@ -73,6 +73,8 @@ public:
     const Graph& OriginalGraph() const {return _g;}
     Graph& OriginalGraph() {return _g;}
 
+    static vertex_descriptor null_vertex() {graph_traits<Graph>::null_vertex();}
+
 private:
     Graph& _g;
 };

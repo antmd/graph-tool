@@ -55,10 +55,11 @@ using namespace boost;
 
 struct get_push_relabel_max_flow
 {
-    template <class Graph, class EdgeIndex, class CapacityMap,
+    template <class Graph, class VertexIndex, class EdgeIndex, class CapacityMap,
               class ResidualMap>
-    void operator()(Graph& g, EdgeIndex edge_index, size_t max_e, size_t src,
-                    size_t sink, CapacityMap cm, ResidualMap res) const
+    void operator()(Graph& g, VertexIndex vertex_index, EdgeIndex edge_index,
+                    size_t max_e, size_t src, size_t sink, CapacityMap cm,
+                    ResidualMap res) const
     {
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
         checked_vector_property_map<bool,EdgeIndex>
@@ -70,10 +71,9 @@ struct get_push_relabel_max_flow
                       reverse_map.get_checked(), res);
 
         boost::push_relabel_max_flow(g._g, vertex(src, g), vertex(sink, g),
-                                     capacity_map(get_unchecked(cm)).
-                                     reverse_edge_map(reverse_map).
-                                     residual_capacity_map(res.get_unchecked()));
-
+                                     get_unchecked(cm),
+                                     res.get_unchecked(),
+                                     reverse_map, vertex_index);
         deaugment_graph(g, augmented);
     }
 };
@@ -84,7 +84,8 @@ void push_relabel_max_flow(GraphInterface& gi, size_t src, size_t sink,
 {
     run_action<graph_tool::detail::always_directed, mpl::true_>()
         (gi, bind<void>(get_push_relabel_max_flow(),
-                        _1, gi.GetEdgeIndex(),  gi.GetMaxEdgeIndex(),
+                        _1, gi.GetVertexIndex(), gi.GetEdgeIndex(),
+                        gi.GetMaxEdgeIndex(),
                         src, sink, _2, _3),
          edge_scalar_properties(), writable_edge_scalar_properties())
         (capacity,res);

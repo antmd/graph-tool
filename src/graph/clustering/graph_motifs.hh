@@ -18,11 +18,6 @@
 #ifndef GRAPH_MOTIFS_HH
 #define GRAPH_MOTIFS_HH
 
-#if (BOOST_VERSION / 100 % 1000 >= 49)
-    #include <boost/graph/copy_alt.hpp>
-#else
-    #include <boost/graph/copy.hpp>
-#endif
 #include <boost/graph/isomorphism.hpp>
 #if (GCC_VERSION >= 40400)
 #   include <tr1/unordered_set>

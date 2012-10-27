@@ -26,6 +26,14 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
+namespace boost
+{
+    size_t hash_value(const boost::python::object& o)
+    {
+        return boost::python::extract<size_t>(o.attr("__hash__")());
+    }
+}
+
 namespace graph_tool
 {
 
