@@ -45,6 +45,7 @@ Graph drawing
 
    graph_draw
    graphviz_draw
+   prop_to_size
 
 
 Low-level graph drawing
@@ -81,7 +82,7 @@ dl_import("from . import libgraph_tool_layout")
 __all__ = ["graph_draw", "graphviz_draw",
            "fruchterman_reingold_layout",
            "arf_layout", "sfdp_layout", "random_layout",
-           "cairo_draw"]
+           "cairo_draw", "prop_to_size"]
 
 
 def random_layout(g, shape=None, pos=None, dim=2):
@@ -628,3 +629,26 @@ try:
    from .graphviz_draw import graphviz_draw
 except ImportError:
    pass
+
+def prop_to_size(prop, mi=0, ma=5, log=False, power=0.5):
+    r"""Convert property map values to be more useful as a vertex size, or edge
+    width. The new values are taken to be
+
+    .. math::
+
+        y = mi + (ma - mi) \left(\frac{x_i - min(x)} {max(x) - min(x)}\right)^\text{power}
+
+    If `log=True`, the natural logarithm of the property values are used instead.
+
+    """
+    prop = prop.copy(value_type="double")
+    if log:
+        vals = numpy.log(prop.fa)
+    else:
+        vals = prop.fa
+
+    delta =  vals.max() - vals.min()
+    if delta == 0:
+        delta = 1
+    prop.fa = mi + (ma - mi) * ((vals - vals.min()) / delta) ** power
+    return prop
