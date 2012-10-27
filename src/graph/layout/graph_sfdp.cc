@@ -57,32 +57,31 @@ void sfdp_layout(GraphInterface& g, boost::any pos, boost::any vweight,
     double K = python::extract<double>(spring_parms[1]);
     double p = python::extract<double>(spring_parms[2]);
     double gamma = python::extract<double>(spring_parms[3]);
+    double mu = python::extract<double>(spring_parms[4]);
+    double mu_p = python::extract<double>(spring_parms[5]);
     group_map_t groups =
-        any_cast<group_map_t>(python::extract<any>(spring_parms[4]));
+        any_cast<group_map_t>(python::extract<any>(spring_parms[6]));
 
     if(vweight.empty())
         vweight = vweight_map_t(1);
     if(eweight.empty())
         eweight = eweight_map_t(1);
 
+    typedef property_map_type::apply<uint8_t,
+                                     GraphInterface::vertex_index_map_t>::type
+        pin_map_t;
+    pin_map_t pin_map = any_cast<pin_map_t>(pin);
 
-    typedef ConstantPropertyMap<bool,GraphInterface::vertex_t> pin_map_t;
-    typedef mpl::vector<property_map_type::apply
-                            <uint8_t,
-                             GraphInterface::vertex_index_map_t>::type,
-                        pin_map_t>::type
-        pin_props_t;
-
-    if(pin.empty())
-        pin = pin_map_t(false);
     run_action<graph_tool::detail::never_directed>()
         (g,
-         bind<void>(get_sfdp_layout(C, K, p, theta, gamma, init_step,
+         bind<void>(get_sfdp_layout(C, K, p, theta, gamma, mu, mu_p, init_step,
                                     step_schedule, max_level, epsilon,
                                     max_iter, adaptive),
-                    _1, g.GetVertexIndex(), _2, _3, _4, _5, groups, verbose),
-         vertex_floating_vector_properties(), vertex_props_t(), edge_props_t(),
-         pin_props_t())(pos, vweight, eweight, pin);
+                    _1, g.GetVertexIndex(), _2, _3, _4,
+                    pin_map.get_unchecked(num_vertices(g.GetGraph())),
+                    groups.get_unchecked(num_vertices(g.GetGraph())), verbose),
+         vertex_floating_vector_properties(), vertex_props_t(), edge_props_t())
+        (pos, vweight, eweight);
 }
 
 struct do_propagate_pos

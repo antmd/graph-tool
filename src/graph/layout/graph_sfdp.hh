@@ -177,13 +177,15 @@ inline double norm(Pos& x)
 struct get_sfdp_layout
 {
     get_sfdp_layout(double C, double K, double p, double theta, double gamma,
-                    double init_step, double step_schedule, size_t max_level,
-                    double epsilon, size_t max_iter, bool simple)
-        : C(C), K(K), p(p), theta(theta), gamma(gamma), init_step(init_step),
-          step_schedule(step_schedule), epsilon(epsilon),
-          max_level(max_level), max_iter(max_iter), simple(simple) {}
+                    double mu, double mu_p, double init_step,
+                    double step_schedule, size_t max_level, double epsilon,
+                    size_t max_iter, bool simple)
+        : C(C), K(K), p(p), theta(theta), gamma(gamma), mu(mu), mu_p(mu_p),
+          init_step(init_step), step_schedule(step_schedule),
+          epsilon(epsilon), max_level(max_level), max_iter(max_iter),
+          simple(simple) {}
 
-    double C, K, p, theta, gamma, init_step, step_schedule, epsilon;
+    double C, K, p, theta, gamma, mu, mu_p, init_step, step_schedule, epsilon;
     size_t max_level, max_iter;
     bool simple;
 
@@ -201,7 +203,7 @@ struct get_sfdp_layout
         pos_t ll(2, numeric_limits<val_t>::max()),
             ur(2, -numeric_limits<val_t>::max());
 
-        vector<pos_t> group_cm, group_cm_tmp;
+        vector<pos_t> group_cm;
         vector<vweight_t> group_size;
 
         int i, N = num_vertices(g), HN=0;
@@ -214,17 +216,13 @@ struct get_sfdp_layout
             pos[v].resize(2, 0);
             size_t s = group[v];
 
+            if (s >= group_cm.size())
             {
-                if (s >= group_cm.size())
-                {
-                    group_cm.resize(s + 1);
-                    group_cm_tmp.resize(s + 1);
-                    group_size.resize(s + 1, 0);
-                }
-                group_cm[s].resize(2, 0);
-                group_cm_tmp[s].resize(2, 0);
-                group_size[s] += get(vweight, v);
+                group_cm.resize(s + 1);
+                group_size.resize(s + 1, 0);
             }
+            group_cm[s].resize(2, 0);
+            group_size[s] += get(vweight, v);
 
             for (size_t j = 0; j < 2; ++j)
             {
@@ -237,6 +235,8 @@ struct get_sfdp_layout
 
         for (size_t s = 0; s < group_size.size(); ++s)
         {
+            if (group_size[s] == 0)
+                continue;
             group_cm[s].resize(2, 0);
             for (size_t j = 0; j < 2; ++j)
                 group_cm[s][j] /= group_size[s];
@@ -284,15 +284,7 @@ struct get_sfdp_layout
                     continue;
 
                 if (pin[v])
-                {
-                    #pragma omp critical
-                    group_cm_tmp[group[v]].resize(2, 0);
-                    for (size_t l = 0; l < 2; ++l)
-                    {
-                        group_cm_tmp[group[v]][l] += pos[v][l] * get(vweight, v);
-                    }
                     continue;
-                }
 
                 ftot[0] = ftot[1] = 0;
 
@@ -368,35 +360,75 @@ struct get_sfdp_layout
                 }
 
                 // inter-group attractive forces
-                for (size_t s = 0; s < group_cm.size(); ++s)
+                if (gamma > 0)
                 {
-                    if (s == size_t(group[v]))
-                        continue;
-                    val_t d = get_diff(group_cm[s], pos[v], diff);
-                    if (d == 0)
-                        continue;
-                    double Kp = K * pow(HN, 2.);
-                    val_t f = f_a(Kp, group_cm[s], pos[v]) * gamma * \
-                        group_size[s] * get(vweight, v);
-                    for (size_t l = 0; l < 2; ++l)
-                        ftot[l] += f * diff[l];
+                    for (size_t s = 0; s < group_cm.size(); ++s)
+                    {
+                        if (group_size[s] == 0)
+                            continue;
+                        if (s == size_t(group[v]))
+                            continue;
+                        val_t d = get_diff(group_cm[s], pos[v], diff);
+                        if (d == 0)
+                            continue;
+                        double Kp = K * pow(HN, 2.);
+                        val_t f = f_a(Kp, group_cm[s], pos[v]) * gamma * \
+                            group_size[s] * get(vweight, v);
+                        for (size_t l = 0; l < 2; ++l)
+                            ftot[l] += f * diff[l];
+                    }
                 }
 
+                // inter-group repulsive forces
+                if (gamma < 0)
+                {
+                    for (size_t s = 0; s < group_cm.size(); ++s)
+                    {
+                        if (group_size[s] == 0)
+                            continue;
+                        if (s == size_t(group[v]))
+                            continue;
+                        val_t d = get_diff(group_cm[s], pos[v], diff);
+                        if (d == 0)
+                            continue;
+                        val_t f = f_r(C, K, p, cm, pos[v]);
+                        f *= group_size[s] * get(vweight, v) * abs(gamma);
+                        for (size_t l = 0; l < 2; ++l)
+                            ftot[l] += f * diff[l];
+                    }
+                }
+
+                // intra-group attractive forces
+                if (group_size[group[v]] > 1 && mu > 0)
+                {
+                    val_t d = get_diff(group_cm[group[v]], pos[v], diff);
+                    if (d > 0)
+                    {
+                        double Kp = K * pow(group_size[group[v]], mu_p);
+                        val_t f = f_a(Kp, group_cm[group[v]], pos[v]) * mu * \
+                            group_size[group[v]] * get(vweight, v);
+                        for (size_t l = 0; l < 2; ++l)
+                            ftot[l] += f * diff[l];
+                    }
+                }
 
                 E += pow(norm(ftot), 2);
 
                 {
                     #pragma omp critical
-                    group_cm_tmp[group[v]].resize(2, 0);
                     for (size_t l = 0; l < 2; ++l)
                     {
+                        group_cm[group[v]][l] *= group_size[group[v]];
+                        group_cm[group[v]][l] -= pos[v][l];
+
                         ftot[l] *= step;
                         pos[v][l] += ftot[l];
 
                         nll[l] = min(pos[v][l], nll[l]);
                         nur[l] = max(pos[v][l], nur[l]);
 
-                        group_cm_tmp[group[v]][l] += pos[v][l] * get(vweight, v);
+                        group_cm[group[v]][l] += pos[v][l];
+                        group_cm[group[v]][l] /= group_size[group[v]];
                     }
                 }
                 delta += norm(ftot);
@@ -406,16 +438,6 @@ struct get_sfdp_layout
             ll = nll;
             ur = nur;
             delta /= nmoves;
-
-            for (size_t s = 0; s < group_size.size(); ++s)
-            {
-                for (size_t j = 0; j < 2; ++j)
-                {
-                    group_cm_tmp[s][j] /= group_size[s];
-                    group_cm[s][j] = 0;
-                }
-            }
-            group_cm.swap(group_cm_tmp);
 
             if (verbose)
                 cout << n_iter << " " << E << " " << step << " "

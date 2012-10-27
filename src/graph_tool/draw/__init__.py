@@ -309,26 +309,30 @@ def arf_layout(g, weight=None, d=0.5, a=10, dt=0.001, epsilon=1e-6,
     return pos
 
 
-def _coarse_graph(g, vweight, eweight, mivs=False):
-    if mivs:
-        mivs = max_independent_vertex_set(g, high_deg=True)
-        u = GraphView(g, vfilt=mivs, directed=False)
-        c = label_components(u)[0]
-        c.fa += 1
-        u = GraphView(g, directed=False)
-        infect_vertex_property(u, c,
-                               list(range(1, c.fa.max() + 1)))
-        c = g.own_property(c)
+def _coarse_graph(g, vweight, eweight, mivs=False, groups=None):
+    if groups is None:
+        if mivs:
+            mivs = max_independent_vertex_set(g, high_deg=True)
+            u = GraphView(g, vfilt=mivs, directed=False)
+            c = label_components(u)[0]
+            c.fa += 1
+            u = GraphView(g, directed=False)
+            infect_vertex_property(u, c,
+                                   list(range(1, c.fa.max() + 1)))
+            c = g.own_property(c)
+        else:
+            mivs = None
+            m = max_cardinality_matching(GraphView(g, directed=False),
+                                         heuristic=True, weight=eweight,
+                                         minimize=False)
+            u = GraphView(g, efilt=m, directed=False)
+            c = label_components(u)[0]
+            c = g.own_property(c)
+            u = GraphView(g, directed=False)
     else:
         mivs = None
-        m = max_cardinality_matching(GraphView(g, directed=False),
-                                     heuristic=True, weight=eweight,
-                                     minimize=False)
-        u = GraphView(g, efilt=m, directed=False)
-        c = label_components(u)[0]
-        c = g.own_property(c)
-        u = GraphView(g, directed=False)
-    cg, cc, vcount, ecount = condensation_graph(u, c, vweight, eweight)
+        c = groups
+    cg, cc, vcount, ecount = condensation_graph(g, c, vweight, eweight)
     return cg, cc, vcount, ecount, c, mivs
 
 
@@ -368,13 +372,14 @@ def _avg_edge_distance(g, pos):
 
 def coarse_graphs(g, method="hybrid", mivs_thres=0.9, ec_thres=0.75,
                   weighted_coarse=False, eweight=None, vweight=None,
-                  verbose=False):
+                  groups=None, verbose=False):
     cg = [[g, None, None, None, None, None]]
     if weighted_coarse:
         cg[-1][2], cg[-1][3] = vweight, eweight
     mivs = not (method in ["hybrid", "ec"])
     while True:
-        u = _coarse_graph(cg[-1][0], cg[-1][2], cg[-1][3], mivs)
+        u = _coarse_graph(cg[-1][0], cg[-1][2], cg[-1][3], mivs, groups)
+        groups = None
         thres = mivs_thres if mivs else ec_thres
         if u[0].num_vertices() >= thres * cg[-1][0].num_vertices():
             if method == "hybrid" and not mivs:
@@ -425,12 +430,12 @@ def coarse_graphs(g, method="hybrid", mivs_thres=0.9, ec_thres=0.75,
                                  Ks[i] / 1000., mivs)
 
 
-def sfdp_layout(g, vweight=None, eweight=None, pin=None, C=0.2, K=None, p=2.,
-                theta=0.6, max_level=11, gamma=1., init_step=None,
-                cooling_step=0.9, adaptive_cooling=True, epsilon=1e-1,
-                max_iter=0, pos=None, multilevel=None, coarse_method="hybrid",
-                mivs_thres=0.9, ec_thres=0.75, weighted_coarse=False,
-                verbose=False):
+def sfdp_layout(g, vweight=None, eweight=None, pin=None, groups=None, C=0.2,
+                K=None, p=2., theta=0.6, max_level=11, gamma=1., mu=0., mu_p=1.,
+                init_step=None, cooling_step=0.9, adaptive_cooling=True,
+                epsilon=1e-1, max_iter=0, pos=None, multilevel=None,
+                coarse_method= "hybrid", mivs_thres=0.9, ec_thres=0.75,
+                weighted_coarse=False, verbose=False):
     r"""Obtain the SFDP spring-block layout of the graph.
 
     Parameters
@@ -442,8 +447,11 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, C=0.2, K=None, p=2.,
     eweight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         An edge property map with the respective weights.
     pin : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
-        A vertex property map with with boolean values, which, if given,
-        specifies the vertices which will not have their positions modified.
+        A vertex property map with boolean values, which, if given,
+        specify the vertices which will not have their positions modified.
+    groups : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        A vertex property map with group assignments. Vertices belonging to the
+        same group will be put close together.
     C : float (optional, default: ``0.2``)
         Relative strength of repulsive forces.
     K : float (optional, default: ``None``)
@@ -456,7 +464,14 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, C=0.2, K=None, p=2.,
     max_level : int (optional, default: ``11``)
         Maximum quadtree level.
     gamma : float (optional, default: ``1.0``)
-        Strength of the attractive force between connected components.
+        Strength of the attractive force between connected components, or group
+        assignments.
+    mu : float (optional, default: ``0.0``)
+        Strength of the attractive force between vertices of the same connected
+        component, or group assignment.
+    mu_p : float (optional, default: ``1.0``)
+        Scaling exponent of the attractive force between vertices of the same
+        connected component, or group assignment.
     init_step : float (optional, default: ``None``)
         Initial update step. If not provided, it will be chosen automatically.
     cooling_step : float (optional, default: ``0.9``)
@@ -525,8 +540,11 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, C=0.2, K=None, p=2.,
 
     g = GraphView(g, directed=False)
 
-    if pin is not None and pin.value_type() != "bool":
-        raise ValueError("'pin' property must be of type 'bool'.")
+    if pin is not None:
+        if pin.value_type() != "bool":
+            raise ValueError("'pin' property must be of type 'bool'.")
+    else:
+        pin = g.new_vertex_property("bool")
 
     if K is None:
         K = _avg_edge_distance(g, pos)
@@ -546,9 +564,9 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, C=0.2, K=None, p=2.,
                             weighted_coarse=weighted_coarse,
                             eweight=eweight,
                             vweight=vweight,
+                            groups=groups,
                             verbose=verbose)
-        count = 0
-        for u, pos, K, vcount, ecount in cgs:
+        for count, (u, pos, K, vcount, ecount) in enumerate(cgs):
             if verbose:
                 print("Positioning level:", count, u.num_vertices(), end=' ')
                 print("with K =", K, "...")
@@ -557,8 +575,10 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, C=0.2, K=None, p=2.,
             pos = sfdp_layout(u, pos=pos,
                               vweight=vcount if weighted_coarse else None,
                               eweight=ecount if weighted_coarse else None,
+                              groups=None if u.num_vertices() < g.num_vertices() else groups,
                               C=C, K=K, p=p,
-                              theta=theta, gamma=gamma, epsilon=epsilon,
+                              theta=theta, gamma=gamma, mu=mu, mu_p=mu_p,
+                              epsilon=epsilon,
                               max_iter=max_iter,
                               cooling_step=cooling_step,
                               adaptive_cooling=False,
@@ -578,12 +598,15 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, C=0.2, K=None, p=2.,
         return pos
     if g.num_vertices() <= 50:
         max_level = 0
-    groups = label_components(g)[0]
+    if groups is None:
+        groups = label_components(g)[0]
+    elif groups.value_type() != "int32_t":
+        raise ValueError("'groups' property must be of type 'int32_t'.")
     libgraph_tool_layout.sfdp_layout(g._Graph__graph, _prop("v", g, pos),
                                      _prop("v", g, vweight),
                                      _prop("e", g, eweight),
                                      _prop("v", g, pin),
-                                     (C, K, p, gamma, _prop("v", g, groups)),
+                                     (C, K, p, gamma, mu, mu_p, _prop("v", g, groups)),
                                      theta, init_step, cooling_step, max_level,
                                      epsilon, max_iter, not adaptive_cooling,
                                      verbose)
