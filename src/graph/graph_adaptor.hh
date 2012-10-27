@@ -451,6 +451,30 @@ edges(const UndirectedAdaptor<Graph>& g)
 }
 
 //==============================================================================
+// edge(u, v, g)
+//==============================================================================
+template <class Graph>
+inline
+std::pair<typename graph_traits<UndirectedAdaptor<Graph> >::edge_descriptor,
+          bool>
+edge(typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor u,
+     typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor v,
+     const UndirectedAdaptor<Graph>& g)
+{
+    bool reversed = false;
+    std::pair<typename graph_traits<Graph>::edge_descriptor, bool> res
+        = edge(u, v, g.OriginalGraph());
+
+    if (!res.second)
+    {
+        res = edge(v, u, g.OriginalGraph());
+        reversed = true;
+    }
+    return std::make_pair(typename UndirectedAdaptor<Graph>::EdgeDescriptor(res.first, reversed),
+                          res.second);
+}
+
+//==============================================================================
 // out_edges(u,g)
 //==============================================================================
 template <class Graph>
