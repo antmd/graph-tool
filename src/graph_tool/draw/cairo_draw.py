@@ -187,7 +187,8 @@ def _convert(attr, val, cmap):
         return shape_from_prop(val, edge_marker)
 
     if attr in [vertex_attrs.color, vertex_attrs.fill_color,
-                vertex_attrs.text_color, edge_attrs.color]:
+                vertex_attrs.text_color, vertex_attrs.halo_color,
+                edge_attrs.color]:
         if isinstance(val, list):
             return val
         if isinstance(val, (tuple, np.ndarray)):
@@ -385,6 +386,7 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
                                                            parallel_distance)
     if g.is_directed() and "end_marker" not in eprops:
         eprops["end_marker"] = "arrow"
+
     vattrs, vdefaults = _attrs(vprops, "v", g, vcmap)
     eattrs, edefaults = _attrs(eprops, "e", g, ecmap)
     vdefs = _attrs(_vdefaults, "v", g, vcmap)[1]
@@ -404,6 +406,39 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
                                   nodesfirst, vattrs, eattrs, vdefs, edefs, cr)
     cr.restore()
 
+
+def color_contrast(color):
+    c = np.asarray(color)
+    for i in xrange(3):
+        if color[i] >= 0.5:
+            c[i] = 0
+        else:
+            c[i] = 1
+    if sum(c[0:3]) > 1:
+        c[:3] = 1
+    else:
+        c[:3] = 0
+    return c
+
+
+def auto_colors(g, bg, pos, back):
+    c = g.new_vertex_property("vector<double>")
+    for v in g.vertices():
+        if isinstance(bg, PropertyMap):
+            bgc = bg[v]
+        elif isinstance(bg, str):
+            bgc = matplotlib.colors.ColorConverter().to_rgba(bg)
+        else:
+            bgc = bg
+        if isinstance(pos, PropertyMap):
+            p = pos[v]
+        else:
+            p = pos
+        if p < 0:
+            c[v] = color_contrast(bgc)
+        else:
+            c[v] = color_contrast(back)
+    return c
 
 def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                nodesfirst=False, output_size=(600, 600), fit_view=True,
@@ -507,8 +542,9 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
         | text          | Text to draw together with the vertex.            | ``str``                | ``""``                           |
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
-        | text_color    | Color used to draw the text.                      | ``str`` or list of     | ``[0., 0., 0., 1.]``             |
-        |               |                                                   | ``floats``             |                                  |
+        | text_color    | Color used to draw the text. If the value is      | ``str`` or list of     | ``"auto"``                       |
+        |               | ``"auto"``, it will be computed based on          | ``floats``             |                                  |
+        |               | fill_color to maximize contrast.                  |                        |                                  |
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
         | text_position | Position of the text relative to the vertex.      | ``float`` or ``int``   | ``-1``                           |
         |               | If the passed value is positive, it will          |                        |                                  |
@@ -621,6 +657,19 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
             if "update_layout" not in kwargs:
                 kwargs["update_layout"] = False
 
+
+    if "text" in vprops and ("text_color" not in vprops or vprops["text_color"] == "auto"):
+        bg = vprops.get("fill_color", _vdefaults["fill_color"])
+        if "bg_color" in kwargs:
+            bg_color = kwargs["bg_color"]
+        else:
+            bg_color = [1., 1., 1., 1.]
+        vprops["text_color"] = auto_colors(g, bg,
+                                           vprops.get("text_position",
+                                                      _vdefaults["text_position"]),
+                                           bg_color)
+        print(vprops["text_color"])
+
     if output is None:
         return interactive_window(g, pos, vprops, eprops, vorder, eorder,
                                   nodesfirst, **kwargs)
@@ -662,6 +711,7 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
             cr.set_source_rgba(bg_color[0], bg_color[1],
                                bg_color[2], bg_color[3])
             cr.paint()
+
         cr.translate(offset[0], offset[1])
         cr.scale(zoom, zoom)
 
