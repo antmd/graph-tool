@@ -404,7 +404,7 @@ struct get_sfdp_layout
                     val_t d = get_diff(group_cm[group[v]], pos[v], diff);
                     if (d > 0)
                     {
-                        double Kp = K * pow(group_size[group[v]], mu_p);
+                        double Kp = K * pow(double(group_size[group[v]]), mu_p);
                         val_t f = f_a(Kp, group_cm[group[v]], pos[v]) * mu * \
                             group_size[group[v]] * get(vweight, v);
                         for (size_t l = 0; l < 2; ++l)

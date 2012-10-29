@@ -38,6 +38,8 @@ namespace boost
 {
 using namespace graph_tool;
 
+struct graph_wrap_tag {};
+
 template <class Graph>
 class GraphWrap
 {
@@ -47,7 +49,8 @@ class GraphWrap
 
     typedef typename vertex_property_type<Graph>::type vertex_property_type;
     typedef typename edge_property_type<Graph>::type edge_property_type;
-    typedef typename Graph::graph_tag graph_tag;
+    typedef typename Graph::graph_tag orig_wrap_tag;
+    typedef graph_wrap_tag graph_tag;
     typedef Graph orig_graph_t;
 
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
@@ -56,6 +59,72 @@ class GraphWrap
     Graph& _g;
     GraphInterface& _gi;
 };
+
+namespace detail {
+
+  template <typename PM>
+  struct graph_wrap_edge_property_map {
+    private:
+    PM underlying_pm;
+
+    public:
+    typedef typename property_traits<PM>::key_type key_type;
+    typedef typename property_traits<PM>::value_type value_type;
+    typedef typename property_traits<PM>::reference reference;
+    typedef typename property_traits<PM>::category category;
+
+    explicit graph_wrap_edge_property_map(const PM& pm): underlying_pm(pm) {}
+
+    friend reference
+    get(const graph_wrap_edge_property_map& m,
+        const key_type& e) {
+      return get(m.underlying_pm, e.underlying_desc);
+    }
+
+    friend void
+    put(const graph_wrap_edge_property_map& m,
+        const key_type& e,
+        const value_type& v) {
+      put(m.underlying_pm, e, v);
+    }
+
+    reference operator[](const key_type& k) {
+      return (this->underlying_pm)[k];
+    }
+  };
+
+  struct graph_wrap_vertex_property_selector {
+    template <class ReverseGraph, class Property, class Tag>
+    struct bind_ {
+      typedef typename ReverseGraph::orig_graph_t Graph;
+      typedef property_map<Graph, Tag> PMap;
+      typedef typename PMap::type type;
+      typedef typename PMap::const_type const_type;
+    };
+  };
+
+  struct graph_wrap_edge_property_selector {
+    template <class ReverseGraph, class Property, class Tag>
+    struct bind_ {
+      typedef typename ReverseGraph::orig_graph_t Graph;
+      typedef property_map<Graph, Tag> PMap;
+      typedef graph_wrap_edge_property_map<typename PMap::type> type;
+      typedef graph_wrap_edge_property_map<typename PMap::const_type> const_type;
+    };
+  };
+
+} // namespace detail
+
+template <>
+struct vertex_property_selector<graph_wrap_tag> {
+  typedef detail::graph_wrap_vertex_property_selector type;
+};
+
+template <>
+struct edge_property_selector<graph_wrap_tag> {
+  typedef detail::graph_wrap_edge_property_selector type;
+};
+
 
 template <class Graph>
 GraphWrap<Graph> graph_wrap(Graph& g, GraphInterface& gi)

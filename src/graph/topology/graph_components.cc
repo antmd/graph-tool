@@ -31,7 +31,8 @@ using namespace graph_tool;
 python::object do_label_components(GraphInterface& gi, boost::any prop)
 {
     vector<size_t> hist;
-    run_action<>()(gi, bind<void>(label_components(), _1, _2, ref(hist)),
+    run_action<graph_tool::detail::all_graph_views,mpl::true_>()
+        (gi, bind<void>(label_components(), _1, _2, ref(hist)),
                    writable_vertex_scalar_properties())(prop);
     return wrap_vector_owned(hist);
 }
@@ -52,8 +53,9 @@ do_label_biconnected_components(GraphInterface& gi, boost::any comp,
 
 void do_label_out_component(GraphInterface& gi, size_t root, boost::any prop)
 {
-    run_action<>()(gi, bind<void>(label_out_component(), _1, _2, root),
-                   writable_vertex_scalar_properties())(prop);
+    run_action<graph_tool::detail::all_graph_views,mpl::true_>()
+        (gi, bind<void>(label_out_component(), _1, _2, root),
+         writable_vertex_scalar_properties())(prop);
 }
 
 void export_components()
