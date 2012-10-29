@@ -682,6 +682,9 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
             srf = cairo.PDFSurface(out, output_size[0], output_size[1])
         elif fmt == "ps":
             srf = cairo.PSSurface(out, output_size[0], output_size[1])
+        elif fmt == "eps":
+            srf = cairo.PSSurface(out, output_size[0], output_size[1])
+            srf.set_eps(True)
         elif fmt == "svg":
             srf = cairo.SVGSurface(out, output_size[0], output_size[1])
         elif fmt == "png":
@@ -857,7 +860,7 @@ def transform_scale(M, scale):
 
 try:
     from gi.repository import Gtk, Gdk, GdkPixbuf
-    import gobject
+    import gi._gobject as gobject
     from .gtk_draw import *
 except (ImportError, RuntimeError) as e:
     msg = "Error importing Gtk module: %s; GTK+ drawing will not work." % str(e)
