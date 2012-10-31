@@ -659,7 +659,8 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
 
 
     if "text" in vprops and ("text_color" not in vprops or vprops["text_color"] == "auto"):
-        bg = vprops.get("fill_color", _vdefaults["fill_color"])
+        vcmap = kwargs.get("vcmap", matplotlib.cm.jet)
+        bg = _convert(vertex_attrs.fill_color, vprops.get("fill_color", _vdefaults["fill_color"]), vcmap)
         if "bg_color" in kwargs:
             bg_color = kwargs["bg_color"]
         else:
@@ -668,7 +669,6 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                                            vprops.get("text_position",
                                                       _vdefaults["text_position"]),
                                            bg_color)
-        print(vprops["text_color"])
 
     if output is None:
         return interactive_window(g, pos, vprops, eprops, vorder, eorder,
