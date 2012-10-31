@@ -225,7 +225,7 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
     >>> hist = gt.combined_corr_hist(g, "in", "out")
     >>>
     >>> clf()
-    >>> imshow(hist[0], interpolation="nearest")
+    >>> imshow(hist[0].T, interpolation="nearest", origin="lower")
     <...>
     >>> colorbar()
     <...>

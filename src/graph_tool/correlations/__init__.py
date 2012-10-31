@@ -274,7 +274,7 @@ def corr_hist(g, deg_source, deg_target, bins=[[0, 1], [0, 1]], weight=None,
     <...>
     >>> ylabel("Target out-degree")
     <...>
-    >>> imshow(h[0], interpolation="nearest")
+    >>> imshow(h[0].T, interpolation="nearest", origin="lower")
     <...>
     >>> colorbar()
     <...>
@@ -360,7 +360,7 @@ def combined_corr_hist(g, deg1, deg2, bins=[[0, 1], [0, 1]], float_count=True):
     <...>
     >>> ylabel("Out-degree")
     <...>
-    >>> imshow(h[0], interpolation="nearest")
+    >>> imshow(h[0].T, interpolation="nearest", origin="lower")
     <...>
     >>> colorbar()
     <...>
