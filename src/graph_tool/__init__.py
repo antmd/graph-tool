@@ -1803,7 +1803,7 @@ for vt in vector_types:
     vt.__repr__ = lambda self: self.a.__repr__()
 Vector_string.a = None
 Vector_string.get_array = lambda self: None
-
+Vector_string.__repr__ = lambda self: repr(list(self))
 
 class GraphView(Graph):
     """
