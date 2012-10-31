@@ -51,6 +51,7 @@ Summary
    is_bipartite
    is_DAG
    is_planar
+   make_maximal_planar
    edge_reciprocity
 
 Contents
@@ -74,7 +75,7 @@ __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
            "label_largest_component", "label_biconnected_components",
            "label_out_component", "shortest_distance", "shortest_path",
            "pseudo_diameter", "is_bipartite", "is_DAG", "is_planar",
-           "similarity", "edge_reciprocity"]
+           "make_maximal_planar", "similarity", "edge_reciprocity"]
 
 
 def similarity(g1, g2, label1=None, label2=None, norm=True):
@@ -1318,6 +1319,76 @@ def is_planar(g, embedding=False, kuratowski=False):
         return ret[0]
     else:
         return tuple(ret)
+
+
+def make_maximal_planar(g, unfilter=False):
+    """
+    Add edges to the graph to make it maximally planar.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    unfilter : bool (optional, default: False)
+        If true, and the `g` is filtered, the edges will be unfiltered instead
+        of added. Note that in this case the resulting graph may not be
+        maximally planar if the necessary edges are not existent in the
+        underlying unfiltered graph.
+
+    Returns
+    -------
+    `None`
+
+    Notes
+    -----
+
+    A graph is maximal planar if no additional edges can be added to it without
+    creating a non-planar graph. By Euler's formula, a maximal planar graph with
+    V > 2 vertices always has 3V - 6 edges and 2V - 4 faces.
+
+    This algorithm runs in :math:`O(V + E)` time.
+
+    Examples
+    --------
+    >>> from numpy.random import seed, random
+    >>> seed(42)
+    >>> g = gt.triangulation(random((100,2)))[0]
+    >>> p, embed_order = gt.is_planar(g, embedding=True)
+    >>> print(p)
+    True
+    >>> print(list(embed_order[g.vertex(0)]))
+    [0, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+    >>> g = gt.random_graph(100, lambda: 4, directed=False)
+    >>> p, kur = gt.is_planar(g, kuratowski=True)
+    >>> print(p)
+    False
+    >>> g.set_edge_filter(kur, True)
+    >>> gt.graph_draw(g, output_size=(300, 300), output="kuratowski.pdf")
+    <...>
+
+    .. figure:: kuratowski.*
+        :align: center
+
+        Obstructing Kuratowski subgraph of a random graph.
+
+    References
+    ----------
+    .. [boyer-myrvold] John M. Boyer and Wendy J. Myrvold, "On the Cutting Edge:
+       Simplified O(n) Planarity by Edge Addition" Journal of Graph Algorithms
+       and Applications, 8(2): 241-273, 2004. http://www.emis.ams.org/journals/JGAA/accepted/2004/BoyerMyrvold2004.8.3.pdf
+    .. [boost-planarity] http://www.boost.org/libs/graph/doc/boyer_myrvold.html
+    """
+
+    if unfilter and g.get_edge_filter() is not None:
+        emap = g.get_edge_filter()[0]
+    else:
+        unfilter = False
+        emap = None
+
+    g = GraphView(g, directed=False)
+    libgraph_tool_topology.maximal_planar(g._Graph__graph,
+                                          _prop("e", g, emap),
+                                          not unfilter)
 
 def is_DAG(g):
     """

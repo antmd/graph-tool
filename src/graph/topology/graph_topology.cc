@@ -32,6 +32,7 @@ bool topological_sort(GraphInterface& gi, vector<int32_t>& sort);
 void dominator_tree(GraphInterface& gi, size_t entry, boost::any pred_map);
 void transitive_closure(GraphInterface& gi, GraphInterface& tcgi);
 bool is_planar(GraphInterface& gi, boost::any embed_map, boost::any kur_map);
+void maximal_planar(GraphInterface& gi, boost::any edge_map, bool augment);
 void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
                           boost::any vertex_label1, boost::any vertex_label2,
                           boost::any edge_label1, boost::any edge_label2,
@@ -65,6 +66,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_topology)
     def("dominator_tree", &dominator_tree);
     def("transitive_closure", &transitive_closure);
     def("is_planar", &is_planar);
+    def("maximal_planar", &maximal_planar);
     def("reciprocity", &reciprocity);
     def("sequential_coloring", &sequential_coloring);
     def("is_bipartite", &is_bipartite);

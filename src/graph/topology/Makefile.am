@@ -22,6 +22,7 @@ libgraph_tool_topology_la_SOURCES = \
     graph_diameter.cc \
     graph_dominator_tree.cc \
     graph_isomorphism.cc \
+    graph_maximal_planar.cc \
     graph_maximal_vertex_set.cc \
     graph_minimum_spanning_tree.cc \
     graph_planar.cc \
