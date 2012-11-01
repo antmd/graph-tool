@@ -9,6 +9,7 @@
 //           Andrew Lumsdaine
 //           Tiago de Paula Peixoto
 
+#include <boost/python.hpp>
 #include <boost/variant.hpp>
 #include <expat.h>
 #include <boost/graph/graphml.hpp>

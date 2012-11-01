@@ -18,6 +18,7 @@
 #ifndef FILTERING_HH
 #define FILTERING_HH
 
+#include "graph.hh"
 #include <boost/version.hpp>
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/filtered_graph.hpp>
@@ -47,7 +48,6 @@
 #include <boost/mpl/quote.hpp>
 #include <boost/mpl/range_c.hpp>
 
-#include "graph.hh"
 #include "graph_adaptor.hh"
 #include "graph_selectors.hh"
 #include "graph_util.hh"
