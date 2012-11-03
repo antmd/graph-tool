@@ -248,7 +248,7 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
     >>> clusts = gt.extended_clustering(g, max_depth=5)
     >>> for i in range(0, 5):
     ...    print(gt.vertex_average(g, clusts[i]))
-    ... 
+    ...
     (0.0058850000000000005, 0.0004726257592782405)
     (0.026346666666666668, 0.0009562588213100747)
     (0.11638833333333333, 0.002086419787711849)

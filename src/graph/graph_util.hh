@@ -157,7 +157,7 @@ void graph_copy(const GraphOrig& g, GraphTarget& gt)
     typename property_map<GraphOrig, vertex_index_t>::type index = get(vertex_index, g);
     typedef typename graph_traits<GraphOrig>::vertex_descriptor vertex_t;
     typedef typename graph_traits<GraphTarget>::vertex_descriptor tvertex_t;
-    vector<tvertex_t> vmap;
+    vector<tvertex_t> vmap(num_vertices(g));
     typename graph_traits<GraphOrig>::vertex_iterator v, v_end;
     for (tie(v, v_end) = vertices(g); v != v_end; ++v)
         vmap[index[*v]] = add_vertex(gt);

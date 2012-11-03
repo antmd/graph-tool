@@ -61,6 +61,7 @@ struct retrieve_from_list
             return;
         }
         graph_copy(glist.back(), g);
+        glist.pop_back();
     }
 };
 
