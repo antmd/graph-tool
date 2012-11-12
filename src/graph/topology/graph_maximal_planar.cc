@@ -27,44 +27,20 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-template <class EdgeMap>
 struct mark_planar_edge
 {
-    mark_planar_edge(EdgeMap map, bool force): _map(map), _force(force) {}
-    EdgeMap _map;
-    bool _force;
-
     template <typename Graph, typename Vertex>
     void visit_vertex_pair(Vertex u, Vertex v, Graph& g)
     {
         if (!is_adjacent(u, v, g))
             add_edge(u, v, g);
     }
-
-    template <typename Graph, typename Vertex, class EdgePredicate, class VertexPredicate>
-    void visit_vertex_pair(Vertex u, Vertex v, UndirectedAdaptor<filtered_graph<Graph,
-                                                                                EdgePredicate,
-                                                                                VertexPredicate> >& g)
-    {
-        if (_force && !is_adjacent(u, v, g))
-        {
-            add_edge(u, v, g);
-            return;
-        }
-
-        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
-        std::pair<edge_t, bool> e = edge(u, v, UndirectedAdaptor<Graph>(g.OriginalGraph().m_g));
-        if (e.second)
-            _map[e.first] = true;
-    }
-
 };
 
 struct do_maximal_planar
 {
-    template <class Graph, class VertexIndex, class EdgeIndex, class EdgeMap>
-    void operator()(Graph& g, VertexIndex vertex_index, EdgeIndex edge_index,
-                    EdgeMap emap, bool augment) const
+    template <class Graph, class VertexIndex, class EdgeIndex>
+    void operator()(Graph& g, VertexIndex vertex_index, EdgeIndex edge_index) const
     {
 
         unchecked_vector_property_map
@@ -78,7 +54,7 @@ struct do_maximal_planar
         if (!is_planar)
             throw GraphException("Graph is not planar!");
 
-        mark_planar_edge<EdgeMap> vis(emap, augment);
+        mark_planar_edge vis;
         make_biconnected_planar(g, embedding, edge_index, vis);
         boyer_myrvold_planarity_test
             (boyer_myrvold_params::graph = g,
@@ -90,20 +66,9 @@ struct do_maximal_planar
 };
 
 
-void maximal_planar(GraphInterface& gi, boost::any edge_map, bool augment)
+void maximal_planar(GraphInterface& gi)
 {
-    if (augment)
-    {
-        run_action<graph_tool::detail::never_directed, mpl::true_>()
-            (gi, bind<void>(do_maximal_planar(), _1, gi.GetVertexIndex(),
-                            gi.GetEdgeIndex(), false, true))();
-    }
-    else
-    {
-        run_action<graph_tool::detail::never_directed, mpl::true_>()
-            (gi, bind<void>(do_maximal_planar(), _1, gi.GetVertexIndex(),
-                            gi.GetEdgeIndex(), _2, false),
-             edge_scalar_properties())
-            (edge_map);
-    }
+    run_action<graph_tool::detail::never_directed, mpl::true_>()
+        (gi, bind<void>(do_maximal_planar(), _1, gi.GetVertexIndex(),
+                        gi.GetEdgeIndex()))();
 }
