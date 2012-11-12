@@ -164,7 +164,7 @@ public:
 
     void reserve(size_t size) const { _checked.reserve(size); }
 
-    reference operator[](const key_type& v) const
+    reference operator[](const key_type& v) const __attribute__((always_inline))
     {
         typename property_traits<IndexMap>::value_type i =
             get(_checked.index, v);

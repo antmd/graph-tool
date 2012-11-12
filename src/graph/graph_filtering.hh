@@ -147,7 +147,7 @@ public:
         : _filtered_property(filtered_property), _invert(invert) {}
 
     template <class Descriptor>
-    inline bool operator() (Descriptor d) const
+    __attribute__((always_inline)) inline bool operator() (Descriptor d) const
     {
         // ignore if masked
 
