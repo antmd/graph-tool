@@ -22,6 +22,7 @@ from __future__ import division, absolute_import, print_function
 
 import cPickle
 import base64
+import atexit
 from io import BytesIO
 from . import libgraph_tool_core
 
@@ -71,3 +72,9 @@ def unpickler(stream):
 
 libgraph_tool_core.set_pickler(pickler)
 libgraph_tool_core.set_unpickler(unpickler)
+
+def clean_picklers():
+    libgraph_tool_core.set_pickler(None)
+    libgraph_tool_core.set_unpickler(None)
+
+atexit.register(clean_picklers)
