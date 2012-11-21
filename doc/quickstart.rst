@@ -305,12 +305,14 @@ set:
      Type name                   Alias
     ========================     ======================
     ``bool``                     ``uint8_t``
+    ``int16_t``                  ``short``
     ``int32_t``                  ``int``
     ``int64_t``                  ``long``, ``long long``
     ``double``                   ``float``
     ``long double``
     ``string``
     ``vector<bool>``             ``vector<uint8_t>``
+    ``vector<int16_t>``          ``vector<short>``
     ``vector<int32_t>``          ``vector<int>``
     ``vector<int64_t>``          ``vector<long>``, ``vector<long long>``
     ``vector<double>``           ``vector<float>``

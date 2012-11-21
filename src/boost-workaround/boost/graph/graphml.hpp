@@ -231,7 +231,7 @@ protected:
     dynamic_properties& m_dp;
     bool m_ignore_directedness;
     bool m_is_directed;
-    typedef mpl::vector<uint8_t, int32_t, int64_t, double, long double,
+    typedef mpl::vector<uint8_t, int16_t, int32_t, int64_t, double, long double,
                         std::vector<uint8_t>, std::vector<int32_t>,
                         std::vector<int64_t>, std::vector<double>,
                         std::vector<long double>, std::vector<std::string>,
@@ -242,7 +242,7 @@ protected:
 
 template<typename MutableGraph>
 const char* mutate_graph_impl<MutableGraph>::m_type_names[] =
-{"boolean",  "int", "long", "float", "double", "vector_boolean", "vector_int",
+{"boolean", "short", "int", "long", "float", "double", "vector_boolean", "vector_int",
  "vector_long", "vector_float", "vector_double", "vector_string", "string",
  "python_object"};
 
@@ -325,17 +325,18 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
            "         xsi:schemaLocation=\"http://graphml.graphdrawing.org/xmlns"
            " http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd\">\n\n";
 
-    typedef mpl::vector<bool, uint8_t, int8_t, uint32_t, int32_t,
-                        uint64_t, int64_t, float, double, long double,
+    typedef mpl::vector<bool, uint8_t, int8_t, uint16_t, int16_t, uint32_t,
+                        int32_t, uint64_t, int64_t, float, double, long double,
                         std::vector<uint8_t>, std::vector<int32_t>,
                         std::vector<int64_t>, std::vector<double>,
-                        std::vector<long double>,std::vector<std::string>,
+                        std::vector<long double>, std::vector<std::string>,
                         std::string, python::object> value_types;
-    const char* type_names[] = {"boolean", "boolean", "boolean", "int", "int",
-                                "long", "long", "float", "float", "double",
-                                "vector_boolean", "vector_int", "vector_long",
-                                "vector_float", "vector_double",
-                                "vector_string", "string", "python_object"};
+    const char* type_names[] = {"boolean", "boolean", "boolean", "short",
+                                "short", "int", "int", "long", "long", "float",
+                                "float", "double", "vector_boolean",
+                                "vector_int", "vector_long", "vector_float",
+                                "vector_double", "vector_string", "string",
+                                "python_object"};
 
     std::map<std::string, std::string> graph_key_ids;
     std::map<std::string, std::string> vertex_key_ids;

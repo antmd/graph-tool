@@ -109,7 +109,7 @@ from .decorators import _wraps, _require, _attrs, _limit_args
 from inspect import ismethod
 
 __all__ = ["Graph", "GraphView", "Vertex", "Edge", "Vector_bool",
-           "Vector_int32_t", "Vector_int64_t", "Vector_double",
+           "Vector_int16_t", "Vector_int32_t", "Vector_int64_t", "Vector_double",
            "Vector_long_double", "Vector_string", "value_types", "load_graph",
            "PropertyMap", "group_vector_property", "ungroup_vector_property",
            "infect_vertex_property", "edge_difference", "show_config",
@@ -164,6 +164,7 @@ def _degree(g, name):
 def _type_alias(type_name):
     alias = {"int8_t": "bool",
              "boolean": "bool",
+             "short": "int16_t",
              "int": "int32_t",
              "long": "int64_t",
              "long long": "int64_t",
@@ -202,6 +203,8 @@ def _gt_type(obj):
     t = type(obj)
     if t is numpy.longlong or t is numpy.uint64:
         return "long long"
+    if issubclass(t, numpy.int16):
+        return "short"
     if t is int or issubclass(t, numpy.int):
         return "int"
     if t is numpy.float128:
@@ -356,12 +359,14 @@ class PropertyMap(object):
          Type name                  Alias
         =======================     ======================
         ``bool``                    ``uint8_t``
+        ``int16_t``                 ``short``
         ``int32_t``                 ``int``
         ``int64_t``                 ``long``, ``long long``
         ``double``                  ``float``
         ``long double``
         ``string``
         ``vector<bool>``            ``vector<uint8_t>``
+        ``vector<int16_t>``         ``short``
         ``vector<int32_t>``         ``vector<int>``
         ``vector<int64_t>``         ``vector<long>``, ``vector<long long>``
         ``vector<double>``          ``vector<float>``
@@ -881,9 +886,9 @@ class PropertyDict(dict):
 # The main graph interface
 ################################################################################
 
-from .libgraph_tool_core import Vertex, EdgeBase, Vector_bool, Vector_int32_t, \
-     Vector_int64_t, Vector_double, Vector_long_double, Vector_string, \
-     new_vertex_property, new_edge_property, new_graph_property
+from .libgraph_tool_core import Vertex, EdgeBase, Vector_bool, Vector_int16_t, \
+    Vector_int32_t, Vector_int64_t, Vector_double, Vector_long_double, \
+    Vector_string, new_vertex_property, new_edge_property, new_graph_property
 
 
 class Graph(object):
@@ -1795,8 +1800,8 @@ def _get_array_view(self):
 def _set_array_view(self, v):
     self.get_array()[:] = v
 
-vector_types = [Vector_bool, Vector_int32_t, Vector_int64_t, Vector_double,
-                Vector_long_double]
+vector_types = [Vector_bool, Vector_int16_t, Vector_int32_t, Vector_int64_t,
+                Vector_double, Vector_long_double]
 for vt in vector_types:
     vt.a = property(_get_array_view, _set_array_view,
                     doc=r"""Shortcut to the `get_array` method as an attribute.""")

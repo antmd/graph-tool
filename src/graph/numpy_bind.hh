@@ -46,11 +46,12 @@ using namespace boost::python;
 typedef mpl::map<
     mpl::pair<uint8_t, mpl::int_<NPY_BYTE> >,
     mpl::pair<uint32_t, mpl::int_<NPY_UINT32> >,
+    mpl::pair<int16_t, mpl::int_<NPY_INT16> >,
     mpl::pair<int32_t, mpl::int_<NPY_INT32> >,
     mpl::pair<int64_t, mpl::int_<NPY_INT64> >,
     mpl::pair<uint64_t, mpl::int_<NPY_UINT64> >,
     mpl::pair<unsigned long int, mpl::int_<NPY_ULONG> >,
-    mpl::pair<double,  mpl::int_<NPY_DOUBLE> >,
+    mpl::pair<double, mpl::int_<NPY_DOUBLE> >,
     mpl::pair<long double, mpl::int_<NPY_LONGDOUBLE> >
     > numpy_types;
 

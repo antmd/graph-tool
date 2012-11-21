@@ -73,8 +73,8 @@ using namespace boost;
 //       broken, and use a vector<uint8_t> instead!
 //       see: http://www.gotw.ca/publications/N1211.pdf
 
-typedef mpl::vector<uint8_t, int32_t, int64_t, double, long double, string,
-                    vector<uint8_t>, vector<int32_t>, vector<int64_t>,
+typedef mpl::vector<uint8_t, int16_t, int32_t, int64_t, double, long double, string,
+                    vector<uint8_t>, vector<int16_t>, vector<int32_t>, vector<int64_t>,
                     vector<double>, vector<long double>, vector<string>,
                     python::object>
     value_types;
@@ -83,11 +83,11 @@ extern const char* type_names[]; // respective type names (defined in
                                  // graph_properties.cc)
 
 // scalar types: types contained in value_types which are scalar
-typedef mpl::vector<uint8_t, int32_t, int64_t, double, long double>
+typedef mpl::vector<uint8_t, int16_t, int32_t, int64_t, double, long double>
     scalar_types;
 
 // integer_types: scalar types which are integer
-typedef mpl::vector<uint8_t, int32_t, int64_t> integer_types;
+typedef mpl::vector<uint8_t, int16_t, int32_t, int64_t> integer_types;
 
 // floating_types: scalar types which are floating point
 typedef mpl::vector<double, long double> floating_types;

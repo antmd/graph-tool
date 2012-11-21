@@ -41,10 +41,10 @@ namespace graph_tool
 
 // global property types' names
 const char* type_names[] =
-    {"bool", "int32_t", "int64_t", "double", "long double",
-     "string", "vector<bool>","vector<int32_t>", "vector<int64_t>",
-     "vector<double>", "vector<long double>", "vector<string>",
-     "python::object"};
+    {"bool", "int16_t", "int32_t", "int64_t", "double", "long double",
+     "string", "vector<bool>", "vector<int16_t>", "vector<int32_t>",
+     "vector<int64_t>", "vector<double>", "vector<long double>",
+     "vector<string>", "python::object"};
 
 
 struct shift_vertex_property
