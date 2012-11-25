@@ -1104,6 +1104,7 @@ class Graph(object):
     def remove_vertex(self, vertex):
         """Remove a vertex from the graph."""
         self.__check_perms("del_vertex")
+        vertex = self.vertex(int(vertex))
         index = self.vertex_index[vertex]
         for pmap in self.__known_properties:
             if pmap[0] == "v" and pmap[1]() != None and pmap[1]().is_writable():
@@ -1132,7 +1133,8 @@ class Graph(object):
         """Add a new edge from ``source`` to ``target`` to the graph, and return
         it."""
         self.__check_perms("add_edge")
-        e = libcore.add_edge(weakref.ref(self), source, target)
+        e = libcore.add_edge(weakref.ref(self), self.vertex(int(source)),
+                             self.vertex(int(target)))
         efilt = self.get_edge_filter()
         if efilt[0] is not None:
             efilt[0][e] = not efilt[1]
