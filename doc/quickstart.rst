@@ -375,7 +375,9 @@ with the graph. Properties are internalized by including them in the
 graph's dictionary-like attributes
 :attr:`~graph_tool.Graph.vertex_properties`,
 :attr:`~graph_tool.Graph.edge_properties` or
-:attr:`~graph_tool.Graph.graph_properties`. When inserted in the graph,
+:attr:`~graph_tool.Graph.graph_properties` (or their aliases,
+:attr:`~graph_tool.Graph.vp`, :attr:`~graph_tool.Graph.ep` or
+:attr:`~graph_tool.Graph.gp`, respectively). When inserted in the graph,
 the property maps must have an unique name (between those of the same
 type):
 
@@ -385,6 +387,20 @@ type):
     >>> g.edge_properties["some name"] = eprop
     >>> g.list_properties()
     some name      (edge)    (type: string)
+
+Internal graph property maps behave slightly differently. Instead of
+returning the property map object, the value itself is returned from the
+dictionaries:
+
+.. doctest::
+
+    >>> gprop = g.new_graph_property("int")
+    >>> g.graph_properties["foo"] = gprop   # this sets the actual property map
+    >>> g.graph_properties["foo"] = 42      # this sets its value
+    >>> print(g.graph_properties["foo"])
+    42
+    >>> del g.graph_properties["foo"]       # the property map entry is deleted from the dictionary
+
 
 .. _sec_graph_io:
 

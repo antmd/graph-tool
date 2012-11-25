@@ -1180,11 +1180,13 @@ class Graph(object):
 
     @_limit_args({"t": ["v", "e", "g"]})
     @_require("k", str)
-    @_require("v", PropertyMap)
     def __set_property(self, t, k, v):
-        if t != v.key_type():
-            raise ValueError("wrong key type for property map")
-        self.__properties[(t, k)] = v
+        if t == "g" and not isinstance(v, PropertyMap):
+            self.__properties[(t, k)][self] = v
+        else:
+            if t != v.key_type():
+                raise ValueError("wrong key type for property map")
+            self.__properties[(t, k)] = v
 
     @_limit_args({"t": ["v", "e", "g"]})
     @_require("k", str)
@@ -1218,6 +1220,8 @@ class Graph(object):
                             lambda g, k: g.__del_property("v", k))
     vertex_properties = property(__get_vertex_properties,
                                  doc="Dictionary of internal vertex properties. The keys are the property names.")
+    vp = property(__get_vertex_properties,
+                  doc="Alias to :attr:`~Graph.vertex_properties`.")
 
     # edge properties
     def __get_edge_properties(self):
@@ -1227,15 +1231,19 @@ class Graph(object):
                             lambda g, k: g.__del_property("e", k))
     edge_properties = property(__get_edge_properties,
                                  doc="Dictionary of internal edge properties. The keys are the property names.")
+    ep = property(__get_vertex_properties,
+                  doc="Alias to :attr:`~Graph.edge_properties`.")
 
     # graph properties
     def __get_graph_properties(self):
         return PropertyDict(self, self.__get_specific_properties("g"),
-                            lambda g, k: g.__properties[("g", k)],
+                            lambda g, k: g.__properties[("g", k)][g],
                             lambda g, k, v: g.__set_property("g", k, v),
                             lambda g, k: g.__del_property("g", k))
     graph_properties = property(__get_graph_properties,
                                  doc="Dictionary of internal graph properties. The keys are the property names.")
+    gp = property(__get_graph_properties,
+                  doc="Alias to :attr:`~Graph.graph_properties`.")
 
     def own_property(self, prop):
         """'Own' property map 'prop', which may belong to another graph."""

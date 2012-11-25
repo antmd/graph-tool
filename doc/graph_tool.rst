@@ -115,8 +115,11 @@
 
        .. autoattribute:: properties
        .. autoattribute:: vertex_properties
+       .. autoattribute:: vp
        .. autoattribute:: edge_properties
+       .. autoattribute:: ep
        .. autoattribute:: graph_properties
+       .. autoattribute:: gp
        .. automethod:: list_properties
 
 
