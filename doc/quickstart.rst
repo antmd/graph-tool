@@ -122,12 +122,13 @@ vertex of an edge, respectively.
 
 The :meth:`~graph_tool.Graph.add_vertex` method also accepts an optional
 parameter which specifies the number of vertices to create. If this
-value is greater than 1, it returns a list of vertex descriptors:
+value is greater than 1, it returns an iterator on the added vertex
+descriptors:
 
 .. doctest::
 
    >>> vlist = g.add_vertex(10)
-   >>> print(len(vlist))
+   >>> print(len(list(vlist)))
    10
 
 Edges and vertices can also be removed at any time with the

@@ -1091,18 +1091,15 @@ class Graph(object):
 
     def add_vertex(self, n=1):
         """Add a vertex to the graph, and return it. If ``n > 1``, ``n``
-        vertices are inserted and a list is returned."""
+        vertices are inserted and an iterator over the new vertices is returned."""
         self.__check_perms("add_vertex")
-        vlist = []
-        vfilt = self.get_vertex_filter()
-        for i in range(n):
-            v = libcore.add_vertex(weakref.ref(self))
-            if vfilt[0] is not None:
-                vfilt[0][v] = not vfilt[1]
-            vlist.append(v)
-        if n == 1:
-            return vlist[0]
-        return vlist
+        v = libcore.add_vertex(weakref.ref(self), n)
+
+        if n <= 1:
+            return v
+        else:
+            pos = self.num_vertices() - n
+            return (self.vertex(i) for i in xrange(pos, pos + n))
 
     def remove_vertex(self, vertex):
         """Remove a vertex from the graph."""

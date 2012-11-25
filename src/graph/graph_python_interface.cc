@@ -126,9 +126,16 @@ python::object get_edges(python::object g)
     return iter;
 }
 
-python::object add_vertex(python::object g)
+python::object add_vertex(python::object g, size_t n)
 {
     GraphInterface& gi = python::extract<GraphInterface&>(g().attr("_Graph__graph"));
+
+    if (n > 1)
+    {
+        for (size_t i = 0; i < n; ++i)
+            add_vertex(gi.GetGraph());
+        return python::object();
+    }
     return python::object(PythonVertex(g, add_vertex(gi.GetGraph())));
 }
 
