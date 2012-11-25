@@ -1467,11 +1467,39 @@ class Graph(object):
         for name, prop in props[2].items():
             self.graph_properties[name] = PropertyMap(prop, self, "g",
                                                       lambda k: k.__graph)
+        if "_Graph__save__vfilter" in self.graph_properties:
+            self.set_vertex_filter(self.vertex_properties["_Graph__save__vfilter"],
+                                   self.graph_properties["_Graph__save__vfilter"])
+            del self.vertex_properties["_Graph__save__vfilter"]
+            del self.graph_properties["_Graph__save__vfilter"]
+        if "_Graph__save__efilter" in self.graph_properties:
+            self.set_edge_filter(self.edge_properties["_Graph__save__efilter"],
+                                 self.graph_properties["_Graph__save__efilter"])
+            del self.edge_properties["_Graph__save__efilter"]
+            del self.graph_properties["_Graph__save__efilter"]
+        if "_Graph__reversed" in self.graph_properties:
+            self.set_reversed(True)
+            del self.graph_properties["_Graph__reversed"]
+
+
 
     def save(self, file_name, fmt="auto"):
         """Save graph to ``file_name`` (which can be either a string or a
         file-like object). The format is guessed from the ``file_name``, or can
         be specified by ``fmt``, which can be either "xml", "dot" or "gml". """
+
+        if self.get_vertex_filter()[0] is not None:
+            self.graph_properties["_Graph__save__vfilter"] = self.new_graph_property("bool")
+            self.vertex_properties["_Graph__save__vfilter"] =  self.get_vertex_filter()[0]
+            self.graph_properties["_Graph__save__vfilter"] = self.get_vertex_filter()[1]
+        if self.get_edge_filter()[0] is not None:
+            self.graph_properties["_Graph__save__efilter"] = self.new_graph_property("bool")
+            self.edge_properties["_Graph__save__efilter"] = self.get_edge_filter()[0]
+            self.graph_properties["_Graph__save__efilter"] = self.get_edge_filter()[1]
+
+        if self.is_reversed():
+            self.graph_properties["_Graph__reversed"] = self.new_graph_property("bool")
+            self.graph_properties["_Graph__reversed"] = True
 
         if type(file_name) == str:
             file_name = os.path.expanduser(file_name)
@@ -1481,10 +1509,24 @@ class Graph(object):
             fmt = "xml"
         props = [(name[1], prop._PropertyMap__map) for name, prop in \
                  self.__properties.items()]
-        if isinstance(file_name, str):
-            self.__graph.WriteToFile(file_name, None, fmt, props)
-        else:
-            self.__graph.WriteToFile("", file_name, fmt, props)
+        self.stash_filter(vertex=True, edge=True, reversed=True)
+        try:
+            if isinstance(file_name, str):
+                self.__graph.WriteToFile(file_name, None, fmt, props)
+            else:
+                self.__graph.WriteToFile("", file_name, fmt, props)
+        finally:
+            self.pop_filter(vertex=True, edge=True, reversed=True)
+
+        if self.get_vertex_filter()[0] is not None:
+            del self.graph_properties["_Graph__save__vfilter"]
+            del self.vertex_properties["_Graph__save__vfilter"]
+        if self.get_edge_filter()[0] is not None:
+            del self.graph_properties["_Graph__save__efilter"]
+            del self.edge_properties["_Graph__save__efilter"]
+        if self.is_reversed():
+           del self.graph_properties["_Graph__reversed"]
+
 
     # Directedness
     # ============
@@ -1642,15 +1684,6 @@ class Graph(object):
 
     def __getstate__(self):
         state = dict()
-        if libcore.graph_filtering_enabled():
-            if self.get_vertex_filter()[0] != None:
-                self.vertex_properties["_Graph__pickle__vfilter"] = \
-                    self.get_vertex_filter()[0]
-                state["vfilter"] = self.get_vertex_filter()[1]
-            if self.get_edge_filter()[0] != None:
-                self.edge_properties["_Graph__pickle__efilter"] = \
-                    self.get_edge_filter()[0]
-                state["efilter"] = self.get_edge_filter()[1]
         sio = BytesIO()
         stream = gzip.GzipFile(fileobj=sio, mode="w")
         self.save(stream, "xml")
@@ -1665,12 +1698,6 @@ class Graph(object):
             sio = BytesIO(blob)
             stream = gzip.GzipFile(fileobj=sio, mode="r")
             self.load(stream, "xml")
-        if "vfilt" in state:
-            vprop = self.vertex_properties["_Graph__pickle__vfilter"]
-            self.set_vertex_filter(vprop, state["vfilt"])
-        if "efilt" in state:
-            eprop = self.edge_properties["_Graph__pickle__efilter"]
-            self.set_edge_filter(eprop, state["efilt"])
 
 
 def load_graph(file_name, fmt="auto"):
