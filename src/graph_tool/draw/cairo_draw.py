@@ -156,8 +156,7 @@ def surface_from_prop(surface):
                 if surface[v] not in surface_map:
                     sfc = gen_surface(surface[v])
                     surface_map[surface[v]] = sfc
-                else:
-                    prop[v] = surface_map[surface[v]]
+                prop[v] = surface_map[surface[v]]
             elif surface.value_type() == "python::object":
                 if isinstance(surface[v], cairo.Surface):
                     prop[v] = surface[v]
