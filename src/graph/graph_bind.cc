@@ -347,7 +347,8 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
 
     def("raise_error", &raise_error);
     def("get_property_types", &get_property_types);
-    class_<boost::any>("any");
+    class_<boost::any>("any")
+        .def("empty", &boost::any::empty);
 
     def("graph_filtering_enabled", &graph_filtering_enabled);
     def("openmp_enabled", &openmp_enabled);
@@ -355,7 +356,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
     mpl::for_each<mpl::push_back<scalar_types,string>::type>(export_vector_types());
 
     class_<GraphInterface>("GraphInterface", init<>())
-        .def(init<GraphInterface,bool>())
+        .def(init<GraphInterface,bool,python::object,python::object>())
         .def("GetNumberOfVertices", &GraphInterface::GetNumberOfVertices)
         .def("GetNumberOfEdges", &GraphInterface::GetNumberOfEdges)
         .def("SetDirected", &GraphInterface::SetDirected)

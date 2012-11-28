@@ -375,7 +375,7 @@ class PropertyMap(object):
         ``python::object``          ``object``
         =======================     ======================
     """
-    def __init__(self, pmap, g, key_type, key_trans=None):
+    def __init__(self, pmap, g, key_type):
         self.__map = pmap
         self.__g = weakref.ref(g)
         self.__base_g = lambda: None
@@ -387,8 +387,14 @@ class PropertyMap(object):
         except NameError:
             pass  # ignore if GraphView is yet undefined
         self.__key_type = key_type
-        self.__key_trans = key_trans if key_trans is not None else lambda k: k
         self.__register_map()
+
+    def __key_trans(self, key):
+        if self.key_type() == "g":
+            return key._Graph__graph
+        else:
+            return key
+
 
     def __register_map(self):
         for g in [self.__g(), self.__base_g()]:
@@ -932,14 +938,40 @@ class Graph(object):
                 vprune, eprune, rprune = prune
             if not (vprune or eprune or rprune):
                 g.stash_filter(vertex=vprune, edge=vprune, reversed=rprune)
-            self.__graph = libcore.GraphInterface(g.__graph, False)
+
+            # Copy all internal properties from original graph.
+            vprops = []
+            eprops = []
+            for k, v in g.vertex_properties.items():
+                vprops.append([_prop("v", g, v), libcore.any()])
+            for k, v in g.edge_properties.items():
+                eprops.append([_prop("e", g, v), libcore.any()])
+
+            # The actual copying of the graph and property maps
+            self.__graph = libcore.GraphInterface(g.__graph, False, vprops, eprops)
+
+            # Put the copied properties in the internal dictionary
+            for k, v in g.vertex_properties.items():
+                pmap = new_vertex_property(v.value_type(),
+                                           self.__graph.GetVertexIndex(),
+                                           vprops[0][1])
+                self.vertex_properties[k] = PropertyMap(pmap, self, "v")
+                del vprops[0]
+
+            for k, v in g.edge_properties.items():
+                pmap = new_edge_property(v.value_type(),
+                                         self.__graph.GetEdgeIndex(),
+                                         eprops[0][1])
+                self.edge_properties[k] = PropertyMap(pmap, self, "e")
+                del eprops[0]
+
+            for k, v in g.graph_properties.items():
+                new_p = self.new_graph_property(v.value_type())
+                new_p[self] = v[g]
+                self.graph_properties[k] = new_p
+
             if not (vprune or eprune or rprune):
                 g.pop_filter(vertex=vprune, edge=vprune, reversed=rprune)
-
-            for k, v in g.__properties.items():
-                new_p = self.new_property(v.key_type(), v.value_type())
-                self.copy_property(v, new_p, g=g)
-                self.properties[k] = new_p
 
             self.__stashed_filter_state = [self.get_filter_state()]
 
@@ -976,9 +1008,6 @@ class Graph(object):
             self.__stashed_filter_state[0]["directed"] = g.is_directed()
 
             self.pop_filter()
-
-            if vprune or eprune:
-                self.reindex_edges()
 
         # internal index maps
         self.__vertex_index = \
@@ -1364,23 +1393,26 @@ class Graph(object):
         """Create a new (uninitialized) vertex property map of type
         ``value_type``, and return it."""
         return PropertyMap(new_vertex_property(_type_alias(value_type),
-                                               self.__graph.GetVertexIndex()),
+                                               self.__graph.GetVertexIndex(),
+                                               libcore.any()),
                            self, "v")
 
     def new_edge_property(self, value_type):
         """Create a new (uninitialized) edge property map of type
         ``value_type``, and return it."""
         return PropertyMap(new_edge_property(_type_alias(value_type),
-                                             self.__graph.GetEdgeIndex()),
+                                             self.__graph.GetEdgeIndex(),
+                                             libcore.any()),
                            self, "e")
 
     def new_graph_property(self, value_type, val=None):
         """Create a new graph property map of type ``value_type``, and return
         it. If ``val`` is not None, the property is initialized to its value."""
         prop = PropertyMap(new_graph_property(_type_alias(value_type),
-                                              self.__graph.GetGraphIndex()),
-                           self, "g", lambda k: k.__graph)
-        if val != None:
+                                              self.__graph.GetGraphIndex(),
+                                              libcore.any()),
+                           self, "g")
+        if val is not None:
             prop[self] = val
         return prop
 
@@ -1464,8 +1496,7 @@ class Graph(object):
         for name, prop in props[1].items():
             self.edge_properties[name] = PropertyMap(prop, self, "e")
         for name, prop in props[2].items():
-            self.graph_properties[name] = PropertyMap(prop, self, "g",
-                                                      lambda k: k.__graph)
+            self.graph_properties[name] = PropertyMap(prop, self, "g")
         if "_Graph__save__vfilter" in self.graph_properties:
             self.set_vertex_filter(self.vertex_properties["_Graph__save__vfilter"],
                                    self.graph_properties["_Graph__save__vfilter"])
@@ -1886,9 +1917,11 @@ class GraphView(Graph):
         self.__base = g if not isinstance(g, GraphView) else g.base
         Graph.__init__(self)
         # copy graph reference
-        self._Graph__graph = libcore.GraphInterface(g._Graph__graph, True)
-        self._Graph__properties = g._Graph__properties
-        self._Graph__known_properties = g._Graph__known_properties
+        self._Graph__graph = libcore.GraphInterface(g._Graph__graph, True,
+                                                    [], [])
+
+        for k, v in g.properties.items():
+            self.properties[k] = self.own_property(v)
 
         # set already existent filters
         vf = g.get_vertex_filter()

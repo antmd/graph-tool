@@ -515,14 +515,19 @@ struct new_property_map
 {
     template <class ValueType, class IndexMap>
     void operator()(ValueType, IndexMap index, const string& type_name,
-                    python::object& new_prop, bool& found) const
+                     boost::any pmap, python::object& new_prop, bool& found) const
     {
         size_t i = mpl::find<value_types,ValueType>::type::pos::value;
         if (type_name == type_names[i])
         {
             typedef typename property_map_type::apply<ValueType, IndexMap>::type
                 map_t;
-            map_t prop(index);
+            map_t prop;
+            if (pmap.empty())
+                prop = map_t(index);
+            else
+                prop = any_cast<map_t>(pmap);
+
             new_prop = python::object(PythonPropertyMap<map_t>(prop));
             found = true;
         }
@@ -530,12 +535,13 @@ struct new_property_map
 };
 
 template <class IndexMap>
-python::object new_property(const string& type, IndexMap index_map)
+python::object new_property(const string& type, IndexMap index_map,
+                            boost::any pmap)
 {
     python::object prop;
     bool found = false;
     mpl::for_each<value_types>(bind<void>(new_property_map(), _1, index_map,
-                                          ref(type), ref(prop), ref(found)));
+                                          ref(type), pmap, ref(prop), ref(found)));
     if (!found)
         throw ValueException("Invalid property type: " + type);
     return prop;
