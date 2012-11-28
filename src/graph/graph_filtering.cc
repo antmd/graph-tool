@@ -277,7 +277,11 @@ void GraphInterface::PurgeVertices(boost::any aold_index)
                 edges.push_back(*e);
             graph_traits<multigraph_t>::in_edge_iterator ei, ei_end;
             for(tie(ei, ei_end) = in_edges(v, _state->_mg); ei != ei_end; ++ei)
+            {
+                if (source(*ei, _state->_mg) == v)
+                    continue;
                 edges.push_back(*ei);
+            }
             for(size_t j = 0; j < edges.size(); ++j)
                 RemoveEdgeIndex(edges[j]);
             clear_vertex(v, _state->_mg);
