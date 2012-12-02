@@ -109,6 +109,14 @@ public:
         return unchecked_t(*this, size);
     }
 
+    // deep copy
+    checked_vector_property_map copy() const
+    {
+        checked_vector_property_map pmap(index);
+        *(pmap.store) = *store;
+        return pmap;
+    }
+
 public:
     // Copy ctor absent, default semantics is OK.
     // Assignment operator absent, default semantics is OK.
@@ -174,6 +182,15 @@ public:
     std::vector<T>& get_storage() const { return _checked.get_storage(); }
 
     checked_t get_checked() {return _checked;}
+
+    // deep copy
+    unchecked_vector_property_map copy() const
+    {
+        unchecked_vector_property_map pmap(_checked.index,
+                                           _checked.store->size());
+        *(pmap._checked.store) = *(_checked.store);
+        return pmap;
+    }
 
 private:
     checked_t _checked;
