@@ -196,7 +196,7 @@ class GraphWidget(Gtk.DrawingArea):
     pressed, the layout is zoomed to fit the selected vertices only.
 
     If the key "s" is pressed, the dynamic spring-block layout is
-    activated. Vertices which are currently selected do are not updated.
+    activated. Vertices which are currently selected are not updated.
 
     """
 
