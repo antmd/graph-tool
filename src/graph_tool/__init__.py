@@ -1259,7 +1259,7 @@ class Graph(object):
                             lambda g, k: g.__del_property("e", k))
     edge_properties = property(__get_edge_properties,
                                  doc="Dictionary of internal edge properties. The keys are the property names.")
-    ep = property(__get_vertex_properties,
+    ep = property(__get_edge_properties,
                   doc="Alias to :attr:`~Graph.edge_properties`.")
 
     # graph properties
