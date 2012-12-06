@@ -22,6 +22,7 @@
 
 #include <boost/config.hpp>
 #include <boost/iterator_adaptors.hpp>
+#include <boost/range/join.hpp>
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/properties.hpp>
 
@@ -100,7 +101,7 @@ class UndirectedAdaptor<Graph>::EdgeDescriptor:
 public:
     typedef typename graph_traits<Graph>::edge_descriptor original_edge_t;
     EdgeDescriptor(){}
-    EdgeDescriptor(original_edge_t e): original_edge_t(e), _inverted(false) {}
+    EdgeDescriptor(const original_edge_t& e): original_edge_t(e), _inverted(false) {}
     EdgeDescriptor(const original_edge_t& e,  bool inverted):
         original_edge_t(e), _inverted(inverted) {}
 
@@ -118,233 +119,137 @@ private:
 //==============================================================================
 // UndirectedAdaptorEdgeIterator
 //==============================================================================
-template <typename Graph>
-class UndirectedAdaptorEdgeIterator
-    : public iterator<std::bidirectional_iterator_tag,
-                      typename UndirectedAdaptor<Graph>::EdgeDescriptor,
-                      std::ptrdiff_t,
-                      typename UndirectedAdaptor<Graph>::EdgeDescriptor*,
-                      typename UndirectedAdaptor<Graph>::EdgeDescriptor>
-                      // not a reference!
+
+template <class Graph>
+struct make_undirected_edge
 {
-public:
-    UndirectedAdaptorEdgeIterator() {}
-    explicit UndirectedAdaptorEdgeIterator
-        (typename graph_traits<Graph>::edge_iterator& iter):_iter(iter){}
-    typename UndirectedAdaptor<Graph>::EdgeDescriptor operator*() const
+    make_undirected_edge(bool inverted): _inverted(inverted) {}
+    make_undirected_edge(): _inverted(false) {}
+    bool _inverted;
+    typedef typename graph_traits<Graph>::edge_descriptor original_edge_t;
+    typename UndirectedAdaptor<Graph>::EdgeDescriptor operator()(const original_edge_t& e) const
     {
-        return (typename UndirectedAdaptor<Graph>::EdgeDescriptor(*_iter,
-                                                                  false));
+        return typename UndirectedAdaptor<Graph>::EdgeDescriptor(e, _inverted);
     }
-
-//    pointer operator->() const {return **this;}
-
-    UndirectedAdaptorEdgeIterator& operator++()
-    {
-        ++_iter;
-        return *this;
-    }
-
-    UndirectedAdaptorEdgeIterator operator++(int)
-    {
-        UndirectedAdaptorEdgeIterator t = *this;
-        ++_iter;
-        return t;
-    }
-
-    UndirectedAdaptorEdgeIterator& operator--()
-    {
-        --_iter;
-        return *this;
-    }
-
-    UndirectedAdaptorEdgeIterator operator--(int)
-    {
-        UndirectedAdaptorEdgeIterator t = *this;
-        --_iter;
-        return t;
-    }
-
-    bool operator==(UndirectedAdaptorEdgeIterator iter) const
-    {
-        return (_iter == iter._iter);
-    }
-
-    bool operator!=(UndirectedAdaptorEdgeIterator iter) const
-    {
-        return (_iter != iter._iter);
-    }
-
-
-private:
-    typename graph_traits<Graph>::edge_iterator _iter;
 };
+
+template <class Graph>
+struct transformed_iterator
+{
+    typedef transform_iterator<make_undirected_edge<Graph>,
+                               typename graph_traits<Graph>::edge_iterator,
+                               typename UndirectedAdaptor<Graph>::EdgeDescriptor> type;
+};
+
+template <class Graph>
+struct get_undirected_edge_iterator
+{
+    typedef typename transformed_iterator<Graph>::type type;
+};
+
+// template <typename Graph>
+// class UndirectedAdaptorEdgeIterator
+//     : public transformed_iterator<Graph>::type
+// {
+// public:
+//     UndirectedAdaptorEdgeIterator(const typename graph_traits<Graph>::edge_iterator& e):
+//         transformed_iterator<Graph>::type(e, make_undirected_edge<Graph>())
+//     {}
+//     UndirectedAdaptorEdgeIterator(const typename transformed_iterator<Graph>::type& e):
+//         transformed_iterator<Graph>::type(e) {}
+//     UndirectedAdaptorEdgeIterator() {}
+// };
 
 //==============================================================================
 // UndirectedAdaptorOutEdgeIterator
 // this will iterate through both in_edges and out_edges of the underlying graph
 //==============================================================================
-template <typename Graph>
-class UndirectedAdaptorOutEdgeIterator
-    : public iterator<std::bidirectional_iterator_tag,
-                      typename UndirectedAdaptor<Graph>::EdgeDescriptor,
-                      std::ptrdiff_t,
-                      typename UndirectedAdaptor<Graph>::EdgeDescriptor*,
-                      typename UndirectedAdaptor<Graph>::EdgeDescriptor>
-                      //not a reference
+
+template <class Graph>
+struct transformed_out_iterator
 {
-public:
-    UndirectedAdaptorOutEdgeIterator() {};
-    UndirectedAdaptorOutEdgeIterator
-        (typename graph_traits<Graph>::out_edge_iterator out_iter,
-         typename graph_traits<Graph>::in_edge_iterator in_iter,
-         std::pair<typename graph_traits<Graph>::out_edge_iterator,
-                   typename graph_traits<Graph>::out_edge_iterator> out_range,
-         std::pair<typename graph_traits<Graph>::in_edge_iterator,
-                   typename graph_traits<Graph>::in_edge_iterator> in_range)
-            : _out_range(out_range), _in_range(in_range),
-              _out_iter(out_iter), _in_iter(in_iter) {};
-
-    typename UndirectedAdaptor<Graph>::EdgeDescriptor operator*() const
-    {
-        if ( _out_iter != _out_range.second )
-            return (typename UndirectedAdaptor<Graph>::EdgeDescriptor
-                    (*_out_iter, false));
-        else
-            return (typename UndirectedAdaptor<Graph>::EdgeDescriptor
-                    (*_in_iter, true));
-    }
-
-//    pointer operator->() const {return **this;}
-
-    UndirectedAdaptorOutEdgeIterator& operator++()
-    {
-        if (_out_iter != _out_range.second)
-            ++_out_iter;
-        else
-            ++_in_iter;
-        return *this;
-    }
-
-    UndirectedAdaptorOutEdgeIterator operator++(int)
-    {
-        UndirectedAdaptorOutEdgeIterator t = *this;
-        if (_out_iter != _out_range.second)
-            ++_out_iter;
-        else
-            ++_in_iter;
-        return t;
-    }
-
-    UndirectedAdaptorOutEdgeIterator& operator--()
-    {
-        if (_in_iter == _in_range.first)
-           --_out_iter;
-        else
-           --_in_iter;
-
-        return *this;
-    }
-
-    UndirectedAdaptorOutEdgeIterator operator--(int)
-    {
-        UndirectedAdaptorOutEdgeIterator t = *this;
-        if (_in_iter == _in_range.first)
-           --_out_iter;
-        else
-           --_in_iter;
-
-        return t;
-    }
-
-    bool operator==(UndirectedAdaptorOutEdgeIterator iter) const
-    {
-        return (_out_iter == iter._out_iter &&  _in_iter == iter._in_iter);
-    }
-
-    bool operator!=(UndirectedAdaptorOutEdgeIterator iter) const
-    {
-        return !(*this == iter);
-    }
-
-protected:
-    std::pair<typename graph_traits<Graph>::out_edge_iterator,
-              typename graph_traits<Graph>::out_edge_iterator> _out_range;
-    std::pair<typename graph_traits<Graph>::in_edge_iterator,
-              typename graph_traits<Graph>::in_edge_iterator> _in_range;
-    typename graph_traits<Graph>::out_edge_iterator _out_iter;
-    typename graph_traits<Graph>::in_edge_iterator _in_iter;
+    typedef transform_iterator<make_undirected_edge<Graph>,
+                               typename graph_traits<Graph>::out_edge_iterator,
+                               typename UndirectedAdaptor<Graph>::EdgeDescriptor> type;
 };
+
+template <class Graph>
+struct transformed_in_iterator
+{
+    typedef transform_iterator<make_undirected_edge<Graph>,
+                               typename graph_traits<Graph>::in_edge_iterator,
+                               typename UndirectedAdaptor<Graph>::EdgeDescriptor> type;
+};
+
+
+template <class Graph>
+struct transformed_out_range
+{
+    typedef std::pair<typename transformed_out_iterator<Graph>::type,
+                      typename transformed_out_iterator<Graph>::type> type;
+};
+
+template <class Graph>
+struct transformed_in_range
+{
+    typedef std::pair<typename transformed_in_iterator<Graph>::type,
+                      typename transformed_in_iterator<Graph>::type> type;
+};
+
+template <class Graph>
+struct joined_iterator
+{
+    typedef typename range_iterator<joined_range<typename transformed_out_range<Graph>::type,
+                                                 typename transformed_in_range<Graph>::type> >::type type;
+};
+
+template <class Graph>
+struct get_undirected_out_edge_iterator
+{
+    typedef typename joined_iterator<Graph>::type type;
+};
+
+
+// template <typename Graph>
+// class UndirectedAdaptorOutEdgeIterator
+//     : public joined_iterator<Graph>::type
+// {
+// public:
+//     UndirectedAdaptorOutEdgeIterator(const typename joined_iterator<Graph>::type &e)
+//         : joined_iterator<Graph>::type(e) {}
+//     UndirectedAdaptorOutEdgeIterator() {};
+// };
 
 //==============================================================================
 // UndirectedAdaptorAdjacencyIterator
 // just keeps an internal reference to out_edge_iterator and calls target() when
 // referenced
 //==============================================================================
-template <typename Graph>
-class UndirectedAdaptorAdjacencyIterator
-    : public iterator
-        <std::bidirectional_iterator_tag,
-         typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor,
-         std::ptrdiff_t,
-         typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor*,
-         typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor>
-         //not a reference
+
+template <class Graph>
+struct get_undirected_adjacency_iterator
 {
-public:
-    UndirectedAdaptorAdjacencyIterator(){};
-    UndirectedAdaptorAdjacencyIterator
-        (UndirectedAdaptorOutEdgeIterator<Graph> iter,
-         const UndirectedAdaptor<Graph>& g)
-            :_iter(iter), _g(&g) {}
-
-    typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor operator*() const
-    {
-        return target(*_iter,*_g);
-    }
-
-//    pointer operator->() const {return **this;}
-
-    UndirectedAdaptorAdjacencyIterator& operator++()
-    {
-        ++_iter;
-        return *this;
-    }
-
-    UndirectedAdaptorAdjacencyIterator operator++(int)
-    {
-        UndirectedAdaptorAdjacencyIterator t = *this;
-        ++_iter;
-        return t;
-    }
-
-    UndirectedAdaptorAdjacencyIterator& operator--()
-    {
-        --_iter;
-        return *this;
-    }
-
-    UndirectedAdaptorAdjacencyIterator operator--(int)
-    {
-        UndirectedAdaptorAdjacencyIterator t = *this;
-        --_iter;
-        return t;
-    }
-
-    bool operator==(UndirectedAdaptorAdjacencyIterator iter) const
-    {
-        return (iter._iter == _iter);
-    }
-
-    bool operator!=(UndirectedAdaptorAdjacencyIterator iter) const
-    {
-        return (iter._iter != _iter);
-    }
-
-private:
-    UndirectedAdaptorOutEdgeIterator<Graph> _iter;
-    UndirectedAdaptor<Graph> const * _g;
+    typedef typename get_undirected_out_edge_iterator<Graph>::type out_edge_iter_t;
+    typedef typename boost::adjacency_iterator_generator<UndirectedAdaptor<Graph>,
+                                                         typename graph_traits<Graph>::vertex_descriptor,
+                                                         out_edge_iter_t>::type type;
 };
+
+// template <typename Graph>
+// class UndirectedAdaptorAdjacencyIterator
+//     : public boost::adjacency_iterator_generator<UndirectedAdaptor<Graph>,
+//                                                  typename graph_traits<Graph>::vertex_descriptor,
+//                                                  UndirectedAdaptorOutEdgeIterator<Graph> >::type
+// {
+// public:
+//     UndirectedAdaptorAdjacencyIterator(){};
+//     UndirectedAdaptorAdjacencyIterator(const typename graph_traits<UndirectedAdaptor<Graph> >::out_edge_iterator& e,
+//                                        const UndirectedAdaptor<Graph>& g)
+//         : boost::adjacency_iterator_generator<UndirectedAdaptor<Graph>,
+//                                               typename graph_traits<Graph>::vertex_descriptor,
+//                                               UndirectedAdaptorOutEdgeIterator<Graph> >::type(e, &g)
+//     {}
+// };
 
 //==============================================================================
 // graph_traits<UndirectedAdaptor>
@@ -355,11 +260,15 @@ struct graph_traits<UndirectedAdaptor<Graph> > {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
     typedef typename UndirectedAdaptor<Graph>::EdgeDescriptor edge_descriptor;
 
-    typedef UndirectedAdaptorAdjacencyIterator<Graph> adjacency_iterator;
-    typedef UndirectedAdaptorOutEdgeIterator<Graph> out_edge_iterator;
+    //typedef UndirectedAdaptorAdjacencyIterator<Graph> adjacency_iterator;
+    typedef typename get_undirected_adjacency_iterator<Graph>::type adjacency_iterator;
+    //typedef UndirectedAdaptorOutEdgeIterator<Graph> out_edge_iterator;
+    typedef typename get_undirected_out_edge_iterator<Graph>::type out_edge_iterator;
     typedef typename graph_traits<Graph>::in_edge_iterator in_edge_iterator;
     typedef typename graph_traits<Graph>::vertex_iterator vertex_iterator;
-    typedef UndirectedAdaptorEdgeIterator<Graph> edge_iterator;
+    //typedef UndirectedAdaptorEdgeIterator<Graph> edge_iterator;
+    typedef typename get_undirected_edge_iterator<Graph>::type edge_iterator;
+
 
     typedef undirected_tag directed_category;
     typedef allow_parallel_edge_tag edge_parallel_category;
@@ -448,8 +357,9 @@ edges(const UndirectedAdaptor<Graph>& g)
     std::pair<typename graph_traits<Graph>::edge_iterator,
               typename graph_traits<Graph>::edge_iterator> range;
     range = edges(g.OriginalGraph());
-    return make_pair(UndirectedAdaptorEdgeIterator<Graph>(range.first),
-                     UndirectedAdaptorEdgeIterator<Graph>(range.second));
+    typedef typename graph_traits<UndirectedAdaptor<Graph> >::edge_iterator e_iter_t;
+    return std::make_pair(e_iter_t(range.first, make_undirected_edge<Graph>()),
+                          e_iter_t(range.second, make_undirected_edge<Graph>()));
 }
 
 //==============================================================================
@@ -486,23 +396,30 @@ std::pair<typename graph_traits<UndirectedAdaptor<Graph> >::out_edge_iterator,
 out_edges(typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor u,
           const UndirectedAdaptor<Graph>& g)
 {
-    std::pair<typename graph_traits<Graph>::out_edge_iterator,
-              typename graph_traits<Graph>::out_edge_iterator> out_range;
-    std::pair<typename graph_traits<Graph>::in_edge_iterator,
-              typename graph_traits<Graph>::in_edge_iterator> in_range;
+    typename std::pair<typename graph_traits<Graph>::out_edge_iterator,
+                       typename graph_traits<Graph>::out_edge_iterator> out_range;
+    typename std::pair<typename graph_traits<Graph>::in_edge_iterator,
+                       typename graph_traits<Graph>::in_edge_iterator> in_range;
 
     out_range = out_edges(u, g.OriginalGraph());
     in_range = in_edges(u, g.OriginalGraph());
 
-    typedef typename graph_traits<UndirectedAdaptor<Graph> >::out_edge_iterator
-        OutIter;
+    typename transformed_out_range<Graph>::type trans_out_range =
+        std::make_pair(typename transformed_out_iterator<Graph>::type(out_range.first,
+                                                                      make_undirected_edge<Graph>(false)),
+                       typename transformed_out_iterator<Graph>::type(out_range.second,
+                                                                      make_undirected_edge<Graph>(false)));
+    typename transformed_in_range<Graph>::type trans_in_range =
+        std::make_pair(typename transformed_in_iterator<Graph>::type(in_range.first,
+                                                                     make_undirected_edge<Graph>(true)),
+                       typename transformed_in_iterator<Graph>::type(in_range.second,
+                                                                     make_undirected_edge<Graph>(true)));
 
-    OutIter iter_begin = OutIter(out_range.first, in_range.first, out_range,
-                                 in_range);
-    OutIter iter_end   = OutIter(out_range.second, in_range.second, out_range,
-                                 in_range);
+    joined_range<typename transformed_out_range<Graph>::type,
+                 typename transformed_in_range<Graph>::type> jrange = join(trans_out_range,
+                                                                           trans_in_range);
 
-    return std::make_pair(iter_begin, iter_end);
+    return std::make_pair(begin(jrange), end(jrange));
 }
 
 //==============================================================================
@@ -516,16 +433,13 @@ adjacent_vertices
     (typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor u,
      const UndirectedAdaptor<Graph>& g)
 {
-    typedef typename graph_traits<UndirectedAdaptor<Graph> >::out_edge_iterator
-        edge_iter_t;
-    typedef typename graph_traits<UndirectedAdaptor<Graph> >::adjacency_iterator
-        adj_iter_t;
+    std::pair<typename graph_traits<UndirectedAdaptor<Graph> >::out_edge_iterator,
+              typename graph_traits<UndirectedAdaptor<Graph> >::out_edge_iterator>
+        e_range = out_edges(u, g);
 
-    std::pair<edge_iter_t, edge_iter_t> edge_range;
-    edge_range = out_edges(u,g);
-
-    return std::make_pair(adj_iter_t(edge_range.first, g),
-                          adj_iter_t(edge_range.second, g));
+    typedef typename graph_traits<UndirectedAdaptor<Graph> >::adjacency_iterator adjacency_iterator;
+    return std::make_pair(adjacency_iterator(e_range.first, &g),
+                          adjacency_iterator(e_range.second, &g));
 }
 
 //==============================================================================
