@@ -550,7 +550,9 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         |               | correspond to an angle in radians, which will     |                        |                                  |
         |               | determine where the text will be placed outside   |                        |                                  |
         |               | the vertex. If the value is negative, the text    |                        |                                  |
-        |               | will be placed inside the vertex.                 |                        |                                  |
+        |               | will be placed inside the vertex. If the value is |                        |                                  |
+        |               | ``-1``, the vertex size will be automatically     |                        |                                  |
+        |               | increased to accommodate the text.                |                        |                                  |
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
         | font_family   | Font family used to draw the text.                | ``str``                | ``"serif"``                      |
         +---------------+---------------------------------------------------+------------------------+----------------------------------+

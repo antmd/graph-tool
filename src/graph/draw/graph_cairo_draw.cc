@@ -436,7 +436,7 @@ public:
         if (text != "")
         {
             double text_pos = _attrs.template get<double>(VERTEX_TEXT_POSITION);
-            if (text_pos < 0)
+            if (text_pos == -1)
             {
                 cr.select_font_face(_attrs.template get<string>(VERTEX_FONT_FAMILY),
                                     static_cast<Cairo::FontSlant>(_attrs.template get<int32_t>(VERTEX_FONT_SLANT)),
