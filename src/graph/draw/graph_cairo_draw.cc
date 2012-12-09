@@ -74,7 +74,8 @@ enum edge_attr_t {
     EDGE_END_MARKER,
     EDGE_MARKER_SIZE,
     EDGE_CONTROL_POINTS,
-    EDGE_DASH_STYLE
+    EDGE_DASH_STYLE,
+    EDGE_SLOPPY
 };
 
 enum vertex_shape_t {
@@ -107,7 +108,7 @@ typedef pair<double, double> pos_t;
 typedef tuple<double, double, double, double> color_t;
 typedef tr1::unordered_map<int, boost::any> attrs_t;
 
-typedef mpl::map24<
+typedef mpl::map25<
     mpl::pair<mpl::int_<VERTEX_SHAPE>, vertex_shape_t>,
     mpl::pair<mpl::int_<VERTEX_COLOR>, color_t>,
     mpl::pair<mpl::int_<VERTEX_FILL_COLOR>, color_t>,
@@ -131,7 +132,8 @@ typedef mpl::map24<
     mpl::pair<mpl::int_<EDGE_END_MARKER>, edge_marker_t>,
     mpl::pair<mpl::int_<EDGE_MARKER_SIZE>, double>,
     mpl::pair<mpl::int_<EDGE_CONTROL_POINTS>, vector<double> >,
-    mpl::pair<mpl::int_<EDGE_DASH_STYLE>, vector<double> > >
+    mpl::pair<mpl::int_<EDGE_DASH_STYLE>, vector<double> >,
+    mpl::pair<mpl::int_<EDGE_SLOPPY>, uint8_t> >
         attr_types;
 
 namespace std
@@ -687,8 +689,12 @@ public:
         cr.restore();
     }
 
+    template <class, class>
+    friend class EdgeShape;
+
 private:
     pos_t _pos;
+protected:
     AttrDict<Descriptor> _attrs;
 };
 
@@ -706,8 +712,13 @@ public:
         vector<double> controls =
             _attrs.template get<vector<double> >(EDGE_CONTROL_POINTS);
 
+        edge_marker_t start_marker = _attrs.template get<edge_marker_t>(EDGE_START_MARKER);
+        edge_marker_t end_marker = _attrs.template get<edge_marker_t>(EDGE_END_MARKER);
+        bool sloppy = _attrs.template get<uint8_t>(EDGE_SLOPPY);
+
         pos_begin = _s.get_anchor(_t.get_pos(), cr);
         pos_end = _t.get_anchor(_s.get_pos(), cr);
+
         if (controls.size() >= 4)
         {
             double angle = 0;
@@ -755,44 +766,67 @@ public:
 
 
         pos_t pos_end_c = pos_end, pos_begin_c = pos_begin;
-        edge_marker_t start_marker = _attrs.template get<edge_marker_t>(EDGE_START_MARKER);
-        edge_marker_t end_marker = _attrs.template get<edge_marker_t>(EDGE_END_MARKER);
         double marker_size = _attrs.template get<double>(EDGE_MARKER_SIZE);
         marker_size *= get_user_dist(cr);
 
-        if (start_marker != MARKER_SHAPE_NONE && start_marker != MARKER_SHAPE_BAR)
+        if (start_marker == MARKER_SHAPE_NONE && !sloppy)
+            move_radially(pos_begin_c, _s.get_pos(), -marker_size / 2);
+        else if (start_marker != MARKER_SHAPE_NONE && start_marker != MARKER_SHAPE_BAR)
             move_radially(pos_begin_c, _s.get_pos(), marker_size / 2);
-        if (end_marker != MARKER_SHAPE_NONE && end_marker != MARKER_SHAPE_BAR)
+        if (end_marker == MARKER_SHAPE_NONE && !sloppy)
+            move_radially(pos_end_c, _t.get_pos(), -marker_size / 2);
+        else if (end_marker != MARKER_SHAPE_NONE && end_marker != MARKER_SHAPE_BAR)
             move_radially(pos_end_c, _t.get_pos(), marker_size / 2);
 
         color_t color = _attrs.template get<color_t>(EDGE_COLOR);
-        cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color), 1);
         double pw;
         pw = _attrs.template get<double>(EDGE_PENWIDTH);
         pw *= get_user_dist(cr);
         cr.set_line_width(pw);
 
-        // set the clip region to the correct size for better push/pop_group
-        // performance
-        draw_edge_markers(pos_begin, pos_end, controls, marker_size, cr);
-        draw_edge_line(pos_begin_c, pos_end_c, controls, cr);
-        double sx1, sy1, sx2, sy2;
-        cr.get_stroke_extents(sx1, sy1, sx2, sy2);
-        cr.begin_new_path();
-        cr.rectangle(sx1, sy2, sx2 - sx1, sy1 - sy2);
-        cr.clip();
+        double a = get<3>(color);
+        a *= get<3>(_s._attrs.template get<color_t>(VERTEX_COLOR));
+        a *= get<3>(_s._attrs.template get<color_t>(VERTEX_FILL_COLOR));
+        a *= get<3>(_t._attrs.template get<color_t>(VERTEX_COLOR));
+        a *= get<3>(_t._attrs.template get<color_t>(VERTEX_FILL_COLOR));
 
-        // seamlessly blend in separate surface
-        cr.push_group();
-        draw_edge_markers(pos_begin, pos_end, controls, marker_size, cr);
-        cr.fill();
-        draw_edge_line(pos_begin_c, pos_end_c, controls, cr);
-        cr.stroke();
-        vector<double> empty;
-        cr.set_dash(empty, 0);
-        cr.pop_group_to_source();
-        cr.paint_with_alpha(get<3>(color));
-        cr.reset_clip();
+        if (!sloppy && a < 1)
+        {
+            cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color), 1);
+
+            // set the clip region to the correct size for better push/pop_group
+            // performance
+            draw_edge_markers(pos_begin, pos_end, controls, marker_size, cr);
+            draw_edge_line(pos_begin_c, pos_end_c, controls, cr);
+            double sx1, sy1, sx2, sy2;
+            cr.get_stroke_extents(sx1, sy1, sx2, sy2);
+            cr.begin_new_path();
+            cr.rectangle(sx1, sy2, sx2 - sx1, sy1 - sy2);
+            cr.clip();
+
+            // seamlessly blend in separate surface
+            cr.push_group();
+            draw_edge_markers(pos_begin, pos_end, controls, marker_size, cr);
+            cr.fill();
+            draw_edge_line(pos_begin_c, pos_end_c, controls, cr);
+            cr.stroke();
+            cr.set_operator(Cairo::OPERATOR_CLEAR);
+            _s.draw(cr);
+            _t.draw(cr);
+            vector<double> empty;
+            cr.set_dash(empty, 0);
+            cr.pop_group_to_source();
+            cr.paint_with_alpha(get<3>(color));
+            cr.reset_clip();
+        }
+        else
+        {
+            cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color), get<3>(color));
+            draw_edge_markers(pos_begin, pos_end, controls, marker_size, cr);
+            cr.fill();
+            draw_edge_line(pos_begin_c, pos_end_c, controls, cr);
+            cr.stroke();
+        }
     }
 
     void draw_edge_markers(pos_t& pos_begin, pos_t& pos_end,
@@ -1433,7 +1467,8 @@ BOOST_PYTHON_MODULE(libgraph_tool_draw)
         .value("end_marker", EDGE_END_MARKER)
         .value("marker_size", EDGE_MARKER_SIZE)
         .value("control_points", EDGE_CONTROL_POINTS)
-        .value("dash_style", EDGE_DASH_STYLE);
+        .value("dash_style", EDGE_DASH_STYLE)
+        .value("sloppy", EDGE_SLOPPY);
 
     enum_<vertex_shape_t>("vertex_shape")
         .value("circle", SHAPE_CIRCLE)

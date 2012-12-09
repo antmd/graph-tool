@@ -93,7 +93,8 @@ _edefaults = {
     "end_marker": "none",
     "marker_size": 4.,
     "control_points": [],
-    "dash_style": []
+    "dash_style": [],
+    "sloppy": False
     }
 
 
