@@ -793,7 +793,8 @@ def get_bb(g, pos, size, pen_width, size_scale=1, text=None, font_family=None,
             cr.select_font_face(ff)
             fs = font_size[v] if isinstance(font_family, PropertyMap) \
                else font_size
-            cr.set_font_size(fs)
+            if not isinstance(font_size, PropertyMap):
+                cr.set_font_size(fs)
             t = text[v] if isinstance(text, PropertyMap) else text
             if not isinstance(t, str):
                 t = str(t)
