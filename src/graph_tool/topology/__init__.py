@@ -1413,7 +1413,7 @@ def max_cardinality_matching(g, heuristic=False, weight=None, minimize=True,
         If true, a random heuristic will be used, which runs in linear time.
     weight : :class:`~graph_tool.PropertyMap` (optional, default: `None`)
         If provided, the matching will minimize the edge weights (or maximize
-        if ``minimize == False``. This option has no effect if
+        if ``minimize == False``). This option has no effect if
         ``heuristic == False``.
     minimize : bool (optional, default: `True`)
         If `True`, the matching will minimize the weights, otherwise they will
