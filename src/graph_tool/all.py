@@ -58,3 +58,5 @@ from graph_tool.search import *
 import graph_tool.search
 from graph_tool.util import *
 import graph_tool.util
+import graph_tool.collection
+import graph_tool.collection as collection

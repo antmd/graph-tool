@@ -21,6 +21,30 @@ graph_tool_generation_PYTHON = \
     generation/__init__.py
 graph_tool_generationdir = $(MOD_DIR)/generation
 
+graph_tool_collection_PYTHON = \
+    collection/__init__.py
+graph_tool_collection_DATA = \
+    collection/adjnoun.xml.gz \
+    collection/as-22july06.xml.gz \
+    collection/astro-ph.xml.gz \
+    collection/celegansneural.xml.gz \
+    collection/cond-mat-2003.xml.gz \
+    collection/cond-mat-2005.xml.gz \
+    collection/cond-mat.xml.gz \
+    collection/dolphins.xml.gz \
+    collection/football.xml.gz \
+    collection/hep-th.xml.gz \
+    collection/karate.xml.gz \
+    collection/lesmis.xml.gz \
+    collection/netscience.xml.gz \
+    collection/polblogs.xml.gz \
+    collection/polbooks.xml.gz \
+    collection/power.xml.gz \
+    collection/pgp-strong-2009.xml.gz \
+    collection/serengeti-foodweb.xml.gz \
+    collection/email-Enron.xml.gz
+graph_tool_collectiondir = $(MOD_DIR)/collection
+
 graph_tool_correlations_PYTHON = \
     correlations/__init__.py
 graph_tool_correlationsdir = $(MOD_DIR)/correlations

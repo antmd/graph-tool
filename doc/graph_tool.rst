@@ -199,6 +199,7 @@ Available subpackages
 
    centrality
    clustering
+   collection
    community
    correlations
    draw
