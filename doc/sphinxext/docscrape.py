@@ -6,8 +6,9 @@ import inspect
 import textwrap
 import re
 import pydoc
-from StringIO import StringIO
+from io import StringIO
 from warnings import warn
+import collections
 
 class Reader(object):
     """A line-based string reader.
@@ -113,7 +114,7 @@ class NumpyDocString(object):
         return self._parsed_data[key]
 
     def __setitem__(self,key,val):
-        if not self._parsed_data.has_key(key):
+        if key not in self._parsed_data:
             warn("Unknown section %s" % key)
         else:
             self._parsed_data[key] = val
@@ -370,7 +371,7 @@ class NumpyDocString(object):
         idx = self['index']
         out = []
         out += ['.. index:: %s' % idx.get('default','')]
-        for section, references in idx.iteritems():
+        for section, references in idx.items():
             if section == 'default':
                 continue
             out += ['   :%s: %s' % (section, ', '.join(references))]
@@ -428,7 +429,7 @@ class FunctionDoc(NumpyDocString):
                 argspec = inspect.formatargspec(*argspec)
                 argspec = argspec.replace('*','\*')
                 signature = '%s%s' % (func_name, argspec)
-            except TypeError, e:
+            except TypeError as e:
                 signature = '%s()' % func_name
             self['Signature'] = signature
 
@@ -450,8 +451,8 @@ class FunctionDoc(NumpyDocString):
                  'meth': 'method'}
 
         if self._role:
-            if not roles.has_key(self._role):
-                print "Warning: invalid role %s" % self._role
+            if self._role not in roles:
+                print("Warning: invalid role %s" % self._role)
             out += '.. %s:: %s\n    \n\n' % (roles.get(self._role,''),
                                              func_name)
 
@@ -460,6 +461,9 @@ class FunctionDoc(NumpyDocString):
 
 
 class ClassDoc(NumpyDocString):
+
+    extra_public_methods = ['__call__']
+
     def __init__(self, cls, doc=None, modulename='', func_doc=FunctionDoc,
                  config={}):
         if not inspect.isclass(cls) and cls is not None:
@@ -490,7 +494,9 @@ class ClassDoc(NumpyDocString):
         if self._cls is None:
             return []
         return [name for name,func in inspect.getmembers(self._cls)
-                if not name.startswith('_') and callable(func)]
+                if ((not name.startswith('_')
+                     or name in self.extra_public_methods)
+                    and isinstance(func, collections.Callable))]
 
     @property
     def properties(self):

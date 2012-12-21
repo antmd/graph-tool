@@ -27,8 +27,8 @@ rcParams["ps.useafm"] = True
 rcParams["path.simplify"] = True
 rcParams["text.latex.preamble"] = [#"\usepackage{times}",
                                    #"\usepackage{euler}",
-                                   "\usepackage{amssymb}",
-                                   "\usepackage{amsmath}"]
+                                   r"\usepackage{amssymb}",
+                                   r"\usepackage{amsmath}"]
 
 from numpy import *
 import scipy

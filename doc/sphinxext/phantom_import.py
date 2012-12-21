@@ -23,7 +23,7 @@ def setup(app):
 def initialize(app):
     fn = app.config.phantom_import_file
     if (fn and os.path.isfile(fn)):
-        print "[numpydoc] Phantom importing modules from", fn, "..."
+        print("[numpydoc] Phantom importing modules from", fn, "...")
         import_phantom_module(fn)
 
 #------------------------------------------------------------------------------
@@ -129,7 +129,7 @@ def import_phantom_module(xml_file):
                 doc = "%s%s\n\n%s" % (funcname, argspec, doc)
             obj = lambda: 0
             obj.__argspec_is_invalid_ = True
-            obj.func_name = funcname
+            obj.__name__ = funcname
             obj.__name__ = name
             obj.__doc__ = doc
             if inspect.isclass(object_cache[parent]):

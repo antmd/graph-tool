@@ -12,11 +12,11 @@
 """
 
 import sys
-import cStringIO
+import io
 from compiler.ast import Const, Name, Tuple, Div, Mul, Sub, Add
 
 def unparse(ast, single_line_functions=False):
-    s = cStringIO.StringIO()
+    s = io.StringIO()
     UnparseCompilerAst(ast, s, single_line_functions)
     return s.getvalue().lstrip()
 
@@ -258,7 +258,7 @@ class UnparseCompilerAst:
             self._dispatch(t.decorators)
         self._fill("def "+t.name + "(")
         defaults = [None] * (len(t.argnames) - len(t.defaults)) + list(t.defaults)
-        for i, arg in enumerate(zip(t.argnames, defaults)):
+        for i, arg in enumerate(list(zip(t.argnames, defaults))):
             self._write(arg[0])
             if arg[1] is not None:
                 self._write('=')
@@ -504,7 +504,7 @@ class UnparseCompilerAst:
         # Check if parenthesis are needed on left side and then dispatch
         has_paren = False
         left_class = str(t.left.__class__)
-        if (left_class in op_precedence.keys() and
+        if (left_class in list(op_precedence.keys()) and
             op_precedence[left_class] < op_precedence[str(t.__class__)]):
             has_paren = True
         if has_paren:
@@ -517,7 +517,7 @@ class UnparseCompilerAst:
         # Check if parenthesis are needed on the right side and then dispatch
         has_paren = False
         right_class = str(t.right.__class__)
-        if (right_class in op_precedence.keys() and
+        if (right_class in list(op_precedence.keys()) and
             op_precedence[right_class] < op_precedence[str(t.__class__)]):
             has_paren = True
         if has_paren:
