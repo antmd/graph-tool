@@ -520,7 +520,7 @@ public:
         return _pos;
     }
 
-    void draw(Cairo::Context& cr)
+    void draw(Cairo::Context& cr, bool outline=false)
     {
         color_t color, fillcolor;
         double size, pw, aspect;
@@ -530,7 +530,7 @@ public:
 
         string text = _attrs.template get<string>(VERTEX_TEXT);
         double text_pos = 0;
-        if (text != "")
+        if (text != "" && !outline)
         {
             cr.select_font_face(_attrs.template get<string>(VERTEX_FONT_FAMILY),
                                 static_cast<Cairo::FontSlant>(_attrs.template get<int32_t>(VERTEX_FONT_SLANT)),
@@ -540,10 +540,11 @@ public:
             text_pos = _attrs.template get<double>(VERTEX_TEXT_POSITION);
         }
 
-        cr.save();
+        if (!outline)
+            cr.save();
         cr.translate(_pos.first, _pos.second);
 
-        if (_attrs.template get<uint8_t>(VERTEX_HALO))
+        if (_attrs.template get<uint8_t>(VERTEX_HALO) && !outline)
         {
             color_t c = _attrs.template get<color_t>(VERTEX_HALO_COLOR);
             cr.set_source_rgba(get<0>(c), get<1>(c), get<2>(c), get<3>(c));
@@ -572,7 +573,7 @@ public:
             cr.arc(0, 0, size / 2., 0, 2 * M_PI);
             cr.close_path();
             cr.restore();
-            if (shape == SHAPE_DOUBLE_CIRCLE)
+            if (shape == SHAPE_DOUBLE_CIRCLE && !outline)
             {
                 cr.stroke();
                 cr.save();
@@ -602,7 +603,7 @@ public:
             cr.scale(aspect, 1.0);
             draw_polygon(nsides, size / 2, cr);
             cr.restore();
-            if (shape >= SHAPE_DOUBLE_TRIANGLE)
+            if (shape >= SHAPE_DOUBLE_TRIANGLE && !outline)
             {
                 cr.stroke();
                 cr.save();
@@ -620,14 +621,17 @@ public:
         python::object osrc = _attrs.template get<python::object>(VERTEX_SURFACE);
         if (osrc == python::object())
         {
-            fillcolor = _attrs.template get<color_t>(VERTEX_FILL_COLOR);
-            cr.set_source_rgba(get<0>(fillcolor), get<1>(fillcolor),
-                               get<2>(fillcolor), get<3>(fillcolor));
-            cr.fill_preserve();
+            if (!outline)
+            {
+                fillcolor = _attrs.template get<color_t>(VERTEX_FILL_COLOR);
+                cr.set_source_rgba(get<0>(fillcolor), get<1>(fillcolor),
+                                   get<2>(fillcolor), get<3>(fillcolor));
+                cr.fill_preserve();
 
-            cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color),
-                               get<3>(color));
-            cr.stroke();
+                cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color),
+                                   get<3>(color));
+                cr.stroke();
+            }
         }
         else
         {
@@ -648,10 +652,11 @@ public:
 
             cr.set_source(pat);
             cr.rectangle(-r * aspect / 2, -r / 2, r * aspect, r);
-            cr.fill();
+            if (!outline)
+                cr.fill();
         }
 
-        if (text != "")
+        if (text != "" && !outline)
         {
             cr.save();
             Cairo::TextExtents extents;
@@ -686,7 +691,11 @@ public:
             cr.restore();
         }
 
-        cr.restore();
+        if (!outline)
+            cr.restore();
+        else
+            cr.translate(-_pos.first, -_pos.second);
+
     }
 
     template <class, class>
@@ -718,6 +727,8 @@ public:
 
         pos_begin = _s.get_anchor(_t.get_pos(), cr);
         pos_end = _t.get_anchor(_s.get_pos(), cr);
+
+        cr.save();
 
         if (controls.size() >= 4)
         {
@@ -770,13 +781,13 @@ public:
         marker_size *= get_user_dist(cr);
 
         if (start_marker == MARKER_SHAPE_NONE && !sloppy)
-            move_radially(pos_begin_c, _s.get_pos(), -marker_size / 2);
-        else if (start_marker != MARKER_SHAPE_NONE && start_marker != MARKER_SHAPE_BAR)
+            move_radially(pos_begin_c, _s.get_pos(), -_s.get_size(cr) / 2);
+        else if ((start_marker != MARKER_SHAPE_NONE && start_marker != MARKER_SHAPE_BAR))
             move_radially(pos_begin_c, _s.get_pos(), marker_size / 2);
         if (end_marker == MARKER_SHAPE_NONE && !sloppy)
-            move_radially(pos_end_c, _t.get_pos(), -marker_size / 2);
-        else if (end_marker != MARKER_SHAPE_NONE && end_marker != MARKER_SHAPE_BAR)
-            move_radially(pos_end_c, _t.get_pos(), marker_size / 2);
+            move_radially(pos_end_c, _t.get_pos(), -marker_size);
+        else if ((end_marker != MARKER_SHAPE_NONE && end_marker != MARKER_SHAPE_BAR))
+            move_radially(pos_end_c, _t.get_pos(), -_t.get_size(cr) / 2);
 
         color_t color = _attrs.template get<color_t>(EDGE_COLOR);
         double pw;
@@ -792,8 +803,6 @@ public:
 
         if (!sloppy && a < 1)
         {
-            cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color), 1);
-
             // set the clip region to the correct size for better push/pop_group
             // performance
             draw_edge_markers(pos_begin, pos_end, controls, marker_size, cr);
@@ -801,23 +810,25 @@ public:
             double sx1, sy1, sx2, sy2;
             cr.get_stroke_extents(sx1, sy1, sx2, sy2);
             cr.begin_new_path();
-            cr.rectangle(sx1, sy2, sx2 - sx1, sy1 - sy2);
+            cr.rectangle(sx1, sy1, sx2 - sx1, sy2 - sy1);
+            _s.draw(cr, true);
+            _t.draw(cr, true);
+            cr.set_fill_rule(Cairo::FILL_RULE_EVEN_ODD);
             cr.clip();
 
             // seamlessly blend in separate surface
             cr.push_group();
             draw_edge_markers(pos_begin, pos_end, controls, marker_size, cr);
+            cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color), 1);
             cr.fill();
             draw_edge_line(pos_begin_c, pos_end_c, controls, cr);
+            cr.set_line_width(pw);
             cr.stroke();
-            cr.set_operator(Cairo::OPERATOR_CLEAR);
-            _s.draw(cr);
-            _t.draw(cr);
             vector<double> empty;
             cr.set_dash(empty, 0);
             cr.pop_group_to_source();
-            cr.paint_with_alpha(get<3>(color));
             cr.reset_clip();
+            cr.paint_with_alpha(get<3>(color));
         }
         else
         {
@@ -827,6 +838,8 @@ public:
             draw_edge_line(pos_begin_c, pos_end_c, controls, cr);
             cr.stroke();
         }
+
+        cr.restore();
     }
 
     void draw_edge_markers(pos_t& pos_begin, pos_t& pos_end,
