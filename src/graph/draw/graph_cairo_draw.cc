@@ -63,7 +63,9 @@ enum vertex_attr_t {
     VERTEX_FONT_SLANT,
     VERTEX_FONT_WEIGHT,
     VERTEX_FONT_SIZE,
-    VERTEX_SURFACE
+    VERTEX_SURFACE,
+    VERTEX_PIE_FRACTIONS,
+    VERTEX_PIE_COLORS
 };
 
 enum edge_attr_t {
@@ -92,7 +94,8 @@ enum vertex_shape_t {
     SHAPE_DOUBLE_PENTAGON,
     SHAPE_DOUBLE_HEXAGON,
     SHAPE_DOUBLE_HEPTAGON,
-    SHAPE_DOUBLE_OCTAGON
+    SHAPE_DOUBLE_OCTAGON,
+    SHAPE_PIE
 };
 
 enum edge_marker_t {
@@ -108,7 +111,7 @@ typedef pair<double, double> pos_t;
 typedef tuple<double, double, double, double> color_t;
 typedef tr1::unordered_map<int, boost::any> attrs_t;
 
-typedef mpl::map25<
+typedef mpl::map27<
     mpl::pair<mpl::int_<VERTEX_SHAPE>, vertex_shape_t>,
     mpl::pair<mpl::int_<VERTEX_COLOR>, color_t>,
     mpl::pair<mpl::int_<VERTEX_FILL_COLOR>, color_t>,
@@ -125,6 +128,8 @@ typedef mpl::map25<
     mpl::pair<mpl::int_<VERTEX_FONT_WEIGHT>, int32_t>,
     mpl::pair<mpl::int_<VERTEX_FONT_SIZE>, double>,
     mpl::pair<mpl::int_<VERTEX_SURFACE>, python::object>,
+    mpl::pair<mpl::int_<VERTEX_PIE_FRACTIONS>, vector<double> >,
+    mpl::pair<mpl::int_<VERTEX_PIE_COLORS>, vector<color_t> >,
     mpl::pair<mpl::int_<EDGE_COLOR>, color_t>,
     mpl::pair<mpl::int_<EDGE_PENWIDTH>, double>,
     mpl::pair<mpl::int_<EDGE_START_MARKER>, edge_marker_t>,
@@ -389,6 +394,37 @@ double get_polygon_anchor(size_t N, double radius, double angle)
     return radius * cos(M_PI / N) / cos(theta);
 }
 
+
+void draw_pie(double radius, const vector<double>& f,
+              const vector<color_t>& colors, Cairo::Context& cr)
+{
+    if (colors.empty())
+        throw ValueException("No pie colors!");
+    double s = 0;
+    for (size_t i = 0; i < f.size(); ++i)
+        s += f[i];
+    double last = 0;
+    double pos = 0;
+    cr.save();
+    cr.begin_new_path();
+    for (size_t i = 0; i < f.size(); ++i)
+    {
+        pos += f[i];
+        double angle = (2 * pos * M_PI) / s;
+        cr.move_to(0, 0);
+        cr.arc(0, 0, radius, last, angle);
+        last = angle;
+        size_t j = i % colors.size();
+        cr.set_source_rgba(get<0>(colors[j]),
+                           get<1>(colors[j]),
+                           get<2>(colors[j]),
+                           get<3>(colors[j]));
+        cr.fill();
+    }
+    cr.restore();
+}
+
+
 void move_radially(pos_t& pos, const pos_t& origin, double dr)
 {
     double angle = atan2(pos.second - origin.second,
@@ -499,6 +535,7 @@ public:
             break;
         case SHAPE_CIRCLE:
         case SHAPE_DOUBLE_CIRCLE:
+        case SHAPE_PIE:
             dr = r;
             break;
         default:
@@ -584,6 +621,23 @@ public:
                 cr.restore();
             }
             break;
+        case SHAPE_PIE:
+            {
+                if (!outline)
+                {
+                    vector<double> f = _attrs.template get<vector<double> >(VERTEX_PIE_FRACTIONS);
+                    vector<color_t> fcolors = _attrs.template get<vector<color_t> >(VERTEX_PIE_COLORS);
+                    draw_pie(size / 2 + pw / 2, f, fcolors, cr);
+                }
+                else
+                {
+                    cr.save();
+                    cr.arc(0, 0, size / 2., 0, 2 * M_PI);
+                    cr.close_path();
+                    cr.restore();
+                }
+            }
+            break;
         case SHAPE_TRIANGLE:
         case SHAPE_SQUARE:
         case SHAPE_PENTAGON:
@@ -621,7 +675,7 @@ public:
         python::object osrc = _attrs.template get<python::object>(VERTEX_SURFACE);
         if (osrc == python::object())
         {
-            if (!outline)
+            if (!outline && shape != SHAPE_PIE)
             {
                 fillcolor = _attrs.template get<color_t>(VERTEX_FILL_COLOR);
                 cr.set_source_rgba(get<0>(fillcolor), get<1>(fillcolor),
@@ -781,13 +835,13 @@ public:
         marker_size *= get_user_dist(cr);
 
         if (start_marker == MARKER_SHAPE_NONE && !sloppy)
-            move_radially(pos_begin_c, _s.get_pos(), -_s.get_size(cr) / 2);
+            pos_begin = _s.get_pos();
         else if ((start_marker != MARKER_SHAPE_NONE && start_marker != MARKER_SHAPE_BAR))
             move_radially(pos_begin_c, _s.get_pos(), marker_size / 2);
         if (end_marker == MARKER_SHAPE_NONE && !sloppy)
-            move_radially(pos_end_c, _t.get_pos(), -marker_size);
+            pos_end = _t.get_pos();
         else if ((end_marker != MARKER_SHAPE_NONE && end_marker != MARKER_SHAPE_BAR))
-            move_radially(pos_end_c, _t.get_pos(), -_t.get_size(cr) / 2);
+            move_radially(pos_end_c, _t.get_pos(), marker_size / 2);
 
         color_t color = _attrs.template get<color_t>(EDGE_COLOR);
         double pw;
@@ -1413,6 +1467,50 @@ struct color_from_list
     }
 };
 
+struct color_vector_from_list
+{
+    color_vector_from_list()
+    {
+        converter::registry::push_back
+            (&convertible, &construct,
+             boost::python::type_id<vector<color_t> >());
+    }
+
+    static void* convertible(PyObject* obj_ptr)
+    {
+        handle<> x(borrowed(obj_ptr));
+        object o(x);
+        size_t N = len(o);
+        if (N < 4)
+            return 0;
+        return obj_ptr;
+    }
+
+    static void construct(PyObject* obj_ptr,
+                          converter::rvalue_from_python_stage1_data* data)
+    {
+        handle<> x(borrowed(obj_ptr));
+        object o(x);
+        vector<color_t> c;
+        assert(len(o) >= 4);
+        for (int i = 0; i < len(o) / 4; ++i)
+        {
+            c.push_back(color_t());
+            get<0>(c[i]) = extract<double>(o[0 + 4 * i]);
+            get<1>(c[i]) = extract<double>(o[1 + 4 * i]);
+            get<2>(c[i]) = extract<double>(o[2 + 4 * i]);
+            get<3>(c[i]) = extract<double>(o[3 + 4 * i]);
+        }
+
+        void* storage =
+            ( (boost::python::converter::rvalue_from_python_storage
+               <color_t >*) data)->storage.bytes;
+        new (storage) vector<color_t>(c);
+        data->convertible = storage;
+    }
+};
+
+
 template <class Enum>
 struct enum_from_int
 {
@@ -1470,7 +1568,9 @@ BOOST_PYTHON_MODULE(libgraph_tool_draw)
         .value("font_slant", VERTEX_FONT_SLANT)
         .value("font_weight", VERTEX_FONT_WEIGHT)
         .value("font_size", VERTEX_FONT_SIZE)
-        .value("surface", VERTEX_SURFACE);
+        .value("surface", VERTEX_SURFACE)
+        .value("pie_fractions", VERTEX_PIE_FRACTIONS)
+        .value("pie_colors", VERTEX_PIE_COLORS);
 
     enum_<edge_attr_t>("edge_attrs")
         .value("color", EDGE_COLOR)
@@ -1497,7 +1597,8 @@ BOOST_PYTHON_MODULE(libgraph_tool_draw)
         .value("double_pentagon", SHAPE_DOUBLE_PENTAGON)
         .value("double_hexagon", SHAPE_DOUBLE_HEXAGON)
         .value("double_heptagon", SHAPE_DOUBLE_HEPTAGON)
-        .value("double_octagon", SHAPE_DOUBLE_OCTAGON);
+        .value("double_octagon", SHAPE_DOUBLE_OCTAGON)
+        .value("pie", SHAPE_PIE);
 
     enum_<edge_marker_t>("edge_marker")
         .value("none", MARKER_SHAPE_NONE)
@@ -1508,6 +1609,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_draw)
         .value("bar", MARKER_SHAPE_BAR);
 
     color_from_list();
+    color_vector_from_list();
     enum_from_int<vertex_attr_t>();
     enum_from_int<edge_attr_t>();
     enum_from_int<vertex_shape_t>();

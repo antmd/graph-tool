@@ -19,6 +19,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import division, absolute_import, print_function
+import sys
+if sys.version_info < (3,):
+    range = xrange
 
 import os
 import warnings
@@ -34,6 +37,7 @@ except ImportError:
 try:
     import matplotlib.cm
     import matplotlib.colors
+    from matplotlib.cbook import flatten
 except ImportError:
     msg = "Error importing matplotlib module. Graph drawing will not work."
     warnings.filterwarnings("always", msg, ImportWarning)
@@ -82,7 +86,9 @@ _vdefaults = {
     "font_slant": cairo.FONT_SLANT_NORMAL,
     "font_weight": cairo.FONT_WEIGHT_NORMAL,
     "font_size": 12.,
-    "surface": None
+    "surface": None,
+    "pie_fractions": [0.75, 0.25],
+    "pie_colors": ('b', 'g', 'r', 'c', 'm', 'y', 'k')
     }
 
 _edefaults = {
@@ -186,6 +192,37 @@ def _convert(attr, val, cmap):
                 edge_attrs.end_marker]:
         return shape_from_prop(val, edge_marker)
 
+    if attr in [vertex_attrs.pie_colors]:
+        if isinstance(val, PropertyMap):
+            if val.value_type() in ["vector<double>", "vector<long double>"]:
+                return val
+            if val.value_type() == "vector<string>":
+                g = val.get_graph()
+                new_val = g.new_vertex_property("vector<double>")
+                for v in g.vertices():
+                    new_val[v] = [matplotlib.colors.ColorConverter().to_rgba(x) for x in val[v]]
+                return new_val
+            if val.value_type() == "python::object":
+                try:
+                    g = val.get_graph()
+                    new_val = g.new_vertex_property("vector<double>")
+                    for v in g.vertices():
+                        try:
+                            new_val[v] = [float(x) for x in flatten(val[v])]
+                        except ValueError:
+                            new_val[v] = flatten([matplotlib.colors.ColorConverter().to_rgba(x) for x in val[v]])
+                    return new_val
+                except ValueError:
+                    pass
+        else:
+            try:
+                return [float(x) for x in flatten(val)]
+            except ValueError:
+                try:
+                    new_val = flatten(matplotlib.colors.ColorConverter().to_rgba(x) for x in val)
+                    return list(new_val)
+                except ValueError:
+                    pass
     if attr in [vertex_attrs.color, vertex_attrs.fill_color,
                 vertex_attrs.text_color, vertex_attrs.halo_color,
                 edge_attrs.color]:
@@ -409,7 +446,7 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
 
 def color_contrast(color):
     c = np.asarray(color)
-    for i in xrange(3):
+    for i in range(3):
         if color[i] >= 0.5:
             c[i] = 0
         else:
@@ -676,7 +713,7 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         return interactive_window(g, pos, vprops, eprops, vorder, eorder,
                                   nodesfirst, **kwargs)
     else:
-        out, auto_fmt = open_file(output, mode="w")
+        out, auto_fmt = open_file(output, mode="wb")
 
         if fmt == "auto":
             fmt = auto_fmt
