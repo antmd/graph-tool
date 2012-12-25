@@ -75,13 +75,15 @@ Contents
 """
 
 from __future__ import division, absolute_import, print_function
+import sys
+if sys.version_info < (3,):
+    range = xrange
 
 from .. dl_import import dl_import
 dl_import("from . import libgraph_tool_search")
 
 from .. import _prop, _python_type
 from .. decorators import _wraps
-import sys
 import weakref
 
 __all__ = ["bfs_search", "BFSVisitor", "dfs_search", "DFSVisitor",
@@ -1445,7 +1447,7 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
                 self.visited = {}
 
             def examine_vertex(self, u):
-                for i in xrange(len(self.state[u])):
+                for i in range(len(self.state[u])):
                     nstate = list(self.state[u])
                     nstate[i] ^= 1
                     if tuple(nstate) in self.visited:

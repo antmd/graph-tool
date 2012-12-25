@@ -76,6 +76,9 @@ Contents
 """
 
 from __future__ import division, absolute_import, print_function
+import sys
+if sys.version_info < (3,):
+    range = xrange
 
 __author__ = "Tiago de Paula Peixoto <tiago@skewed.de>"
 __copyright__ = "Copyright 2007-2012 Tiago de Paula Peixoto"
@@ -1128,7 +1131,7 @@ class Graph(object):
             return v
         else:
             pos = self.num_vertices() - n
-            return (self.vertex(i) for i in xrange(pos, pos + n))
+            return (self.vertex(i) for i in range(pos, pos + n))
 
     def remove_vertex(self, vertex):
         """Remove a vertex from the graph."""
