@@ -19,19 +19,13 @@
 #include "graph_selectors.hh"
 #include "graph_util.hh"
 
-#include <boost/python.hpp>
+#include "random.hh"
 
-#if (GCC_VERSION >= 40400)
-#   include <tr1/random>
-#else
-#   include <boost/tr1/random.hpp>
-#endif
+#include <boost/python.hpp>
 
 using namespace std;
 using namespace boost;
 using namespace graph_tool;
-
-typedef tr1::mt19937 rng_t;
 
 struct do_maximal_vertex_set
 {
@@ -174,10 +168,8 @@ struct do_maximal_vertex_set
 };
 
 void maximal_vertex_set(GraphInterface& gi, boost::any mvs, bool high_deg,
-                        size_t seed)
+                        rng_t& rng)
 {
-    rng_t rng(static_cast<rng_t::result_type>(seed));
-
     run_action<>()
         (gi, bind<void>(do_maximal_vertex_set(), _1, gi.GetVertexIndex(),
                         _2, high_deg, ref(rng)),

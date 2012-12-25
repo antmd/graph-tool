@@ -32,6 +32,7 @@ libgraph_tool_core_la_SOURCES = \
     graph_python_interface_export.cc \
     graph_selectors.cc \
     graphml.cpp \
+    random.cc \
     read_graphviz_new.cpp
 
 libgraph_tool_core_la_includedir = $(pythondir)/graph_tool/include
@@ -52,6 +53,7 @@ libgraph_tool_core_la_include_HEADERS = \
     histogram.hh \
     mpl_nested_loop.hh \
     numpy_bind.hh \
+    random.hh \
     str_repr.hh \
     shared_map.hh
 

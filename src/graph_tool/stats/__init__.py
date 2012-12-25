@@ -49,7 +49,7 @@ from __future__ import division, absolute_import, print_function
 from .. dl_import import dl_import
 dl_import("from . import libgraph_tool_stats")
 
-from .. import _degree, _prop
+from .. import _degree, _prop, _get_rng
 from numpy import *
 import numpy
 import sys
@@ -391,14 +391,12 @@ def distance_histogram(g, weight=None, bins=[0, 1], samples=None,
     """
 
     if samples != None:
-        seed = numpy.random.randint(0, sys.maxsize)
         ret = libgraph_tool_stats.\
               sampled_distance_histogram(g._Graph__graph,
                                          _prop("e", g, weight),
                                          [float(x) for x in bins],
-                                         samples, seed)
+                                         samples, _get_rng())
     else:
         ret = libgraph_tool_stats.\
               distance_histogram(g._Graph__graph, _prop("e", g, weight), bins)
     return [array(ret[0], dtype="float64") if float_count else ret[0], ret[1]]
-

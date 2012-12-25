@@ -21,12 +21,11 @@
 #include <iostream>
 #include <boost/functional/hash.hpp>
 #include "graph_util.hh"
+#include "random.hh"
 
 #if (GCC_VERSION >= 40400)
-#   include <tr1/random>
 #   include <tr1/unordered_set>
 #else
-#   include <boost/tr1/random.hpp>
 #   include <boost/tr1/unordered_set.hpp>
 #endif
 
@@ -38,16 +37,12 @@ namespace graph_tool
 using namespace std;
 using namespace boost;
 
-typedef tr1::mt19937 rng_t;
-
 struct get_price
 {
     template <class Graph>
     void operator()(Graph& g, size_t N, double gamma, double c, size_t m,
-                    size_t seed) const
+                    rng_t& rng) const
     {
-        rng_t rng(static_cast<rng_t::result_type>(seed));
-
         typedef typename mpl::if_<typename is_directed::apply<Graph>::type,
                                   in_degreeS, out_degreeS>::type DegSelector;
 

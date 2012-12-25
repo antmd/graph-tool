@@ -22,7 +22,7 @@
 
 #include "graph_distance_sampled.hh"
 
-typedef std::tr1::mt19937 rng_t;
+#include "random.hh"
 
 using namespace std;
 using namespace boost;
@@ -32,10 +32,8 @@ typedef Histogram<size_t, size_t, 1> hist_t;
 
 python::object sampled_distance_histogram(GraphInterface& gi, boost::any weight,
                                           const vector<long double>& bins,
-                                          size_t n_samples, size_t seed)
+                                          size_t n_samples, rng_t& rng)
 {
-    rng_t rng(static_cast<rng_t::result_type>(seed));
-
     python::object ret;
 
     if (weight.empty())

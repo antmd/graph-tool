@@ -29,10 +29,10 @@
 #include <boost/functional/hash.hpp>
 #include <algorithm>
 
+#include "random.hh"
+
 namespace graph_tool
 {
-
-typedef tr1::mt19937 rng_t;
 
 template <class Value>
 void insert_sorted(vector<Value>& v, const Value& val)

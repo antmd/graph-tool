@@ -15,19 +15,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#include "graph.hh"
-#include "graph_filtering.hh"
+#include "random.hh"
 
-#include "graph_price.hh"
-
-using namespace std;
-using namespace boost;
-using namespace graph_tool;
-
-
-void price(GraphInterface& gi, size_t N, double gamma, double c, size_t m,
-           rng_t& rng)
+rng_t get_rng(size_t seed)
 {
-    run_action<>()(gi, bind<void>(get_price(), _1, N, gamma, c, m, ref(rng)))();
-    gi.ReIndexEdges();
+    return rng_t(static_cast<rng_t::result_type>(seed));
 }

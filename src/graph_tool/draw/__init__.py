@@ -66,7 +66,7 @@ Contents
 from __future__ import division, absolute_import, print_function
 
 from .. import GraphView, _check_prop_vector, group_vector_property, \
-     ungroup_vector_property, infect_vertex_property, _prop
+     ungroup_vector_property, infect_vertex_property, _prop, _get_rng
 from .. topology import max_cardinality_matching, max_independent_vertex_set, \
     label_components,  pseudo_diameter
 from .. community import condensation_graph
@@ -338,7 +338,6 @@ def _coarse_graph(g, vweight, eweight, mivs=False, groups=None):
 
 
 def _propagate_pos(g, cg, c, cc, cpos, delta, mivs):
-    seed = numpy.random.randint(sys.maxsize)
     pos = g.new_vertex_property(cpos.value_type())
 
     if mivs is not None:
@@ -350,7 +349,7 @@ def _propagate_pos(g, cg, c, cc, cpos, delta, mivs):
                                        _prop("v", g, pos),
                                        _prop("v", cg, cpos),
                                        delta if mivs is None else 0,
-                                       seed)
+                                       _get_rng())
     if mivs is not None:
         g = g.base
         u = GraphView(g, directed=False)
@@ -358,7 +357,7 @@ def _propagate_pos(g, cg, c, cc, cpos, delta, mivs):
             libgraph_tool_layout.propagate_pos_mivs(u._Graph__graph,
                                                     _prop("v", u, mivs),
                                                     _prop("v", u, pos),
-                                                    delta, seed)
+                                                    delta, _get_rng())
         except ValueError:
             graph_draw(u, mivs, vertex_fillcolor=mivs)
     return pos

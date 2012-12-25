@@ -67,10 +67,8 @@ struct retrieve_from_list
 
 void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
                 python::list hist, python::list p, bool comp_iso,
-                bool fill_list, size_t seed)
+                bool fill_list, rng_t& rng)
 {
-    rng_t rng(static_cast<rng_t::result_type>(seed));
-
     boost::any list;
     if (g.GetDirected())
         list = vector<d_graph_t>();
@@ -144,4 +142,3 @@ void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
         subgraph_list.reverse();
     }
 }
-

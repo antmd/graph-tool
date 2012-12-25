@@ -46,7 +46,7 @@ from __future__ import division, absolute_import, print_function
 from .. dl_import import dl_import
 dl_import("from . import libgraph_tool_clustering as _gt")
 
-from .. import _degree, _prop, Graph, GraphView
+from .. import _degree, _prop, Graph, GraphView, _get_rng
 from .. topology import isomorphism
 from .. generation import random_rewire
 from .. stats import vertex_hist
@@ -337,8 +337,6 @@ def motifs(g, k, p=1.0, motif_list=None):
        :doi:`10.1109/TCBB.2006.51`
     """
 
-    seed = random.randint(0, sys.maxsize)
-
     sub_list = []
     directed_motifs = g.is_directed()
 
@@ -364,7 +362,7 @@ def motifs(g, k, p=1.0, motif_list=None):
     was_directed = g.is_directed()
     _gt.get_motifs(g._Graph__graph, k, sub_list, hist, pd,
                    True, len(sub_list) == 0,
-                   seed)
+                   _get_rng())
 
     # assemble graphs
     temp = []

@@ -19,12 +19,6 @@
 #include "graph.hh"
 #include "graph_filtering.hh"
 
-#if (GCC_VERSION >= 40400)
-#   include <tr1/random>
-#else
-#   include <boost/tr1/random.hpp>
-#endif
-
 #include <boost/bind.hpp>
 #include <boost/python.hpp>
 
@@ -78,9 +72,8 @@ struct graph_rewire_block
 size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
                      bool no_sweep, bool self_loops, bool parallel_edges,
                      python::object corr_prob, boost::any block,
-                     bool cache, size_t seed, bool verbose)
+                     bool cache, rng_t& rng, bool verbose)
 {
-    rng_t rng(static_cast<rng_t::result_type>(seed));
     PythonFuncWrap corr(corr_prob);
     size_t pcount = 0;
 

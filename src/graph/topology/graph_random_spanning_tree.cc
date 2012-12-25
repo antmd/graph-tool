@@ -19,19 +19,13 @@
 #include "graph.hh"
 #include "graph_properties.hh"
 
-#include <boost/graph/random_spanning_tree.hpp>
+#include "random.hh"
 
-#if (GCC_VERSION >= 40400)
-#   include <tr1/random>
-#else
-#   include <boost/tr1/random.hpp>
-#endif
+#include <boost/graph/random_spanning_tree.hpp>
 
 using namespace std;
 using namespace boost;
 using namespace graph_tool;
-
-typedef tr1::mt19937 rng_t;
 
 struct get_random_span_tree
 {
@@ -89,10 +83,8 @@ typedef property_map_types::apply<mpl::vector<uint8_t>,
 
 void get_random_spanning_tree(GraphInterface& gi, size_t root,
                               boost::any weight_map, boost::any tree_map,
-                              size_t seed)
+                              rng_t& rng)
 {
-    rng_t rng(static_cast<rng_t::result_type>(seed));
-
     typedef ConstantPropertyMap<size_t,GraphInterface::edge_t> cweight_t;
 
     if (weight_map.empty())

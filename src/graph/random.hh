@@ -15,19 +15,19 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+#ifndef RANDOM_HH
+#define RANDOM_HH
+
 #include "graph.hh"
-#include "graph_filtering.hh"
 
-#include "graph_price.hh"
+#if (GCC_VERSION >= 40400)
+#   include <tr1/random>
+#else
+#   include <boost/tr1/random.hpp>
+#endif
 
-using namespace std;
-using namespace boost;
-using namespace graph_tool;
+typedef std::tr1::mt19937 rng_t;
 
+rng_t get_rng(size_t seed);
 
-void price(GraphInterface& gi, size_t N, double gamma, double c, size_t m,
-           rng_t& rng)
-{
-    run_action<>()(gi, bind<void>(get_price(), _1, N, gamma, c, m, ref(rng)))();
-    gi.ReIndexEdges();
-}
+#endif

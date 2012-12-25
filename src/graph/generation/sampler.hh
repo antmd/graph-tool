@@ -18,19 +18,13 @@
 #ifndef SAMPLER_HH
 #define SAMPLER_HH
 
-#if (GCC_VERSION >= 40400)
-#   include <tr1/random>
-#else
-#   include <boost/tr1/random.hpp>
-#endif
+#include "random.hh"
 #include <iostream>
 
 namespace graph_tool
 {
 using namespace std;
 using namespace boost;
-
-typedef tr1::mt19937 rng_t;
 
 // utility class to sample uniformly from a collection of values
 template <class ValueType>
@@ -232,7 +226,7 @@ public:
         }
         _rebuild = false;
     }
-    
+
 
     ValueType operator()(rng_t& rng, bool remove = false)
     {

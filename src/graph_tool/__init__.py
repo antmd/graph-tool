@@ -112,7 +112,7 @@ __all__ = ["Graph", "GraphView", "Vertex", "Edge", "Vector_bool",
            "Vector_int16_t", "Vector_int32_t", "Vector_int64_t", "Vector_double",
            "Vector_long_double", "Vector_string", "value_types", "load_graph",
            "PropertyMap", "group_vector_property", "ungroup_vector_property",
-           "infect_vertex_property", "edge_difference", "show_config",
+           "infect_vertex_property", "edge_difference", "seed_rng", "show_config",
            "PropertyArray", "__author__", "__copyright__", "__URL__",
            "__version__"]
 
@@ -1964,3 +1964,15 @@ class GraphView(Graph):
         return self.__base
     base = property(__get_base, doc="Base graph.")
 
+
+
+_rng = libcore.get_rng(numpy.random.randint(0, sys.maxsize))
+
+def seed_rng(seed):
+    "Seed the random number generator used by graph-tool's algorithms."
+    import graph_tool
+    graph_tool._rng = libcore.get_rng(int(seed))
+
+def _get_rng():
+    global _rng
+    return _rng

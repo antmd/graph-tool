@@ -47,7 +47,7 @@ from __future__ import division, absolute_import, print_function
 from .. dl_import import dl_import
 dl_import("from . import libgraph_tool_generation")
 
-from .. import Graph, GraphView, _check_prop_scalar, _prop, _limit_args, _gt_type
+from .. import Graph, GraphView, _check_prop_scalar, _prop, _limit_args, _gt_type, _get_rng
 from .. stats import label_parallel_edges, label_self_loops
 import inspect
 import types
@@ -338,7 +338,6 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
        no. 1: 016107 (2011) :doi:`10.1103/PhysRevE.83.016107` :arxiv:`1008.3926`
     """
 
-    seed = numpy.random.randint(0, sys.maxsize)
     g = Graph()
     if deg_corr == None:
         uncorrelated = True
@@ -370,7 +369,7 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
     libgraph_tool_generation.gen_graph(g._Graph__graph, N, sampler,
                                        uncorrelated, not parallel_edges,
                                        not self_loops, not directed,
-                                       seed, verbose, True)
+                                       _get_rng(), verbose, True)
     g.set_directed(directed)
 
     if degree_block:
@@ -670,8 +669,6 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
        no. 1: 016107 (2011) :doi:`10.1103/PhysRevE.83.016107` :arxiv:`1008.3926`
 
     """
-    seed = numpy.random.randint(0, sys.maxsize)
-
     if not parallel_edges:
         p = label_parallel_edges(g)
         if p.a.max() != 0:
@@ -699,7 +696,7 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
                                                     self_loops, parallel_edges,
                                                     corr, _prop("v", g, blockmodel),
                                                     cache_probs,
-                                                    seed, verbose)
+                                                    _get_rng(), verbose)
     if ret_fail:
         return pcount
 
@@ -1223,7 +1220,5 @@ def price_network(N, m=1, c=None, gamma=1, directed=True, seed_graph=None):
         N -= g.num_vertices()
     else:
         g = seed_graph
-    seed = numpy.random.randint(0, sys.maxsize)
-    libgraph_tool_generation.price(g._Graph__graph, N, gamma, c, m, seed)
+    libgraph_tool_generation.price(g._Graph__graph, N, gamma, c, m, _get_rng())
     return g
-

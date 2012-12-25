@@ -29,12 +29,12 @@
 #include <boost/lambda/bind.hpp>
 
 #include "graph_sfdp.hh"
+#include "random.hh"
 
 using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-typedef tr1::mt19937 rng_t;
 
 void sfdp_layout(GraphInterface& g, boost::any pos, boost::any vweight,
                  boost::any eweight, boost::any pin, python::object spring_parms,
@@ -149,10 +149,8 @@ struct get_pointers
 
 void propagate_pos(GraphInterface& gi, GraphInterface& cgi, boost::any vmap,
                    boost::any cvmap, boost::any pos, boost::any cpos,
-                   double delta, size_t seed)
+                   double delta, rng_t& rng)
 {
-    rng_t rng(static_cast<rng_t::result_type>(seed));
-
     typedef mpl::vector<property_map_type::apply
                             <int32_t,
                              GraphInterface::vertex_index_map_t>::type>::type
@@ -226,10 +224,8 @@ struct do_propagate_pos_mivs
 
 
 void propagate_pos_mivs(GraphInterface& gi, boost::any mivs, boost::any pos,
-                        double delta, size_t seed)
+                        double delta, rng_t& rng)
 {
-    rng_t rng(static_cast<rng_t::result_type>(seed));
-
     run_action<>()
         (gi, bind<void>(do_propagate_pos_mivs(),
                         _1, _2, _3, delta, ref(rng)),

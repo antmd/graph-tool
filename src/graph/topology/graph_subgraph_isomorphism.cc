@@ -18,6 +18,8 @@
 #include "graph.hh"
 #include "graph_filtering.hh"
 
+#include "random.hh"
+
 #include <graph_subgraph_isomorphism.hh>
 #include <graph_python_interface.hh>
 
@@ -65,16 +67,15 @@ struct get_subgraphs
                     VertexLabel vertex_label1, boost::any vertex_label2,
                     EdgeLabel edge_label1, boost::any edge_label2,
                     vector<vector<pair<size_t, size_t> > >& F,
-                    vector<size_t>& vlist, pair<size_t,size_t> sn) const
+                    vector<size_t>& vlist, pair<reference_wrapper<rng_t>,size_t> sn) const
     {
         typedef PropLabelling<Graph1,Graph2,VertexLabel,VertexLabel>
             vlabelling_t;
         typedef PropLabelling<Graph1,Graph2,EdgeLabel,EdgeLabel>
             elabelling_t;
-        size_t seed = sn.first;
+        rng_t& rng = sn.first;
         size_t max_n = sn.second;
 
-        rng_t rng(static_cast<rng_t::result_type>(seed));
         vlist.resize(num_vertices(*g));
         int i, N = num_vertices(*g);
         for (i = 0; i < N; ++i)
@@ -166,7 +167,7 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
                           boost::any vertex_label1, boost::any vertex_label2,
                           boost::any edge_label1, boost::any edge_label2,
                           python::list vmapping, python::list emapping,
-                          size_t max_n, size_t seed)
+                          size_t max_n, rng_t& rng)
 {
     if (gi1.GetDirected() != gi2.GetDirected())
         return;
@@ -191,7 +192,7 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
         run_action<graph_tool::detail::always_directed>()
             (gi1, bind<void>(get_subgraphs(),
                              _1, _2, _3, vertex_label2, _4, edge_label2,
-                             ref(F), ref(vlist), make_pair(seed, max_n)),
+                             ref(F), ref(vlist), make_pair(ref(rng), max_n)),
              directed_graph_view_pointers(), vertex_props_t(),
              edge_props_t())
             (gi2.GetGraphView(), vertex_label1,  edge_label1);
@@ -201,7 +202,7 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
         run_action<graph_tool::detail::never_directed>()
             (gi1, bind<void>(get_subgraphs(),
                              _1, _2, _3, vertex_label2, _4, edge_label2,
-                             ref(F), ref(vlist), make_pair(seed, max_n)),
+                             ref(F), ref(vlist), make_pair(ref(rng), max_n)),
              undirected_graph_view_pointers(), vertex_props_t(),
              edge_props_t())
             (gi2.GetGraphView(), vertex_label1, edge_label1);

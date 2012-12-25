@@ -25,8 +25,6 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-typedef tr1::mt19937 rng_t;
-
 class PythonFuncWrap
 {
 public:
@@ -50,7 +48,7 @@ private:
 
 void generate_graph(GraphInterface& gi, size_t N, python::object deg_sample,
                     bool uncorrelated, bool no_parallel, bool no_self_loops,
-                    bool undirected, size_t seed, bool verbose, bool verify)
+                    bool undirected, rng_t& rng, bool verbose, bool verify)
 {
     typedef graph_tool::detail::get_all_graph_views::apply<
     graph_tool::detail::scalar_pairs, mpl::bool_<false>,
@@ -66,7 +64,7 @@ void generate_graph(GraphInterface& gi, size_t N, python::object deg_sample,
             (gi, bind<void>(gen_graph(), _1, N,
                             PythonFuncWrap(deg_sample),
                             no_parallel, no_self_loops,
-                            seed, verbose, verify))();
+                            ref(rng), verbose, verify))();
     }
     else
     {
@@ -74,7 +72,7 @@ void generate_graph(GraphInterface& gi, size_t N, python::object deg_sample,
             (gi, bind<void>(gen_graph(), _1, N,
                             PythonFuncWrap(deg_sample),
                             no_parallel, no_self_loops,
-                            seed, verbose, verify))();
+                            ref(rng), verbose, verify))();
     }
     gi.ReIndexEdges();
 }
@@ -82,7 +80,7 @@ void generate_graph(GraphInterface& gi, size_t N, python::object deg_sample,
 size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
                      bool no_sweep, bool self_loops, bool parallel_edges,
                      python::object corr_prob, boost::any block,
-                     bool cache, size_t seed, bool verbose);
+                     bool cache, rng_t& rng, bool verbose);
 void predecessor_graph(GraphInterface& gi, GraphInterface& gpi,
                        boost::any pred_map);
 void line_graph(GraphInterface& gi, GraphInterface& lgi,
@@ -101,7 +99,7 @@ void lattice(GraphInterface& gi, python::object oshape, bool periodic);
 void geometric(GraphInterface& gi, python::object opoints, double r,
                python::object orange, bool periodic, boost::any pos);
 void price(GraphInterface& gi, size_t N, double gamma, double c, size_t m,
-           size_t seed);
+           rng_t& rng);
 
 using namespace boost::python;
 

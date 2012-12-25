@@ -20,10 +20,8 @@
 
 #if (GCC_VERSION >= 40400)
 #   include <tr1/unordered_set>
-#   include <tr1/random>
 #else
 #   include <boost/tr1/unordered_set.hpp>
-#   include <boost/tr1/random.hpp>
 #endif
 #include <boost/functional/hash.hpp>
 
@@ -33,6 +31,8 @@
 #include "graph_filtering.hh"
 #include "graph_util.hh"
 #include "sampler.hh"
+
+#include "random.hh"
 
 namespace graph_tool
 {

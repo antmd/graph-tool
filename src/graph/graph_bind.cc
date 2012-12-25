@@ -338,6 +338,10 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
     do_import_array();
     export_python_interface();
 
+    // random numbers
+    class_<rng_t>("rng_t");
+    def("get_rng", get_rng);
+
     register_exception_translator<GraphException>
         (graph_exception_translator<GraphException>);
     register_exception_translator<IOException>

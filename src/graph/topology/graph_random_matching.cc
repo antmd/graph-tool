@@ -19,19 +19,14 @@
 #include "graph_selectors.hh"
 #include "graph_util.hh"
 
+#include "random.hh"
+
 #include <boost/python.hpp>
 
-#if (GCC_VERSION >= 40400)
-#   include <tr1/random>
-#else
-#   include <boost/tr1/random.hpp>
-#endif
 
 using namespace std;
 using namespace boost;
 using namespace graph_tool;
-
-typedef tr1::mt19937 rng_t;
 
 struct do_random_matching
 {
@@ -94,9 +89,8 @@ struct do_random_matching
 };
 
 void random_matching(GraphInterface& gi, boost::any weight, boost::any match,
-                     bool minimize, size_t seed)
+                     bool minimize, rng_t& rng)
 {
-    rng_t rng(static_cast<rng_t::result_type>(seed));
     typedef ConstantPropertyMap<int32_t,GraphInterface::edge_t> weight_map_t;
     typedef mpl::push_back<edge_scalar_properties, weight_map_t>::type
         edge_props_t;

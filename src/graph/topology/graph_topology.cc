@@ -17,6 +17,7 @@
 
 #include <boost/python.hpp>
 #include "graph.hh"
+#include "random.hh"
 
 using namespace boost;
 using namespace boost::python;
@@ -37,14 +38,14 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
                           boost::any vertex_label1, boost::any vertex_label2,
                           boost::any edge_label1, boost::any edge_label2,
                           python::list vmapping, python::list emapping,
-                          size_t n_max, size_t seed);
+                          size_t n_max, rng_t& rng);
 double reciprocity(GraphInterface& gi);
 size_t sequential_coloring(GraphInterface& gi, boost::any order,
                            boost::any color);
 bool is_bipartite(GraphInterface& gi, boost::any part_map);
 void get_random_spanning_tree(GraphInterface& gi, size_t root,
                               boost::any weight_map, boost::any tree_map,
-                              size_t seed);
+                              rng_t& rng);
 vector<int32_t> get_tsp(GraphInterface& gi, size_t src, boost::any weight_map);
 
 void export_components();

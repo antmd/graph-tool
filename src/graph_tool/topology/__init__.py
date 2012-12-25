@@ -65,7 +65,7 @@ from .. dl_import import dl_import
 dl_import("from . import libgraph_tool_topology")
 
 from .. import _prop, Vector_int32_t, _check_prop_writable, \
-     _check_prop_scalar, _check_prop_vector, Graph, PropertyMap, GraphView
+     _check_prop_scalar, _check_prop_vector, Graph, PropertyMap, GraphView, _get_rng
 import random, sys, numpy
 __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
            "max_cardinality_matching", "max_independent_vertex_set",
@@ -1542,11 +1542,10 @@ def max_independent_vertex_set(g, high_deg=False, mivs=None):
     _check_prop_scalar(mivs, "mivs")
     _check_prop_writable(mivs, "mivs")
 
-    seed = numpy.random.randint(0, sys.maxsize)
     u = GraphView(g, directed=False)
     libgraph_tool_topology.\
         maximal_vertex_set(u._Graph__graph, _prop("v", u, mivs), high_deg,
-                           seed)
+                           _get_rng())
     mivs = g.own_property(mivs)
     return mivs
 

@@ -20,11 +20,9 @@
 
 #if (GCC_VERSION >= 40400)
 #   include <tr1/unordered_map>
-#   include <tr1/random>
 #   include <tr1/tuple>
 #else
 #   include <boost/tr1/unordered_map.hpp>
-#   include <boost/tr1/random.hpp>
 #   include <boost/tr1/tuple.hpp>
 #endif
 #include <boost/functional/hash.hpp>
@@ -33,13 +31,12 @@
 #include <iostream>
 
 #include "graph_util.hh"
+#include "random.hh"
 
 namespace graph_tool
 {
 using namespace std;
 using namespace boost;
-
-typedef tr1::mt19937 rng_t;
 
 // desired vertex type, with desired j,k values and the index in the real graph
 struct dvertex_t
@@ -443,10 +440,9 @@ struct gen_graph
 {
     template <class Graph, class DegSample>
     void operator()(Graph& g, size_t N, DegSample& deg_sample, bool no_parallel,
-                    bool no_self_loops, size_t seed, bool verbose, bool verify)
+                    bool no_self_loops, rng_t& rng, bool verbose, bool verify)
         const
     {
-        rng_t rng(static_cast<rng_t::result_type>(seed));
         typename property_map<Graph,vertex_index_t>::type vertex_index =
             get(vertex_index_t(), g);
 

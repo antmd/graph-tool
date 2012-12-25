@@ -22,17 +22,14 @@
 #include <utility>
 #if (GCC_VERSION >= 40400)
 #   include <tr1/unordered_set>
-#   include <tr1/random>
 #else
 #   include <boost/tr1/unordered_set.hpp>
-#   include <boost/tr1/random.hpp>
 #endif
 
 namespace boost
 {
 using namespace std;
 
-typedef tr1::mt19937 rng_t;
 
 namespace detail {
 
