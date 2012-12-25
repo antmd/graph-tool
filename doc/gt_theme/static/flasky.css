@@ -324,6 +324,7 @@ dl.function, dl.class, dl.exception {
     border-top-style: solid;
     border-top-width: 5px;
     padding-top: 1em;
+    clear: both;
 }
 
 dl.function dt, dl.class dt, dl.exception dt{

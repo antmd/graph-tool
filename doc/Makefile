@@ -7,7 +7,7 @@ ORIGIMAGES = ${HUGEIMAGES:.pdf=.pdf-orig}
 PNGCONV = pdftoppm -png -singlefile -r 96 -freetype yes -aa yes -aaVector yes
 PDFCONV = gm convert
 
-all: $(ORIGIMAGES) $(PNGIMAGES)
+all: #$(ORIGIMAGES) $(PNGIMAGES)
 	sphinx-build -E -b html . build
 
 %.pdf-orig: %.pdf
