@@ -841,7 +841,9 @@ def get_bb(g, pos, size, pen_width, size_scale=1, text=None, font_family=None,
             if uniform:
                 size[:] = size[i]
                 break
-    delta = (size * size_scale) / 2 + pen_width
+    sl = label_self_loops(g)
+    slm = sl.a.max() * 0.75
+    delta = (size * size_scale * (slm + 1)) / 2 + pen_width
     x_range = [pos_x.fa.min(), pos_x.fa.max()]
     y_range = [pos_y.fa.min(), pos_y.fa.max()]
     x_delta = [x_range[0] - (pos_x.fa - delta).min(),
