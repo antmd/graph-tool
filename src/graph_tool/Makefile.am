@@ -62,7 +62,8 @@ graph_tool_centrality_PYTHON = \
 graph_tool_centralitydir = $(MOD_DIR)/centrality
 
 graph_tool_community_PYTHON = \
-    community/__init__.py
+    community/__init__.py \
+    community/blockmodel.py
 graph_tool_communitydir = $(MOD_DIR)/community
 
 graph_tool_draw_PYTHON = \

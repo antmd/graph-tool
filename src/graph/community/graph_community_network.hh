@@ -34,16 +34,14 @@ using namespace boost;
 
 // retrieves the network of communities given a community structure
 
-struct get_community_network
+struct get_community_network_vertices
 {
     template <class Graph, class CommunityGraph, class CommunityMap,
-              class CCommunityMap, class VertexWeightMap, class EdgeWeightMap,
-              class EdgeIndex, class VertexProperty, class EdgeProperty>
-    void operator()(const Graph& g, CommunityGraph& cg, EdgeIndex cedge_index,
-                    CommunityMap s_map, CCommunityMap cs_map,
-                    VertexWeightMap vweight, EdgeWeightMap eweight,
-                    VertexProperty vertex_count, EdgeProperty edge_count,
-                    bool self_loops) const
+              class CCommunityMap, class VertexWeightMap,
+              class VertexProperty>
+    void operator()(const Graph& g, CommunityGraph& cg, CommunityMap s_map,
+                    CCommunityMap cs_map, VertexWeightMap vweight,
+                    VertexProperty vertex_count) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
@@ -56,55 +54,27 @@ struct get_community_network
         typedef typename boost::property_traits<VertexProperty>::value_type
             vprop_type;
 
-        tr1::unordered_map<s_type, pair<vector<vertex_t>, vprop_type>, hash<s_type> >
-            comms;
+        // create vertices
+        tr1::unordered_map<s_type, vertex_t, hash<s_type> > comms;
         typename graph_traits<Graph>::vertex_iterator vi, vi_end;
         for (tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
         {
-            pair<vector<vertex_t>, vprop_type>& m = comms[get(s_map, *vi)];
-            m.first.push_back(*vi);
-            m.second += get(vweight, *vi);
-        }
-
-        // create vertices
-        tr1::unordered_map<s_type, cvertex_t, hash<s_type> >
-            comm_vertices;
-        for (typeof(comms.begin()) iter = comms.begin(); iter != comms.end();
-             ++iter)
-        {
-            cvertex_t v = add_vertex(cg);
-            put(vertex_count, v, iter->second.second);
-            comm_vertices[iter->first] = v;
-            put_dispatch(cs_map, v, iter->first,
-                         typename boost::is_convertible
-                            <typename property_traits<CommunityMap>::category,
+            s_type s = get(s_map, *vi);
+            typeof(comms.begin()) iter = comms.find(s);
+            cvertex_t v;
+            if (iter == comms.end())
+            {
+                comms[s] = v = add_vertex(cg);
+                put_dispatch(cs_map, v, s,
+                             typename boost::is_convertible
+                             <typename property_traits<CommunityMap>::category,
                              writable_property_map_tag>::type());
-        }
-
-        // create edges
-        tr1::unordered_map<pair<size_t, size_t>,
-                           cedge_t, hash<pair<size_t, size_t> > >
-            comm_edges;
-        typename graph_traits<Graph>::edge_iterator e, e_end;
-        for (tie(e, e_end) = edges(g); e != e_end; ++e)
-        {
-            cvertex_t cs = comm_vertices[get(s_map, source(*e, g))];
-            cvertex_t ct = comm_vertices[get(s_map, target(*e, g))];
-            if (ct == cs && !self_loops)
-                continue;
-            cedge_t ce;
-            if (comm_edges.find(make_pair(cs, ct)) != comm_edges.end())
-                ce = comm_edges[make_pair(cs, ct)];
-            else if (!is_directed::apply<Graph>::type::value &&
-                     comm_edges.find(make_pair(ct, cs)) != comm_edges.end())
-                ce = comm_edges[make_pair(ct, cs)];
+            }
             else
             {
-                ce = add_edge(cs, ct, cg).first;
-                comm_edges[make_pair(cs, ct)] = ce;
-                put(cedge_index, ce, comm_edges.size() - 1);
+                v = iter->second;
             }
-            put(edge_count, ce, get(edge_count, ce) + get(eweight, *e));
+            put(vertex_count, v, get(vertex_count, v) + get(vweight, *vi));
         }
     }
 
@@ -126,6 +96,230 @@ struct get_community_network
     }
 
 };
+
+struct get_community_network_edges
+{
+    template <class Graph, class CommunityGraph, class CommunityMap,
+              class CCommunityMap, class EdgeWeightMap,
+              class EdgeIndex, class EdgeProperty>
+    void operator()(const Graph& g, CommunityGraph& cg, EdgeIndex cedge_index,
+                    CommunityMap s_map, CCommunityMap cs_map,
+                    EdgeWeightMap eweight, EdgeProperty edge_count,
+                    bool self_loops) const
+    {
+        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
+        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
+        typedef typename graph_traits<CommunityGraph>::vertex_descriptor
+            cvertex_t;
+        typedef typename graph_traits<CommunityGraph>::edge_descriptor
+            cedge_t;
+        typedef typename boost::property_traits<CommunityMap>::value_type
+            s_type;
+
+        tr1::unordered_map<s_type, vertex_t, hash<s_type> > comms;
+        typename graph_traits<CommunityGraph>::vertex_iterator v, v_end;
+        for (tie(v, v_end) = vertices(cg); v != v_end; ++v)
+            comms[cs_map[*v]] = *v;
+
+        // create edges
+        tr1::unordered_map<pair<size_t, size_t>,
+                           cedge_t, hash<pair<size_t, size_t> > >
+            comm_edges;
+        typename graph_traits<Graph>::edge_iterator e, e_end;
+        for (tie(e, e_end) = edges(g); e != e_end; ++e)
+        {
+            cvertex_t cs = comms[get(s_map, source(*e, g))];
+            cvertex_t ct = comms[get(s_map, target(*e, g))];
+            if (ct == cs && !self_loops)
+                continue;
+            cedge_t ce;
+            if (comm_edges.find(make_pair(cs, ct)) != comm_edges.end())
+                ce = comm_edges[make_pair(cs, ct)];
+            else if (!is_directed::apply<Graph>::type::value &&
+                     comm_edges.find(make_pair(ct, cs)) != comm_edges.end())
+                ce = comm_edges[make_pair(ct, cs)];
+            else
+            {
+                ce = add_edge(cs, ct, cg).first;
+                comm_edges[make_pair(cs, ct)] = ce;
+                put(cedge_index, ce, comm_edges.size() - 1);
+            }
+            put(edge_count, ce, get(edge_count, ce) + get(eweight, *e));
+        }
+    }
+};
+
+
+template <class T1, class T2>
+inline vector<T1> operator*(const vector<T1>& v, const T2& c)
+{
+    vector<T1> r(v);
+    for (size_t i = 0; i < r.size(); ++i)
+        r[i] = v[i] * c;
+    return r;
+}
+
+template <class T1, class T2>
+inline void operator/=(vector<T1>& v, const T2& c)
+{
+    for (size_t i = 0; i < v.size(); ++i)
+        v[i] /= c;
+}
+
+template <class T1, class T2>
+inline vector<T1> operator*(const vector<T1>& v1, const vector<T2>& v2)
+{
+    vector<T1> r(max(v1.size(), v2.size()));
+    for (size_t i = 0; i < min(v1.size(), v2.size()); ++i)
+        r[i] = v1[i] * v2[i];
+    return r;
+}
+
+template <class T1, class T2>
+inline void operator/=(vector<T1>& v1, const vector<T2>& v2)
+{
+    v1.resize(max(v1.size(), v2.size()));
+    for (size_t i = 0; i < v2.size(); ++i)
+        v1[i] /= v2[i];
+    return v1;
+}
+
+template <class T1, class T2>
+inline void operator+=(vector<T1>& v1, const vector<T2>& v2)
+{
+    v1.resize(max(v1.size(), v2.size()));
+    for (size_t i = 0; i < v2.size(); ++i)
+        v1[i] += v2[i];
+}
+
+
+// retrieves the average property of a community structure
+
+struct get_weighted_vertex_property
+{
+    template <class Graph, class VertexWeightMap, class Vprop>
+    void operator()(const Graph& g, VertexWeightMap vweight, Vprop vprop,
+                    Vprop temp) const
+    {
+        typename graph_traits<Graph>::vertex_iterator vi, vi_end;
+        for (tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
+            temp[*vi] = vprop[*vi] * get(vweight, *vi);
+    }
+};
+
+
+struct get_vertex_community_property_sum
+{
+    template <class Graph, class CommunityGraph, class CommunityMap,
+              class CCommunityMap, class Vprop>
+    void operator()(const Graph& g, CommunityGraph& cg, CommunityMap s_map,
+                    CCommunityMap cs_map, Vprop vprop, Vprop cvprop) const
+    {
+        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
+        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
+        typedef typename graph_traits<CommunityGraph>::vertex_descriptor
+            cvertex_t;
+        typedef typename boost::property_traits<CommunityMap>::value_type
+            s_type;
+
+        tr1::unordered_map<s_type, vertex_t, hash<s_type> > comms;
+        typename graph_traits<CommunityGraph>::vertex_iterator v, v_end;
+        for (tie(v, v_end) = vertices(cg); v != v_end; ++v)
+            comms[cs_map[*v]] = *v;
+
+        typename graph_traits<Graph>::vertex_iterator vi, vi_end;
+        for (tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
+        {
+            s_type s = get(s_map, *vi);
+            cvprop[comms[s]] += vprop[*vi];
+        }
+    }
+};
+
+struct get_vertex_community_property_norm
+{
+    template <class CommunityGraph, class VertexCountMap, class Vprop>
+    void operator()(const CommunityGraph& cg, VertexCountMap vertex_count,
+                    Vprop cvprop) const
+    {
+        typename graph_traits<CommunityGraph>::vertex_iterator v, v_end;
+        for (tie(v, v_end) = vertices(cg); v != v_end; ++v)
+            cvprop[*v] /= vertex_count[*v];
+    }
+};
+
+
+struct get_weighted_edge_property
+{
+    template <class Graph, class EdgeWeightMap, class Eprop>
+    void operator()(const Graph& g, EdgeWeightMap eweight, Eprop eprop,
+                    Eprop temp) const
+    {
+        typename graph_traits<Graph>::edge_iterator ei, ei_end;
+        for (tie(ei, ei_end) = edges(g); ei != ei_end; ++ei)
+            temp[*ei] = eprop[*ei] * get(eweight, *ei);
+    }
+};
+
+struct get_edge_community_property_sum
+{
+    template <class Graph, class CommunityGraph, class CommunityMap,
+              class CCommunityMap, class Eprop>
+    void operator()(const Graph& g, CommunityGraph& cg, CommunityMap s_map,
+                    CCommunityMap cs_map, Eprop eprop, Eprop ceprop,
+                    bool self_loops) const
+    {
+        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
+        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
+        typedef typename graph_traits<CommunityGraph>::vertex_descriptor
+            cvertex_t;
+        typedef typename graph_traits<CommunityGraph>::edge_descriptor
+            cedge_t;
+        typedef typename boost::property_traits<CommunityMap>::value_type
+            s_type;
+
+        tr1::unordered_map<s_type, vertex_t, hash<s_type> > comms;
+        typename graph_traits<CommunityGraph>::vertex_iterator v, v_end;
+        for (tie(v, v_end) = vertices(cg); v != v_end; ++v)
+            comms[cs_map[*v]] = *v;
+
+        tr1::unordered_map<pair<size_t, size_t>,
+                           cedge_t, hash<pair<size_t, size_t> > >
+            comm_edges;
+        typename graph_traits<CommunityGraph>::edge_iterator e, e_end;
+        for (tie(e, e_end) = edges(cg); e != e_end; ++e)
+        {
+            cvertex_t cs = comms[get(cs_map, source(*e, cg))];
+            cvertex_t ct = comms[get(cs_map, target(*e, cg))];
+            comm_edges[make_pair(cs, ct)] = *e;
+        }
+
+        typename graph_traits<Graph>::edge_iterator ei, ei_end;
+        for (tie(ei, ei_end) = edges(g); ei != ei_end; ++ei)
+        {
+            cvertex_t cs = comms[get(s_map, source(*ei, g))];
+            cvertex_t ct = comms[get(s_map, target(*ei, g))];
+            if (cs == ct && !self_loops)
+                continue;
+            ceprop[comm_edges[make_pair(cs, ct)]] += eprop[*ei];
+        }
+    }
+};
+
+struct get_edge_community_property_norm
+{
+    template <class CommunityGraph, class EdgeCountMap,
+              class Eprop>
+    void operator()(const CommunityGraph& cg, EdgeCountMap edge_count,
+                    Eprop ceprop) const
+    {
+        typename graph_traits<CommunityGraph>::edge_iterator e, e_end;
+        for (tie(e, e_end) = edges(cg); e != e_end; ++e)
+            ceprop[*e] /= edge_count[*e];
+    }
+};
+
+
 
 } // graph_tool namespace
 

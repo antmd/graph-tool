@@ -20,11 +20,9 @@
 
 #if (GCC_VERSION >= 40400)
 #   include <tr1/unordered_set>
-#   include <tr1/random>
 #   include <tr1/tuple>
 #else
 #   include <boost/tr1/unordered_set.hpp>
-#   include <boost/tr1/random.hpp>
 #   include <boost/tr1/tuple.hpp>
 #endif
 #include <iostream>
@@ -36,6 +34,7 @@
 
 #include "graph_util.hh"
 #include "graph_properties.hh"
+#include "random.hh"
 
 namespace graph_tool
 {
@@ -45,8 +44,6 @@ using namespace boost;
 
 using std::tr1::unordered_map;
 using std::tr1::unordered_set;
-
-typedef tr1::mt19937 rng_t;
 
 // computes the community structure through a spin glass system with
 // simulated annealing
@@ -58,14 +55,12 @@ struct get_communities
               class CommunityMap>
     void operator()(const Graph& g, VertexIndex vertex_index, WeightMap weights,
                     CommunityMap s, double gamma, size_t n_iter,
-                    pair<double, double> Tinterval, size_t n_spins, size_t seed,
+                    pair<double, double> Tinterval, size_t n_spins, rng_t& rng,
                     pair<bool, string> verbose) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
         typedef typename property_traits<WeightMap>::key_type weight_key_t;
-
-        rng_t rng(static_cast<rng_t::result_type>(seed));
 
         tr1::variate_generator<rng_t&, tr1::uniform_real<> >
             random(rng, tr1::uniform_real<>());
@@ -472,23 +467,23 @@ struct get_communities_selector
     template <class Graph, class WeightMap, class CommunityMap>
     void operator()(const Graph& g, WeightMap weights, CommunityMap s,
                     double gamma, size_t n_iter, pair<double, double> Tinterval,
-                    size_t Nspins, size_t seed, pair<bool, string> verbose)
+                    size_t Nspins, rng_t& rng, pair<bool, string> verbose)
         const
     {
         switch (_corr)
         {
         case ERDOS_REYNI:
             get_communities<NNKSErdosReyni>()(g, _index, weights, s, gamma,
-                                              n_iter, Tinterval, Nspins, seed,
+                                              n_iter, Tinterval, Nspins, rng,
                                               verbose);
             break;
         case UNCORRELATED:
             get_communities<NNKSUncorr>()(g, _index, weights, s, gamma, n_iter,
-                                          Tinterval, Nspins, seed, verbose);
+                                          Tinterval, Nspins, rng, verbose);
             break;
         case CORRELATED:
             get_communities<NNKSCorr>()(g, _index, weights, s, gamma, n_iter,
-                                        Tinterval, Nspins, seed, verbose);
+                                        Tinterval, Nspins, rng, verbose);
             break;
         }
     }

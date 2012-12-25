@@ -25,31 +25,68 @@
 This module contains algorithms for the computation of community structure on
 graphs.
 
+
+Stochastic blockmodel inference
++++++++++++++++++++++++++++++++
+
 Summary
-+++++++
+=======
+
+.. autosummary::
+   :nosignatures:
+
+   minimize_blockmodel_dl
+   BlockState
+   mcmc_sweep
+   collect_vertex_marginals
+   collect_edge_marginals
+   mf_entropy
+   bethe_entropy
+   model_entropy
+   get_max_B
+   get_akc
+   min_dist
+   condensation_graph
+
+
+Modularity-based community detection
+++++++++++++++++++++++++++++++++++++
+
+Summary
+=======
 
 .. autosummary::
    :nosignatures:
 
    community_structure
    modularity
-   condensation_graph
+
 
 Contents
 ++++++++
 """
 
 from __future__ import division, absolute_import, print_function
+import sys
+if sys.version_info < (3,):
+    range = xrange
 
 from .. dl_import import dl_import
 dl_import("from . import libgraph_tool_community")
 
-from .. import _degree, _prop, Graph, GraphView, libcore
+from .. import _degree, _prop, Graph, GraphView, libcore, _get_rng
 import random
 import sys
 
-__all__ = ["community_structure", "modularity", "condensation_graph"]
+__all__ = ["minimize_blockmodel_dl", "BlockState", "mcmc_sweep",
+           "collect_edge_marginals", "collect_vertex_marginals",
+           "bethe_entropy", "mf_entropy", "model_entropy", "get_max_B",
+           "get_akc", "min_dist", "condensation_graph",  "community_structure",
+           "modularity"]
 
+from . blockmodel import minimize_blockmodel_dl, BlockState, mcmc_sweep, \
+    model_entropy, get_max_B, get_akc, min_dist, condensation_graph, \
+    collect_edge_marginals, collect_vertex_marginals, bethe_entropy, mf_entropy
 
 def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
                         spins=None, weight=None, t_range=(100.0, 0.01),
@@ -203,11 +240,10 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
         spins = g.new_vertex_property("int32_t")
     if history_file is None:
         history_file = ""
-    seed = random.randint(0, sys.maxsize)
     ug = GraphView(g, directed=False)
     libgraph_tool_community.community_structure(ug._Graph__graph, gamma, corr,
                                                 n_iter, t_range[1], t_range[0],
-                                                n_spins, seed,
+                                                n_spins, _get_rng(),
                                                 verbose, history_file,
                                                 _prop("e", ug, weight),
                                                 _prop("v", ug, spins))
@@ -275,88 +311,3 @@ def modularity(g, prop, weight=None):
                                            _prop("e", ug, weight),
                                            _prop("v", ug, prop))
     return m
-
-
-def condensation_graph(g, prop, vweight=None, eweight=None, self_loops=False):
-    r"""
-    Obtain the condensation graph, where each vertex with the same 'prop' value
-    is condensed in one vertex.
-
-    Parameters
-    ----------
-    g : :class:`~graph_tool.Graph`
-        Graph to be used.
-    prop : :class:`~graph_tool.PropertyMap`
-        Vertex property map with the community partition.
-    vweight : :class:`~graph_tool.PropertyMap` (optional, default: None)
-        Vertex property map with the optional vertex weights.
-    eweight : :class:`~graph_tool.PropertyMap` (optional, default: None)
-        Edge property map with the optional edge weights.
-    self_loops : ``bool`` (optional, default: ``False``)
-        If ``True``, self-loops due to intra-block edges are also included in
-        the condensation graph.
-
-    Returns
-    -------
-    condensation_graph : :class:`~graph_tool.Graph`
-        The community network
-    prop : :class:`~graph_tool.PropertyMap`
-        The community values.
-    vcount : :class:`~graph_tool.PropertyMap`
-        A vertex property map with the vertex count for each community.
-    ecount : :class:`~graph_tool.PropertyMap`
-        An edge property map with the inter-community edge count for each edge.
-
-    See Also
-    --------
-    community_structure: Obtain the community structure
-    modularity: Calculate the network modularity
-    condensation_graph: Network of communities, or blocks
-
-    Notes
-    -----
-    Each vertex in the condensation graph represents one community in the
-    original graph (vertices with the same 'prop' value), and the edges
-    represent existent edges between vertices of the respective communities in
-    the original graph.
-
-    Examples
-    --------
-    >>> from pylab import *
-    >>> from numpy.random import poisson, seed
-    >>> seed(42)
-    >>> g = gt.random_graph(1000, lambda: poisson(3), directed=False)
-    >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(g))
-    >>> spins = gt.community_structure(g, 10000, 100)
-    >>> ng = gt.condensation_graph(g, spins)
-    >>> size = ng[0].new_vertex_property("double")
-    >>> size.a = 50 * ng[2].a / ng[2].a.max()
-    >>> gt.graph_draw(ng[0], vertex_fill_color=ng[1], vertex_size=size, output="comm-network.pdf")
-    <...>
-
-    .. figure:: comm-network.*
-        :align: center
-
-        Community network of a random graph. The sizes of the nodes indicate the
-        size of the corresponding community.
-    """
-    gp = Graph(directed=g.is_directed())
-    if vweight is None:
-        vcount = gp.new_vertex_property("int32_t")
-    else:
-        vcount = gp.new_vertex_property(vweight.value_type())
-    if eweight is None:
-        ecount = gp.new_edge_property("int32_t")
-    else:
-        ecount = gp.new_edge_property(eweight.value_type())
-    cprop = gp.new_vertex_property(prop.value_type())
-    libgraph_tool_community.community_network(g._Graph__graph,
-                                              gp._Graph__graph,
-                                              _prop("v", g, prop),
-                                              _prop("v", gp, cprop),
-                                              _prop("v", gp, vcount),
-                                              _prop("e", gp, ecount),
-                                              _prop("v", g, vweight),
-                                              _prop("e", g, eweight),
-                                              self_loops)
-    return gp, cprop, vcount, ecount

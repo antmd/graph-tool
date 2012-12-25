@@ -34,7 +34,7 @@ using namespace graph_tool;
 
 void community_structure(GraphInterface& g, double gamma, string corr_name,
                          size_t n_iter, double Tmin, double Tmax, size_t Nspins,
-                         size_t seed, bool verbose, string history_file,
+                         rng_t& rng, bool verbose, string history_file,
                          boost::any weight, boost::any property)
 {
     typedef property_map_types::apply<mpl::vector<int32_t,int64_t>,
@@ -69,7 +69,7 @@ void community_structure(GraphInterface& g, double gamma, string corr_name,
         (g, bind<void>(get_communities_selector(corr, g.GetVertexIndex()),
                        _1, _2, _3, gamma, n_iter,
                        make_pair(Tmin, Tmax), Nspins,
-                       seed, make_pair(verbose,history_file)),
+                       ref(rng), make_pair(verbose,history_file)),
          weight_properties(), allowed_spin_properties())
         (weight, property);
 }
@@ -103,9 +103,31 @@ extern void community_network(GraphInterface& gi, GraphInterface& cgi,
                               boost::any edge_count, boost::any vweight,
                               boost::any eweight, bool self_loops);
 
+void community_network_vavg(GraphInterface& gi, GraphInterface& cgi,
+                            boost::any community_property,
+                            boost::any condensed_community_property,
+                            boost::any vertex_count,
+                            boost::any vweight,
+                            python::list avprops);
+
+void community_network_eavg(GraphInterface& gi, GraphInterface& cgi,
+                            boost::any community_property,
+                            boost::any condensed_community_property,
+                            boost::any edge_count,
+                            boost::any eweight,
+                            python::list aeprops,
+                            bool self_loops);
+
+
+extern void export_blockmodel();
+
 BOOST_PYTHON_MODULE(libgraph_tool_community)
 {
     def("community_structure", &community_structure);
     def("modularity", &modularity);
     def("community_network", &community_network);
+    def("community_network_vavg", &community_network_vavg);
+    def("community_network_eavg", &community_network_eavg);
+
+    export_blockmodel();
 }

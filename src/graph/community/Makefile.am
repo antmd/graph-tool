@@ -15,9 +15,13 @@ libgraph_tool_community_la_LIBADD = $(MOD_LIBADD)
 libgraph_tool_community_la_LDFLAGS = $(MOD_LDFLAGS)
 
 libgraph_tool_community_la_SOURCES = \
+    graph_blockmodel.cc \
     graph_community.cc \
-    graph_community_network.cc
+    graph_community_network.cc \
+    graph_community_network_vavg.cc \
+    graph_community_network_eavg.cc
 
 libgraph_tool_community_la_include_HEADERS = \
+    graph_blockmodel.hh \
     graph_community.hh \
     graph_community_network.hh

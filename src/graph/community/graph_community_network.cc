@@ -35,71 +35,49 @@ using namespace graph_tool;
 
 typedef ConstantPropertyMap<int32_t,GraphInterface::edge_t> no_eweight_map_t;
 typedef ConstantPropertyMap<int32_t,GraphInterface::vertex_t> no_vweight_map_t;
-typedef DynamicPropertyMapWrap<int32_t,GraphInterface::vertex_t> viweight_map_t;
-typedef DynamicPropertyMapWrap<double,GraphInterface::vertex_t> vweight_map_t;
-typedef DynamicPropertyMapWrap<int32_t,GraphInterface::edge_t> eiweight_map_t;
-typedef DynamicPropertyMapWrap<double,GraphInterface::edge_t> eweight_map_t;
-typedef DynamicPropertyMapWrap<python::object,GraphInterface::vertex_t> voweight_map_t;
-typedef DynamicPropertyMapWrap<python::object,GraphInterface::edge_t> eoweight_map_t;
+typedef property_map_type::apply<int32_t,GraphInterface::edge_index_map_t>::type::unchecked_t ecount_map_t;
+typedef property_map_type::apply<int32_t,GraphInterface::vertex_index_map_t>::type::unchecked_t vcount_map_t;
 
-struct get_community_network_dispatch
+struct get_community_network_vertices_dispatch
 {
-    get_community_network_dispatch(bool self_loops): _self_loops(self_loops) {}
+    template <class Graph, class CommunityGraph, class CommunityMap,
+              class VertexWeightMap>
+    void operator()(const Graph& g, CommunityGraph& cg,
+                    CommunityMap s_map, boost::any acs_map,
+                    VertexWeightMap vweight, boost::any vcount) const
+    {
+        typename CommunityMap::checked_t cs_map = boost::any_cast<typename CommunityMap::checked_t>(acs_map);
+
+        typedef typename mpl::if_<is_same<no_vweight_map_t, VertexWeightMap>,
+                                  vcount_map_t, VertexWeightMap>::type vweight_t;
+        typename vweight_t::checked_t vertex_count = boost::any_cast<typename vweight_t::checked_t>(vcount);
+
+        get_community_network_vertices()(g, cg, s_map, cs_map, vweight, vertex_count);
+    }
+
+};
+
+struct get_community_network_edges_dispatch
+{
+    get_community_network_edges_dispatch(bool self_loops): _self_loops(self_loops) {}
     bool _self_loops;
 
     template <class Graph, class CommunityGraph, class CommunityMap,
-              class VertexWeightMap, class EdgeWeightMap, class EdgeIndex,
-              class VertexIndex>
-    void operator()(const Graph& g, CommunityGraph& cg,
-                    VertexIndex, EdgeIndex cedge_index,
+              class EdgeWeightMap, class EdgeIndex>
+    void operator()(const Graph& g, CommunityGraph& cg, EdgeIndex cedge_index,
                     CommunityMap s_map, boost::any acs_map,
-                    VertexWeightMap vweight, EdgeWeightMap eweight,
-                    pair<boost::any,boost::any> count) const
+                    EdgeWeightMap eweight, boost::any ecount) const
     {
-        typedef typename get_prop_type<CommunityMap, VertexIndex>::type
-            comm_t;
-        comm_t cs_map = boost::any_cast<comm_t>(acs_map);
+        typename CommunityMap::checked_t cs_map = boost::any_cast<typename CommunityMap::checked_t>(acs_map);
 
-        typedef typename mpl::if_<is_same<no_vweight_map_t, VertexWeightMap>,
-                                  viweight_map_t, VertexWeightMap>::type vweight_t;
         typedef typename mpl::if_<is_same<no_eweight_map_t, EdgeWeightMap>,
-                                  eiweight_map_t, EdgeWeightMap>::type eweight_t;
+                                  ecount_map_t, EdgeWeightMap>::type eweight_t;
 
-        vweight_t vertex_count = boost::any_cast<vweight_t>(count.first);
-        eweight_t edge_count = boost::any_cast<eweight_t>(count.second);
-
-        get_community_network()(g, cg, cedge_index, s_map,
-                                cs_map, vweight, eweight, vertex_count,
-                                edge_count, _self_loops);
+        typename eweight_t::checked_t edge_count = boost::any_cast<typename eweight_t::checked_t>(ecount);
+        get_community_network_edges()(g, cg, cedge_index, s_map,
+                                      cs_map, eweight, edge_count,
+                                      _self_loops);
     }
-
-    struct get_checked_t
-    {
-        template <class PropertyMap>
-        struct apply
-        {
-            typedef typename PropertyMap::checked_t type;
-        };
-    };
-
-    struct get_identity
-    {
-        template <class PropertyMap>
-        struct apply
-        {
-            typedef PropertyMap type;
-        };
-    };
-
-    template <class PropertyMap, class IndexMap>
-    struct get_prop_type
-    {
-        typedef typename mpl::if_<typename is_same<PropertyMap, IndexMap>::type,
-                                  get_identity,
-                                  get_checked_t>::type extract;
-        typedef typename extract::template apply<PropertyMap>::type type;
-    };
-
 };
 
 
@@ -108,58 +86,52 @@ void community_network(GraphInterface& gi, GraphInterface& cgi,
                        boost::any condensed_community_property,
                        boost::any vertex_count,
                        boost::any edge_count, boost::any vweight,
-                       boost::any eweight, bool self_loops)
+                       boost::any eweight,
+                       bool self_loops)
 {
-    typedef mpl::vector<vweight_map_t, voweight_map_t, no_vweight_map_t>::type
+    typedef mpl::push_back<writable_vertex_scalar_properties, no_vweight_map_t>::type
         vweight_properties;
-    typedef mpl::vector<eweight_map_t, eoweight_map_t, no_eweight_map_t>::type
+    typedef mpl::push_back<writable_edge_scalar_properties, no_eweight_map_t>::type
         eweight_properties;
 
     if (eweight.empty())
-    {
         eweight = no_eweight_map_t(1);
-        edge_count = eiweight_map_t(edge_count, edge_scalar_properties());
-    }
-    else
-    {
-        try
-        {
-            eweight = eweight_map_t(eweight, edge_scalar_properties());
-            edge_count = eweight_map_t(edge_count, edge_scalar_properties());
-        }
-        catch (...)
-        {
-            eweight = eoweight_map_t(eweight, edge_properties());
-            edge_count = eoweight_map_t(edge_count, edge_properties());
-        }
-    }
-
     if (vweight.empty())
-    {
         vweight = no_vweight_map_t(1);
-        vertex_count = viweight_map_t(vertex_count, vertex_scalar_properties());
-    }
-    else
-    {
-        try
-        {
-            vweight = vweight_map_t(vweight, vertex_scalar_properties());
-            vertex_count = vweight_map_t(vertex_count, vertex_scalar_properties());
-        }
-        catch (...)
-        {
-            vweight = voweight_map_t(vweight, vertex_properties());
-            vertex_count = voweight_map_t(vertex_count, vertex_properties());
-        }
-    }
 
-     run_action<>()(gi, bind<void>(get_community_network_dispatch(self_loops),
-                                   _1, ref(cgi.GetGraph()), cgi.GetVertexIndex(),
-                                   cgi.GetEdgeIndex(), _2,
-                                   condensed_community_property,
-                                   _3, _4, make_pair(vertex_count, edge_count)),
-                    vertex_scalar_properties(), vweight_properties(),
-                    eweight_properties())
-        (community_property, vweight, eweight);
-     cgi.ReIndexEdges();
+    typedef mpl::insert_range<writable_vertex_scalar_properties,
+                              mpl::end<writable_vertex_scalar_properties>::type,
+                              vertex_scalar_vector_properties>::type vprops_temp;
+    typedef mpl::push_back<vprops_temp,
+                           property_map_type::apply<python::object,
+                                                    GraphInterface::vertex_index_map_t>::type>::type
+        vprops_t;
+
+    typedef mpl::insert_range<writable_edge_scalar_properties,
+                              mpl::end<writable_edge_scalar_properties>::type,
+                              edge_scalar_vector_properties>::type eprops_temp;
+    typedef mpl::push_back<eprops_temp,
+                           property_map_type::apply<python::object,
+                                                    GraphInterface::edge_index_map_t>::type>::type
+        eprops_t;
+
+
+    run_action<>()
+        (gi, bind<void>(get_community_network_vertices_dispatch(),
+                        _1, ref(cgi.GetGraph()),
+                         _2, condensed_community_property,
+                        _3, vertex_count),
+         writable_vertex_properties(), vweight_properties())
+        (community_property, vweight);
+
+    run_action<>()
+        (gi, bind<void>(get_community_network_edges_dispatch(self_loops),
+                        _1, ref(cgi.GetGraph()), cgi.GetEdgeIndex(),
+                         _2, condensed_community_property,
+                        _3, edge_count),
+         writable_vertex_properties(), eweight_properties())
+        (community_property, eweight);
+
+
+    cgi.ReIndexEdges();
 }

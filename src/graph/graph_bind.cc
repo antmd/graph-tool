@@ -26,6 +26,8 @@
 #include "graph_python_interface.hh"
 #include "graph_util.hh"
 
+#include "random.hh"
+
 #ifdef HAVE_SCIPY // integration with scipy weave
 #include "weave/scxx/object.h"
 #include "weave/scxx/list.h"
@@ -194,6 +196,8 @@ struct pair_from_tuple
     {
         handle<> x(borrowed(obj_ptr));
         object o(x);
+        if (python::len(o) < 2)
+            return 0;
         extract<T1> first(o[0]);
         extract<T2> second(o[1]);
         if (!first.check() || !second.check())
@@ -207,6 +211,8 @@ struct pair_from_tuple
         handle<> x(borrowed(obj_ptr));
         object o(x);
         pair<T1,T2> value;
+        if (python::len(o) < 2)
+            throw ValueException("Invalid conversion to pair... Sequence is too short.");
         value.first = extract<T1>(o[0]);
         value.second = extract<T2>(o[1]);
         void* storage =
