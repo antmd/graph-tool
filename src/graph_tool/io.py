@@ -63,11 +63,11 @@ libgraph_tool_core.OStream.write = OStream_write
 def pickler(stream, obj):
     sstream = BytesIO()
     pickle.dump(obj, sstream, -1)
-    stream.write(base64.b64encode(sstream.getvalue()))
+    stream.write(base64.b64encode(sstream.getvalue().encode('ascii')))
 
 
 def unpickler(stream):
-    sstream = BytesIO(base64.b64decode(stream.read()))
+    sstream = BytesIO(base64.b64decode(stream.read().encode('ascii')))
     return pickle.load(sstream)
 
 libgraph_tool_core.set_pickler(pickler)
