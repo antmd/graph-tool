@@ -15,6 +15,7 @@
 
     .. autofunction:: graph_draw
     .. autofunction:: graphviz_draw
+    .. autofunction:: prop_to_size
 
 
     Low-level graph drawing

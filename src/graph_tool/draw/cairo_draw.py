@@ -638,9 +638,13 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
 
     Examples
     --------
-    >>> from numpy import *
-    >>> from numpy.random import seed, zipf
-    >>> seed(43)
+    .. testcode::
+       :hide:
+
+       np.random.seed(42)
+       gt.seed_rng(42)
+       from numpy import sqrt
+
     >>> g = gt.price_network(1500)
     >>> deg = g.degree_property_map("in")
     >>> deg.a = 4 * (sqrt(deg.a) * 0.5 + 0.4)
@@ -658,6 +662,15 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
     ...               edge_control_points=control, # some curvy edges
     ...               output="graph-draw.pdf")
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, vertex_size=deg, vertex_fill_color=deg, vorder=deg,
+                     edge_color=ebet, eorder=eorder, edge_pen_width=ebet,
+                     edge_control_points=control,
+                     output="graph-draw.png")
+
 
     .. figure:: graph-draw.*
         :align: center
@@ -696,6 +709,14 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
             if "update_layout" not in kwargs:
                 kwargs["update_layout"] = False
 
+    if "pen_width" in eprops and "marker_size" not in eprops:
+        pw = eprops["pen_width"]
+        if isinstance(pw, PropertyMap):
+            pw = pw.copy()
+            pw.a = pw.a * 2.75
+            eprops["marker_size"] = pw
+        else:
+            eprops["marker_size"] = pw * 2.75
 
     if "text" in vprops and ("text_color" not in vprops or vprops["text_color"] == "auto"):
         vcmap = kwargs.get("vcmap", matplotlib.cm.jet)

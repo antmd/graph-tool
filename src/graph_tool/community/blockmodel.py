@@ -823,7 +823,7 @@ def mcmc_sweep(state, beta=1., sequential=True, verbose=False, vertices=None):
        Carnegie-Mellon University, Pittsburgh, PA 15213, U.S.A., :doi:`10.1016/0378-8733(83)90021-7`
     .. [faust-blockmodels-1992] Katherine Faust, and Stanley
        Wasserman. "Blockmodels: Interpretation and Evaluation." Social Networks
-       14, no. 1–2 (1992): 5–61. :doi:`10.1016/0378-8733(92)90013-W`
+       14, no. 1-2 (1992): 5-61. :doi:`10.1016/0378-8733(92)90013-W`
     .. [karrer-stochastic-2011] Brian Karrer, and M. E. J. Newman. "Stochastic
        Blockmodels and Community Structure in Networks." Physical Review E 83,
        no. 1 (2011): 016107. :doi:`10.1103/PhysRevE.83.016107`.
@@ -1146,7 +1146,7 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
        Carnegie-Mellon University, Pittsburgh, PA 15213, U.S.A., :doi:`10.1016/0378-8733(83)90021-7`
     .. [faust-blockmodels-1992] Katherine Faust, and Stanley
        Wasserman. "Blockmodels: Interpretation and Evaluation." Social Networks
-       14, no. 1–2 (1992): 5–61. :doi:`10.1016/0378-8733(92)90013-W`
+       14, no. 1-2 (1992): 5-61. :doi:`10.1016/0378-8733(92)90013-W`
     .. [karrer-stochastic-2011] Brian Karrer, and M. E. J. Newman. "Stochastic
        Blockmodels and Community Structure in Networks." Physical Review E 83,
        no. 1 (2011): 016107. :doi:`10.1103/PhysRevE.83.016107`.

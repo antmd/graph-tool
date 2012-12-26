@@ -33,7 +33,7 @@ v_age[v] = 0
 vlist = [v]
 
 # let's now add the new edges and vertices
-for i in xrange(1, N):
+for i in range(1, N):
     # create our new vertex
     v = g.add_vertex()
     v_age[v] = i
@@ -58,11 +58,11 @@ for i in xrange(1, N):
 
 v = g.vertex(randint(0, g.num_vertices()))
 while True:
-    print "vertex:", v, "in-degree:", v.in_degree(), "out-degree:",\
-          v.out_degree(), "age:", v_age[v]
+    print("vertex:", v, "in-degree:", v.in_degree(), "out-degree:",\
+          v.out_degree(), "age:", v_age[v])
 
     if v.out_degree() == 0:
-        print "Nowhere else to go... We found the main hub!"
+        print("Nowhere else to go... We found the main hub!")
         break
 
     n_list = []

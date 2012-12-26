@@ -187,6 +187,8 @@
    .. autofunction:: load_graph
    .. autofunction:: group_vector_property
    .. autofunction:: ungroup_vector_property
+   .. autofunction:: infect_vertex_property
+   .. autofunction:: edge_difference
    .. autofunction:: value_types
    .. autofunction:: show_config
 

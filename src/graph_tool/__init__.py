@@ -37,6 +37,8 @@ Summary
    load_graph
    group_vector_property
    ungroup_vector_property
+   infect_vertex_property
+   edge_difference
    value_types
    show_config
 
@@ -797,7 +799,7 @@ def infect_vertex_property(g, prop, vals=None):
 
     Returns
     -------
-    None
+    None : ``None``
 
     Examples
     --------
@@ -822,8 +824,7 @@ def edge_difference(g, prop, ediff=None):
     prop : :class:`~graph_tool.PropertyMap`
         Vertex property map to be used to compute the difference..
     ediff : :class:`~graph_tool.PropertyMap` (optional, default: `None`)
-        If not provided, the difference values will be stored in this property
-        map.
+        If provided, the difference values will be stored in this property map.
 
     Returns
     -------

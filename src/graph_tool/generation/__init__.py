@@ -172,9 +172,14 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
 
     Examples
     --------
-    >>> from numpy.random import randint, random, seed, poisson
-    >>> from pylab import *
-    >>> seed(43)
+
+    .. testcode::
+       :hide:
+
+       from numpy.random import randint, random, seed, poisson
+       from pylab import *
+       seed(43)
+       gt.seed_rng(42)
 
     This is a degree sampler which uses rejection sampling to sample from the
     distribution :math:`P(k)\propto 1/k`, up to a maximum.
@@ -199,7 +204,7 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
     ...                     lambda i, k: 1.0 / (1 + abs(i - k)), directed=False,
     ...                     mix_time=100)
     >>> gt.scalar_assortativity(g, "out")
-    (0.6435658697163692, 0.010420519538259333)
+    (0.606974415793802, 0.010937932958096811)
 
     The following samples an in,out-degree pair from the joint distribution:
 
@@ -215,7 +220,7 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
     ...        return poisson(4), poisson(4)
     ...    else:
     ...        return poisson(20), poisson(20)
-    ... 
+    ...
 
     The following generates a random directed graph with this distribution, and
     plots the combined degree correlation.
@@ -234,6 +239,11 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
     >>> ylabel("out-degree")
     <...>
     >>> savefig("combined-deg-hist.pdf")
+
+    .. testcode::
+       :hide:
+
+       savefig("combined-deg-hist.png")
 
     .. figure:: combined-deg-hist.*
         :align: center
@@ -287,6 +297,11 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
     <...>
     >>> savefig("deg-corr-dir.pdf")
 
+    .. testcode::
+       :hide:
+
+       savefig("deg-corr-dir.png")
+
     .. figure:: deg-corr-dir.*
         :align: center
 
@@ -315,6 +330,11 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
     >>> gt.graph_draw(g, vertex_fill_color=bm, output="blockmodel.pdf")
     <...>
 
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, vertex_fill_color=bm, output="blockmodel.png")
+
     .. figure:: blockmodel.*
         :align: center
 
@@ -326,9 +346,9 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
     .. [metropolis-equations-1953]  Metropolis, N.; Rosenbluth, A.W.;
        Rosenbluth, M.N.; Teller, A.H.; Teller, E. "Equations of State
        Calculations by Fast Computing Machines". Journal of Chemical Physics 21
-       (6): 1087–1092 (1953). :doi:`10.1063/1.1699114`
+       (6): 1087-1092 (1953). :doi:`10.1063/1.1699114`
     .. [hastings-monte-carlo-1970] Hastings, W.K. "Monte Carlo Sampling Methods
-       Using Markov Chains and Their Applications". Biometrika 57 (1): 97–109 (1970).
+       Using Markov Chains and Their Applications". Biometrika 57 (1): 97-109 (1970).
        :doi:`10.1093/biomet/57.1.97`
     .. [holland-stochastic-1983] Paul W. Holland, Kathryn Blackmond Laskey, and
        Samuel Leinhardt, "Stochastic blockmodels: First steps," Social Networks
@@ -533,25 +553,53 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
 
     Some small graphs for visualization.
 
-    >>> from numpy.random import random, seed
-    >>> from pylab import *
-    >>> seed(43)
+    .. testcode::
+       :hide:
+
+       from numpy.random import random, seed
+       from pylab import *
+       seed(43)
+       gt.seed_rng(42)
+
     >>> g, pos = gt.triangulation(random((1000,2)))
     >>> pos = gt.arf_layout(g)
-    >>> gt.graph_draw(g, pos=pos, output="rewire_orig.pdf", output_size=(200, 200))
+    >>> gt.graph_draw(g, pos=pos, output="rewire_orig.pdf", output_size=(300, 300))
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output="rewire_orig.png", output_size=(300, 300))
+
     >>> gt.random_rewire(g, "correlated")
     >>> pos = gt.arf_layout(g)
-    >>> gt.graph_draw(g, pos=pos, output="rewire_corr.pdf", output_size=(200, 200))
+    >>> gt.graph_draw(g, pos=pos, output="rewire_corr.pdf", output_size=(300, 300))
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output="rewire_corr.png", output_size=(300, 300))
+
     >>> gt.random_rewire(g)
     >>> pos = gt.arf_layout(g)
-    >>> gt.graph_draw(g, pos=pos, output="rewire_uncorr.pdf", output_size=(200, 200))
+    >>> gt.graph_draw(g, pos=pos, output="rewire_uncorr.pdf", output_size=(300, 300))
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output="rewire_uncorr.png", output_size=(300, 300))
+
     >>> gt.random_rewire(g, "erdos")
     >>> pos = gt.arf_layout(g)
-    >>> gt.graph_draw(g, pos=pos, output="rewire_erdos.pdf", output_size=(200, 200))
+    >>> gt.graph_draw(g, pos=pos, output="rewire_erdos.pdf", output_size=(300, 300))
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output="rewire_erdos.png", output_size=(300, 300))
 
     Some `ridiculograms <http://www.youtube.com/watch?v=YS-asmU3p_4>`_ :
 
@@ -592,6 +640,12 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
     >>> legend(loc="best")
     <...>
     >>> savefig("shuffled-stats.pdf")
+
+    .. testcode::
+       :hide:
+
+       savefig("shuffled-stats.png")
+
 
     .. figure:: shuffled-stats.*
         :align: center
@@ -645,6 +699,11 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
     <...>
     >>> savefig("shuffled-deg-corr-dir.pdf")
 
+    .. testcode::
+       :hide:
+
+       savefig("shuffled-deg-corr-dir.png")
+
     .. figure:: shuffled-deg-corr-dir.*
         :align: center
 
@@ -657,9 +716,9 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
     .. [metropolis-equations-1953]  Metropolis, N.; Rosenbluth, A.W.;
        Rosenbluth, M.N.; Teller, A.H.; Teller, E. "Equations of State
        Calculations by Fast Computing Machines". Journal of Chemical Physics 21
-       (6): 1087–1092 (1953). :doi:`10.1063/1.1699114`
+       (6): 1087-1092 (1953). :doi:`10.1063/1.1699114`
     .. [hastings-monte-carlo-1970] Hastings, W.K. "Monte Carlo Sampling Methods
-       Using Markov Chains and Their Applications". Biometrika 57 (1): 97–109 (1970).
+       Using Markov Chains and Their Applications". Biometrika 57 (1): 97-109 (1970).
        :doi:`10.1093/biomet/57.1.97`
     .. [holland-stochastic-1983] Paul W. Holland, Kathryn Blackmond Laskey, and
        Samuel Leinhardt, "Stochastic blockmodels: First steps," Social Networks
@@ -729,6 +788,33 @@ def line_graph(g):
          G are connected by an edge from uv to wx in the line digraph when v =
          w.
 
+
+    Examples
+    --------
+
+    >>> g = gt.collection.data["lesmis"]
+    >>> lg, vmap = gt.line_graph(g)
+    >>> gt.graph_draw(g, pos=g.vp["pos"], output="lesmis.pdf")
+    <...>
+    >>> pos = gt.graph_draw(lg, output="lesmis-lg.pdf")
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=g.vp["pos"], output="lesmis.png")
+       pos = gt.graph_draw(lg, pos=pos, output="lesmis-lg.png")
+
+
+    .. figure:: lesmis.png
+       :align: left
+
+       Coappearances of characters in Victor Hugo's novel "Les Miserables".
+
+    .. figure:: lesmis-lg.png
+       :align: right
+
+       Line graph of the coappearance network on the left.
+
     References
     ----------
     .. [line-wiki] http://en.wikipedia.org/wiki/Line_graph
@@ -778,20 +864,44 @@ def graph_union(g1, g2, intersection=None, props=None, include=False):
     Examples
     --------
 
-    >>> from numpy.random import random, seed
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       from numpy.random import random, seed
+       from pylab import *
+       seed(42)
+       gt.seed_rng(42)
+
     >>> g = gt.triangulation(random((300,2)))[0]
     >>> ug = gt.graph_union(g, g)
     >>> uug = gt.graph_union(g, ug)
-    >>> pos = gt.arf_layout(g)
+    >>> pos = gt.sfdp_layout(g)
     >>> gt.graph_draw(g, pos=pos, output_size=(300,300), output="graph_original.pdf")
     <...>
-    >>> pos = gt.arf_layout(ug)
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output_size=(300,300), output="graph_original.png")
+
+    >>> pos = gt.sfdp_layout(ug)
     >>> gt.graph_draw(ug, pos=pos, output_size=(300,300), output="graph_union.pdf")
     <...>
-    >>> pos = gt.arf_layout(uug)
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(ug, pos=pos, output_size=(300,300), output="graph_union.png")
+
+    >>> pos = gt.sfdp_layout(uug)
     >>> gt.graph_draw(uug, pos=pos, output_size=(300,300), output="graph_union2.pdf")
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(uug, pos=pos, output_size=(300,300), output="graph_union2.png")
+
 
     .. image:: graph_original.*
     .. image:: graph_union.*
@@ -898,8 +1008,13 @@ def triangulation(points, type="simple", periodic=False):
 
     Examples
     --------
-    >>> from numpy.random import seed, random
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       from numpy.random import random, seed
+       from pylab import *
+       seed(42)
+       gt.seed_rng(42)
     >>> points = random((500, 2)) * 4
     >>> g, pos = gt.triangulation(points)
     >>> weight = g.new_edge_property("double") # Edge weights corresponding to
@@ -912,6 +1027,13 @@ def triangulation(points, type="simple", periodic=False):
     >>> gt.graph_draw(g, pos=pos, output_size=(300,300), vertex_fill_color=b[0],
     ...               edge_pen_width=b[1], output="triang.pdf")
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output_size=(300,300), vertex_fill_color=b[0],
+                     edge_pen_width=b[1], output="triang.png")
+
     >>> g, pos = gt.triangulation(points, type="delaunay")
     >>> weight = g.new_edge_property("double")
     >>> for e in g.edges():
@@ -922,6 +1044,13 @@ def triangulation(points, type="simple", periodic=False):
     >>> gt.graph_draw(g, pos=pos, output_size=(300,300), vertex_fill_color=b[0],
     ...               edge_pen_width=b[1], output="triang-delaunay.pdf")
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output_size=(300,300), vertex_fill_color=b[0],
+                     edge_pen_width=b[1], output="triang-delaunay.png")
+
 
     2D triangulation of random points:
 
@@ -976,18 +1105,41 @@ def lattice(shape, periodic=False):
 
     Examples
     --------
+    .. testcode::
+       :hide:
+
+       gt.seed_rng(42)
+
     >>> g = gt.lattice([10,10])
-    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, cooling_step=0.95, epsilon=1e-2),
-    ...               output_size=(300,300), output="lattice.pdf")
+    >>> pos = gt.sfdp_layout(g, cooling_step=0.95, epsilon=1e-2)
+    >>> gt.graph_draw(g, pos=pos, output_size=(300,300), output="lattice.pdf")
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output_size=(300,300), output="lattice.png")
+
     >>> g = gt.lattice([10,20], periodic=True)
-    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, cooling_step=0.95, epsilon=1e-2, multilevel=True),
-    ...               output_size=(300,300), output="lattice_periodic.pdf")
+    >>> pos = gt.sfdp_layout(g, cooling_step=0.95, epsilon=1e-2)
+    >>> gt.graph_draw(g, pos=pos, output_size=(300,300), output="lattice_periodic.pdf")
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output_size=(300,300), output="lattice_periodic.png")
+
     >>> g = gt.lattice([10,10,10])
-    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, cooling_step=0.95, epsilon=1e-2, multilevel=True),
-    ...               output_size=(300,300), output="lattice_3d.pdf")
+    >>> pos = gt.sfdp_layout(g, cooling_step=0.95, epsilon=1e-2)
+    >>> gt.graph_draw(g, pos=pos, output_size=(300,300), output="lattice_3d.pdf")
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output_size=(300,300), output="lattice_3d.png")
+
 
     .. image:: lattice.*
     .. image:: lattice_periodic.*
@@ -1046,15 +1198,32 @@ def geometric_graph(points, radius, ranges=None):
 
     Examples
     --------
-    >>> from numpy.random import seed, random
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       from numpy.random import random, seed
+       from pylab import *
+       seed(42)
+       gt.seed_rng(42)
+
     >>> points = random((500, 2)) * 4
     >>> g, pos = gt.geometric_graph(points, 0.3)
     >>> gt.graph_draw(g, pos=pos, output_size=(300,300), output="geometric.pdf")
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output_size=(300,300), output="geometric.png")
+
     >>> g, pos = gt.geometric_graph(points, 0.3, [(0,4), (0,4)])
-    >>> gt.graph_draw(g, output_size=(300,300), output="geometric_periodic.pdf")
-    <...>
+    >>> pos = gt.graph_draw(g, output_size=(300,300), output="geometric_periodic.pdf")
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output_size=(300,300), output="geometric_periodic.png")
+
 
     .. image:: geometric.*
     .. image:: geometric_periodic.*
@@ -1164,6 +1333,11 @@ def price_network(N, m=1, c=None, gamma=1, directed=True, seed_graph=None):
 
     Examples
     --------
+    .. testcode::
+       :hide:
+
+       gt.seed_rng(42)
+
     >>> g = gt.price_network(100000)
     >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, epsilon=1e-2, cooling_step=0.95),
     ...               vertex_fill_color=g.vertex_index, vertex_size=2,
@@ -1193,11 +1367,11 @@ def price_network(N, m=1, c=None, gamma=1, directed=True, seed_graph=None):
 
     .. [yule] Yule, G. U. "A Mathematical Theory of Evolution, based on the
        Conclusions of Dr. J. C. Willis, F.R.S.". Philosophical Transactions of
-       the Royal Society of London, Ser. B 213: 21–87, 1925,
+       the Royal Society of London, Ser. B 213: 21-87, 1925,
        :doi:`10.1098/rstb.1925.0002`
     .. [price] Derek De Solla Price, "A general theory of bibliometric and other
        cumulative advantage processes", Journal of the American Society for
-       Information Science, Volume 27, Issue 5, pages 292–306, September 1976,
+       Information Science, Volume 27, Issue 5, pages 292-306, September 1976,
        :doi:`10.1002/asi.4630270505`
     .. [barabasi-albert] Barabási, A.-L., and Albert, R., "Emergence of
        scaling in random networks", Science, 286, 509, 1999,

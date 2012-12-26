@@ -97,12 +97,17 @@ def assortativity(g, deg):
 
     Examples
     --------
-    >>> from numpy.random import randint, random, seed
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       np.random.seed(42)
+       gt.seed_rng(42)
+       from pylab import *
+
     >>> def sample_k(max):
     ...     accept = False
     ...     while not accept:
-    ...         k = randint(1,max+1)
+    ...         k = np.random.randint(1,max+1)
     ...         accept = random() < 1.0/k
     ...     return k
     ...
@@ -110,7 +115,7 @@ def assortativity(g, deg):
     ...                     lambda i,k: 1.0 / (1 + abs(i - k)), directed=False,
     ...                     mix_time=100)
     >>> gt.assortativity(g, "out")
-    (0.14145218664992676, 0.005077209994557802)
+    (0.14282704866231305, 0.005109451062660124)
 
     References
     ----------
@@ -168,25 +173,30 @@ def scalar_assortativity(g, deg):
 
     Examples
     --------
-    >>> from numpy.random import randint, random, seed
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       np.random.seed(42)
+       gt.seed_rng(42)
+       from pylab import *
+
     >>> def sample_k(max):
     ...     accept = False
     ...     while not accept:
-    ...         k = randint(1,max+1)
+    ...         k = np.random.randint(1,max+1)
     ...         accept = random() < 1.0/k
     ...     return k
     ...
     >>> g = gt.random_graph(1000, lambda: sample_k(40), lambda i,k: abs(i-k),
     ...                     directed=False, mix_time=100)
     >>> gt.scalar_assortativity(g, "out")
-    (-0.46972665544654923, 0.010035656615797507)
+    (-0.43719843848745943, 0.010593923895499584)
 
     >>> g = gt.random_graph(1000, lambda: sample_k(40),
     ...                     lambda i, k: 1.0 / (1 + abs(i - k)),
     ...                     directed=False, mix_time=100)
     >>> gt.scalar_assortativity(g, "out")
-    (0.6120658464996896, 0.011388445161055338)
+    (0.6018887530895891, 0.011474042583027698)
 
     References
     ----------
@@ -255,13 +265,17 @@ def corr_hist(g, deg_source, deg_target, bins=[[0, 1], [0, 1]], weight=None,
 
     Examples
     --------
-    >>> from numpy.random import randint, random, seed
-    >>> from pylab import *
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       np.random.seed(42)
+       gt.seed_rng(42)
+       from pylab import *
+
     >>> def sample_k(max):
     ...     accept = False
     ...     while not accept:
-    ...         k = randint(1,max+1)
+    ...         k = np.random.randint(1,max+1)
     ...         accept = random() < 1.0/k
     ...     return k
     ...
@@ -279,6 +293,11 @@ def corr_hist(g, deg_source, deg_target, bins=[[0, 1], [0, 1]], weight=None,
     >>> colorbar()
     <...>
     >>> savefig("corr.pdf")
+
+    .. testcode::
+       :hide:
+
+       savefig("corr.png")
 
     .. figure:: corr.*
         :align: center
@@ -342,9 +361,13 @@ def combined_corr_hist(g, deg1, deg2, bins=[[0, 1], [0, 1]], float_count=True):
 
     Examples
     --------
-    >>> from numpy.random import randint, random, seed
-    >>> from pylab import *
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       np.random.seed(42)
+       gt.seed_rng(42)
+       from pylab import *
+
     >>> def sample_k(max):
     ...     accept = False
     ...     while not accept:
@@ -365,6 +388,11 @@ def combined_corr_hist(g, deg1, deg2, bins=[[0, 1], [0, 1]], float_count=True):
     >>> colorbar()
     <...>
     >>> savefig("combined_corr.pdf")
+
+    .. testcode::
+       :hide:
+
+       savefig("combined_corr.pdf")
 
     .. figure:: combined_corr.*
         :align: center
@@ -433,9 +461,13 @@ def avg_neighbour_corr(g, deg_source, deg_target, bins=[0, 1], weight=None):
 
     Examples
     --------
-    >>> from numpy.random import randint, random, seed
-    >>> from pylab import *
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       np.random.seed(42)
+       gt.seed_rng(42)
+       from pylab import *
+
     >>> def sample_k(max):
     ...     accept = False
     ...     while not accept:
@@ -455,6 +487,11 @@ def avg_neighbour_corr(g, deg_source, deg_target, bins=[0, 1], weight=None):
     >>> errorbar(h[2][:-1], h[0], yerr=h[1], fmt="o")
     <...>
     >>> savefig("avg_corr.pdf")
+
+    .. testcode::
+       :hide:
+
+       savefig("avg_corr.png")
 
     .. figure:: avg_corr.*
         :align: center
@@ -511,9 +548,13 @@ def avg_combined_corr(g, deg1, deg2, bins=[0, 1]):
 
     Examples
     --------
-    >>> from numpy.random import randint, random, seed
-    >>> from pylab import *
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       np.random.seed(42)
+       gt.seed_rng(42)
+       from pylab import *
+
     >>> def sample_k(max):
     ...     accept = False
     ...     while not accept:
@@ -532,6 +573,11 @@ def avg_combined_corr(g, deg1, deg2, bins=[0, 1]):
     >>> errorbar(h[2][:-1], h[0], yerr=h[1], fmt="o")
     <...>
     >>> savefig("combined_avg_corr.pdf")
+
+    .. testcode::
+       :hide:
+
+       savefig("combined_avg_corr.png")
 
     .. figure:: combined_avg_corr.*
         :align: center

@@ -65,7 +65,8 @@ from .. dl_import import dl_import
 dl_import("from . import libgraph_tool_topology")
 
 from .. import _prop, Vector_int32_t, _check_prop_writable, \
-     _check_prop_scalar, _check_prop_vector, Graph, PropertyMap, GraphView, _get_rng
+     _check_prop_scalar, _check_prop_vector, Graph, PropertyMap, GraphView,\
+     libcore, _get_rng
 import random, sys, numpy
 __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
            "max_cardinality_matching", "max_independent_vertex_set",
@@ -113,15 +114,20 @@ def similarity(g1, g2, label1=None, label2=None, norm=True):
 
     Examples
     --------
-    >>> from numpy.random import seed
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       import numpy.random
+       numpy.random.seed(42)
+       gt.seed_rng(42)
+
     >>> g = gt.random_graph(100, lambda: (3,3))
     >>> u = g.copy()
     >>> gt.similarity(u, g)
     1.0
     >>> gt.random_rewire(u);
     >>> gt.similarity(u, g)
-    0.03333333333333333
+    0.043333333333333335
     """
 
     if label1 is None:
@@ -148,8 +154,13 @@ def isomorphism(g1, g2, isomap=False):
 
     Examples
     --------
-    >>> from numpy.random import seed
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       import numpy.random
+       numpy.random.seed(42)
+       gt.seed_rng(42)
+
     >>> g = gt.random_graph(100, lambda: (3,3))
     >>> g2 = gt.Graph(g)
     >>> gt.isomorphism(g, g2)
@@ -209,13 +220,19 @@ def subgraph_isomorphism(sub, g, max_n=0, random=False):
 
     Examples
     --------
-    >>> from numpy.random import seed, poisson
-    >>> seed(42)
-    >>> g = gt.random_graph(30, lambda: (poisson(6),poisson(6)))
-    >>> sub = gt.random_graph(10, lambda: (poisson(1.8), poisson(1.9)))
+    .. testcode::
+       :hide:
+
+       import numpy.random
+       numpy.random.seed(44)
+       gt.seed_rng(44)
+
+    >>> from numpy.random import poisson
+    >>> g = gt.random_graph(30, lambda: (poisson(6.0), poisson(6.0)))
+    >>> sub = gt.random_graph(10, lambda: (poisson(1.9), poisson(1.9)))
     >>> vm, em = gt.subgraph_isomorphism(sub, g)
     >>> print(len(vm))
-    102
+    2156
     >>> for i in range(len(vm)):
     ...   g.set_vertex_filter(None)
     ...   g.set_edge_filter(None)
@@ -244,7 +261,7 @@ def subgraph_isomorphism(sub, g, max_n=0, random=False):
     References
     ----------
     .. [ullmann-algorithm-1976] Ullmann, J. R., "An algorithm for subgraph
-       isomorphism", Journal of the ACM 23 (1): 31–42, 1976, :doi:`10.1145/321921.321925`
+       isomorphism", Journal of the ACM 23 (1): 31-42, 1976, :doi:`10.1145/321921.321925`
     .. [subgraph-isormophism-wikipedia] http://en.wikipedia.org/wiki/Subgraph_isomorphism_problem
 
     """
@@ -255,16 +272,16 @@ def subgraph_isomorphism(sub, g, max_n=0, random=False):
     vmaps = []
     emaps = []
     if random:
-        seed = numpy.random.randint(0, sys.maxsize)
+        rng = _get_rng()
     else:
-        seed = 42
+        rng = libcore.rng_t()
     libgraph_tool_topology.\
            subgraph_isomorphism(sub._Graph__graph, g._Graph__graph,
                                 _prop("v", sub, vlabels[0]),
                                 _prop("v", g, vlabels[1]),
                                 _prop("e", sub, elabels[0]),
                                 _prop("e", g, elabels[1]),
-                                vmaps, emaps, max_n, seed)
+                                vmaps, emaps, max_n, rng)
     for i in range(len(vmaps)):
         vmaps[i] = PropertyMap(vmaps[i], sub, "v")
         emaps[i] = PropertyMap(emaps[i], sub, "e")
@@ -332,8 +349,14 @@ def min_spanning_tree(g, weights=None, root=None, tree_map=None):
 
     Examples
     --------
-    >>> from numpy.random import seed, random
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       import numpy.random
+       numpy.random.seed(42)
+       gt.seed_rng(42)
+
+    >>> from numpy.random import random
     >>> g, pos = gt.triangulation(random((400, 2)) * 10, type="delaunay")
     >>> weight = g.new_edge_property("double")
     >>> for e in g.edges():
@@ -416,8 +439,14 @@ def random_spanning_tree(g, weights=None, root=None, tree_map=None):
 
     Examples
     --------
-    >>> from numpy.random import seed, random
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       import numpy.random
+       numpy.random.seed(42)
+       gt.seed_rng(42)
+
+    >>> from numpy.random import random
     >>> g, pos = gt.triangulation(random((400, 2)) * 10, type="delaunay")
     >>> weight = g.new_edge_property("double")
     >>> for e in g.edges():
@@ -459,11 +488,10 @@ def random_spanning_tree(g, weights=None, root=None, tree_map=None):
     l = label_out_component(GraphView(g, reversed=True), root)
     g = GraphView(g, vfilt=l)
 
-    seed = numpy.random.randint(0, sys.maxsize)
     libgraph_tool_topology.\
         random_spanning_tree(g._Graph__graph, int(root),
                              _prop("e", g, weights),
-                             _prop("e", g, tree_map), seed)
+                             _prop("e", g, tree_map), _get_rng())
     return tree_map
 
 
@@ -494,17 +522,23 @@ def dominator_tree(g, root, dom_map=None):
 
     Examples
     --------
-    >>> from numpy.random import seed
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       import numpy.random
+       numpy.random.seed(42)
+       gt.seed_rng(42)
+
     >>> g = gt.random_graph(100, lambda: (2, 2))
     >>> tree = gt.min_spanning_tree(g)
     >>> g.set_edge_filter(tree)
     >>> root = [v for v in g.vertices() if v.in_degree() == 0]
     >>> dom = gt.dominator_tree(g, root[0])
     >>> print(dom.a)
-    [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 5 0 0 0 0 0 0 0 0 0 0
-     0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-     0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+    [ 0  0 72  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+      0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+      0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+      0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  8  0  0  0  0  0]
 
     References
     ----------
@@ -539,15 +573,20 @@ def topological_sort(g):
 
     Examples
     --------
-    >>> from numpy.random import seed
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       import numpy.random
+       numpy.random.seed(42)
+       gt.seed_rng(42)
+
     >>> g = gt.random_graph(30, lambda: (3, 3))
     >>> tree = gt.min_spanning_tree(g)
     >>> g.set_edge_filter(tree)
     >>> sort = gt.topological_sort(g)
     >>> print(sort)
-    [ 3 20  9 29 15  0 10 23  1  2 21  7  4 12 11  5 26 27  6  8 13 14 22 16 17
-     28 18 19 24 25]
+    [ 0 10  1 18  2  3 16 27 24 20 14  4 15 23  9 21 13 22 12  5  6  7 29 28  8
+     19 25 26 11 17]
 
     References
     ----------
@@ -578,8 +617,13 @@ def transitive_closure(g):
 
     Examples
     --------
-    >>> from numpy.random import seed
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       import numpy.random
+       numpy.random.seed(42)
+       gt.seed_rng(42)
+
     >>> g = gt.random_graph(30, lambda: (3, 3))
     >>> tc = gt.transitive_closure(g)
 
@@ -633,16 +677,20 @@ def label_components(g, vprop=None, directed=None):
 
     Examples
     --------
-    >>> from numpy.random import seed
-    >>> seed(43)
+    .. testcode::
+       :hide:
+
+       numpy.random.seed(43)
+       gt.seed_rng(43)
+
     >>> g = gt.random_graph(100, lambda: (1, 1))
     >>> comp, hist = gt.label_components(g)
     >>> print(comp.a)
-    [0 0 0 1 0 2 0 0 0 0 2 0 0 0 2 1 0 2 0 1 2 0 1 0 0 1 0 2 0 2 1 0 2 0 0 0 0
-     0 0 1 0 0 2 2 2 0 0 0 0 0 0 2 0 0 1 1 0 0 2 0 1 0 0 0 2 0 0 2 2 1 2 1 0 0
-     2 0 0 1 2 1 2 2 0 0 0 0 0 2 0 0 0 1 1 0 0 0 1 1 2 2]
+    [0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 2 1 1 1 1 3 1 1 1 1 1 1 1 2 1 0
+     0 2 1 1 1 1 1 1 1 3 1 1 1 1 1 1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1 1 1 3 2 1
+     1 1 1 1 1 2 1 1 1 1 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1]
     >>> print(hist)
-    [58 18 24]
+    [ 4 87  6  3]
     """
 
     if vprop is None:
@@ -685,17 +733,22 @@ def label_largest_component(g, directed=None):
 
     Examples
     --------
-    >>> from numpy.random import seed, poisson
-    >>> seed(43)
+    .. testcode::
+       :hide:
+
+       import numpy.random
+       numpy.random.seed(42)
+       gt.seed_rng(42)
+
     >>> g = gt.random_graph(100, lambda: poisson(1), directed=False)
     >>> l = gt.label_largest_component(g)
     >>> print(l.a)
-    [1 0 0 0 0 0 0 0 1 1 0 1 0 0 0 0 0 0 1 0 0 1 1 1 1 0 0 0 1 0 0 0 0 0 0 0 1
-     1 1 0 0 0 0 1 0 1 1 0 0 0 1 1 0 0 1 1 0 0 0 0 0 0 1 0 1 0 0 0 0 0 0 0 0 0
-     0 0 0 1 1 0 1 1 0 0 0 0 0 1 1 0 1 0 1 0 1 0 0 0 0 0]
+    [1 1 0 0 1 1 0 0 0 1 0 1 0 0 0 0 0 0 0 0 1 0 0 0 1 1 0 0 0 1 0 0 0 0 0 1 0
+     0 0 1 0 1 0 0 0 1 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 1 0 1 0 0 0 0 1 0 0 0
+     0 0 0 0 1 0 0 0 1 0 0 0 0 0 1 1 1 0 1 0 0 1 0 0 0 0]
     >>> u = gt.GraphView(g, vfilt=l)   # extract the largest component as a graph
     >>> print(u.num_vertices())
-    31
+    26
     """
 
     label = g.new_vertex_property("bool")
@@ -731,23 +784,28 @@ def label_out_component(g, root):
 
     Examples
     --------
-    >>> from numpy.random import seed, poisson
-    >>> seed(43)
-    >>> g = gt.random_graph(100, lambda: poisson(1), directed=False)
-    >>> l = gt.label_out_component(g, g.vertex(0))
+    .. testcode::
+       :hide:
+
+       import numpy.random
+       numpy.random.seed(42)
+       gt.seed_rng(42)
+
+    >>> g = gt.random_graph(100, lambda: poisson(2.2), directed=False)
+    >>> l = gt.label_out_component(g, g.vertex(2))
     >>> print(l.a)
-    [1 0 0 0 0 0 0 0 1 1 0 1 0 0 0 0 0 0 1 0 0 1 1 1 1 0 0 0 1 0 0 0 0 0 0 0 1
-     1 1 0 0 0 0 1 0 1 1 0 0 0 1 1 0 0 1 1 0 0 0 0 0 0 1 0 1 0 0 0 0 0 0 0 0 0
-     0 0 0 1 1 0 1 1 0 0 0 0 0 1 1 0 1 0 1 0 1 0 0 0 0 0]
+    [1 0 1 1 0 1 1 0 1 1 1 0 1 1 0 1 0 1 1 1 1 1 0 1 1 0 1 0 1 1 1 0 0 1 1 1 0
+     1 1 0 1 1 1 1 1 1 1 1 0 1 1 1 1 1 0 1 1 1 1 0 1 1 1 1 1 0 0 0 1 1 1 1 1 1
+     1 1 0 1 1 1 1 0 1 1 1 1 1 1 0 1 1 0 1 1 1 0 1 1 1 0]
 
     The in-component can be obtained by reversing the graph.
 
     >>> l = gt.label_out_component(gt.GraphView(g, reversed=True, directed=True),
-    ...                            g.vertex(0))
+    ...                            g.vertex(1))
     >>> print(l.a)
-    [1 0 0 0 0 0 0 0 1 1 0 1 0 0 0 0 0 0 1 0 0 1 1 1 1 0 0 0 1 0 0 0 0 0 0 0 1
-     1 1 0 0 0 0 1 0 1 1 0 0 0 1 1 0 0 1 1 0 0 0 0 0 0 1 0 1 0 0 0 0 0 0 0 0 0
-     0 0 0 1 1 0 1 1 0 0 0 0 0 1 1 0 1 0 1 0 1 0 0 0 0 0]
+    [0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+     0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+     0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
     """
 
     label = g.new_vertex_property("bool")
@@ -809,20 +867,25 @@ def label_biconnected_components(g, eprop=None, vprop=None):
 
     Examples
     --------
-    >>> from numpy.random import seed
-    >>> seed(43)
+    .. testcode::
+       :hide:
+
+       import numpy.random
+       numpy.random.seed(42)
+       gt.seed_rng(42)
+
     >>> g = gt.random_graph(100, lambda: 2, directed=False)
     >>> comp, art, hist = gt.label_biconnected_components(g)
     >>> print(comp.a)
-    [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 0 0
-     0 0 1 0 0 1 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 1 0 0 0 0 1
-     0 0 0 0 0 0 0 1 0 1 0 0 0 0 0 0 0 0 1 0 1 0 0 0 0 0]
+    [2 3 0 0 2 0 0 0 1 0 0 1 0 0 1 3 0 2 0 0 0 0 0 1 0 0 2 0 0 0 2 3 0 0 2 0 3
+     0 0 3 0 0 0 0 0 0 2 1 2 0 0 0 0 0 0 0 0 1 3 0 2 1 1 0 0 0 0 0 0 1 0 0 1 2
+     0 0 2 0 2 0 0 0 2 0 0 0 0 3 1 0 0 1 0 0 0 0 2 0 0 3]
     >>> print(art.a)
     [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
     >>> print(hist)
-    [87 13]
+    [66 12 14  8]
     """
 
     if vprop is None:
@@ -897,47 +960,54 @@ def shortest_distance(g, source=None, weights=None, max_dist=None,
 
     Examples
     --------
-    >>> from numpy.random import seed, poisson
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       import numpy.random
+       numpy.random.seed(42)
+       gt.seed_rng(42)
+
+    >>> from numpy.random import poisson
     >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
     >>> dist = gt.shortest_distance(g, source=g.vertex(0))
     >>> print(dist.a)
-    [         0          3          6          4 2147483647          3
-              4          3          4          2          3          4
-              3          4          2          4          2          5
-              4          4 2147483647          4 2147483647          6
-              4          7          5 2147483647          3          4
-              2          3          5          5          4          5
-              1          5          6          1 2147483647          8
-              4          2          1          5          5          6
-              7          4          5          3          4          4
-              5          3          3          5          4          5
-              4          3          5          4          2 2147483647
-              6          5          4          5          1 2147483647
-              5          5          4          2          5          4
-              6          3          5          3          4 2147483647
-              4          4          7          4          3          5
-              5          2          7          3          4          4
-              4          3          4          4]
+    [         0          5          9          6 2147483647 2147483647
+              3          5          7          4          5          7
+              5          3          5          6          4          6
+              5          3          7          4          5          1
+              8          7          6          2          8          6
+              7          6          3          6          3          3
+              4          6          4          3 2147483647          4
+              5          4          6          5          9          6
+              8          7          6          4          4          7
+              2          7          7          6          4          4
+              6          9          4          4          2          3
+              7          5          6          5 2147483647 2147483647
+              6          5          4          5          6          6
+              6          5          7          5          5          7
+              5          6          4          3          6          4
+              6          5          5          5          4          7
+              5          5          4          3]
+
     >>> dist = gt.shortest_distance(g)
     >>> print(dist[g.vertex(0)].a)
-    [         0          3          6          4 2147483647          3
-              4          3          4          2          3          4
-              3          4          2          4          2          5
-              4          4 2147483647          4 2147483647          6
-              4          7          5 2147483647          3          4
-              2          3          5          5          4          5
-              1          5          6          1 2147483647          8
-              4          2          1          5          5          6
-              7          4          5          3          4          4
-              5          3          3          5          4          5
-              4          3          5          4          2 2147483647
-              6          5          4          5          1 2147483647
-              5          5          4          2          5          4
-              6          3          5          3          4 2147483647
-              4          4          7          4          3          5
-              5          2          7          3          4          4
-              4          3          4          4]
+    [         0          5          9          6 2147483647 2147483647
+              3          5          7          4          5          7
+              5          3          5          6          4          6
+              5          3          7          4          5          1
+              8          7          6          2          8          6
+              7          6          3          6          3          3
+              4          6          4          3 2147483647          4
+              5          4          6          5          9          6
+              8          7          6          4          4          7
+              2          7          7          6          4          4
+              6          9          4          4          2          3
+              7          5          6          5 2147483647 2147483647
+              6          5          4          5          6          6
+              6          5          7          5          5          7
+              5          6          4          3          6          4
+              6          5          5          5          4          7
+              5          5          4          3]
 
     References
     ----------
@@ -1035,14 +1105,20 @@ def shortest_path(g, source, target, weights=None, pred_map=None):
 
     Examples
     --------
-    >>> from numpy.random import seed, poisson
-    >>> seed(42)
-    >>> g = gt.random_graph(300, lambda: (poisson(3), poisson(3)))
+    .. testcode::
+       :hide:
+
+       import numpy.random
+       numpy.random.seed(43)
+       gt.seed_rng(43)
+
+    >>> from numpy.random import poisson
+    >>> g = gt.random_graph(300, lambda: (poisson(4), poisson(4)))
     >>> vlist, elist = gt.shortest_path(g, g.vertex(10), g.vertex(11))
     >>> print([str(v) for v in vlist])
-    ['10', '222', '246', '0', '50', '257', '12', '242', '11']
+    ['10', '149', '58', '227', '267', '11']
     >>> print([str(e) for e in elist])
-    ['(10, 222)', '(222, 246)', '(246, 0)', '(0, 50)', '(50, 257)', '(257, 12)', '(12, 242)', '(242, 11)']
+    ['(10, 149)', '(149, 58)', '(58, 227)', '(227, 267)', '(267, 11)']
 
     References
     ----------
@@ -1133,14 +1209,20 @@ def pseudo_diameter(g, source=None, weights=None):
 
     Examples
     --------
-    >>> from numpy.random import seed, poisson
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       import numpy.random
+       numpy.random.seed(42)
+       gt.seed_rng(42)
+
+    >>> from numpy.random import poisson
     >>> g = gt.random_graph(300, lambda: (poisson(3), poisson(3)))
     >>> dist, ends = gt.pseudo_diameter(g)
     >>> print(dist)
-    9.0
+    10.0
     >>> print(int(ends[0]), int(ends[1]))
-    (0, 255)
+    116 196
 
     References
     ----------
@@ -1261,8 +1343,14 @@ def is_planar(g, embedding=False, kuratowski=False):
 
     Examples
     --------
-    >>> from numpy.random import seed, random
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       import numpy.random
+       numpy.random.seed(42)
+       gt.seed_rng(42)
+
+    >>> from numpy.random import random
     >>> g = gt.triangulation(random((100,2)))[0]
     >>> p, embed_order = gt.is_planar(g, embedding=True)
     >>> print(p)
@@ -1345,13 +1433,12 @@ def make_maximal_planar(g, unfilter=False):
 
     Examples
     --------
-    >>> from numpy.random import seed, random
     >>> g = gt.lattice([42, 42])
     >>> gt.make_maximal_planar(g)
     >>> gt.is_planar(g)
     True
     >>> print(g.num_vertices(), g.num_edges())
-    (1764, 5286)
+    1764 5286
     >>> gt.graph_draw(g, output_size=(300, 300), output="maximal_planar.pdf")
     <...>
 
@@ -1378,9 +1465,13 @@ def is_DAG(g):
 
     Examples
     --------
+    .. testcode::
+       :hide:
 
-    >>> from numpy.random import seed
-    >>> seed(42)
+       import numpy.random
+       numpy.random.seed(42)
+       gt.seed_rng(42)
+
     >>> g = gt.random_graph(30, lambda: (3, 3))
     >>> print(gt.is_DAG(g))
     False
@@ -1425,9 +1516,6 @@ def max_cardinality_matching(g, heuristic=False, weight=None, minimize=True,
     -------
     match : :class:`~graph_tool.PropertyMap`
         Boolean edge property map where the matching is specified.
-    is_maximal : bool
-        True if the matching is indeed maximal, or False otherwise. This is only
-        returned if ``heuristic == False``.
 
     Notes
     -----
@@ -1435,16 +1523,28 @@ def max_cardinality_matching(g, heuristic=False, weight=None, minimize=True,
     share a common vertex. A *maximum cardinality matching* has maximum size
     over all matchings in the graph.
 
+    If the parameter ``weight`` is provided, as well as ``heuristic == True`` a
+    matching with maximum cardinality *and* maximum (or minimum) weight is
+    returned.
+
+    If ``heuristic == True`` the algorithm does not necessarily return the
+    maximum matching, instead the focus is to run on linear time.
+
     This algorithm runs in time :math:`O(EV\times\alpha(E,V))`, where
     :math:`\alpha(m,n)` is a slow growing function that is at most 4 for any
-    feasible input. If `heuristic == True`, the algorithm runs in time :math:`O(V + E)`.
+    feasible input. If `heuristic == True`, the algorithm runs in time
+    :math:`O(V + E)`.
 
     For a more detailed description, see [boost-max-matching]_.
 
     Examples
     --------
-    >>> from numpy.random import seed
-    >>> seed(43)
+    .. testcode::
+       :hide:
+
+       numpy.random.seed(43)
+       gt.seed_rng(43)
+
     >>> g = gt.GraphView(gt.price_network(300), directed=False)
     >>> res = gt.max_cardinality_matching(g)
     >>> print(res[1])
@@ -1475,7 +1575,6 @@ def max_cardinality_matching(g, heuristic=False, weight=None, minimize=True,
     if weight is not None:
         _check_prop_scalar(weight, "weight")
 
-    seed = numpy.random.randint(0, sys.maxsize)
     u = GraphView(g, directed=False)
     if not heuristic:
         check = libgraph_tool_flow.\
@@ -1484,7 +1583,7 @@ def max_cardinality_matching(g, heuristic=False, weight=None, minimize=True,
     else:
         libgraph_tool_topology.\
                 random_matching(u._Graph__graph, _prop("e", u, weight),
-                                 _prop("e", u, match), minimize, seed)
+                                 _prop("e", u, match), minimize, _get_rng())
         return match
 
 
@@ -1517,8 +1616,12 @@ def max_independent_vertex_set(g, high_deg=False, mivs=None):
 
     Examples
     --------
-    >>> from numpy.random import seed
-    >>> seed(43)
+    .. testcode::
+       :hide:
+
+       numpy.random.seed(43)
+       gt.seed_rng(43)
+
     >>> g = gt.GraphView(gt.price_network(300), directed=False)
     >>> res = gt.max_independent_vertex_set(g)
     >>> gt.graph_draw(g, vertex_fill_color=res, output="mivs.pdf")
@@ -1533,7 +1636,7 @@ def max_independent_vertex_set(g, high_deg=False, mivs=None):
     ----------
     .. [mivs-wikipedia] http://en.wikipedia.org/wiki/Independent_set_%28graph_theory%29
     .. [mivs-luby] Luby, M., "A simple parallel algorithm for the maximal independent set problem",
-       Proc. 17th Symposium on Theory of Computing, Association for Computing Machinery, pp. 1–10, (1985)
+       Proc. 17th Symposium on Theory of Computing, Association for Computing Machinery, pp. 1-10, (1985)
        :doi:`10.1145/22145.22146`.
 
     """
@@ -1578,8 +1681,7 @@ def edge_reciprocity(g):
 
     >>> g = gt.Graph()
     >>> g.add_vertex(2)
-    [<Vertex object with index '0' at 0x1254dd0>,
-     <Vertex object with index '1' at 0x1254bd0>]
+    <...>
     >>> g.add_edge(g.vertex(0), g.vertex(1))
     <Edge object with source '0' and target '1' at 0x33bc710>
     >>> gt.edge_reciprocity(g)

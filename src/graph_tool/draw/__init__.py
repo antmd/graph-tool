@@ -114,13 +114,17 @@ def random_layout(g, shape=None, pos=None, dim=2):
 
     Examples
     --------
-    >>> from numpy.random import seed
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       np.random.seed(42)
+       gt.seed_rng(42)
+
     >>> g = gt.random_graph(100, lambda: (3, 3))
     >>> shape = [[50, 100], [1, 2], 4]
     >>> pos = gt.random_layout(g, shape=shape, dim=3)
     >>> pos[g.vertex(0)].a
-    array([ 86.59969709,   1.31435598,   0.64651486])
+    array([ 68.72700594,   1.03142919,   2.56812658])
 
     """
 
@@ -197,12 +201,21 @@ def fruchterman_reingold_layout(g, weight=None, a=None, r=1., scale=None,
 
     Examples
     --------
-    >>> from numpy.random import seed, zipf
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       np.random.seed(42)
+       gt.seed_rng(42)
+
     >>> g = gt.price_network(300)
     >>> pos = gt.fruchterman_reingold_layout(g, n_iter=1000)
     >>> gt.graph_draw(g, pos=pos, output="graph-draw-fr.pdf")
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output="graph-draw-fr.png")
 
     .. figure:: graph-draw-fr.*
         :align: center
@@ -212,8 +225,8 @@ def fruchterman_reingold_layout(g, weight=None, a=None, r=1., scale=None,
     References
     ----------
     .. [fruchterman-reingold] Fruchterman, Thomas M. J.; Reingold, Edward M.
-       "Graph Drawing by Force-Directed Placement". Software – Practice & Experience
-       (Wiley) 21 (11): 1129–1164. (1991) :doi:`10.1002/spe.4380211102`
+       "Graph Drawing by Force-Directed Placement". Software - Practice & Experience
+       (Wiley) 21 (11): 1129-1164. (1991) :doi:`10.1002/spe.4380211102`
     """
 
     if pos == None:
@@ -278,12 +291,21 @@ def arf_layout(g, weight=None, d=0.5, a=10, dt=0.001, epsilon=1e-6,
 
     Examples
     --------
-    >>> from numpy.random import seed, zipf
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       np.random.seed(42)
+       gt.seed_rng(42)
+
     >>> g = gt.price_network(300)
     >>> pos = gt.arf_layout(g, max_iter=0)
     >>> gt.graph_draw(g, pos=pos, output="graph-draw-arf.pdf")
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output="graph-draw-arf.png")
 
     .. figure:: graph-draw-arf.*
         :align: center
@@ -333,7 +355,7 @@ def _coarse_graph(g, vweight, eweight, mivs=False, groups=None):
     else:
         mivs = None
         c = groups
-    cg, cc, vcount, ecount = condensation_graph(g, c, vweight, eweight)
+    cg, cc, vcount, ecount = condensation_graph(g, c, vweight, eweight)[:4]
     return cg, cc, vcount, ecount, c, mivs
 
 
@@ -460,7 +482,7 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, groups=None, C=0.2,
     p : float (optional, default: ``2``)
         Repulsive force exponent.
     theta : float (optional, default: ``0.6``)
-        Quadtree opening parameter, a.k.a. Barnes–Hut opening criterion.
+        Quadtree opening parameter, a.k.a. Barnes-Hut opening criterion.
     max_level : int (optional, default: ``11``)
         Maximum quadtree level.
     gamma : float (optional, default: ``1.0``)
@@ -515,12 +537,21 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, groups=None, C=0.2,
 
     Examples
     --------
-    >>> from numpy.random import seed, zipf
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       np.random.seed(42)
+       gt.seed_rng(42)
+
     >>> g = gt.price_network(3000)
     >>> pos = gt.sfdp_layout(g)
     >>> gt.graph_draw(g, pos=pos, output="graph-draw-sfdp.pdf")
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output="graph-draw-sfdp.png")
 
     .. figure:: graph-draw-sfdp.*
         :align: center
@@ -646,7 +677,7 @@ def prop_to_size(prop, mi=0, ma=5, log=False, power=0.5):
     else:
         vals = prop.fa
 
-    delta =  vals.max() - vals.min()
+    delta = vals.max() - vals.min()
     if delta == 0:
         delta = 1
     prop.fa = mi + (ma - mi) * ((vals - vals.min()) / delta) ** power

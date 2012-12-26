@@ -83,15 +83,17 @@ def adjacency(g, sparse=True, weight=None):
 
     Examples
     --------
-    >>> from numpy.random import seed, random
-    >>> seed(42)
-    >>> g = gt.random_graph(100, lambda: (10,10))
+    .. testsetup::
+
+      gt.seed_rng(42)
+
+    >>> g = gt.random_graph(100, lambda: (10, 10))
     >>> m = gt.adjacency(g)
     >>> print(m.todense())
     [[ 0.  0.  0. ...,  0.  0.  0.]
      [ 0.  0.  0. ...,  0.  0.  0.]
      [ 0.  0.  0. ...,  0.  0.  0.]
-     ..., 
+     ...,
      [ 0.  0.  0. ...,  0.  0.  1.]
      [ 0.  0.  1. ...,  0.  0.  0.]
      [ 0.  1.  0. ...,  0.  0.  0.]]
@@ -191,15 +193,17 @@ def laplacian(g, deg="total", normalized=True, sparse=True, weight=None):
 
     Examples
     --------
-    >>> from numpy.random import seed, random
-    >>> seed(42)
+    .. testsetup::
+
+      gt.seed_rng(42)
+
     >>> g = gt.random_graph(100, lambda: (10,10))
     >>> m = gt.laplacian(g)
     >>> print(m.todense())
     [[ 1.    0.    0.   ...,  0.    0.    0.  ]
      [ 0.    1.    0.   ...,  0.    0.    0.  ]
      [ 0.    0.    1.   ...,  0.    0.    0.  ]
-     ..., 
+     ...,
      [ 0.    0.    0.   ...,  1.    0.    0.05]
      [ 0.    0.    0.05 ...,  0.    1.    0.  ]
      [ 0.    0.05  0.   ...,  0.    0.    1.  ]]
@@ -278,15 +282,17 @@ def incidence(g, sparse=True):
 
     Examples
     --------
-    >>> from numpy.random import seed, random
-    >>> seed(42)
+    .. testsetup::
+
+      gt.seed_rng(42)
+
     >>> g = gt.random_graph(100, lambda: (2,2))
     >>> m = gt.incidence(g)
     >>> print(m.todense())
     [[ 0.  0.  0. ...,  0.  0.  0.]
      [ 0.  0.  0. ...,  0.  0.  0.]
      [ 0.  0.  0. ...,  0.  0.  0.]
-     ..., 
+     ...,
      [ 0.  0.  0. ...,  0.  0.  0.]
      [ 0.  0.  0. ...,  0.  0.  0.]
      [ 0.  0.  0. ...,  0.  0.  0.]]

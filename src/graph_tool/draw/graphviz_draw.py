@@ -256,9 +256,13 @@ def graphviz_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
 
     Examples
     --------
-    >>> from numpy import *
-    >>> from numpy.random import seed, zipf
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       np.random.seed(42)
+       gt.seed_rng(42)
+       from numpy import sqrt
+
     >>> g = gt.price_network(1500)
     >>> deg = g.degree_property_map("in")
     >>> deg.a = 2 * (sqrt(deg.a) * 0.5 + 0.4)
@@ -266,6 +270,12 @@ def graphviz_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
     >>> gt.graphviz_draw(g, vcolor=deg, vorder=deg, elen=10,
     ...                  ecolor=ebet, eorder=ebet, output="graphviz-draw.pdf")
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graphviz_draw(g, vcolor=deg, vorder=deg, elen=10,
+                        ecolor=ebet, eorder=ebet, output="graphviz-draw.png")
 
     .. figure:: graphviz-draw.*
         :align: center
@@ -388,7 +398,7 @@ def graphviz_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
 
         # add nodes
         if vorder is not None:
-            vertices = sorted(g.vertices(), lambda a, b: cmp(vorder[a], vorder[b]))
+            vertices = sorted(g.vertices(), key = lambda a: vorder[a])
         else:
             vertices = g.vertices()
         for v in vertices:
@@ -435,7 +445,7 @@ def graphviz_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
 
         # add edges
         if eorder is not None:
-            edges = sorted(g.edges(), lambda a, b: cmp(eorder[a], eorder[b]))
+            edges = sorted(g.edges(), key = lambda a: eorder[a])
         else:
             edges = g.edges()
         for e in edges:

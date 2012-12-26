@@ -112,12 +112,16 @@ def local_clustering(g, prop=None, undirected=True):
 
     Examples
     --------
-    >>> from numpy.random import seed
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       np.random.seed(42)
+       gt.seed_rng(42)
+
     >>> g = gt.random_graph(1000, lambda: (5,5))
     >>> clust = gt.local_clustering(g)
     >>> print(gt.vertex_average(g, clust))
-    (0.00908888888888889, 0.0004449824521439575)
+    (0.008622222222222222, 0.00043812507374825467)
 
     References
     ----------
@@ -170,11 +174,15 @@ def global_clustering(g):
 
     Examples
     --------
-    >>> from numpy.random import seed
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       np.random.seed(42)
+       gt.seed_rng(42)
+
     >>> g = gt.random_graph(1000, lambda: (5,5))
     >>> print(gt.global_clustering(g))
-    (0.009114059777509717, 0.0004464454368899158)
+    (0.008641479099678457, 0.00043945639266115854)
 
     References
     ----------
@@ -242,18 +250,22 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
 
     Examples
     --------
-    >>> from numpy.random import seed
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       np.random.seed(42)
+       gt.seed_rng(42)
+
     >>> g = gt.random_graph(1000, lambda: (5,5))
     >>> clusts = gt.extended_clustering(g, max_depth=5)
     >>> for i in range(0, 5):
     ...    print(gt.vertex_average(g, clusts[i]))
     ...
-    (0.0058850000000000005, 0.0004726257592782405)
-    (0.026346666666666668, 0.0009562588213100747)
-    (0.11638833333333333, 0.002086419787711849)
-    (0.3862533333333333, 0.003020064612995335)
-    (0.44685499999999995, 0.003124572962377774)
+    (0.005646666666666667, 0.000485653786148116)
+    (0.023786666666666668, 0.000912204314345811)
+    (0.11883, 0.0019560612322840113)
+    (0.4067333333333333, 0.0031162452478013408)
+    (0.4260333333333333, 0.003097392092999815)
 
     References
     ----------
@@ -319,14 +331,18 @@ def motifs(g, k, p=1.0, motif_list=None):
 
     Examples
     --------
-    >>> from numpy.random import seed
-    >>> seed(42)
+    .. testcode::
+       :hide:
+
+       np.random.seed(42)
+       gt.seed_rng(42)
+
     >>> g = gt.random_graph(1000, lambda: (5,5))
     >>> motifs, counts = gt.motifs(gt.GraphView(g, directed=False), 4)
     >>> print(len(motifs))
-    11
+    10
     >>> print(counts)
-    [115104, 389090, 724, 820, 1828, 3208, 791, 4, 12, 12, 3]
+    [115392, 389974, 668, 761, 3056, 1698, 770, 4, 10, 7]
 
 
     References
@@ -375,15 +391,13 @@ def motifs(g, k, p=1.0, motif_list=None):
 
     list_hist = list(zip(sub_list, hist))
     # sort according to in-degree sequence
-    list_hist.sort(lambda x, y: cmp(sorted([v.in_degree() for v in x[0].vertices()]),
-                                    sorted([v.in_degree() for v in y[0].vertices()])))
+    list_hist.sort(key=lambda x: sorted([v.in_degree() for v in x[0].vertices()]))
 
     # sort according to out-degree sequence
-    list_hist.sort(lambda x, y: cmp(sorted([v.out_degree() for v in x[0].vertices()]),
-                                    sorted([v.out_degree() for v in y[0].vertices()])))
+    list_hist.sort(key=lambda x: sorted([v.out_degree() for v in x[0].vertices()]))
 
     # sort according to ascending number of edges
-    list_hist.sort(lambda x, y: cmp(x[0].num_edges(), y[0].num_edges()))
+    list_hist.sort(key=lambda x: x[0].num_edges())
 
     sub_list = [x[0] for x in list_hist]
     hist = [x[1] for x in list_hist]
@@ -487,9 +501,10 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
     >>> g = gt.random_graph(100, lambda: (3,3))
     >>> motifs, zscores = gt.motif_significance(g, 3)
     >>> print(len(motifs))
-    11
+    12
     >>> print(zscores)
-    [0.014875553792545083, 0.016154998074953769, 0.002455801898331304, -1.9579019397305546, 0.83542298414538518, 0.84715258999068244, -0.93385230436820643, -0.11, -0.1, -0.31, -0.14]
+    [-0.26668839861225141, -0.37627454937420612, 0.63246648717833609, 1.9856284046854835, -0.60389512777130483, -0.35502673716019983, -1.2236332765203428, 0.87, -0.11, -0.47, -0.2, -0.01]
+
     """
 
     s_ms, counts = motifs(g, k, p, motif_list)
@@ -534,19 +549,13 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
 
     list_hist = list(zip(s_ms, s_counts, s_dev))
     # sort according to in-degree sequence
-    list_hist.sort(lambda x, y: cmp(sorted([v.in_degree()\
-                                            for v in x[0].vertices()]),
-                                    sorted([v.in_degree()\
-                                            for v in y[0].vertices()])))
+    list_hist.sort(key = lambda x: sorted([v.in_degree() for v in x[0].vertices()])),
 
     # sort according to out-degree sequence
-    list_hist.sort(lambda x, y: cmp(sorted([v.out_degree()\
-                                            for v in x[0].vertices()]),
-                                    sorted([v.out_degree()\
-                                            for v in y[0].vertices()])))
+    list_hist.sort(key = lambda x: sorted([v.out_degree() for v in x[0].vertices()]))
 
     # sort according to ascending number of edges
-    list_hist.sort(lambda x, y: cmp(x[0].num_edges(), y[0].num_edges()))
+    list_hist.sort(key = lambda x: x[0].num_edges())
 
     s_ms, s_counts, s_dev = list(zip(*list_hist))
 
@@ -556,4 +565,3 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
         return s_ms, zscore, counts, s_counts, s_dev
     else:
         return s_ms, zscore
-

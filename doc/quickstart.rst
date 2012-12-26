@@ -10,6 +10,11 @@ The module must be of course imported before it can be used. The package is
 subdivided into several sub-modules. To import everything from all of them, one
 can do:
 
+.. testsetup::
+
+   np.random.seed(42)
+   gt.seed_rng(42)
+
 .. doctest::
 
    >>> from graph_tool.all import *
@@ -86,6 +91,13 @@ visualize the graph we created so far with the
    >>> graph_draw(g, vertex_text=g.vertex_index, vertex_font_size=18,
    ...            output_size=(200, 200), output="two-nodes.pdf")
    <...>
+
+.. doctest::
+   :hide:
+
+   graph_draw(g, vertex_text=g.vertex_index, vertex_font_size=18,
+              output_size=(200, 200), output="two-nodes.png")
+
 
 .. figure:: two-nodes.*
    :align: center
@@ -410,19 +422,20 @@ Graph I/O
 
 Graphs can be saved and loaded in three formats: `graphml
 <http://graphml.graphdrawing.org/>`_, `dot
-<http://www.graphviz.org/doc/info/lang.html>`_ and
-`gml <http://www.fim.uni-passau.de/en/fim/faculty/chairs/theoretische-informatik/projects.html>`_.
+<http://www.graphviz.org/doc/info/lang.html>`_ and `gml
+<http://www.fim.uni-passau.de/en/fim/faculty/chairs/theoretische-informatik/projects.html>`_.
 ``Graphml`` is the default and preferred format, since it is by far the
 most complete. The ``dot`` and ``gml`` formats are fully supported, but
 since they contain no precise type information, all properties are read
 as strings (or also as double, in the case of ``gml``), and must be
-converted per hand. Therefore you should always use graphml, except when
-interfacing with other software, or existing data, which uses ``dot`` or
-``gml``.
+converted by hand. Therefore you should always use graphml, since it
+performs an exact bit-for-bit representation of all supported
+:ref:`sec_property_maps`, except when interfacing with other software, or
+existing data, which uses ``dot`` or ``gml``.
 
 A graph can be saved or loaded to a file with the :attr:`~graph_tool.Graph.save`
 and :attr:`~graph_tool.Graph.load` methods, which take either a file name or a
-file-like object. A graph can also be loaded from disk with the
+file-like object. A graph can also be loaded from disc with the
 :func:`~graph_tool.load_graph` function, as such:
 
 .. doctest::
@@ -439,12 +452,21 @@ Graph classes can also be pickled with the :mod:`pickle` module.
 An Example: Building a Price Network
 ------------------------------------
 
-A Price network is the first known model of a "scale-free" graph, invented in
-1976 by `de Solla Price
+A Price network is the first known model of a "scale-free" graph,
+invented in 1976 by `de Solla Price
 <http://en.wikipedia.org/wiki/Derek_J._de_Solla_Price>`_. It is defined
-dynamically, where at each time step a new vertex is added to the graph, and
-connected to an old vertex, with probability proportional to its in-degree. The
-following program implements this construction using ``graph-tool``.
+dynamically, where at each time step a new vertex is added to the graph,
+and connected to an old vertex, with probability proportional to its
+in-degree. The following program implements this construction using
+``graph-tool``.
+
+.. note::
+
+   Note that it would be much faster just to use the
+   :func:`~graph_tool.generation.price_network` function, which is
+   implemented in C++, as opposed to the script below which is in pure
+   python. The code below is merely a demonstration on how to use the
+   library.
 
 .. literalinclude:: price.py
    :linenos:
@@ -488,8 +510,9 @@ use the :func:`~graph_tool.draw.graph_draw` function.
 
    g = load_graph("price.xml.gz")
    age = g.vertex_properties["age"]
+
    graph_draw(g, output_size=(1000, 1000), vertex_color=age,
-              vertex_fill_color=age, vertex_size=2.5, edge_pen_width=1.5,
+              vertex_fill_color=age, vertex_size=1, edge_pen_width=1.2,
               output="price.png")
 
 .. figure:: price.*
@@ -535,8 +558,14 @@ edge filtering.
 
    g, pos = triangulation(random((500, 2)) * 4, type="delaunay")
    tree = min_spanning_tree(g)
+   graph_draw(g, pos=pos, edge_color=tree, output="min_tree.pdf")
+
+.. testcode::
+   :hide:
+
    graph_draw(g, pos=pos, edge_color=tree, output_size=(400, 400),
-              output="min_tree.pdf")
+              output="min_tree.png")
+
 
 The ``tree`` property map has a bool type, with value "1" if the edge belongs to
 the tree, and "0" otherwise. Below is an image of the original graph, with the
@@ -549,8 +578,13 @@ We can now filter out the edges which don't belong to the minimum spanning tree.
 
 .. testcode::
 
-    g.set_edge_filter(tree)
-    graph_draw(g, pos=pos, output_size=(400, 400), output="min_tree_filtered.pdf")
+   g.set_edge_filter(tree)
+   graph_draw(g, pos=pos, output="min_tree_filtered.pdf")
+
+.. testcode::
+   :hide:
+
+   graph_draw(g, pos=pos, output_size=(400, 400), output="min_tree_filtered.png")
 
 This is how the graph looks when filtered:
 
@@ -567,7 +601,13 @@ and draws them as colors and line thickness in the graph.
     bv, be = betweenness(g)
     be.a /= be.a.max() / 5
     graph_draw(g, pos=pos, vertex_fill_color=bv, edge_pen_width=be,
-               output_size=(400, 400), output="filtered-bt.pdf")
+               output="filtered-bt.pdf")
+
+.. testcode::
+   :hide:
+
+   graph_draw(g, pos=pos, vertex_fill_color=bv, edge_pen_width=be,
+              output_size=(400, 400), output="filtered-bt.png")
 
 .. figure:: filtered-bt.*
    :align: center
@@ -581,7 +621,13 @@ The original graph can be recovered by setting the edge filter to ``None``.
     bv, be = betweenness(g)
     be.a /= be.a.max() / 5
     graph_draw(g, pos=pos, vertex_fill_color=bv, edge_pen_width=be,
-               output_size=(400, 400), output="nonfiltered-bt.pdf")
+               output="nonfiltered-bt.pdf")
+
+.. testcode::
+   :hide:
+
+   graph_draw(g, pos=pos, vertex_fill_color=bv, edge_pen_width=be,
+              output_size=(400, 400), output="nonfiltered-bt.png")
 
 .. figure:: nonfiltered-bt.*
    :align: center
@@ -637,10 +683,15 @@ Like above, the result should be the isolated minimum spanning tree:
     >>> bv, be = betweenness(tv)
     >>> be.a /= be.a.max() / 5
     >>> graph_draw(tv, pos=pos, vertex_fill_color=bv,
-    ...            edge_pen_width=be, output_size=(400, 400),
-    ...            output="mst-view.pdf")
+    ...            edge_pen_width=be, output="mst-view.pdf")
     <...>
 
+.. testcode::
+   :hide:
+
+   graph_draw(tv, pos=pos, vertex_fill_color=bv,
+              edge_pen_width=be, output_size=(400, 400),
+              output="mst-view.png")
 
 .. figure:: mst-view.*
    :align: center
@@ -683,9 +734,15 @@ The graph view constructed above can be visualized as
 .. doctest::
 
     >>> be.a /= be.a.max() / 5
-    >>> graph_draw(u, pos=pos, vertex_fill_color=bv, output_size=(400, 400),
-    ... output="central-edges-view.pdf")
+    >>> graph_draw(u, pos=pos, vertex_fill_color=bv, output="central-edges-view.pdf")
     <...>
+
+.. testcode::
+   :hide:
+
+   graph_draw(u, pos=pos, vertex_fill_color=bv, output_size=(400, 400),
+              output="central-edges-view.png")
+
 
 .. figure:: central-edges-view.*
    :align: center
@@ -711,8 +768,13 @@ The resulting graph view can be visualized as
 
 .. doctest::
 
-    >>> graph_draw(u, pos=pos, output_size=(400, 400), output="composed-filter.pdf")
+    >>> graph_draw(u, pos=pos, output="composed-filter.pdf")
     <...>
+
+.. testcode::
+   :hide:
+
+   graph_draw(u, pos=pos, output_size=(400, 400), output="composed-filter.png")
 
 .. figure:: composed-filter.*
    :align: center

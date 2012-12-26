@@ -43,26 +43,31 @@ The following network will be used as an example throughout the documentation.
 
     from numpy.random import seed, random
     from scipy.linalg import norm
+    gt.seed_rng(42)
     seed(42)
-    points = random((400, 2)) * 10
+    points = random((400, 2))
     points[0] = [0, 0]
-    points[1] = [10, 10]
+    points[1] = [1, 1]
     g, pos = gt.triangulation(points, type="delaunay")
     g.set_directed(True)
     edges = list(g.edges())
     # reciprocate edges
     for e in edges:
-        g.add_edge(e.target(), e.source())
-    # The capacity will be defined as the inverse euclidian distance
+       g.add_edge(e.target(), e.source())
+    # The capacity will be defined as the inverse euclidean distance
     cap = g.new_edge_property("double")
     for e in g.edges():
         cap[e] = min(1.0 / norm(pos[e.target()].a - pos[e.source()].a), 10)
     g.edge_properties["cap"] = cap
     g.vertex_properties["pos"] = pos
     g.save("flow-example.xml.gz")
-    cap.a /= cap.a.max() / 10
-    gt.graph_draw(g, pos=pos, edge_pen_width=cap, output="flow-example.pdf")
+    gt.graph_draw(g, pos=pos, edge_pen_width=gt.prop_to_size(cap, mi=0, ma=3, power=1),
+                  output="flow-example.pdf")
 
+.. testcode::
+   :hide:
+
+   gt.graph_draw(g, pos=pos, edge_pen_width=gt.prop_to_size(cap, mi=0, ma=3, power=1), output="flow-example.png")
 
 .. figure:: flow-example.*
     :align: center
@@ -116,12 +121,15 @@ def edmonds_karp_max_flow(g, source, target, capacity, residual=None):
     is not as good as the push_relabel_max_flow() or the
     boykov_kolmogorov_max_flow() algorithm.
 
-    - In the non-integer capacity case, the time complexity is :math:`O(V E^2)`
+    - In the non-integer capacity case, the time complexity is :math:`O(VE^2)`
       which is worse than the time complexity of the push-relabel algorithm
       :math:`O(V^2E^{1/2})` for all but the sparsest of graphs.
 
     - In the integer capacity case, if the capacity bound U is very large then
       the algorithm will take a long time.
+
+    The time complexity is :math:`O(VE^2)` in the general case or :math:`O(VEU)`
+    if capacity values are integers bounded by some constant :math:`U`.
 
     Examples
     --------
@@ -132,11 +140,15 @@ def edmonds_karp_max_flow(g, source, target, capacity, residual=None):
     >>> res.a = cap.a - res.a  # the actual flow
     >>> max_flow = sum(res[e] for e in tgt.in_edges())
     >>> print(max_flow)
-    6.92759897841
+    44.890595784116144
     >>> pos = g.vertex_properties["pos"]
-    >>> res.a /= res.a.max() / 10
-    >>> gt.graph_draw(g, pos=pos, edge_pen_width=res, output="example-edmonds-karp.pdf")
+    >>> gt.graph_draw(g, pos=pos, edge_pen_width=gt.prop_to_size(res, mi=0, ma=5, power=1), output="example-edmonds-karp.pdf")
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, edge_pen_width=gt.prop_to_size(res, mi=0, ma=5, power=1), output="example-edmonds-karp.png")
 
     .. figure:: example-edmonds-karp.*
         :align: center
@@ -209,11 +221,15 @@ def push_relabel_max_flow(g, source, target, capacity, residual=None):
     >>> res.a = cap.a - res.a  # the actual flow
     >>> max_flow = sum(res[e] for e in tgt.in_edges())
     >>> print(max_flow)
-    6.92759897841
+    44.890595784116144
     >>> pos = g.vertex_properties["pos"]
-    >>> res.a /= res.a.max() / 10
-    >>> gt.graph_draw(g, pos=pos, edge_pen_width=res, output="example-push-relabel.pdf")
+    >>> gt.graph_draw(g, pos=pos, edge_pen_width=gt.prop_to_size(res, mi=0, ma=5, power=1), output="example-push-relabel.pdf")
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, edge_pen_width=gt.prop_to_size(res, mi=0, ma=5, power=1), output="example-push-relabel.png")
 
     .. figure:: example-push-relabel.*
         :align: center
@@ -287,11 +303,15 @@ def boykov_kolmogorov_max_flow(g, source, target, capacity, residual=None):
     >>> res.a = cap.a - res.a  # the actual flow
     >>> max_flow = sum(res[e] for e in tgt.in_edges())
     >>> print(max_flow)
-    6.92759897841
+    44.890595784116144
     >>> pos = g.vertex_properties["pos"]
-    >>> res.a /= res.a.max() / 10
-    >>> gt.graph_draw(g, pos=pos, edge_pen_width=res, output="example-kolmogorov.pdf")
+    >>> gt.graph_draw(g, pos=pos, edge_pen_width=gt.prop_to_size(res, mi=0, ma=3, power=1), output="example-kolmogorov.pdf")
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, edge_pen_width=gt.prop_to_size(res, mi=0, ma=3, power=1), output="example-kolmogorov.png")
 
     .. figure:: example-kolmogorov.*
         :align: center
@@ -364,13 +384,18 @@ def min_st_cut(g, source, residual):
     >>> res = gt.boykov_kolmogorov_max_flow(g, src, tgt, cap)
     >>> mc, part = gt.min_st_cut(g, src, res)
     >>> print(mc)
-    0.978910572896
+    14.331937627198545
     >>> pos = g.vertex_properties["pos"]
     >>> res.a = cap.a - res.a  # the actual flow
-    >>> res.a /= res.a.max() / 10
-    >>> gt.graph_draw(g, pos=pos, edge_pen_width=res, vertex_fill_color=part,
-    ...               output="example-min-st-cut.pdf")
+    >>> gt.graph_draw(g, pos=pos, edge_pen_width=gt.prop_to_size(res, mi=0, ma=3, power=1),
+    ...               vertex_fill_color=part, output="example-min-st-cut.pdf")
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, edge_pen_width=gt.prop_to_size(res, mi=0, ma=3, power=1), vertex_fill_color=part,
+                     output="example-min-st-cut.png")
 
     .. figure:: example-min-st-cut.*
         :align: center
@@ -431,6 +456,12 @@ def min_cut(g, weight):
     ...               output="example-min-cut.pdf")
     <...>
 
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, edge_pen_width=gt.prop_to_size(weight, mi=2, ma=8), vertex_fill_color=part,
+                     output="example-min-cut.png")
+
     .. figure:: example-min-cut.*
         :align: center
 
@@ -441,7 +472,7 @@ def min_cut(g, weight):
     ----------
 
     .. [stoer_simple_1997] Stoer, Mechthild and Frank Wagner, "A simple min-cut
-       algorithm". Journal of the ACM 44 (4), 585–591, 1997. :doi:`10.1145/263867.263872`
+       algorithm". Journal of the ACM 44 (4), 585-591, 1997. :doi:`10.1145/263867.263872`
     """
 
     _check_prop_scalar(weight, "weight")

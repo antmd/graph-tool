@@ -104,12 +104,17 @@ def vertex_hist(g, deg, bins=[0, 1], float_count=True):
 
     Examples
     --------
-    >>> from numpy.random import poisson, seed
-    >>> seed(42)
+    .. testsetup::
+
+       import numpy.random
+       numpy.random.seed(42)
+       gt.seed_rng(42)
+
+    >>> from numpy.random import poisson
     >>> g = gt.random_graph(1000, lambda: (poisson(5), poisson(5)))
     >>> print(gt.vertex_hist(g, "out"))
-    [array([  10.,   30.,   86.,  138.,  166.,  154.,  146.,  129.,   68.,
-             36.,   23.,    8.,    3.,    2.,    0.,    1.]), array([ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16], dtype=uint64)]
+    [array([  10.,   36.,   90.,  147.,  164.,  165.,  142.,  109.,   70.,
+             31.,   28.,    7.,    1.]), array([ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13], dtype=uint64)]
     """
 
     ret = libgraph_tool_stats.\
@@ -160,14 +165,19 @@ def edge_hist(g, eprop, bins=[0, 1], float_count=True):
 
     Examples
     --------
+    .. testsetup::
+
+       import numpy.random
+       numpy.random.seed(42)
+       gt.seed_rng(42)
+
     >>> from numpy import arange
-    >>> from numpy.random import random, seed
-    >>> seed(42)
+    >>> from numpy.random import random
     >>> g = gt.random_graph(1000, lambda: (5, 5))
     >>> eprop = g.new_edge_property("double")
     >>> eprop.get_array()[:] = random(g.num_edges())
     >>> print(gt.edge_hist(g, eprop, linspace(0, 1, 11)))
-    [array([ 525.,  504.,  502.,  502.,  468.,  499.,  531.,  471.,  520.,  478.]), array([ 0. ,  0.1,  0.2,  0.3,  0.4,  0.5,  0.6,  0.7,  0.8,  0.9,  1. ])]
+    [array([ 483.,  462.,  467.,  493.,  498.,  486.,  515.,  552.,  496.,  548.]), array([ 0. ,  0.1,  0.2,  0.3,  0.4,  0.5,  0.6,  0.7,  0.8,  0.9,  1. ])]
 
     """
 
@@ -212,11 +222,16 @@ def vertex_average(g, deg):
 
     Examples
     --------
-    >>> from numpy.random import poisson, seed
-    >>> seed(42)
+    .. testsetup::
+
+       import numpy.random
+       numpy.random.seed(42)
+       gt.seed_rng(42)
+
+    >>> from numpy.random import poisson
     >>> g = gt.random_graph(1000, lambda: (poisson(5), poisson(5)))
     >>> print(gt.vertex_average(g, "in"))
-    (5.092, 0.07188557574367754)
+    (4.98, 0.06840760191674607)
     """
 
     ret = libgraph_tool_stats.\
@@ -257,14 +272,19 @@ def edge_average(g, eprop):
 
     Examples
     --------
+    .. testsetup::
+
+       import numpy.random
+       numpy.random.seed(42)
+       gt.seed_rng(42)
+
     >>> from numpy import arange
-    >>> from numpy.random import random, seed
-    >>> seed(42)
+    >>> from numpy.random import random
     >>> g = gt.random_graph(1000, lambda: (5, 5))
     >>> eprop = g.new_edge_property("double")
     >>> eprop.get_array()[:] = random(g.num_edges())
     >>> print(gt.edge_average(g, eprop))
-    (0.49674035434130187, 0.004094604069093868)
+    (0.4979474933948808, 0.004104589512548127)
     """
 
     ret = libgraph_tool_stats.\
@@ -379,15 +399,19 @@ def distance_histogram(g, weight=None, bins=[0, 1], samples=None,
 
     Examples
     --------
-    >>> from numpy.random import random, seed
-    >>> seed(42)
+    .. testsetup::
+
+       import numpy.random
+       numpy.random.seed(42)
+       gt.seed_rng(42)
+
     >>> g = gt.random_graph(100, lambda: (3, 3))
     >>> hist = gt.distance_histogram(g)
     >>> print(hist)
-    [array([    0.,   300.,   861.,  2165.,  3801.,  2576.,   197.]), array([0, 1, 2, 3, 4, 5, 6, 7], dtype=uint64)]
+    [array([    0.,   300.,   862.,  2153.,  3813.,  2547.,   225.]), array([0, 1, 2, 3, 4, 5, 6, 7], dtype=uint64)]
     >>> hist = gt.distance_histogram(g, samples=10)
     >>> print(hist)
-    [array([   0.,   30.,   87.,  221.,  395.,  234.,   23.]), array([0, 1, 2, 3, 4, 5, 6, 7], dtype=uint64)]
+    [array([   0.,   30.,   88.,  216.,  384.,  252.,   20.]), array([0, 1, 2, 3, 4, 5, 6, 7], dtype=uint64)]
     """
 
     if samples != None:

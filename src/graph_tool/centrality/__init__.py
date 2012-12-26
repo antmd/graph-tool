@@ -134,55 +134,58 @@ def pagerank(g, damping=0.85, pers=None, weight=None, prop=None, epsilon=1e-6,
 
     Examples
     --------
-    >>> from numpy.random import random, poisson, seed
-    >>> seed(42)
-    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
-    >>> pr = gt.pagerank(g)
-    >>> print(pr.a)
-    [ 0.00865316  0.0054067   0.00406312  0.00426668  0.0015      0.00991696
-      0.00550065  0.00936397  0.00347917  0.00731864  0.00689843  0.00286274
-      0.00508731  0.01020047  0.00562247  0.00584915  0.02457086  0.00438568
-      0.0057385   0.00621745  0.001755    0.0045073   0.0015      0.00225167
-      0.00698342  0.00206302  0.01094466  0.001925    0.00710093  0.00519877
-      0.00460646  0.00994648  0.01005248  0.00904629  0.00676221  0.00789208
-      0.00933103  0.00301154  0.00264951  0.00842812  0.0015      0.00191034
-      0.00594069  0.00884372  0.00453417  0.00388987  0.00317433  0.0086067
-      0.00385394  0.00672702  0.00258411  0.01468262  0.00454     0.00381159
-      0.00402607  0.00451133  0.00480966  0.00811557  0.00571949  0.00317433
-      0.00856838  0.00280517  0.00280563  0.00906324  0.00614421  0.0015
-      0.00292034  0.00479769  0.00552694  0.00604799  0.0115922   0.0015
-      0.00676183  0.00695336  0.01023352  0.01737541  0.00451443  0.00197688
-      0.00553866  0.00486233  0.0078653   0.00867599  0.01248092  0.0015
-      0.00399605  0.00399605  0.00881571  0.00638008  0.01056944  0.00353724
-      0.00249869  0.00684919  0.00241374  0.01061397  0.00673569  0.00590937
-      0.01004638  0.00331612  0.00926359  0.00460809]
+
+    .. doctest:: pagerank
+
+       >>> g = gt.collection.data["polblogs"]
+       >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(g))
+       >>> pr = gt.pagerank(g)
+       >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=pr,
+       ...               vertex_size=gt.prop_to_size(pr, mi=5, ma=15),
+       ...               vorder=pr, output="polblogs_pr.pdf")
+       <...>
+
+    .. testcode:: pagerank
+       :hide:
+
+       gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=pr,
+                     vertex_size=gt.prop_to_size(pr, mi=5, ma=15),
+                     vorder=pr, output="polblogs_pr.png")
+
+
+    .. figure:: polblogs_pr.*
+       :align: center
+
+       PageRank values of the a political blogs network of [adamic-polblogs]_.
 
     Now with a personalization vector, and edge weights:
 
-    >>> w = g.new_edge_property("double")
-    >>> w.a = random(g.num_edges())
-    >>> p = g.new_vertex_property("double")
-    >>> p.a = random(g.num_vertices())
-    >>> p.a /= p.a.sum()
-    >>> pr = gt.pagerank(g, pers=p, weight=w)
-    >>> print(pr.a)
-    [ 0.00712999  0.00663336  0.00685722  0.00402663  0.00092715  0.01021926
-      0.00269502  0.0073301   0.00449892  0.00582793  0.00580542  0.00275149
-      0.00676363  0.01157972  0.00486918  0.00616345  0.02506695  0.00607967
-      0.00553375  0.00359075  0.00293808  0.00362247  0.00250025  0.00186946
-      0.00895516  0.00318147  0.01489786  0.00312436  0.0074751   0.0040342
-      0.006254    0.00687051  0.0098073   0.01076278  0.00887077  0.00806759
-      0.00969532  0.00252648  0.00278688  0.00972144  0.00148972  0.00215428
-      0.00713602  0.00559849  0.00495517  0.00457118  0.00323767  0.01257406
-      0.00120179  0.00514838  0.00130655  0.01724465  0.00343819  0.00420962
-      0.00297617  0.00588287  0.00657206  0.00775082  0.00758217  0.00433776
-      0.00576829  0.00464595  0.00307274  0.00585795  0.00745881  0.00238803
-      0.00230431  0.00437046  0.00492464  0.00275414  0.01524646  0.00300867
-      0.00816665  0.00548853  0.00874738  0.01871498  0.00216776  0.00245196
-      0.00308878  0.00646323  0.01287978  0.00911384  0.01628604  0.0009367
-      0.00222119  0.00864202  0.01199119  0.01126539  0.01086846  0.00309224
-      0.0020319   0.00659422  0.00226965  0.0134399   0.01094141  0.00732916
-      0.00489314  0.0030402   0.00783914  0.00278588]
+    .. doctest:: pagerank
+
+       >>> d = g.degree_property_map("total")
+       >>> periphery = d.a <= 2
+       >>> p = g.new_vertex_property("double")
+       >>> p.a[periphery] = 100
+       >>> pr = gt.pagerank(g, pers=p)
+       >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=pr,
+       ...               vertex_size=gt.prop_to_size(pr, mi=5, ma=15),
+       ...               vorder=pr, output="polblogs_pr_pers.pdf")
+       <...>
+
+    .. testcode:: pagerank
+       :hide:
+
+       gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=pr,
+                     vertex_size=gt.prop_to_size(pr, mi=5, ma=15),
+                     vorder=pr, output="polblogs_pr_pers.png")
+
+
+    .. figure:: polblogs_pr_pers.*
+       :align: center
+
+       Personalized PageRank values of the a political blogs network of
+       [adamic-polblogs]_, where vertices with very low degree are given
+       artificially high scores.
 
     References
     ----------
@@ -193,6 +196,9 @@ def pagerank(g, damping=0.85, pers=None, weight=None, prop=None, epsilon=1e-6,
     .. [Langville-survey-2005] A. N. Langville, C. D. Meyer, "A Survey of
        Eigenvector Methods for Web Information Retrieval", SIAM Review, vol. 47,
        no. 1, pp. 135-161, 2005, :DOI:`10.1137/S0036144503424786`
+    .. [adamic-polblogs] L. A. Adamic and N. Glance, "The political blogosphere
+       and the 2004 US Election", in Proceedings of the WWW-2005 Workshop on the
+       Weblogging Ecosystem (2005). :DOI:`10.1145/1134271.1134277`
     """
 
     if max_iter == None:
@@ -265,34 +271,40 @@ def betweenness(g, vprop=None, eprop=None, weight=None, norm=True):
 
     Examples
     --------
-    >>> from numpy.random import poisson, seed
-    >>> seed(42)
-    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
-    >>> vb, eb = gt.betweenness(g)
-    >>> print(vb.a)
-    [ 0.04889806  0.07181892  0.0256799   0.02885791  0.          0.05060927
-      0.04490836  0.03763462  0.02033383  0.03163202  0.02641248  0.03171598
-      0.03771112  0.02194663  0.0374907   0.01072567  0.          0.03079281
-      0.05409258  0.00163434  0.00051978  0.01045902  0.          0.00796784
-      0.0494527   0.00647576  0.03708252  0.00304503  0.0663657   0.03903257
-      0.03305169  0.          0.07787098  0.03938866  0.08577116  0.020183
-      0.06024004  0.01004935  0.0443127   0.06397736  0.          0.00363548
-      0.01742486  0.03216543  0.01918144  0.02059159  0.          0.01476213
-      0.          0.0466751   0.01072612  0.10288046  0.00563973  0.03850413
-      0.00629595  0.01292137  0.0537963   0.04454985  0.01227018  0.00729488
-      0.02092959  0.02308238  0.00712703  0.02193975  0.03823342  0.
-      0.00995364  0.04023839  0.0312708   0.0111312   0.00228516  0.
-      0.09659583  0.01327402  0.05792071  0.08606828  0.0143541   0.00221604
-      0.02144698  0.          0.04023879  0.00715758  0.          0.
-      0.02348452  0.00760922  0.01486521  0.08132792  0.0382674   0.03078318
-      0.00430209  0.01772787  0.02280666  0.0373011   0.03077511  0.02871265
-      0.          0.01044655  0.04415432  0.04447525]
+
+    .. doctest:: betweenness
+
+       >>> g = gt.collection.data["polblogs"]
+       >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(g))
+       >>> vp, ep = gt.betweenness(g)
+       >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=vp,
+       ...               vertex_size=gt.prop_to_size(vp, mi=5, ma=15),
+       ...               edge_pen_width=gt.prop_to_size(ep, mi=0.5, ma=5),
+       ...               vorder=vp, output="polblogs_betweenness.pdf")
+       <...>
+
+    .. testcode:: betweenness
+       :hide:
+
+       gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=vp,
+                     vertex_size=gt.prop_to_size(vp, mi=5, ma=15),
+                     edge_pen_width=gt.prop_to_size(ep, mi=0.5, ma=5),
+                     vorder=vp, output="polblogs_betweenness.png")
+
+
+    .. figure:: polblogs_betweenness.*
+       :align: center
+
+       Betweenness values of the a political blogs network of [adamic-polblogs]_.
 
     References
     ----------
     .. [betweenness-wikipedia] http://en.wikipedia.org/wiki/Centrality#Betweenness_centrality
     .. [brandes-faster-2001] U. Brandes, "A faster algorithm for betweenness
        centrality", Journal of Mathematical Sociology, 2001, :doi:`10.1080/0022250X.2001.9990249`
+    .. [adamic-polblogs] L. A. Adamic and N. Glance, "The political blogosphere
+       and the 2004 US Election", in Proceedings of the WWW-2005 Workshop on the
+       Weblogging Ecosystem (2005). :DOI:`10.1145/1134271.1134277`
     """
     if vprop == None:
         vprop = g.new_vertex_property("double")
@@ -347,12 +359,12 @@ def central_point_dominance(g, betweenness):
 
     Examples
     --------
-    >>> from numpy.random import poisson, seed
-    >>> seed(42)
-    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
-    >>> vb, eb = gt.betweenness(g)
-    >>> print(gt.central_point_dominance(g, vb))
-    0.0766473408634
+
+    >>> g = gt.collection.data["polblogs"]
+    >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(g))
+    >>> vp, ep = gt.betweenness(g)
+    >>> print(gt.central_point_dominance(g, vp))
+    0.11610685614353008
 
     References
     ----------
@@ -425,32 +437,37 @@ def eigenvector(g, weight=None, vprop=None, epsilon=1e-6, max_iter=None):
 
     Examples
     --------
-    >>> from numpy.random import poisson, random, seed
-    >>> seed(42)
-    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
-    >>> w = g.new_edge_property("double")
-    >>> w.a = random(g.num_edges()) * 42
-    >>> x = gt.eigenvector(g, w)
-    >>> print(x[0])
-    0.0160851991895
-    >>> print(x[1].a)
-    [ 0.1376411   0.07207366  0.02727508  0.05805304  0.          0.10690994
-      0.04315491  0.01040908  0.02300252  0.08874163  0.04968119  0.06718114
-      0.05526028  0.20449371  0.02337425  0.07581173  0.19993899  0.14718912
-      0.08464664  0.08474977  0.          0.04843894  0.          0.0089388
-      0.16831573  0.00138653  0.11741616  0.          0.13455019  0.03642682
-      0.06729803  0.06229526  0.08937098  0.05693976  0.0793375   0.04076743
-      0.22176891  0.07717256  0.00518048  0.05722748  0.          0.00055799
-      0.04541778  0.06420469  0.06189998  0.08011859  0.05377224  0.29979873
-      0.01211309  0.15503588  0.02804072  0.1692873   0.01420732  0.02507
-      0.02959899  0.02702304  0.1652933   0.01434992  0.1073001   0.04582697
-      0.04618913  0.0220902   0.01421926  0.09891276  0.04522928  0.
-      0.00236599  0.07686829  0.03243909  0.00346715  0.1954776   0.
-      0.25583217  0.11710921  0.07804282  0.21188464  0.04800656  0.00321866
-      0.0552824   0.11204116  0.11420818  0.24071304  0.15451676  0.
-      0.00475456  0.10680434  0.17054333  0.18945499  0.15673649  0.03405238
-      0.01653319  0.02563015  0.00186129  0.12061027  0.11449362  0.11114196
-      0.06779788  0.00595725  0.09127559  0.02380386]
+    .. testsetup:: eigenvector
+
+       np.random.seed(42)
+
+    .. doctest:: eigenvector
+
+       >>> g = gt.collection.data["polblogs"]
+       >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(g))
+       >>> w = g.new_edge_property("double")
+       >>> w.a = np.random.random(len(w.a)) * 42
+       >>> ee, x = gt.eigenvector(g, w)
+       >>> print(ee)
+       0.0013713102236792602
+       >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=x,
+       ...               vertex_size=gt.prop_to_size(x, mi=5, ma=15),
+       ...               vorder=x, output="polblogs_eigenvector.pdf")
+       <...>
+
+    .. testcode:: eigenvector
+       :hide:
+
+       gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=x,
+                     vertex_size=gt.prop_to_size(x, mi=5, ma=15),
+                     vorder=x, output="polblogs_eigenvector.png")
+
+
+    .. figure:: polblogs_eigenvector.*
+       :align: center
+
+       Eigenvector values of the a political blogs network of
+       [adamic-polblogs]_, with random weights attributed to the edges.
 
     References
     ----------
@@ -460,7 +477,9 @@ def eigenvector(g, weight=None, vprop=None, epsilon=1e-6, max_iter=None):
     .. [langville-survey-2005] A. N. Langville, C. D. Meyer, "A Survey of
        Eigenvector Methods for Web Information Retrieval", SIAM Review, vol. 47,
        no. 1, pp. 135-161, 2005, :DOI:`10.1137/S0036144503424786`
-
+    .. [adamic-polblogs] L. A. Adamic and N. Glance, "The political blogosphere
+       and the 2004 US Election", in Proceedings of the WWW-2005 Workshop on the
+       Weblogging Ecosystem (2005). :DOI:`10.1145/1134271.1134277`
 
     """
 
@@ -535,40 +554,35 @@ def katz(g, alpha=0.01, beta=None, weight=None, vprop=None, epsilon=1e-6, max_it
 
     Examples
     --------
-    >>> from numpy.random import poisson, random, seed
-    >>> seed(42)
-    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
-    >>> w = g.new_edge_property("double")
-    >>> w.a = random(g.num_edges()) * 42
-    >>> beta = g.new_vertex_property("double")
-    >>> beta.a = random(g.num_vertices())
-    >>> x = gt.katz(g, 1.2, beta, w)
-    >>> print(x.a)
-    [  1.37641115e-01   7.20736590e-02   2.72750802e-02   5.80530330e-02
-       2.01730812e-46   1.06909945e-01   4.31549123e-02   1.04090757e-02
-       2.30025193e-02   8.87416158e-02   4.96811868e-02   6.71811510e-02
-       5.52602884e-02   2.04493707e-01   2.33742500e-02   7.58117387e-02
-       1.99938991e-01   1.47189139e-01   8.46466442e-02   8.47497818e-02
-       1.51237905e-45   4.84389342e-02   5.44009790e-46   8.93879711e-03
-       1.68315739e-01   1.38653230e-03   1.17416178e-01   5.86769582e-45
-       1.34550186e-01   3.64268155e-02   6.72980215e-02   6.22952571e-02
-       8.93709730e-02   5.69397613e-02   7.93375017e-02   4.07674261e-02
-       2.21768916e-01   7.71725431e-02   5.18047531e-03   5.72274765e-02
-       3.24137925e-46   5.57993342e-04   4.54177794e-02   6.42046867e-02
-       6.18999821e-02   8.01185834e-02   5.37722396e-02   2.99798712e-01
-       1.21130890e-02   1.55035898e-01   2.80407226e-02   1.69287315e-01
-       1.42073265e-02   2.50699989e-02   2.95989919e-02   2.70230452e-02
-       1.65293284e-01   1.43499144e-02   1.07300107e-01   4.58269685e-02
-       4.61891303e-02   2.20902054e-02   1.42192559e-02   9.89127698e-02
-       4.52292816e-02   5.19593979e-46   2.36598546e-03   7.68682863e-02
-       3.24390891e-02   3.46714702e-03   1.95477600e-01   6.54634726e-46
-       2.55832162e-01   1.17109207e-01   7.80428298e-02   2.11884617e-01
-       4.80065642e-02   3.21866466e-03   5.52824029e-02   1.12041157e-01
-       1.14208195e-01   2.40713033e-01   1.54516765e-01   2.03810664e-46
-       4.75455657e-03   1.06804336e-01   1.70543325e-01   1.89454987e-01
-       1.56736484e-01   3.40523749e-02   1.65331867e-02   2.56301436e-02
-       1.86129309e-03   1.20610273e-01   1.14493631e-01   1.11141961e-01
-       6.77978870e-02   5.95724763e-03   9.12755850e-02   2.38038610e-02]
+    .. testsetup:: katz
+
+       np.random.seed(42)
+
+    .. doctest:: katz
+
+       >>> g = gt.collection.data["polblogs"]
+       >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(g))
+       >>> w = g.new_edge_property("double")
+       >>> w.a = np.random.random(len(w.a)) * 42
+       >>> x = gt.katz(g, weight=w)
+       >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=x,
+       ...               vertex_size=gt.prop_to_size(x, mi=5, ma=15),
+       ...               vorder=x, output="polblogs_katz.pdf")
+       <...>
+
+    .. testcode:: katz
+       :hide:
+
+       gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=x,
+                     vertex_size=gt.prop_to_size(x, mi=5, ma=15),
+                     vorder=x, output="polblogs_katz.png")
+
+
+    .. figure:: polblogs_katz.*
+       :align: center
+
+       Katz centrality values of the a political blogs network of
+       [adamic-polblogs]_, with random weights attributed to the edges.
 
     References
     ----------
@@ -576,6 +590,9 @@ def katz(g, alpha=0.01, beta=None, weight=None, vprop=None, epsilon=1e-6, max_it
     .. [katz-centrality] http://en.wikipedia.org/wiki/Katz_centrality
     .. [katz-new] L. Katz, "A new status index derived from sociometric analysis",
        Psychometrika 18, Number 1, 39-43, 1953, :DOI:`10.1007/BF02289026`
+    .. [adamic-polblogs] L. A. Adamic and N. Glance, "The political blogosphere
+       and the 2004 US Election", in Proceedings of the WWW-2005 Workshop on the
+       Weblogging Ecosystem (2005). :DOI:`10.1145/1134271.1134277`
     """
 
     if vprop == None:
@@ -656,75 +673,54 @@ def hits(g, weight=None, xprop=None, yprop=None, epsilon=1e-6, max_iter=None):
 
     Examples
     --------
-    >>> from numpy.random import poisson, random, seed
-    >>> seed(42)
-    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
-    >>> w = g.new_edge_property("double")
-    >>> w.a = random(g.num_edges()) * 42
-    >>> l, x, y = gt.hits(g, w)
-    >>> print(l)
-    8.1281860004e-05
-    >>> print(x.a)
-    [  3.24207627e-02   9.86207526e-02   1.35737601e-03   2.81221883e-03
-       0.00000000e+00   3.50637929e-02   6.07494974e-03   1.73442186e-02
-       7.70292609e-02   3.16281170e-02   6.23685289e-03   5.33251236e-03
-       3.90261094e-03   1.39799492e-01   3.32727532e-03   2.75600277e-02
-       4.17864911e-03   1.35434601e-01   1.12371826e-01   3.14487794e-02
-       1.56239625e-03   1.53154844e-02   0.00000000e+00   9.76595823e-03
-       6.84470944e-02   3.99230637e-03   1.61380128e-02   6.30396302e-03
-       6.03036275e-02   1.32849969e-02   3.04151276e-02   5.42617854e-02
-       2.08833632e-02   2.28460202e-02   7.57731579e-02   1.83496779e-02
-       4.73479252e-01   9.24456456e-02   6.05629566e-04   6.52238551e-02
-       0.00000000e+00   8.29910892e-03   1.13757465e-02   4.83645107e-02
-       2.71118703e-02   5.49281707e-02   1.26313788e-03   1.55217802e-01
-       1.19145685e-02   5.68602825e-02   4.09272093e-02   6.21803861e-02
-       2.79433626e-03   6.33529895e-03   1.74347486e-02   4.77049040e-02
-       2.29321775e-01   9.82639314e-05   1.33196598e-01   1.07649933e-03
-       2.24082303e-02   2.90035582e-03   4.40055377e-03   1.81697665e-01
-       7.04846456e-03   0.00000000e+00   7.86454159e-03   7.11419961e-02
-       2.56300819e-02   2.56393002e-03   1.38263616e-01   0.00000000e+00
-       2.97294623e-01   3.87958584e-01   1.57869881e-02   1.78305749e-02
-       4.25241895e-02   8.25617611e-04   9.42672676e-03   1.12595761e-01
-       5.96375228e-02   3.60860657e-01   2.13119143e-02   0.00000000e+00
-       1.17954701e-04   2.64968422e-03   5.35828471e-65   1.82261998e-01
-       2.23512354e-01   1.18366359e-01   5.23661102e-02   1.33577328e-04
-       1.38032617e-02   5.00359873e-02   7.12945214e-03   4.82585969e-03
-       8.28225880e-02   2.45545154e-02   3.93940652e-02   2.36085882e-02]
-    >>> print(y.a)
-    [  1.19518911e+01   4.24393415e+01   1.99799643e+00   2.21936973e+00
-       4.05229016e+00   1.96921433e+00   5.28773128e+01   3.07583159e+00
-       3.84349214e+00   1.43864706e-01   1.15485811e+01   3.88897379e+01
-       1.25350058e+01   8.23442356e-01   5.16533892e+00   5.82076701e-01
-       0.00000000e+00   2.49809577e+01   3.01041295e+00   1.62691697e-01
-       2.07143530e+00   3.04855423e-01   4.29357896e+00   6.67497836e-01
-       6.87288592e-01   4.79338810e+00   1.91391421e+00   9.79201735e-01
-       5.05465736e+00   6.14454206e+00   1.74858481e+00   0.00000000e+00
-       3.73904255e+00   5.60767290e-01   1.09558455e+01   8.41912714e+00
-       1.43428505e+00   2.08906862e+01   2.95186438e+00   1.21143763e+00
-       1.57869686e+01   3.59363866e+00   1.64801081e-03   2.99040323e+00
-       7.22166777e-02   3.08057330e+00   0.00000000e+00   6.03006855e-63
-       0.00000000e+00   2.52297825e+01   3.54764499e+00   8.31117522e-01
-       1.79062457e+00   1.33432369e+01   8.55091617e-04   6.34751541e+00
-       2.59640589e+00   6.62572431e+00   8.55178204e-02   5.27425893e-01
-       4.33163271e+00   1.12133638e+00   1.34099527e+00   1.71416121e+01
-       1.24989675e+01   2.76622179e+00   2.88210334e-01   8.36393997e+00
-       2.93852144e-01   9.31043745e-01   9.47642397e-02   7.38290147e+00
-       5.91868714e+00   4.66993445e-01   1.98366671e+00   9.30041719e+00
-       4.53580404e-01   1.45961552e+00   1.07607675e+01   0.00000000e+00
-       1.50664001e+01   3.05884574e+00   0.00000000e+00   7.37716446e-01
-       8.67607706e-01   3.96919920e-01   6.28437918e-01   4.05469431e+01
-       1.05754629e+00   7.36234170e+00   7.89914973e+00   9.30338044e-02
-       5.47835232e+00   7.54663318e+00   2.48594880e+00   5.16658324e-01
-       0.00000000e+00   6.17005885e+00   9.42499389e+00   1.45784289e+00]
+
+    .. doctest:: hits
+
+       >>> g = gt.collection.data["polblogs"]
+       >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(g))
+       >>> ee, x, y = gt.hits(g)
+       >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=x,
+       ...               vertex_size=gt.prop_to_size(x, mi=5, ma=15),
+       ...               vorder=x, output="polblogs_hits_auths.pdf")
+       <...>
+       >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=y,
+       ...               vertex_size=gt.prop_to_size(y, mi=5, ma=15),
+       ...               vorder=y, output="polblogs_hits_hubs.pdf")
+       <...>
+
+    .. testcode:: hits
+       :hide:
+
+       gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=x,
+                     vertex_size=gt.prop_to_size(x, mi=5, ma=15),
+                     vorder=x, output="polblogs_hits_auths.png")
+       gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=y,
+                     vertex_size=gt.prop_to_size(y, mi=5, ma=15),
+                     vorder=y, output="polblogs_hits_hubs.png")
+
+
+    .. figure:: polblogs_hits_auths.*
+       :align: left
+
+       HITS authority values of the a political blogs network of
+       [adamic-polblogs]_.
+
+    .. figure:: polblogs_hits_hubs.*
+       :align: right
+
+       HITS hub values of the a political blogs network of [adamic-polblogs]_.
 
     References
     ----------
 
     .. [hits-algorithm] http://en.wikipedia.org/wiki/HITS_algorithm
     .. [kleinberg-authoritative] J. Kleinberg, "Authoritative sources in a
-       hyperlinked environment", Journal of the ACM 46 (5): 604–632, 1999,
+       hyperlinked environment", Journal of the ACM 46 (5): 604-632, 1999,
        :DOI:`10.1145/324133.324140`.
     .. [power-method] http://en.wikipedia.org/wiki/Power_iteration
+    .. [adamic-polblogs] L. A. Adamic and N. Glance, "The political blogosphere
+       and the 2004 US Election", in Proceedings of the WWW-2005 Workshop on the
+       Weblogging Ecosystem (2005). :DOI:`10.1145/1134271.1134277`
     """
 
     if xprop is None:
@@ -796,38 +792,37 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epsilon=1e-6, max_iter=0,
 
     Examples
     --------
-    >>> from numpy.random import poisson, random, seed
-    >>> seed(42)
-    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
-    >>> trust = g.new_edge_property("double")
-    >>> trust.a = random(g.num_edges())*42
-    >>> t = gt.eigentrust(g, trust, norm=True)
-    >>> print(t.a)
-    [  1.12095562e-02   3.97280231e-03   1.31675503e-02   9.61282478e-03
-       0.00000000e+00   1.73295741e-02   3.53395497e-03   1.06203582e-02
-       1.36906165e-03   8.64587777e-03   1.12049516e-02   3.18891993e-03
-       9.28265221e-03   2.25294315e-02   3.24795656e-03   9.16555333e-03
-       5.68412465e-02   6.79686311e-03   6.37474649e-03   6.04696712e-03
-       0.00000000e+00   8.51131034e-03   0.00000000e+00   1.09336777e-03
-       1.49885187e-02   1.09327367e-04   3.73928902e-02   0.00000000e+00
-       1.74638522e-02   8.21101864e-03   5.79876899e-03   1.34905262e-02
-       1.71525132e-02   2.25425503e-02   1.04184903e-02   1.05537922e-02
-       1.34096247e-02   2.82760533e-03   4.31713918e-04   7.39114668e-03
-       0.00000000e+00   2.21328121e-05   8.79050007e-03   7.08148889e-03
-       5.88651144e-03   7.45401425e-03   5.66098580e-03   2.80738199e-02
-       2.41472197e-03   1.00673881e-02   2.29910658e-03   3.23790630e-02
-       3.02136064e-03   2.25030440e-03   3.53325357e-03   6.90672383e-03
-       1.01692058e-02   1.03783022e-02   1.22476413e-02   4.82453065e-03
-       1.15878890e-02   3.41943633e-03   1.57958469e-03   6.56648121e-03
-       1.28152141e-02   0.00000000e+00   1.29192164e-03   9.35867476e-03
-       3.89329603e-03   1.78002682e-03   2.81987911e-02   0.00000000e+00
-       1.74943514e-02   6.24079508e-03   1.57572103e-02   3.77119257e-02
-       4.78552984e-03   3.30463136e-04   5.60118687e-03   5.75656186e-03
-       2.65412905e-02   1.59663210e-02   2.88844192e-02   0.00000000e+00
-       7.87754853e-04   1.76957899e-02   3.19907905e-02   1.94650690e-02
-       1.32052233e-02   3.57577093e-03   7.09968545e-04   8.70787481e-03
-       1.24901391e-04   2.61215462e-02   2.25923034e-02   1.10928239e-02
-       9.39210737e-03   5.61073138e-04   1.59987179e-02   3.02799309e-03]
+
+    .. testsetup:: eigentrust
+
+       np.random.seed(42)
+
+    .. doctest:: eigentrust
+
+       >>> g = gt.collection.data["polblogs"]
+       >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(g))
+       >>> w = g.new_edge_property("double")
+       >>> w.a = np.random.random(len(w.a)) * 42
+       >>> t = gt.eigentrust(g, w)
+       >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=t,
+       ...               vertex_size=gt.prop_to_size(t, mi=5, ma=15),
+       ...               vorder=t, output="polblogs_eigentrust.pdf")
+       <...>
+
+    .. testcode:: eigentrust
+       :hide:
+
+       gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=t,
+                     vertex_size=gt.prop_to_size(t, mi=5, ma=15),
+                     vorder=t, output="polblogs_eigentrust.png")
+
+
+    .. figure:: polblogs_eigentrust.*
+       :align: center
+
+       Eigentrust values of the a political blogs network of
+       [adamic-polblogs]_, with random weights attributed to the edges.
+
 
     References
     ----------
@@ -835,6 +830,9 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epsilon=1e-6, max_iter=0,
        "The eigentrust algorithm for reputation management in p2p networks",
        Proceedings of the 12th international conference on World Wide Web,
        Pages: 640 - 651, 2003, :doi:`10.1145/775152.775242`
+    .. [adamic-polblogs] L. A. Adamic and N. Glance, "The political blogosphere
+       and the 2004 US Election", in Proceedings of the WWW-2005 Workshop on the
+       Weblogging Ecosystem (2005). :DOI:`10.1145/1134271.1134277`
     """
 
     if vprop == None:
@@ -922,44 +920,48 @@ def trust_transitivity(g, trust_map, source=None, target=None, vprop=None):
 
     Examples
     --------
-    >>> from numpy.random import poisson, random, seed
-    >>> seed(42)
-    >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
-    >>> trust = g.new_edge_property("double")
-    >>> trust.a = random(g.num_edges())
-    >>> t = gt.trust_transitivity(g, trust, source=g.vertex(0))
-    >>> print(t.a)
-    [  1.00000000e+00   9.59916062e-02   4.27717883e-02   7.70755875e-02
-       0.00000000e+00   2.04476926e-01   5.55315822e-02   2.82854665e-02
-       5.08479257e-02   1.68128402e-01   3.28567434e-02   7.39525583e-02
-       1.34463196e-01   8.83740756e-02   1.79990535e-01   7.08809615e-02
-       6.37757645e-02   7.24187957e-02   4.83082241e-02   9.90676983e-02
-       0.00000000e+00   6.50497060e-02   0.00000000e+00   1.77344948e-02
-       1.08677897e-01   1.00958718e-03   4.49524961e-02   0.00000000e+00
-       1.64902280e-01   4.31492976e-02   2.19446085e-01   3.00890381e-02
-       6.86750847e-02   2.72460575e-02   3.57314594e-02   4.87776483e-02
-       4.11748930e-01   7.91396467e-02   2.54835127e-03   3.01711432e-01
-       0.00000000e+00   4.14406224e-04   4.24794624e-02   9.14096554e-02
-       4.17528677e-01   3.79112573e-02   1.16489950e-01   5.18112902e-02
-       8.49111259e-03   5.26399996e-02   2.45690139e-02   7.51435125e-02
-       5.62381854e-02   2.90115777e-02   2.72543383e-02   1.46877163e-01
-       7.81446822e-02   1.24417763e-02   1.01337976e-01   9.92776442e-02
-       3.14622176e-02   1.20097319e-01   3.30335980e-02   4.61757040e-02
-       1.01085599e-01   0.00000000e+00   4.44660446e-03   6.31066845e-02
-       1.94702084e-02   8.45343379e-04   4.82190327e-02   0.00000000e+00
-       6.60346087e-02   7.44581695e-02   6.19535229e-02   1.82072422e-01
-       1.45366611e-02   2.59020075e-02   2.52208295e-02   6.80519730e-02
-       6.74671969e-02   1.14198914e-01   5.12493343e-02   0.00000000e+00
-       6.33427008e-03   1.42290348e-01   6.90459437e-02   1.00565411e-01
-       5.88966867e-02   3.28157280e-02   2.80046903e-02   2.41520032e-01
-       8.45879329e-04   6.76633672e-02   6.05080467e-02   9.12575826e-02
-       1.97789973e-02   6.40885493e-02   4.80934526e-02   1.28787181e-02]
+    .. testsetup:: trust_transitivity
+
+       np.random.seed(42)
+
+    .. doctest:: trust_transitivity
+
+       >>> g = gt.collection.data["polblogs"]
+       >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(g))
+       >>> g = gt.Graph(g, prune=True)
+       >>> w = g.new_edge_property("double")
+       >>> w.a = np.random.random(len(w.a))
+       >>> g.vp["label"][g.vertex(42)]
+       'blogforamerica.com'
+       >>> t = gt.trust_transitivity(g, w, source=g.vertex(42))
+       >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=t,
+       ...               vertex_size=gt.prop_to_size(t, mi=5, ma=15),
+       ...               vorder=t, output="polblogs_trust_transitivity.pdf")
+       <...>
+
+    .. testcode:: trust_transitivity
+       :hide:
+
+       gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=t,
+                     vertex_size=gt.prop_to_size(t, mi=5, ma=15),
+                     vorder=t, output="polblogs_trust_transitivity.png")
+
+
+    .. figure:: polblogs_trust_transitivity.*
+       :align: center
+
+       Trust transitivity values from source vertex 42 of the a political blogs
+       network of [adamic-polblogs]_, with random weights attributed to the
+       edges.
 
     References
     ----------
     .. [richters-trust-2010] Oliver Richters and Tiago P. Peixoto, "Trust
        Transitivity in Social Networks," PLoS ONE 6, no. 4:
        e1838 (2011), :doi:`10.1371/journal.pone.0018384`
+    .. [adamic-polblogs] L. A. Adamic and N. Glance, "The political blogosphere
+       and the 2004 US Election", in Proceedings of the WWW-2005 Workshop on the
+       Weblogging Ecosystem (2005). :DOI:`10.1145/1134271.1134277`
 
     """
 
@@ -985,4 +987,3 @@ def trust_transitivity(g, trust_map, source=None, target=None, vprop=None):
     if target != -1 and source != -1:
         return vprop.a[target]
     return vprop
-

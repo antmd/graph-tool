@@ -52,15 +52,20 @@ Examples
 In this module, most documentation examples will make use of the network
 :download:`search_example.xml <search_example.xml>`, shown below.
 
->>> import numpy.random
->>> numpy.random.seed(42)
+>>> gt.seed_rng(42)
 >>> g = gt.load_graph("search_example.xml")
 >>> name = g.vertex_properties["name"]
 >>> weight = g.edge_properties["weight"]
->>> gt.graph_draw(g, vertex_text=name, vertex_font_size=12, vertex_shape="double_circle",
-...               vertex_fill_color="#729fcf", vertex_pen_width=3,
-...               edge_pen_width=weight, output="search_example.pdf")
-<...>
+>>> pos = gt.graph_draw(g, vertex_text=name, vertex_font_size=12, vertex_shape="double_circle",
+...                     vertex_fill_color="#729fcf", vertex_pen_width=3,
+...                     edge_pen_width=weight, output="search_example.pdf")
+
+.. testcode::
+   :hide:
+
+   gt.graph_draw(g, pos=pos, vertex_text=name, vertex_font_size=12, vertex_shape="double_circle",
+                 vertex_fill_color="#729fcf", vertex_pen_width=3,
+                 edge_pen_width=weight, output="search_example.png")
 
 .. figure:: search_example.*
    :alt: search example
@@ -271,10 +276,10 @@ def bfs_search(g, source, visitor=BFSVisitor()):
                 self.dist = dist
 
             def discover_vertex(self, u):
-                print "-->", self.name[u], "has been discovered!"
+                print("-->", self.name[u], "has been discovered!")
 
             def examine_vertex(self, u):
-                print self.name[u], "has been examined..."
+                print(self.name[u], "has been examined...")
 
             def tree_edge(self, e):
                 self.pred[e.target()] = int(e.source())
@@ -480,13 +485,13 @@ def dfs_search(g, source, visitor=DFSVisitor()):
                 self.last_time = 0
 
             def discover_vertex(self, u):
-                print "-->", self.name[u], "has been discovered!"
+                print("-->", self.name[u], "has been discovered!")
                 self.time[u] = self.last_time
                 self.last_time += 1
 
             def examine_edge(self, e):
-                print "edge (%s, %s) has been examined..." % \
-                    (self.name[e.source()], self.name[e.target()])
+                print("edge (%s, %s) has been examined..." % \
+                    (self.name[e.source()], self.name[e.target()]))
 
             def tree_edge(self, e):
                 self.pred[e.target()] = int(e.source())
@@ -742,17 +747,17 @@ def dijkstra_search(g, source, weight, visitor=DijkstraVisitor(), dist_map=None,
                 self.last_time = 0
 
             def discover_vertex(self, u):
-                print "-->", self.name[u], "has been discovered!"
+                print("-->", self.name[u], "has been discovered!")
                 self.time[u] = self.last_time
                 self.last_time += 1
 
             def examine_edge(self, e):
-                print "edge (%s, %s) has been examined..." % \
-                    (self.name[e.source()], self.name[e.target()])
+                print("edge (%s, %s) has been examined..." % \
+                    (self.name[e.source()], self.name[e.target()]))
 
             def edge_relaxed(self, e):
-                print "edge (%s, %s) has been relaxed..." % \
-                    (self.name[e.source()], self.name[e.target()])
+                print("edge (%s, %s) has been relaxed..." % \
+                    (self.name[e.source()], self.name[e.target()]))
 
 
     With the above class defined, we can perform the Dijkstra search as follows.
@@ -1044,12 +1049,12 @@ def bellman_ford_search(g, source, weight, visitor=BellmanFordVisitor(),
                 self.name = name
 
             def edge_minimized(self, e):
-                print "edge (%s, %s) has been minimized..." % \
-                    (self.name[e.source()], self.name[e.target()])
+                print("edge (%s, %s) has been minimized..." % \
+                      (self.name[e.source()], self.name[e.target()]))
 
             def edge_not_minimized(self, e):
-                print "edge (%s, %s) has not been minimized..." % \
-                    (self.name[e.source()], self.name[e.target()])
+                print("edge (%s, %s) has not been minimized..." % \
+                      (self.name[e.source()], self.name[e.target()]))
 
 
     With the above class defined, we can perform the Bellman-Ford search as
@@ -1473,7 +1478,12 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
     With the above class defined, we can perform the :math:`A^*` search as
     follows.
 
-    >>> numpy.random.seed(42)
+    .. testsetup::
+
+        from numpy.random import seed, random
+        seed(42)
+        gt.seed_rng(42)
+
     >>> g = gt.Graph(directed=False)
     >>> state = g.new_vertex_property("vector<bool>")
     >>> v = g.add_vertex()
@@ -1508,9 +1518,16 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
     ...             ewidth[e] = 3
     ...     v = p
     >>> vcolor[v] = "black"
-    >>> gt.graph_draw(g, output_size=(300, 300), vertex_fill_color=vcolor, edge_color=ecolor,
-    ...               edge_pen_width=ewidth, output="astar-implicit.pdf")
-    <...>
+    >>> pos = gt.graph_draw(g, output_size=(300, 300), vertex_fill_color=vcolor, edge_color=ecolor,
+    ...                     edge_pen_width=ewidth, output="astar-implicit.pdf")
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output_size=(300, 300), vertex_fill_color=vcolor,
+                     edge_color=ecolor, edge_pen_width=ewidth,
+                     output="astar-implicit.png")
+
 
     .. figure:: astar-implicit.*
        :align: center
@@ -1524,7 +1541,7 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
 
     .. [astar] Hart, P. E.; Nilsson, N. J.; Raphael, B. "A Formal Basis for the
        Heuristic Determination of Minimum Cost Paths". IEEE Transactions on
-       Systems Science and Cybernetics SSC4 4 (2): 100–107, 1968.
+       Systems Science and Cybernetics SSC4 4 (2): 100-107, 1968.
        :doi:`10.1109/TSSC.1968.300136`
     .. [astar-bgl] http://www.boost.org/doc/libs/release/libs/graph/doc/astar_search.html
     .. [astar-wikipedia] http://en.wikipedia.org/wiki/A*_search_algorithm
@@ -1596,4 +1613,3 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
 class StopSearch(Exception):
     """If this exception is raised from inside any search visitor object, the search is aborted."""
     pass
-
