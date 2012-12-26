@@ -32,8 +32,8 @@ using __gnu_cxx::power;
 #   include <boost/tr1/tuple.hpp>
 #  endif
 
-#include <sparsehash/dense_hash_set>
-#include <sparsehash/dense_hash_map>
+#include <dense_hash_set>
+#include <dense_hash_map>
 
 namespace graph_tool
 {

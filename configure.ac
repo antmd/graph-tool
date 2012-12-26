@@ -256,7 +256,6 @@ AC_CHECK_HEADER([CGAL/version.h],
                 [AC_MSG_ERROR([CGAL headers not found])])
 
 
-
 dnl cairo
 if test "$USING_CAIRO" = "yes"; then
    PKG_CHECK_MODULES(CAIROMM, [cairomm-1.0], AC_DEFINE([HAVE_CAIROMM], [1],
@@ -273,6 +272,13 @@ if test "$USING_CAIRO" = "yes"; then
    [CXXFLAGS="${OLD_CXXFLAGS}"]
    [CPPFLAGS="${OLD_CPPFLAGS}"]
 fi
+
+dnl sparsehash
+dnl set template depth and hidden visibility
+[CPPFLAGS="${CPPFLAGS} -I/usr/include/sparsehash -I/usr/include/google"]
+AC_CHECK_HEADER([dense_hash_set],
+                [],
+                [AC_MSG_ERROR([sparsehash headers not found])])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 dnl Checks for library functions.

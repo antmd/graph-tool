@@ -34,6 +34,7 @@
 
 #include "random.hh"
 
+#include "config.h"
 #include "graph_blockmodel.hh"
 
 using namespace boost;
