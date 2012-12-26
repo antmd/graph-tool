@@ -108,14 +108,20 @@ struct get_trust_transitivity
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i) schedule(dynamic)
         for (i = 0; i < N; ++i)
-            t[vertex(i, g)].resize((source == -1 && target == -1) ? N : 1);
+        {
+            vertex_t v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+            t[v].resize((source == -1 && target == -1) ? N : 1);
+        }
 
         N = (target == -1) ? num_vertices(g) : target + 1;
         #pragma omp parallel for default(shared) private(i) schedule(dynamic)
         for (i = (target == -1) ? 0 : target; i < N; ++i)
         {
-
             vertex_t tgt = vertex(i, g);
+            if (tgt == graph_traits<Graph>::null_vertex())
+                continue;
 
             // mark the sources
             typedef unchecked_vector_property_map<uint8_t, VertexIndex>
@@ -137,6 +143,11 @@ struct get_trust_transitivity
                 dist_map_t;
             dist_map_t dist_map(vertex_index, num_vertices(g));
 
+            // color map
+            typedef unchecked_vector_property_map<default_color_type, VertexIndex>
+                color_map_t;
+            color_map_t color_map(vertex_index, num_vertices(g));
+
             if (source != -1)
             {
                 vertex_t src = vertex(source, g);
@@ -149,6 +160,7 @@ struct get_trust_transitivity
                         visitor(source_map, dist_map, k);
                     dijkstra_shortest_paths(fg, src, weight_map(c).
                                             vertex_index_map(vertex_index).
+                                            color_map(color_map).
                                             distance_map(dist_map).
                                             distance_compare(dist_compare()).
                                             distance_combine(dist_combine()).
@@ -190,6 +202,7 @@ struct get_trust_transitivity
                     dijkstra_shortest_paths
                         (rg, boost::source(*e, g), weight_map(c).
                          vertex_index_map(vertex_index).
+                         color_map(color_map).
                          distance_map(dist_map).
                          distance_compare(dist_compare()).
                          distance_combine(dist_combine()).
@@ -201,6 +214,8 @@ struct get_trust_transitivity
                     for (j = 0; j < N2; ++j)
                     {
                         vertex_t src = vertex(j, g);
+                        if (src == graph_traits<Graph>::null_vertex())
+                            continue;
                         t_type weight = dist_map[src];
                         sum_w[src] += weight;
                         size_t tidx = (target == -1) ? vertex_index[tgt] : 0;
@@ -213,6 +228,8 @@ struct get_trust_transitivity
                 for (j = 0; j < N2; ++j)
                 {
                     vertex_t src = vertex(j, g);
+                    if (src == graph_traits<Graph>::null_vertex())
+                        continue;
                     size_t tidx = (target == -1) ? vertex_index[tgt] : 0;
                     if (sum_w[src] > 0)
                         t[src][tidx] /= sum_w[src];
