@@ -291,7 +291,7 @@ fi
 
 dnl Set PACKAGE DATA & DOC DIR
 packagedatadir=share/${PACKAGE}
-packagedocdir=doc/${PACKAGE}
+packagedocdir=${docdir}/${PACKAGE}
 
 
 dnl Subst PACKAGE_DATA_DIR.
