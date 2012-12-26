@@ -247,13 +247,13 @@ def inline(code, arg_names=None, local_dict=None,
 
     # insert a hash value into the code below, to force recompilation when
     # support_code (and module version) changes
-    support_hash = hashlib.md5(support_code + code + \
-                               " ".join(libraries + library_dirs +
-                                        [cxxflags] + \
-                                        extra_compile_args +\
-                                        extra_objects + \
-                                        extra_link_args) + \
-                               headers_hash + __version__).hexdigest()
+    text = support_code + code + " ".join(libraries + library_dirs +
+                                          [cxxflags] + \
+                                          extra_compile_args +\
+                                          extra_objects + \
+                                          extra_link_args) + \
+                                          headers_hash + __version__
+    support_hash = hashlib.md5(text.encode("ascii")).hexdigest()
     code += "\n// support code hash: " + support_hash
     inline_code = string.Template(globals()["code_template"]).\
                   substitute(var_defs=arg_def, var_extract=arg_conv,
