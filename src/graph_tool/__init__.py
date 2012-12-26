@@ -516,7 +516,7 @@ class PropertyMap(object):
 
                  >>> g = gt.Graph()
                  >>> g.add_vertex(10)
-                 [...]
+                 <...>
                  >>> prop = g.new_vertex_property("double")
                  >>> prop.a = np.random.random(10)           # Assignment from array
                  """)
@@ -663,15 +663,16 @@ def group_vector_property(props, value_type=None, vprop=None, pos=None):
     >>> from numpy.random import seed, randint
     >>> from numpy import array
     >>> seed(42)
+    >>> gt.seed_rng(42)
     >>> g = gt.random_graph(100, lambda: (3, 3))
     >>> props = [g.new_vertex_property("int") for i in range(3)]
     >>> for i in range(3):
     ...    props[i].a = randint(0, 100, g.num_vertices())
     >>> gprop = gt.group_vector_property(props)
     >>> print(gprop[g.vertex(0)].a)
-    [71 40 96]
+    [51 25  8]
     >>> print(array([p[g.vertex(0)] for p in props]))
-    [71 40 96]
+    [51 25  8]
     """
     g = props[0].get_graph()
     vtypes = set()
@@ -742,15 +743,16 @@ def ungroup_vector_property(vprop, pos, props=None):
     >>> from numpy.random import seed, randint
     >>> from numpy import array
     >>> seed(42)
+    >>> gt.seed_rng(42)
     >>> g = gt.random_graph(100, lambda: (3, 3))
     >>> prop = g.new_vertex_property("vector<int>")
     >>> for v in g.vertices():
     ...    prop[v] = randint(0, 100, 3)
     >>> uprops = gt.ungroup_vector_property(prop, [0, 1, 2])
     >>> print(prop[g.vertex(0)].a)
-    [71 60 20]
+    [51 92 14]
     >>> print(array([p[g.vertex(0)] for p in uprops]))
-    [71 60 20]
+    [51 92 14]
     """
 
     g = vprop.get_graph()
@@ -805,11 +807,12 @@ def infect_vertex_property(g, prop, vals=None):
     --------
     >>> from numpy.random import seed
     >>> seed(42)
+    >>> gt.seed_rng(42)
     >>> g = gt.random_graph(100, lambda: (3, 3))
-    >>> prop = g.copy_property(g.vertex_index)
+    >>> prop = g.vertex_index.copy("int32_t")
     >>> gt.infect_vertex_property(g, prop, [10])
     >>> print(sum(prop.a == 10))
-    3
+    4
     """
     libcore.infect_vertex_property(g._Graph__graph, _prop("v", g, prop),
                                    vals)
@@ -835,10 +838,27 @@ def edge_difference(g, prop, ediff=None):
     --------
     >>> from numpy.random import seed
     >>> seed(42)
+    >>> gt.seed_rng(42)
     >>> g = gt.random_graph(100, lambda: (3, 3))
     >>> ediff = gt.edge_difference(g, g.vertex_index)
     >>> print(ediff.a)
-    3
+    [ 89  67  83 -67 -75 -38  -7 -17 -78 -59  -1   6 -30  -4 -67  -9 -12 -17
+     -55 -42 -68  14  25  -7 -49  -1 -20 -58  10  24  -9 -40  17   3 -29 -47
+     -12  41 -34  24 -36 -12  38 -34  50  41 -34 -31  63  48 -14  21   3  12
+      52  -6 -26  16  63  54 -14  12 -16  52  27  -5  19  70  51  40  17  88
+      15  42  35 -26 -48 -10  89  18  19  54   5  85  12  77  70  18  54  11
+      73  51  62  63  10  81  49  57  89  52   4  67  14  28  33  51  62  77
+      66  44 -24  -8  19  62 -11  62 -18 -30  34 -23 -37 -31 -36 -18   8 -46
+      -1 -12 -49 -22  34 -26 -17 -63 -33 -53  19 -20 -23 -27 -12 -36   7 -83
+      -3 -88 -18 -27 -56 -22  41   4  27 -17 -13 -96 -35 -90 -64 -38 -82 -49
+     -38 -69  -2 -86 -48 -79 -25 -30 -16 -56 -18 -61 -20 -56 -32   8  10  -1
+     -20  -6 -27   5 -71 -51  -1 -34 -52 -45 -54 -40 -22 -62  13  21 -10 -37
+      11  21 -39 -53 -66 -22 -33  34 -13  40  -5 -18 -47  -9  36  -6 -34  11
+     -22 -21  31  13  19  52  34  46   5  28  19   6  17  24  48  34  64 -12
+      68  73  46  49  21   8 -21  57  19  54   1  20  27   1 -24  -3  12 -15
+      13  11  53  38  24  31  36   9  -3  38 -13 -12 -21 -24  18 -43  13  26
+     -38  16  48  42  12 -41  25  33   7  46  44   7 -20 -11 -39 -33 -19 -56
+      39  40 -18 -32 -36 -11 -15 -52   6 -31 -62   8]
     """
     val_t = prop.value_type()
     if val_t == "unsigned long":
@@ -1063,7 +1083,7 @@ class Graph(object):
         Examples
         --------
         >>> g = gt.Graph()
-        >>> vlist = g.add_vertex(5)
+        >>> vlist = list(g.add_vertex(5))
         >>> vlist2 = []
         >>> for v in g.vertices():
         ...     vlist2.append(v)
