@@ -551,7 +551,7 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         |               | "double_circle", "double_triangle",               |                        |                                  |
         |               | "double_square", "double_pentagon",               |                        |                                  |
         |               | "double_hexagon", "double_heptagon",              |                        |                                  |
-        |               | "double_octagon".                                 |                        |                                  |
+        |               | "double_octagon", "pie".                          |                        |                                  |
         |               | Optionally, this might take a numeric value       |                        |                                  |
         |               | corresponding to position in the list above.      |                        |                                  |
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
@@ -603,6 +603,12 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         | surface       | The cairo surface used to draw the vertex. If     | :class:`cairo.Surface` | ``None``                         |
         |               | the value passed is a string, it is interpreted   | or ``str``             |                                  |
         |               | as an image file name to be loaded.               |                        |                                  |
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
+        | pie_fractions | Fractions of the pie sections for the vertices if | list of ``int`` or     | ``[0.75, 0.25]``                 |
+        |               | ``shape=="pie"``.                                 | ``float``              |                                  |
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
+        | pie_colors    | Colors used in the pie sections if                | list of strings or     | ``('b','g','r','c','m','y','k')``|
+        |               | ``shape=="pie"``.                                 | ``float``.             |                                  |
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
 
 
