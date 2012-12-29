@@ -52,7 +52,10 @@ def IStream_readline(self, n=None):
 
 
 def OStream_write(self, s):
-    self.Write(s, len(s))
+    data = s
+    if not isinstance(data, str) and isinstance(data, bytes):
+        data = data.decode('utf-8')
+    self.Write(data, len(s))
 
 libgraph_tool_core.IStream.read = IStream_read
 libgraph_tool_core.IStream.readline = IStream_readline
@@ -63,11 +66,11 @@ libgraph_tool_core.OStream.write = OStream_write
 def pickler(stream, obj):
     sstream = BytesIO()
     pickle.dump(obj, sstream, -1)
-    stream.write(base64.b64encode(sstream.getvalue().encode('ascii')))
-
+    stream.write(base64.b64encode(sstream.getvalue()))
 
 def unpickler(stream):
-    sstream = BytesIO(base64.b64decode(stream.read().encode('ascii')))
+    data = stream.read().encode('utf-8')
+    sstream = BytesIO(base64.b64decode(data))
     return pickle.load(sstream)
 
 libgraph_tool_core.set_pickler(pickler)
