@@ -856,14 +856,14 @@ void move_sweep(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b, Vprop label,
         if (s == r)
             continue;
 
-        double pf = get_move_prob(v, s, b, mrs, mrp, mrm, emat, g, B);
+        double pf = isinf(beta) ? 1 : get_move_prob(v, s, b, mrs, mrp, mrm, emat, g, B);
 
         double dS = move_vertex(v, s, mrs, mrp, mrm, wr, b, deg_corr, eweight,
                                 vweight, g, bg, emat, true);
 
-        double pb = get_move_prob(v, r, b, mrs, mrp, mrm, emat, g, B);
+        double pb = isinf(beta) ? 1 : get_move_prob(v, r, b, mrs, mrp, mrm, emat, g, B);
 
-        double a = (!isinf(beta)) ? -beta * dS + log(pb) - log(pf) : -dS;
+        double a = isinf(beta) ? -dS : -beta * dS + log(pb) - log(pf);
 
         bool accept = false;
         if (a > 0)

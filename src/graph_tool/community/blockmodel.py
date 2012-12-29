@@ -868,7 +868,8 @@ def mcmc_sweep(state, beta=1., sequential=True, verbose=False, vertices=None):
 
 
 
-def mc_get_dl(state, nsweep, greedy, rng, checkpoint=None, anneal=1):
+def mc_get_dl(state, nsweep, greedy, rng, checkpoint=None, anneal=1,
+              verbose=False):
 
     if len(state.vertices) == 1:
         return state._BlockState__min_dl()
@@ -899,6 +900,8 @@ def mc_get_dl(state, nsweep, greedy, rng, checkpoint=None, anneal=1):
 
         last_min = min_dl
 
+        if verbose:
+            print("beta = %g" % beta)
         while True:
             delta, nmoves = mcmc_sweep(state, beta=beta)
             if checkpoint is not None:
@@ -926,6 +929,8 @@ def mc_get_dl(state, nsweep, greedy, rng, checkpoint=None, anneal=1):
                         beta *= anneal
                         count = 0
                         last_min = min_dl
+                        if verbose:
+                            print("beta = %g" % beta)
 
         min_dl = S
         count = 0
@@ -979,7 +984,7 @@ def get_b_dl(g, bs, bs_start, B, nsweep, anneal, greedy, clabel, deg_corr, rng,
                                   deg_corr=deg_corr)
 
             mc_get_dl(bg_state, nsweep=nsweep, greedy=greedy, rng=rng,
-                      checkpoint=checkpoint, anneal=anneal)
+                      checkpoint=checkpoint, anneal=anneal, verbose=verbose)
 
             ### FIXME: the following could be improved by moving it to the C++
             ### side
@@ -992,7 +997,7 @@ def get_b_dl(g, bs, bs_start, B, nsweep, anneal, greedy, clabel, deg_corr, rng,
             state = BlockState(g, b=b, B=B, clabel=clabel, deg_corr=deg_corr)
 
     dl = mc_get_dl(state, nsweep=nsweep,  greedy=greedy, rng=rng,
-                   checkpoint=checkpoint, anneal=anneal)
+                   checkpoint=checkpoint, anneal=anneal, verbose=verbose)
 
     if dl < prev_dl:
         bs[B] = [dl, state.b.copy()]
@@ -1197,11 +1202,11 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
 
     while True:
         f_max = get_b_dl(g, bs, b_start, max_B, nsweeps, anneal, greedy, clabel,
-                         deg_corr, rng, checkpoint)
+                         deg_corr, rng, checkpoint, verbose)
         f_mid = get_b_dl(g, bs, b_start, mid_B, nsweeps, anneal, greedy, clabel,
-                         deg_corr, rng, checkpoint)
+                         deg_corr, rng, checkpoint, verbose)
         f_min = get_b_dl(g, bs, b_start, min_B, nsweeps, anneal, greedy, clabel,
-                         deg_corr, rng, checkpoint)
+                         deg_corr, rng, checkpoint, verbose)
 
         if verbose:
             print("bracket:", min_B, mid_B, max_B, f_min, f_mid, f_max)
@@ -1230,9 +1235,9 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
             x = get_mid(min_B, mid_B)
 
         f_x = get_b_dl(g, bs, b_start, x, nsweeps, anneal, greedy, clabel,
-                       deg_corr, rng, checkpoint)
+                       deg_corr, rng, checkpoint, verbose)
         f_mid = get_b_dl(g, bs, b_start, mid_B, nsweeps, anneal, greedy, clabel,
-                         deg_corr, rng, checkpoint)
+                         deg_corr, rng, checkpoint, verbose)
 
         if verbose:
             print("bisect: (", min_B, mid_B, max_B, ") ->", x, f_x) #, is_fibo((mid_B - min_B)), is_fibo((max_B - mid_B)))
