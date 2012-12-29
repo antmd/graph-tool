@@ -719,7 +719,7 @@ def min_dist(state, n=0):
 
 
 def mcmc_sweep(state, beta=1., sequential=True, verbose=False, vertices=None):
-    r"""Performs a Monte Carlo Markov chain sweep on the network, to sample the block partition according to a probability :math:`\propto e^{\beta \mathcal{S}_{t/c}}`, where :math:`\mathcal{S}_{t/c}` is the blockmodel entropy.
+    r"""Performs a Monte Carlo Markov chain sweep on the network, to sample the block partition according to a probability :math:`\propto e^{-\beta \mathcal{S}_{t/c}}`, where :math:`\mathcal{S}_{t/c}` is the blockmodel entropy.
 
     Parameters
     ----------
@@ -750,7 +750,7 @@ def mcmc_sweep(state, beta=1., sequential=True, verbose=False, vertices=None):
     This algorithm performs a Monte Carlo Markov chain sweep on the network,
     where the block memberships are randomly moved, and either accepted or
     rejected, so that after sufficiently many sweeps the partitions are sampled
-    with probability proportional to :math:`e^{\beta\mathcal{S}_{t/c}}`, where
+    with probability proportional to :math:`e^{-\beta\mathcal{S}_{t/c}}`, where
     :math:`\mathcal{S}_{t/c}` is the blockmodel entropy, given by
 
     .. math::
