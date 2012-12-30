@@ -495,7 +495,7 @@ class BlockState(object):
                     break
 
 
-            vorder = range(len(states[-1].vertices))
+            vorder = list(range(len(states[-1].vertices)))
             for state in reversed(states[1:]):
                 norder = [[] for i in range(len(state.vertices))]
                 #print(state.L)
