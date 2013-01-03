@@ -626,7 +626,7 @@ def get_max_B(N, E, directed=False):
     return max(int(ceil(B)), 2)
 
 def get_akc(B, I, N=float("inf"), directed=False):
-    r"""Return the minimum value of the average degree of the network, so that some block structure with :math:`B` blocks can be detected, according to the minimum escription length criterion.
+    r"""Return the minimum value of the average degree of the network, so that some block structure with :math:`B` blocks can be detected, according to the minimum description length criterion.
 
     This is obtained by solving
 
