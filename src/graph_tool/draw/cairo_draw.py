@@ -76,6 +76,7 @@ _vdefaults = {
     "fill_color": [0.640625, 0, 0, 0.9],
     "size": 5,
     "aspect": 1.,
+    "anchor": 1,
     "pen_width": 0.8,
     "halo": 0,
     "halo_color": [0., 0., 1., 0.5],
@@ -566,6 +567,10 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         |               | points).                                          |                        |                                  |
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
         | aspect        | The aspect ratio of the vertex.                   | ``float`` or ``int``   | ``1.0``                          |
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
+        | anchor        | Specifies how the edges anchor to the vertices.   |  ``int``               | ``1``                            |
+        |               | If `0`, the anchor is at the center of the vertex,|                        |                                  |
+        |               | otherwise it is at the border.                    |                        |                                  |
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
         | pen_width     | Width of the lines used to draw the vertex, in    | ``float`` or ``int``   | ``0.8``                          |
         |               | the default units of the output format (normally  |                        |                                  |

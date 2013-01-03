@@ -53,6 +53,7 @@ enum vertex_attr_t {
     VERTEX_FILL_COLOR,
     VERTEX_SIZE,
     VERTEX_ASPECT,
+    VERTEX_ANCHOR,
     VERTEX_PENWIDTH,
     VERTEX_HALO,
     VERTEX_HALO_COLOR,
@@ -111,12 +112,13 @@ typedef pair<double, double> pos_t;
 typedef tuple<double, double, double, double> color_t;
 typedef tr1::unordered_map<int, boost::any> attrs_t;
 
-typedef mpl::map27<
+typedef mpl::map28<
     mpl::pair<mpl::int_<VERTEX_SHAPE>, vertex_shape_t>,
     mpl::pair<mpl::int_<VERTEX_COLOR>, color_t>,
     mpl::pair<mpl::int_<VERTEX_FILL_COLOR>, color_t>,
     mpl::pair<mpl::int_<VERTEX_SIZE>, double>,
     mpl::pair<mpl::int_<VERTEX_ASPECT>, double>,
+    mpl::pair<mpl::int_<VERTEX_ANCHOR>, int32_t>,
     mpl::pair<mpl::int_<VERTEX_PENWIDTH>, double>,
     mpl::pair<mpl::int_<VERTEX_HALO>, uint8_t>,
     mpl::pair<mpl::int_<VERTEX_HALO_COLOR>, color_t>,
@@ -500,6 +502,10 @@ public:
 
     pos_t get_anchor(const pos_t& origin, Cairo::Context& cr)
     {
+        int anchor_type =_attrs.template get<int32_t>(VERTEX_ANCHOR);
+        if (anchor_type == 0)
+            return _pos;
+
         double angle = atan2(_pos.second - origin.second,
                              _pos.first - origin.first);
         if (angle < 0)
@@ -564,7 +570,6 @@ public:
         size = get_size(cr);
         aspect = _attrs.template get<double>(VERTEX_ASPECT);
 
-
         string text = _attrs.template get<string>(VERTEX_TEXT);
         double text_pos = 0;
         if (text != "" && !outline)
@@ -592,89 +597,90 @@ public:
             cr.fill();
         }
 
-        pw =_attrs.template get<double>(VERTEX_PENWIDTH);
-        pw *= get_user_dist(cr);
-        cr.set_line_width(pw);
-
-        color = _attrs.template get<color_t>(VERTEX_COLOR);
-        cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color),
-                           get<3>(color));
-        size_t nsides = 0;
-        vertex_shape_t shape = _attrs.template get<vertex_shape_t>(VERTEX_SHAPE);
-        switch (shape)
-        {
-        case SHAPE_CIRCLE:
-        case SHAPE_DOUBLE_CIRCLE:
-            cr.save();
-            cr.scale(aspect, 1.0);
-            cr.arc(0, 0, size / 2., 0, 2 * M_PI);
-            cr.close_path();
-            cr.restore();
-            if (shape == SHAPE_DOUBLE_CIRCLE && !outline)
-            {
-                cr.stroke();
-                cr.save();
-                cr.scale(aspect, 1.0);
-                cr.arc(0, 0, min(size / 2 - 2 * pw,
-                                 size * 0.8 / 2),
-                       0, 2 * M_PI);
-                cr.restore();
-            }
-            break;
-        case SHAPE_PIE:
-            {
-                if (!outline)
-                {
-                    vector<double> f = _attrs.template get<vector<double> >(VERTEX_PIE_FRACTIONS);
-                    vector<color_t> fcolors = _attrs.template get<vector<color_t> >(VERTEX_PIE_COLORS);
-                    draw_pie(size / 2 + pw / 2, f, fcolors, cr);
-                }
-                else
-                {
-                    cr.save();
-                    cr.arc(0, 0, size / 2., 0, 2 * M_PI);
-                    cr.close_path();
-                    cr.restore();
-                }
-            }
-            break;
-        case SHAPE_TRIANGLE:
-        case SHAPE_SQUARE:
-        case SHAPE_PENTAGON:
-        case SHAPE_HEXAGON:
-        case SHAPE_HEPTAGON:
-        case SHAPE_OCTAGON:
-        case SHAPE_DOUBLE_TRIANGLE:
-        case SHAPE_DOUBLE_SQUARE:
-        case SHAPE_DOUBLE_PENTAGON:
-        case SHAPE_DOUBLE_HEXAGON:
-        case SHAPE_DOUBLE_HEPTAGON:
-        case SHAPE_DOUBLE_OCTAGON:
-            nsides = shape - SHAPE_TRIANGLE + 3;
-            if (nsides > 8)
-                nsides -= 7;
-            cr.save();
-            cr.scale(aspect, 1.0);
-            draw_polygon(nsides, size / 2, cr);
-            cr.restore();
-            if (shape >= SHAPE_DOUBLE_TRIANGLE && !outline)
-            {
-                cr.stroke();
-                cr.save();
-                cr.scale(aspect, 1.0);
-                draw_polygon(nsides, min(size / 2 - 2 * pw,
-                                         size * 0.8 / 2), cr);
-                cr.restore();
-            }
-            break;
-        default:
-            throw ValueException("Invalid vertex shape: " +
-                                 lexical_cast<string>(int(_attrs.template get<vertex_shape_t>(VERTEX_SHAPE))));
-        }
-
         python::object osrc = _attrs.template get<python::object>(VERTEX_SURFACE);
         if (osrc == python::object())
         {
+            pw =_attrs.template get<double>(VERTEX_PENWIDTH);
+            pw *= get_user_dist(cr);
+            cr.set_line_width(pw);
+
+            color = _attrs.template get<color_t>(VERTEX_COLOR);
+            cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color),
+                               get<3>(color));
+
+            size_t nsides = 0;
+            vertex_shape_t shape = _attrs.template get<vertex_shape_t>(VERTEX_SHAPE);
+            switch (shape)
+            {
+            case SHAPE_CIRCLE:
+            case SHAPE_DOUBLE_CIRCLE:
+                cr.save();
+                cr.scale(aspect, 1.0);
+                cr.arc(0, 0, size / 2., 0, 2 * M_PI);
+                cr.close_path();
+                cr.restore();
+                if (shape == SHAPE_DOUBLE_CIRCLE && !outline)
+                {
+                    cr.stroke();
+                    cr.save();
+                    cr.scale(aspect, 1.0);
+                    cr.arc(0, 0, min(size / 2 - 2 * pw,
+                                     size * 0.8 / 2),
+                           0, 2 * M_PI);
+                    cr.restore();
+                }
+                break;
+            case SHAPE_PIE:
+                {
+                    if (!outline)
+                    {
+                        vector<double> f = _attrs.template get<vector<double> >(VERTEX_PIE_FRACTIONS);
+                        vector<color_t> fcolors = _attrs.template get<vector<color_t> >(VERTEX_PIE_COLORS);
+                        draw_pie(size / 2 + pw / 2, f, fcolors, cr);
+                    }
+                    else
+                    {
+                        cr.save();
+                        cr.arc(0, 0, size / 2., 0, 2 * M_PI);
+                        cr.close_path();
+                        cr.restore();
+                    }
+                }
+                break;
+            case SHAPE_TRIANGLE:
+            case SHAPE_SQUARE:
+            case SHAPE_PENTAGON:
+            case SHAPE_HEXAGON:
+            case SHAPE_HEPTAGON:
+            case SHAPE_OCTAGON:
+            case SHAPE_DOUBLE_TRIANGLE:
+            case SHAPE_DOUBLE_SQUARE:
+            case SHAPE_DOUBLE_PENTAGON:
+            case SHAPE_DOUBLE_HEXAGON:
+            case SHAPE_DOUBLE_HEPTAGON:
+            case SHAPE_DOUBLE_OCTAGON:
+                nsides = shape - SHAPE_TRIANGLE + 3;
+                if (nsides > 8)
+                    nsides -= 7;
+                cr.save();
+                cr.scale(aspect, 1.0);
+                draw_polygon(nsides, size / 2, cr);
+                cr.restore();
+                if (shape >= SHAPE_DOUBLE_TRIANGLE && !outline)
+                {
+                    cr.stroke();
+                    cr.save();
+                    cr.scale(aspect, 1.0);
+                    draw_polygon(nsides, min(size / 2 - 2 * pw,
+                                             size * 0.8 / 2), cr);
+                    cr.restore();
+                }
+                break;
+            default:
+                throw ValueException("Invalid vertex shape: " +
+                                     lexical_cast<string>(int(_attrs.template get<vertex_shape_t>(VERTEX_SHAPE))));
+            }
+
             if (!outline && shape != SHAPE_PIE)
             {
                 fillcolor = _attrs.template get<color_t>(VERTEX_FILL_COLOR);
@@ -683,31 +689,33 @@ public:
                 cr.fill_preserve();
 
                 cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color),
-                                   get<3>(color));
+                                       get<3>(color));
                 cr.stroke();
             }
         }
         else
         {
-            double swidth, sheight;
-            PycairoSurface* src = (PycairoSurface*) osrc.ptr();
-            Cairo::RefPtr<Cairo::Surface> surface(new Cairo::Surface(src->surface));
-            get_surface_size(surface, swidth, sheight);
-            Cairo::RefPtr<Cairo::SurfacePattern> pat(Cairo::SurfacePattern::create(surface));
-            //pat->set_extend(Cairo::EXTEND_REPEAT);
-
-            double r = size / sqrt(2);
-            double scale = r / max(swidth / aspect, sheight);
-
-            Cairo::Matrix m = Cairo::identity_matrix();
-            m.translate(swidth / 2, sheight / 2);
-            m.scale(1. / scale, 1. / scale);
-            pat->set_matrix(m);
-
-            cr.set_source(pat);
-            cr.rectangle(-r * aspect / 2, -r / 2, r * aspect, r);
             if (!outline)
+            {
+                double swidth, sheight;
+                PycairoSurface* src = (PycairoSurface*) osrc.ptr();
+                Cairo::RefPtr<Cairo::Surface> surface(new Cairo::Surface(src->surface));
+                get_surface_size(surface, swidth, sheight);
+                Cairo::RefPtr<Cairo::SurfacePattern> pat(Cairo::SurfacePattern::create(surface));
+                //pat->set_extend(Cairo::EXTEND_REPEAT);
+
+                double r = size / sqrt(2);
+                double scale = r / max(swidth / aspect, sheight);
+
+                Cairo::Matrix m = Cairo::identity_matrix();
+                m.translate(swidth / 2, sheight / 2);
+                m.scale(1. / scale, 1. / scale);
+                pat->set_matrix(m);
+
+                cr.set_source(pat);
+                cr.rectangle(-r * aspect / 2, -r / 2, r * aspect, r);
                 cr.fill();
+            }
         }
 
         if (text != "" && !outline)
@@ -1558,6 +1566,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_draw)
         .value("fill_color", VERTEX_FILL_COLOR)
         .value("size", VERTEX_SIZE)
         .value("aspect", VERTEX_ASPECT)
+        .value("anchor", VERTEX_ANCHOR)
         .value("pen_width", VERTEX_PENWIDTH)
         .value("halo", VERTEX_HALO)
         .value("halo_color", VERTEX_HALO_COLOR)
