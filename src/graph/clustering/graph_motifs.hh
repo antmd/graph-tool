@@ -390,7 +390,9 @@ struct get_all_motifs
                         graph_sg_t& motif = sl->second[l].second;
                         if (comp_iso)
                         {
-                            if (isomorphism(motif, sub))
+                            if (isomorphism(motif, sub,
+                                            vertex_index1_map(get(vertex_index, motif)).
+                                            vertex_index2_map(get(vertex_index, sub))))
                                 found = true;
                         }
                         else
