@@ -35,7 +35,6 @@ namespace boost {
       typedef typename graph_traits<Graph1>::vertex_descriptor vertex1_t;
       typedef typename graph_traits<Graph2>::vertex_descriptor vertex2_t;
       typedef typename graph_traits<Graph1>::edge_descriptor edge1_t;
-      typedef typename graph_traits<Graph2>::edge_descriptor edge2_t;
       typedef typename graph_traits<Graph1>::vertices_size_type size_type;
       typedef typename Invariant1::result_type invar1_value;
       typedef typename Invariant2::result_type invar2_value;
@@ -138,7 +137,8 @@ namespace boost {
       {
         // reset isomapping
         BGL_FORALL_VERTICES_T(v, G1, Graph1)
-            f[v] = graph_traits<Graph2>::null_vertex();
+          f[v] = graph_traits<Graph2>::null_vertex();
+          
         {
           std::vector<invar1_value> invar1_array;
           BGL_FORALL_VERTICES_T(v, G1, Graph1)
@@ -310,8 +310,8 @@ fi_adj_loop_k:++fi_adj.first;
           if (k.empty()) return false;
           const match_continuation& this_k = k.back();
           switch (this_k.position) {
-            case match_continuation::pos_G2_vertex_loop: {G2_verts = this_k.G2_verts; iter = this_k.iter; dfs_num_k = this_k.dfs_num_k; k.pop_back(); in_S[*G2_verts.first] = false; i = source(*iter, G1); j = f[target(*iter, G1)]; goto G2_loop_k;}
-            case match_continuation::pos_fi_adj_loop: {fi_adj = this_k.fi_adj; iter = this_k.iter; dfs_num_k = this_k.dfs_num_k; k.pop_back(); in_S[*fi_adj.first] = false; i = source(*iter, G1); j = f[target(*iter, G1)]; goto fi_adj_loop_k;}
+            case match_continuation::pos_G2_vertex_loop: {G2_verts = this_k.G2_verts; iter = this_k.iter; dfs_num_k = this_k.dfs_num_k; k.pop_back(); in_S[*G2_verts.first] = false; i = source(*iter, G1); j = target(*iter, G1); goto G2_loop_k;}
+            case match_continuation::pos_fi_adj_loop: {fi_adj = this_k.fi_adj; iter = this_k.iter; dfs_num_k = this_k.dfs_num_k; k.pop_back(); in_S[*fi_adj.first] = false; i = source(*iter, G1); j = target(*iter, G1); goto fi_adj_loop_k;}
             case match_continuation::pos_dfs_num: {k.pop_back(); goto return_point_false;}
             default: {
               BOOST_ASSERT(!"Bad position");
