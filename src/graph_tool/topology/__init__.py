@@ -265,6 +265,8 @@ def subgraph_isomorphism(sub, g, max_n=0, random=False):
     .. [subgraph-isormophism-wikipedia] http://en.wikipedia.org/wiki/Subgraph_isomorphism_problem
 
     """
+    if sub.num_vertices() == 0:
+        raise ValueError("Cannot search for an empty subgraph.")
     # vertex and edge labels disabled for the time being, until GCC is capable
     # of compiling all the variants using reasonable amounts of memory
     vlabels=(None, None)
