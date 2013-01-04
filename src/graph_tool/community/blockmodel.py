@@ -28,6 +28,7 @@ import random
 from numpy import *
 from scipy.optimize import fsolve, fminbound
 import scipy.special
+from collections import defaultdict
 
 from .. dl_import import dl_import
 dl_import("from . import libgraph_tool_community as libcommunity")
@@ -292,18 +293,17 @@ class BlockState(object):
                                    self.deg_corr)
 
         if complete:
-            if deg_seq and self.deg_corr:
+            if self.deg_corr:
                 S_seq = 0
                 hist = defaultdict(int)
                 for v in self.g.vertices():
                     hist[(v.in_degree(), v.out_degree())] += 1
-                for k, v in hist.iteritems():
+                for k, v in hist.items():
                     p = v / float(self.g.num_vertices())
                     S_seq -= p * log(p)
                 S_seq *= self.g.num_vertices()
                 S += S_seq
 
-            if self.deg_corr:
                 S -= E
                 for v in self.g.vertices():
                     S -= scipy.special.gammaln(v.out_degree() + 1)
