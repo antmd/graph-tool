@@ -157,9 +157,13 @@ This module contains an assortment of useful networks.
                                                                  football games between Division IA colleges
                                                                  during regular season Fall 2000. Please cite M.
                                                                  Girvan and M. E. J. Newman, Proc. Natl. Acad.
-                                                                 Sci. USA 99, 7821-7826 (2002). Retrieved from
-                                                                 `Mark Newman's website
-                                                                 <http://www-personal.umich.edu/~mejn/netdata/>`_.
+                                                                 Sci. USA 99, 7821-7826 (2002), and T.S. Evans,
+                                                                 "Clique Graphs and Overlapping Communities",
+                                                                 J.Stat.Mech. (2010) P12037 [arXiv:1009.0638]. 
+                                                                 Retrieved from `Mark Newman's website
+                                                                 <http://www-personal.umich.edu/~mejn/netdata/>`_,
+                                                                 with corrections by T. S. Evans, available 
+                                                                 `here <http://figshare.com/articles/American_College_Football_Network_Files/93179>`_.
         hep-th               8361         15751        False     High-energy theory collaborations: weighted
                                                                  network of coauthorships between scientists
                                                                  posting preprints on the High-Energy Theory
