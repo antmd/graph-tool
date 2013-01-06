@@ -225,7 +225,7 @@ AX_PYTHON_MODULE(numpy, fatal)
 dnl [NUMPY_DIR="${PYTHON_SITE_PKG}/numpy"]
 [NUMPY_DIR=`$PYTHON -c "import os, numpy; print(os.path.dirname(numpy.__file__))"`]
 AC_ARG_WITH([numpy], [AS_HELP_STRING([--with-numpy=DIR],[directory where numpy is installed
-                      [default="autodetected"] ])],
+                      [default=auto-detected] ])],
         NUMPY_DIR=$withval)
 [NUMPY_DIR="${NUMPY_DIR}/core/include/numpy"]
 AC_CHECK_HEADER([${NUMPY_DIR}/arrayobject.h],
@@ -238,7 +238,7 @@ AX_PYTHON_MODULE(scipy, fatal)
 dnl [SCIPY_DIR="${PYTHON_SITE_PKG}/scipy"]
 [SCIPY_DIR=`$PYTHON -c "import os, scipy; print(os.path.dirname(scipy.__file__))"`]
 AC_ARG_WITH([scipy], [AS_HELP_STRING([--with-scipy=DIR],[scipy install directory
-                      [default=${PYTHON_SITE_PKG}/scipy] ])],
+                      [default=auto-detected] ])],
             [SCIPY_DIR=$withval])
 AC_CHECK_HEADER([${SCIPY_DIR}/weave/scxx/object.h],
                 [AC_DEFINE([HAVE_SCIPY], [1], [using scipy's weave])]
@@ -297,7 +297,7 @@ fi
 
 dnl Set PACKAGE DATA & DOC DIR
 packagedatadir=share/${PACKAGE}
-packagedocdir=${docdir}/${PACKAGE}
+packagedocdir=doc/${PACKAGE}
 
 
 dnl Subst PACKAGE_DATA_DIR.
@@ -310,6 +310,12 @@ dnl Subst PACKAGE_DOC_DIR.
 NO_PREFIX_PACKAGE_DOC_DIR="${packagedocdir}"
 AC_SUBST(NO_PREFIX_PACKAGE_DOC_DIR)
 PACKAGE_DOC_DIR="${packageprefix}/${packagedocdir}"
+
+if test "x${docdir}" = "xNONE"; then
+  PACKAGE_DOC_DIR="${packageprefix}/${packagedocdir}"
+else
+  PACKAGE_DOC_DIR="${docdir}"
+fi
 AC_SUBST(PACKAGE_DOC_DIR)
 
 dnl Subst PYTHON_DIR.
@@ -320,8 +326,8 @@ AC_DEFINE_UNQUOTED([CXXFLAGS],"${CXXFLAGS}", [c++ compilation options])
 AC_DEFINE_UNQUOTED([CPPFLAGS],"${CPPFLAGS}", [c++ preprocessor compilation options])
 AC_DEFINE_UNQUOTED([LDFLAGS],"${LDFLAGS}", [linker options])
 
-AC_DEFINE_UNQUOTED([PACKAGE_DATA_DIR], "${packageprefix}/${packagedatadir}", [package data dir])
-AC_DEFINE_UNQUOTED([PACKAGE_DOC_DIR], "${packageprefix}/${packagedocdir}", [package doc dir])
+AC_DEFINE_UNQUOTED([PACKAGE_DATA_DIR], "${PACKAGE_DATA_DIR}", [package data dir])
+AC_DEFINE_UNQUOTED([PACKAGE_DOC_DIR], "${PACKAGE_DOC_DIR}", [package doc dir])
 AC_DEFINE_UNQUOTED([PACKAGE_SOURCE_DIR], "${packagesrcdir}", [package source dir])
 
 AC_DEFINE_UNQUOTED([AUTHOR], "Tiago de Paula Peixoto <tiago@skewed.de>", [program author(s)])
