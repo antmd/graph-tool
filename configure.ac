@@ -333,7 +333,7 @@ AC_DEFINE_UNQUOTED([PACKAGE_SOURCE_DIR], "${packagesrcdir}", [package source dir
 AC_DEFINE_UNQUOTED([AUTHOR], "Tiago de Paula Peixoto <tiago@skewed.de>", [program author(s)])
 
 AC_DEFINE_UNQUOTED([COPYRIGHT],
-    "Copyright (C) 2006-2011 Tiago de Paula Peixoto\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "Copyright (C) 2006-2013 Tiago de Paula Peixoto\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
         [copyright info])
 
 # git information
