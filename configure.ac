@@ -184,6 +184,17 @@ AC_PYTHON_DEVEL([== '${PYTHON_FULL_VERSION}'])
 [CPPFLAGS="${CPPFLAGS} ${PYTHON_CPPFLAGS}"]
 [LDFLAGS="${LDFLAGS} ${PYTHON_LDFLAGS}"]
 
+# default directory for submodules
+[MOD_DIR="${PYTHON_SITE_PKG}"]
+AC_ARG_WITH([python-module-path], [AS_HELP_STRING([--python-module-path=DIR],
+		  		  [directory where python module will be installed
+                      		  [default=auto-detected] ])],
+            MOD_DIR=$withval)
+echo "graph-tool will be installed at: ${MOD_DIR}"
+
+[MOD_DIR="${MOD_DIR}/graph_tool"]
+AC_SUBST(MOD_DIR)
+
 echo "==========================="
 echo "Using python version: ${PYTHON_FULL_VERSION}"
 echo "==========================="
@@ -355,10 +366,6 @@ AC_SUBST(CXXFLAGS)
 [MOD_CPPFLAGS="-I\$(srcdir) -I\$(srcdir)/.. -I\$(srcdir)/../../boost-workaround \
 -DHAVE_CONFIG_H"]
 AC_SUBST(MOD_CPPFLAGS)
-
-# default directory for submodules
-[MOD_DIR="${pythondir}/graph_tool"]
-AC_SUBST(MOD_DIR)
 
 # default LIBADD flags for submodules
 [MOD_LIBADD="${PYTHON_LDFLAGS} -l${BOOST_IOSTREAMS_LIB} -l${BOOST_PYTHON_LIB} \
