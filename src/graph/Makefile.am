@@ -66,6 +66,7 @@ libgraph_tool_core_la_workaround_HEADERS = \
     ../boost-workaround/boost/graph/isomorphism.hpp \
     ../boost-workaround/boost/graph/kamada_kawai_spring_layout.hpp \
     ../boost-workaround/boost/graph/metric_tsp_approx.hpp \
+    ../boost-workaround/boost/graph/named_function_params-alt.hpp \
     ../boost-workaround/boost/graph/overloading.hpp \
     ../boost-workaround/boost/graph/push_relabel_max_flow.hpp \
     ../boost-workaround/boost/graph/copy_alt.hpp \

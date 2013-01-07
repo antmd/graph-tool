@@ -6,6 +6,7 @@
 #ifndef BOOST_GRAPH_ISOMORPHISM_HPP
 #define BOOST_GRAPH_ISOMORPHISM_HPP
 
+#include <boost/graph/named_function_params-alt.hpp>
 #include <utility>
 #include <vector>
 #include <iterator>
