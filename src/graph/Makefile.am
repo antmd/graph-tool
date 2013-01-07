@@ -14,7 +14,7 @@ AM_CXXFLAGS =\
 
 AM_CFLAGS=$(AM_CXXFLAGS)
 
-libgraph_tool_coredir = $(pythondir)/graph_tool
+libgraph_tool_coredir = $(MOD_DIR)
 libgraph_tool_core_LTLIBRARIES = libgraph_tool_core.la
 
 libgraph_tool_core_la_SOURCES = \
@@ -35,7 +35,7 @@ libgraph_tool_core_la_SOURCES = \
     random.cc \
     read_graphviz_new.cpp
 
-libgraph_tool_core_la_includedir = $(pythondir)/graph_tool/include
+libgraph_tool_core_la_includedir = $(MOD_DIR)/include
 libgraph_tool_core_la_include_HEADERS = \
     ../../config.h \
     fast_vector_property_map.hh \
@@ -57,7 +57,7 @@ libgraph_tool_core_la_include_HEADERS = \
     str_repr.hh \
     shared_map.hh
 
-libgraph_tool_core_la_workarounddir = $(pythondir)/graph_tool/include/boost-workaround/boost/graph/
+libgraph_tool_core_la_workarounddir = $(MOD_DIR)/include/boost-workaround/boost/graph/
 libgraph_tool_core_la_workaround_HEADERS = \
     ../boost-workaround/boost/graph/betweenness_centrality.hpp \
     ../boost-workaround/boost/graph/detail/read_graphviz_new.hpp \

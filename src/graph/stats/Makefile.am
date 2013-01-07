@@ -4,11 +4,11 @@ AM_CPPFLAGS = $(MOD_CPPFLAGS)
 
 AM_CXXFLAGS = $(CXXFLAGS)
 
-libgraph_tool_statsdir = $(pythondir)/graph_tool/stats
+libgraph_tool_statsdir = $(MOD_DIR)/stats
 
 libgraph_tool_stats_LTLIBRARIES = libgraph_tool_stats.la
 
-libgraph_tool_stats_la_includedir = $(pythondir)/graph_tool/include
+libgraph_tool_stats_la_includedir = $(MOD_DIR)/include
 
 libgraph_tool_stats_la_SOURCES = \
     graph_histograms.cc \

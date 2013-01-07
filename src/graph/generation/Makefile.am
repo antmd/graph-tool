@@ -4,11 +4,11 @@ AM_CPPFLAGS = $(MOD_CPPFLAGS)
 
 AM_CXXFLAGS = $(CXXFLAGS) $(CGAL_FLAGS)
 
-libgraph_tool_generationdir = $(pythondir)/graph_tool/generation
+libgraph_tool_generationdir = $(MOD_DIR)/generation
 
 libgraph_tool_generation_LTLIBRARIES = libgraph_tool_generation.la
 
-libgraph_tool_generation_la_includedir = $(pythondir)/graph_tool/include
+libgraph_tool_generation_la_includedir = $(MOD_DIR)/include
 
 libgraph_tool_generation_la_LIBADD = $(MOD_LIBADD) $(CGAL_LIBADD)
 

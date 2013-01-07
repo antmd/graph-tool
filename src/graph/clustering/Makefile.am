@@ -4,11 +4,11 @@ AM_CPPFLAGS = $(MOD_CPPFLAGS)
 
 AM_CFLAGS = $(AM_CXXFLAGS)
 
-libgraph_tool_clusteringdir = $(pythondir)/graph_tool/clustering
+libgraph_tool_clusteringdir = $(MOD_DIR)/clustering
 
 libgraph_tool_clustering_LTLIBRARIES = libgraph_tool_clustering.la
 
-libgraph_tool_clustering_la_includedir = $(pythondir)/graph_tool/include
+libgraph_tool_clustering_la_includedir = $(MOD_DIR)/include
 
 libgraph_tool_clustering_la_LIBADD = $(MOD_LIBADD)
 

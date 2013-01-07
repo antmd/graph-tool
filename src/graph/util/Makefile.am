@@ -4,11 +4,11 @@ AM_CPPFLAGS = $(MOD_CPPFLAGS)
 
 AM_CFLAGS = $(AM_CXXFLAGS)
 
-libgraph_tool_utildir = $(pythondir)/graph_tool/util
+libgraph_tool_utildir = $(MOD_DIR)/util
 
 libgraph_tool_util_LTLIBRARIES = libgraph_tool_util.la
 
-libgraph_tool_util_la_includedir = $(pythondir)/graph_tool/include
+libgraph_tool_util_la_includedir = $(MOD_DIR)/include
 
 libgraph_tool_util_la_LIBADD = $(MOD_LIBADD)
 
