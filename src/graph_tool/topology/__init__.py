@@ -1232,7 +1232,7 @@ def pseudo_diameter(g, source=None, weights=None):
     """
 
     if source is None:
-        source = g.vertex(0)
+        source = g.vertex(0, use_index=False)
     dist, target = 0, source
     while True:
         new_source = target
