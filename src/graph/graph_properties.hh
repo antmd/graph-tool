@@ -21,17 +21,11 @@
 #include <typeinfo>
 #include <string>
 #include <vector>
-#if (GCC_VERSION >= 40400)
-#   include <tr1/unordered_set>
-#   include <tr1/unordered_map>
-#   include <tr1/random>
-#   include <tr1/memory>
-#else
-#   include <boost/tr1/unordered_set.hpp>
-#   include <boost/tr1/unordered_map.hpp>
-#   include <boost/tr1/random.hpp>
-#   include <boost/tr1/memory.hpp>
-#endif
+#include "tr1_include.hh"
+#include TR1_HEADER(unordered_set)
+#include TR1_HEADER(unordered_map)
+#include TR1_HEADER(memory)
+#include TR1_HEADER(random)
 #include <boost/functional/hash.hpp>
 #include <boost/python/object.hpp>
 #include <boost/python/extract.hpp>

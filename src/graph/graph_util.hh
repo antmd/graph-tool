@@ -34,11 +34,8 @@
 #include <boost/type_traits/is_convertible.hpp>
 #include <string>
 
-#if (GCC_VERSION >= 40400)
-#   include <tr1/random>
-#else
-#   include <boost/tr1/random.hpp>
-#endif
+#include "tr1_include.hh"
+#include TR1_HEADER(random)
 
 namespace graph_tool
 {

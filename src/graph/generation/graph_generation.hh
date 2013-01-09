@@ -18,13 +18,9 @@
 #ifndef GRAPH_GENERATION_HH
 #define GRAPH_GENERATION_HH
 
-#if (GCC_VERSION >= 40400)
-#   include <tr1/unordered_map>
-#   include <tr1/tuple>
-#else
-#   include <boost/tr1/unordered_map.hpp>
-#   include <boost/tr1/tuple.hpp>
-#endif
+#include "tr1_include.hh"
+#include TR1_HEADER(unordered_map)
+#include TR1_HEADER(tuple)
 #include <boost/functional/hash.hpp>
 #include <map>
 #include <set>

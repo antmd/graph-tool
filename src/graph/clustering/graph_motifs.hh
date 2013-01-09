@@ -19,13 +19,8 @@
 #define GRAPH_MOTIFS_HH
 
 #include <boost/graph/isomorphism.hpp>
-#if (GCC_VERSION >= 40400)
-#   include <tr1/unordered_set>
-#   include <tr1/random>
-#else
-#   include <boost/tr1/unordered_set.hpp>
-#   include <boost/tr1/random.hpp>
-#endif
+#include "tr1_include.hh"
+#include TR1_HEADER(unordered_set)
 #include <boost/functional/hash.hpp>
 #include <algorithm>
 

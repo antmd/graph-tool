@@ -18,12 +18,9 @@
 #ifndef GRAPH_ASSORTATIVITY_HH
 #define GRAPH_ASSORTATIVITY_HH
 
+#include "tr1_include.hh"
+#include TR1_HEADER(unordered_map)
 
-#if (GCC_VERSION >= 40400)
-#   include <tr1/unordered_map>
-#else
-#   include <boost/tr1/unordered_map.hpp>
-#endif
 #include "shared_map.hh"
 #include "graph_util.hh"
 

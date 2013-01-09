@@ -23,13 +23,10 @@
 #ifndef GRAPH_TRIANGULATION_HH
 #define GRAPH_TRIANGULATION_HH
 
-#if (GCC_VERSION >= 40400)
-#   include <tr1/unordered_set>
-#   include <tr1/tuple>
-#else
-#   include <boost/tr1/unordered_set.hpp>
-#   include <boost/tr1/tuple.hpp>
-#endif
+#include "tr1_include.hh"
+#include TR1_HEADER(unordered_set)
+#include TR1_HEADER(tuple)
+
 #include <boost/functional/hash.hpp>
 
 #include "graph_util.hh"

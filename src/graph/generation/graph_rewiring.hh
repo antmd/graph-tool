@@ -18,11 +18,8 @@
 #ifndef GRAPH_REWIRING_HH
 #define GRAPH_REWIRING_HH
 
-#if (GCC_VERSION >= 40400)
-#   include <tr1/unordered_set>
-#else
-#   include <boost/tr1/unordered_set.hpp>
-#endif
+#include "tr1_include.hh"
+#include TR1_HEADER(unordered_set)
 #include <boost/functional/hash.hpp>
 
 #include <iostream>

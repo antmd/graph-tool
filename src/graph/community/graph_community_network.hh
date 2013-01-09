@@ -18,11 +18,9 @@
 #ifndef GRAPH_COMMUNITY_NETWORK_HH
 #define GRAPH_COMMUNITY_NETWORK_HH
 
-#if (GCC_VERSION >= 40400)
-#   include <tr1/unordered_map>
-#else
-#   include <boost/tr1/unordered_map.hpp>
-#endif
+#include "tr1_include.hh"
+#include TR1_HEADER(unordered_map)
+
 #include <iostream>
 #include <iomanip>
 

@@ -24,13 +24,9 @@
 #include <ext/numeric>
 using __gnu_cxx::power;
 
-#  ifndef __clang__
-#   include <tr1/unordered_set>
-#   include <tr1/tuple>
-#  else
-#   include <boost/tr1/unordered_set.hpp>
-#   include <boost/tr1/tuple.hpp>
-#  endif
+#include "tr1_include.hh"
+#include TR1_HEADER(unordered_set)
+#include TR1_HEADER(tuple)
 
 #include <dense_hash_set>
 #include <dense_hash_map>

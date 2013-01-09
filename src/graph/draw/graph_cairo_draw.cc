@@ -29,11 +29,8 @@
 
 #include <iostream>
 
-#if (GCC_VERSION >= 40400)
-#   include <tr1/unordered_map>
-#else
-#   include <boost/tr1/unordered_map.hpp>
-#endif
+#include "tr1_include.hh"
+#include TR1_HEADER(unordered_map)
 
 #include <cairommconfig.h>
 #include <cairomm/context.h>

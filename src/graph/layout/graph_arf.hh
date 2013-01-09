@@ -18,11 +18,6 @@
 #ifndef GRAPH_ARF_HH
 #define GRAPH_ARF_HH
 
-#if (GCC_VERSION >= 40400)
-#   include <tr1/random>
-#else
-#   include <boost/tr1/random.hpp>
-#endif
 #include <limits>
 #include <iostream>
 

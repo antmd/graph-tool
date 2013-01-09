@@ -16,11 +16,9 @@
 #ifndef GRAPH_PARALLEL_HH
 #define GRAPH_PARALLEL_HH
 
-#if (GCC_VERSION >= 40400)
-#   include <tr1/unordered_set>
-#else
-#   include <boost/tr1/unordered_set.hpp>
-#endif
+#include "tr1_include.hh"
+#include TR1_HEADER(unordered_set)
+
 #include "graph_util.hh"
 
 namespace graph_tool

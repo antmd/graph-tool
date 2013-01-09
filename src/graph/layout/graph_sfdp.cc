@@ -20,12 +20,6 @@
 #include "graph_properties.hh"
 #include "graph_exceptions.hh"
 
-#if (GCC_VERSION >= 40400)
-#   include <tr1/random>
-#else
-#   include <boost/tr1/random.hpp>
-#endif
-
 #include <boost/lambda/bind.hpp>
 
 #include "graph_sfdp.hh"

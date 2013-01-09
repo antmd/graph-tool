@@ -15,15 +15,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef RANDOM_HH
-#define RANDOM_HH
+#ifndef TR1_INCLUDE_HH
+#define TR1_INCLUDE_HH
 
-#include "graph.hh"
-#include "tr1_include.hh"
-#include TR1_HEADER(random)
+// include tr1 from libstdc++ only if it is not _really_ old. Otherwise use
+// boost.
 
-typedef std::tr1::mt19937 rng_t;
-
-rng_t get_rng(size_t seed);
+#if defined(__GLIBCXX__) && __GLIBCXX__ > 20050421
+#   define TR1_HEADER(header) <tr1/header>
+#else
+#   define TR1_HEADER(header) <boost/tr1/header.hpp>
+#endif
 
 #endif

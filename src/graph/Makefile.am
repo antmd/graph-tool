@@ -55,7 +55,8 @@ libgraph_tool_core_la_include_HEADERS = \
     numpy_bind.hh \
     random.hh \
     str_repr.hh \
-    shared_map.hh
+    shared_map.hh \
+    tr1_include.hh
 
 libgraph_tool_core_la_workarounddir = $(MOD_DIR)/include/boost-workaround/boost/graph/
 libgraph_tool_core_la_workaround_HEADERS = \
