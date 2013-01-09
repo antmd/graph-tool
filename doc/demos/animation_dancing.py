@@ -4,7 +4,7 @@
 # This simple example on how to do animations using graph-tool, where the layout
 # changes dynamically. We start with some network, and randomly rewire its
 # edges, and update the layout dynamically, where edges are rewired only if
-# their euclidian distance is reduced. It is thus a very simplistic model for
+# their euclidean distance is reduced. It is thus a very simplistic model for
 # spatial segregation.
 
 from graph_tool.all import *
@@ -29,7 +29,8 @@ K = 0.5            # preferred edge length
 
 pos = sfdp_layout(g, K=K)  # initial layout positions
 
-offscreen = True      # If true, the frames will be dumped to disk as images.
+# If True, the frames will be dumped to disk as images.
+offscreen = sys.argv[1] == "offscreen" if len(sys.argv) > 1 else False
 max_count = 5000
 if offscreen and not os.path.exists("./frames"):
     os.mkdir("./frames")
