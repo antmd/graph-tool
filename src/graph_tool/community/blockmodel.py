@@ -1526,6 +1526,12 @@ def condensation_graph(g, prop, vweight=None, eweight=None, avprops=None,
         A vertex property map with the vertex count for each community.
     ecount : :class:`~graph_tool.PropertyMap`
         An edge property map with the inter-community edge count for each edge.
+    va : list of :class:`~graph_tool.PropertyMap`
+        A list of vertex property maps with average values of the properties
+        passed via the ``avprops`` parameter.
+    ea : list of :class:`~graph_tool.PropertyMap`
+        A list of edge property maps with average values of the properties
+        passed via the ``avprops`` parameter.
 
     See Also
     --------
