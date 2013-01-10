@@ -902,8 +902,6 @@ void move_sweep(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b, Vprop label,
 
                     const boost::tuple<typename graph_traits<Graph>::edge_descriptor, bool, size_t>& eback = egroups[r].back();
 
-                    vertex_t u = get<1>(eback) ? get_source(get<0>(eback), g) : get_target(get<0>(eback), g);
-
                     if (get<1>(eback))
                         esrcpos[get<0>(eback)][get<2>(eback)] = pos;
                     else
