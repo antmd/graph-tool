@@ -404,15 +404,12 @@ class PropertyMap(object):
     def __register_map(self):
         for g in [self.__g(), self.__base_g()]:
             if g is not None:
-                g._Graph__known_properties.append((self.key_type(),
-                                                   weakref.ref(self.__map)))
+                g._Graph__known_properties[id(self)] = weakref.ref(self)
 
     def __unregister_map(self):
         for g in [self.__g(), self.__base_g()]:
             if g is not None:
-                i = g._Graph__known_properties.index((self.key_type(),
-                                                      weakref.ref(self.__map)))
-                del g._Graph__known_properties[i]
+                del g._Graph__known_properties[id(self)]
 
     def __del__(self):
         self.__unregister_map()
@@ -722,7 +719,7 @@ def group_vector_property(props, value_type=None, vprop=None, pos=None):
 def ungroup_vector_property(vprop, pos, props=None):
     """Ungroup vector property map ``vprop`` into a list of individual property maps.
 
-    Parameters 
+    Parameters
     ----------
     vprop : :class:`~graph_tool.PropertyMap`
         Vector property map to be ungrouped.
@@ -931,10 +928,11 @@ class Graph(object):
     If ``g`` is specified, the graph (and its internal properties) will be
     copied.
 
-    If ``prune`` is set to True, and ``g`` is specified, only the filtered graph
-    will be copied, and the new graph object will not be filtered. Optionally, a
-    tuple of three booleans can be passed as value to ``prune``, to specify a
-    different behavior to vertex, edge, and reversal filters, respectively.
+    If ``prune`` is set to ``True``, and ``g`` is specified, only the filtered
+    graph will be copied, and the new graph object will not be
+    filtered. Optionally, a tuple of three booleans can be passed as value to
+    ``prune``, to specify a different behavior to vertex, edge, and reversal
+    filters, respectively.
 
     The graph is implemented as an `adjacency list`_, where both vertex and edge
     lists are C++ STL vectors.
@@ -945,7 +943,7 @@ class Graph(object):
 
     def __init__(self, g=None, directed=True, prune=False):
         self.__properties = {}
-        self.__known_properties = []
+        self.__known_properties = {}
         self.__filter_state = {"reversed": False,
                                "edge_filter": (None, False),
                                "vertex_filter": (None, False),
@@ -1159,9 +1157,9 @@ class Graph(object):
         self.__check_perms("del_vertex")
         vertex = self.vertex(int(vertex))
         index = self.vertex_index[vertex]
-        for pmap in self.__known_properties:
-            if pmap[0] == "v" and pmap[1]() != None and pmap[1]().is_writable():
-                self.__graph.ShiftVertexProperty(pmap[1]().get_map(), index)
+        for pmap in self.__known_properties.values():
+            if pmap() is not None and pmap().key_type() == "v" and pmap().is_writable():
+                self.__graph.ShiftVertexProperty(pmap()._PropertyMap__map.get_map(), index)
         self.clear_vertex(vertex)
         libcore.remove_vertex(self.__graph, vertex)
 
@@ -1639,17 +1637,51 @@ class Graph(object):
         indicating whether or not it is inverted."""
         return self.__filter_state["edge_filter"]
 
-    def purge_vertices(self):
+    def purge_vertices(self, in_place=False):
         """Remove all vertices of the graph which are currently being filtered
         out, and return it to the unfiltered state. This operation is not
-        reversible."""
-        old_indexes = self.vertex_index.copy("int32_t")
-        self.__graph.PurgeVertices(_prop("v", self, old_indexes))
-        self.set_vertex_filter(None)
-        for pmap in self.__known_properties:
-            if pmap[0] == "v" and pmap[1]() != None and pmap[1]().is_writable():
-                self.__graph.ReIndexVertexProperty(pmap[1]().get_map(),
-                                                   _prop("v", self, old_indexes))
+        reversible.
+
+        If the option ``in_place == True`` is given, the algorithm will remove
+        the filtered vertices and re-index all property maps which are tied with
+        the graph. This is a slow operation which has an :math:`O(N^2)`
+        complexity.
+
+        If ``in_place == False``, the graph and its vertex and edge property
+        maps are temporarily copied to a new unfiltered graph, which will
+        replace the contents of the original graph. This is a fast operation
+        with an :math:`O(N + E)` complexity. This is the default behaviour if no
+        option is given.
+
+        """
+        if in_place:
+            old_indexes = self.vertex_index.copy("int32_t")
+            self.__graph.PurgeVertices(_prop("v", self, old_indexes))
+            self.set_vertex_filter(None)
+            for pmap in self.__known_properties.values():
+                if (pmap() is not None and pmap().key_type() == "v" and
+                    pmap() not in [self.vertex_index, self.edge_index]):
+                    self.__graph.ReIndexVertexProperty(pmap()._PropertyMap__map.get_map(),
+                                                       _prop("v", self, old_indexes))
+        else:
+            stamp = id(self)
+            pmaps = []
+            for pmap in self.__known_properties.values():
+                if (pmap() is not None and pmap().key_type() in ["v", "e"] and
+                    pmap() not in [self.vertex_index, self.edge_index]):
+                    pmaps.append(pmap())
+                    pname = "__tmp_purge_vertices_%d_%d" % (stamp, id(pmaps[-1]))
+                    self.properties[(pmaps[-1].key_type(), pname)] = pmaps[-1]
+
+            new_g = Graph(self, prune=(True, False, False))
+            self.__graph = new_g.__graph
+            self.set_vertex_filter(None)
+
+            for pmap in pmaps:
+                pname = "__tmp_purge_vertices_%d_%d" % (stamp, id(pmap))
+                new_pmap = new_g.properties[(pmap.key_type(), pname)]
+                pmap._PropertyMap__map = new_pmap._PropertyMap__map
+                del self.properties[(pmap.key_type(), pname)]
 
     def purge_edges(self):
         """Remove all edges of the graph which are currently being filtered out,
