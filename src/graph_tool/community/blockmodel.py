@@ -1034,6 +1034,9 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
     ----------
     g : :class:`~graph_tool.Graph`
         Graph being used.
+    deg_corr : ``bool`` (optional, default: ``True``)
+        If ``True``, the degree-corrected version of the blockmodel ensemble will
+        be assumed, otherwise the traditional variant will be used.
     nsweeps : ``int`` (optional, default: `50`)
         Number of sweeps per value of `B` tried. If `adaptive_convergence ==
         True`, this corresponds to the number of sweeps observed to determine
