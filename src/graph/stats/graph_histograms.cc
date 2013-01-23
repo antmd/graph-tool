@@ -30,6 +30,13 @@ python::object
 get_vertex_histogram(GraphInterface& gi, GraphInterface::deg_t deg,
                      const vector<long double>& bins)
 {
+    try
+    {
+        if (!belongs<vertex_scalar_properties>()(get<boost::any>(deg)))
+            throw ValueException("Vertex property must be of scalar type.");
+    }
+    catch (boost::bad_get&){}
+
     python::object hist;
     python::object ret_bins;
 
@@ -44,6 +51,9 @@ python::object
 get_edge_histogram(GraphInterface& gi, boost::any prop,
                    const vector<long double>& bins)
 {
+    if (!belongs<edge_scalar_properties>()(prop))
+        throw ValueException("Edge property must be of scalar type.");
+
     python::object hist;
     python::object ret_bins;
 
