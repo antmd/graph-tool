@@ -70,7 +70,6 @@ string lexical_cast<string,python::object>(const python::object & o)
     stringstream s;
     object_pickler(OStream(s), o);
     return s.str();
-    return "";
 }
 
 template <>
@@ -96,7 +95,7 @@ public:
     std::streamsize read(char* s, std::streamsize n)
     {
         python::object pbuf = _file.attr("read")(n);
-        string buf = python::extract<string>(pbuf);
+        string buf = python::extract<string>(pbuf.attr("decode")("utf-8"));
         for (size_t i = 0; i < buf.size(); ++i)
             s[i] = buf[i];
         return buf.size();
@@ -106,7 +105,7 @@ public:
     {
         string buf(s, s+n);
         python::object pbuf(buf);
-        _file.attr("write")(pbuf);
+        _file.attr("write")(pbuf.attr("encode")("utf-8"));
         return n;
     }
 

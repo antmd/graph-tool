@@ -1771,7 +1771,7 @@ class Graph(object):
     def __getstate__(self):
         state = dict()
         sio = BytesIO()
-        stream = gzip.GzipFile(fileobj=sio, mode="w")
+        stream = gzip.GzipFile(fileobj=sio, mode="wb")
         self.save(stream, "xml")
         stream.close()
         state["blob"] = sio.getvalue()
@@ -1782,7 +1782,7 @@ class Graph(object):
         blob = state["blob"]
         if blob != "":
             sio = BytesIO(blob)
-            stream = gzip.GzipFile(fileobj=sio, mode="r")
+            stream = gzip.GzipFile(fileobj=sio, mode="rb")
             self.load(stream, "xml")
 
 
