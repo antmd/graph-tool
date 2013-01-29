@@ -228,15 +228,24 @@ def laplacian(g, deg="total", normalized=True, sparse=True, weight=None):
         d = _get_deg(v, deg, weight)
         for e in v.out_edges():
             if not normalized:
-                m[index[v], index[e.target()]] += (-1 if weight is None
-                                                   else -weight[e])
+                if weight is None:
+                    val = -1
+                else:
+                    val = -weight[e]
+                # increment in case of parallel edges
+                m[index[v], index[e.target()]] += val
             else:
-                val = (d * _get_deg(e.target(), deg, weight)) ** (-0.5)
-                m[index[v], index[e.target()]] = val
+                d2 = _get_deg(e.target(), deg, weight)
+                if weight is None:
+                    w = 1
+                else:
+                    w = weight[e]
+                # increment in case of parallel edges
+                m[index[v], index[e.target()]] += - w / sqrt(d * d2)
         if not normalized:
             m[index[v], index[v]] = d
         elif d > 0:
-            m[index[v], index[v]] = 1
+            m[index[v], index[v]] = 1 if d != 0 else 0
     if sparse:
         m = m.tocsr()
     return m
