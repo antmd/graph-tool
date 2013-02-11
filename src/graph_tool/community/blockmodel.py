@@ -343,9 +343,7 @@ class BlockState(object):
                           _prop("e", self.bg, self.mrs),
                           _prop("v", self.bg, self.mrp),
                           _prop("v", self.bg, self.mrm),
-                          _prop("v", self.bg, self.wr),
-                          self.deg_corr,
-                          self.vertices)
+                          _prop("v", self.bg, self.wr))
         del self.egroups
 
     def remove_vertex(self, v):
