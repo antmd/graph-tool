@@ -34,7 +34,7 @@ AC_PROG_INSTALL
 AC_CANONICAL_TARGET
 
 dnl turn on warnings
-[CXXFLAGS="${CXXFLAGS} -Wall"]
+[CXXFLAGS="${CXXFLAGS} -Wall -Wextra"]
 
 dnl Checks for options
 
