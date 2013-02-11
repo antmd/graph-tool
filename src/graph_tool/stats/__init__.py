@@ -408,10 +408,10 @@ def distance_histogram(g, weight=None, bins=[0, 1], samples=None,
     >>> g = gt.random_graph(100, lambda: (3, 3))
     >>> hist = gt.distance_histogram(g)
     >>> print(hist)
-    [array([    0.,   300.,   862.,  2153.,  3813.,  2547.,   225.]), array([0, 1, 2, 3, 4, 5, 6, 7], dtype=uint64)]
+    [array([    0.,   300.,   856.,  2185.,  3840.,  2516.,   203.]), array([0, 1, 2, 3, 4, 5, 6, 7], dtype=uint64)]
     >>> hist = gt.distance_histogram(g, samples=10)
     >>> print(hist)
-    [array([   0.,   30.,   88.,  216.,  384.,  252.,   20.]), array([0, 1, 2, 3, 4, 5, 6, 7], dtype=uint64)]
+    [array([   0.,   30.,   87.,  227.,  390.,  242.,   14.]), array([0, 1, 2, 3, 4, 5, 6, 7], dtype=uint64)]
     """
 
     if samples != None:

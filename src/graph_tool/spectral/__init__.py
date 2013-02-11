@@ -90,13 +90,13 @@ def adjacency(g, sparse=True, weight=None):
     >>> g = gt.random_graph(100, lambda: (10, 10))
     >>> m = gt.adjacency(g)
     >>> print(m.todense())
-    [[ 0.  0.  0. ...,  0.  0.  0.]
+    [[ 0.  0.  0. ...,  0.  1.  0.]
      [ 0.  0.  0. ...,  0.  0.  0.]
-     [ 0.  0.  0. ...,  1.  0.  1.]
+     [ 0.  0.  0. ...,  0.  0.  1.]
      ..., 
      [ 0.  0.  0. ...,  0.  0.  0.]
-     [ 0.  0.  1. ...,  0.  0.  0.]
-     [ 0.  0.  0. ...,  1.  0.  0.]]
+     [ 0.  0.  0. ...,  0.  0.  0.]
+     [ 0.  0.  1. ...,  0.  0.  0.]]
 
     References
     ----------
@@ -165,31 +165,34 @@ def laplacian(g, deg="total", normalized=True, sparse=True, weight=None):
 
     Notes
     -----
-    The Laplacian matrix is defined as
+    The weighted Laplacian matrix is defined as
 
     .. math::
 
-        \ell_{i,j} =
+        \ell_{ij} =
         \begin{cases}
         \Gamma(v_i) & \text{if } i = j \\
-        -1          & \text{if } i \neq j \text{ and } v_i \text{ is adjacent to } v_j \\
+        -w_{ij}     & \text{if } i \neq j \text{ and } v_i \text{ is adjacent to } v_j \\
         0           & \text{otherwise}.
         \end{cases}
 
-    Where :math:`\Gamma(v_i)` is the degree of vertex :math:`v_i`. The
-    normalized version is
+    Where :math:`\Gamma(v_i)=\sum_j A_{ij}w_{ij}` is sum of the weights of
+    vertex :math:`v_i`. The normalized version is
 
     .. math::
 
-        \ell_{i,j} =
+        \ell_{ij} =
         \begin{cases}
         1         & \text{ if } i = j \text{ and } \Gamma(v_i) \neq 0 \\
-       -\frac{1}{\sqrt{\Gamma(v_i)\Gamma(v_j)}} & \text{ if } i \neq j \text{ and } v_i \text{ is adjacent to } v_j \\
+        -\frac{w_{ij}}{\sqrt{\Gamma(v_i)\Gamma(v_j)}} & \text{ if } i \neq j \text{ and } v_i \text{ is adjacent to } v_j \\
         0         & \text{otherwise}.
         \end{cases}
 
-    In the case of weighted edges, the value 1 is replaced the weight of the
-    respective edge.
+    In the case of unweighted edges, it is assumed :math:`w_{ij} = 1`.
+
+    For directed graphs, it is assumed :math:`\Gamma(v_i)=\sum_j A_{ij}w_{ij} +
+    \sum_j A_{ji}w_{ji}` if ``deg=="total"``, :math:`\Gamma(v_i)=\sum_j A_{ij}w_{ij}`
+    if ``deg=="out"`` or :math:`\Gamma(v_i)=\sum_j A_{ji}w_{ji}` ``deg=="in"``.
 
     Examples
     --------
@@ -200,13 +203,13 @@ def laplacian(g, deg="total", normalized=True, sparse=True, weight=None):
     >>> g = gt.random_graph(100, lambda: (10,10))
     >>> m = gt.laplacian(g)
     >>> print(m.todense())
-    [[ 1.    0.    0.   ...,  0.    0.    0.  ]
-     [ 0.    1.    0.   ...,  0.    0.    0.  ]
-     [ 0.    0.    1.   ...,  0.    0.    0.05]
+    [[ 1.   -0.05  0.   ...,  0.    0.    0.  ]
+     [ 0.    1.    0.   ...,  0.    0.   -0.05]
+     [ 0.    0.    1.   ...,  0.   -0.05  0.  ]
      ..., 
-     [ 0.    0.    0.05 ...,  1.    0.    0.05]
-     [ 0.05  0.    0.   ...,  0.    1.    0.  ]
-     [ 0.    0.05  0.   ...,  0.    0.    1.  ]]
+     [ 0.    0.    0.   ...,  1.    0.    0.  ]
+     [-0.05  0.    0.   ...,  0.    1.    0.  ]
+     [ 0.    0.    0.   ..., -0.05  0.    1.  ]]
 
     References
     ----------
@@ -298,13 +301,13 @@ def incidence(g, sparse=True):
     >>> g = gt.random_graph(100, lambda: (2,2))
     >>> m = gt.incidence(g)
     >>> print(m.todense())
-    [[ 0.  0.  0. ...,  0.  0.  0.]
-     [ 0.  0.  0. ...,  0.  0.  0.]
+    [[-1. -1.  0. ...,  0.  0.  0.]
+     [ 0.  0. -1. ...,  0.  0.  0.]
      [ 0.  0.  0. ...,  0.  0.  0.]
      ..., 
      [ 0.  0.  0. ...,  0.  0.  0.]
-     [ 0.  0.  0. ...,  0.  0.  0.]
-     [ 0.  0.  0. ...,  0.  0.  0.]]
+     [ 0.  0.  0. ..., -1.  0.  0.]
+     [ 0.  0.  0. ...,  0. -1. -1.]]
 
     References
     ----------

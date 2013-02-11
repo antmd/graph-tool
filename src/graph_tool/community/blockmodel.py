@@ -702,7 +702,7 @@ def min_dist(state, n=0):
        >>> for i in range(1000):
        ...     ds, nmoves = gt.mcmc_sweep(state)
        >>> gt.min_dist(state)
-       (795.7694502418635, 2, 3)
+       (795.7694502418633, 2, 3)
 
     """
     min_d, r, s = libcommunity.min_dist(state.bg._Graph__graph, int(n),
