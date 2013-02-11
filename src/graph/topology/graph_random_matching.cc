@@ -101,7 +101,7 @@ void random_matching(GraphInterface& gi, boost::any weight, boost::any match,
     run_action<>()
         (gi, bind<void>(do_random_matching(), _1, gi.GetVertexIndex(),
                         _2, _3, minimize, ref(rng)),
-         edge_props_t(), edge_scalar_properties())(weight, match);
+         edge_props_t(), writable_edge_scalar_properties())(weight, match);
 }
 
 void export_random_matching()

@@ -30,23 +30,6 @@ namespace graph_tool
 using namespace std;
 using namespace boost;
 
-// this is to avoid using GraphWrap as the underlying graph type
-struct get_graph_t
-{
-    template <class Graph>
-    struct apply
-    {
-        typedef Graph type;
-    };
-
-    template <class Graph>
-    struct apply<GraphWrap<Graph> >
-    {
-        typedef Graph type;
-    };
-};
-
-
 class AStarVisitorWrapper
 {
 public:
@@ -54,54 +37,54 @@ public:
         : _gi(gi), _vis(vis) {}
 
     template <class Vertex, class Graph>
-    void initialize_vertex(Vertex u, Graph& g)
+    void initialize_vertex(Vertex u, const Graph&)
     {
         _vis.attr("initialize_vertex")(PythonVertex(_gi, u));
     }
 
     template <class Vertex, class Graph>
-    void discover_vertex(Vertex u, Graph& g)
+    void discover_vertex(Vertex u, const Graph&)
     {
         _vis.attr("discover_vertex")(PythonVertex(_gi, u));
     }
 
     template <class Vertex, class Graph>
-    void examine_vertex(Vertex u, Graph& g)
+    void examine_vertex(Vertex u, const Graph&)
     {
         _vis.attr("examine_vertex")(PythonVertex(_gi, u));
     }
 
     template <class Edge, class Graph>
-    void examine_edge(Edge e, Graph& g)
+    void examine_edge(Edge e, const Graph&)
     {
         _vis.attr("examine_edge")
-            (PythonEdge<typename Graph::orig_graph_t>(_gi, e));
+            (PythonEdge<Graph>(_gi, e));
 
     }
 
     template <class Edge, class Graph>
-    void edge_relaxed(Edge e, Graph& g)
+    void edge_relaxed(Edge e, const Graph&)
     {
         _vis.attr("edge_relaxed")
-            (PythonEdge<typename Graph::orig_graph_t>(_gi, e));
+            (PythonEdge<Graph>(_gi, e));
     }
 
     template <class Edge, class Graph>
-    void edge_not_relaxed(Edge e, Graph& g)
+    void edge_not_relaxed(Edge e, const Graph& g)
     {
         _vis.attr("edge_not_relaxed")
-            (PythonEdge<typename Graph::orig_graph_t>(_gi, e));
+            (PythonEdge<Graph>(_gi, e));
     }
 
     template <class Edge, class Graph>
-    void black_target(Edge e, Graph& g)
+    void black_target(Edge e, const Graph&)
     {
         _vis.attr("black_target")
-            (PythonEdge<typename Graph::orig_graph_t>(_gi, e));
+            (PythonEdge<Graph>(_gi, e));
     }
 
     template <class Vertex, class Graph>
-    void finish_vertex(Vertex u, Graph& g)
+    void finish_vertex(Vertex u, const Graph&)
     {
         _vis.attr("finish_vertex")(PythonVertex(_gi, u));
     }

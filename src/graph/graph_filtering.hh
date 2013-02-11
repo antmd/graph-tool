@@ -47,11 +47,11 @@
 #include <boost/mpl/transform_view.hpp>
 #include <boost/mpl/quote.hpp>
 #include <boost/mpl/range_c.hpp>
+#include <boost/mpl/print.hpp>
 
 #include "graph_adaptor.hh"
 #include "graph_selectors.hh"
 #include "graph_util.hh"
-#include "graph_wrap.hh"
 #include "mpl_nested_loop.hh"
 
 namespace graph_tool
@@ -514,9 +514,9 @@ struct action_wrap
         : _a(a), _g(g), _max_v(max_v), _max_e(max_e) {}
 
     template <class Type>
-    checked_vector_property_map<Type,GraphInterface::vertex_index_map_t>
+    checked_vector_property_map<Type,GraphInterface::vertex_index_map_t>&
     uncheck(checked_vector_property_map
-            <Type,GraphInterface::vertex_index_map_t> a, mpl::true_) const
+            <Type,GraphInterface::vertex_index_map_t>& a, mpl::true_) const
     {
         return a;
     }
@@ -530,9 +530,9 @@ struct action_wrap
     }
 
     template <class Type>
-    checked_vector_property_map<Type,GraphInterface::edge_index_map_t>
+    checked_vector_property_map<Type,GraphInterface::edge_index_map_t>&
     uncheck(checked_vector_property_map
-            <Type,GraphInterface::edge_index_map_t> a, mpl::true_) const
+            <Type,GraphInterface::edge_index_map_t>& a, mpl::true_) const
     {
         return a;
     }
@@ -555,38 +555,25 @@ struct action_wrap
 
     //no op
     template <class Type, class DoWrap>
-    Type uncheck(Type a, DoWrap) const { return a; }
-
-    template <class Graph>
-    GraphWrap<Graph> wrap(Graph* g, mpl::true_) const
-    {
-        return graph_wrap(*g, _g);
-    }
-
-    template <class Graph>
-    Graph& wrap(Graph* g, mpl::false_) const
-    {
-        return *g;
-    }
+    Type& uncheck(Type& a, DoWrap) const { return a; }
 
     void operator()() const {};
-    template <class T1> void operator()(const T1& a1) const
-    { _a(wrap(a1, Wrap())); }
+    template <class T1> void operator()(T1* a1) const
+    { _a(*a1); }
     template <class T1, class T2>
-    void operator()(const T1& a1, const T2& a2) const
-    { _a(wrap(a1,Wrap()), uncheck(a2, Wrap())); }
+    void operator()(T1* a1, T2& a2) const
+    { _a(*a1, uncheck(a2, Wrap())); }
     template <class T1, class T2, class T3>
-    void operator()(const T1& a1, const T2& a2, const T3& a3) const
-    { _a(wrap(a1,Wrap()), uncheck(a2, Wrap()), uncheck(a3, Wrap()));}
+    void operator()(T1* a1, T2& a2, T3& a3) const
+    { _a(*a1, uncheck(a2, Wrap()), uncheck(a3, Wrap())); }
     template <class T1, class T2, class T3, class T4>
-    void operator()(const T1& a1, const T2& a2, const T3& a3, const T4& a4)
+    void operator()(T1* a1, T2& a2, T3& a3, T4& a4)
         const
-    { _a(wrap(a1,Wrap()), uncheck(a2, Wrap()), uncheck(a3, Wrap()),
+    { _a(*a1, uncheck(a2, Wrap()), uncheck(a3, Wrap()),
          uncheck(a4, Wrap())); }
     template <class T1, class T2, class T3, class T4, class T5>
-    void operator()(const T1& a1, const T2& a2, const T3& a3, const T4& a4,
-                    const T5& a5) const
-    { _a(wrap(a1,Wrap()), uncheck(a2, Wrap()), uncheck(a3, Wrap()),
+    void operator()(T1* a1, T2& a2, T3& a3, T4& a4, T5& a5) const
+    { _a(*a1, uncheck(a2, Wrap()), uncheck(a3, Wrap()),
          uncheck(a4, Wrap()), uncheck(a5, Wrap())); }
 
     Action _a;
@@ -604,8 +591,8 @@ struct graph_action
         mpl::transform<GraphViews, mpl::quote1<add_pointer> >::type {};
 
     graph_action(GraphInterface& g, Action a)
-        : _g(g), _a(a, g, num_vertices(g._state->_mg),
-                    g._state->_max_edge_index + 1) {}
+        : _g(g), _a(a, g, num_vertices(*g._mg),
+                    max(g._mg->get_last_index(), size_t(1))) {}
 
     void operator()() const
     {
@@ -671,7 +658,7 @@ struct graph_action
         bool found = false;
         boost::any gview = _g.GetGraphView();
         boost::mpl::nested_for_each<graph_view_pointers,TR1,TR2,TR3,TR4>()
-            (boost::mpl::select_types(_a, found, gview, a1, a2, a3,a4));
+            (boost::mpl::select_types(_a, found, gview, a1, a2, a3, a4));
         if (!found)
         {
             vector<const std::type_info*> args;

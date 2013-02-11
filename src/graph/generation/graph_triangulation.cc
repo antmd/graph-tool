@@ -106,5 +106,4 @@ void triangulation(GraphInterface& gi, python::object points, boost::any pos,
 #endif
         }
     }
-    gi.ReIndexEdges();
 }

@@ -94,7 +94,7 @@ public:
         GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
         return _valid &&
             (_v != graph_traits<GraphInterface::multigraph_t>::null_vertex()) &&
-            (_v < num_vertices(gi._state->_mg));
+            (_v < num_vertices(*gi._mg));
     }
 
     void SetValid(bool valid)
@@ -169,8 +169,7 @@ public:
         }
     };
 
-    python::object
-    OutEdges() const
+    python::object OutEdges() const
     {
         CheckValid();
         GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
@@ -195,8 +194,7 @@ public:
         }
     };
 
-    python::object
-    InEdges() const
+    python::object InEdges() const
     {
         CheckValid();
         GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
@@ -265,8 +263,8 @@ public:
             return false;
         GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
         GraphInterface::edge_t e(_e);
-        bool valid = PythonVertex(_g, source(e, gi._state->_mg)).IsValid() &&
-            PythonVertex(_g, target(e, gi._state->_mg)).IsValid();
+        bool valid = PythonVertex(_g, source(e, *gi._mg)).IsValid() &&
+            PythonVertex(_g, target(e, *gi._mg)).IsValid();
 
         if (valid)
             valid = gi.GetEdgeIndex()[e] <= gi.GetMaxEdgeIndex();

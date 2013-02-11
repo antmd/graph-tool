@@ -1043,7 +1043,7 @@ private:
 };
 
 template <class Graph, class VertexIterator, class PosMap>
-void draw_vertices(Graph& g, pair<VertexIterator,VertexIterator> v_range,
+void draw_vertices(Graph&, pair<VertexIterator,VertexIterator> v_range,
                    PosMap pos_map, attrs_t& attrs, attrs_t& defaults,
                    Cairo::Context& cr)
 {
@@ -1150,8 +1150,8 @@ struct do_cairo_draw_vertices
 {
     template <class Graph, class PosMap, class VertexOrder>
     void operator()(Graph& g, PosMap pos, VertexOrder vertex_order,
-                    attrs_t& vattrs, attrs_t& eattrs, attrs_t& vdefaults,
-                    attrs_t& edefaults, Cairo::Context& cr) const
+                    attrs_t& vattrs, attrs_t&, attrs_t& vdefaults,
+                    attrs_t&, Cairo::Context& cr) const
     {
         ordered_range<typename graph_traits<Graph>::vertex_iterator>
             vertex_range(vertices(g));
@@ -1233,7 +1233,7 @@ void populate_defaults(python::dict odefaults, attrs_t& defaults)
 struct populate_edge_attrs
 {
     template <class Graph>
-    void operator()(Graph& g, python::dict oeattrs, attrs_t& eattrs,
+    void operator()(Graph&, python::dict oeattrs, attrs_t& eattrs,
                     python::dict oedefaults, attrs_t& edefaults) const
     {
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;

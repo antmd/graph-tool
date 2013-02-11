@@ -29,7 +29,7 @@ struct get_line_graph
 {
     template <class Graph, class VertexIndex, class LineGraph,
               class EdgeIndexMap, class LGVertexIndex>
-    void operator()(const Graph& g, VertexIndex vertex_index,
+    void operator()(const Graph& g, VertexIndex,
                     LineGraph& line_graph, EdgeIndexMap edge_index,
                     LGVertexIndex vmap) const
     {
@@ -56,7 +56,6 @@ struct get_line_graph
             line_edge_index_map_t;
         line_edge_index_map_t line_edge_index(get(edge_index_t(), line_graph));
 
-        size_t e_index = 0;
         if (boost::is_directed(g))
         {
             typename graph_traits<Graph>::vertex_iterator v, v_end;
@@ -74,7 +73,6 @@ struct get_line_graph
                         new_edge = add_edge(edge_to_vertex_map[*e1],
                                             edge_to_vertex_map[*e2],
                                             line_graph).first;
-                        line_edge_index[new_edge] = e_index++;
                     }
                 }
             }
@@ -94,7 +92,6 @@ struct get_line_graph
                             new_edge = add_edge(edge_to_vertex_map[*e1],
                                                 edge_to_vertex_map[*e2],
                                                 line_graph).first;
-                            line_edge_index[new_edge] = e_index++;
                         }
             }
         }
@@ -114,5 +111,4 @@ void line_graph(GraphInterface& gi, GraphInterface& lgi,
                                    ref(lgi.GetGraph()), lgi.GetEdgeIndex(),
                                    _2),
                     vertex_properties())(edge_index);
-     lgi.ReIndexEdges();
 }

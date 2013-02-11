@@ -29,7 +29,7 @@ class HistogramPropertyMap;
 namespace boost
 {
 template <class PropertyMap>
-struct property_traits<HistogramPropertyMap<PropertyMap> >:
+struct property_traits<graph_tool::HistogramPropertyMap<PropertyMap> >:
         public property_traits<PropertyMap> {};
 }
 
@@ -100,7 +100,7 @@ void put(HistogramPropertyMap<PropertyMap> pmap,
 struct label_components
 {
     template <class Graph, class CompMap>
-    void operator()(const Graph& g, CompMap comp_map, vector<size_t>& hist)
+    void operator()(Graph& g, CompMap comp_map, vector<size_t>& hist)
         const
     {
         typedef typename graph_traits<Graph>::directed_category
@@ -112,17 +112,17 @@ struct label_components
     }
 
     template <class Graph, class CompMap>
-    void get_components(const Graph& g, CompMap comp_map,
+    void get_components(Graph& g, CompMap comp_map,
                         boost::true_type is_directed) const
     {
-        strong_components(g, comp_map);
+        boost::strong_components(g, comp_map);
     }
 
     template <class Graph, class CompMap>
-    void get_components(const Graph& g, CompMap comp_map,
+    void get_components(Graph& g, CompMap comp_map,
                         boost::false_type is_directed) const
     {
-        connected_components(g, comp_map);
+        boost::connected_components(g, comp_map);
     }
 };
 
@@ -150,7 +150,7 @@ struct label_biconnected_components
     };
 
     template <class Graph, class CompMap, class ArtMap>
-    void operator()(const Graph& g, CompMap comp_map, ArtMap art_map,
+    void operator()(Graph& g, CompMap comp_map, ArtMap art_map,
                     vector<size_t>& hist) const
     {
         HistogramPropertyMap<CompMap> cm(comp_map, num_edges(g), hist);
@@ -170,7 +170,7 @@ struct label_out_component
         marker_visitor(CompMap comp) : _comp(comp) { }
 
         template <class Vertex, class Graph>
-        void discover_vertex(Vertex u, const Graph& g)
+        void discover_vertex(Vertex u, const Graph&)
         {
             _comp[u] = true;
         }
@@ -179,7 +179,7 @@ struct label_out_component
     };
 
     template <class Graph, class CompMap>
-    void operator()(const Graph& g, CompMap comp_map, size_t root) const
+    void operator()(Graph& g, CompMap comp_map, size_t root) const
     {
         marker_visitor<CompMap> marker(comp_map);
         breadth_first_search(g, vertex(root, g), visitor(marker));

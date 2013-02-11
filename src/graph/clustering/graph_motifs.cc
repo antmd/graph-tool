@@ -134,10 +134,7 @@ void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
                 (sub, boost::bind<void>(retrieve_from_list(), _1,
                                         boost::ref(list), boost::ref(done)))();
             if (!done)
-            {
-                sub.ReIndexEdges();
                 subgraph_list.append(sub);
-            }
         }
         subgraph_list.reverse();
     }

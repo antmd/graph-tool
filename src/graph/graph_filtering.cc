@@ -137,7 +137,7 @@ check_filtered(const Graph &g, const EdgeFilter& edge_filter,
     if (e_active)
     {
         if (max_eindex > 0)
-            edge_filter.reserve(max_eindex+1);
+            edge_filter.reserve(max_eindex);
         if (v_active)
         {
             if (num_vertices(g) > 0)
@@ -186,11 +186,9 @@ check_filtered(const Graph &g, const EdgeFilter& edge_filter,
 // gets the correct graph view at run time
 boost::any GraphInterface::GetGraphView() const
 {
-    // TODO: implement memoization
-
     boost::any graph =
-        check_filtered(_state->_mg, _edge_filter_map, _edge_filter_invert,
-                       _edge_filter_active, _state->_max_edge_index,
+        check_filtered(*_mg, _edge_filter_map, _edge_filter_invert,
+                       _edge_filter_active, _mg->get_last_index(),
                        _vertex_filter_map, _vertex_filter_invert,
                        _vertex_filter_active,
                        const_cast<vector<boost::any>&>(_graph_views), _reversed,
@@ -210,13 +208,7 @@ bool GraphInterface::IsEdgeFilterActive() const
 // found
 void GraphInterface::ReIndexEdges()
 {
-    size_t index = 0;
-    graph_traits<multigraph_t>::edge_iterator e, e_end;
-    for (tie(e, e_end) = edges(_state->_mg); e != e_end; ++e)
-        _edge_index[*e] = index++;
-    _state->_max_edge_index = (index > 0) ? index - 1 : 0;
-    _state->_nedges = index;
-    _state->_free_indexes.clear();
+    _mg->reindex_edges();
 }
 
 // this will definitively remove all the edges from the graph, which are being
@@ -230,14 +222,14 @@ void GraphInterface::PurgeEdges()
     graph_traits<multigraph_t>::vertex_iterator v, v_end;
     graph_traits<multigraph_t>::out_edge_iterator e, e_end;
     vector<graph_traits<multigraph_t>::edge_descriptor> deleted_edges;
-    for (tie(v, v_end) = vertices(_state->_mg); v != v_end; ++v)
+    for (tie(v, v_end) = vertices(*_mg); v != v_end; ++v)
     {
-        for (tie(e, e_end) = out_edges(*v, _state->_mg); e != e_end; ++e)
+        for (tie(e, e_end) = out_edges(*v, *_mg); e != e_end; ++e)
             if (!filter(*e))
                 deleted_edges.push_back(*e);
         for (typeof(deleted_edges.begin()) iter = deleted_edges.begin();
              iter != deleted_edges.end(); ++iter)
-            RemoveEdgeIndex(*iter);
+            remove_edge(*iter, *_mg);
         deleted_edges.clear();
     }
 }
@@ -257,10 +249,10 @@ void GraphInterface::PurgeVertices(boost::any aold_index)
 
     MaskFilter<vertex_filter_t> filter(_vertex_filter_map,
                                        _vertex_filter_invert);
-    size_t N = num_vertices(_state->_mg);
+    size_t N = num_vertices(*_mg);
     vector<bool> deleted(N, false);
     for (size_t i = 0; i < N; ++i)
-        deleted[i] = !filter(vertex(i, _state->_mg));
+        deleted[i] = !filter(vertex(i, *_mg));
     vector<int> old_indexes;
 
     vector<graph_traits<multigraph_t>::edge_descriptor> edges;
@@ -271,22 +263,8 @@ void GraphInterface::PurgeVertices(boost::any aold_index)
         if (deleted[i])
         {
             graph_traits<multigraph_t>::vertex_descriptor v =
-                vertex(i, _state->_mg);
-            graph_traits<multigraph_t>::out_edge_iterator e, e_end;
-            for(tie(e, e_end) = out_edges(v, _state->_mg); e != e_end; ++e)
-                edges.push_back(*e);
-            graph_traits<multigraph_t>::in_edge_iterator ei, ei_end;
-            for(tie(ei, ei_end) = in_edges(v, _state->_mg); ei != ei_end; ++ei)
-            {
-                if (source(*ei, _state->_mg) == v)
-                    continue;
-                edges.push_back(*ei);
-            }
-            for(size_t j = 0; j < edges.size(); ++j)
-                RemoveEdgeIndex(edges[j]);
-            clear_vertex(v, _state->_mg);
-            remove_vertex(v, _state->_mg);
-            edges.clear();
+                vertex(i, *_mg);
+            remove_vertex(v, *_mg);
         }
         else
         {
@@ -297,7 +275,7 @@ void GraphInterface::PurgeVertices(boost::any aold_index)
     N = old_indexes.size();
     for (int i = N-1; i >= 0; --i)
     {
-        old_index[vertex((N - 1) - i, _state->_mg)] = old_indexes[i];
+        old_index[vertex((N - 1) - i, *_mg)] = old_indexes[i];
     }
 }
 
@@ -338,4 +316,3 @@ void GraphInterface::SetEdgeFilterProperty(boost::any property, bool invert)
         _edge_filter_active = false;
     }
 }
-

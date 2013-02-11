@@ -94,10 +94,11 @@ struct get_sampled_distance_histogram
             vertex_t v;
             tr1::uniform_int<size_t> randint(0, sources.size()-1);
             {
+                size_t j;
                 #pragma omp critical
-                size_t i = randint(rng);
-                v = sources[i];
-                swap(sources[i], sources.back());
+                j = randint(rng);
+                v = sources[j];
+                swap(sources[j], sources.back());
                 sources.pop_back();
             }
 

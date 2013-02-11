@@ -170,31 +170,15 @@ void remove_vertex(GraphInterface& gi, const python::object& v)
 struct add_new_edge
 {
     template <class Graph, class EdgeIndexMap>
-    void operator()(Graph& g, python::object& pg, GraphInterface& gi,
+    void operator()(Graph& g, python::object& pg, GraphInterface&,
                     const PythonVertex& s, const PythonVertex& t,
-                    EdgeIndexMap edge_index, python::object& new_e) const
+                    EdgeIndexMap, python::object& new_e) const
     {
         typename graph_traits<Graph>::edge_descriptor e =
             add_edge(s.GetDescriptor(), t.GetDescriptor(), g).first;
         new_e = python::object(PythonEdge<Graph>(pg, e));
-        gi.AddEdgeIndex(e);
     }
 };
-
-void GraphInterface::AddEdgeIndex(const edge_t& e)
-{
-    if (!_state->_free_indexes.empty())
-    {
-        _edge_index[e] = _state->_free_indexes.front();
-        _state->_free_indexes.pop_front();
-    }
-    else
-    {
-        _edge_index[e] = _state->_nedges;
-        _state->_max_edge_index = _state->_nedges;
-    }
-    _state->_nedges++;
-}
 
 python::object add_edge(python::object g, const python::object& s,
                         const python::object& t)
@@ -238,17 +222,9 @@ void remove_edge(GraphInterface& gi, const python::object& e)
     bool found = false;
     run_action<>()(gi, bind<void>(get_edge_descriptor(), _1, ref(e), ref(de),
                                   ref(found)))();
+    remove_edge(de, gi.GetGraph());
     if (!found)
         throw ValueException("invalid edge descriptor");
-    gi.RemoveEdgeIndex(de);
-}
-
-void GraphInterface::RemoveEdgeIndex(const edge_t& e)
-{
-    size_t index = _edge_index[e];
-    _state->_free_indexes.push_back(index);
-    _state->_nedges--;
-    remove_edge(e, _state->_mg);
 }
 
 struct get_degree_map
@@ -275,7 +251,7 @@ python::object GraphInterface::DegreeMap(string deg) const
         map_t;
 
     map_t deg_map(_vertex_index);
-    deg_map.reserve(num_vertices(_state->_mg));
+    deg_map.reserve(num_vertices(*_mg));
 
     if (deg == "in")
         run_action<>()(const_cast<GraphInterface&>(*this),
@@ -304,6 +280,7 @@ struct export_python_interface
     void operator()(const Graph*, set<string>& v_iterators) const
     {
         using namespace boost::python;
+
         class_<PythonEdge<Graph>, bases<EdgeBase> >
             ("Edge", no_init)
             .def("source", &PythonEdge<Graph>::GetSource,
@@ -378,7 +355,7 @@ get_vertex_index(GraphInterface& g)
 }
 
 PythonPropertyMap<GraphInterface::edge_index_map_t>
-get_edge_index(GraphInterface& g)
+do_get_edge_index(GraphInterface& g)
 {
     return PythonPropertyMap<GraphInterface::edge_index_map_t>
         (g.GetEdgeIndex());
@@ -419,7 +396,7 @@ void export_python_interface()
     typedef mpl::transform<graph_tool::detail::all_graph_views,
                            mpl::quote1<add_pointer> >::type graph_views;
     mpl::for_each<graph_views>(bind<void>(graph_tool::export_python_interface(),
-                                          _1,ref(v_iterators)));
+                                          _1, ref(v_iterators)));
     export_python_properties();
     def("new_vertex_property",
         &new_property<GraphInterface::vertex_index_map_t>);
@@ -436,5 +413,5 @@ void export_python_interface()
     def("remove_edge", graph_tool::remove_edge);
 
     def("get_vertex_index", get_vertex_index);
-    def("get_edge_index", get_edge_index);
+    def("get_edge_index", do_get_edge_index);
 }

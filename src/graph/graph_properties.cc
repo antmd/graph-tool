@@ -66,7 +66,7 @@ void GraphInterface::ShiftVertexProperty(boost::any prop, size_t index) const
 {
     bool found = false;
     mpl::for_each<writable_vertex_properties>
-        (bind<void>(shift_vertex_property(), _1, ref(_state->_mg),
+        (bind<void>(shift_vertex_property(), _1, ref(*_mg),
                     prop, index, ref(found)));
     if (!found)
         throw GraphException("invalid writable property map");
@@ -104,7 +104,7 @@ void GraphInterface::ReIndexVertexProperty(boost::any map,
 
     bool found = false;
     mpl::for_each<writable_vertex_properties>
-        (bind<void>(reindex_vertex_property(), _1, ref(_state->_mg),
+        (bind<void>(reindex_vertex_property(), _1, ref(*_mg),
                     map, old_index, ref(found)));
     if (!found)
         throw GraphException("invalid writable property map");
@@ -192,7 +192,7 @@ vector<Value> operator-(const vector<Value>& a, const vector<Value>& b)
 struct do_edge_difference
 {
     template <class Graph, class EdgeIndexMap, class VertexPropertyMap>
-    void operator()(Graph& g, EdgeIndexMap edge_index, VertexPropertyMap prop,
+    void operator()(Graph& g, EdgeIndexMap, VertexPropertyMap prop,
                     boost::any eprop) const
     {
         typedef typename property_traits<VertexPropertyMap>::value_type vval_t;

@@ -100,7 +100,7 @@ struct get_community_network_edges
     template <class Graph, class CommunityGraph, class CommunityMap,
               class CCommunityMap, class EdgeWeightMap,
               class EdgeIndex, class EdgeProperty>
-    void operator()(const Graph& g, CommunityGraph& cg, EdgeIndex cedge_index,
+    void operator()(const Graph& g, CommunityGraph& cg, EdgeIndex,
                     CommunityMap s_map, CCommunityMap cs_map,
                     EdgeWeightMap eweight, EdgeProperty edge_count,
                     bool self_loops) const
@@ -140,7 +140,6 @@ struct get_community_network_edges
             {
                 ce = add_edge(cs, ct, cg).first;
                 comm_edges[make_pair(cs, ct)] = ce;
-                put(cedge_index, ce, comm_edges.size() - 1);
             }
             put(edge_count, ce, get(edge_count, ce) + get(eweight, *e));
         }

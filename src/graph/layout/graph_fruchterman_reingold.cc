@@ -99,7 +99,7 @@ struct get_layout
         Value _a;
 
         template <class Graph, class Edge, class KVal, class DVal>
-        Value operator()(Edge e, KVal k, DVal dist, const Graph& g) const
+        Value operator()(Edge e, KVal k, DVal dist, const Graph&) const
         {
             return _a * get(_w, e) * power(dist, 2) / k;
         }
@@ -113,7 +113,7 @@ struct get_layout
 
         template <class Graph, class Vertex, class KVal, class DVal>
         Value operator()(Vertex v1, Vertex v2, KVal k, DVal dist,
-                         const Graph& g) const
+                         const Graph&) const
         {
             return _r * power(k, 2) / dist;
         }

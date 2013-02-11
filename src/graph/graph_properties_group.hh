@@ -59,7 +59,7 @@ struct do_group_vector_property
 
     template <class Graph, class VectorPropertyMap, class PropertyMap,
               class Descriptor>
-    inline void dispatch_descriptor(Graph& g, VectorPropertyMap& vector_map,
+    inline void dispatch_descriptor(Graph&, VectorPropertyMap& vector_map,
                                     PropertyMap& map, const Descriptor& v,
                                     size_t pos, mpl::false_) const
     {

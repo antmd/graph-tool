@@ -210,6 +210,36 @@ make_unchecked_vector_property_map(IndexMap index)
     return unchecked_vector_property_map<T, IndexMap>(index);
 }
 
+
+template <class Type, class Index>
+unchecked_vector_property_map<Type, Index>
+get_unchecked(checked_vector_property_map<Type, Index> prop)
+{
+    return prop.get_unchecked();
+}
+
+template <class Prop>
+Prop
+get_unchecked(Prop prop)
+{
+    return prop;
+}
+
+template <class Type, class Index>
+checked_vector_property_map<Type, Index>
+get_checked(unchecked_vector_property_map<Type, Index> prop)
+{
+    return prop.get_checked();
+}
+
+template <class Prop>
+Prop
+get_checked(Prop prop)
+{
+    return prop;
+}
+
+
 }
 
 #endif

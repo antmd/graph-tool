@@ -26,6 +26,7 @@ using __gnu_cxx::power;
 
 #include "tr1_include.hh"
 #include TR1_HEADER(unordered_set)
+#include TR1_HEADER(unordered_map)
 #include TR1_HEADER(tuple)
 
 #include <dense_hash_set>
@@ -95,7 +96,7 @@ inline double eterm(const Edge& e, const Eprop& mrs, const Graph& g)
 // "vertex" term of the entropy
 template <class Graph, class Vertex, class Vprop>
 inline double vterm(Vertex v, Vprop& mrp, Vprop& mrm, Vprop& wr, bool deg_corr,
-                    Graph& g)
+                    Graph&)
 {
     double one = 0.5;
 
@@ -132,9 +133,9 @@ struct entropy
 // obtain the "super block" which is a merger of two blocks
 template <class Graph, class Vertex, class Eprop, class Vprop>
 void super_block(Vertex u, Vertex v, Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr,
-                 bool deg_corr, Graph& g, unordered_set<Vertex>& nsp,
-                 unordered_set<Vertex>& nsm, unordered_map<Vertex, size_t>& msp,
-                 unordered_map<Vertex, size_t>& msm, size_t& ml, size_t& m_rp,
+                 Graph& g, tr1::unordered_set<Vertex>& nsp,
+                 tr1::unordered_set<Vertex>& nsm, tr1::unordered_map<Vertex, size_t>& msp,
+                 tr1::unordered_map<Vertex, size_t>& msm, size_t& ml, size_t& m_rp,
                  size_t& m_rm, size_t& w_r)
 {
     ml = 0;
@@ -216,12 +217,12 @@ struct dist
             d += eterm(*e, mrs, g);
         }
 
-        unordered_set<Vertex> nsp, nsm;
-        unordered_map<Vertex, size_t> msp, msm;
+        tr1::unordered_set<Vertex> nsp, nsm;
+        tr1::unordered_map<Vertex, size_t> msp, msm;
         size_t ml, m_rp, m_rm, w_r;
 
-        super_block(r, s, mrs, mrp, mrm, wr, deg_corr, g, nsp, nsm, msp, msm,
-                    ml, m_rp, m_rm, w_r);
+        super_block(r, s, mrs, mrp, mrm, wr, g, nsp, nsm, msp, msm, ml, m_rp,
+                    m_rm, w_r);
 
         if (!is_directed::apply<Graph>::type::value)
         {
@@ -349,19 +350,18 @@ struct b_join
     size_t rr, ss;
 
     template <class Graph, class Eprop, class Vprop>
-    void operator()(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, bool deg_corr,
-                    vector<int>& vlist, Graph& g) const
+    void operator()(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Graph& g) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-        unordered_set<vertex_t> nsp, nsm;
-        unordered_map<vertex_t, size_t> msp, msm;
+        tr1::unordered_set<vertex_t> nsp, nsm;
+        tr1::unordered_map<vertex_t, size_t> msp, msm;
         size_t ml, m_rp, m_rm, w_r;
 
         vertex_t r = vertex(rr, g);
         vertex_t s = vertex(ss, g);
 
-        super_block(r, s, mrs, mrp, mrm, wr, deg_corr, g, nsp, nsm, msp, msm,
-                    ml, m_rp, m_rm, w_r);
+        super_block(r, s, mrs, mrp, mrm, wr, g, nsp, nsm, msp, msm, ml, m_rp,
+                    m_rm, w_r);
 
         mrp[r] = m_rp;
         mrm[r] = m_rm;
@@ -612,7 +612,7 @@ inline void insert_m_entry(Vertex r, Vertex s, MEntry& m_entries,
 // after the move
 template <class Graph, class BGraph, class Vertex, class Vprop, class MEntry,
           class MEntrySet>
-void move_entries(Vertex v, Vertex nr, Vprop& b, Graph& g, BGraph& bg,
+void move_entries(Vertex v, Vertex nr, Vprop& b, Graph& g, BGraph&,
                   MEntry& m_entries, MEntrySet& m_entries_set)
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
@@ -982,7 +982,7 @@ struct build_egroups
 
 // Sampling marginal probabilities on the edges
 template <class Graph, class Vprop, class MEprop>
-void collect_edge_marginals(size_t B, Vprop b, MEprop p, Graph& g, Graph& bg)
+void collect_edge_marginals(size_t B, Vprop b, MEprop p, Graph& g, Graph&)
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 

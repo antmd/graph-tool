@@ -96,7 +96,7 @@ struct swap_edge
     static void swap_target
         (size_t e, const pair<size_t, bool>& te,
          vector<typename graph_traits<Graph>::edge_descriptor>& edges,
-         EdgeIndexMap edge_index, Graph& g)
+         EdgeIndexMap, Graph& g)
     {
         // swap the source of the edge 'e' with the source of edge 'se', as
         // such:
@@ -109,19 +109,21 @@ struct swap_edge
 
         // new edges which will replace the old ones
         typename graph_traits<Graph>::edge_descriptor ne, nte;
-        ne = add_edge(source(edges[e], g), target(te, edges, g), g).first;
-        if (!te.second)
-            nte = add_edge(source(te, edges, g), target(edges[e], g), g).first;
-        else // keep invertedness (only for undirected graphs)
-            nte = add_edge(target(edges[e], g), source(te, edges, g),  g).first;
-
-        edge_index[nte] = edge_index[edges[te.first]];
-        remove_edge(edges[te.first], g);
-        edges[te.first] = nte;
-
-        edge_index[ne] = edge_index[edges[e]];
+        typename graph_traits<Graph>::vertex_descriptor
+            s_e = source(edges[e], g),
+            t_e = target(edges[e], g),
+            s_te = source(te, edges, g),
+            t_te = target(te, edges, g);
         remove_edge(edges[e], g);
+        remove_edge(edges[te.first], g);
+
+        ne = add_edge(s_e, t_te, g).first;
         edges[e] = ne;
+        if (!te.second)
+            nte = add_edge(s_te, t_e, g).first;
+        else // keep invertedness (only for undirected graphs)
+            nte = add_edge(t_e, s_te,  g).first;
+        edges[te.first] = nte;
     }
 
 };
@@ -171,7 +173,7 @@ public:
 
     template <class Graph>
     block_t get_block(typename graph_traits<Graph>::vertex_descriptor v,
-                      const Graph& g) const
+                      const Graph&) const
     {
         return get(_p, v);
     }
@@ -308,9 +310,8 @@ public:
         if (!parallel_edges && is_adjacent(s, t, _g))
             return false;
 
-        edge_t ne = add_edge(s, t, _g).first;
-        _edge_index[ne] = _edge_index[_edges[ei]];
         remove_edge(_edges[ei], _g);
+        edge_t ne = add_edge(s, t, _g).first;
         _edges[ei] = ne;
 
         return true;
@@ -419,7 +420,7 @@ public:
                          bool, rng_t& rng)
         : base_t(g, edge_index, edges, rng), _g(g) {}
 
-    pair<size_t,bool> get_target_edge(size_t e)
+    pair<size_t,bool> get_target_edge(size_t)
     {
         tr1::uniform_int<> sample(0, base_t::_edges.size() - 1);
         pair<size_t, bool> et = make_pair(sample(base_t::_rng), false);
@@ -431,7 +432,7 @@ public:
         return et;
     }
 
-    void update_edge(size_t e, bool insert) {}
+    void update_edge(size_t, bool) {}
 
 private:
     Graph& _g;
@@ -495,7 +496,7 @@ public:
         return elist[sample(base_t::_rng)];
     }
 
-    void update_edge(size_t e, bool insert) {}
+    void update_edge(size_t, bool) {}
 
 private:
     typedef pair<size_t, size_t> deg_t;
@@ -619,7 +620,7 @@ public:
             return ep;
     }
 
-    void update_edge(size_t e, bool insert) {}
+    void update_edge(size_t, bool) {}
 
 private:
     Graph& _g;

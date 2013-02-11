@@ -131,7 +131,4 @@ void community_network(GraphInterface& gi, GraphInterface& cgi,
                         _3, edge_count),
          writable_vertex_properties(), eweight_properties())
         (community_property, eweight);
-
-
-    cgi.ReIndexEdges();
 }

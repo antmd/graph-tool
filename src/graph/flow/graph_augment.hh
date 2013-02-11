@@ -97,21 +97,6 @@ void deaugment_graph(Graph& g, AugmentedMap augmented)
     }
 }
 
-
-template <class Type, class Index>
-unchecked_vector_property_map<Type, Index>
-get_unchecked(checked_vector_property_map<Type, Index> prop)
-{
-    return prop.get_unchecked();
-}
-
-template <class Prop>
-Prop
-get_unchecked(Prop prop)
-{
-    return prop;
-}
-
 } // graph_tool namespace
 
 #endif // GRAPH_AUGMENT_HH

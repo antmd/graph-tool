@@ -34,6 +34,7 @@ using namespace graph_tool;
 template <class T>
 python::object operator |(const python::object& a, const T& b)
 {
+    return a / b;
 }
 
 struct do_astar_search
@@ -54,10 +55,10 @@ struct do_astar_search
         pred_t pred = any_cast<pred_t>(pred_map);
         checked_vector_property_map<default_color_type,
                                     typeof(get(vertex_index, g))>
-            color(get(vertex_index, g._g));
+            color(get(vertex_index, g));
         checked_vector_property_map<dtype_t,
                                     typeof(get(vertex_index, g))>
-            cost(get(vertex_index, g._g));
+            cost(get(vertex_index, g));
         DynamicPropertyMapWrap<dtype_t, edge_t> weight(aweight,
                                                        edge_properties());
         astar_search(g, vertex(s, g), AStarH<dtype_t>(h.first, h.second),

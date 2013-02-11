@@ -70,8 +70,8 @@ struct get_lattice
             add_vertex(g);
 
         vector<int> pos(shape.size());
-        #pragma omp parallel for default(shared) private(i) \
-            firstprivate(pos) schedule(dynamic)
+        //#pragma omp parallel for default(shared) private(i) 
+        //    firstprivate(pos) schedule(dynamic)
         for (int i = 0; i < N; ++i)
         {
             get_pos(i, shape, pos);

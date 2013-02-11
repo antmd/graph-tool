@@ -121,13 +121,13 @@ void get_kruskal_spanning_tree(GraphInterface& gi, boost::any weight_map,
     if (weight_map.empty())
         weight_map = cweight_t(1);
 
-    typedef mpl::push_back<edge_scalar_properties, cweight_t>::type
+    typedef mpl::push_back<writable_edge_scalar_properties, cweight_t>::type
         weight_maps;
 
     run_action<graph_tool::detail::never_directed>()
         (gi, bind<void>(get_kruskal_min_span_tree(), _1, gi.GetVertexIndex(),
                         _2, _3),
-         weight_maps(), edge_scalar_properties())(weight_map, tree_map);
+         weight_maps(), writable_edge_scalar_properties())(weight_map, tree_map);
 }
 
 void get_prim_spanning_tree(GraphInterface& gi, size_t root,

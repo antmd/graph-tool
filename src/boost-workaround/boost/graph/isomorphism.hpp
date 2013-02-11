@@ -255,17 +255,17 @@ G2_loop_k:    ++G2_verts.first;
             {
               vertex1_t vk = dfs_vertices[dfs_num_k];
               num_edges_on_k -= 
-                count_if(adjacent_vertices(f[vk], G2), make_indirect_pmap(in_S));
+                  count_if(adjacent_vertices(vertex(f[vk], G2), G2), make_indirect_pmap(in_S));
                   
               for (int jj = 0; jj < dfs_num_k; ++jj) {
                 vertex1_t j = dfs_vertices[jj];
-                num_edges_on_k -= count(adjacent_vertices(f[j], G2), f[vk]);
+                num_edges_on_k -= count(adjacent_vertices(vertex(f[j], G2), G2), f[vk]);
               }
             }
                 
             if (num_edges_on_k != 0)
               goto return_point_false;
-            fi_adj = adjacent_vertices(f[i], G2);
+            fi_adj = adjacent_vertices(vertex(f[i], G2), G2);
             while (fi_adj.first != fi_adj.second) {
               {
                 vertex2_t v = *fi_adj.first;
@@ -290,7 +290,7 @@ fi_adj_loop_k:++fi_adj.first;
             }
           }
           else {
-            if (container_contains(adjacent_vertices(f[i], G2), f[j])) {
+          if (container_contains(adjacent_vertices(vertex(f[i], G2), G2), f[j])) {
               ++num_edges_on_k;
               match_continuation new_k;
               new_k.position = match_continuation::pos_dfs_num;

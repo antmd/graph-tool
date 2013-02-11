@@ -61,7 +61,7 @@ struct get_kolmogorov_max_flow
 {
     template <class Graph, class EdgeIndex, class VertexIndex,
               class CapacityMap, class ResidualMap>
-    void operator()(Graph& g, EdgeIndex edge_index, size_t max_e,
+    void operator()(Graph& g, EdgeIndex edge_index, size_t,
                     VertexIndex vertex_index, size_t src, size_t sink,
                     CapacityMap cm, ResidualMap res) const
     {
@@ -77,13 +77,16 @@ struct get_kolmogorov_max_flow
         unchecked_vector_property_map<size_t,VertexIndex>
             dist_map(vertex_index, num_vertices(g));
 
-        augment_graph(g, augmented, cm, reverse_map, res, true);
+        typedef typename remove_const<Graph>::type GT;
+        GT& u = const_cast<GT&>(g);
 
-        KOLMOGOROV_MAX_FLOW(g._g, cm, res, reverse_map, pred_map, color_map,
+        augment_graph(u, augmented, cm, reverse_map, res, true);
+
+        KOLMOGOROV_MAX_FLOW(g, cm, res, reverse_map, pred_map, color_map,
                             dist_map, vertex_index, vertex(src, g),
                             vertex(sink, g));
 
-        deaugment_graph(g, augmented);
+        deaugment_graph(u, augmented);
 
     }
 };
@@ -96,6 +99,6 @@ void kolmogorov_max_flow(GraphInterface& gi, size_t src, size_t sink,
         (gi, bind<void>(get_kolmogorov_max_flow(),
                         _1, gi.GetEdgeIndex(), gi.GetMaxEdgeIndex(),
                         gi.GetVertexIndex(), src, sink, _2, _3),
-         edge_scalar_properties(), writable_edge_scalar_properties())
+         writable_edge_scalar_properties(), writable_edge_scalar_properties())
         (capacity,res);
 }

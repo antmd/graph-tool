@@ -77,8 +77,8 @@ struct get_planar_embedding
     }
 
     template <class Graph, class VertexIndex, class EdgeIndex, class KurMap>
-    void operator()(Graph& g, VertexIndex vertex_index, EdgeIndex edge_index,
-                    dummy_property_map embed_map, KurMap kur_map,
+    void operator()(Graph& g, VertexIndex, EdgeIndex edge_index,
+                    dummy_property_map, KurMap kur_map,
                     bool& is_planar) const
     {
         edge_inserter<KurMap> kur_insert(kur_map);
@@ -99,7 +99,7 @@ bool is_planar(GraphInterface& gi, boost::any embed_map, boost::any kur_map)
     if (kur_map.empty())
         kur_map = dummy_property_map();
 
-    typedef mpl::push_back<edge_scalar_properties,
+    typedef mpl::push_back<writable_edge_scalar_properties,
                            dummy_property_map>::type edge_map_types;
     typedef mpl::push_back<vertex_scalar_vector_properties,
                            dummy_property_map>::type vertex_map_types;

@@ -46,7 +46,7 @@ public:
 
     template <class Graph>
     void discover_vertex(typename graph_traits<Graph>::vertex_descriptor v,
-                         Graph& g)
+                         Graph&)
     {
         if (size_t(_pred[v]) == v)
             return;
@@ -74,7 +74,7 @@ public:
 
     template <class Graph>
     void examine_vertex(typename graph_traits<Graph>::vertex_descriptor u,
-                        Graph& g)
+                        Graph&)
     {
         if (_dist_map[u] > _max_dist)
         {

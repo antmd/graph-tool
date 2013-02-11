@@ -217,6 +217,31 @@ add_edge(typename graph_traits
 }
 
 //==============================================================================
+// clear_vertex(v, filtered_graph<G>)
+//==============================================================================
+template <class Graph, class EdgePredicate, class VertexPredicate>
+inline void
+clear_vertex(typename graph_traits
+             <filtered_graph<Graph,EdgePredicate,VertexPredicate> >::vertex_descriptor v,
+             filtered_graph<Graph,EdgePredicate,VertexPredicate>& g)
+{
+    return clear_vertex(v, const_cast<Graph&>(g.m_g));
+}
+
+//==============================================================================
+// get(vertex_index_t, filtered_graph<G>)
+//==============================================================================
+
+// template <class Graph, class EdgePredicate, class VertexPredicate>
+// typename property_map<Graph, vertex_index_t>::type
+// get(vertex_index_t, const filtered_graph<Graph,EdgePredicate,
+//                                          VertexPredicate>& g)
+// {
+//     return get(vertex_index_t(), g.m_g);
+// }
+
+
+//==============================================================================
 // add_edge(u, v, reverse_graph<G>)
 //==============================================================================
 template <class Graph>
@@ -252,6 +277,18 @@ void remove_edge
  reverse_graph<Graph>& g)
 {
     return remove_edge(e,const_cast<Graph&>(g.m_g));
+}
+
+//==============================================================================
+//clear_vertex(v, reverse_graph<G>)
+//==============================================================================
+template <class Graph>
+inline
+void clear_vertex
+(typename graph_traits<reverse_graph<Graph> >::vertex_descriptor v,
+ reverse_graph<Graph>& g)
+{
+    return clear_vertex(v,const_cast<Graph&>(g.m_g));
 }
 
 //==============================================================================

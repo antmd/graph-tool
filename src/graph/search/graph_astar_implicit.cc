@@ -48,7 +48,7 @@ struct do_astar_search
 
         checked_vector_property_map<default_color_type,
                                     typeof(get(vertex_index, g))>
-            color(get(vertex_index, g._g));
+            color(get(vertex_index, g));
         typedef typename property_map_type::
             apply<int32_t, typeof(get(vertex_index, g))>::type pred_t;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;

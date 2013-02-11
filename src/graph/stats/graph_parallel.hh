@@ -29,9 +29,9 @@ using namespace boost;
 // label parallel edges in the order they are found, starting from 1
 struct label_parallel_edges
 {
-    template <class Graph, class EdgeIndexMap, class ParallelMap>
-    void operator()(const Graph& g, EdgeIndexMap edge_index,
-                    ParallelMap parallel, bool mark_only, bool count_all) const
+    template <class Graph, class ParallelMap>
+    void operator()(const Graph& g, ParallelMap parallel, bool mark_only,
+                    bool count_all) const
     {
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
 
@@ -68,9 +68,8 @@ struct label_parallel_edges
 // label self loops edges in the order they are found, starting from 1
 struct label_self_loops
 {
-    template <class Graph, class EdgeIndexMap, class SelfMap>
-    void operator()(const Graph& g, EdgeIndexMap edge_index,
-                    SelfMap self, bool mark_only) const
+    template <class Graph, class SelfMap>
+    void operator()(const Graph& g, SelfMap self, bool mark_only) const
     {
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
 

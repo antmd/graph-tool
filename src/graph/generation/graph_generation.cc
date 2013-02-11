@@ -74,7 +74,6 @@ void generate_graph(GraphInterface& gi, size_t N, python::object deg_sample,
                             no_parallel, no_self_loops,
                             ref(rng), verbose, verify))();
     }
-    gi.ReIndexEdges();
 }
 
 size_t random_rewire(GraphInterface& gi, string strat, size_t niter,

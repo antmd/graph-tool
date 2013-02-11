@@ -67,14 +67,17 @@ struct get_push_relabel_max_flow
         unchecked_vector_property_map<edge_t,EdgeIndex>
             reverse_map(edge_index, max_e);
 
-        augment_graph(g, augmented, cm,
+        typedef typename remove_const<Graph>::type GT;
+        GT& u = const_cast<GT&>(g);
+
+        augment_graph(u, augmented, cm,
                       reverse_map.get_checked(), res);
 
-        boost::push_relabel_max_flow(g._g, vertex(src, g), vertex(sink, g),
+        boost::push_relabel_max_flow(g, vertex(src, g), vertex(sink, g),
                                      get_unchecked(cm),
                                      res.get_unchecked(),
                                      reverse_map, vertex_index);
-        deaugment_graph(g, augmented);
+        deaugment_graph(u, augmented);
     }
 };
 
@@ -87,6 +90,6 @@ void push_relabel_max_flow(GraphInterface& gi, size_t src, size_t sink,
                         _1, gi.GetVertexIndex(), gi.GetEdgeIndex(),
                         gi.GetMaxEdgeIndex(),
                         src, sink, _2, _3),
-         edge_scalar_properties(), writable_edge_scalar_properties())
+         writable_edge_scalar_properties(), writable_edge_scalar_properties())
         (capacity,res);
 }

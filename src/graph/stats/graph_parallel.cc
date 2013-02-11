@@ -30,21 +30,15 @@ using namespace graph_tool;
 void do_label_parallel_edges(GraphInterface& gi, boost::any property,
                              bool mark_only, bool count_all)
 {
-    GraphInterface::edge_index_map_t edge_index =
-        any_cast<GraphInterface::edge_index_map_t>(gi.GetEdgeIndex());
-    run_action<>()(gi, bind<void>(label_parallel_edges(), _1,
-                                  edge_index, _2, mark_only, count_all),
-                   edge_scalar_properties())(property);
+    run_action<>()(gi, bind<void>(label_parallel_edges(), _1, _2, mark_only, count_all),
+                   writable_edge_scalar_properties())(property);
 }
 
 void do_label_self_loops(GraphInterface& gi, boost::any property,
                          bool mark_only)
 {
-    GraphInterface::edge_index_map_t edge_index =
-        any_cast<GraphInterface::edge_index_map_t>(gi.GetEdgeIndex());
-    run_action<>()(gi, bind<void>(label_self_loops(), _1,
-                                  edge_index, _2, mark_only),
-                   edge_scalar_properties())(property);
+    run_action<>()(gi, bind<void>(label_self_loops(), _1, _2, mark_only),
+                   writable_edge_scalar_properties())(property);
 }
 
 void do_remove_labeled_edges(GraphInterface& gi, boost::any property)

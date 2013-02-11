@@ -32,5 +32,4 @@ void lattice(GraphInterface& gi, python::object oshape, bool periodic)
     for(size_t i = 0; i < shape.size(); ++i)
         shape[i] = python::extract<size_t>(oshape[i]);
     get_lattice()(gi.GetGraph(), shape, periodic);
-    gi.ReIndexEdges();
 }

@@ -48,28 +48,28 @@ public:
     void examine_edge(Edge e, const Graph& g)
     {
         _vis.attr("examine_edge")
-            (PythonEdge<typename Graph::orig_graph_t>(_gi, e));
+            (PythonEdge<Graph>(_gi, e));
     }
 
     template <class Edge, class Graph>
     void tree_edge(Edge e, const Graph& g)
     {
         _vis.attr("tree_edge")
-            (PythonEdge<typename Graph::orig_graph_t>(_gi, e));
+            (PythonEdge<Graph>(_gi, e));
     }
 
     template <class Edge, class Graph>
     void back_edge(Edge e, const Graph& g)
     {
         _vis.attr("back_edge")
-            (PythonEdge<typename Graph::orig_graph_t>(_gi, e));
+            (PythonEdge<Graph>(_gi, e));
     }
 
     template <class Edge, class Graph>
     void forward_or_cross_edge(Edge e, const Graph& g)
     {
         _vis.attr("forward_or_cross_edge")
-            (PythonEdge<typename Graph::orig_graph_t>(_gi, e));
+            (PythonEdge<Graph>(_gi, e));
     }
 
     template <class Vertex, class Graph>

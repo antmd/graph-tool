@@ -87,7 +87,7 @@ struct do_graph_copy
     void operator()(const GraphSrc& src, GraphTgt& tgt,
                     TgtVertexIndexMap src_vertex_index,
                     SrcVertexIndexMap tgt_vertex_index,
-                    TgtEdgeIndexMap src_edge_index,
+                    TgtEdgeIndexMap,
                     SrcEdgeIndexMap tgt_edge_index,
                     vector<pair<reference_wrapper<boost::any>,reference_wrapper<boost::any> > >& vprops,
                     vector<pair<reference_wrapper<boost::any>,reference_wrapper<boost::any> > >& eprops) const
@@ -108,7 +108,6 @@ struct do_graph_copy
                      src, tgt, tgt_vertex_index);
         }
 
-        size_t e_idx = 0;
         typename graph_traits<GraphSrc>::edge_iterator e, e_end;
         for (tie(e, e_end) = edges(src); e != e_end; ++e)
         {
@@ -116,8 +115,6 @@ struct do_graph_copy
             size_t t = index_map[src_vertex_index[target(*e, src)]];
             typedef typename graph_traits<GraphTgt>::edge_descriptor edge_t;
             edge_t new_e = add_edge(vertex(s,tgt), vertex(t,tgt), tgt).first;
-            tgt_edge_index[new_e] = e_idx;
-            ++e_idx;
 
             for (size_t i = 0; i < eprops.size(); ++i)
                 copy_property<writable_edge_properties>
@@ -130,9 +127,9 @@ struct do_graph_copy
 // copy constructor
 GraphInterface::GraphInterface(const GraphInterface& gi, bool keep_ref,
                                python::object ovprops, python::object oeprops)
-    :_state(keep_ref ? gi._state : shared_ptr<state_t>(new state_t())),
-     _vertex_index(get(vertex_index, _state->_mg)),
-     _edge_index(get(edge_index_t(), _state->_mg)),
+    :_mg(keep_ref ? gi._mg : shared_ptr<multigraph_t>(new multigraph_t())),
+     _vertex_index(get(vertex_index, *_mg)),
+     _edge_index(get(edge_index_t(), *_mg)),
      _reversed(gi._reversed),
      _directed(gi._directed),
      _vertex_filter_map(_vertex_index),
@@ -160,13 +157,9 @@ GraphInterface::GraphInterface(const GraphInterface& gi, bool keep_ref,
 
     run_action<>()
         (const_cast<GraphInterface&>(gi),
-         bind<void>(do_graph_copy(), _1, ref(_state->_mg),
+         bind<void>(do_graph_copy(), _1, ref(*_mg),
                     gi._vertex_index, _vertex_index,
                     gi._edge_index, _edge_index, ref(vprops),
                     ref(eprops)))();
-
-    _state->_nedges = num_edges(_state->_mg);
-    _state->_max_edge_index = _state->_nedges > 0 ? num_edges(_state->_mg) - 1 : 0;
-
     // filters will be copied in python
 }

@@ -45,4 +45,3 @@ void dominator_tree(GraphInterface& gi, size_t entry, boost::any pred_map)
         (gi, bind<void>(get_dominator_tree(), _1, entry, _2),
          pred_properties())(pred_map);
 }
-

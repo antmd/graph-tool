@@ -422,7 +422,7 @@ bool is_target(const pair<size_t, size_t>& deg)
 
 template <class Vset, class Targets, class Sources, class Graph>
 bool update_deg(size_t t_i, const pair<size_t, size_t>& deg, Vset& vset,
-                Targets& targets, Sources& sources, Graph& g)
+                Targets& targets, Sources& sources, Graph&)
 {
     if (is_source<Graph>(deg))
         sources.insert(deg);

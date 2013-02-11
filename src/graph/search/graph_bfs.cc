@@ -37,60 +37,60 @@ public:
         : _gi(gi), _vis(vis) {}
 
     template <class Vertex, class Graph>
-    void initialize_vertex(Vertex u, Graph& g)
+    void initialize_vertex(Vertex u, const Graph& g)
     {
         _vis.attr("initialize_vertex")(PythonVertex(_gi, u));
     }
 
     template <class Vertex, class Graph>
-    void discover_vertex(Vertex u, Graph& g)
+    void discover_vertex(Vertex u, const Graph& g)
     {
         _vis.attr("discover_vertex")(PythonVertex(_gi, u));
     }
 
     template <class Vertex, class Graph>
-    void examine_vertex(Vertex u, Graph& g)
+    void examine_vertex(Vertex u, const Graph& g)
     {
         _vis.attr("examine_vertex")(PythonVertex(_gi, u));
     }
 
     template <class Edge, class Graph>
-    void examine_edge(Edge e, Graph& g)
+    void examine_edge(Edge e, const Graph& g)
     {
         _vis.attr("examine_edge")
-            (PythonEdge<typename Graph::orig_graph_t>(_gi, e));
+            (PythonEdge<Graph>(_gi, e));
     }
 
     template <class Edge, class Graph>
-    void tree_edge(Edge e, Graph& g)
+    void tree_edge(Edge e, const Graph& g)
     {
         _vis.attr("tree_edge")
-            (PythonEdge<typename Graph::orig_graph_t>(_gi, e));
+            (PythonEdge<Graph>(_gi, e));
     }
 
     template <class Edge, class Graph>
-    void non_tree_edge(Edge e, Graph& g)
+    void non_tree_edge(Edge e, const Graph& g)
     {
         _vis.attr("non_tree_edge")
-            (PythonEdge<typename Graph::orig_graph_t>(_gi, e));
+            (PythonEdge<Graph>(_gi, e));
     }
 
     template <class Edge, class Graph>
-    void gray_target(Edge e, Graph& g)
+    void gray_target(Edge e, const Graph& g)
     {
         _vis.attr("gray_target")
-            (PythonEdge<typename Graph::orig_graph_t>(_gi, e));
+            (PythonEdge<Graph>(_gi, e));
     }
 
     template <class Edge, class Graph>
-    void black_target(Edge e, Graph& g)
+    void black_target(Edge e, const Graph& g)
     {
         _vis.attr("black_target")
-            (PythonEdge<typename Graph::orig_graph_t>(_gi, e));
+            (PythonEdge<Graph>(_gi, e));
     }
 
     template <class Vertex, class Graph>
-    void finish_vertex(Vertex u, Graph& g)
+    void finish_vertex(Vertex u, const Graph& g)
     {
         _vis.attr("finish_vertex")(PythonVertex(_gi, u));
     }

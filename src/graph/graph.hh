@@ -25,8 +25,9 @@
 
 #include <deque>
 
+#include "graph_adjacency.hh"
+
 #include <boost/graph/graph_traits.hpp>
-#include <boost/graph/adjacency_list.hpp>
 
 #include "fast_vector_property_map.hh"
 #include <boost/variant.hpp>
@@ -123,15 +124,17 @@ public:
     // Internal types
     //
 
-    // the following defines the edges' internal properties
-    typedef property<edge_index_t, size_t> EdgeProperty;
+    // // the following defines the edges' internal properties
+    // typedef property<edge_index_t, size_t> EdgeProperty;
 
-    // this is the main graph type
-    typedef adjacency_list <vecS, // edges
-                            vecS, // vertices
-                            bidirectionalS,
-                            no_property,
-                            EdgeProperty>  multigraph_t;
+    // // this is the main graph type
+    // typedef adjacency_list <vecS, // edges
+    //                         vecS, // vertices
+    //                         bidirectionalS,
+    //                         no_property,
+    //                         EdgeProperty,
+    //                         vecS>  multigraph_t;
+    typedef adj_list<size_t> multigraph_t;
     typedef graph_traits<multigraph_t>::vertex_descriptor vertex_t;
     typedef graph_traits<multigraph_t>::edge_descriptor edge_t;
 
@@ -141,15 +144,12 @@ public:
 
     // internal access
 
-    multigraph_t& GetGraph() {return _state->_mg;}
+    multigraph_t& GetGraph() {return *_mg;}
     vertex_index_map_t GetVertexIndex() {return _vertex_index;}
     edge_index_map_t   GetEdgeIndex()   {return _edge_index;}
-    size_t             GetMaxEdgeIndex(){return _state->_max_edge_index;}
+    size_t             GetMaxEdgeIndex(){return _mg->get_last_index();}
 
     graph_index_map_t  GetGraphIndex()  {return graph_index_map_t(0);}
-
-    void           AddEdgeIndex(const edge_t& e);
-    void           RemoveEdgeIndex(const edge_t& e);
 
     // Gets the encapsulated graph view. See graph_filtering.cc for details
     boost::any GetGraphView() const;
@@ -166,22 +166,8 @@ private:
     template <class Graph>
     friend class PythonEdge;
 
-    struct state_t
-    {
-        // this is the main graph
-        multigraph_t _mg;
-
-        // keep track of the number of edges, since num_edges() is O(V) in
-        // adjacency_list... :-(
-        size_t _nedges;
-
-        deque<size_t> _free_indexes; // indexes of deleted edges to be used up
-                                     // for new edges to avoid very large
-                                     // indexes, and property map memory usage
-        size_t _max_edge_index;
-    };
-
-    shared_ptr<state_t> _state;
+    // this is the main graph
+    shared_ptr<multigraph_t> _mg;
 
     // vertex index map
     vertex_index_map_t _vertex_index;

@@ -15,12 +15,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/python/extract.hpp>
-
+#include "gml.hh"
 #include "graph.hh"
 #include "graph_filtering.hh"
 #include "graph_properties.hh"
 #include "graph_util.hh"
+
+#include <boost/python/extract.hpp>
 
 #include <iostream>
 #include <boost/algorithm/string.hpp>
@@ -34,8 +35,6 @@
 #include <boost/graph/graphviz.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/xpressive/xpressive.hpp>
-
-#include "gml.hh"
 
 #include "graph_python_interface.hh"
 #include "str_repr.hh"
@@ -194,7 +193,7 @@ struct create_dynamic_map
 
     create_dynamic_map(VertexIndexMap vertex_map, EdgeIndexMap edge_map)
         :_vertex_map(vertex_map), _edge_map(edge_map) {}
-    DP_SMART_PTR<dynamic_property_map> operator()(const string& name,
+    DP_SMART_PTR<dynamic_property_map> operator()(const string&,
                                                   const boost::any& key,
                                                   const boost::any& value)
     {
@@ -232,82 +231,6 @@ struct create_dynamic_map
     EdgeIndexMap _edge_map;
 };
 
-// this graph wrapper will update the edge index map when edges are added
-
-template <class Graph, class EdgeIndexMap>
-struct GraphEdgeIndexWrap
-{
-    GraphEdgeIndexWrap(Graph &g, EdgeIndexMap edge_index_map)
-        : _g(g), _edge_index_map(edge_index_map), _n_edges(0) {}
-    Graph &_g;
-    EdgeIndexMap _edge_index_map;
-    size_t _n_edges;
-
-    typedef typename Graph::vertex_property_type vertex_property_type;
-    typedef typename Graph::edge_property_type edge_property_type;
-    typedef typename Graph::graph_tag graph_tag;
-    typedef typename Graph::graph_type graph_type;
-
-#if (BOOST_VERSION / 100 % 1000 >= 45)
-    typedef typename Graph::graph_property_type graph_property_type;
-    typedef typename Graph::graph_bundled graph_bundled;
-    typedef typename Graph::edge_bundled edge_bundled;
-    typedef typename Graph::vertex_bundled vertex_bundled;
-#endif
-};
-
-template <class Graph, class EdgeIndexMap>
-inline
-typename graph_traits
-    <GraphEdgeIndexWrap<Graph,EdgeIndexMap> >::vertex_descriptor
-add_vertex(GraphEdgeIndexWrap<Graph,EdgeIndexMap>& g)
-{
-    return add_vertex(g._g);
-}
-
-template <class Graph, class EdgeIndexMap>
-inline
-pair<typename graph_traits
-     <GraphEdgeIndexWrap<Graph,EdgeIndexMap> >::edge_descriptor,bool>
-add_edge(typename graph_traits
-         <GraphEdgeIndexWrap<Graph,EdgeIndexMap> >::vertex_descriptor u,
-         typename graph_traits
-         <GraphEdgeIndexWrap<Graph,EdgeIndexMap> >::vertex_descriptor v,
-         GraphEdgeIndexWrap<Graph,EdgeIndexMap>& g)
-{
-    Graph& orig = g._g;
-    pair<typename graph_traits
-         <GraphEdgeIndexWrap<Graph,EdgeIndexMap> >::edge_descriptor,
-         bool> retval = add_edge(u,v,orig);
-    if (retval.second)
-        g._edge_index_map[retval.first] = g._n_edges;
-    ++g._n_edges;
-    return retval;
-}
-
-namespace boost {
-template <class Graph, class EdgeIndexMap>
-class graph_traits<GraphEdgeIndexWrap<Graph,EdgeIndexMap> >
-    : public graph_traits<Graph> {};
-}
-
-template <class Graph, class EdgeIndexMap>
-inline
-typename graph_traits
-    <GraphEdgeIndexWrap<Graph,EdgeIndexMap> >::vertex_descriptor
-num_vertices(GraphEdgeIndexWrap<Graph,EdgeIndexMap>& g)
-{
-    return num_vertices(g._g);
-}
-
-template <class Graph, class EdgeIndexMap>
-inline
-typename graph_traits
-    <GraphEdgeIndexWrap<Graph,EdgeIndexMap> >::vertex_descriptor
-vertex(size_t i, GraphEdgeIndexWrap<Graph,EdgeIndexMap>& g)
-{
-    return vertex(i, g._g);
-}
 
 // this graph wraps an UndirectedAdaptor, but overrides the underlying
 // edge_descriptor type with the original type. This will make the edge property
@@ -400,20 +323,14 @@ python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
         create_dynamic_map<vertex_index_map_t,edge_index_map_t>
             map_creator(_vertex_index, _edge_index);
         dynamic_properties dp(map_creator);
-        _state->_mg.clear();
+        *_mg = multigraph_t();
 
-        GraphEdgeIndexWrap<multigraph_t,edge_index_map_t> wg(_state->_mg,
-                                                             _edge_index);
         if (format == "dot")
-            _directed = read_graphviz(stream, wg, dp, "vertex_name", true);
+            _directed = read_graphviz(stream, *_mg, dp, "vertex_name", true);
         else if (format == "xml")
-            _directed = read_graphml(stream, wg, dp, true, true);
+            _directed = read_graphml(stream, *_mg, dp, true, true);
         else if (format == "gml")
-            _directed = read_gml(stream, wg, dp);
-
-        _state->_nedges = num_edges(_state->_mg);
-        _state->_max_edge_index = (_state->_nedges > 0) ?
-            _state->_nedges - 1 : 0;
+            _directed = read_gml(stream, *_mg, dp);
 
         python::dict vprops, eprops, gprops;
         for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)

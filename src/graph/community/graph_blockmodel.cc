@@ -38,6 +38,7 @@
 #include "graph_blockmodel.hh"
 
 using namespace boost;
+using namespace graph_tool;
 
 // ====================
 // Entropy calculation
@@ -131,8 +132,7 @@ python::object do_min_dist(GraphInterface& gi, int n, boost::any omrs,
 
 
 void do_b_join(GraphInterface& gi, size_t r, size_t s, boost::any omrs,
-             boost::any omrp, boost::any omrm, boost::any owr, bool deg_corr,
-             vector<int>& vlist)
+               boost::any omrp, boost::any omrm, boost::any owr)
 {
     typedef property_map_type::apply<int32_t,
                                      GraphInterface::vertex_index_map_t>::type
@@ -149,8 +149,7 @@ void do_b_join(GraphInterface& gi, size_t r, size_t s, boost::any omrs,
     vmap_t wr = any_cast<vmap_t>(owr);
 
     run_action<graph_tool::detail::all_graph_views, mpl::true_>()
-        (gi, boost::bind<void>(b_join(r, s), mrs, mrp, mrm, wr, deg_corr,
-                               ref(vlist), _1))();
+        (gi, boost::bind<void>(b_join(r, s), mrs, mrp, mrm, wr, _1))();
 }
 
 // ===============================
@@ -377,9 +376,8 @@ struct move_sweep_dispatch
 
         : eweight(eweight), vweight(vweight), oegroups(egroups), esrcpos(esrcpos),
           etgtpos(etgtpos), label(label), L(L), vlist(vlist),
-          deg_corr(deg_corr), beta(beta), verbose(verbose),
-          max_edge_index(max_edge_index),
-          rng(rng), S(S), nmoves(nmoves), bgi(bgi)
+          deg_corr(deg_corr), beta(beta), sequential(sequential), verbose(verbose),
+          max_edge_index(max_edge_index), rng(rng), S(S), nmoves(nmoves), bgi(bgi)
     {}
 
     Eprop eweight;
@@ -421,7 +419,6 @@ struct move_sweep_dispatch
     void dispatch(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b, Graph& g,
                   boost::any& aemat, BGraph& bg) const
     {
-        const GraphWrap<BGraph> wbg(bg, bgi);
         typedef typename get_emat_t::apply<BGraph>::type emat_t;
         emat_t& emat = any_cast<emat_t&>(aemat);
 
@@ -444,7 +441,7 @@ struct move_sweep_dispatch
                    egroups.get_unchecked(num_vertices(bg)),
                    esrcpos.get_unchecked(max_edge_index + 1),
                    etgtpos.get_unchecked(max_edge_index + 1),
-                   g, wbg, emat, sequential, verbose, rng, S, nmoves);
+                   g, bg, emat, sequential, verbose, rng, S, nmoves);
     }
 
 };
@@ -525,8 +522,7 @@ struct collect_edge_marginals_dispatch
     void operator()(Graph& g, size_t B, Vprop cb, MEprop p,
                     tr1::tuple<boost::any, GraphInterface&> abg) const
     {
-        typedef typename Graph::orig_graph_t graph_t;
-        const GraphWrap<graph_t> bg(*any_cast<graph_t*>(get<0>(abg)), get<1>(abg));
+        Graph& bg = *any_cast<Graph*>(get<0>(abg));
         collect_edge_marginals(B, cb.get_unchecked(num_vertices(bg)), p, g, bg);
     }
 };

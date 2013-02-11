@@ -47,15 +47,20 @@ struct get_edmonds_karp_max_flow
         unchecked_vector_property_map<edge_t,VertexIndex>
             pred(vertex_index, num_vertices(g));
 
-        augment_graph(g, augmented.get_checked(), cm, reverse_map.get_checked(),
-                      res);
+        typedef typename remove_const<Graph>::type GT;
+        GT& u = const_cast<GT&>(g);
+        augment_graph(u,
+                      augmented.get_checked(),
+                      get_checked(cm),
+                      reverse_map.get_checked(),
+                      get_checked(res));
 
-        boost::edmonds_karp_max_flow(g._g, vertex(src, g), vertex(sink, g),
+        boost::edmonds_karp_max_flow(g, vertex(src, g), vertex(sink, g),
                                      get_unchecked(cm),
-                                     res.get_unchecked(),
+                                     get_unchecked(res),
                                      reverse_map, color, pred);
 
-        deaugment_graph(g, augmented.get_checked());
+        deaugment_graph(u, augmented.get_checked());
     }
 };
 
@@ -63,11 +68,11 @@ struct get_edmonds_karp_max_flow
 void edmonds_karp_max_flow(GraphInterface& gi, size_t src, size_t sink,
                            boost::any capacity, boost::any res)
 {
-    run_action<graph_tool::detail::always_directed, mpl::true_>()
+    run_action<graph_tool::detail::always_directed>()
         (gi, bind<void>(get_edmonds_karp_max_flow(),
                         _1, gi.GetVertexIndex(), gi.GetEdgeIndex(),
                         gi.GetMaxEdgeIndex(),
                         src, sink, _2, _3),
-         edge_scalar_properties(), writable_edge_scalar_properties())
+         writable_edge_scalar_properties(), writable_edge_scalar_properties())
         (capacity,res);
 }

@@ -252,8 +252,8 @@ bool graph_cmp(Graph& g1, Graph& g2)
 }
 
 // short hand for both types of subgraphs
-typedef adjacency_list<vecS,vecS,bidirectionalS> d_graph_t;
-typedef adjacency_list<vecS,vecS,undirectedS> u_graph_t;
+typedef adj_list<size_t> d_graph_t;
+typedef adj_list<size_t> u_graph_t;
 
 // we need this wrap to use the UndirectedAdaptor only on directed graphs
 struct wrap_undirected

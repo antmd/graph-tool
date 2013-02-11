@@ -25,17 +25,25 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
+struct deg_check : public boost::static_visitor<>
+{
+    void operator()(boost::any a) const
+    {
+        if (!belongs<vertex_scalar_properties>()(a))
+            throw ValueException("Vertex property must be of scalar type.");
+    }
+
+    template<class T>
+    void operator()(const T&) const {}
+};
+
+
 // this will return the vertex histogram of degrees or scalar properties
 python::object
 get_vertex_histogram(GraphInterface& gi, GraphInterface::deg_t deg,
                      const vector<long double>& bins)
 {
-    try
-    {
-        if (!belongs<vertex_scalar_properties>()(get<boost::any>(deg)))
-            throw ValueException("Vertex property must be of scalar type.");
-    }
-    catch (boost::bad_get&){}
+    boost::apply_visitor(deg_check(), deg);
 
     python::object hist;
     python::object ret_bins;

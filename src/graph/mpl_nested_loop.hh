@@ -255,7 +255,7 @@ struct selected_types
     template <class T1>
     void operator()(T1) const
     {
-        const T1* a1 = any_cast<T1>(&_a1);
+        T1* a1 = const_cast<T1*>(any_cast<T1>(&_a1));
         if (a1 != 0)
         {
             _a(*a1);
@@ -266,8 +266,8 @@ struct selected_types
     template <class T1, class T2>
     void operator()(T1, T2) const
     {
-        const T1* a1 = any_cast<T1>(&_a1);
-        const T2* a2 = any_cast<T2>(&_a2);
+        T1* a1 = const_cast<T1*>(any_cast<T1>(&_a1));
+        T2* a2 = const_cast<T2*>(any_cast<T2>(&_a2));
         if (a1 != 0 && a2 != 0)
         {
             _a(*a1, *a2);
@@ -278,9 +278,9 @@ struct selected_types
     template <class T1, class T2, class T3>
     void operator()(T1, T2, T3) const
     {
-        const T1* a1 = any_cast<T1>(&_a1);
-        const T2* a2 = any_cast<T2>(&_a2);
-        const T3* a3 = any_cast<T3>(&_a3);
+        T1* a1 = const_cast<T1*>(any_cast<T1>(&_a1));
+        T2* a2 = const_cast<T2*>(any_cast<T2>(&_a2));
+        T3* a3 = const_cast<T3*>(any_cast<T3>(&_a3));
 
         if (a1 != 0 && a2 != 0 && a3 != 0)
         {
@@ -292,10 +292,10 @@ struct selected_types
     template <class T1, class T2, class T3, class T4>
     void operator()(T1, T2, T3, T4) const
     {
-        const T1* a1 = any_cast<T1>(&_a1);
-        const T2* a2 = any_cast<T2>(&_a2);
-        const T3* a3 = any_cast<T3>(&_a3);
-        const T4* a4 = any_cast<T4>(&_a4);
+        T1* a1 = const_cast<T1*>(any_cast<T1>(&_a1));
+        T2* a2 = const_cast<T2*>(any_cast<T2>(&_a2));
+        T3* a3 = const_cast<T3*>(any_cast<T3>(&_a3));
+        T4* a4 = const_cast<T4*>(any_cast<T4>(&_a4));
 
         if (a1 != 0 && a2 != 0 && a3 != 0 && a4 != 0)
         {
@@ -308,11 +308,11 @@ struct selected_types
     template <class T1, class T2, class T3, class T4, class T5>
     void operator()(T1, T2, T3, T4, T5) const
     {
-        const T1* a1 = any_cast<T1>(&_a1);
-        const T2* a2 = any_cast<T2>(&_a2);
-        const T3* a3 = any_cast<T3>(&_a3);
-        const T4* a4 = any_cast<T4>(&_a4);
-        const T5* a5 = any_cast<T5>(&_a5);
+        T1* a1 = const_cast<T1*>(any_cast<T1>(&_a1));
+        T2* a2 = const_cast<T2*>(any_cast<T2>(&_a2));
+        T3* a3 = const_cast<T3*>(any_cast<T3>(&_a3));
+        T4* a4 = const_cast<T4*>(any_cast<T4>(&_a4));
+        T5* a5 = const_cast<T5*>(any_cast<T5>(&_a5));
 
         if (a1 != 0 && a2 != 0 && a3 != 0 && a4 != 0 && a5 != 0)
         {

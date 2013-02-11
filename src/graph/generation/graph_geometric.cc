@@ -63,5 +63,4 @@ void geometric(GraphInterface& gi, python::object opoints, double r,
                                              ref(points), ref(range), r,
                                              periodic),
                               prop_types())(pos);
-    gi.ReIndexEdges();
 }

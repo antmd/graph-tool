@@ -78,7 +78,7 @@ struct property_union
 
     template <class UnionGraph, class Graph, class VertexMap, class EdgeMap,
               class UnionProp, class Prop>
-    void dispatch(UnionGraph& ug, Graph& g, VertexMap vmap, EdgeMap emap,
+    void dispatch(UnionGraph&, Graph& g, VertexMap vmap, EdgeMap,
                   UnionProp uprop, Prop prop, mpl::true_) const
     {
         typename graph_traits<Graph>::vertex_iterator v, v_end;
@@ -88,7 +88,7 @@ struct property_union
 
     template <class UnionGraph, class Graph, class VertexMap, class EdgeMap,
               class UnionProp, class Prop>
-    void dispatch(UnionGraph& ug, Graph& g, VertexMap vmap, EdgeMap emap,
+    void dispatch(UnionGraph&, Graph& g, VertexMap, EdgeMap emap,
                   UnionProp uprop, Prop prop, mpl::false_) const
     {
         typename graph_traits<Graph>::edge_iterator e, e_end;
