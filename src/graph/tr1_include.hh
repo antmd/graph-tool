@@ -24,6 +24,7 @@
 #if defined(__GLIBCXX__) && __GLIBCXX__ > 20050421
 #   define TR1_HEADER(header) <tr1/header>
 #else
+#   define BOOST_TR1_USE_OLD_TUPLE
 #   define TR1_HEADER(header) <boost/tr1/header.hpp>
 #endif
 
