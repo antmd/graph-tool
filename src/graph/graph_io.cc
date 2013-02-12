@@ -15,12 +15,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#include "gml.hh"
-#include "graph.hh"
-#include "graph_filtering.hh"
-#include "graph_properties.hh"
-#include "graph_util.hh"
-
 #include <boost/python/extract.hpp>
 
 #include <iostream>
@@ -35,6 +29,12 @@
 #include <boost/graph/graphviz.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/xpressive/xpressive.hpp>
+
+#include "gml.hh"
+#include "graph.hh"
+#include "graph_filtering.hh"
+#include "graph_properties.hh"
+#include "graph_util.hh"
 
 #include "graph_python_interface.hh"
 #include "str_repr.hh"
