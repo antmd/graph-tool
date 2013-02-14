@@ -21,22 +21,21 @@
 #include <cmath>
 #include <iostream>
 
-#include <ext/numeric>
-using __gnu_cxx::power;
-
+#include "config.h"
 #include "tr1_include.hh"
 #include TR1_HEADER(unordered_set)
-#include TR1_HEADER(unordered_map)
 #include TR1_HEADER(tuple)
 
+#ifdef HAVE_SPARSEHASH
 #include <dense_hash_set>
-#include <dense_hash_map>
+#endif
 
 namespace graph_tool
 {
 
+#ifdef HAVE_SPARSEHASH
 using google::dense_hash_set;
-using google::dense_hash_map;
+#endif
 
 using namespace boost;
 
@@ -685,11 +684,17 @@ double move_vertex(size_t v, size_t nr, Eprop& mrs, Vprop& mrp, Vprop& mrm,
     double Si = 0, Sf = 0;
 
     vector<pair<vertex_t, vertex_t> > m_entries;
+#ifdef HAVE_SPARSEHASH
     dense_hash_set<pair<vertex_t, vertex_t>, boost::hash<pair<vertex_t, vertex_t> > > m_entries_set;
+#else
+    unordered_set<pair<vertex_t, vertex_t>, boost::hash<pair<vertex_t, vertex_t> > > m_entries_set;
+#endif
     if (get_ds)
     {
+#ifdef HAVE_SPARSEHASH
         m_entries_set.set_empty_key(make_pair(graph_traits<Graph>::null_vertex(),
                                               graph_traits<Graph>::null_vertex()));
+#endif
 
         move_entries(vertex(v, g), nr, b, g, bg, m_entries, m_entries_set);
 

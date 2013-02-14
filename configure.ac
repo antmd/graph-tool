@@ -153,6 +153,19 @@ AC_ARG_ENABLE([cairo], [AS_HELP_STRING([--disable-cairo],[disable cairo drawing 
         [AC_MSG_RESULT(yes)]
         )
 
+[USING_SPARSEHASH=yes]
+AC_MSG_CHECKING(whether to enable sparsehash...)
+AC_ARG_ENABLE([sparsehash], [AS_HELP_STRING([--disable-sparsehash],[disable use of google's sparsehash [default=enabled] ])],
+        if test $enableval = no; then
+           [USING_SPARSEHASH=no]
+           [AC_MSG_RESULT(no)]
+        else
+           [AC_MSG_RESULT(yes)]
+        fi
+        ,
+        [AC_MSG_RESULT(yes)]
+        )
+
 dnl Override prefix with default value if not set
 if test "x${prefix}" = "xNONE"; then
   prefix=${ac_default_prefix}
@@ -285,11 +298,13 @@ if test "$USING_CAIRO" = "yes"; then
 fi
 
 dnl sparsehash
-dnl set template depth and hidden visibility
-[CPPFLAGS="${CPPFLAGS} -I/usr/include/sparsehash -I/usr/include/google"]
-AC_CHECK_HEADER([dense_hash_set],
-                [],
-                [AC_MSG_ERROR([sparsehash headers not found])])
+if test "$USING_SPARSEHASH" = "yes"; then
+   [CPPFLAGS="${CPPFLAGS} -I/usr/include/sparsehash -I/usr/include/google"]
+   AC_CHECK_HEADER([dense_hash_set],
+	           [],
+                   [AC_MSG_ERROR([sparsehash headers not found])])
+   AC_DEFINE_UNQUOTED([HAVE_SPARSEHASH],"1", [Using google's sparsehash])
+fi
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 dnl Checks for library functions.
