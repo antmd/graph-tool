@@ -21,7 +21,7 @@
 // include tr1 from libstdc++ only if it is not _really_ old. Otherwise use
 // boost.
 
-#if defined(__GLIBCXX__) && __GLIBCXX__ > 20050421
+#if defined(__GLIBCXX__) && __GLIBCXX__ >= 20120702
 #   define TR1_HEADER(header) <tr1/header>
 #else
 #   define BOOST_TR1_USE_OLD_TUPLE
