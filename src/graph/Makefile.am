@@ -41,6 +41,7 @@ libgraph_tool_core_la_include_HEADERS = \
     fast_vector_property_map.hh \
     gml.hh \
     graph.hh \
+    graph_adjacency.hh \
     graph_adaptor.hh \
     graph_exceptions.hh \
     graph_filtering.hh \
