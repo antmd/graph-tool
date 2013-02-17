@@ -84,12 +84,14 @@ def htmlize(val):
 
 
 def aset(elem, attr, value):
-    v = htmlize(str(value))
-    libgv.agsafeset(elem, str(attr), v, v)
+    v = htmlize(str(value)).encode("utf8")
+    libgv.agsafeset(elem, str(attr).encode("utf8"), v, v)
 
 
 def aget(elem, attr):
-    return ctypes.string_at(libgv.agget(elem, str(attr)))
+    s = ctypes.string_at(libgv.agget(elem,
+                                     str(attr).encode("utf8")))
+    return s.decode("utf8")
 
 
 def graphviz_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
@@ -300,7 +302,7 @@ def graphviz_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
 
     has_layout = False
     try:
-        gvg = libgv.agopen("G", 1 if g.is_directed() else 0)
+        gvg = libgv.agopen("G".encode("utf8"), 1 if g.is_directed() else 0)
 
         if layout is None:
             if pin == False:
@@ -402,7 +404,7 @@ def graphviz_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
         else:
             vertices = g.vertices()
         for v in vertices:
-            n = libgv.agnode(gvg, str(int(v)))
+            n = libgv.agnode(gvg, str(int(v)).encode("utf8"))
 
             if type(vsize) == PropertyMap:
                 vw = vh = vsize[v]
@@ -450,8 +452,8 @@ def graphviz_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
             edges = g.edges()
         for e in edges:
             ge = libgv.agedge(gvg,
-                              libgv.agnode(gvg, str(int(e.source()))),
-                              libgv.agnode(gvg, str(int(e.target()))))
+                              libgv.agnode(gvg, str(int(e.source())).encode("utf8")),
+                              libgv.agnode(gvg, str(int(e.target())).encode("utf8")))
             aset(ge, "arrowsize", "0.3")
             if g.is_directed():
                 aset(ge, "arrowhead", "vee")
@@ -488,15 +490,15 @@ def graphviz_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
                 else:
                     aset(ge, k, v)
 
-        libgv.gvLayout(gvc, gvg, layout)
+        libgv.gvLayout(gvc, gvg, layout.encode("utf8"))
         has_layout = True
-        retv = libgv.gvRender(gvc, gvg, "dot", None)  # retrieve positions only
+        retv = libgv.gvRender(gvc, gvg, "dot".encode("utf8"), None)  # retrieve positions only
 
         if pos == None:
             pos = (g.new_vertex_property("double"),
                    g.new_vertex_property("double"))
         for v in g.vertices():
-            n = libgv.agnode(gvg, str(int(v)))
+            n = libgv.agnode(gvg, str(int(v)).encode("utf8"))
             p = aget(n, "pos")
             p = p.split(",")
             pos[0][v] = float(p[0])
@@ -516,14 +518,15 @@ def graphviz_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
                 buf_len = ctypes.c_size_t()
                 fstream = libc.open_memstream(ctypes.byref(buf),
                                               ctypes.byref(buf_len))
-                libgv.gvRender(gvc, gvg, output_format, fstream)
+                libgv.gvRender(gvc, gvg, output_format.encode("utf8"), fstream)
                 libc.fclose(fstream)
                 data = copy.copy(ctypes.string_at(buf, buf_len.value))
                 libc.free(buf)
             else:
                 # write to temporary file, if open_memstream is not available
                 output = tempfile.mkstemp()[1]
-                libgv.gvRenderFilename(gvc, gvg, output_format, output)
+                libgv.gvRenderFilename(gvc, gvg, output_format.encode("utf8"),
+                                       output.encode("utf8"))
                 data = open(output).read()
                 os.remove(output)
         else:
@@ -538,12 +541,14 @@ def graphviz_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
             if output_format == "xlib" or fork:
                 pid = os.fork()
                 if pid == 0:
-                    libgv.gvRenderFilename(gvc, gvg, output_format, output)
+                    libgv.gvRenderFilename(gvc, gvg, output_format.encode("utf8"),
+                                           output.encode("utf8"))
                     os._exit(0)  # since we forked, it's good to be sure
                 if output_format != "xlib":
                     os.wait()
             elif output is not None:
-                libgv.gvRenderFilename(gvc, gvg, output_format, output)
+                libgv.gvRenderFilename(gvc, gvg, output_format.encode("utf8"),
+                                       output.encode("utf8"))
 
         ret = [pos]
         if return_string:
