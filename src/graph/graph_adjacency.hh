@@ -248,6 +248,8 @@ public:
 
     size_t get_last_index() const {return _last_idx;}
 
+    static Vertex null_vertex() { return std::numeric_limits<Vertex>::max(); }
+
 private:
     typedef std::vector<edge_list_t> vertex_list_t;
     vertex_list_t _out_edges;
@@ -331,7 +333,7 @@ struct graph_traits<adj_list<Vertex> >
     typedef Vertex edges_size_type;
     typedef size_t degree_size_type;
 
-    static Vertex null_vertex() { return std::numeric_limits<Vertex>::max(); }
+    static Vertex null_vertex() { return adj_list<Vertex>::null_vertex(); }
 };
 
 template <class Vertex>
