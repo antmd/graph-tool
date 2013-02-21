@@ -164,7 +164,7 @@ format <http://www.webmproject.org>`_:
    >>> import subprocess
    >>> subprocess.call("mencoder mf://frames/dancing*.png -mf w=500:h=400:type=png -ovc raw -of rawvideo -vf format=i420 -nosound -o demos/dancing.yuy".split())
    0
-   >>> subprocess.call("vpxenc demos/dancing.yuy -o demos/dancing.webm -w 500 -h 400 --fps=100/1 --target-bitrate=5000 --good --threads=4".split())
+   >>> subprocess.call("vpxenc demos/dancing.yuy -o demos/dancing.webm -w 500 -h 400 --fps=100/1 --target-bitrate=2000 --good --threads=4".split())
    0
 
 
