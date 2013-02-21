@@ -1344,7 +1344,8 @@ class Graph(object):
 
                             .. note::
 
-                                This is a special instance of a :class:`~graph_tool.PropertyMap`
+                                Like :attr:`~graph_tool.Graph.edge_index`, this
+                                is a special instance of a :class:`~graph_tool.PropertyMap`
                                 class, which is **immutable**, and cannot be
                                 accessed as an array.""")
 
@@ -1355,24 +1356,17 @@ class Graph(object):
                             It maps for each edge in the graph an unique
                             integer.
 
-                            .. warning::
+                            .. note::
 
-                                Differently from :attr:`~graph_tool.Graph.vertex_index`,
-                                this is a **regular** instance of a :class:`~graph_tool.PropertyMap`
-                                class, and is therefore **mutable**!
+                                Like :attr:`~graph_tool.Graph.vertex_index`, this
+                                is a special instance of a :class:`~graph_tool.PropertyMap`
+                                class, which is **immutable**, and cannot be
+                                accessed as an array.
 
                                 Additionally, the indexes may not necessarily
                                 lie in the range [0, :meth:`~graph_tool.Graph.num_edges` - 1].
                                 However this will always happen whenever no
-                                edges are deleted from the graph.
-
-                                The internal consistency expected by most
-                                algorithms and the proper functioning of
-                                property maps assume that the indexes are unique
-                                and constant, which is guaranteed by the
-                                library.  Therefore it is recommended **never**
-                                to modify these values, unless you know what you
-                                are doing.""")
+                                edges are deleted from the graph.""")
 
     def _get_max_edge_index(self):
         return self.__graph.GetMaxEdgeIndex()
