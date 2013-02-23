@@ -836,11 +836,8 @@ def mcmc_sweep(state, beta=1., sequential=True, verbose=False, vertices=None):
         return 0., 0
 
     if vertices is None:
-        u = state.g
-        u.stash_filter()
-        vertices = libcommunity.get_vector(u.num_vertices())
-        u.pop_filter()
-        vertices.a = arange(len(vertices.a))
+        vertices = libcommunity.get_vector(state.g.num_vertices())
+        vertices.a = state.g.vertex_index.copy("int").fa
 
     dS, nmoves = libcommunity.move_sweep(state.g._Graph__graph,
                                          state.bg._Graph__graph,
