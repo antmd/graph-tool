@@ -31,7 +31,7 @@ extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest',
               #'matplotlib.sphinxext.plot_directive'
               ]
 
-mathjax_path = "MathJax/MathJax.js"
+mathjax_path = "MathJax/MathJax.js?config=default"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['.templates']
