@@ -75,6 +75,14 @@ enum edge_attr_t {
     EDGE_MARKER_SIZE,
     EDGE_CONTROL_POINTS,
     EDGE_DASH_STYLE,
+    EDGE_TEXT,
+    EDGE_TEXT_COLOR,
+    EDGE_TEXT_DISTANCE,
+    EDGE_TEXT_PARALLEL,
+    EDGE_FONT_FAMILY,
+    EDGE_FONT_SLANT,
+    EDGE_FONT_WEIGHT,
+    EDGE_FONT_SIZE,
     EDGE_SLOPPY
 };
 
@@ -109,7 +117,7 @@ typedef pair<double, double> pos_t;
 typedef tuple<double, double, double, double> color_t;
 typedef tr1::unordered_map<int, boost::any> attrs_t;
 
-typedef mpl::map28<
+typedef mpl::map36<
     mpl::pair<mpl::int_<VERTEX_SHAPE>, vertex_shape_t>,
     mpl::pair<mpl::int_<VERTEX_COLOR>, color_t>,
     mpl::pair<mpl::int_<VERTEX_FILL_COLOR>, color_t>,
@@ -137,6 +145,14 @@ typedef mpl::map28<
     mpl::pair<mpl::int_<EDGE_MARKER_SIZE>, double>,
     mpl::pair<mpl::int_<EDGE_CONTROL_POINTS>, vector<double> >,
     mpl::pair<mpl::int_<EDGE_DASH_STYLE>, vector<double> >,
+    mpl::pair<mpl::int_<EDGE_TEXT>, string>,
+    mpl::pair<mpl::int_<EDGE_TEXT_COLOR>, color_t>,
+    mpl::pair<mpl::int_<EDGE_TEXT_DISTANCE>, double>,
+    mpl::pair<mpl::int_<EDGE_TEXT_PARALLEL>, uint8_t>,
+    mpl::pair<mpl::int_<EDGE_FONT_FAMILY>, string>,
+    mpl::pair<mpl::int_<EDGE_FONT_SLANT>, int32_t>,
+    mpl::pair<mpl::int_<EDGE_FONT_WEIGHT>, int32_t>,
+    mpl::pair<mpl::int_<EDGE_FONT_SIZE>, double>,
     mpl::pair<mpl::int_<EDGE_SLOPPY>, uint8_t> >
         attr_types;
 
@@ -898,6 +914,54 @@ public:
             cr.stroke();
         }
 
+        string text = _attrs.template get<string>(EDGE_TEXT);
+        if (text != "")
+        {
+            cr.save();
+            cr.select_font_face(_attrs.template get<string>(EDGE_FONT_FAMILY),
+                                static_cast<Cairo::FontSlant>(_attrs.template get<int32_t>(EDGE_FONT_SLANT)),
+                                static_cast<Cairo::FontWeight>(_attrs.template get<int32_t>(EDGE_FONT_WEIGHT)));
+            cr.set_font_size(_attrs.template get<double>(EDGE_FONT_SIZE) *
+                             get_user_dist(cr));
+            double text_dist = _attrs.template get<double>(EDGE_TEXT_DISTANCE);
+            text_dist *= get_user_dist(cr);
+
+            bool text_parallel = _attrs.template get<uint8_t>(EDGE_TEXT_PARALLEL);
+
+            Cairo::TextExtents extents;
+            cr.get_text_extents(text, extents);
+
+            pos_t origin;
+            origin.first = (pos_begin_c.first + pos_end_c.first) / 2;
+            origin.second = (pos_begin_c.second + pos_end_c.second) / 2;
+            cr.translate(origin.first, origin.second);
+            double angle = atan2(pos_end_c.second - pos_begin_c.second,
+                                 pos_end_c.first - pos_begin_c.first);
+            if (text_parallel)
+            {
+                if (angle > M_PI / 2)
+                    angle -= M_PI;
+                if (angle < -M_PI / 2)
+                    angle += M_PI;
+            }
+            cr.rotate(angle);
+            if (text_parallel)
+                cr.translate(0, -text_dist);
+            else
+                cr.translate(0, text_dist);
+            if (!text_parallel)
+                cr.rotate(-angle);
+            else
+                cr.translate(-extents.width / 2, 0);
+
+            color = _attrs.template get<color_t>(EDGE_TEXT_COLOR);
+            cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color),
+                               get<3>(color));
+            cr.show_text(text);
+            cr.begin_new_path();
+            cr.restore();
+        }
+
         cr.restore();
     }
 
@@ -1587,6 +1651,14 @@ BOOST_PYTHON_MODULE(libgraph_tool_draw)
         .value("marker_size", EDGE_MARKER_SIZE)
         .value("control_points", EDGE_CONTROL_POINTS)
         .value("dash_style", EDGE_DASH_STYLE)
+        .value("text", EDGE_TEXT)
+        .value("text_color", EDGE_TEXT_COLOR)
+        .value("text_distance", EDGE_TEXT_DISTANCE)
+        .value("text_parallel", EDGE_TEXT_PARALLEL)
+        .value("font_family", EDGE_FONT_FAMILY)
+        .value("font_slant", EDGE_FONT_SLANT)
+        .value("font_weight", EDGE_FONT_WEIGHT)
+        .value("font_size", EDGE_FONT_SIZE)
         .value("sloppy", EDGE_SLOPPY);
 
     enum_<vertex_shape_t>("vertex_shape")

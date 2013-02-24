@@ -101,6 +101,14 @@ _edefaults = {
     "marker_size": 4.,
     "control_points": [],
     "dash_style": [],
+    "text": "",
+    "text_color": [0., 0., 0., 1.],
+    "text_distance": 5,
+    "text_parallel": True,
+    "font_family": "serif",
+    "font_slant": cairo.FONT_SLANT_NORMAL,
+    "font_weight": cairo.FONT_WEIGHT_NORMAL,
+    "font_size": 12.,
     "sloppy": False
     }
 
@@ -226,7 +234,7 @@ def _convert(attr, val, cmap):
                     pass
     if attr in [vertex_attrs.color, vertex_attrs.fill_color,
                 vertex_attrs.text_color, vertex_attrs.halo_color,
-                edge_attrs.color]:
+                edge_attrs.color, edge_attrs.text_color]:
         if isinstance(val, list):
             return val
         if isinstance(val, (tuple, np.ndarray)):
@@ -646,6 +654,24 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         |                | The last value specifies an offset into the       |                        |                                  |
         |                | pattern at which the stroke begins.               |                        |                                  |
         +----------------+---------------------------------------------------+------------------------+----------------------------------+
+        | text           | Text to draw next to the edges.                   | ``str``                | ``""``                           |
+        +----------------+---------------------------------------------------+------------------------+----------------------------------+
+        | text_color     | Color used to draw the text.                      | ``str`` or list of     | ``[0., 0., 0., 1.]``             |
+        |                |                                                   | ``floats``             |                                  |
+        +----------------+---------------------------------------------------+------------------------+----------------------------------+
+        | text_distance  | Distance from the edge and its text.              | ``float`` or ``int``   | ``4``                            |
+        +----------------+---------------------------------------------------+------------------------+----------------------------------+
+        | text_parallel  | If ``True`` the text will be drawn parallel to    | ``bool``               | ``True``                         |
+        |                | the edges.                                        |                        |                                  |
+        +----------------+---------------------------------------------------+------------------------+----------------------------------+
+        | font_family    | Font family used to draw the text.                | ``str``                | ``"serif"``                      |
+        +----------------+---------------------------------------------------+------------------------+----------------------------------+
+        | font_slant     | Font slant used to draw the text.                 | ``cairo.FONT_SLANT_*`` | :data:`cairo.FONT_SLANT_NORMAL`  |
+        +----------------+---------------------------------------------------+------------------------+----------------------------------+
+        | font_weight    | Font weight used to draw the text.                | ``cairo.FONT_WEIGHT_*``| :data:`cairo.FONT_WEIGHT_NORMAL` |
+        +----------------+---------------------------------------------------+------------------------+----------------------------------+
+        | font_size      | Font size used to draw the text.                  | ``float`` or ``int``   | ``12``                           |
+        +----------------+---------------------------------------------------+------------------------+----------------------------------+
 
     Examples
     --------
@@ -728,6 +754,15 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
             eprops["marker_size"] = pw
         else:
             eprops["marker_size"] = pw * 2.75
+
+    if "text" in eprops and "text_distance" not in eprops and "pen_width" in eprops:
+        pw = eprops["pen_width"]
+        if isinstance(pw, PropertyMap):
+            pw = pw.copy()
+            pw.a *= 2
+            eprops["text_distance"] = pw
+        else:
+            eprops["text_distance"] = pw * 2
 
     if "text" in vprops and ("text_color" not in vprops or vprops["text_color"] == "auto"):
         vcmap = kwargs.get("vcmap", matplotlib.cm.jet)
@@ -825,6 +860,10 @@ def scale_ink(scale, vprops, eprops):
         eprops["pen_width"] = _edefaults["pen_width"]
     if "marker_size" not in eprops:
         eprops["marker_size"] = _edefaults["marker_size"]
+    if "font_size" not in eprops:
+        eprops["font_size"] = _edefaults["font_size"]
+    if "text_distance" not in eprops:
+        eprops["text_distance"] = _edefaults["text_distance"]
 
     for props in [vprops, eprops]:
         if isinstance(props["pen_width"], PropertyMap):
@@ -843,6 +882,14 @@ def scale_ink(scale, vprops, eprops):
         eprops["marker_size"].fa *= scale
     else:
         eprops["marker_size"] *= scale
+    if isinstance(eprops["font_size"], PropertyMap):
+        eprops["font_size"].fa *= scale
+    else:
+        eprops["font_size"] *= scale
+    if isinstance(eprops["text_distance"], PropertyMap):
+        eprops["text_distance"].fa *= scale
+    else:
+        eprops["text_distance"] *= scale
 
 def get_bb(g, pos, size, pen_width, size_scale=1, text=None, font_family=None,
            font_size=None, cr=None):
