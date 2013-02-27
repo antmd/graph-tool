@@ -644,7 +644,7 @@ def transitive_closure(g):
     return tg
 
 
-def label_components(g, vprop=None, directed=None):
+def label_components(g, vprop=None, directed=None, attractors=False):
     """
     Label the components to which each vertex in the graph belongs. If the
     graph is directed, it finds the strongly connected components.
@@ -656,12 +656,16 @@ def label_components(g, vprop=None, directed=None):
     ----------
     g : :class:`~graph_tool.Graph`
         Graph to be used.
-    vprop : :class:`~graph_tool.PropertyMap` (optional, default: None)
+    vprop : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         Vertex property to store the component labels. If none is supplied, one
         is created.
-    directed : bool (optional, default:None)
+    directed : bool (optional, default: ``None``)
         Treat graph as directed or not, independently of its actual
         directionality.
+    attractors : bool (optional, default: ``False``)
+        If ``True``, and the graph is directed, an additional array with Boolean
+        values is returned, specifying if the strongly connected components are
+        attractors or not.
 
     Returns
     -------
@@ -669,6 +673,10 @@ def label_components(g, vprop=None, directed=None):
         Vertex property map with component labels.
     hist : :class:`~numpy.ndarray`
         Histogram of component labels.
+    is_attractor : :class:`~numpy.ndarray`
+        A Boolean array specifying if the strongly connected components are
+        attractors or not. This returned only if ``attractors == True``, and the
+        graph is directed.
 
     Notes
     -----
@@ -685,14 +693,20 @@ def label_components(g, vprop=None, directed=None):
        numpy.random.seed(43)
        gt.seed_rng(43)
 
-    >>> g = gt.random_graph(100, lambda: (1, 1))
-    >>> comp, hist = gt.label_components(g)
+    >>> g = gt.random_graph(100, lambda: (poisson(2), poisson(2)))
+    >>> comp, hist, is_attractor = gt.label_components(g, attractors=True)
     >>> print(comp.a)
-    [0 1 1 1 2 1 3 1 4 0 0 4 2 0 0 2 1 1 2 1 0 4 1 5 2 4 0 1 1 1 1 0 4 5 1 1 4
-     0 4 1 4 4 2 1 4 4 1 2 3 0 0 4 2 4 2 4 4 4 4 1 4 2 0 1 1 2 4 2 2 4 5 4 0 2
-     1 1 4 1 0 1 2 1 0 0 4 0 1 4 2 4 0 4 4 1 1 1 0 2 1 1]
+    [12 12 12 12 12 12 12 12 13 12 12 12 12 12 11 12  5 14 12 12  7 15 12 12 12
+     12 12 12 12 12 12 12 12 12 16 12  2  0 12 17 12 12  1 12 12 10 12 18 12 21
+     12 12 12  6  9 12 12 22 12 12 12 12  3 12  8 23 24 12 12 12 25 12 12 12 12
+     12 27 28 12 12 26 12 20 12 12 12 12 12 12 12 12 29 30 19 12  4 12 31 12 12]
     >>> print(hist)
-    [19 32 17  2 27  3]
+    [ 1  1  1  1  1  1  1  1  1  1  1  1 69  1  1  1  1  1  1  1  1  1  1  1  1
+      1  1  1  1  1  1  1]
+    >>> print(is_attractor)
+    [ True False False  True  True False  True  True  True False False  True
+     False False False False False False False False False False False False
+     False False False False False False False False]
     """
 
     if vprop is None:
@@ -706,7 +720,15 @@ def label_components(g, vprop=None, directed=None):
 
     hist = libgraph_tool_topology.\
                label_components(g._Graph__graph, _prop("v", g, vprop))
-    return vprop, hist
+
+    if attractors and g.is_directed() and directed != False:
+        is_attractor = numpy.ones(len(hist), dtype="bool")
+        libgraph_tool_topology.\
+               label_attractors(g._Graph__graph, _prop("v", g, vprop),
+                                is_attractor)
+        return vprop, hist, is_attractor
+    else:
+        return vprop, hist
 
 
 def label_largest_component(g, directed=None):

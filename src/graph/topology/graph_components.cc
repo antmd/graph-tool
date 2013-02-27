@@ -58,10 +58,20 @@ void do_label_out_component(GraphInterface& gi, size_t root, boost::any prop)
          writable_vertex_scalar_properties())(prop);
 }
 
+void do_label_attractors(GraphInterface& gi, boost::any cprop, python::object oavec)
+{
+
+    multi_array_ref<bool,1> avec = get_array<bool,1>(oavec);
+
+    run_action<>()(gi, bind<void>(label_attractors(), _1, _2, avec),
+                   vertex_scalar_properties())(cprop);
+}
+
 void export_components()
 {
     python::def("label_components", &do_label_components);
     python::def("label_biconnected_components",
                 &do_label_biconnected_components);
     python::def("label_out_component", &do_label_out_component);
+    python::def("label_attractors", &do_label_attractors);
 };
