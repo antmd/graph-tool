@@ -44,6 +44,7 @@ using namespace boost;
 using namespace boost::python;
 
 typedef mpl::map<
+    mpl::pair<bool, mpl::int_<NPY_BOOL> >,
     mpl::pair<uint8_t, mpl::int_<NPY_BYTE> >,
     mpl::pair<uint32_t, mpl::int_<NPY_UINT32> >,
     mpl::pair<int16_t, mpl::int_<NPY_INT16> >,
