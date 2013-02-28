@@ -48,6 +48,7 @@ Summary
    label_biconnected_components
    label_largest_component
    label_out_component
+   kcore_decomposition
    is_bipartite
    is_DAG
    is_planar
@@ -66,7 +67,7 @@ dl_import("from . import libgraph_tool_topology")
 
 from .. import _prop, Vector_int32_t, _check_prop_writable, \
      _check_prop_scalar, _check_prop_vector, Graph, PropertyMap, GraphView,\
-     libcore, _get_rng
+     libcore, _get_rng, _degree
 import random, sys, numpy
 __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
            "max_cardinality_matching", "max_independent_vertex_set",
@@ -74,9 +75,9 @@ __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
            "topological_sort", "transitive_closure", "tsp_tour",
            "sequential_vertex_coloring", "label_components",
            "label_largest_component", "label_biconnected_components",
-           "label_out_component", "shortest_distance", "shortest_path",
-           "pseudo_diameter", "is_bipartite", "is_DAG", "is_planar",
-           "make_maximal_planar", "similarity", "edge_reciprocity"]
+           "label_out_component", "kcore_decomposition", "shortest_distance",
+           "shortest_path", "pseudo_diameter", "is_bipartite", "is_DAG",
+           "is_planar", "make_maximal_planar", "similarity", "edge_reciprocity"]
 
 
 def similarity(g1, g2, label1=None, label2=None, norm=True):
@@ -927,6 +928,82 @@ def label_biconnected_components(g, eprop=None, vprop=None):
              label_biconnected_components(g._Graph__graph, _prop("e", g, eprop),
                                           _prop("v", g, vprop))
     return eprop, vprop, hist
+
+def kcore_decomposition(g, deg="out", vprop=None):
+    """
+    Perform a k-core decomposition of the given graph.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    deg : string
+        Degree to be used for the decomposition. It can be either "in", "out" or
+        "total", for in-, out-, or total degree of the vertices.
+    vprop : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        Vertex property to store the decomposition. If ``None`` is supplied,
+        one is created.
+
+    Returns
+    -------
+    kval : :class:`~graph_tool.PropertyMap`
+        Vertex property map with the k-core decomposition, i.e. a given vertex v
+        belongs to the ``kval[v]``-core.
+
+    Notes
+    -----
+
+    The k-core is a maximal set of vertices such that its induced subgraph only
+    contains vertices with degree larger than or equal to k.
+
+    This algorithm is described in [batagelk-algorithm]_ and runs in :math:`O(V + E)`
+    time.
+
+    Examples
+    --------
+
+    >>> g = gt.collection.data["netscience"]
+    >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(g))
+    >>> kcore = gt.kcore_decomposition(g)
+    >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=kcore, vertex_text=kcore, output="netsci-kcore.pdf")
+    <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=kcore, vertex_text=kcore, output="netsci-kcore.png")
+
+    .. figure:: netsci-kcore.*
+        :align: center
+
+        K-core decomposition of a network of network scientists.
+
+    References
+    ----------
+    .. [k-core] http://en.wikipedia.org/wiki/Degeneracy_%28graph_theory%29
+    .. [batagelk-algorithm] V. Batagelj, M. Zaversnik, "An O(m) Algorithm for
+       Cores Decomposition of Networks", 2003, :arxiv:`cs/0310049`
+
+    """
+
+    if vprop is None:
+        vprop = g.new_vertex_property("int32_t")
+
+    _check_prop_writable(vprop, name="vprop")
+    _check_prop_scalar(vprop, name="vprop")
+    if deg not in ["in", "out", "total"]:
+        raise ValueError("invalid degree: " + str(deg))
+
+    if g.is_directed():
+        if deg == "out":
+            g = GraphView(g, reversed=True)
+        if deg == "total":
+            g = GraphView(g, directed=False)
+
+    libgraph_tool_topology.\
+               kcore_decomposition(g._Graph__graph, _prop("v", g, vprop),
+                                   _degree(g, deg))
+    return vprop
 
 
 def shortest_distance(g, source=None, weights=None, max_dist=None,

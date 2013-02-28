@@ -49,6 +49,7 @@ void get_random_spanning_tree(GraphInterface& gi, size_t root,
 vector<int32_t> get_tsp(GraphInterface& gi, size_t src, boost::any weight_map);
 
 void export_components();
+void export_kcore();
 void export_similarity();
 void export_dists();
 void export_all_dists();
@@ -74,6 +75,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_topology)
     def("random_spanning_tree", &get_random_spanning_tree);
     def("get_tsp", &get_tsp);
     export_components();
+    export_kcore();
     export_similarity();
     export_dists();
     export_all_dists();
