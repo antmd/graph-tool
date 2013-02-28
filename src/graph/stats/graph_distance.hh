@@ -91,7 +91,7 @@ struct get_distance_histogram
 
             for (size_t j = 0; j < size_t(N); ++j)
             {
-                if (vertex(i,g) != graph_traits<Graph>::null_vertex())
+                if (vertex(j,g) != graph_traits<Graph>::null_vertex())
                     dist_map[vertex(j,g)] =  numeric_limits<val_type>::max();
             }
 
