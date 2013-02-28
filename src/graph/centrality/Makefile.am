@@ -17,6 +17,7 @@ libgraph_tool_centrality_la_LDFLAGS = $(MOD_LDFLAGS)
 libgraph_tool_centrality_la_SOURCES = \
     graph_betweenness.cc \
     graph_centrality_bind.cc \
+    graph_closeness.cc \
     graph_eigentrust.cc \
     graph_eigenvector.cc \
     graph_hits.cc \
@@ -25,6 +26,7 @@ libgraph_tool_centrality_la_SOURCES = \
     graph_trust_transitivity.cc
 
 libgraph_tool_centrality_la_include_HEADERS = \
+    graph_closeness.hh \
     graph_eigentrust.hh \
     graph_eigenvector.hh \
     graph_pagerank.hh \

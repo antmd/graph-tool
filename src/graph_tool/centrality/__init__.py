@@ -33,6 +33,7 @@ Summary
    pagerank
    betweenness
    central_point_dominance
+   closeness
    eigenvector
    katz
    hits
@@ -52,8 +53,8 @@ from .. import _prop, ungroup_vector_property
 import sys
 import numpy
 
-__all__ = ["pagerank", "betweenness", "central_point_dominance", "eigentrust",
-           "eigenvector", "katz", "hits", "trust_transitivity"]
+__all__ = ["pagerank", "betweenness", "central_point_dominance", "closeness",
+           "eigentrust", "eigenvector", "katz", "hits", "trust_transitivity"]
 
 
 def pagerank(g, damping=0.85, pers=None, weight=None, prop=None, epsilon=1e-6,
@@ -318,6 +319,132 @@ def betweenness(g, vprop=None, eprop=None, weight=None, norm=True):
             get_betweenness(g._Graph__graph, _prop("e", g, weight),
                             _prop("e", g, eprop), _prop("v", g, vprop), norm)
     return vprop, eprop
+
+def closeness(g, weight=None, source=None, vprop=None, norm=True, harmonic=False):
+    r"""
+    Calculate the closeness centrality for each vertex.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    weight : :class:`~graph_tool.PropertyMap`, optional (default: None)
+        Edge property map corresponding to the weight value of each edge.
+    source : :class:`~graph_tool.Vertex`, optional (default: ``None``)
+        If specified, the centrality is computed for this vertex alone.
+    vprop : :class:`~graph_tool.PropertyMap`, optional (default: ``None``)
+        Vertex property map to store the vertex centrality values.
+    norm : bool, optional (default: ``True``)
+        Whether or not the centrality values should be normalized.
+    harmonic : bool, optional (default: ``False``)
+        If true, the sum of the inverse of the distances will be computed,
+        instead of the inverse of the sum.
+
+    Returns
+    -------
+    vertex_closeness : :class:`~graph_tool.PropertyMap`
+        A vertex property map with the vertex closeness values.
+
+    See Also
+    --------
+    central_point_dominance: central point dominance of the graph
+    pagerank: PageRank centrality
+    eigentrust: eigentrust centrality
+    eigenvector: eigenvector centrality
+    hits: hubs and authority centralities
+    trust_transitivity: pervasive trust transitivity
+
+    Notes
+    -----
+    The closeness centrality of a vertex :math:`i` is defined as,
+
+    .. math::
+
+        c_i = \frac{1}{\sum_j d_{ij}}
+
+    where :math:`d_{ij}` is the (possibly directed and/or weighted) distance
+    from :math:`i` to :math:`j`. In case there is no path between the two
+    vertices, here the distance is taken to be zero.
+
+    If ``harmonic == True``, the definition becomes
+
+    .. math::
+
+        c_i = \sum_j\frac{1}{d_{ij}},
+
+    but now, in case there is no path between the two vertices, we take
+    :math:`d_{ij} \to\infty` such that :math:`1/d_{ij}=0`.
+
+    If ``norm == True``, the values of :math:`c_i` are normalized by
+    :math:`n_i-1` where :math:`n_i` is the size of the (out-) component of
+    :math:`i`. If ``harmonic == True``, they are instead simply normalized by
+    :math:`N-1`.
+
+    The algorithm complexity of :math:`O(N(N + E))` for unweighted graphs and
+    :math:`O(N(N+E) \log N)` for weighted graphs. If the option ``source`` is
+    specified, this drops to :math:`O(N + E)` and :math:`O((N+E)\log N)`
+    respectively.
+
+    If enabled during compilation, this algorithm runs in parallel.
+
+    Examples
+    --------
+
+    .. doctest:: closeness
+
+       >>> g = gt.collection.data["polblogs"]
+       >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(g))
+       >>> c = gt.closeness(g)
+       >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=c,
+       ...               vertex_size=gt.prop_to_size(c, mi=5, ma=15),
+       ...               vorder=c, output="polblogs_closeness.pdf")
+       <...>
+
+    .. testcode:: closeness
+       :hide:
+
+       gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=c,
+                     vertex_size=gt.prop_to_size(c, mi=5, ma=15),
+                     vorder=c, output="polblogs_closeness.png")
+
+
+    .. figure:: polblogs_closeness.*
+       :align: center
+
+       Closeness values of the a political blogs network of [adamic-polblogs]_.
+
+    References
+    ----------
+    .. [closeness-wikipedia] https://en.wikipedia.org/wiki/Closeness_centrality
+    .. [opsahl-node-2010] Opsahl, T., Agneessens, F., Skvoretz, J., "Node
+       centrality in weighted networks: Generalizing degree and shortest
+       paths". Social Networks 32, 245-251, 2010 :DOI:`10.1016/j.socnet.2010.03.006`
+    .. [adamic-polblogs] L. A. Adamic and N. Glance, "The political blogosphere
+       and the 2004 US Election", in Proceedings of the WWW-2005 Workshop on the
+       Weblogging Ecosystem (2005). :DOI:`10.1145/1134271.1134277`
+
+    """
+    if source is None:
+        if vprop == None:
+            vprop = g.new_vertex_property("double")
+        libgraph_tool_centrality.\
+            closeness(g._Graph__graph, _prop("e", g, weight),
+                      _prop("v", g, vprop), harmonic, norm)
+        return vprop
+    else:
+        max_dist = g.num_vertices() + 1
+        dist = shortest_distance(g, source=source, weight=weight,
+                                 max_dist=max_dist)
+        if harmonic:
+            dists = dist.fa[(dist.fa < max_dist) * (dist.fa > 0)]
+            c = (1. / dists).sum()
+            if norm:
+                c /= g.num_vertices() - 1
+        else:
+            dists = dist.fa[(dist.fa < max_dist) * (dist.fa > 0)]
+            c = 1. / dists.sum()
+            if norm:
+                c /= len(dists)
 
 
 def central_point_dominance(g, betweenness):
