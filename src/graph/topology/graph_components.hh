@@ -113,14 +113,14 @@ struct label_components
 
     template <class Graph, class CompMap>
     void get_components(Graph& g, CompMap comp_map,
-                        boost::true_type is_directed) const
+                        boost::true_type) const
     {
         boost::strong_components(g, comp_map);
     }
 
     template <class Graph, class CompMap>
     void get_components(Graph& g, CompMap comp_map,
-                        boost::false_type is_directed) const
+                        boost::false_type) const
     {
         boost::connected_components(g, comp_map);
     }
