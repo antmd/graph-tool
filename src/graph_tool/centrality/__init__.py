@@ -50,6 +50,7 @@ from .. dl_import import dl_import
 dl_import("from . import libgraph_tool_centrality")
 
 from .. import _prop, ungroup_vector_property
+from .. topology import shortest_distance
 import sys
 import numpy
 
@@ -433,18 +434,18 @@ def closeness(g, weight=None, source=None, vprop=None, norm=True, harmonic=False
         return vprop
     else:
         max_dist = g.num_vertices() + 1
-        dist = shortest_distance(g, source=source, weight=weight,
+        dist = shortest_distance(g, source=source, weights=weight,
                                  max_dist=max_dist)
+        dists = dist.fa[(dist.fa < max_dist) * (dist.fa > 0)]
         if harmonic:
-            dists = dist.fa[(dist.fa < max_dist) * (dist.fa > 0)]
             c = (1. / dists).sum()
             if norm:
                 c /= g.num_vertices() - 1
         else:
-            dists = dist.fa[(dist.fa < max_dist) * (dist.fa > 0)]
             c = 1. / dists.sum()
             if norm:
-                c /= len(dists)
+                c *= len(dists)
+        return c
 
 
 def central_point_dominance(g, betweenness):
