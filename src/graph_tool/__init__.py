@@ -863,6 +863,8 @@ def edge_difference(g, prop, ediff=None):
     if ediff.value_type() != val_t:
         raise ValueError("'ediff' must be of the same value type as 'prop': " +
                          val_t)
+    if not g.is_directed():
+        g = GraphView(g, directed=True)
     libcore.edge_difference(g._Graph__graph, _prop("v", g, prop),
                             _prop("e", g, ediff))
     return ediff
