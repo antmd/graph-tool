@@ -29,51 +29,51 @@ public:
 
 
     template <class Vertex, class Graph>
-    void initialize_vertex(Vertex u, const Graph& g)
+    void initialize_vertex(Vertex u, const Graph&)
     {
         _vis.attr("initialize_vertex")(PythonVertex(_gi, u));
     }
     template <class Vertex, class Graph>
-    void start_vertex(Vertex u, const Graph& g)
+    void start_vertex(Vertex u, const Graph&)
     {
         _vis.attr("start_vertex")(PythonVertex(_gi, u));
     }
     template <class Vertex, class Graph>
-    void discover_vertex(Vertex u, const Graph& g)
+    void discover_vertex(Vertex u, const Graph&)
     {
         _vis.attr("discover_vertex")(PythonVertex(_gi, u));
     }
 
     template <class Edge, class Graph>
-    void examine_edge(Edge e, const Graph& g)
+    void examine_edge(Edge e, const Graph&)
     {
         _vis.attr("examine_edge")
             (PythonEdge<Graph>(_gi, e));
     }
 
     template <class Edge, class Graph>
-    void tree_edge(Edge e, const Graph& g)
+    void tree_edge(Edge e, const Graph&)
     {
         _vis.attr("tree_edge")
             (PythonEdge<Graph>(_gi, e));
     }
 
     template <class Edge, class Graph>
-    void back_edge(Edge e, const Graph& g)
+    void back_edge(Edge e, const Graph&)
     {
         _vis.attr("back_edge")
             (PythonEdge<Graph>(_gi, e));
     }
 
     template <class Edge, class Graph>
-    void forward_or_cross_edge(Edge e, const Graph& g)
+    void forward_or_cross_edge(Edge e, const Graph&)
     {
         _vis.attr("forward_or_cross_edge")
             (PythonEdge<Graph>(_gi, e));
     }
 
     template <class Vertex, class Graph>
-    void finish_vertex(Vertex u, const Graph& g)
+    void finish_vertex(Vertex u, const Graph&)
     {
         _vis.attr("finish_vertex")(PythonVertex(_gi, u));
     }
@@ -84,30 +84,14 @@ private:
 
 struct do_dfs
 {
-    template <class Graph, class EdgeIndexMap>
-    void operator()(Graph& g, EdgeIndexMap edge_index, size_t num_e, size_t s,
+    template <class Graph, class VertexIndexMap>
+    void operator()(Graph& g, VertexIndexMap vertex_index, size_t s,
                     DFSVisitorWrapper vis) const
     {
-        dfs_dispatch(g, edge_index, num_e, s, vis,
-                     typename is_directed::apply<Graph>::type());
-    }
-
-    template <class Graph, class EdgeIndexMap>
-    void dfs_dispatch(Graph& g, EdgeIndexMap edge_index, size_t num_e, size_t s,
-                      DFSVisitorWrapper vis, mpl::true_ is_directed) const
-    {
-        depth_first_search(g, visitor(vis).root_vertex(vertex(s, g)));
-    }
-
-    template <class Graph, class EdgeIndexMap>
-    void dfs_dispatch(Graph& g, EdgeIndexMap edge_index, size_t num_e, size_t s,
-                      DFSVisitorWrapper vis, mpl::false_ is_directed) const
-    {
         typename property_map_type::apply<default_color_type,
-                                          EdgeIndexMap>::type
-            ecolor(edge_index);
-        undirected_dfs(g, visitor(vis).edge_color_map(ecolor).
-                       root_vertex(vertex(s, g)));
+                                          VertexIndexMap>::type
+            color(vertex_index);
+        depth_first_visit(g, vertex(s, g), vis, color);
     }
 };
 
@@ -116,9 +100,8 @@ void dfs_search(GraphInterface& g, python::object gi, size_t s,
                 python::object vis)
 {
     run_action<graph_tool::detail::all_graph_views,mpl::true_>()
-        (g, bind<void>(do_dfs(), _1, g.GetEdgeIndex(),
-                       g.GetMaxEdgeIndex() + 1, s,
-                       DFSVisitorWrapper(gi, vis)))();
+        (g, bind<void>(do_dfs(), _1, g.GetVertexIndex(),
+                       s, DFSVisitorWrapper(gi, vis)))();
 }
 
 void export_dfs()
