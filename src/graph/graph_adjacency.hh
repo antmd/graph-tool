@@ -97,6 +97,9 @@ template <class Vertex>
 void remove_vertex(Vertex v, adj_list<Vertex>& g);
 
 template <class Vertex>
+void remove_vertex_fast(Vertex v, adj_list<Vertex>& g);
+
+template <class Vertex>
 std::pair<typename adj_list<Vertex>::edge_descriptor, bool>
 add_edge(Vertex s, Vertex t, adj_list<Vertex>& g);
 
@@ -293,6 +296,8 @@ private:
     friend void clear_vertex<>(Vertex v, adj_list<Vertex>& g);
 
     friend void remove_vertex<>(Vertex v, adj_list<Vertex>& g);
+
+    friend void remove_vertex_fast<>(Vertex v, adj_list<Vertex>& g);
 
     friend std::pair<edge_descriptor, bool>
     add_edge<>(Vertex s, Vertex t, adj_list<Vertex>& g);
@@ -525,14 +530,77 @@ inline void clear_vertex(Vertex v, adj_list<Vertex>& g)
     ies.clear();
 }
 
+// O(V + E)
 template <class Vertex>
 inline void remove_vertex(Vertex v, adj_list<Vertex>& g)
 {
     clear_vertex(v, g);
     g._out_edges.erase(g._out_edges.begin() + v);
     g._in_edges.erase(g._in_edges.begin() + v);
+
+    int i, N = g._out_edges.size();
+    #pragma omp parallel for default(shared) private(i)
+    for (i = 0; i < N; ++i)
+    {
+        for (size_t j = 0; j < g._out_edges[i].size(); ++j)
+        {
+            if (g._out_edges[i][j].first > v)
+                g._out_edges[i][j].first--;
+        }
+        for (size_t j = 0; j < g._in_edges[i].size(); ++j)
+        {
+            if (g._in_edges[i][j].first > v)
+                g._in_edges[i][j].first--;
+        }
+    }
 }
 
+// O(k + k_last)
+template <class Vertex>
+inline void remove_vertex_fast(Vertex v, adj_list<Vertex>& g)
+{
+    clear_vertex(v, g);
+    Vertex back = g._out_edges.size() - 1;
+
+    if (v < back)
+    {
+        g._out_edges[v].swap(g._out_edges[back]);
+        g._in_edges[v].swap(g._in_edges[back]);
+
+        for (size_t i = 0; i < g._out_edges[v].size(); ++i)
+        {
+            Vertex u = g._out_edges[v][i].first;
+            if (u == back)
+            {
+                g._out_edges[v][i].first = v;
+            }
+            else
+            {
+                for (size_t j = 0; j < g._in_edges[u].size(); ++j)
+                    if (g._in_edges[u][j].first == back)
+                        g._in_edges[u][j].first = v;
+            }
+        }
+
+        for (size_t i = 0; i < g._in_edges[v].size(); ++i)
+        {
+            Vertex u = g._in_edges[v][i].first;
+            if (u == back)
+            {
+                g._out_edges[v][i].first = v;
+            }
+            else
+            {
+                for (size_t j = 0; j < g._out_edges[u].size(); ++j)
+                    if (g._out_edges[u][j].first == back)
+                        g._out_edges[u][j].first = v;
+            }
+        }
+    }
+
+    g._out_edges.pop_back();
+    g._in_edges.pop_back();
+}
 
 template <class Vertex>
 inline typename std::pair<typename adj_list<Vertex>::edge_descriptor, bool>

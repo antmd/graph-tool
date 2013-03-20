@@ -1152,16 +1152,44 @@ class Graph(object):
             pos = self.num_vertices() - n
             return (self.vertex(i) for i in range(pos, pos + n))
 
-    def remove_vertex(self, vertex):
-        """Remove a vertex from the graph."""
+    def remove_vertex(self, vertex, fast=False):
+        r"""Remove a vertex from the graph.
+
+        .. note::
+
+            If the option ``fast == False`` is given, this operation is
+            :math:`O(N + E)` (this is the default). Otherwise it is
+            :math:`O(k + k_{\text{last}})`, where :math:`k` is the (total)
+            degree of the vertex being deleted, and :math:`k_{\text{last}}` is
+            the (total) degree of the vertex with the largest index.
+
+        .. warning::
+
+           If ``fast == True``, the vertex being deleted is 'swapped' with the
+           last vertex (i.e. with the largest index), which will in turn inherit
+           the index of the vertex being deleted. All property maps associated
+           with the graph will be properly updated, but the index ordering of
+           the graph will no longer be the same.
+
+        """
         self.__check_perms("del_vertex")
         vertex = self.vertex(int(vertex))
         index = self.vertex_index[vertex]
-        for pmap in self.__known_properties.values():
-            if pmap() is not None and pmap().key_type() == "v" and pmap().is_writable():
-                self.__graph.ShiftVertexProperty(pmap()._PropertyMap__map.get_map(), index)
-        self.clear_vertex(vertex)
-        libcore.remove_vertex(self.__graph, vertex)
+
+        self.stash_filter(vertex=True)
+        back = self.num_vertices() - 1
+        self.pop_filter(vertex=True)
+
+        # move / shift all known property maps
+        if index != back:
+            for pmap in self.__known_properties.values():
+                if pmap() is not None and pmap().key_type() == "v" and pmap().is_writable():
+                    if fast:
+                        self.__graph.MoveVertexProperty(pmap()._PropertyMap__map.get_map(), index)
+                    else:
+                        self.__graph.ShiftVertexProperty(pmap()._PropertyMap__map.get_map(), index)
+
+        libcore.remove_vertex(self.__graph, vertex, fast)
 
     def remove_vertex_if(self, predicate):
         """Remove all the vertices from the graph for which ``predicate(v)``

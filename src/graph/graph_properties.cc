@@ -72,6 +72,35 @@ void GraphInterface::ShiftVertexProperty(boost::any prop, size_t index) const
         throw GraphException("invalid writable property map");
 }
 
+struct move_vertex_property
+{
+    template <class PropertyMap>
+    void operator()(PropertyMap, const GraphInterface::multigraph_t& g,
+                    boost::any map, size_t vi, size_t back, bool& found) const
+    {
+        try
+        {
+            PropertyMap pmap = any_cast<PropertyMap>(map);
+            pmap[vertex(vi,g)] = pmap[vertex(back,g)];
+            found = true;
+        }
+        catch (bad_any_cast&) {}
+    }
+};
+
+// this function will move the back of the property map when a vertex in the middle is to be deleted
+void GraphInterface::MoveVertexProperty(boost::any prop, size_t index) const
+{
+    size_t back = num_vertices(*_mg) - 1;
+    bool found = false;
+    mpl::for_each<writable_vertex_properties>
+        (bind<void>(move_vertex_property(), _1, ref(*_mg),
+                    prop, index, back, ref(found)));
+    if (!found)
+        throw GraphException("invalid writable property map");
+}
+
+
 struct reindex_vertex_property
 {
     template <class PropertyMap, class IndexMap>

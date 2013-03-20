@@ -155,16 +155,17 @@ struct shift_vertex_property
     }
 };
 
-void remove_vertex(GraphInterface& gi, const python::object& v)
+void remove_vertex(GraphInterface& gi, const python::object& v, bool fast)
 {
     PythonVertex& pv = python::extract<PythonVertex&>(v);
     pv.CheckValid();
     GraphInterface::vertex_t dv = pv.GetDescriptor();
     pv.SetValid(false);
 
-    //remove vertex
-    clear_vertex(dv, gi.GetGraph());
-    remove_vertex(dv, gi.GetGraph());
+    if (fast)
+        remove_vertex_fast(dv, gi.GetGraph());
+    else
+        remove_vertex(dv, gi.GetGraph());
 }
 
 struct add_new_edge
