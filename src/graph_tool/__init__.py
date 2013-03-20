@@ -1191,15 +1191,6 @@ class Graph(object):
 
         libcore.remove_vertex(self.__graph, vertex, fast)
 
-    def remove_vertex_if(self, predicate):
-        """Remove all the vertices from the graph for which ``predicate(v)``
-        evaluates to ``True``. """
-        N = self.num_vertices()
-        for i in range(0, N):
-            v = self.vertex(N - i - 1)
-            if predicate(v):
-                self.remove_vertex(v)
-
     def clear_vertex(self, vertex):
         """Remove all in and out-edges from the given vertex."""
         del_es = set()
@@ -1223,17 +1214,6 @@ class Graph(object):
         """Remove an edge from the graph."""
         self.__check_perms("del_edge")
         return libcore.remove_edge(self.__graph, edge)
-
-    def remove_edge_if(self, predicate):
-        """Remove all edges from the graph, for which ``predicate(e)`` evaluates
-        to ``True``."""
-        for v in self.vertices():
-            del_es = []
-            for e in v.out_edges():
-                if predicate(e):
-                    del_es.append(e)
-            for e in del_es:
-                self.remove_edge(e)
 
     def clear(self):
         """Remove all vertices and edges from the graph."""

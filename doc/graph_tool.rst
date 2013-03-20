@@ -36,14 +36,12 @@
 
        .. automethod:: add_vertex
        .. automethod:: remove_vertex
-       .. automethod:: remove_vertex_if
 
        The following functions allow for addition and removal of
        edges in the graph.
 
        .. automethod:: add_edge
        .. automethod:: remove_edge
-       .. automethod:: remove_edge_if
 
        The following functions allow for easy removal of vertices of
        edges from the graph.
