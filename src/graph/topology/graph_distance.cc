@@ -34,8 +34,9 @@ class bfs_max_visitor:
     public boost::bfs_visitor<null_visitor>
 {
 public:
-    bfs_max_visitor(DistMap dist_map, PredMap pred, size_t max_dist)
-        : _dist_map(dist_map), _pred(pred), _max_dist(max_dist), _dist(0) {}
+    bfs_max_visitor(DistMap dist_map, PredMap pred, size_t max_dist, size_t target)
+        : _dist_map(dist_map), _pred(pred), _max_dist(max_dist), _target(target),
+          _dist(0) {}
 
     template <class Graph>
     void tree_edge(typename graph_traits<Graph>::edge_descriptor e,
@@ -54,12 +55,16 @@ public:
         if (dist > _max_dist)
             throw stop_search();
         _dist_map[v] = dist;
+
+        if (v == _target)
+            throw stop_search();
     }
 
 private:
     DistMap _dist_map;
     PredMap _pred;
     size_t _max_dist;
+    size_t _target;
     size_t _dist;
 };
 
@@ -69,12 +74,12 @@ class djk_max_visitor:
 {
 public:
     djk_max_visitor(DistMap dist_map,
-                    typename property_traits<DistMap>::value_type max_dist)
-        : _dist_map(dist_map), _max_dist(max_dist) {}
+                    typename property_traits<DistMap>::value_type max_dist, size_t target)
+        : _dist_map(dist_map), _max_dist(max_dist), _target(target) {}
 
     template <class Graph>
-    void examine_vertex(typename graph_traits<Graph>::vertex_descriptor u,
-                        Graph&)
+    void discover_vertex(typename graph_traits<Graph>::vertex_descriptor u,
+                         Graph&)
     {
         if (_dist_map[u] > _max_dist)
         {
@@ -82,35 +87,27 @@ public:
             _dist_map[u] = numeric_limits<d_type>::max();
             throw stop_search();
         }
+        if (u == _target)
+            throw stop_search();
     }
 
 private:
     DistMap _dist_map;
     typename property_traits<DistMap>::value_type _max_dist;
+    size_t _target;
 };
 
 
 struct do_bfs_search
 {
     template <class Graph, class VertexIndexMap, class DistMap, class PredMap>
-    void operator()(const Graph& g, size_t source, VertexIndexMap vertex_index,
-                    DistMap dist_map, PredMap pred_map, long double max_dist)
-        const
+    void operator()(const Graph& g, size_t source, size_t target,
+                    VertexIndexMap vertex_index, DistMap dist_map,
+                    PredMap pred_map, long double max_dist) const
     {
         typedef typename property_traits<DistMap>::value_type dist_t;
         dist_t max_d = (max_dist > 0) ?
             max_dist : numeric_limits<dist_t>::max();
-
-        int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
-        for (i = 0; i < N; ++i)
-        {
-            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
-            if (v == graph_traits<Graph>::null_vertex())
-                continue;
-            dist_map[v] = numeric_limits<dist_t>::max();
-        }
-        dist_map[vertex(source,g)] = 0;
 
         pred_map[vertex(source, g)] = vertex(source, g);
         unchecked_vector_property_map<boost::default_color_type, VertexIndexMap>
@@ -119,7 +116,7 @@ struct do_bfs_search
         {
             breadth_first_search(g, vertex(source, g),
                                  visitor(bfs_max_visitor<DistMap, PredMap>
-                                         (dist_map, pred_map, max_d)).
+                                         (dist_map, pred_map, max_d, target)).
                                  vertex_index_map(vertex_index).
                                  color_map(color_map));
         }
@@ -131,9 +128,9 @@ struct do_djk_search
 {
     template <class Graph, class VertexIndexMap, class DistMap, class PredMap,
               class WeightMap>
-    void operator()(const Graph& g, size_t source, VertexIndexMap vertex_index,
-                    DistMap dist_map, PredMap pred_map, WeightMap weight,
-                    long double max_dist) const
+    void operator()(const Graph& g, size_t source, size_t target,
+                    VertexIndexMap vertex_index, DistMap dist_map,
+                    PredMap pred_map, WeightMap weight, long double max_dist) const
     {
         typedef typename property_traits<DistMap>::value_type dist_t;
         dist_t max_d = (max_dist > 0) ?
@@ -147,13 +144,13 @@ struct do_djk_search
                                     vertex_index_map(vertex_index).
                                     predecessor_map(pred_map).
                                     visitor(djk_max_visitor<DistMap>
-                                            (dist_map, max_d)));
+                                            (dist_map, max_d, target)));
         }
         catch (stop_search&) {}
     }
 };
 
-void get_dists(GraphInterface& gi, size_t source, boost::any dist_map,
+void get_dists(GraphInterface& gi, size_t source, int tgt, boost::any dist_map,
                boost::any weight, boost::any pred_map, long double max_dist)
 {
     typedef property_map_type
@@ -161,10 +158,12 @@ void get_dists(GraphInterface& gi, size_t source, boost::any dist_map,
 
     pred_map_t pmap = any_cast<pred_map_t>(pred_map);
 
+    size_t target = tgt < 0 ? graph_traits<GraphInterface::multigraph_t>::null_vertex() : tgt;
+
     if (weight.empty())
     {
         run_action<>()
-            (gi, bind<void>(do_bfs_search(), _1, source, gi.GetVertexIndex(),
+            (gi, bind<void>(do_bfs_search(), _1, source, target, gi.GetVertexIndex(),
                             _2, pmap.get_unchecked(num_vertices(gi.GetGraph())),
                             max_dist),
              writable_vertex_scalar_properties(),
@@ -174,7 +173,7 @@ void get_dists(GraphInterface& gi, size_t source, boost::any dist_map,
     else
     {
         run_action<>()
-            (gi, bind<void>(do_djk_search(), _1, source, gi.GetVertexIndex(),
+            (gi, bind<void>(do_djk_search(), _1, source, target, gi.GetVertexIndex(),
                             _2, pmap.get_unchecked(num_vertices(gi.GetGraph())),
                             _3, max_dist),
              writable_vertex_scalar_properties(),

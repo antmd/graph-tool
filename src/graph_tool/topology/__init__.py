@@ -1006,12 +1006,13 @@ def kcore_decomposition(g, deg="out", vprop=None):
     return vprop
 
 
-def shortest_distance(g, source=None, weights=None, max_dist=None,
+def shortest_distance(g, source=None, target=None, weights=None, max_dist=None,
                       directed=None, dense=False, dist_map=None,
                       pred_map=False):
     """
-    Calculate the distance of all vertices from a given source, or the all pairs
-    shortest paths, if the source is not specified.
+    Calculate the distance from a source to a target vertex, or to of all
+    vertices from a given source, or the all pairs shortest paths, if the source
+    is not specified.
 
     Parameters
     ----------
@@ -1020,6 +1021,9 @@ def shortest_distance(g, source=None, weights=None, max_dist=None,
     source : :class:`~graph_tool.Vertex` (optional, default: None)
         Source vertex of the search. If unspecified, the all pairs shortest
         distances are computed.
+    target : :class:`~graph_tool.Vertex` (optional, default: None)
+        Target vertex of the search. If unspecified, the distance to all
+        vertices from the source will be computed.
     weights : :class:`~graph_tool.PropertyMap` (optional, default: None)
         The edge weights. If provided, the minimum spanning tree will minimize
         the edge weights.
@@ -1147,10 +1151,15 @@ def shortest_distance(g, source=None, weights=None, max_dist=None,
         g.stash_filter(directed=True)
         g.set_directed(directed)
 
+    if target is None:
+        target = -1
+
     try:
         if source is not None:
             pmap = g.copy_property(g.vertex_index, value_type="int64_t")
-            libgraph_tool_topology.get_dists(g._Graph__graph, int(source),
+            libgraph_tool_topology.get_dists(g._Graph__graph,
+                                             int(source),
+                                             int(target),
                                              _prop("v", g, dist_map),
                                              _prop("e", g, weights),
                                              _prop("v", g, pmap),
@@ -1163,6 +1172,10 @@ def shortest_distance(g, source=None, weights=None, max_dist=None,
     finally:
         if directed is not None:
             g.pop_filter(directed=True)
+
+    if source is not None and target != -1:
+        dist_map = dist_map[target]
+
     if source is not None and pred_map:
         return dist_map, pmap
     else:
@@ -1233,10 +1246,11 @@ def shortest_path(g, source, target, weights=None, pred_map=None):
     """
 
     if pred_map is None:
-        pred_map = shortest_distance(g, source, weights=weights,
+        pred_map = shortest_distance(g, source, target,
+                                     weights=weights,
                                      pred_map=True)[1]
 
-    if pred_map[target] == int(target):  # no path to source
+    if pred_map[target] == int(target):  # no path to target
         return [], []
 
     vlist = [target]
