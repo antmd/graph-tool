@@ -1029,7 +1029,7 @@ def shortest_distance(g, source=None, target=None, weights=None, max_dist=None,
         the edge weights.
     max_dist : scalar value (optional, default: None)
         If specified, this limits the maximum distance of the vertices
-        are searched. This parameter has no effect if source is None.
+        searched. This parameter has no effect if source is None.
     directed : bool (optional, default:None)
         Treat graph as directed or not, independently of its actual
         directionality.

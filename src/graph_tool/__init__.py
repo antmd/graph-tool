@@ -1157,11 +1157,11 @@ class Graph(object):
 
         .. note::
 
-            If the option ``fast == False`` is given, this operation is
-            :math:`O(N + E)` (this is the default). Otherwise it is
-            :math:`O(k + k_{\text{last}})`, where :math:`k` is the (total)
-            degree of the vertex being deleted, and :math:`k_{\text{last}}` is
-            the (total) degree of the vertex with the largest index.
+           If the option ``fast == False`` is given, this operation is
+           :math:`O(N + E)` (this is the default). Otherwise it is
+           :math:`O(k + k_{\text{last}})`, where :math:`k` is the (total)
+           degree of the vertex being deleted, and :math:`k_{\text{last}}` is
+           the (total) degree of the vertex with the largest index.
 
         .. warning::
 
