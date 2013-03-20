@@ -109,6 +109,12 @@ struct do_bfs_search
         dist_t max_d = (max_dist > 0) ?
             max_dist : numeric_limits<dist_t>::max();
 
+        int i, N = num_vertices(g);
+        #pragma omp parallel for default(shared) private(i)
+        for (i = 0; i < N; ++i)
+            dist_map[i] = numeric_limits<dist_t>::max();
+        dist_map[source] = 0;
+
         pred_map[vertex(source, g)] = vertex(source, g);
         unchecked_vector_property_map<boost::default_color_type, VertexIndexMap>
             color_map(vertex_index, num_vertices(g));
@@ -135,6 +141,12 @@ struct do_djk_search
         typedef typename property_traits<DistMap>::value_type dist_t;
         dist_t max_d = (max_dist > 0) ?
             max_dist : numeric_limits<dist_t>::max();
+
+        int i, N = num_vertices(g);
+        #pragma omp parallel for default(shared) private(i)
+        for (i = 0; i < N; ++i)
+            dist_map[i] = numeric_limits<dist_t>::max();
+        dist_map[source] = 0;
 
         try
         {
