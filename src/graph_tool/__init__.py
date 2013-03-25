@@ -908,6 +908,11 @@ class PropertyDict(dict):
         self.del_func(self.g, key)
         dict.__delitem__(self, key)
 
+    def clear(self):
+        for k in self.keys():
+            self.del_func(self.g, k)
+        dict.clear(self)
+
 ################################################################################
 # Graph class
 # The main graph interface
