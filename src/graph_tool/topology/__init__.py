@@ -489,7 +489,9 @@ def random_spanning_tree(g, weights=None, root=None, tree_map=None):
 
     # we need to restrict ourselves to the in-component of root
     l = label_out_component(GraphView(g, reversed=True), root)
-    g = GraphView(g, vfilt=l)
+    u = GraphView(g, vfilt=l)
+    if u.num_vertices() != g.num_vertices():
+        raise ValueError("There must be a path from all vertices to the root vertex: %d" % int(root) )
 
     libgraph_tool_topology.\
         random_spanning_tree(g._Graph__graph, int(root),
