@@ -1506,10 +1506,16 @@ class Graph(object):
             raise ValueError("cannot determine file format of: " + file_name)
         return fmt
 
-    def load(self, file_name, fmt="auto"):
+    def load(self, file_name, fmt="auto", ignore_vp=None, ignore_ep=None,
+             ignore_gp=None):
         """Load graph from ``file_name`` (which can be either a string or a
         file-like object). The format is guessed from ``file_name``, or can be
-        specified by ``fmt``, which can be either "xml", "dot" or "gml". """
+        specified by ``fmt``, which can be either "xml", "dot" or "gml".
+
+        If provided, the parameters ``ignore_vp``, ``ignore_ep`` and
+        ``ignore_gp``, should contain a list of property names (vertex, edge or
+        graph, respectively) which should be ignored when reading the file.
+        """
 
         if type(file_name) == str:
             file_name = os.path.expanduser(file_name)
@@ -1517,10 +1523,18 @@ class Graph(object):
             fmt = self.__get_file_format(file_name)
         elif fmt == "auto":
             fmt = "xml"
+        if ignore_vp is None:
+            ignore_vp = []
+        if ignore_ep is None:
+            ignore_ep = []
+        if ignore_gp is None:
+            ignore_gp = []
         if isinstance(file_name, str):
-            props = self.__graph.ReadFromFile(file_name, None, fmt)
+            props = self.__graph.ReadFromFile(file_name, None, fmt, ignore_vp,
+                                              ignore_ep, ignore_gp)
         else:
-            props = self.__graph.ReadFromFile("", file_name, fmt)
+            props = self.__graph.ReadFromFile("", file_name, fmt, ignore_vp,
+                                              ignore_ep, ignore_gp)
         for name, prop in props[0].items():
             self.vertex_properties[name] = PropertyMap(prop, self, "v")
         for name, prop in props[1].items():
@@ -1794,15 +1808,20 @@ class Graph(object):
             self.load(stream, "xml")
 
 
-def load_graph(file_name, fmt="auto"):
+def load_graph(file_name, fmt="auto", ignore_vp=None, ignore_ep=None,
+               ignore_gp=None):
     """
     Load a graph from ``file_name`` (which can be either a string or a file-like object).
 
     The format is guessed from ``file_name``, or can be specified by
     ``fmt``, which can be either "xml", "dot" or "gml".
+
+    If provided, the parameters ``ignore_vp``, ``ignore_ep`` and
+    ``ignore_gp``, should contain a list of property names (vertex, edge or
+    graph, respectively) which should be ignored when reading the file.
     """
     g = Graph()
-    g.load(file_name, fmt)
+    g.load(file_name, fmt, ignore_vp, ignore_ep, ignore_gp)
     return g
 
 

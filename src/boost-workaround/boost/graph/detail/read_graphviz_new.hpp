@@ -105,8 +105,13 @@ template <typename MutableGraph>
 bool read_graphviz(const std::string& str,
                    MutableGraph& graph, boost::dynamic_properties& dp,
                    std::string const& node_id = "node_id",
-                   bool ignore_directedness = false) {
-  boost::detail::graph::mutate_graph_impl<MutableGraph> mg(graph, dp, node_id);
+                   bool ignore_directedness = false,
+                   std::set<std::string> ignore_vp = std::set<std::string>(),
+                   std::set<std::string> ignore_ep = std::set<std::string>(),
+                   std::set<std::string> ignore_gp = std::set<std::string>()) {
+  boost::detail::graph::mutate_graph_impl<MutableGraph> mg(graph, dp, node_id,
+                                                           ignore_vp, ignore_ep,
+                                                           ignore_gp);
   return detail::graph::read_graphviz(str, &mg, ignore_directedness);
 }
 
@@ -114,9 +119,12 @@ template <typename InputIter, typename MutableGraph>
 bool read_graphviz(InputIter begin, InputIter end,
                    MutableGraph& graph, boost::dynamic_properties& dp,
                    std::string const& node_id = "node_id",
-                   bool ignore_directedness = false) {
+                   bool ignore_directedness = false,
+                   std::set<std::string> ignore_vp = std::set<std::string>(),
+                   std::set<std::string> ignore_ep = std::set<std::string>(),
+                   std::set<std::string> ignore_gp = std::set<std::string>()) {
    return read_graphviz(std::string(begin, end), graph, dp, node_id,
-                        ignore_directedness);
+                        ignore_directedness, ignore_vp, ignore_ep, ignore_gp);
 }
 
 } // namespace boost

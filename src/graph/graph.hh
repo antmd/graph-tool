@@ -119,7 +119,9 @@ public:
     // I/O
     void WriteToFile(string s, python::object pf, string format,
                      python::list properties);
-    python::tuple ReadFromFile(string s, python::object pf, string format);
+    python::tuple ReadFromFile(string s, python::object pf, string format,
+                               python::list ignore_vp, python::list ignore_ep,
+                               python::list ignore_gp);
 
     //
     // Internal types

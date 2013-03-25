@@ -70,8 +70,12 @@ template <class Graph>
 class gml_state
 {
 public:
-    gml_state(Graph& g, dynamic_properties& dp)
-        : _g(g), _dp(dp), _directed(false) {}
+    gml_state(Graph& g, dynamic_properties& dp,
+              std::set<std::string> ignore_vp = std::set<std::string>(),
+              std::set<std::string> ignore_ep = std::set<std::string>(),
+              std::set<std::string> ignore_gp = std::set<std::string>())
+        : _g(g), _dp(dp), _directed(false), _ignore_vp(ignore_vp),
+          _ignore_ep(ignore_ep), _ignore_gp(ignore_gp) {}
 
     typedef boost::variant<std::string, int, double> val_t;
 
@@ -120,6 +124,8 @@ public:
             {
                 if (iter->first == "id")
                     continue;
+                if (_ignore_vp.find(iter->first) != _ignore_vp.end())
+                    continue;
                 try
                 {
                     put(iter->first, _dp, v, boost::get<string>(iter->second));
@@ -161,6 +167,8 @@ public:
             {
                 if (iter->first == "id" || iter->first == "source" || iter->first == "target")
                     continue;
+                if (_ignore_ep.find(iter->first) != _ignore_ep.end())
+                    continue;
                 try
                 {
                     put(iter->first, _dp, e, boost::get<string>(iter->second));
@@ -180,6 +188,8 @@ public:
             {
                 if (iter->first == "directed")
                     _directed = boost::get<double>(iter->second);
+                if (_ignore_gp.find(iter->first) != _ignore_gp.end())
+                    continue;
                 try
                 {
                     put(iter->first, _dp, graph_property_tag(), boost::get<string>(iter->second));
@@ -217,13 +227,21 @@ private:
     // the stack holds the keys, and its properties (but omits nested lists)
     typedef tr1::unordered_map<std::string, val_t> prop_list_t;
     vector<pair<std::string,  prop_list_t> > _stack;
+
+    std::set<std::string> _ignore_vp;
+    std::set<std::string> _ignore_ep;
+    std::set<std::string> _ignore_gp;
 };
 
 
 template <class Iterator, class Graph, class Skipper>
 struct gml : spirit::qi::grammar<Iterator, void(), Skipper>
 {
-    gml(Graph& g, dynamic_properties& dp) : gml::base_type(start), _state(g, dp)
+    gml(Graph& g, dynamic_properties& dp,
+        std::set<std::string> ignore_vp = std::set<std::string>(),
+        std::set<std::string> ignore_ep = std::set<std::string>(),
+        std::set<std::string> ignore_gp = std::set<std::string>())
+        : gml::base_type(start), _state(g, dp, ignore_vp, ignore_ep, ignore_gp)
     {
         using namespace spirit;
         using spirit::ascii::char_;
@@ -258,10 +276,14 @@ struct gml : spirit::qi::grammar<Iterator, void(), Skipper>
 
 template <class Iterator, class Graph, class Skipper>
 bool parse_grammar(Iterator begin, Iterator end, Graph& g,
-                   dynamic_properties& dp, Skipper skip)
+                   dynamic_properties& dp, Skipper skip,
+                   std::set<std::string> ignore_vp = std::set<std::string>(),
+                   std::set<std::string> ignore_ep = std::set<std::string>(),
+                   std::set<std::string> ignore_gp = std::set<std::string>())
 {
     using namespace spirit;
-    gml<spirit::istream_iterator, Graph, Skipper> parser(g, dp);
+    gml<spirit::istream_iterator, Graph, Skipper> parser(g, dp, ignore_vp,
+                                                         ignore_ep, ignore_gp);
     bool ok = qi::phrase_parse(begin, end, parser, skip);
     if (!ok)
         throw gml_parse_error("invalid syntax");
@@ -270,7 +292,10 @@ bool parse_grammar(Iterator begin, Iterator end, Graph& g,
 
 
 template <class Graph>
-bool read_gml(istream& in, Graph& g, dynamic_properties& dp)
+bool read_gml(istream& in, Graph& g, dynamic_properties& dp,
+              std::set<std::string> ignore_vp = std::set<std::string>(),
+              std::set<std::string> ignore_ep = std::set<std::string>(),
+              std::set<std::string> ignore_gp = std::set<std::string>())
 {
     using namespace spirit;
 
@@ -280,11 +305,9 @@ bool read_gml(istream& in, Graph& g, dynamic_properties& dp)
 
     bool directed =
         parse_grammar(begin, end, g, dp,
-                      (ascii::space |'#' >> *(ascii::char_ - qi::eol) >> qi::eol));
+                      (ascii::space |'#' >> *(ascii::char_ - qi::eol) >> qi::eol),
+                      ignore_vp, ignore_ep, ignore_gp);
 
-    in >> std::noskipws;
-    std::stringstream input;
-    input << in.rdbuf();
     return directed;
 }
 

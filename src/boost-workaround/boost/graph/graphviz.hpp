@@ -723,8 +723,13 @@ class mutate_graph_impl : public mutate_graph
 
  public:
   mutate_graph_impl(MutableGraph& graph, dynamic_properties& dp,
-                    std::string node_id_prop)
-    : graph_(graph), dp_(dp), node_id_prop_(node_id_prop) { }
+                    std::string node_id_prop,
+                    std::set<std::string> ignore_vp,
+                    std::set<std::string> ignore_ep,
+                    std::set<std::string> ignore_gp)
+    : graph_(graph), dp_(dp), node_id_prop_(node_id_prop),
+      m_ignore_vp(ignore_vp), m_ignore_ep(ignore_ep),
+      m_ignore_gp(ignore_gp) { }
 
   ~mutate_graph_impl() {}
 
@@ -765,18 +770,24 @@ class mutate_graph_impl : public mutate_graph
   void
   set_node_property(const id_t& key, const node_t& node, const id_t& value)
   {
+    if (m_ignore_vp.find(key) != m_ignore_vp.end())
+        return;
     put(key, dp_, bgl_nodes[node], value);
   }
 
   void
   set_edge_property(const id_t& key, const edge_t& edge, const id_t& value)
   {
+    if (m_ignore_ep.find(key) != m_ignore_ep.end())
+        return;
     put(key, dp_, bgl_edges[edge], value);
   }
 
   void
   set_graph_property(const id_t& key, const id_t& value)
   {
+    if (m_ignore_gp.find(key) != m_ignore_gp.end())
+        return;
     /* RG: pointer to graph prevents copying */
     put(key, dp_, &graph_, value);
   }
@@ -788,6 +799,9 @@ class mutate_graph_impl : public mutate_graph
   std::string node_id_prop_;
   std::map<node_t, bgl_vertex_t> bgl_nodes;
   std::map<edge_t, bgl_edge_t> bgl_edges;
+  std::set<std::string> m_ignore_vp;
+  std::set<std::string> m_ignore_ep;
+  std::set<std::string> m_ignore_gp;
 };
 
 BOOST_GRAPH_DECL
@@ -800,14 +814,18 @@ template <typename MutableGraph>
 bool read_graphviz(std::istream& in, MutableGraph& graph,
                    dynamic_properties& dp,
                    std::string const& node_id = "node_id",
-                   bool ignore_directedness = false)
+                   bool ignore_directedness = false,
+                   std::set<std::string> ignore_vp = std::set<std::string>(),
+                   std::set<std::string> ignore_ep = std::set<std::string>(),
+                   std::set<std::string> ignore_gp = std::set<std::string>())
 {
   std::string data;
   in >> std::noskipws;
   std::copy(std::istream_iterator<char>(in),
             std::istream_iterator<char>(),
             std::back_inserter(data));
-  return read_graphviz(data,graph,dp,node_id,ignore_directedness);
+  return read_graphviz(data,graph,dp,node_id,ignore_directedness,ignore_vp,
+                       ignore_ep,ignore_gp);
 }
 
 } // namespace boost

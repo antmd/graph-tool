@@ -308,7 +308,10 @@ void build_stream
 
 
 python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
-                                           string format)
+                                           string format,
+                                           python::list ignore_vp,
+                                           python::list ignore_ep,
+                                           python::list ignore_gp)
 {
     if (format != "dot" && format != "xml" && format != "gml")
         throw ValueException("error reading from file '" + file +
@@ -320,17 +323,27 @@ python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
         std::ifstream file_stream;
         build_stream(stream, file, pfile, file_stream);
 
+        set<string> ivp, iep, igp;
+        for (int i = 0; i < len(ignore_vp); ++i)
+            ivp.insert(python::extract<string>(ignore_vp[i]));
+        for (int i = 0; i < len(ignore_ep); ++i)
+            iep.insert(python::extract<string>(ignore_ep[i]));
+        for (int i = 0; i < len(ignore_gp); ++i)
+            igp.insert(python::extract<string>(ignore_gp[i]));
+
         create_dynamic_map<vertex_index_map_t,edge_index_map_t>
             map_creator(_vertex_index, _edge_index);
         dynamic_properties dp(map_creator);
         *_mg = multigraph_t();
 
         if (format == "dot")
-            _directed = read_graphviz(stream, *_mg, dp, "vertex_name", true);
+            _directed = read_graphviz(stream, *_mg, dp, "vertex_name", true,
+                                     ivp, iep, igp);
         else if (format == "xml")
-            _directed = read_graphml(stream, *_mg, dp, true, true);
+            _directed = read_graphml(stream, *_mg, dp, true, true, true,
+                                     ivp, iep, igp);
         else if (format == "gml")
-            _directed = read_gml(stream, *_mg, dp);
+            _directed = read_gml(stream, *_mg, dp, ivp, iep, igp);
 
         python::dict vprops, eprops, gprops;
         for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)

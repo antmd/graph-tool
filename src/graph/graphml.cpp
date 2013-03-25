@@ -34,8 +34,9 @@ std::string protect_xml_string(const std::string& os)
 class graphml_reader
 {
 public:
-    graphml_reader(mutate_graph& g, bool store_ids)
-        : m_g(g), m_canonical_vertices(false), m_store_ids(store_ids) { }
+    graphml_reader(mutate_graph& g, bool integer_vertices, bool store_ids)
+        : m_g(g), m_canonical_vertices(false),
+          m_integer_vertices(integer_vertices), m_store_ids(store_ids) { }
 
     void run(std::istream& in)
     {
@@ -77,6 +78,14 @@ private:
         all_key
     };
 
+    enum desc_kind
+    {
+        M_VERTEX_DESCRIPTOR,
+        M_EDGE_DESCRIPTOR,
+        M_GRAPH_DESCRIPTOR
+    };
+
+
     static void
     on_start_element(void* user_data, const XML_Char *c_name,
                      const XML_Char **atts)
@@ -113,8 +122,8 @@ private:
                 }
             }
 
-            self->m_active_descriptor = self->m_edge.size();
-            self->handle_edge(id, source, target);
+            self->m_active_descriptor = self->handle_edge(id, source, target);
+            self->m_descriptor_kind = M_EDGE_DESCRIPTOR;
         }
         else if (name == "node")
         {
@@ -128,8 +137,8 @@ private:
                 if (name == "id") id = value;
             }
 
-            self->handle_vertex(id);
-            self->m_active_descriptor = id;
+            self->m_active_descriptor = self->handle_vertex(id);
+            self->m_descriptor_kind = M_VERTEX_DESCRIPTOR;
         }
         else if (name == "data")
         {
@@ -212,7 +221,8 @@ private:
                     self->m_canonical_edges = (value == "canonical");
                 }
             }
-            self->m_active_descriptor = "";
+            self->m_active_descriptor = any();
+            self->m_descriptor_kind = M_GRAPH_DESCRIPTOR;
         }
 
         self->m_character_data.clear();
@@ -228,8 +238,21 @@ private:
 
         if (name == "data")
         {
-            self->handle_property(self->m_active_key, self->m_active_descriptor,
-                                  self->m_character_data);
+            switch (self->m_descriptor_kind)
+            {
+            case M_VERTEX_DESCRIPTOR:
+                self->handle_vertex_property(self->m_active_key, self->m_active_descriptor,
+                                             self->m_character_data);
+                break;
+            case M_EDGE_DESCRIPTOR:
+                self->handle_edge_property(self->m_active_key, self->m_active_descriptor,
+                                           self->m_character_data);
+                break;
+            case M_GRAPH_DESCRIPTOR:
+                self->handle_graph_property(self->m_active_key, self->m_active_descriptor,
+                                             self->m_character_data);
+                break;
+            }
         }
         else if (name == "default")
         {
@@ -244,7 +267,7 @@ private:
         self->m_character_data.append(s, len);
     }
 
-    void
+    any
     handle_vertex(const std::string& v)
     {
         bool is_new = false;
@@ -267,10 +290,19 @@ private:
                 throw parse_error(s.str());
             }
 
-            while(id >= m_canonical_vertex.size())
+            if (m_integer_vertices)
             {
-                m_canonical_vertex.push_back(m_g.do_add_vertex());
-                is_new = true;
+                is_new = (m_g.n_vertices() <= id);
+                for (size_t i = m_g.n_vertices(); i <= id; ++i)
+                    m_g.do_add_vertex();
+            }
+            else
+            {
+                while(id >= m_canonical_vertex.size())
+                {
+                    m_canonical_vertex.push_back(m_g.do_add_vertex());
+                    is_new = true;
+                }
             }
         }
         else
@@ -282,6 +314,7 @@ private:
             }
         }
 
+        any vd = get_vertex_descriptor(v);
         if (is_new)
         {
             std::map<std::string, std::string>::iterator iter;
@@ -289,13 +322,13 @@ private:
                  ++iter)
             {
                 if (m_keys[iter->first] == node_key)
-                    handle_property(iter->first, v, iter->second);
+                    handle_vertex_property(iter->first, vd, iter->second);
             }
             if (m_store_ids && !m_canonical_vertices)
                 m_g.set_vertex_property("_graphml_vertex_id",
-                                        get_vertex_descriptor(v),
-                                        v, "string");
+                                        vd, v, "string");
         }
+        return vd;
     }
 
     any
@@ -305,6 +338,8 @@ private:
         {
             //strip leading "n" from name
             size_t id = lexical_cast<size_t>(std::string(v,1));
+            if (m_integer_vertices)
+                return id;
             return m_canonical_vertex[id];
         }
         else
@@ -313,7 +348,7 @@ private:
         }
     }
 
-    void
+    any
     handle_edge(const std::string& id, const std::string& u,
                 const std::string& v)
     {
@@ -330,46 +365,27 @@ private:
         if (!added)
             throw bad_parallel_edge(u, v);
 
-        size_t e = m_edge.size();
-        m_edge.push_back(edge);
-
         std::map<std::string, std::string>::iterator iter;
         for (iter = m_key_default.begin(); iter != m_key_default.end(); ++iter)
         {
             if (m_keys[iter->first] == edge_key)
-                handle_property(iter->first, e, iter->second);
+                handle_edge_property(iter->first, edge, iter->second);
         }
 
         if (m_store_ids && !m_canonical_edges)
-            m_g.set_edge_property("_graphml_edge_id", get_edge_descriptor(e),
-                                  id, "string");
+            m_g.set_edge_property("_graphml_edge_id", edge, id, "string");
 
+        return edge;
     }
 
-    void handle_property(const std::string& key_id,
-                         const variant<std::string,size_t>& descriptor,
-                         const std::string& value)
+    void handle_edge_property(const std::string& key_id,
+                              const any& descriptor,
+                              const std::string& value)
     {
         try
         {
-            if (get<std::string>(&descriptor))
-            {
-                if (get<std::string>(descriptor) == "")
-                    m_g.set_graph_property(m_key_name[key_id], value,
-                                           m_key_type[key_id]);
-                else
-                    m_g.set_vertex_property(m_key_name[key_id],
-                                            get_vertex_descriptor
-                                                (get<std::string>(descriptor)),
-                                            value, m_key_type[key_id]);
-            }
-            else
-            {
-                m_g.set_edge_property(m_key_name[key_id],
-                                      get_edge_descriptor
-                                          (get<size_t>(descriptor)),
-                                      value, m_key_type[key_id]);
-            }
+            m_g.set_edge_property(m_key_name[key_id], descriptor,
+                              value, m_key_type[key_id]);
         }
         catch (parse_error &e)
         {
@@ -381,10 +397,42 @@ private:
         }
     }
 
-    any
-    get_edge_descriptor(size_t e)
+    void handle_vertex_property(const std::string& key_id,
+                                const any& descriptor,
+                                const std::string& value)
     {
-        return m_edge[e];
+        try
+        {
+            m_g.set_vertex_property(m_key_name[key_id], descriptor,
+                                    value, m_key_type[key_id]);
+        }
+        catch (parse_error &e)
+        {
+            std::stringstream s;
+            s << "on line " << XML_GetCurrentLineNumber(m_parser)
+              << ", column " << XML_GetCurrentColumnNumber(m_parser)
+              << ": " << e.error;
+            throw parse_error(s.str());
+        }
+    }
+
+    void handle_graph_property(const std::string& key_id,
+                               const any&,
+                               const std::string& value)
+    {
+        try
+        {
+            m_g.set_graph_property(m_key_name[key_id], value,
+                                   m_key_type[key_id]);
+        }
+        catch (parse_error &e)
+        {
+            std::stringstream s;
+            s << "on line " << XML_GetCurrentLineNumber(m_parser)
+              << ", column " << XML_GetCurrentColumnNumber(m_parser)
+              << ": " << e.error;
+            throw parse_error(s.str());
+        }
     }
 
     mutate_graph& m_g;
@@ -394,12 +442,15 @@ private:
     std::map<std::string, std::string> m_key_default;
     std::map<std::string, any> m_vertex;
     std::vector<any> m_canonical_vertex;
-    std::vector<any> m_edge;
-    variant<std::string, size_t> m_active_descriptor;
+
+    any m_active_descriptor;
+    desc_kind m_descriptor_kind;
+
     std::string m_active_key;
     std::string m_character_data;
     bool m_canonical_vertices;
     bool m_canonical_edges;
+    bool m_integer_vertices;
     bool m_store_ids;
     bool m_ignore_directedness;
     XML_Parser m_parser;
@@ -408,9 +459,9 @@ private:
 namespace boost
 {
 void
-read_graphml(std::istream& in, mutate_graph& g, bool store_ids)
+read_graphml(std::istream& in, mutate_graph& g, bool integer_vertices, bool store_ids)
 {
-    graphml_reader reader(g, store_ids);
+    graphml_reader reader(g, integer_vertices, store_ids);
     reader.run(in);
 }
 }

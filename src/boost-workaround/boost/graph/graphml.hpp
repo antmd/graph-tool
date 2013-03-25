@@ -25,6 +25,7 @@
 #include <boost/python/object.hpp>
 #include <boost/bind.hpp>
 #include <exception>
+#include <set>
 
 namespace boost
 {
@@ -57,6 +58,8 @@ public:
     virtual std::pair<boost::any,bool> do_add_edge(boost::any source,
                                                    boost::any target) = 0;
 
+    virtual size_t n_vertices() const = 0;
+
     virtual void
     set_graph_property(const std::string& name, const std::string& value,
                        const std::string& value_type) = 0;
@@ -82,9 +85,13 @@ class mutate_graph_impl : public mutate_graph
 
 public:
     mutate_graph_impl(MutableGraph& g, dynamic_properties& dp,
-                      bool ignore_directedness)
+                      bool ignore_directedness,
+                      std::set<std::string> ignore_vp,
+                      std::set<std::string> ignore_ep,
+                      std::set<std::string> ignore_gp)
         : m_g(g), m_dp(dp), m_ignore_directedness(ignore_directedness),
-          m_is_directed(false) { }
+          m_is_directed(false), m_ignore_vp(ignore_vp),
+          m_ignore_ep(ignore_ep), m_ignore_gp(ignore_gp) { }
 
     virtual int is_directed() const
     {
@@ -119,10 +126,18 @@ public:
         return std::make_pair(any(retval.first), retval.second);
     }
 
+    virtual size_t n_vertices() const
+    {
+        return num_vertices(m_g);
+    }
+
     virtual void
     set_graph_property(const std::string& name,
                        const std::string& value, const std::string& value_type)
     {
+        if (m_ignore_gp.find(name) != m_ignore_gp.end())
+            return;
+
         bool type_found = false;
         try
         {
@@ -146,6 +161,9 @@ public:
     set_vertex_property(const std::string& name, any vertex,
                         const std::string& value, const std::string& value_type)
     {
+        if (m_ignore_vp.find(name) != m_ignore_vp.end())
+            return;
+
         bool type_found = false;
         try
         {
@@ -169,6 +187,9 @@ public:
     set_edge_property(const std::string& name, any edge,
                       const std::string& value, const std::string& value_type)
     {
+        if (m_ignore_ep.find(name) != m_ignore_ep.end())
+            return;
+
         bool type_found = false;
         try
         {
@@ -231,6 +252,9 @@ protected:
     dynamic_properties& m_dp;
     bool m_ignore_directedness;
     bool m_is_directed;
+    std::set<std::string> m_ignore_vp;
+    std::set<std::string> m_ignore_ep;
+    std::set<std::string> m_ignore_gp;
     typedef mpl::vector<uint8_t, int16_t, int32_t, int64_t, double, long double,
                         std::vector<uint8_t>, std::vector<int32_t>,
                         std::vector<int64_t>, std::vector<double>,
@@ -247,15 +271,20 @@ const char* mutate_graph_impl<MutableGraph>::m_type_names[] =
  "python_object"};
 
 void
-read_graphml(std::istream& in, mutate_graph& g, bool store_ids);
+read_graphml(std::istream& in, mutate_graph& g, bool integer_vertices,
+             bool store_ids);
 
 template<typename MutableGraph>
 bool
 read_graphml(std::istream& in, MutableGraph& g, dynamic_properties& dp,
-             bool store_ids, bool ignore_directedness)
+             bool store_ids, bool integer_vertices, bool ignore_directedness,
+             std::set<std::string> ignore_vp = std::set<std::string>(),
+             std::set<std::string> ignore_ep = std::set<std::string>(),
+             std::set<std::string> ignore_gp = std::set<std::string>())
 {
-    mutate_graph_impl<MutableGraph> mg(g,dp,ignore_directedness);
-    read_graphml(in, mg, store_ids);
+    mutate_graph_impl<MutableGraph> mg(g, dp, ignore_directedness, ignore_vp,
+                                       ignore_ep, ignore_gp);
+    read_graphml(in, mg, integer_vertices, store_ids);
     return mg.get_directed();
 }
 
