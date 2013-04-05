@@ -581,8 +581,8 @@ def model_entropy(B, N, E, directed):
     References
     ----------
 
-    .. [peixoto-parsimonious-2012] Tiago P. Peixoto "Parsimonious module inference in large networks",
-       (2012), :arxiv:`1212.4794`.
+    .. [peixoto-parsimonious-2013] Tiago P. Peixoto, "Parsimonious module inference in large networks",
+       Phys. Rev. Lett. 110, 148701 (2013), :doi:`10.1103/PhysRevLett.110.148701`, :arxiv:`1212.4794`.
 
     """
     return libcommunity.SB(float(B), int(N), int(E), directed)
@@ -611,8 +611,8 @@ def get_max_B(N, E, directed=False):
 
     References
     ----------
-    .. [peixoto-parsimonious-2012] Tiago P. Peixoto "Parsimonious module inference in large networks",
-       (2012), :arxiv:`1212.4794`.
+    .. [peixoto-parsimonious-2013] Tiago P. Peixoto, "Parsimonious module inference in large networks",
+       Phys. Rev. Lett. 110, 148701 (2013), :doi:`10.1103/PhysRevLett.110.148701`, :arxiv:`1212.4794`.
 
 
     """
@@ -662,8 +662,8 @@ def get_akc(B, I, N=float("inf"), directed=False):
 
     References
     ----------
-    .. [peixoto-parsimonious-2012] Tiago P. Peixoto "Parsimonious module inference in large networks",
-       (2012), :arxiv:`1212.4794`.
+    .. [peixoto-parsimonious-2013] Tiago P. Peixoto, "Parsimonious module inference in large networks",
+       Phys. Rev. Lett. 110, 148701 (2013), :doi:`10.1103/PhysRevLett.110.148701`, :arxiv:`1212.4794`.
 
     """
     if N != float("inf"):
@@ -779,7 +779,7 @@ def mcmc_sweep(state, beta=1., sequential=True, verbose=False, vertices=None):
     the markov chain by proposing membership moves :math:`r\to s` with
     probability :math:`p(r\to s|t) \propto e_{ts} + 1`, where :math:`t` is the
     block label of a random neighbour of the vertex being moved. See
-    [peixoto-parsimonious-2012]_ for more details.
+    [peixoto-parsimonious-2013]_ for more details.
 
     This algorithm has a complexity of :math:`O(E)`, where :math:`E` is the
     number of edges in the network.
@@ -828,8 +828,8 @@ def mcmc_sweep(state, beta=1., sequential=True, verbose=False, vertices=None):
     .. [peixoto-entropy-2012] Tiago P. Peixoto "Entropy of Stochastic Blockmodel
        Ensembles." Physical Review E 85, no. 5 (2012): 056122. :doi:`10.1103/PhysRevE.85.056122`,
        :arxiv:`1112.6028`.
-    .. [peixoto-parsimonious-2012] Tiago P. Peixoto "Parsimonious module inference in large networks",
-       (2012), :arxiv:`1212.4794`.
+    .. [peixoto-parsimonious-2013] Tiago P. Peixoto, "Parsimonious module inference in large networks",
+       Phys. Rev. Lett. 110, 148701 (2013), :doi:`10.1103/PhysRevLett.110.148701`, :arxiv:`1212.4794`.
     """
 
     if len(state.vertices) == 1:
@@ -1121,7 +1121,7 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
     specific values of :math:`B` via :func:`mcmc_sweep` (with :math:`\beta = 1`
     and :math:`\beta\to\infty`), and minimizing :math:`\Sigma_{t/c}` via an
     one-dimensional Fibonacci search on :math:`B`. See
-    [peixoto-parsimonious-2012]_ for more details.
+    [peixoto-parsimonious-2013]_ for more details.
 
     This algorithm has a complexity of :math:`O(\tau E\ln B_{\text{max}})`,
     where :math:`E` is the number of edges in the network, :math:`\tau` is the
@@ -1170,8 +1170,8 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
     .. [peixoto-entropy-2012] Tiago P. Peixoto "Entropy of Stochastic Blockmodel
        Ensembles." Physical Review E 85, no. 5 (2012): 056122. :doi:`10.1103/PhysRevE.85.056122`,
        :arxiv:`1112.6028`.
-    .. [peixoto-parsimonious-2012] Tiago P. Peixoto "Parsimonious module inference in large networks",
-       (2012), :arxiv:`1212.4794`.
+    .. [peixoto-parsimonious-2013] Tiago P. Peixoto, "Parsimonious module inference in large networks",
+       Phys. Rev. Lett. 110, 148701 (2013), :doi:`10.1103/PhysRevLett.110.148701`, :arxiv:`1212.4794`.
 
     """
 
