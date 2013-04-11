@@ -981,7 +981,7 @@ def transform_scale(M, scale):
 
 try:
     from gi.repository import Gtk, Gdk, GdkPixbuf
-    import gi._gobject as gobject
+    from gi.repository import GObject as gobject
     from .gtk_draw import *
 except (ImportError, RuntimeError) as e:
     msg = "Error importing Gtk module: %s; GTK+ drawing will not work." % str(e)
