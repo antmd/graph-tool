@@ -99,6 +99,7 @@ void geometric(GraphInterface& gi, python::object opoints, double r,
                python::object orange, bool periodic, boost::any pos);
 void price(GraphInterface& gi, size_t N, double gamma, double c, size_t m,
            rng_t& rng);
+void complete(GraphInterface& gi, size_t N, bool directed, bool self_loops);
 
 using namespace boost::python;
 
@@ -115,4 +116,5 @@ BOOST_PYTHON_MODULE(libgraph_tool_generation)
     def("lattice", &lattice);
     def("geometric", &geometric);
     def("price", &price);
+    def("complete", &complete);
 }

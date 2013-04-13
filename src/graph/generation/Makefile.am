@@ -25,6 +25,7 @@ libgraph_tool_generation_la_SOURCES = \
     graph_triangulation.cc \
     graph_lattice.cc \
     graph_geometric.cc \
+    graph_complete.cc \
     graph_price.cc
 
 
@@ -36,5 +37,6 @@ libgraph_tool_generation_la_include_HEADERS = \
     graph_triangulation.hh \
     graph_lattice.hh \
     graph_geometric.hh \
+    graph_complete.hh \
     graph_price.hh \
     sampler.hh

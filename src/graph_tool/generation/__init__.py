@@ -37,6 +37,7 @@ Summary
    lattice
    geometric_graph
    price_network
+   complete_graph
 
 Contents
 ++++++++
@@ -55,7 +56,7 @@ import sys, numpy, numpy.random
 
 __all__ = ["random_graph", "random_rewire", "predecessor_tree", "line_graph",
            "graph_union", "triangulation", "lattice", "geometric_graph",
-           "price_network"]
+           "price_network", "complete_graph"]
 
 
 def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
@@ -1156,6 +1157,52 @@ def lattice(shape, periodic=False):
 
     g = Graph(directed=False)
     libgraph_tool_generation.lattice(g._Graph__graph, shape, periodic)
+    return g
+
+def complete_graph(N, self_loops=False, directed=False):
+    r"""
+    Generate complete graph.
+
+    Parameters
+    ----------
+    N : ``int``
+        Number of vertices.
+    self_loops : bool (optional, default: ``False``)
+        If ``True``, self-loops are included.
+    directed : bool (optional, default: ``False``)
+        If ``True``, a directed graph is generated.
+
+    Returns
+    -------
+    complete_graph : :class:`~graph_tool.Graph`
+        A complete graph.
+
+    Examples
+    --------
+
+    >>> g = gt.complete_graph(30)
+    >>> pos = gt.sfdp_layout(g, cooling_step=0.95, epsilon=1e-2)
+    >>> gt.graph_draw(g, pos=pos, output_size=(300,300), output="complete.pdf")
+    <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output_size=(300,300), output="complete.png")
+
+
+    .. figure:: complete.*
+
+       A complete graph with :math:`N=30` vertices.
+
+    References
+    ----------
+    .. [complete] http://en.wikipedia.org/wiki/Complete_graph
+
+    """
+
+    g = Graph(directed=directed)
+    libgraph_tool_generation.complete(g._Graph__graph, N, directed, self_loops)
     return g
 
 
