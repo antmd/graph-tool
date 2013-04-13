@@ -26,7 +26,14 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-void complete(GraphInterface& gi, size_t N, bool directed, bool self_loops)
+void complete(GraphInterface& gi, size_t N, bool directed,
+              bool self_loops)
 {
     get_complete()(gi.GetGraph(), N, directed, self_loops);
+}
+
+void circular(GraphInterface& gi, size_t N, size_t k, bool directed,
+              bool self_loops)
+{
+    get_circular()(gi.GetGraph(), N, k, directed, self_loops);
 }

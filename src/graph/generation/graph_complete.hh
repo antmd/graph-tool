@@ -36,11 +36,37 @@ struct get_complete
 
         for (int i = 0; i < N; ++i)
         {
-            for (size_t j = (directed) ? 0 : i; j < N; ++j)
+            for (int j = directed ? 0 : i; j < N; ++j)
             {
                 if (!self_loops && j == i)
                     continue;
-                add_edge(vertex(i, g), vertex(j, g), g);
+                add_edge(vertex(i, g),
+                         vertex(j, g), g);
+            }
+        }
+    }
+};
+
+struct get_circular
+{
+    template <class Graph>
+    void operator()(Graph& g, size_t N, size_t k, bool directed,
+                    bool self_loops) const
+    {
+        for (int i = 0; i < N; ++i)
+            add_vertex(g);
+
+        for (int i = 0; i < N; ++i)
+        {
+            for (int j = i; j < i + k + 1; ++j)
+            {
+                if (!self_loops && j == i)
+                    continue;
+                add_edge(vertex(i, g),
+                         vertex(j % N, g), g);
+                if (directed && j != i)
+                    add_edge(vertex(j % N, g),
+                             vertex(i, g), g);
             }
         }
     }

@@ -100,6 +100,7 @@ void geometric(GraphInterface& gi, python::object opoints, double r,
 void price(GraphInterface& gi, size_t N, double gamma, double c, size_t m,
            rng_t& rng);
 void complete(GraphInterface& gi, size_t N, bool directed, bool self_loops);
+void circular(GraphInterface& gi, size_t N, size_t k, bool directed, bool self_loops);
 
 using namespace boost::python;
 
@@ -117,4 +118,5 @@ BOOST_PYTHON_MODULE(libgraph_tool_generation)
     def("geometric", &geometric);
     def("price", &price);
     def("complete", &complete);
+    def("circular", &circular);
 }

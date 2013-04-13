@@ -38,6 +38,7 @@ Summary
    geometric_graph
    price_network
    complete_graph
+   circular_graph
 
 Contents
 ++++++++
@@ -56,7 +57,7 @@ import sys, numpy, numpy.random
 
 __all__ = ["random_graph", "random_rewire", "predecessor_tree", "line_graph",
            "graph_union", "triangulation", "lattice", "geometric_graph",
-           "price_network", "complete_graph"]
+           "price_network", "complete_graph", "circular_graph"]
 
 
 def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
@@ -1203,6 +1204,49 @@ def complete_graph(N, self_loops=False, directed=False):
 
     g = Graph(directed=directed)
     libgraph_tool_generation.complete(g._Graph__graph, N, directed, self_loops)
+    return g
+
+def circular_graph(N, k=1, self_loops=False, directed=False):
+    r"""
+    Generate a circular graph.
+
+    Parameters
+    ----------
+    N : ``int``
+        Number of vertices.
+    k : ``int`` (optional, default: ``True``)
+        Number of nearest neighbours to be connected.
+    self_loops : bool (optional, default: ``False``)
+        If ``True``, self-loops are included.
+    directed : bool (optional, default: ``False``)
+        If ``True``, a directed graph is generated.
+
+    Returns
+    -------
+    circular_graph : :class:`~graph_tool.Graph`
+        A circular graph.
+
+    Examples
+    --------
+
+    >>> g = gt.circular_graph(30, 2)
+    >>> pos = gt.sfdp_layout(g, cooling_step=0.95)
+    >>> gt.graph_draw(g, pos=pos, output_size=(300,300), output="circular.pdf")
+    <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output_size=(300,300), output="circular.png")
+
+    .. figure:: circular.*
+
+       A circular graph with :math:`N=30` vertices, and :math:`k=2`.
+
+    """
+
+    g = Graph(directed=directed)
+    libgraph_tool_generation.circular(g._Graph__graph, N, k, directed, self_loops)
     return g
 
 
