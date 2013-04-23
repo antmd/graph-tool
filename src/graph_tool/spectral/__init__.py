@@ -39,29 +39,33 @@ Contents
 from __future__ import division, absolute_import, print_function
 
 from .. import _degree, _prop, Graph, _limit_args
-from numpy import *
+from .. stats import label_self_loops
+import numpy
 import scipy.sparse
 
+from .. dl_import import dl_import
+dl_import("from . import libgraph_tool_spectral")
 
 __all__ = ["adjacency", "laplacian", "incidence"]
 
 
-def adjacency(g, sparse=True, weight=None):
+def adjacency(g, weight=None, index=None):
     r"""Return the adjacency matrix of the graph.
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
-    sparse : bool (optional, default: True)
-        Build a :mod:`~scipy.sparse` matrix.
-    weight : PropertyMap (optional, default: True)
+    weight : :class:`~graph_tool.PropertyMap` (optional, default: True)
         Edge property map with the edge weights.
+    index : :class:`~graph_tool.PropertyMap` (optional, default: None)
+        Vertex property map specifying the row/column indexes. If not provided, the
+        internal vertex index is used.
 
     Returns
     -------
-    a : matrix
-        The adjacency matrix.
+    a : :mod:`~scipy.sparse.csr_matrix`
+        The (sparse) adjacency matrix.
 
     Notes
     -----
@@ -103,65 +107,47 @@ def adjacency(g, sparse=True, weight=None):
     .. [wikipedia-adjacency] http://en.wikipedia.org/wiki/Adjacency_matrix
     """
 
-    if g.get_vertex_filter()[0] != None:
-        index = g.new_vertex_property("int64_t")
-        for i, v in enumerate(g.vertices()):
-            index[v] = i
-    else:
-        index = g.vertex_index
-    N = g.num_vertices()
-    if sparse:
-        m = scipy.sparse.lil_matrix((N, N))
-    else:
-        m = matrix(zeros((N, N)))
-    for v in g.vertices():
-        for e in v.out_edges():
-            m[index[v], index[e.target()]] += 1 if weight is None else weight[e]
-    if sparse:
-        m = m.tocsr()
+    if index is None:
+        if g.get_vertex_filter()[0] != None:
+            index = g.new_vertex_property("int64_t")
+            index.fa = numpy.arange(g.num_vertices())
+        else:
+            index = g.vertex_index
+
+    E = g.num_edges() if g.is_directed() else 2 * g.num_edges()
+    data = numpy.zeros(E, dtype="double")
+    i = numpy.zeros(E, dtype="int32")
+    j = numpy.zeros(E, dtype="int32")
+
+    libgraph_tool_spectral.adjacency(g._Graph__graph, _prop("v", g, index),
+                                     _prop("e", g, weight), data, i, j)
+    m = scipy.sparse.coo_matrix((data, (i,j)))
+    m = m.tocsr()
     return m
 
 
-def _get_deg(v, deg, weight):
-    if deg == "total":
-        if weight == None:
-            d = v.in_degree() + v.out_degree()
-        else:
-            d = sum(weight[e] for e in v.all_edges())
-    elif deg == "in":
-        if weight == None:
-            d = v.in_degree()
-        else:
-            d = sum(weight[e] for e in v.in_edges())
-    else:
-        if weight == None:
-            d = v.out_degree()
-        else:
-            d = sum(weight[e] for e in v.out_edges())
-    return d
-
-
 @_limit_args({"deg": ["total", "in", "out"]})
-def laplacian(g, deg="total", normalized=True, sparse=True, weight=None):
+def laplacian(g, deg="total", normalized=True, weight=None, index=None):
     r"""Return the Laplacian matrix of the graph.
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
     deg : str (optional, default: "total")
         Degree to be used, in case of a directed graph.
     normalized : bool (optional, default: True)
         Whether to compute the normalized Laplacian.
-    sparse : bool (optional, default: True)
-        Build a :mod:`~scipy.sparse` matrix.
-    weight : PropertyMap (optional, default: True)
+    weight : :class:`~graph_tool.PropertyMap` (optional, default: True)
         Edge property map with the edge weights.
+    index : :class:`~graph_tool.PropertyMap` (optional, default: None)
+        Vertex property map specifying the row/column indexes. If not provided, the
+        internal vertex index is used.
 
     Returns
     -------
-    l : matrix
-        The Laplacian matrix.
+    l : :mod:`~scipy.sparse.csr_matrix`
+        The (sparse) Laplacian matrix.
 
     Notes
     -----
@@ -176,8 +162,8 @@ def laplacian(g, deg="total", normalized=True, sparse=True, weight=None):
         0           & \text{otherwise}.
         \end{cases}
 
-    Where :math:`\Gamma(v_i)=\sum_j A_{ij}w_{ij}` is sum of the weights of
-    vertex :math:`v_i`. The normalized version is
+    Where :math:`\Gamma(v_i)=\sum_j A_{ij}w_{ij}` is sum of the weights of the
+    edges incident on vertex :math:`v_i`. The normalized version is
 
     .. math::
 
@@ -216,58 +202,51 @@ def laplacian(g, deg="total", normalized=True, sparse=True, weight=None):
     .. [wikipedia-laplacian] http://en.wikipedia.org/wiki/Laplacian_matrix
     """
 
-    if g.get_vertex_filter()[0] != None:
-        index = g.new_vertex_property("int64_t")
-        for i, v in enumerate(g.vertices()):
-            index[v] = i
+    if index is None:
+        if g.get_vertex_filter()[0] != None:
+            index = g.new_vertex_property("int64_t")
+            index.fa = numpy.arange(g.num_vertices())
+        else:
+            index = g.vertex_index
+
+    nself = label_self_loops(g, mark_only=True).a.sum()
+    E = g.num_edges() - nself
+    if not g.is_directed():
+        E *= 2
+    N = E + g.num_vertices()
+    data = numpy.zeros(N, dtype="double")
+    i = numpy.zeros(N, dtype="int32")
+    j = numpy.zeros(N, dtype="int32")
+
+    if normalized:
+        libgraph_tool_spectral.norm_laplacian(g._Graph__graph, _prop("v", g, index),
+                                              _prop("e", g, weight), deg, data, i, j)
     else:
-        index = g.vertex_index
-    N = g.num_vertices()
-    if sparse:
-        m = scipy.sparse.lil_matrix((N, N))
-    else:
-        m = matrix(zeros((N, N)))
-    for v in g.vertices():
-        d = _get_deg(v, deg, weight)
-        for e in v.out_edges():
-            if not normalized:
-                if weight is None:
-                    val = -1
-                else:
-                    val = -weight[e]
-                # increment in case of parallel edges
-                m[index[v], index[e.target()]] += val
-            else:
-                d2 = _get_deg(e.target(), deg, weight)
-                if weight is None:
-                    w = 1
-                else:
-                    w = weight[e]
-                # increment in case of parallel edges
-                m[index[v], index[e.target()]] += - w / sqrt(d * d2)
-        if not normalized:
-            m[index[v], index[v]] = d
-        elif d > 0:
-            m[index[v], index[v]] = 1 if d != 0 else 0
-    if sparse:
-        m = m.tocsr()
+        libgraph_tool_spectral.laplacian(g._Graph__graph, _prop("v", g, index),
+                                         _prop("e", g, weight), deg, data, i, j)
+    m = scipy.sparse.coo_matrix((data, (i,j)))
+    m = m.tocsr()
     return m
 
 
-def incidence(g, sparse=True):
+def incidence(g, vindex=None, eindex=None):
     r"""Return the incidence matrix of the graph.
 
     Parameters
     ----------
-    g : Graph
+    g : :class:`~graph_tool.Graph`
         Graph to be used.
-    sparse : bool (optional, default: True)
-        Build a :mod:`~scipy.sparse` matrix.
+    vindex : :class:`~graph_tool.PropertyMap` (optional, default: None)
+        Vertex property map specifying the row indexes. If not provided, the
+        internal vertex index is used.
+    eindex : :class:`~graph_tool.PropertyMap` (optional, default: None)
+        Edge property map specifying the column indexes. If not provided, the
+        internal edge index is used.
 
     Returns
     -------
-    a : matrix
-        The adjacency matrix.
+    a : :mod:`~scipy.sparse.csr_matrix`
+        The (sparse) adjacency matrix.
 
     Notes
     -----
@@ -314,32 +293,27 @@ def incidence(g, sparse=True):
     .. [wikipedia-incidence] http://en.wikipedia.org/wiki/Incidence_matrix
     """
 
-    if g.get_vertex_filter()[0] != None:
-        index = g.new_vertex_property("int64_t")
-        for i, v in enumerate(g.vertices()):
-            index[v] = i
-    else:
-        index = g.vertex_index
-
-    eindex = g.new_edge_property("int64_t")
-    for i, e in enumerate(g.edges()):
-        eindex[e] = i
-
-    N = g.num_vertices()
-    E = g.num_edges()
-    if sparse:
-        m = scipy.sparse.lil_matrix((N, E))
-    else:
-        m = matrix(zeros((N, E)))
-    for v in g.vertices():
-        if g.is_directed():
-            for e in v.out_edges():
-                m[index[v], eindex[e]] += -1
-            for e in v.in_edges():
-                m[index[v], eindex[e]] += 1
+    if vindex is None:
+        if g.get_edge_filter()[0] != None:
+            vindex = g.new_vertex_property("int64_t")
+            vindex.fa = numpy.arange(g.num_vertices())
         else:
-            for e in v.out_edges():
-                m[index[v], eindex[e]] += 1
-    if sparse:
-        m = m.tocsr()
+            vindex = g.vertex_index
+
+    if eindex is None:
+        if g.get_edge_filter()[0] != None:
+            eindex = g.new_edge_property("int64_t")
+            eindex.fa = numpy.arange(g.num_edges())
+        else:
+            eindex = g.edge_index
+
+    E = g.num_edges()
+    data = numpy.zeros(2 * E, dtype="double")
+    i = numpy.zeros(2 * E, dtype="int32")
+    j = numpy.zeros(2 * E, dtype="int32")
+
+    libgraph_tool_spectral.incidence(g._Graph__graph, _prop("v", g, vindex),
+                                     _prop("e", g, eindex), data, i, j)
+    m = scipy.sparse.coo_matrix((data, (i,j)))
+    m = m.tocsr()
     return m

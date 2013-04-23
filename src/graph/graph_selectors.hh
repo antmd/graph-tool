@@ -239,6 +239,21 @@ struct in_edge_iteratorS
     }
 };
 
+// out edges selector for completeness
+template <class Graph>
+struct out_edge_iteratorS
+{
+    typedef typename graph_traits<Graph>::out_edge_iterator type;
+
+    typedef typename boost::graph_traits<Graph>::vertex_descriptor
+        vertex_descriptor;
+    static std::pair<type,type> get_edges(vertex_descriptor v,
+                                          const Graph& g)
+    {
+        return out_edges(v, g);
+    }
+};
+
 // helper types for all_edges_iteratorS
 template <class Graph, class IsDirected>
 struct get_all_edges
