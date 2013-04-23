@@ -107,9 +107,9 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
     self_loops : bool (optional, default: ``False``)
         If ``True``, self-loops are allowed.
     blockmodel : list or :class:`~numpy.ndarray` or function (optional, default: ``None``)
-        If supplied, the graph will be sampled from a blockmodel ensemble. If
-        the value is a list or a :class:`~numpy.ndarray`, it must have
-        ``len(block_model) == N``, and the values will define to which block
+        If supplied, the graph will be sampled from a stochastic blockmodel
+        ensemble. If the value is a list or a :class:`~numpy.ndarray`, it must
+        have ``len(blockmodel) == N``, and the values will define to which block
         each vertex belongs.
 
         If this value is a function, it will be used to sample the block
