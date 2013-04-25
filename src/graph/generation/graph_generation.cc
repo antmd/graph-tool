@@ -47,8 +47,8 @@ private:
 };
 
 void generate_graph(GraphInterface& gi, size_t N, python::object deg_sample,
-                    bool uncorrelated, bool no_parallel, bool no_self_loops,
-                    bool undirected, rng_t& rng, bool verbose, bool verify)
+                    bool no_parallel, bool no_self_loops, bool undirected,
+                    rng_t& rng, bool verbose, bool verify)
 {
     typedef graph_tool::detail::get_all_graph_views::apply<
     graph_tool::detail::scalar_pairs, mpl::bool_<false>,
@@ -58,28 +58,18 @@ void generate_graph(GraphInterface& gi, size_t N, python::object deg_sample,
     if (undirected)
         gi.SetDirected(false);
 
-    if (uncorrelated)
-    {
-        run_action<graph_views>()
-            (gi, bind<void>(gen_graph(), _1, N,
-                            PythonFuncWrap(deg_sample),
-                            no_parallel, no_self_loops,
-                            ref(rng), verbose, verify))();
-    }
-    else
-    {
-        run_action<graph_views>()
-            (gi, bind<void>(gen_graph(), _1, N,
-                            PythonFuncWrap(deg_sample),
-                            no_parallel, no_self_loops,
-                            ref(rng), verbose, verify))();
-    }
+    run_action<graph_views>()
+        (gi, bind<void>(gen_graph(), _1, N,
+                        PythonFuncWrap(deg_sample),
+                        no_parallel, no_self_loops,
+                        ref(rng), verbose, verify))();
 }
 
 size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
                      bool no_sweep, bool self_loops, bool parallel_edges,
-                     python::object corr_prob, boost::any block,
-                     bool cache, rng_t& rng, bool verbose);
+                     bool alias, bool traditional, bool persist,
+                     python::object corr_prob, boost::any block, bool cache,
+                     rng_t& rng, bool verbose);
 void predecessor_graph(GraphInterface& gi, GraphInterface& gpi,
                        boost::any pred_map);
 void line_graph(GraphInterface& gi, GraphInterface& lgi,

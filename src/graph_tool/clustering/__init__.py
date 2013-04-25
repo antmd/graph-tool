@@ -121,7 +121,7 @@ def local_clustering(g, prop=None, undirected=True):
     >>> g = gt.random_graph(1000, lambda: (5,5))
     >>> clust = gt.local_clustering(g)
     >>> print(gt.vertex_average(g, clust))
-    (0.007988888888888889, 0.00042593962940918587)
+    (0.0072, 0.00039746045691969764)
 
     References
     ----------
@@ -182,7 +182,7 @@ def global_clustering(g):
 
     >>> g = gt.random_graph(1000, lambda: (5,5))
     >>> print(gt.global_clustering(g))
-    (0.00796839426811303, 0.00042625555150575134)
+    (0.007182172103638073, 0.0003970213508956326)
 
     References
     ----------
@@ -261,11 +261,11 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
     >>> for i in range(0, 5):
     ...    print(gt.vertex_average(g, clusts[i]))
     ...
-    (0.004208333333333333, 0.0004046856633377455)
-    (0.020531666666666667, 0.0009122518521037196)
-    (0.11366833333333333, 0.0019888303367389926)
-    (0.40287166666666663, 0.0032700366422513776)
-    (0.4392583333333333, 0.0031463122041703218)
+    (0.005535, 0.00046266726404860573)
+    (0.02351, 0.0009395843702876762)
+    (0.11651833333333333, 0.0019837472110181336)
+    (0.391765, 0.0030221072114043567)
+    (0.4439983333333333, 0.0030393922085216675)
 
     References
     ----------
@@ -340,9 +340,9 @@ def motifs(g, k, p=1.0, motif_list=None):
     >>> g = gt.random_graph(1000, lambda: (5,5))
     >>> motifs, counts = gt.motifs(gt.GraphView(g, directed=False), 4)
     >>> print(len(motifs))
-    55
+    63
     >>> print(counts)
-    [28946, 29051, 28786, 29009, 32700, 97746, 98018, 162496, 117, 86, 184, 96, 94, 17, 65, 267, 266, 85, 697, 665, 253, 261, 482, 435, 122, 228, 253, 124, 249, 346, 143, 44, 236, 268, 274, 1, 6, 1, 6, 8, 2, 2, 1, 2, 1, 2, 4, 2, 2, 1, 1, 3, 1, 2, 1]
+    [28448, 28343, 28929, 29600, 159144, 98111, 98187, 33446, 284, 176, 70, 139, 210, 37, 526, 280, 85, 156, 553, 620, 469, 585, 443, 380, 203, 362, 210, 313, 241, 100, 295, 64, 253, 278, 250, 7, 5, 3, 4, 4, 3, 2, 6, 1, 7, 2, 1, 2, 3, 1, 1, 3, 2, 3, 3, 1, 1, 2, 2, 1, 1, 1, 1]
 
 
     References
@@ -421,7 +421,7 @@ def _graph_sig(g):
 
 def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
                        threshold=0, self_loops=False, parallel_edges=False,
-                       full_output=False, shuffle_strategy="uncorrelated"):
+                       full_output=False, shuffle_model="uncorrelated"):
     r"""
     Obtain the motif significance profile, for subgraphs with k vertices. A
     tuple with two lists is returned: the list of motifs found, and their
@@ -455,9 +455,9 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
         of each motif, the average count of each motif in the shuffled networks,
         and the standard deviation of the average count of each motif in the
         shuffled networks.
-    shuffle_strategy : string (optional, default: "uncorrelated")
-        Shuffle strategy to use. Can be either "correlated" or "uncorrelated".
-        See :func:`~graph_tool.generation.random_rewire` for details.
+    shuffle_model : string (optional, default: "uncorrelated")
+        Shuffle model to use. See :func:`~graph_tool.generation.random_rewire`
+        for details.
 
     Returns
     -------
@@ -501,9 +501,9 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
     >>> g = gt.random_graph(100, lambda: (3,3))
     >>> motifs, zscores = gt.motif_significance(g, 3)
     >>> print(len(motifs))
-    12
+    11
     >>> print(zscores)
-    [1.1686248415493101, 1.1692144855989797, 0.28214101842848821, -0.67039795877350128, -0.8532661303912763, -0.85594303488376966, 1.9809930371921538, -0.09, -0.07, -0.2, -0.33, -0.01]
+    [1.0170744045563587, 0.90350945788797254, 0.93486676613275743, -0.84952469609377301, -0.95933706030135635, -0.68770434820213655, -0.24381350447066388, 0.88, -0.12, -0.35, -0.21]
 
     """
 
@@ -523,7 +523,7 @@ def motif_significance(g, k, n_shuffles=100, p=1.0, motif_list=None,
     # get samples
     sg = g.copy()
     for i in range(0, n_shuffles):
-        random_rewire(sg, shuffle_strategy, self_loops=self_loops,
+        random_rewire(sg, model=shuffle_model, self_loops=self_loops,
                       parallel_edges=parallel_edges)
         m_temp, count_temp = motifs(sg, k, p, motif_list)
         if threshold > 0:

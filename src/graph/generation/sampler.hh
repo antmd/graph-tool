@@ -19,253 +19,98 @@
 #define SAMPLER_HH
 
 #include "random.hh"
-#include <iostream>
+#include <functional>
 
 namespace graph_tool
 {
 using namespace std;
 using namespace boost;
 
-// utility class to sample uniformly from a collection of values
-template <class ValueType>
+// Discrete sampling via vose's alias method.
+
+// See http://www.keithschwarz.com/darts-dice-coins/ for a very clear
+// explanation,
+
+template <class Value>
 class Sampler
 {
 public:
-    Sampler() {}
-
-    template <class Iterator>
-    Sampler(Iterator iter, Iterator end)
+    Sampler(const vector<Value>& items,
+            const vector<double>& probs)
+        : _items(items), _probs(probs), _alias(items.size())
     {
-        for(; iter != end; ++iter)
-            Insert(*iter);
-    }
+        double S = 0;
+        for (size_t i = 0; i < _probs.size(); ++i)
+            S += _probs[i];
 
-    void Insert(const ValueType& v)
-    {
-        _candidates.push_back(v);
-        _candidates_set.insert(make_pair(v, _candidates.size() - 1));
-    }
-
-    bool HasValue(const ValueType& v)
-    {
-        typeof(_candidates_set.begin()) iter, end;
-        tie(iter, end) = _candidates_set.equal_range(v);
-        return (iter != end);
-    }
-
-    void Remove(const ValueType& v)
-    {
-        typeof(_candidates_set.begin()) iter, back;
-        iter = _candidates_set.find(v);
-
-        if (iter == _candidates_set.end())
-            return;
-
-        back = _candidates_set.find(_candidates.back());
-
-        size_t index = iter->second;
-        swap(_candidates[index], _candidates.back());
-        _candidates.pop_back();
-
-        if (!_candidates.empty() && back != iter)
+        for (size_t i = 0; i < _probs.size(); ++i)
         {
-            _candidates_set.erase(back);
-            _candidates_set.insert(make_pair(_candidates[index], index));
-        }
-        _candidates_set.erase(iter);
-    }
-
-    bool Empty()
-    {
-        return _candidates.empty();
-    }
-
-    size_t Size()
-    {
-        return _candidates.size();
-    }
-
-    ValueType operator()(rng_t& rng, bool remove = false)
-    {
-        //assert(!_candidates.empty());
-        tr1::uniform_int<> sample(0, _candidates.size() - 1);
-        int i = sample(rng);
-        if (remove)
-        {
-            swap(_candidates[i], _candidates.back());
-            ValueType ret = _candidates.back();
-            _candidates.pop_back();
-            return ret;
-        }
-        else
-        {
-            return _candidates[i];
-        }
-    }
-
-private:
-    vector<ValueType> _candidates;
-    tr1::unordered_multimap<ValueType, size_t, hash<ValueType> >
-        _candidates_set;
-};
-
-
-template <class ValueType>
-class WeightedSampler
-{
-public:
-
-    void Insert(const ValueType& v, double p)
-    {
-        _candidates.push_back(make_pair(v, p));
-        _candidates_set.insert(make_pair(v, _candidates.size() - 1));
-        _erased.push_back(false);
-        _rebuild = true;
-    }
-
-    bool HasValue(const ValueType& v)
-    {
-        typeof(_candidates_set.begin()) iter, end;
-        tie(iter, end) = _candidates_set.equal_range(v);
-        return (iter != end);
-    }
-
-    void Remove(const ValueType& v)
-    {
-        typeof(_candidates_set.begin()) iter, end, temp;
-        tie(iter, end) = _candidates_set.equal_range(v);
-     
-        if (iter == end)
-            return;
-
-        while(_erased[iter->second])
-        {
-            temp = iter++;
-            _candidates_set.erase(temp);
-            if (iter == end)
-                return;
-        }
-
-        size_t index = iter->second;
-        _erased[index] = true;
-        _erased_prob += _candidates[index].second;
-        if (_erased_prob >= 0.3)
-            _rebuild = true;
-    }
-
-    bool Empty()
-    {
-        return _candidates.empty();
-    }
-
-    size_t Size()
-    {
-        return _candidates.size();
-    }
-
-    void BuildTable()
-    {
-        // remove possibly erased elements
-        size_t i = 0;
-        while (i < _candidates.size())
-        {
-            if (_erased[i])
-            {
-                swap(_candidates[i], _candidates.back());
-                swap(_erased[i], _erased.back());
-                _candidates.pop_back();
-                _erased.pop_back();
-            }
+            _probs[i] *= _probs.size() / S;
+            if (_probs[i] < 1)
+                _small.push_back(i);
             else
-            {
-                ++i;
-            }
+                _large.push_back(i);
         }
-        _erased_prob = 0;
 
-        vector<pair<size_t, double> > remainder;
-        _alias.resize(_candidates.size());
-
-        double P_sum = 0;
-        for (size_t i = 0; i < _candidates.size(); ++i)
-            P_sum += _candidates[i].second;
-
-        
-        size_t N = _candidates.size();
-        double P = 1.0 / N;
-        for (size_t i = 0; i < _candidates.size(); ++i)
+        while (!(_small.empty() || _large.empty()))
         {
-            _candidates[i].second /= P_sum;
-            double pi = _candidates[i].second;
-            if (pi > P)
-                remainder.push_back(make_pair(i, pi - P));
-            _alias[i] = make_pair(i, .1);
+            size_t l = _small.back();
+            size_t g = _large.back();
+            _small.pop_back();
+            _large.pop_back();
+
+            _alias[l] = g;
+            _probs[g] = (_probs[l] + _probs[g]) - 1;
+            if (_probs[g] < 1)
+                _small.push_back(g);
+            else
+                _large.push_back(g);
         }
 
-
-        for (size_t i = 0; i < _candidates.size(); ++i)
-        {
-            double pi = _candidates[i].second;
-            if (pi < P)
-            {
-                for (size_t j = 0; j < remainder.size(); ++j)
-                {
-                    if (remainder[j].second >= P - pi)
-                    {
-                        _alias[i] = make_pair(remainder[j].first, pi * N);
-                        remainder[j].second -= P - pi;
-                        if (remainder[j].second <= 0)
-                        {
-                            swap(remainder[j], remainder.back());
-                            remainder.pop_back();
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-        _rebuild = false;
+        // fix numerical instability
+        for (size_t i = 0; i < _large.size(); ++i)
+            _probs[_large[i]] = 1;
+        for (size_t i = 0; i < _small.size(); ++i)
+            _probs[_small[i]] = 1;
+        _large.clear();
+        _small.clear();
     }
 
-
-    ValueType operator()(rng_t& rng, bool remove = false)
+    template <class RNG>
+    const Value& sample(RNG& rng)
     {
-        if (_rebuild)
-            BuildTable();
+        tr1::uniform_int<> sample(0, _probs.size() - 1);
+        size_t i = sample(rng);
 
-        tr1::variate_generator<rng_t&, tr1::uniform_real<> >
-            sample(rng, tr1::uniform_real<>(0.0, 1.0));
-        size_t i;
-        do
-        {
-            double r = sample() * _candidates.size();
-            i = floor(r);       // in [0, n-1]
-            double x = r - i;   // in [0, 1)
-
-            if (x > _alias[i].second)
-                i = _alias[i].first;
-        }
-        while (_erased[i]);
-
-        if (remove)
-        {
-            _erased[i] = true;
-            _erased_prob += _candidates[i].second;
-            if (_erased_prob >= 0.3)
-                _rebuild = true;
-        }
-        return _candidates[i].first;
+        tr1::bernoulli_distribution coin(_probs[i]);
+        if (coin(rng))
+            return _items[i];
+        else
+            return _items[_alias[i]];
     }
 
 private:
-    vector<pair<ValueType, double> > _candidates;
-    tr1::unordered_multimap<ValueType, size_t, hash<ValueType> >
-        _candidates_set;
-    vector<pair<size_t, double> > _alias;
-    vector<uint8_t> _erased;
-    bool _erased_prob;
-    bool _rebuild;
+
+    struct _cmp : binary_function <size_t, size_t, bool>
+    {
+        _cmp(const vector<double>& prob):_prob(prob) {}
+        const vector<double>& _prob;
+        bool operator() (const size_t& x, const size_t& y) const
+        {
+            if (_prob[x] == _prob[y])
+                return x < y;
+            return _prob[x] < _prob[y];
+        }
+    };
+
+    const vector<Value>& _items;
+    vector<double> _probs;
+    vector<size_t> _alias;
+    vector<size_t> _small;
+    vector<size_t> _large;
 };
+
+
 
 } // namespace graph_tool
 

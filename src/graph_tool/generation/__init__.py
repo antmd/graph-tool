@@ -60,12 +60,18 @@ __all__ = ["random_graph", "random_rewire", "predecessor_tree", "line_graph",
            "price_network", "complete_graph", "circular_graph"]
 
 
-def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
-                 parallel_edges=False, self_loops=False, blockmodel=None,
+def random_graph(N, deg_sampler, directed=True,
+                 parallel_edges=False, self_loops=False, block_membership=None,
                  block_type="int", degree_block=False,
-                 random=True, mix_time=10, verbose=False):
+                 random=True, mix_time=10, verbose=False, **kwargs):
     r"""
-    Generate a random graph, with a given degree distribution and correlation.
+    Generate a random graph, with a given degree distribution and (optionally)
+    vertex-vertex correlation.
+
+    The graph will be randomized via the :func:`~graph_tool.generation.random_rewire`
+    function, and any remaining parameters will be passed to that function.
+    Please read its documentation for all the options regarding the different
+    statistical models which can be chosen.
 
     Parameters
     ----------
@@ -79,45 +85,31 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
         degree sequence cannot be used to build a graph.
 
         Optionally, you can also pass a function which receives one or two
-        arguments: If ``blockmodel == None``, the single argument passed will
+        arguments. If ``blockmodel == None``, the single argument passed will
         be the index of the vertex which will receive the degree.
         If ``blockmodel != None``, the first value passed will be the vertex
         index, and the second will be the block value of the vertex.
-    deg_corr : function (optional, default: ``None``)
-        A function which gives the degree correlation of the graph. It should be
-        callable with two parameters: the in,out-degree pair of the source
-        vertex an edge, and the in,out-degree pair of the target of the same
-        edge (for undirected graphs, both parameters are single values). The
-        function should return a number proportional to the probability of such
-        an edge existing in the generated graph.
-
-        If ``blockmodel != None``, the value passed to the function will be the
-        block value of the respective vertices, not the in/out-degree pairs.
-    cache_probs : bool (optional, default: ``True``)
-        If ``True``, the probabilities returned by the ``deg_corr`` parameter
-        will be cached internally. This is crucial for good performance, since
-        in this case the supplied python function is called only a few times,
-        and not at every attempted edge rewire move. However, in the case were
-        the different parameter combinations to the probability function is very
-        large, the memory requirements to keep the cache may be very large.
     directed : bool (optional, default: ``True``)
         Whether the generated graph should be directed.
     parallel_edges : bool (optional, default: ``False``)
         If ``True``, parallel edges are allowed.
     self_loops : bool (optional, default: ``False``)
         If ``True``, self-loops are allowed.
-    blockmodel : list or :class:`~numpy.ndarray` or function (optional, default: ``None``)
+    block_membership : list or :class:`~numpy.ndarray` or function (optional, default: ``None``)
         If supplied, the graph will be sampled from a stochastic blockmodel
-        ensemble. If the value is a list or a :class:`~numpy.ndarray`, it must
-        have ``len(blockmodel) == N``, and the values will define to which block
-        each vertex belongs.
+        ensemble, and this parameter specifies the block membership, which will
+        be passed to the :func:`~graph_tool.generation.random_rewire` function.
+
+        If the value is a list or a :class:`~numpy.ndarray`, it must have
+        ``len(block_membership) == N``, and the values will define to which
+        block each vertex belongs.
 
         If this value is a function, it will be used to sample the block
         types. It must be callable either with no arguments or with a single
         argument which will be the vertex index. In either case it must return
         a type compatible with the ``block_type`` parameter.
     block_type : string (optional, default: ``"int"``)
-        Value type of block labels. Valid only if ``blockmodel != None``.
+        Value type of block labels. Valid only if ``block_membership != None``.
     degree_block : bool (optional, default: ``False``)
         If ``True``, the degree of each vertex will be appended to block labels
         when constructing the blockmodel, such that the resulting block type
@@ -126,10 +118,6 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
     random : bool (optional, default: ``True``)
         If ``True``, the returned graph is randomized. Otherwise a deterministic
         placement of the edges will be used.
-    mix_time : int (optional, default: ``10``)
-        Number of edge sweeps to perform in order to mix the graph. This value
-        is ignored if ``parallel_edges == self_loops == True`` and
-        ``strat != "probabilistic"``.
     verbose : bool (optional, default: ``False``)
         If ``True``, verbose information is displayed.
 
@@ -139,19 +127,19 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
         The generated graph.
     blocks : :class:`~graph_tool.PropertyMap`
         A vertex property map with the block values. This is only returned if
-        ``blockmodel != None``.
+        ``block_membership != None``.
 
     See Also
     --------
-    random_rewire: in place graph shuffling
+    random_rewire: in-place graph shuffling
 
     Notes
     -----
     The algorithm makes sure the degree sequence is graphical (i.e. realizable)
     and keeps re-sampling the degrees if is not. With a valid degree sequence,
     the edges are placed deterministically, and later the graph is shuffled with
-    the :func:`~graph_tool.generation.random_rewire` function, with the
-    ``mix_time`` parameter passed as ``n_iter``.
+    the :func:`~graph_tool.generation.random_rewire` function, with all
+    remaining parameters passed to it.
 
     The complexity is :math:`O(V + E)` if parallel edges are allowed, and
     :math:`O(V + E \times\text{mix-time})` if parallel edges are not allowed.
@@ -161,16 +149,10 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
 
         If ``parallel_edges == False`` this algorithm only guarantees that the
         returned graph will be a random sample from the desired ensemble if
-        ``mix_time`` is sufficiently large. The algorithm implements an
+        ``n_iter`` is sufficiently large. The algorithm implements an
         efficient Markov chain based on edge swaps, with a mixing time which
         depends on the degree distribution and correlations desired. If degree
         correlations are provided, the mixing time tends to be larger.
-
-        If ``strat == "probabilistic"``, the Markov chain still needs to be
-        mixed, even if parallel edges and self-loops are allowed. In this case
-        the Markov chain is implemented using the Metropolis-Hastings
-        [metropolis-equations-1953]_ [hastings-monte-carlo-1970]_
-        acceptance/rejection algorithm.
 
     Examples
     --------
@@ -202,9 +184,9 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
 
         P(i,k) \propto \frac{1}{1+|i-k|}
 
-    >>> g = gt.random_graph(1000, lambda: sample_k(40),
-    ...                     lambda i, k: 1.0 / (1 + abs(i - k)), directed=False,
-    ...                     mix_time=100)
+    >>> g = gt.random_graph(1000, lambda: sample_k(40), model="probabilistic",
+    ...                     vertex_corr=lambda i, k: 1.0 / (1 + abs(i - k)), directed=False,
+    ...                     n_iter=100)
     >>> gt.scalar_assortativity(g, "out")
     (0.6285094791115295, 0.010745128857935755)
 
@@ -266,9 +248,10 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
 
     >>> p = scipy.stats.poisson
     >>> g = gt.random_graph(20000, lambda: (sample_k(19), sample_k(19)),
-    ...                     lambda a,b: (p.pmf(a[0], b[1]) *
-    ...                                  p.pmf(a[1], 20 - b[0])),
-    ...                     mix_time=100)
+    ...                     model="probabilistic",
+    ...                     vertex_corr=lambda a,b: (p.pmf(a[0], b[1]) *
+    ...                                              p.pmf(a[1], 20 - b[0])),
+    ...                     n_iter=100)
 
     Lets plot the average degree correlations to check.
 
@@ -310,7 +293,7 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
         Average nearest neighbour correlations.
 
 
-    **Blockmodels**
+    **Stochastic blockmodels**
 
 
     The following example shows how a stochastic blockmodel
@@ -327,8 +310,9 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
     The blockmodel can be generated as follows.
 
     >>> g, bm = gt.random_graph(5000, lambda: poisson(10), directed=False,
-    ...                         blockmodel=lambda: randint(10), deg_corr=corr,
-    ...                         mix_time=500)
+    ...                         model="blockmodel-traditional",
+    ...                         block_membership=lambda: randint(10),
+    ...                         vertex_corr=corr)
     >>> gt.graph_draw(g, vertex_fill_color=bm, output="blockmodel.pdf")
     <...>
 
@@ -361,35 +345,31 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
     """
 
     g = Graph()
-    if deg_corr == None:
-        uncorrelated = True
-    else:
-        uncorrelated = False
 
-    if (type(blockmodel) is types.FunctionType or
-        type(blockmodel) is types.LambdaType):
+    if (type(block_membership) is types.FunctionType or
+        type(block_membership) is types.LambdaType):
         btype = block_type
         bm = []
-        if len(inspect.getargspec(blockmodel)[0]) == 0:
+        if len(inspect.getargspec(block_membership)[0]) == 0:
             for i in range(N):
-                bm.append(blockmodel())
+                bm.append(block_membership())
         else:
             for i in range(N):
-                bm.append(blockmodel(i))
-        blockmodel = bm
-    elif blockmodel is not None:
-        btype = _gt_type(blockmodel[0])
+                bm.append(block_membership(i))
+        block_membership = bm
+    elif block_membership is not None:
+        btype = _gt_type(block_membership[0])
 
     if len(inspect.getargspec(deg_sampler)[0]) > 0:
-        if blockmodel is not None:
-            sampler = lambda i: deg_sampler(i, blockmodel[i])
+        if block_membership is not None:
+            sampler = lambda i: deg_sampler(i, block_membership[i])
         else:
             sampler = deg_sampler
     else:
         sampler = lambda i: deg_sampler()
 
     libgraph_tool_generation.gen_graph(g._Graph__graph, N, sampler,
-                                       uncorrelated, not parallel_edges,
+                                       not parallel_edges,
                                        not self_loops, not directed,
                                        _get_rng(), verbose, True)
     g.set_directed(directed)
@@ -406,39 +386,32 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
         elif btype in ["long double"]:
             btype = "vector<long double>"
 
-    if blockmodel is not None:
+    if block_membership is not None:
         bm = g.new_vertex_property(btype)
         if btype in ["object", "string"] or "vector" in btype:
             for v in g.vertices():
                 if not degree_block:
-                    bm[v] = blockmodel[int(v)]
+                    bm[v] = block_membership[int(v)]
                 else:
                     if g.is_directed():
-                        bm[v] = (blockmodel[int(v)], v.in_degree(),
+                        bm[v] = (block_membership[int(v)], v.in_degree(),
                                  v.out_degree())
                     else:
-                        bm[v] = (blockmodel[int(v)], v.out_degree())
+                        bm[v] = (block_membership[int(v)], v.out_degree())
         else:
             try:
-                bm.a = blockmodel
+                bm.a = block_membership
             except ValueError:
                 bm = g.new_vertex_property("object")
                 for v in g.vertices():
-                    bm[v] = blockmodel[int(v)]
+                    bm[v] = block_membership[int(v)]
     else:
         bm = None
 
-    if parallel_edges and self_loops and deg_corr is None:
-        mix_time = 1
     if random:
-        if deg_corr is not None:
-            random_rewire(g, strat="probabilistic", n_iter=mix_time,
-                          parallel_edges=parallel_edges, deg_corr=deg_corr,
-                          cache_probs=cache_probs, self_loops=self_loops,
-                          blockmodel=bm, verbose=verbose)
-        else:
-            random_rewire(g, parallel_edges=parallel_edges, n_iter=mix_time,
-                          self_loops=self_loops, verbose=verbose)
+        random_rewire(g, parallel_edges=parallel_edges,
+                      self_loops=self_loops, verbose=verbose,
+                      block_membership=bm, **kwargs)
 
     if bm is None:
         return g
@@ -446,33 +419,48 @@ def random_graph(N, deg_sampler, deg_corr=None, cache_probs=True, directed=True,
         return g, bm
 
 
-@_limit_args({"strat": ["erdos", "correlated", "uncorrelated",
-                        "probabilistic"]})
-def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
-                  parallel_edges=False, self_loops=False, deg_corr=None,
-                  cache_probs=True, blockmodel=None, ret_fail=False,
-                  verbose=False):
+@_limit_args({"model": ["erdos", "correlated", "uncorrelated",
+                        "probabilistic", "blockmodel",
+                        "blockmodel-traditional"]})
+def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
+                  parallel_edges=False, self_loops=False, vertex_corr=None,
+                  block_membership=None, alias=True, cache_probs=True,
+                  persist=False, ret_fail=False, verbose=False):
     r"""
-    Shuffle the graph in-place.
 
-    If ``strat != "erdos"``, the degrees (either in or out) of each vertex are
-    always the same, but otherwise the edges are randomly placed. If
-    ``strat == "correlated"``, the degree correlations are also maintained: The
-    new source and target of each edge both have the same in and out-degree. If
-    ``strat == "probabilistic"``, then edges are rewired according to the degree
-    correlation given by the parameter ``deg_corr``.
+    Shuffle the graph in-place, following a variety of possible statistical
+    models, chosen via the parameter ``model``.
+
 
     Parameters
     ----------
     g : :class:`~graph_tool.Graph`
         Graph to be shuffled. The graph will be modified.
-    strat : string (optional, default: ``"uncorrelated"``)
-        If ``strat == "erdos"``, the resulting graph will be entirely random. If
-        ``strat == "uncorrelated"`` only the degrees of the vertices will be
-        maintained, nothing else. If ``strat == "correlated"``, additionally the
-        new source and target of each edge both have the same in and out-degree.
-        If ``strat == "probabilistic"``, than edges are rewired according to the
-        degree correlation given by the parameter ``deg_corr``.
+    model : string (optional, default: ``"uncorrelated"``)
+        The following statistical models can be chosen, which determine how the
+        edges are rewired.
+        ``erdos``
+           The edges will be rewired entirely randomly, and the resulting graph
+           will correspond to the Erdős–Rényi model.
+        ``uncorrelated``
+           The edges will be rewired randomly, but the degree sequence of the
+           graph will remain unmodified.
+        ``correlated``
+           The edges will be rewired randomly, but both the degree sequence of
+           the graph and the *vertex-vertex degree correlations* will remain
+           unmodified.
+        ``probabilistic``
+           This is similar to the ``correlated`` option, but the vertex-vertex
+           correlations are not kept unmodified, but instead are sampled from a
+           arbitrary degree-based probabilistic model specified via the
+           ``vertex_corr`` parameter.
+        ``blockmodel``
+          This is just like ``probabilistic``, but the values passed to the
+          ``vertex_corr`` function will correspond to the block membership
+          values specified by the ``block_membership`` parameter.
+        ``blockmodel-traditional``
+          This is just like ``blockmodel-traditional``, but the degree sequence
+          *is not* preserved during rewiring.
     n_iter : int (optional, default: ``1``)
         Number of iterations. If ``edge_sweep == True``, each iteration
         corresponds to an entire "sweep" over all edges. Otherwise this
@@ -486,39 +474,55 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
         If ``True``, parallel edges are allowed.
     self_loops : bool (optional, default: ``False``)
         If ``True``, self-loops are allowed.
-    deg_corr : function (optional, default: ``None``)
-        A function which gives the degree correlation of the graph. It should be
-        callable with two parameters: the in,out-degree pair of the source
-        vertex an edge, and the in,out-degree pair of the target of the same
-        edge (for undirected graphs, both parameters are single values). The
-        function should return a number proportional to the probability of such
-        an edge existing in the generated graph. This parameter is ignored,
-        unless ``strat == "probabilistic"``.
+    vertex_corr : function (optional, default: ``None``)
+        A function which gives the vertex-vertex correlation of the graph.
 
-        If ``blockmodel != None``, the value passed to the function will be the
-        block value of the respective vertices, not the in/out-degree pairs.
+        If ``model == probabilistic`` it should be callable with two parameters:
+        the (in, out)-degree pair of the source vertex an edge, and the
+        (in,out)-degree pair of the target of the same edge (for undirected
+        graphs, both parameters are single values). The function should return a
+        number proportional to the probability of such an edge existing in the
+        generated graph.
+
+        If ``model == blockmodel`` or ``model == blockmodel-traditional``, the
+        values passed to the function will be the block value of the respective
+        vertices, as specified via the ``block_membership``. The function should
+        also return a number proportional to the probability of such an edge
+        existing in the generated graph.
+    block_membership : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        If supplied, the graph will be rewired to conform to a blockmodel
+        ensemble. The value must be a vertex property map which defines the
+        block of each vertex.
+    alias : bool (optional, default: ``True``)
+        If ``True``, and ``model`` is any of ``probabilistic``, ``blockmodel``,
+        or ``blockmodel-traditional``, the alias method will be used to sample
+        the candidate edges. In the case of ``blockmodel-traditional``, if
+        ``parallel_edges == True`` and ``self_loops == True`` this makes the
+        sampling of the edges direct (not rejection based), so that
+        ``n_iter == 1`` is enough to get an uncorrelated sample.
     cache_probs : bool (optional, default: ``True``)
-        If ``True``, the probabilities returned by the ``deg_corr`` parameter
+        If ``True``, the probabilities returned by the ``vertex_corr`` parameter
         will be cached internally. This is crucial for good performance, since
         in this case the supplied python function is called only a few times,
         and not at every attempted edge rewire move. However, in the case were
         the different parameter combinations to the probability function is very
-        large, the memory requirements to keep the cache may be very large.
-    blockmodel : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
-        If supplied, the graph will be rewired to conform to a blockmodel
-        ensemble. The value must be a vertex property map which defines the
-        block of each vertex.
-    ret_fail : bool (optional, default: ``False``)
-        If ``True``, the number of failed edge moves (due to parallel edges or
-        self-loops) is returned.
+        large, the memory and time requirements to keep the cache may not be
+        worthwhile.
+    persist : bool (optional, default: ``False``)
+        If ``True``, an edge swap which is rejected will be attempted again
+        until it succeeds. This may improve the quality of the shuffling for
+        some probabilistic models, and should be sufficiently fast for sparse
+        graphs, but otherwise it may result in many repeated attempts for
+        certain corner-cases in which edges are difficult to swap.
     verbose : bool (optional, default: ``False``)
         If ``True``, verbose information is displayed.
 
 
     Returns
     -------
-    fail_count : int
-        Number of failed edge moves (due to parallel edges or self-loops).
+    rejection_count : int
+        Number of rejected edge moves (due to parallel edges or self-loops, or
+        the probabilistic model used).
 
     See Also
     --------
@@ -527,7 +531,8 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
     Notes
     -----
     This algorithm iterates through all the edges in the network and tries to
-    swap its target or source with the target or source of another edge.
+    swap its target or source with the target or source of another edge. The
+    selected canditate swaps are chosen according to the ``model`` parameter.
 
     .. note::
 
@@ -539,11 +544,13 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
         desired. If degree probabilistic correlations are provided, the mixing
         time tends to be larger.
 
-        If ``strat == "probabilistic"``, the Markov chain still needs to be
-        mixed, even if parallel edges and self-loops are allowed. In this case
-        the Markov chain is implemented using the Metropolis-Hastings
-        [metropolis-equations-1953]_ [hastings-monte-carlo-1970]_
-        acceptance/rejection algorithm.
+        If ``model`` is either "probabilistic" or "blockmodel", the Markov chain
+        still needs to be mixed, even if parallel edges and self-loops are
+        allowed. In this case the Markov chain is implemented using the
+        Metropolis-Hastings [metropolis-equations-1953]_
+        [hastings-monte-carlo-1970]_ acceptance/rejection algorithm. It will
+        eventually converge to the desired probabilities for sufficiently large
+        values of ``n_iter``.
 
 
     Each edge is tentatively swapped once per iteration, so the overall
@@ -574,6 +581,7 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
        gt.graph_draw(g, pos=pos, output="rewire_orig.png", output_size=(300, 300))
 
     >>> gt.random_rewire(g, "correlated")
+    <...>
     >>> pos = gt.arf_layout(g)
     >>> gt.graph_draw(g, pos=pos, output="rewire_corr.pdf", output_size=(300, 300))
     <...>
@@ -584,6 +592,7 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
        gt.graph_draw(g, pos=pos, output="rewire_corr.png", output_size=(300, 300))
 
     >>> gt.random_rewire(g)
+    <...>
     >>> pos = gt.arf_layout(g)
     >>> gt.graph_draw(g, pos=pos, output="rewire_uncorr.pdf", output_size=(300, 300))
     <...>
@@ -594,6 +603,7 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
        gt.graph_draw(g, pos=pos, output="rewire_uncorr.png", output_size=(300, 300))
 
     >>> gt.random_rewire(g, "erdos")
+    <...>
     >>> pos = gt.arf_layout(g)
     >>> gt.graph_draw(g, pos=pos, output="rewire_erdos.pdf", output_size=(300, 300))
     <...>
@@ -617,21 +627,24 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
 
     >>> figure()
     <...>
-    >>> g = gt.random_graph(30000, lambda: sample_k(20),
-    ...                     lambda i, j: exp(abs(i-j)), directed=False,
-    ...                     mix_time=100)
+    >>> g = gt.random_graph(30000, lambda: sample_k(20), model="probabilistic",
+    ...                     vertex_corr=lambda i, j: exp(abs(i-j)), directed=False,
+    ...                     n_iter=100)
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label="Original")
     <...>
     >>> gt.random_rewire(g, "correlated")
+    <...>
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="*", label="Correlated")
     <...>
     >>> gt.random_rewire(g)
+    <...>
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label="Uncorrelated")
     <...>
     >>> gt.random_rewire(g, "erdos")
+    <...>
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label=r"Erd\H{o}s")
     <...>
@@ -661,8 +674,9 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
 
     >>> p = scipy.stats.poisson
     >>> g = gt.random_graph(20000, lambda: (sample_k(19), sample_k(19)),
-    ...                     lambda a, b: (p.pmf(a[0], b[1]) * p.pmf(a[1], 20 - b[0])),
-    ...                     mix_time=100)
+    ...                     model="probabilistic",
+    ...                     vertex_corr=lambda a, b: (p.pmf(a[0], b[1]) * p.pmf(a[1], 20 - b[0])),
+    ...                     n_iter=100)
     >>> figure()
     <...>
     >>> axes([0.1,0.15,0.6,0.8])
@@ -676,6 +690,7 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
     ...          label=r"$\left<\text{i}\right>$ vs o")
     <...>
     >>> gt.random_rewire(g, "correlated")
+    <...>
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{o}\right>$ vs i, corr.")
@@ -685,6 +700,7 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
     ...          label=r"$\left<\text{i}\right>$ vs o, corr.")
     <...>
     >>> gt.random_rewire(g, "uncorrelated")
+    <...>
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{o}\right>$ vs i, uncorr.")
@@ -743,23 +759,26 @@ def random_rewire(g, strat="uncorrelated", n_iter=1, edge_sweep=True,
                              "without self-loops if it already contains" +
                              " self-loops!")
 
-    if (deg_corr is not None and not g.is_directed()) and blockmodel is None:
-        corr = lambda i, j: deg_corr(i[1], j[1])
+    if (vertex_corr is not None and not g.is_directed()) and "blockmodel" not in model:
+        corr = lambda i, j: vertex_corr(i[1], j[1])
     else:
-        corr = deg_corr
+        corr = vertex_corr
 
-    if strat != "probabilistic":
+    if model not in ["probabilistic", "blockmodel", "blockmodel-traditional"]:
         g = GraphView(g, reversed=False)
-    elif blockmodel is not None:
-        strat = "blockmodel"
-    pcount = libgraph_tool_generation.random_rewire(g._Graph__graph, strat,
+
+    traditional = False
+    if model == "blockmodel-traditional":
+        model = "blockmodel"
+        traditional = True
+    pcount = libgraph_tool_generation.random_rewire(g._Graph__graph, model,
                                                     n_iter, not edge_sweep,
                                                     self_loops, parallel_edges,
-                                                    corr, _prop("v", g, blockmodel),
+                                                    alias, traditional, persist,
+                                                    corr, _prop("v", g, block_membership),
                                                     cache_probs,
                                                     _get_rng(), verbose)
-    if ret_fail:
-        return pcount
+    return pcount
 
 
 def predecessor_tree(g, pred_map):

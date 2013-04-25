@@ -111,9 +111,9 @@ def assortativity(g, deg):
     ...         accept = random() < 1.0/k
     ...     return k
     ...
-    >>> g = gt.random_graph(1000, lambda: sample_k(40),
-    ...                     lambda i,k: 1.0 / (1 + abs(i - k)), directed=False,
-    ...                     mix_time=100)
+    >>> g = gt.random_graph(1000, lambda: sample_k(40), model="probabilistic",
+    ...                     vertex_corr=lambda i,k: 1.0 / (1 + abs(i - k)), directed=False,
+    ...                     n_iter=100)
     >>> gt.assortativity(g, "out")
     (0.13903518011375607, 0.005051876804786422)
 
@@ -187,14 +187,15 @@ def scalar_assortativity(g, deg):
     ...         accept = random() < 1.0/k
     ...     return k
     ...
-    >>> g = gt.random_graph(1000, lambda: sample_k(40), lambda i,k: abs(i-k),
-    ...                     directed=False, mix_time=100)
+    >>> g = gt.random_graph(1000, lambda: sample_k(40), model="probabilistic",
+    ...                     vertex_corr=lambda i,k: abs(i-k),
+    ...                     directed=False, n_iter=100)
     >>> gt.scalar_assortativity(g, "out")
     (-0.4334085753985522, 0.010571027872280038)
 
-    >>> g = gt.random_graph(1000, lambda: sample_k(40),
-    ...                     lambda i, k: 1.0 / (1 + abs(i - k)),
-    ...                     directed=False, mix_time=100)
+    >>> g = gt.random_graph(1000, lambda: sample_k(40), model="probabilistic",
+    ...                     vertex_corr=lambda i, k: 1.0 / (1 + abs(i - k)),
+    ...                     directed=False, n_iter=100)
     >>> gt.scalar_assortativity(g, "out")
     (0.5994169713159511, 0.011668093738666827)
 
@@ -279,9 +280,9 @@ def corr_hist(g, deg_source, deg_target, bins=[[0, 1], [0, 1]], weight=None,
     ...         accept = random() < 1.0/k
     ...     return k
     ...
-    >>> g = gt.random_graph(10000, lambda: sample_k(40),
-    ...                     lambda i, j: (sin(i / pi) * sin(j / pi) + 1) / 2,
-    ...                     directed=False, mix_time=100)
+    >>> g = gt.random_graph(10000, lambda: sample_k(40), model="probabilistic",
+    ...                     vertex_corr=lambda i, j: (sin(i / pi) * sin(j / pi) + 1) / 2,
+    ...                     directed=False, n_iter=100)
     >>> h = gt.corr_hist(g, "out", "out")
     >>> clf()
     >>> xlabel("Source out-degree")
@@ -475,9 +476,9 @@ def avg_neighbour_corr(g, deg_source, deg_target, bins=[0, 1], weight=None):
     ...         accept = random() < 1.0 / k
     ...     return k
     ...
-    >>> g = gt.random_graph(10000, lambda: sample_k(40),
-    ...                     lambda i, j: (sin(i / pi) * sin(j / pi) + 1) / 2,
-    ...                     directed=False, mix_time=100)
+    >>> g = gt.random_graph(10000, lambda: sample_k(40), model="probabilistic",
+    ...                     vertex_corr=lambda i, j: (sin(i / pi) * sin(j / pi) + 1) / 2,
+    ...                     directed=False, n_iter=100)
     >>> h = gt.avg_neighbour_corr(g, "out", "out")
     >>> clf()
     >>> xlabel("Source out-degree")

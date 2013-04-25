@@ -52,27 +52,45 @@ private:
     python::object _o;
 };
 
-
 struct graph_rewire_block
 {
+    graph_rewire_block(bool alias, bool traditional) : alias(alias), traditional(traditional) {}
+    bool alias;
+    bool traditional;
+
     template <class Graph, class EdgeIndexMap, class CorrProb, class BlockProp>
     void operator()(Graph& g, EdgeIndexMap edge_index, CorrProb corr_prob,
                     pair<bool, bool> rest, BlockProp block_prop,
                     pair<size_t, bool> iter_sweep,
-                    pair<bool, bool> cache_verbose, size_t& pcount, rng_t& rng)
+                    tr1::tuple<bool, bool, bool> cache_verbose, size_t& pcount, rng_t& rng)
         const
     {
-        graph_rewire<ProbabilisticRewireStrategy>()
-            (g, edge_index, corr_prob, rest.first, rest.second, iter_sweep,
-             cache_verbose, pcount, rng, PropertyBlock<BlockProp>(block_prop));
+        if (traditional)
+        {
+            graph_rewire<TradBlockRewireStrategy>()
+                (g, edge_index, corr_prob, rest.first, rest.second, iter_sweep,
+                 cache_verbose, pcount, rng, PropertyBlock<BlockProp>(block_prop));
+        }
+        else
+        {
+            if (alias)
+                graph_rewire<AliasProbabilisticRewireStrategy>()
+                    (g, edge_index, corr_prob, rest.first, rest.second, iter_sweep,
+                     cache_verbose, pcount, rng, PropertyBlock<BlockProp>(block_prop));
+            else
+                graph_rewire<ProbabilisticRewireStrategy>()
+                    (g, edge_index, corr_prob, rest.first, rest.second, iter_sweep,
+                     cache_verbose, pcount, rng, PropertyBlock<BlockProp>(block_prop));
+        }
     }
 };
 
 
 size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
                      bool no_sweep, bool self_loops, bool parallel_edges,
-                     python::object corr_prob, boost::any block,
-                     bool cache, rng_t& rng, bool verbose)
+                     bool alias, bool traditional, bool persist,
+                     python::object corr_prob, boost::any block, bool cache,
+                     rng_t& rng, bool verbose)
 {
     PythonFuncWrap corr(corr_prob);
     size_t pcount = 0;
@@ -83,7 +101,7 @@ size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
                                    _1, gi.GetEdgeIndex(), boost::ref(corr),
                                    self_loops, parallel_edges,
                                    make_pair(niter, no_sweep),
-                                   make_pair(cache, verbose),
+                                   tr1::make_tuple(persist, cache, verbose),
                                    boost::ref(pcount), boost::ref(rng)))();
     else if (strat == "uncorrelated")
         run_action<graph_tool::detail::never_reversed>()
@@ -91,7 +109,7 @@ size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
                                    _1, gi.GetEdgeIndex(), boost::ref(corr),
                                    self_loops, parallel_edges,
                                    make_pair(niter, no_sweep),
-                                   make_pair(cache, verbose),
+                                   tr1::make_tuple(persist, cache, verbose),
                                    boost::ref(pcount), boost::ref(rng)))();
     else if (strat == "correlated")
         run_action<graph_tool::detail::never_reversed>()
@@ -99,7 +117,7 @@ size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
                                    _1, gi.GetEdgeIndex(), boost::ref(corr),
                                    self_loops, parallel_edges,
                                    make_pair(niter, no_sweep),
-                                   make_pair(cache, verbose),
+                                   tr1::make_tuple(persist, cache, verbose),
                                    boost::ref(pcount), boost::ref(rng)))();
     else if (strat == "probabilistic")
         run_action<>()
@@ -107,15 +125,15 @@ size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
                                    _1, gi.GetEdgeIndex(), boost::ref(corr),
                                    self_loops, parallel_edges,
                                    make_pair(niter, no_sweep),
-                                   make_pair(cache, verbose),
+                                   tr1::make_tuple(persist, cache, verbose),
                                    boost::ref(pcount), boost::ref(rng)))();
     else if (strat == "blockmodel")
         run_action<>()
-            (gi, boost::bind<void>(graph_rewire_block(),
+            (gi, boost::bind<void>(graph_rewire_block(alias, traditional),
                                    _1, gi.GetEdgeIndex(), boost::ref(corr),
                                    make_pair(self_loops, parallel_edges), _2,
                                    make_pair(niter, no_sweep),
-                                   make_pair(cache, verbose),
+                                   tr1::make_tuple(persist, cache, verbose),
                                    boost::ref(pcount), boost::ref(rng)),
              vertex_properties())(block);
     else
