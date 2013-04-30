@@ -94,7 +94,11 @@ public:
     std::streamsize read(char* s, std::streamsize n)
     {
         python::object pbuf = _file.attr("read")(n);
+#if (PY_MAJOR_VERSION >= 3)
         string buf = python::extract<string>(pbuf.attr("decode")("utf-8"));
+#else
+        string buf = python::extract<string>(pbuf);
+#endif
         for (size_t i = 0; i < buf.size(); ++i)
             s[i] = buf[i];
         return buf.size();
