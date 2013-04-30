@@ -22,8 +22,7 @@ seed(42)
 seed_rng(42)
 
 # We need some Gtk and gobject functions
-from gi.repository import Gtk, Gdk, GdkPixbuf
-import gi._gobject as gobject
+from gi.repository import Gtk, Gdk, GdkPixbuf, GObject
 
 # We will use the network of network scientists, and filter out the largest
 # component
@@ -138,7 +137,7 @@ def update_state():
 
 
 # Bind the function above as an 'idle' callback.
-cid = gobject.idle_add(update_state)
+cid = GObject.idle_add(update_state)
 
 # We will give the user the ability to stop the program by closing the window.
 win.connect("delete_event", Gtk.main_quit)

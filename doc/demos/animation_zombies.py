@@ -23,8 +23,7 @@ seed(42)
 seed_rng(42)
 
 # We need some Gtk and gobject functions
-from gi.repository import Gtk, Gdk, GdkPixbuf
-import gi._gobject as gobject
+from gi.repository import Gtk, Gdk, GdkPixbuf, GObject
 
 # We will use the karate-club network
 g = collection.data["karate"]
@@ -54,9 +53,9 @@ state = g.new_vertex_property("int")
 state.a = S
 
 # Images used to draw the nodes. They need to be loaded as cairo surfaces.
-Simg = cairo.ImageSurface.create_from_png(open("face-grin.png", "rb"))
-Simg_fear = cairo.ImageSurface.create_from_png(open("face-surprise.png", "rb"))
-Iimg = cairo.ImageSurface.create_from_png(open("zombie.png", "rb"))
+Simg = cairo.ImageSurface.create_from_png("face-grin.png")
+Simg_fear = cairo.ImageSurface.create_from_png("face-surprise.png")
+Iimg = cairo.ImageSurface.create_from_png("zombie.png")
 
 vertex_sfcs = g.new_vertex_property("object")
 for v in g.vertices():
@@ -153,7 +152,7 @@ def update_state():
 
 
 # Bind the function above as an 'idle' callback.
-cid = gobject.idle_add(update_state)
+cid = GObject.idle_add(update_state)
 
 # We will give the user the ability to stop the program by closing the window.
 win.connect("delete_event", Gtk.main_quit)
