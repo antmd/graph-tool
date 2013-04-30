@@ -88,7 +88,6 @@ from .. dl_import import dl_import
 dl_import("from . import libgraph_tool_search")
 
 from .. import _prop, _python_type
-from .. decorators import _wraps
 import weakref
 
 __all__ = ["bfs_search", "BFSVisitor", "dfs_search", "DFSVisitor",
@@ -97,49 +96,35 @@ __all__ = ["bfs_search", "BFSVisitor", "dfs_search", "DFSVisitor",
            "StopSearch"]
 
 
-def _wrap_member(g, perms):
-    def decorate(func):
-        def wrap(*args, **kwargs):
-            old_perms = dict(g._Graph__perms)
-            g._Graph__perms.update(perms)
-            ret = func(*args, **kwargs)
-            g._Graph__perms.update(old_perms)
-        return wrap
-    return decorate
+class VisitorWrapper(object):
+    def __init__(self, g, visitor, edge_members, vertex_members):
+        self.visitor = visitor
+        self.g = g
+        self.edge_members = set(edge_members)
+        self.vertex_members = set(vertex_members)
 
-
-def _perm_wrap(edge_members, vertex_members=[]):
-    def decorate(func):
-        @_wraps(func)
-        def wrap(*args, **kwargs):
-            old_members = {}
-            g = args[0]
-            visitor = kwargs["visitor"]
-            for e in edge_members:
-                m = getattr(visitor, e)
-                old_members[e] = m
-                m = _wrap_member(g, {"del_edge": True, "add_edge": True})(m)
-                setattr(visitor, e, m)
-            for v in vertex_members:
-                m = getattr(visitor, v)
-                old_members[v] = m
-                m = _wrap_member(g, {"add_vertex": False})(m)
-                setattr(visitor, v, m)
-
-            perms = dict(g._Graph__perms)
-            try:
-                g._Graph__perms.update({"del_vertex": False, "del_edge": False,
-                                        "add_edge": False})
-                ret = func(*args, **kwargs)
-            finally:
-                g._Graph__perms.update(perms)
-
-            for n, m in old_members.items():
-                setattr(visitor, n, m)
-            return ret
-        return wrap
-    return decorate
-
+    def __getattr__(self, attr):
+        try:
+            orig_attr = self.visitor.__getattribute__(attr)
+        except AttributeError:
+            return object.__getattribute__(self, attr)
+        if callable(orig_attr):
+            def wrapped_visitor_member(*args, **kwargs):
+                old_perms = dict(self.g._Graph__perms)
+                perms ={"del_vertex": False, "del_edge": False, "add_edge": False}
+                if attr in self.edge_members:
+                    perms.update({"del_edge": True, "add_edge": True})
+                elif attr in self.vertex_members:
+                    perms.update({"add_vertex": False})
+                self.g._Graph__perms.update(perms)
+                try:
+                    ret = orig_attr(*args, **kwargs)
+                finally:
+                    self.g._Graph__perms.update(old_perms)
+                return ret
+            return wrapped_visitor_member
+        else:
+            return orig_attr
 
 class BFSVisitor(object):
     r"""A visitor object that is invoked at the event-points inside the
@@ -196,8 +181,6 @@ class BFSVisitor(object):
         return
 
 
-@_perm_wrap(["initialize_vertex", "examine_vertex", "finish_vertex"],
-            ["initialize_vertex"])
 def bfs_search(g, source, visitor=BFSVisitor()):
     r"""Breadth-first traversal of a directed or undirected graph.
 
@@ -324,8 +307,9 @@ def bfs_search(g, source, visitor=BFSVisitor()):
     .. [bfs-wikipedia] http://en.wikipedia.org/wiki/Breadth-first_search
     """
 
-    if visitor is None:
-        visitor = BFSVisitor()
+    visitor = VisitorWrapper(g, visitor,
+                             ["initialize_vertex", "examine_vertex", "finish_vertex"],
+                             ["initialize_vertex"])
 
     try:
         libgraph_tool_search.bfs_search(g._Graph__graph,
@@ -405,8 +389,6 @@ class DFSVisitor(object):
         return
 
 
-@_perm_wrap(["initialize_vertex", "discover_vertex", "finish_vertex",
-             "start_vertex"], ["initialize_vertex"])
 def dfs_search(g, source, visitor=DFSVisitor()):
     r"""Depth-first traversal of a directed or undirected graph.
 
@@ -559,8 +541,9 @@ def dfs_search(g, source, visitor=DFSVisitor()):
     .. [dfs-wikipedia] http://en.wikipedia.org/wiki/Depth-first_search
     """
 
-    if visitor is None:
-        visitor = DFSVisitor()
+    visitor = VisitorWrapper(g, visitor,
+                             ["initialize_vertex", "discover_vertex", "finish_vertex",
+                              "start_vertex"], ["initialize_vertex"])
 
     try:
         libgraph_tool_search.dfs_search(g._Graph__graph,
@@ -632,8 +615,6 @@ class DijkstraVisitor(object):
         return
 
 
-@_perm_wrap(["initialize_vertex", "examine_vertex", "finish_vertex"],
-            ["initialize_vertex"])
 def dijkstra_search(g, source, weight, visitor=DijkstraVisitor(), dist_map=None,
                     pred_map=None, combine=lambda a, b: a + b,
                     compare=lambda a, b: a < b, zero=0, infinity=float('inf')):
@@ -833,6 +814,10 @@ def dijkstra_search(g, source, weight, visitor=DijkstraVisitor(), dist_map=None,
     .. [dijkstra-wikipedia] http://en.wikipedia.org/wiki/Dijkstra's_algorithm
     """
 
+    visitor = VisitorWrapper(g, visitor,
+                             ["initialize_vertex", "examine_vertex", "finish_vertex"],
+                             ["initialize_vertex"])
+
     if visitor is None:
         visitor = DijkstraVisitor()
     if dist_map is None:
@@ -915,7 +900,6 @@ class BellmanFordVisitor(object):
         return
 
 
-@_perm_wrap([], [])
 def bellman_ford_search(g, source, weight, visitor=BellmanFordVisitor(),
                         dist_map=None, pred_map=None,
                         combine=lambda a, b: a + b,
@@ -1096,8 +1080,8 @@ def bellman_ford_search(g, source, weight, visitor=BellmanFordVisitor(),
     .. [bellman-ford-wikipedia] http://en.wikipedia.org/wiki/Bellman-Ford_algorithm
     """
 
-    if visitor is None:
-        visitor = BellmanFordVisitor()
+    visitor = VisitorWrapper(g, visitor, [], [])
+
     if dist_map is None:
         dist_map = g.new_vertex_property(weight.value_type())
     if pred_map is None:
@@ -1205,8 +1189,6 @@ class AStarVisitor(object):
         return
 
 
-@_perm_wrap(["initialize_vertex", "examine_vertex", "finish_vertex"],
-            ["initialize_vertex"])
 def astar_search(g, source, weight, visitor=AStarVisitor(),
                  heuristic=lambda v: 1, dist_map=None, pred_map=None,
                  cost_map=None, combine=lambda a, b: a + b,
@@ -1547,8 +1529,10 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
     .. [astar-wikipedia] http://en.wikipedia.org/wiki/A*_search_algorithm
     """
 
-    if visitor is None:
-        visitor = AStarVisitor()
+    visitor = VisitorWrapper(g, visitor,
+                             ["initialize_vertex", "examine_vertex", "finish_vertex"],
+                             ["initialize_vertex"])
+
     if dist_map is None:
         dist_map = g.new_vertex_property(weight.value_type())
     if pred_map is None:
