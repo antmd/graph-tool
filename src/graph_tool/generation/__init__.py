@@ -63,7 +63,7 @@ __all__ = ["random_graph", "random_rewire", "predecessor_tree", "line_graph",
 def random_graph(N, deg_sampler, directed=True,
                  parallel_edges=False, self_loops=False, block_membership=None,
                  block_type="int", degree_block=False,
-                 random=True, mix_time=10, verbose=False, **kwargs):
+                 random=True, verbose=False, **kwargs):
     r"""
     Generate a random graph, with a given degree distribution and (optionally)
     vertex-vertex correlation.
@@ -85,9 +85,9 @@ def random_graph(N, deg_sampler, directed=True,
         degree sequence cannot be used to build a graph.
 
         Optionally, you can also pass a function which receives one or two
-        arguments. If ``blockmodel == None``, the single argument passed will
-        be the index of the vertex which will receive the degree.
-        If ``blockmodel != None``, the first value passed will be the vertex
+        arguments. If ``block_membership == None``, the single argument passed
+        will be the index of the vertex which will receive the degree.  If
+        ``block_membership != None``, the first value passed will be the vertex
         index, and the second will be the block value of the vertex.
     directed : bool (optional, default: ``True``)
         Whether the generated graph should be directed.
@@ -97,8 +97,9 @@ def random_graph(N, deg_sampler, directed=True,
         If ``True``, self-loops are allowed.
     block_membership : list or :class:`~numpy.ndarray` or function (optional, default: ``None``)
         If supplied, the graph will be sampled from a stochastic blockmodel
-        ensemble, and this parameter specifies the block membership, which will
-        be passed to the :func:`~graph_tool.generation.random_rewire` function.
+        ensemble, and this parameter specifies the block membership of the
+        vertices, which will be passed to the
+        :func:`~graph_tool.generation.random_rewire` function.
 
         If the value is a list or a :class:`~numpy.ndarray`, it must have
         ``len(block_membership) == N``, and the values will define to which
@@ -142,7 +143,7 @@ def random_graph(N, deg_sampler, directed=True,
     remaining parameters passed to it.
 
     The complexity is :math:`O(V + E)` if parallel edges are allowed, and
-    :math:`O(V + E \times\text{mix-time})` if parallel edges are not allowed.
+    :math:`O(V + E \times\text{n-iter})` if parallel edges are not allowed.
 
 
     .. note ::
@@ -439,6 +440,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
     model : string (optional, default: ``"uncorrelated"``)
         The following statistical models can be chosen, which determine how the
         edges are rewired.
+
         ``erdos``
            The edges will be rewired entirely randomly, and the resulting graph
            will correspond to the Erdős–Rényi model.
@@ -451,7 +453,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
            unmodified.
         ``probabilistic``
            This is similar to the ``correlated`` option, but the vertex-vertex
-           correlations are not kept unmodified, but instead are sampled from a
+           correlations are not kept unmodified, but instead are sampled from an
            arbitrary degree-based probabilistic model specified via the
            ``vertex_corr`` parameter.
         ``blockmodel``
@@ -459,8 +461,9 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
           ``vertex_corr`` function will correspond to the block membership
           values specified by the ``block_membership`` parameter.
         ``blockmodel-traditional``
-          This is just like ``blockmodel-traditional``, but the degree sequence
-          *is not* preserved during rewiring.
+          This is just like ``blockmodel``, but the degree sequence *is not*
+          preserved during rewiring.
+
     n_iter : int (optional, default: ``1``)
         Number of iterations. If ``edge_sweep == True``, each iteration
         corresponds to an entire "sweep" over all edges. Otherwise this
