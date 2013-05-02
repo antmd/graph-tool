@@ -953,16 +953,22 @@ def fit_to_view(g, pos, geometry, size, pen_width, M=None, text=None,
     x_range, y_range, x_delta, y_delta = get_bb(g, pos, size, pen_width,
                                                 1, text, font_family,
                                                 font_size, cr)
-    zoom_x = (geometry[0] - sum(x_delta)) / (x_range[1] - x_range[0])
-    zoom_y = (geometry[1] - sum(y_delta)) / (y_range[1] - y_range[0])
+    dx = (x_range[1] - x_range[0])
+    dy = (y_range[1] - y_range[0])
+    if dx == 0:
+        dx = 1
+    if dy == 0:
+        dy = 1
+    zoom_x = (geometry[0] - sum(x_delta)) / dx
+    zoom_y = (geometry[1] - sum(y_delta)) / dy
     if np.isnan(zoom_x) or np.isinf(zoom_x) or zoom_x == 0:
         zoom_x = 1
     if np.isnan(zoom_y) or np.isinf(zoom_y) or zoom_y == 0:
         zoom_y = 1
     pad = 0.95
     zoom = min(zoom_x, zoom_y) * pad
-    empty_x = (geometry[0] - sum(x_delta)) - (x_range[1] - x_range[0]) * zoom
-    empty_y = (geometry[1] - sum(y_delta)) - (y_range[1] - y_range[0]) * zoom
+    empty_x = (geometry[0] - sum(x_delta)) - dx * zoom
+    empty_y = (geometry[1] - sum(y_delta)) - dy * zoom
     offset = [-x_range[0] * zoom + empty_x / 2 + x_delta[0],
               -y_range[0] * zoom + empty_y / 2 + y_delta[0]]
     return offset, zoom
