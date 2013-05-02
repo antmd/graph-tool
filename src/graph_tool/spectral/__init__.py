@@ -64,7 +64,7 @@ def adjacency(g, weight=None, index=None):
 
     Returns
     -------
-    a : :mod:`~scipy.sparse.csr_matrix`
+    a : :class:`~scipy.sparse.csr_matrix`
         The (sparse) adjacency matrix.
 
     Notes
@@ -76,11 +76,12 @@ def adjacency(g, weight=None, index=None):
         a_{i,j} =
         \begin{cases}
             1 & \text{if } v_i \text{ is adjacent to } v_j, \\
+            2 & \text{if } i = j, \text{ the graph is undirected and there is a self-loop incident in } v_i, \\
             0 & \text{otherwise}
         \end{cases}
 
-    In the case of weighted edges, the value 1 is replaced the weight of the
-    respective edge.
+    In the case of weighted edges, the entry values are multiplied by the weight
+    of the respective edge.
 
     In the case of networks with parallel edges, the entries in the matrix
     become simply the edge multiplicities.
@@ -89,18 +90,33 @@ def adjacency(g, weight=None, index=None):
     --------
     .. testsetup::
 
-      gt.seed_rng(42)
+       import scipy.linalg
+       from pylab import *
 
-    >>> g = gt.random_graph(100, lambda: (10, 10))
-    >>> m = gt.adjacency(g)
-    >>> print(m.todense())
-    [[ 0.  0.  0. ...,  0.  1.  0.]
-     [ 0.  0.  0. ...,  0.  0.  0.]
-     [ 0.  0.  0. ...,  0.  0.  1.]
-     ..., 
-     [ 0.  0.  0. ...,  0.  0.  0.]
-     [ 0.  0.  0. ...,  0.  0.  0.]
-     [ 0.  0.  1. ...,  0.  0.  0.]]
+    >>> g = gt.collection.data["polblogs"]
+    >>> A = gt.adjacency(g)
+    >>> ew, ev = scipy.linalg.eig(A.todense())
+
+    >>> figure(figsize=(8, 2))
+    <...>
+    >>> scatter(real(ew), imag(ew), c=abs(ew))
+    <...>
+    >>> xlabel(r"$\operatorname{Re}(\lambda)$")
+    <...>
+    >>> ylabel(r"$\operatorname{Im}(\lambda)$")
+    <...>
+    >>> tight_layout()
+    >>> savefig("adjacency-spectrum.pdf")
+
+    .. testcode::
+       :hide:
+
+       savefig("adjacency-spectrum.png")
+
+    .. figure:: adjacency-spectrum.*
+        :align: center
+
+        Adjacency matrix spectrum for the political blog network.
 
     References
     ----------
@@ -121,13 +137,14 @@ def adjacency(g, weight=None, index=None):
 
     libgraph_tool_spectral.adjacency(g._Graph__graph, _prop("v", g, index),
                                      _prop("e", g, weight), data, i, j)
-    m = scipy.sparse.coo_matrix((data, (i,j)))
+    V = max(g.num_vertices(), max(i.max() + 1, j.max() + 1))
+    m = scipy.sparse.coo_matrix((data, (i,j)), shape=(V, V))
     m = m.tocsr()
     return m
 
 
 @_limit_args({"deg": ["total", "in", "out"]})
-def laplacian(g, deg="total", normalized=True, weight=None, index=None):
+def laplacian(g, deg="total", normalized=False, weight=None, index=None):
     r"""Return the Laplacian matrix of the graph.
 
     Parameters
@@ -136,7 +153,7 @@ def laplacian(g, deg="total", normalized=True, weight=None, index=None):
         Graph to be used.
     deg : str (optional, default: "total")
         Degree to be used, in case of a directed graph.
-    normalized : bool (optional, default: True)
+    normalized : bool (optional, default: False)
         Whether to compute the normalized Laplacian.
     weight : :class:`~graph_tool.PropertyMap` (optional, default: True)
         Edge property map with the edge weights.
@@ -146,7 +163,7 @@ def laplacian(g, deg="total", normalized=True, weight=None, index=None):
 
     Returns
     -------
-    l : :mod:`~scipy.sparse.csr_matrix`
+    l : :class:`~scipy.sparse.csr_matrix`
         The (sparse) Laplacian matrix.
 
     Notes
@@ -182,20 +199,60 @@ def laplacian(g, deg="total", normalized=True, weight=None, index=None):
 
     Examples
     --------
+
     .. testsetup::
 
-      gt.seed_rng(42)
+       import scipy.linalg
+       from pylab import *
 
-    >>> g = gt.random_graph(100, lambda: (10,10))
-    >>> m = gt.laplacian(g)
-    >>> print(m.todense())
-    [[ 1.   -0.05  0.   ...,  0.    0.    0.  ]
-     [ 0.    1.    0.   ...,  0.    0.   -0.05]
-     [ 0.    0.    1.   ...,  0.   -0.05  0.  ]
-     ..., 
-     [ 0.    0.    0.   ...,  1.    0.    0.  ]
-     [-0.05  0.    0.   ...,  0.    1.    0.  ]
-     [ 0.    0.    0.   ..., -0.05  0.    1.  ]]
+    >>> g = gt.collection.data["polblogs"]
+    >>> L = gt.laplacian(g)
+    >>> ew, ev = scipy.linalg.eig(L.todense())
+
+    >>> figure(figsize=(8, 2))
+    <...>
+    >>> scatter(real(ew), imag(ew), c=abs(ew))
+    <...>
+    >>> xlabel(r"$\operatorname{Re}(\lambda)$")
+    <...>
+    >>> ylabel(r"$\operatorname{Im}(\lambda)$")
+    <...>
+    >>> tight_layout()
+    >>> savefig("laplacian-spectrum.pdf")
+
+    .. testcode::
+       :hide:
+
+       savefig("laplacian-spectrum.png")
+
+    .. figure:: laplacian-spectrum.*
+        :align: center
+
+        Laplacian matrix spectrum for the political blog network.
+
+    >>> L = gt.laplacian(g, normalized=True)
+    >>> ew, ev = scipy.linalg.eig(L.todense())
+
+    >>> figure(figsize=(8, 2))
+    <...>
+    >>> scatter(real(ew), imag(ew), c=abs(ew))
+    <...>
+    >>> xlabel(r"$\operatorname{Re}(\lambda)$")
+    <...>
+    >>> ylabel(r"$\operatorname{Im}(\lambda)$")
+    <...>
+    >>> tight_layout()
+    >>> savefig("norm-laplacian-spectrum.pdf")
+
+    .. testcode::
+       :hide:
+
+       savefig("norm-laplacian-spectrum.png")
+
+    .. figure:: norm-laplacian-spectrum.*
+        :align: center
+
+        Normalized Laplacian matrix spectrum for the political blog network.
 
     References
     ----------
@@ -209,6 +266,7 @@ def laplacian(g, deg="total", normalized=True, weight=None, index=None):
         else:
             index = g.vertex_index
 
+    V = g.num_vertices()
     nself = label_self_loops(g, mark_only=True).a.sum()
     E = g.num_edges() - nself
     if not g.is_directed():
@@ -224,7 +282,8 @@ def laplacian(g, deg="total", normalized=True, weight=None, index=None):
     else:
         libgraph_tool_spectral.laplacian(g._Graph__graph, _prop("v", g, index),
                                          _prop("e", g, weight), deg, data, i, j)
-    m = scipy.sparse.coo_matrix((data, (i,j)))
+    V = max(g.num_vertices(), max(i.max() + 1, j.max() + 1))
+    m = scipy.sparse.coo_matrix((data, (i, j)), shape=(V, V))
     m = m.tocsr()
     return m
 
@@ -245,8 +304,8 @@ def incidence(g, vindex=None, eindex=None):
 
     Returns
     -------
-    a : :mod:`~scipy.sparse.csr_matrix`
-        The (sparse) adjacency matrix.
+    a : :class:`~scipy.sparse.csr_matrix`
+        The (sparse) incidence matrix.
 
     Notes
     -----
@@ -281,12 +340,12 @@ def incidence(g, vindex=None, eindex=None):
     >>> m = gt.incidence(g)
     >>> print(m.todense())
     [[-1. -1.  0. ...,  0.  0.  0.]
-     [ 0.  0. -1. ...,  0.  0.  0.]
+     [ 0.  0.  0. ...,  0.  0.  0.]
      [ 0.  0.  0. ...,  0.  0.  0.]
      ..., 
+     [ 0.  0. -1. ...,  0.  0.  0.]
      [ 0.  0.  0. ...,  0.  0.  0.]
-     [ 0.  0.  0. ..., -1.  0.  0.]
-     [ 0.  0.  0. ...,  0. -1. -1.]]
+     [ 0.  0.  0. ...,  1.  0.  0.]]
 
     References
     ----------

@@ -191,13 +191,13 @@ def scalar_assortativity(g, deg):
     ...                     vertex_corr=lambda i,k: abs(i-k),
     ...                     directed=False, n_iter=100)
     >>> gt.scalar_assortativity(g, "out")
-    (-0.4334085753985522, 0.010571027872280038)
+    (-0.44070158356400696, 0.010592022444678632)
 
     >>> g = gt.random_graph(1000, lambda: sample_k(40), model="probabilistic",
     ...                     vertex_corr=lambda i, k: 1.0 / (1 + abs(i - k)),
     ...                     directed=False, n_iter=100)
     >>> gt.scalar_assortativity(g, "out")
-    (0.5994169713159511, 0.011668093738666827)
+    (0.6007430887839058, 0.011569809783643956)
 
     References
     ----------

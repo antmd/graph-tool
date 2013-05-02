@@ -231,7 +231,7 @@ def vertex_average(g, deg):
     >>> from numpy.random import poisson
     >>> g = gt.random_graph(1000, lambda: (poisson(5), poisson(5)))
     >>> print(gt.vertex_average(g, "in"))
-    (4.98, 0.06840760191674607)
+    (4.982, 0.06855418295042251)
     """
 
     ret = libgraph_tool_stats.\
@@ -284,7 +284,7 @@ def edge_average(g, eprop):
     >>> eprop = g.new_edge_property("double")
     >>> eprop.get_array()[:] = random(g.num_edges())
     >>> print(gt.edge_average(g, eprop))
-    (0.4979474933948808, 0.004104589512548127)
+    (0.49849732125677476, 0.004086182531863621)
     """
 
     ret = libgraph_tool_stats.\
@@ -408,10 +408,10 @@ def distance_histogram(g, weight=None, bins=[0, 1], samples=None,
     >>> g = gt.random_graph(100, lambda: (3, 3))
     >>> hist = gt.distance_histogram(g)
     >>> print(hist)
-    [array([    0.,   300.,   856.,  2185.,  3840.,  2516.,   203.]), array([0, 1, 2, 3, 4, 5, 6, 7], dtype=uint64)]
+    [array([    0.,   300.,   866.,  2206.,  3893.,  2476.,   159.]), array([0, 1, 2, 3, 4, 5, 6, 7], dtype=uint64)]
     >>> hist = gt.distance_histogram(g, samples=10)
     >>> print(hist)
-    [array([   0.,   30.,   87.,  227.,  390.,  242.,   14.]), array([0, 1, 2, 3, 4, 5, 6, 7], dtype=uint64)]
+    [array([   0.,   30.,   84.,  217.,  385.,  249.,   25.]), array([0, 1, 2, 3, 4, 5, 6, 7], dtype=uint64)]
     """
 
     if samples != None:

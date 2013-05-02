@@ -658,7 +658,7 @@ def get_akc(B, I, N=float("inf"), directed=False):
     --------
 
     >>> gt.get_akc(10, log(10) / 100, N=100)
-    2.4199998721289937
+    2.4199998936261204
 
     References
     ----------
