@@ -78,6 +78,7 @@ if not offscreen:
                       edge_color=[0.6, 0.6, 0.6, 1],
                       vertex_surface=vertex_sfcs,
                       vertex_halo=newly_infected,
+                      vertex_halo_size=1.2,
                       vertex_halo_color=[0.8, 0, 0, 0.6])
 else:
     count = 0

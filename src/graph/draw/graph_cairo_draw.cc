@@ -54,6 +54,7 @@ enum vertex_attr_t {
     VERTEX_PENWIDTH,
     VERTEX_HALO,
     VERTEX_HALO_COLOR,
+    VERTEX_HALO_SIZE,
     VERTEX_TEXT,
     VERTEX_TEXT_COLOR,
     VERTEX_TEXT_POSITION,
@@ -117,7 +118,7 @@ typedef pair<double, double> pos_t;
 typedef tuple<double, double, double, double> color_t;
 typedef tr1::unordered_map<int, boost::any> attrs_t;
 
-typedef mpl::map36<
+typedef mpl::map37<
     mpl::pair<mpl::int_<VERTEX_SHAPE>, vertex_shape_t>,
     mpl::pair<mpl::int_<VERTEX_COLOR>, color_t>,
     mpl::pair<mpl::int_<VERTEX_FILL_COLOR>, color_t>,
@@ -127,6 +128,7 @@ typedef mpl::map36<
     mpl::pair<mpl::int_<VERTEX_PENWIDTH>, double>,
     mpl::pair<mpl::int_<VERTEX_HALO>, uint8_t>,
     mpl::pair<mpl::int_<VERTEX_HALO_COLOR>, color_t>,
+    mpl::pair<mpl::int_<VERTEX_HALO_SIZE>, double>,
     mpl::pair<mpl::int_<VERTEX_TEXT>, string>,
     mpl::pair<mpl::int_<VERTEX_TEXT_COLOR>, color_t>,
     mpl::pair<mpl::int_<VERTEX_TEXT_POSITION>, double>,
@@ -602,12 +604,13 @@ public:
         if (_attrs.template get<uint8_t>(VERTEX_HALO) && !outline)
         {
             color_t c = _attrs.template get<color_t>(VERTEX_HALO_COLOR);
+            double hs = _attrs.template get<double>(VERTEX_HALO_SIZE);
             cr.set_source_rgba(get<0>(c), get<1>(c), get<2>(c), get<3>(c));
             cr.save();
             cr.scale(aspect, 1.0);
-            cr.arc(0, 0, size, 0, 2 * M_PI);
-            cr.restore();
+            cr.arc(0, 0, size * hs / 2, 0, 2 * M_PI);
             cr.fill();
+            cr.restore();
         }
 
         python::object osrc = _attrs.template get<python::object>(VERTEX_SURFACE);
@@ -1631,6 +1634,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_draw)
         .value("pen_width", VERTEX_PENWIDTH)
         .value("halo", VERTEX_HALO)
         .value("halo_color", VERTEX_HALO_COLOR)
+        .value("halo_size", VERTEX_HALO_SIZE)
         .value("text", VERTEX_TEXT)
         .value("text_color", VERTEX_TEXT_COLOR)
         .value("text_position", VERTEX_TEXT_POSITION)
