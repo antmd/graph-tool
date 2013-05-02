@@ -199,7 +199,7 @@ AC_PYTHON_DEVEL([== '${PYTHON_FULL_VERSION}'])
 
 # default directory for submodules
 [MOD_DIR="${PYTHON_SITE_PKG}"]
-AC_ARG_WITH([python-module-path], [AS_HELP_STRING([--python-module-path=DIR],
+AC_ARG_WITH([python-module-path], [AS_HELP_STRING([--with-python-module-path=DIR],
 		  		  [directory where python module will be installed
                       		  [default=auto-detected] ])],
             MOD_DIR=$withval)
