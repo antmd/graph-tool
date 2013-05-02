@@ -471,7 +471,9 @@ class PropertyMap(object):
 
            An array is returned *only if* the value type of the property map is
            a scalar. For vector, string or object types, ``None`` is returned
-           instead.
+           instead. For vector and string objects, indirect array access is
+           provided via the :func:`~graph_tool.PropertyMap.get_2d_array()` and
+           :func:`~graph_tool.PropertyMap.set_2d_array()` member functions.
 
         .. warning::
 
@@ -591,6 +593,85 @@ class PropertyMap(object):
                   filtered out. If there are no filters in place, a regular
                   :class:`~graph_tool.PropertyArray` is returned, which is
                   identical to the :attr:`~PropertyMap.a` attribute.""")
+
+    def get_2d_array(self, pos):
+        r"""Return a two-dimensional array with a copy of the entries of the
+        vector-valued property map. The parameter ``pos`` must be a sequence of
+        integers which specifies the indexes of the property values which will
+        be used. """
+
+        if self.key_type() == "g":
+            raise ValueError("Cannot create multidimensional array for graph property maps.")
+        if "vector" not in self.value_type() and (len(pos) > 1 or pos[0] != 0):
+            raise ValueError("Cannot create array of dimension %d (indexes %s) from non-vector property map of type '%s'." \
+                             % (len(pos), str(pos), self.value_type()))
+        if "string" in self.value_type():
+            if "vector" in self.value_type():
+                p = ungroup_vector_property(self, pos)
+            else:
+                p = [self]
+            g = self.get_graph()
+            if self.key_type() == "v":
+                N = g.num_vertices()
+            else:
+                N = g.num_edges()
+            a = [["" for j in range(N)] for i in range(len(p))]
+            if self.key_type() == "v":
+                iters = g.vertices()
+            else:
+                iters = g.edges()
+            for v in iters:
+                for i in range(len(p)):
+                    a[i][int(v)] = p[i][v]
+            if len(a) == 1:
+                a = a[0]
+            return numpy.array(a)
+        a = self.fa
+        if a is not None:
+            return numpy.array(a)
+        else:
+            p = ungroup_vector_property(self, pos)
+            return numpy.array([x.a for x in p])
+
+    def set_2d_array(self, a, pos=None):
+        r"""Set the entries of the vector-valued property map from a
+        two-dimensional array ``a``. If given, the parameter ``pos`` must be a
+        sequence of integers which specifies the indexes of the property values
+        which will be set."""
+
+        if self.key_type() == "g":
+            raise ValueError("Cannot set multidimensional array for graph property maps.")
+        if "vector" not in self.value_type():
+            if len(a.shape) != 1:
+                raise ValueError("Cannot set array of shape %s to non-vector property map of type %s" % \
+                                 (str(a.shape), self.value_type()))
+            if self.value_type() != "string":
+                self.fa = a
+            else:
+                g = self.get_graph()
+                if self.key_type() == "v":
+                    iters = g.vertices()
+                else:
+                    iters = g.edges()
+                for i, v in enumerate(iters):
+                    self[v] = a[i]
+            return
+
+        val = self.value_type()[7:-1]
+        ps = []
+        for i in range(a.shape[0]):
+            ps.append(self.get_graph().new_property(self.key_type(), val))
+            if self.value_type() != "string":
+                ps[-1].fa = a[i]
+            else:
+                g = self.get_graph()
+                if self.key_type() == "v":
+                    iters = g.vertices()
+                else:
+                    iters = g.edges()
+                for j, v in enumerate(iters):
+                    ps[-1][v] = a[i, j]
+        group_vector_property(ps, val, self, pos)
 
     def is_writable(self):
         """Return True if the property is writable."""
@@ -837,23 +918,23 @@ def edge_difference(g, prop, ediff=None):
     >>> g = gt.random_graph(100, lambda: (3, 3))
     >>> ediff = gt.edge_difference(g, g.vertex_index)
     >>> print(ediff.a)
-    [ 22   7  90   1 -48 -21 -26 -39 -60 -84 -18 -12   3 -67 -48 -53 -79 -29
-      13 -46 -16 -43  -4 -23  26 -64 -52  25 -64 -34  33 -15  31  29 -19 -51
-      13   5  47   3   4  34  20 -32  55  19 -23  58 -22 -12  50 -21  37  63
-      20 -23  -3   7  32 -18  52   1  -3  58  80  21  38  67  85  85  59  54
-      24  14  66 -37 -10 -55  95  17  24  58  65  40  37   8  93  67  -1  68
-      10  37   6  23  28  39  16  22  11   9  56  48  65 -11  12  61 -17  35
-      36 -14 -10 -17  65  52 -29  26  -4 -23 -36 -17  26  -5  17 -38 -22 -29
-     -10  -3  11  32 -24  24 -61  17 -25  17  -4  10  14 -40 -62 -74 -82 -44
-     -87 -50 -46 -23 -56 -72  -4  22  24 -61 -36 -27 -30 -18 -51 -21 -27 -17
-     -43 -11 -46 -42   1 -76  -2 -70   8  -7  -9 -77 -76 -67 -72 -12 -77 -43
-      -5 -12 -59 -79 -68  -7 -20 -24 -10 -45   4  10 -19   1 -11 -30 -41 -46
-      17 -16 -62   2  15 -28 -38  14 -29  11   3 -30 -46   7  16  44  37  19
-     -21  44  23  64  14  71  31  66  30  15 -50 -20  33  65 -13  24  60  30
-      49  -8  71  70  73  56  65  12  21 -20  32  17  56 -19   9  64   7  52
-       3  27  22  -1  -8  10 -10 -22 -18  15 -31 -15  15  -8  10  -2  -8   9
-       6 -24  18  50  12  36  -5  45  14   7 -50 -39   4  36  37 -11   7 -31
-      14  22  27 -63 -53 -42 -39 -37  15 -37 -58  32]
+    [ 63  74  70 -19   1 -41 -54 -38 -68 -87 -85 -40 -41  -6  -3   4  12 -40
+      -1   1 -47 -31 -49 -39  28 -37 -50 -32 -34 -12  -1  -4   5  10   8 -51
+     -27  18  -3  45 -13  42   3 -31  25 -21  44 -28 -34  53  -5  -7  47 -26
+      67   7  28 -24  30  50  24  39  43  45  64  78  74  84  -7  32  73  47
+      34  70   2  -2 -78 -92  81  22  80  37  66  -2   1  26  95  26  62  66
+      30   7  56  79  69  80  74  84   8  47  73  54  11  79  71  60  72  57
+      41 -15  33 -15 -28  -4 -29 -13  -8 -40  -6   6 -19 -22  15  10  -7 -13
+     -29 -10  32  -9 -30 -14 -63 -60  -2 -13 -39  10  12  14 -37 -29 -16 -65
+       1 -52 -21 -49 -43 -57  54  31  62 -40 -66 -53 -12 -71 -92 -18 -49 -65
+     -83 -80 -33 -67 -70 -58 -40 -53 -44 -71 -46 -75 -37 -44 -57  -3 -15 -76
+       4  16 -55 -10   1 -33  16  -6  -7 -66 -49 -57 -58 -35 -32  20 -28 -58
+       9  28   7 -67  29   6 -17 -54  -8 -31  24 -37 -29 -19  -5 -13  17 -39
+     -25  17  25  62  65 -17  34  -7  12   3  17 -13  -5  40  74  80  36  73
+      75  52   4  75  67  43  17  33  57  44  40  34 -26 -15  -5  31  30  51
+     -17  21   5 -19  34  -1  12  -1  62 -27  33 -22  43 -22 -39  33 -24  41
+     -37  17 -31  45 -40 -39 -36  49  16  36 -19  44  36 -51 -35 -13   4  14
+     -44 -16  -8 -13   9 -29  10 -62 -26 -47 -44   3]
     """
     val_t = prop.value_type()
     if val_t == "unsigned long":
@@ -1324,8 +1405,8 @@ class Graph(object):
         >>> g.graph_properties["gnat"] = g.new_graph_property("string", "hi there!")
         >>> g.list_properties()
         gnat           (graph)   (type: string, val: hi there!)
-        bar            (vertex)  (type: python::object)
         foo            (vertex)  (type: double)
+        bar            (vertex)  (type: python::object)
         foo            (edge)    (type: vector<double>)
         """
 
