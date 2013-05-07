@@ -152,7 +152,17 @@ multi_array_ref<ValueType,dim> get_array(python::object points)
         throw invalid_numpy_conversion("invalid array dimension!");
 
     if (mpl::at<numpy_types,ValueType>::type::value != pa->descr->type_num)
-        throw invalid_numpy_conversion("invalid array value type!");
+    {
+        using python::detail::gcc_demangle;
+        handle<> x((PyObject*)  pa->descr->typeobj);
+        object dtype(x);
+        string type_name = python::extract<string>(python::str(dtype));
+        string error = "invalid array value type: " + type_name;
+        error += " (id: " + lexical_cast<string>(pa->descr->type_num) + ")";
+        error += ", wanted: " + string(gcc_demangle(typeid(ValueType).name()));
+        error += " (id: " + lexical_cast<string>(mpl::at<numpy_types,ValueType>::type::value) + ")";
+        throw invalid_numpy_conversion(error);
+    }
 
     vector<size_t> shape(pa->nd);
     for (int i = 0; i < pa->nd; ++i)
