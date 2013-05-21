@@ -370,13 +370,14 @@ struct move_sweep_dispatch
     move_sweep_dispatch(Eprop eweight, Vprop vweight, boost::any egroups,
                         VEprop esrcpos, VEprop etgtpos, Vprop label, size_t L,
                         vector<int>& vlist, bool deg_corr, double beta,
-                        bool sequential, bool verbose, size_t max_edge_index,
-                        rng_t& rng, double& S, size_t& nmoves,
-                        GraphInterface& bgi)
+                        bool sequential, bool random_move, bool verbose,
+                        size_t max_edge_index, rng_t& rng, double& S,
+                        size_t& nmoves, GraphInterface& bgi)
 
         : eweight(eweight), vweight(vweight), oegroups(egroups), esrcpos(esrcpos),
           etgtpos(etgtpos), label(label), L(L), vlist(vlist),
-          deg_corr(deg_corr), beta(beta), sequential(sequential), verbose(verbose),
+          deg_corr(deg_corr), beta(beta), sequential(sequential),
+          random_move(random_move), verbose(verbose),
           max_edge_index(max_edge_index), rng(rng), S(S), nmoves(nmoves), bgi(bgi)
     {}
 
@@ -392,6 +393,7 @@ struct move_sweep_dispatch
     bool deg_corr;
     double beta;
     bool sequential;
+    bool random_move;
     bool verbose;
     size_t max_edge_index;
     rng_t& rng;
@@ -441,7 +443,8 @@ struct move_sweep_dispatch
                    egroups.get_unchecked(num_vertices(bg)),
                    esrcpos.get_unchecked(max_edge_index + 1),
                    etgtpos.get_unchecked(max_edge_index + 1),
-                   g, bg, emat, sequential, verbose, rng, S, nmoves);
+                   g, bg, emat, sequential, random_move, verbose,
+                   rng, S, nmoves);
     }
 
 };
@@ -454,8 +457,8 @@ python::object do_move_sweep(GraphInterface& gi, GraphInterface& bgi,
                              bool deg_corr, boost::any oeweight,
                              boost::any ovweight, boost::any oegroups,
                              boost::any oesrcpos, boost::any oetgtpos,
-                             double beta, bool sequential, bool verbose,
-                             rng_t& rng)
+                             double beta, bool sequential, bool random_move,
+                             bool verbose, rng_t& rng)
 {
     typedef property_map_type::apply<int32_t,
                                      GraphInterface::vertex_index_map_t>::type
@@ -484,8 +487,8 @@ python::object do_move_sweep(GraphInterface& gi, GraphInterface& bgi,
         (gi, boost::bind<void>(move_sweep_dispatch<emap_t, vmap_t, vemap_t>
                                (eweight, vweight, oegroups, esrcpos, etgtpos,
                                 label, L, vlist, deg_corr, beta,
-                                sequential, verbose, gi.GetMaxEdgeIndex(),
-                                rng, S, nmoves, bgi),
+                                sequential, random_move,  verbose,
+                                gi.GetMaxEdgeIndex(), rng, S, nmoves, bgi),
                                mrs, mrp, mrm, wr, b, _1, ref(emat)))();
     return python::make_tuple(S, nmoves);
 }

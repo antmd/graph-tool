@@ -716,7 +716,7 @@ def min_dist(state, n=0):
     return min_d, r, s
 
 
-def mcmc_sweep(state, beta=1., sequential=True, verbose=False, vertices=None):
+def mcmc_sweep(state, beta=1., sequential=True, vertices=None, random_move=False, verbose=False):
     r"""Performs a Monte Carlo Markov chain sweep on the network, to sample the block partition according to a probability :math:`\propto e^{-\beta \mathcal{S}_{t/c}}`, where :math:`\mathcal{S}_{t/c}` is the blockmodel entropy.
 
     Parameters
@@ -730,6 +730,14 @@ def mcmc_sweep(state, beta=1., sequential=True, verbose=False, vertices=None):
         random order. Otherwise a total of `N` moves attempts are made, where
         `N` is the number of vertices, where each vertex can be selected with
         equal probability.
+    random_move : ``bool`` (optional, default: ``False``)
+        If ``True``, the proposed moves will attempt to place the vertices in
+        fully randomly-chosen blocks. If ``False``, the proposed moves will be
+        chosen with a probability depending on the membership of the neighbours
+        and the currently-inferred block structure.
+    vertices: ``list of ints`` (optional, default: ``None``)
+        A list of vertices which will be attempted to be moved. If ``None``, all
+        vertices will be attempted.
     verbose : ``bool`` (optional, default: ``False``)
         If ``True``, verbose information is displayed.
 
@@ -838,6 +846,10 @@ def mcmc_sweep(state, beta=1., sequential=True, verbose=False, vertices=None):
     if vertices is None:
         vertices = libcommunity.get_vector(state.g.num_vertices())
         vertices.a = state.g.vertex_index.copy("int").fa
+    else:
+        vlist = libcommunity.get_vector(len(vertices))
+        vlist.a = vertices
+        vertices = vlist
 
     dS, nmoves = libcommunity.move_sweep(state.g._Graph__graph,
                                          state.bg._Graph__graph,
@@ -856,62 +868,66 @@ def mcmc_sweep(state, beta=1., sequential=True, verbose=False, vertices=None):
                                          state.egroups,
                                          _prop("e", state.g, state.esrcpos),
                                          _prop("e", state.g, state.etgtpos),
-                                         float(beta), sequential,
+                                         float(beta), sequential, random_move,
                                          verbose, _get_rng())
     return dS / state.E, nmoves
 
 
 
 
-def mc_get_dl(state, nsweep, greedy, rng, checkpoint=None, anneal=1,
-              verbose=False):
+def mc_get_dl(state, nsweep, greedy, rng, checkpoint, checkpoint_state,
+              anneal=1, verbose=False):
 
     if len(state.vertices) == 1:
         return state._BlockState__min_dl()
 
-    S = state._BlockState__min_dl()
+    B = len(state.vertices)
+    if checkpoint_state is None:
+        checkpoint_state = defaultdict(dict)
+    if "S" in checkpoint_state[B]:
+        S = checkpoint_state[B]["S"]
+        niter = checkpoint_state[B]["niter"]
+    else:
+        S = state._BlockState__min_dl()
+        checkpoint_state[B]["S"] = S
+        niter = 0
+        checkpoint_state[B]["niter"] = niter
 
     if nsweep >= 0:
-        for i in range(nsweep):
-            delta, nmoves = mcmc_sweep(state, beta=1, rng=rng)
-            if checkpoint is not None:
-                checkpoint(state, S, delta, nmoves)
+        ntotal = nsweep if not greedy else 2 * nsweep
+        for i in range(ntotal):
+            if i < niter:
+                continue
+            if i < nsweep:
+                beta = 1
+            else:
+                beta = float("inf") # greedy
+            delta, nmoves = mcmc_sweep(state, beta=beta, rng=rng)
             S += delta
-        if greedy:
-            for i in range(nsweep):
-                delta, nmoves = mcmc_sweep(state, beta=float("inf"))
-                if checkpoint is not None:
-                    checkpoint(state, S, delta, nmoves)
-                    S += delta
+            niter += 1
+            checkpoint_state[B]["S"] = S
+            checkpoint_state[B]["niter"] = niter
+            if checkpoint is not None:
+                checkpoint(state, S, delta, nmoves, checkpoint_state)
     else:
         # adaptive mode
-        min_dl = S
-        max_dl = S
-        count = 0
-        time = 0
-        bump = False
+        min_dl = checkpoint_state[B].get("min_dl", S)
+        max_dl = checkpoint_state[B].get("max_dl", S)
+        count = checkpoint_state[B].get("count", 0)
+        time = checkpoint_state[B].get("time", 0)
+        bump = checkpoint_state[B].get("bump", False)
 
-        beta = 1.
+        beta =  checkpoint_state[B].get("beta", 1.)
 
-        last_min = min_dl
+        last_min = checkpoint_state[B].get("last_min", min_dl)
+
+        greedy = checkpoint_state[B].get("greedy", False)
 
         if verbose:
             print("beta = %g" % beta)
         while True:
-            delta, nmoves = mcmc_sweep(state, beta=beta)
-            if checkpoint is not None:
-                checkpoint(state, S, delta, nmoves)
-            S += delta
-
-            if S < min_dl:
-                min_dl = S
-                count = 0
-            elif S > max_dl:
-                max_dl = S
-                count = 0
-            else:
-                count += 1
-
+            if greedy:
+                break
             if count > abs(nsweep):
                 if not bump:
                     min_dl = max_dl = S

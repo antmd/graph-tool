@@ -799,8 +799,8 @@ void move_sweep(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b, Vprop label,
                 size_t L, vector<int>& vlist, bool deg_corr, double beta,
                 Eprop eweight, Vprop vweight, EVprop egroups, VEprop esrcpos,
                 VEprop etgtpos, Graph& g, BGraph& bg, EMat& emat,
-                bool sequential, bool verbose, RNG& rng, double& S,
-                size_t& nmoves)
+                bool sequential, bool random_move, bool verbose, RNG& rng,
+                double& S, size_t& nmoves)
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
     nmoves = 0;
@@ -841,7 +841,7 @@ void move_sweep(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b, Vprop label,
         else
             p_rand = B / double(mrp[t] + B);
 
-        if (rand_real() >= p_rand)
+        if (rand_real() >= p_rand && !random_move)
         {
             std::tr1::uniform_int<size_t> urand(0, egroups[t].size() - 1);
 
@@ -857,12 +857,12 @@ void move_sweep(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b, Vprop label,
         if (s == r)
             continue;
 
-        double pf = isinf(beta) ? 1 : get_move_prob(v, s, b, mrs, mrp, mrm, emat, g, B);
+        double pf = (isinf(beta) || random_move) ? 1 : get_move_prob(v, s, b, mrs, mrp, mrm, emat, g, B);
 
         double dS = move_vertex(v, s, mrs, mrp, mrm, wr, b, deg_corr, eweight,
                                 vweight, g, bg, emat, true);
 
-        double pb = isinf(beta) ? 1 : get_move_prob(v, r, b, mrs, mrp, mrm, emat, g, B);
+        double pb = (isinf(beta) || random_move) ? 1 : get_move_prob(v, r, b, mrs, mrp, mrm, emat, g, B);
 
         double a = isinf(beta) ? -dS : -beta * dS + log(pb) - log(pf);
 
