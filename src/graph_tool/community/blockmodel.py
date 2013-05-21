@@ -943,34 +943,63 @@ def mc_get_dl(state, nsweep, greedy, rng, checkpoint, checkpoint_state,
                         if verbose:
                             print("beta = %g" % beta)
 
-        min_dl = S
-        count = 0
-        while True:
-            delta, nmoves = mcmc_sweep(state, beta=float("inf"))
+            delta, nmoves = mcmc_sweep(state, beta=beta)
+            S += delta
+
+            if S < min_dl:
+                min_dl = S
+                count = 0
+            elif S > max_dl:
+                max_dl = S
+                count = 0
+            else:
+                count += 1
+
+            checkpoint_state[B]["S"] = S
+            checkpoint_state[B]["min_dl"] = min_dl
+            checkpoint_state[B]["max_dl"] = max_dl
+            checkpoint_state[B]["count"] = count
+
             if checkpoint is not None:
-                checkpoint(state, S, delta, nmoves)
+                checkpoint(state, S, delta, nmoves, checkpoint_state)
+
+        if verbose:
+            print("beta = inf")
+
+        if not greedy:
+            checkpoint_state[B]["greedy"] = True
+            min_dl = S
+            count = 0
+
+        while count <= abs(nsweep):
+            delta, nmoves = mcmc_sweep(state, beta=float("inf"))
             S += delta
             if S < min_dl:
                 min_dl = S
                 count = 0
             else:
                 count += 1
-            if count > abs(nsweep):
-                break
+            checkpoint_state[B]["S"] = S
+            checkpoint_state[B]["min_dl"] = min_dl
+            checkpoint_state[B]["count"] = count
+            if checkpoint is not None:
+                checkpoint(state, S, delta, nmoves, checkpoint_state)
 
     return state._BlockState__min_dl()
 
-def get_b_dl(g, bs, bs_start, B, nsweep, anneal, greedy, clabel, deg_corr, rng,
-             checkpoint=None, verbose=False):
-    prev_dl = float("inf")
-    if B in bs:
+def get_b_dl(g, bs, B, nsweep, anneal, greedy, clabel, deg_corr, rng,
+             checkpoint=None, checkpoint_state=None, verbose=False):
+    if B not in checkpoint_state:
+        checkpoint_state[B] = {}
+    if B in bs and checkpoint_state[B].get("done", False):
         return bs[B][0]
-    elif B in bs_start:
+    elif B in bs:
         if verbose:
             print("starting from previous result for B=%d" % B)
-        prev_dl, b = bs_start[B]
+        b = bs[B][1]
         state = BlockState(g, b=b.copy(), clabel=clabel, deg_corr=deg_corr)
     else:
+        checkpoint_state[B] = {}
         n_iter = 0
         bs_keys = [k for k in bs.keys() if type(k) != str]
         B_sup = max(bs_keys) if len(bs_keys) > 0 else B
@@ -994,8 +1023,9 @@ def get_b_dl(g, bs, bs_start, B, nsweep, anneal, greedy, clabel, deg_corr, rng,
             bg_state = BlockState(cg, B=B, clabel=blabel, vweight=vcount, eweight=ecount,
                                   deg_corr=deg_corr)
 
-            mc_get_dl(bg_state, nsweep=nsweep, greedy=greedy, rng=rng,
-                      checkpoint=checkpoint, anneal=anneal, verbose=verbose)
+            dl = mc_get_dl(bg_state, nsweep=nsweep, greedy=greedy, rng=rng,
+                           checkpoint=None, checkpoint_state=None,
+                           anneal=anneal, verbose=verbose)
 
             ### FIXME: the following could be improved by moving it to the C++
             ### side
@@ -1005,16 +1035,16 @@ def get_b_dl(g, bs, bs_start, B, nsweep, anneal, greedy, clabel, deg_corr, rng,
             for v in g.vertices():
                 b[v] = bg_state.b[bmap[b[v]]]
 
+            checkpoint_state[B] = {}
+            bs[B] = [dl, b.copy()]
             state = BlockState(g, b=b, B=B, clabel=clabel, deg_corr=deg_corr)
 
     dl = mc_get_dl(state, nsweep=nsweep,  greedy=greedy, rng=rng,
-                   checkpoint=checkpoint, anneal=anneal, verbose=verbose)
+                   checkpoint=checkpoint, checkpoint_state=checkpoint_state,
+                   anneal=anneal, verbose=verbose)
 
-    if dl < prev_dl:
-        bs[B] = [dl, state.b.copy()]
-    else:
-        bs[B] = bs_start[B]
-        dl = prev_dl
+    bs[B] = [dl, state.b.copy()]
+    checkpoint_state[B]["done"] = True
     return dl
 
 def fibo(n):
@@ -1035,8 +1065,8 @@ def is_fibo(x):
 
 def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=True,
                            anneal=1., greedy_cooling=True, max_B=None, min_B=1,
-                           mid_B=None, b_cache=None, b_start=None, clabel=None,
-                           checkpoint=None, verbose=False):
+                           clabel=None, mid_B=None, b_cache=None, checkpoint=None,
+                           checkpoint_state=None, verbose=False):
     r"""Find the block partition of an unspecified size which minimizes the description
     length of the network, according to the stochastic blockmodel ensemble which
     best describes it.
@@ -1072,6 +1102,9 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
     mid_B : ``int`` (optional, default: ``None``)
         Middle of the range which brackets the minimum. If not supplied, will be
         automatically determined.
+    clabel : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        Constraint labels on the vertices, such that vertices with different
+        labels cannot belong to the same block.
     b_cache : :class:`dict` with ``int`` keys and (``float``, :class:`~graph_tool.PropertyMap`) values (optional, default: ``None``)
         If provided, this corresponds to a dictionary where the keys are the
         number of blocks, and the values are tuples containing two values: the
@@ -1079,12 +1112,6 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
         in this dictionary will not be computed, and will be used unmodified as
         the solution for the corresponding number of blocks. This can be used to
         continue from a previously unfinished run.
-    b_start : :class:`dict` with ``int`` keys and (``float``, :class:`~graph_tool.PropertyMap`) values (optional, default: ``None``)
-        Like `b_cache`, but the partitions present in the dictionary will be
-        used as the starting point of the minimization.
-    clabel : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
-        Constraint labels on the vertices, such that vertices with different
-        labels cannot belong to the same block.
     checkpoint : function (optional, default: ``None``)
         If provided, this function will be called after each call to
         :func:`mcmc_sweep`. This can be used to store the current state, so it
@@ -1092,17 +1119,26 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
 
         .. code-block:: python
 
-            def checkpoint(state, L, delta, nmoves):
+            def checkpoint(state, L, delta, nmoves, checkpoint_state):
                 ...
 
         where `state` is either a :class:`~graph_tool.community.BlockState`
         instance or ``None``, `L` is the current description length, `delta` is
         the entropy difference in the last MCMC sweep, and `nmoves` is the
-        number of accepted block membership moves.
+        number of accepted block membership moves. The ``checkpoint_state``
+        argument is an opaque object which specifies the current state of the
+        algorithm, which can be stored via :mod:`pickle`, and supplied via the
+        ``checkpoint_state`` option below to continue from an interrupted run.
 
         This function will also be called when the MCMC has finished for the
         current value of :math:`B`, in which case ``state == None``, and the
-        remaining parameters will be zero.
+        remaining parameters will be zero, except the last.
+    checkpoint_state : object (optional, default: ``None``)
+        If provided, this will specify an exact point of execution from which
+        the algorithm will continue. The expected object is an opaque type which
+        wiil be passed to the callback of the ``checkpoint`` option above, and
+        can be stored by :mod:`pickle`. This must be used in conjunction with
+        the option ``b_cache`` to continue from an interrupted run.
     verbose : ``bool`` (optional, default: ``False``)
         If ``True``, verbose information is displayed.
 
@@ -1208,25 +1244,25 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
 
 
     greedy = greedy_cooling
-    if b_start is None:
-        b_start = {}
     bs = b_cache
     if bs is None:
         bs = {}
+    if checkpoint_state is None:
+        checkpoint_state = {}
 
     while True:
-        f_max = get_b_dl(g, bs, b_start, max_B, nsweeps, anneal, greedy, clabel,
-                         deg_corr, rng, checkpoint, verbose)
-        f_mid = get_b_dl(g, bs, b_start, mid_B, nsweeps, anneal, greedy, clabel,
-                         deg_corr, rng, checkpoint, verbose)
-        f_min = get_b_dl(g, bs, b_start, min_B, nsweeps, anneal, greedy, clabel,
-                         deg_corr, rng, checkpoint, verbose)
+        f_max = get_b_dl(g, bs, max_B, nsweeps, anneal, greedy, clabel,
+                         deg_corr, rng, checkpoint, checkpoint_state, verbose)
+        f_mid = get_b_dl(g, bs, mid_B, nsweeps, anneal, greedy, clabel,
+                         deg_corr, rng, checkpoint, checkpoint_state, verbose)
+        f_min = get_b_dl(g, bs, min_B, nsweeps, anneal, greedy, clabel,
+                         deg_corr, rng, checkpoint, checkpoint_state, verbose)
 
         if verbose:
             print("bracket:", min_B, mid_B, max_B, f_min, f_mid, f_max)
 
         if checkpoint is not None:
-            checkpoint(None, 0, 0, 0)
+            checkpoint(None, 0, 0, 0, checkpoint_state)
 
         if f_max > f_mid > f_min:
             max_B = mid_B
@@ -1248,10 +1284,10 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
         else:
             x = get_mid(min_B, mid_B)
 
-        f_x = get_b_dl(g, bs, b_start, x, nsweeps, anneal, greedy, clabel,
-                       deg_corr, rng, checkpoint, verbose)
-        f_mid = get_b_dl(g, bs, b_start, mid_B, nsweeps, anneal, greedy, clabel,
-                         deg_corr, rng, checkpoint, verbose)
+        f_x = get_b_dl(g, bs, x, nsweeps, anneal, greedy, clabel,
+                       deg_corr, rng, checkpoint, checkpoint_state, verbose)
+        f_mid = get_b_dl(g, bs, mid_B, nsweeps, anneal, greedy, clabel,
+                         deg_corr, rng, checkpoint, checkpoint_state, verbose)
 
         if verbose:
             print("bisect: (", min_B, mid_B, max_B, ") ->", x, f_x) #, is_fibo((mid_B - min_B)), is_fibo((max_B - mid_B)))
@@ -1268,7 +1304,7 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
             return bs[best_B][1], bs[best_B][0], bs
 
         if checkpoint is not None:
-            checkpoint(None, 0, 0, 0)
+            checkpoint(None, 0, 0, 0, checkpoint_state)
 
         if f_x < f_mid:
             if max_B - mid_B > mid_B - min_B:
