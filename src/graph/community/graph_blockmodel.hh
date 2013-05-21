@@ -52,17 +52,9 @@ inline double safelog(Type x)
     return log(x);
 }
 
-// "edge" term of the entropy
-template <class Graph, class Edge, class Eprop>
 __attribute__((always_inline))
-inline double eterm(const Edge& e, const Eprop& mrs, const Graph& g)
+inline double xlogx(size_t x)
 {
-    typename graph_traits<Graph>::vertex_descriptor r, s;
-    r = source(e, g);
-    s = target(e, g);
-
-    const size_t mrse = mrs[e];
-
     // Repeated computation of x*log(x) actually adds up to a lot of time. A
     // significant speedup can be made by caching pre-computed values. This
     // is doable since the values of mrse are bounded in [0, 2E], where E is
@@ -74,17 +66,29 @@ inline double eterm(const Edge& e, const Eprop& mrs, const Graph& g)
                                   // replace with a version which will be
                                   // cleaned up at some point.
     {
-        #pragma omp critical
-        if (mrse >= cache.size())
+        //#pragma omp critical
+        if (x >= cache.size())
         {
             size_t old_size = cache.size();
-            cache.resize(mrse + 1);
+            cache.resize(x + 1);
             for (size_t i = old_size; i < cache.size(); ++i)
                 cache[i] = i * safelog(i);
         }
     }
 
-    double val = cache[mrse];
+    return cache[x];
+}
+
+// "edge" term of the entropy
+template <class Graph, class Edge, class Eprop>
+__attribute__((always_inline))
+inline double eterm(const Edge& e, const Eprop& mrs, const Graph& g)
+{
+    typename graph_traits<Graph>::vertex_descriptor r, s;
+    r = source(e, g);
+    s = target(e, g);
+
+    double val = xlogx(mrs[e]);
 
     if (is_directed::apply<Graph>::type::value || r != s)
         return -val;
@@ -103,7 +107,7 @@ inline double vterm(Vertex v, Vprop& mrp, Vprop& mrm, Vprop& wr, bool deg_corr,
         one = 1;
 
     if (deg_corr)
-        return one * (mrm[v] * safelog(mrm[v]) + mrp[v] * safelog(mrp[v]));
+        return one * (xlogx(mrm[v]) + xlogx(mrp[v]));
     else
         return one * (mrm[v] * safelog(wr[v]) + mrp[v] * safelog(wr[v]));
 }
@@ -449,19 +453,20 @@ void remove_vertex(size_t v, Eprop& mrs, Vprop& mrp, Vprop& mrm, Vprop& wr,
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
     vertex_t r = b[v];
 
-    typename graph_traits<Graph>::out_edge_iterator e, e_end;
-    for (tie(e, e_end) = out_edges(vertex(v, g), g); e != e_end; ++e)
+    typename graph_traits<Graph>::out_edge_iterator ei, ei_end;
+    for (tie(ei, ei_end) = out_edges(vertex(v, g), g); ei != ei_end; ++ei)
     {
-        vertex_t u = target(*e, g);
+        typename graph_traits<Graph>::edge_descriptor e = *ei;
+        vertex_t u = target(e, g);
         vertex_t s = b[u];
 
-        if (!emat[r][s].second)
-            throw GraphException("no edge? " + lexical_cast<string>(r) +
-                                 " " + lexical_cast<string>(s));
+        // if (!emat[r][s].second)
+        //     throw GraphException("no edge? " + lexical_cast<string>(r) +
+        //                          " " + lexical_cast<string>(s));
 
         const typename graph_traits<BGraph>::edge_descriptor& me = emat[r][s].first;
 
-        size_t ew = eweight[*e];
+        size_t ew = eweight[e];
         mrs[me] -= ew;
 
         if (u != v && r == s && !is_directed::apply<Graph>::type::value)
@@ -478,18 +483,19 @@ void remove_vertex(size_t v, Eprop& mrs, Vprop& mrp, Vprop& mrm, Vprop& wr,
         for (tie(ie, ie_end) = in_edge_iteratorS<Graph>::get_edges(vertex(v, g), g);
              ie != ie_end; ++ie)
         {
-            vertex_t u = source(*ie, g);
+            typename graph_traits<Graph>::edge_descriptor e = *ie;
+            vertex_t u = source(e, g);
             if (u == v)
                 continue;
             vertex_t s = b[u];
 
-            if (!emat[s][r].second)
-                throw GraphException("no edge? " + lexical_cast<string>(s) +
-                                     " " + lexical_cast<string>(r));
+            // if (!emat[s][r].second)
+            //     throw GraphException("no edge? " + lexical_cast<string>(s) +
+            //                          " " + lexical_cast<string>(r));
 
             typename graph_traits<BGraph>::edge_descriptor me = emat[s][r].first;
 
-            size_t ew = eweight[*ie];
+            size_t ew = eweight[e];
             mrs[me] -= ew;
 
             mrp[s] -= ew;
@@ -511,10 +517,11 @@ void add_vertex(size_t v, size_t rr, Eprop& mrs, Vprop& mrp, Vprop& mrm,
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
     vertex_t r = vertex(rr, bg);
 
-    typename graph_traits<Graph>::out_edge_iterator e, e_end;
-    for (tie(e, e_end) = out_edges(vertex(v, g), g); e != e_end; ++e)
+    typename graph_traits<Graph>::out_edge_iterator ei, ei_end;
+    for (tie(ei, ei_end) = out_edges(vertex(v, g), g); ei != ei_end; ++ei)
     {
-        vertex_t u = target(*e, g);
+        typename graph_traits<Graph>::edge_descriptor e = *ei;
+        vertex_t u = target(e, g);
         vertex_t s;
 
         if (u != v)
@@ -539,14 +546,14 @@ void add_vertex(size_t v, size_t rr, Eprop& mrs, Vprop& mrp, Vprop& mrm,
             me = mep.first;
         }
 
-        size_t ew = eweight[*e];
+        size_t ew = eweight[e];
 
         mrs[me] += ew;
 
         if (u != v && r == s && !is_directed::apply<Graph>::type::value)
             mrs[me] += ew;
 
-        mrp[r] += eweight[*e];
+        mrp[r] += eweight[e];
         if (u != v || is_directed::apply<Graph>::type::value)
             mrm[s] += ew;
     }
@@ -555,7 +562,8 @@ void add_vertex(size_t v, size_t rr, Eprop& mrs, Vprop& mrp, Vprop& mrm,
     for (tie(ie, ie_end) = in_edge_iteratorS<Graph>::get_edges(vertex(v, g), g);
          ie != ie_end; ++ie)
     {
-        vertex_t u = source(*ie, g);
+        typename graph_traits<Graph>::edge_descriptor e = *ie;
+        vertex_t u = source(e, g);
         if (u == v)
             continue;
 
@@ -575,7 +583,7 @@ void add_vertex(size_t v, size_t rr, Eprop& mrs, Vprop& mrp, Vprop& mrm,
             me = mep.first;
         }
 
-        size_t ew = eweight[*ie];
+        size_t ew = eweight[e];
 
         mrs[me] += ew;
 
@@ -714,6 +722,7 @@ double move_vertex(size_t v, size_t nr, Eprop& mrs, Vprop& mrp, Vprop& mrm,
     }
     return Sf - Si;
 }
+
 //============
 // Main loops
 //============
@@ -724,14 +733,16 @@ typename graph_traits<Graph>::vertex_descriptor
 random_neighbour(typename graph_traits<Graph>::vertex_descriptor v, Graph& g,
                  RNG& rng)
 {
-    if (total_degreeS()(v, g) == 0)
+    typedef is_convertible<typename iterator_traits<typename graph_traits<Graph>::out_edge_iterator>::iterator_category,
+                           std::random_access_iterator_tag> is_orig_ra;
+    typedef is_convertible<typename iterator_traits<typename all_edges_iteratorS<Graph>::type>::iterator_category,
+                           std::random_access_iterator_tag> is_ra;
+    BOOST_STATIC_ASSERT((!is_orig_ra::value || is_ra::value));
+
+    size_t k = total_degreeS()(v, g);
+    if (k == 0)
         return v;
-    std::tr1::uniform_int<size_t> rand(0, total_degreeS()(v, g) - 1);
-
-    // if (!is_convertible<typename iterator_traits<typename all_edges_iteratorS<Graph>::type>::iterator_category,
-    //                     random_access_iterator_tag>::value)
-    //     throw GraphException("not random access...");
-
+    std::tr1::uniform_int<size_t> rand(0, k - 1);
     size_t i = rand(rng);
     typename all_edges_iteratorS<Graph>::type e, e_end;
     tie(e, e_end) = all_edges_iteratorS<Graph>::get_edges(v, g);
@@ -826,7 +837,6 @@ void move_sweep(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b, Vprop label,
 
         vertex_t r = b[v];
 
-
         vertex_t u = random_neighbour(v, g, rng);
         if (u == v)
             continue;
@@ -845,7 +855,8 @@ void move_sweep(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b, Vprop label,
         {
             std::tr1::uniform_int<size_t> urand(0, egroups[t].size() - 1);
 
-            const typename graph_traits<Graph>::edge_descriptor& e = get<0>(egroups[t][urand(rng)]);
+            const typename graph_traits<Graph>::edge_descriptor& e =
+                get<0>(egroups[t][urand(rng)]);
             s = b[target(e, g)];
             if (s == t)
                 s = b[source(e, g)];
