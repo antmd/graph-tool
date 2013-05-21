@@ -29,21 +29,21 @@ table.docutils.citation
 }
 
 /* stupid workaround to hide ugly c++ signature stuff from sphinx*/
-dl.method dl.last {
-    visibility: collapse;
-    height: 0px;
-    width: 0px;
-}
+/* dl.function dl.docutils dl.last { */
+/*     visibility: collapse; */
+/*     height: 0px; */
+/*     width: 0px; */
+/* } */
 
-dl.method dl.docutils dd {
-    margin-left: 0px;
-    margin-bottom: -10px;
-}
+/* dl.function dl.docutils dd { */
+/*     margin-left: 0px; */
+/*     margin-bottom: -10px; */
+/* } */
 
-dl.method dl.docutils dt {
-    visibility: collapse;
-    line-height: 0;
-}
+/* dl.function dl.docutils dt { */
+/*     visibility: collapse; */
+/*     line-height: 0; */
+/* } */
 
 div.align-center {
     text-align: center;

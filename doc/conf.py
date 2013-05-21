@@ -210,6 +210,16 @@ numpydoc_show_class_members = False
 autodoc_member_order = 'bysource'
 autodoc_docstring_signature = False
 
+def process_docstring(app, what, name, obj, options, lines):
+    for i, line in enumerate(lines):
+        if "arg1" in line and "->" in line:
+            lines[i] = ""
+        if "C++ signature :" in line or "graph_tool::Python" in line:
+            lines[i] = ""
+
+def setup(app):
+    app.connect('autodoc-process-docstring', process_docstring)
+
 # plot directive
 import pyenv
 plot_rcparams = pyenv.rcParams
