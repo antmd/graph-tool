@@ -26,6 +26,8 @@
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/properties.hpp>
 
+#include "transform_iterator.hh"
+
 namespace boost {
 
 //==============================================================================
@@ -127,98 +129,140 @@ struct make_undirected_edge
     make_undirected_edge(): _inverted(false) {}
     bool _inverted;
     typedef typename graph_traits<Graph>::edge_descriptor original_edge_t;
+    typedef typename UndirectedAdaptor<Graph>::EdgeDescriptor result_type;
     typename UndirectedAdaptor<Graph>::EdgeDescriptor operator()(const original_edge_t& e) const
     {
         return typename UndirectedAdaptor<Graph>::EdgeDescriptor(e, _inverted);
     }
 };
 
-template <class Graph>
+template <class Graph, class Iter>
 struct transformed_iterator
 {
-    typedef transform_iterator<make_undirected_edge<Graph>,
-                               typename graph_traits<Graph>::edge_iterator,
-                               typename UndirectedAdaptor<Graph>::EdgeDescriptor> type;
+    typedef typename mpl::if_<std::tr1::is_convertible<typename std::iterator_traits<Iter>::iterator_category,
+                                                       std::random_access_iterator_tag>,
+                              transform_random_access_iterator<make_undirected_edge<Graph>, Iter>,
+                              transform_iterator<make_undirected_edge<Graph>, Iter> >::type type;
+    typedef is_convertible<typename std::iterator_traits<Iter>::iterator_category,
+                           std::random_access_iterator_tag> is_orig_ra;
+    typedef is_convertible<typename std::iterator_traits<type>::iterator_category,
+                           std::random_access_iterator_tag> is_ra;
+    BOOST_STATIC_ASSERT((!is_orig_ra::value || is_ra::value));
 };
 
 template <class Graph>
 struct get_undirected_edge_iterator
 {
-    typedef typename transformed_iterator<Graph>::type type;
+    typedef typename graph_traits<Graph>::edge_iterator ei_t;
+    typedef typename transformed_iterator<Graph, ei_t>::type type;
 };
-
-// template <typename Graph>
-// class UndirectedAdaptorEdgeIterator
-//     : public transformed_iterator<Graph>::type
-// {
-// public:
-//     UndirectedAdaptorEdgeIterator(const typename graph_traits<Graph>::edge_iterator& e):
-//         transformed_iterator<Graph>::type(e, make_undirected_edge<Graph>())
-//     {}
-//     UndirectedAdaptorEdgeIterator(const typename transformed_iterator<Graph>::type& e):
-//         transformed_iterator<Graph>::type(e) {}
-//     UndirectedAdaptorEdgeIterator() {}
-// };
 
 //==============================================================================
 // UndirectedAdaptorOutEdgeIterator
 // this will iterate through both in_edges and out_edges of the underlying graph
 //==============================================================================
 
-template <class Graph>
-struct transformed_out_iterator
+template <class Iter1, class Iter2>
+class joined_iterator
+    : public boost::iterator_facade<joined_iterator<Iter1, Iter2>,
+                                    typename std::iterator_traits<Iter1>::value_type,
+                                    typename std::iterator_traits<Iter1>::iterator_category,
+                                    typename std::iterator_traits<Iter1>::reference>
 {
-    typedef transform_iterator<make_undirected_edge<Graph>,
-                               typename graph_traits<Graph>::out_edge_iterator,
-                               typename UndirectedAdaptor<Graph>::EdgeDescriptor> type;
-};
+ public:
+    joined_iterator() {}
+    explicit joined_iterator(const std::pair<Iter1, Iter1>& range1,
+                             const std::pair<Iter2, Iter2>& range2,
+                             const Iter1& pos1, const Iter2& pos2)
+        : _range1(range1), _range2(range2), _pos1(pos1), _pos2(pos2)
+    { _flip = (_pos1 == _range1.second); }
 
-template <class Graph>
-struct transformed_in_iterator
-{
-    typedef transform_iterator<make_undirected_edge<Graph>,
-                               typename graph_traits<Graph>::in_edge_iterator,
-                               typename UndirectedAdaptor<Graph>::EdgeDescriptor> type;
-};
+ private:
+    friend class boost::iterator_core_access;
+    void increment()
+    {
+        if (_flip)
+        {
+            ++_pos2;
+        }
+        else
+        {
+            ++_pos1;
+            _flip = (_pos1 == _range1.second);
+        }
+    }
 
+    void decrement()
+    {
+        if (_flip)
+        {
+            if (_pos2 == _range2.first)
+            {
+                _flip = false;
+                --_pos1;
+            }
+            else
+            {
+                --_pos2;
+            }
+        }
+        else
+        {
+            --_pos1;
+        }
+    }
 
-template <class Graph>
-struct transformed_out_range
-{
-    typedef std::pair<typename transformed_out_iterator<Graph>::type,
-                      typename transformed_out_iterator<Graph>::type> type;
-};
+    typedef typename std::iterator_traits<Iter1>::difference_type diff_t;
+    void advance(diff_t n)
+    {
+        diff_t d1 = _range1.second - _pos1;
+        if (n < d1)
+        {
+            _pos1 += n;
+        }
+        else
+        {
+            _pos1 = _range1.second;
+            _pos2 += n - d1;
+            _flip = true;
+        }
+    }
 
-template <class Graph>
-struct transformed_in_range
-{
-    typedef std::pair<typename transformed_in_iterator<Graph>::type,
-                      typename transformed_in_iterator<Graph>::type> type;
-};
+    diff_t distance_to(joined_iterator const& other)
+    {
+        return (other._pos1 - _pos1) + (other._pos2 - _pos2);
+    }
 
-template <class Graph>
-struct joined_iterator
-{
-    typedef typename range_iterator<joined_range<typename transformed_out_range<Graph>::type,
-                                                 typename transformed_in_range<Graph>::type> >::type type;
+    bool equal(joined_iterator const& other) const
+    {
+        return (_pos2 == other._pos2 && _pos1 == other._pos1);
+    }
+
+    typename std::iterator_traits<Iter1>::reference dereference() const
+    {
+        if (_flip)
+            return *_pos2;
+        return *_pos1;
+    }
+
+    std::pair<Iter1, Iter1> _range1;
+    std::pair<Iter2, Iter2> _range2;
+    Iter1 _pos1;
+    Iter2 _pos2;
+    bool _flip;
 };
 
 template <class Graph>
 struct get_undirected_out_edge_iterator
 {
-    typedef typename joined_iterator<Graph>::type type;
+    typedef typename graph_traits<Graph>::out_edge_iterator eo_t;
+    typedef typename graph_traits<Graph>::in_edge_iterator ei_t;
+    typedef typename transformed_iterator<Graph, eo_t>::type teo_t;
+    typedef typename transformed_iterator<Graph, ei_t>::type tei_t;
+    typedef joined_iterator<teo_t, tei_t> type;
 };
 
 
-// template <typename Graph>
-// class UndirectedAdaptorOutEdgeIterator
-//     : public joined_iterator<Graph>::type
-// {
-// public:
-//     UndirectedAdaptorOutEdgeIterator(const typename joined_iterator<Graph>::type &e)
-//         : joined_iterator<Graph>::type(e) {}
-//     UndirectedAdaptorOutEdgeIterator() {};
-// };
 
 //==============================================================================
 // UndirectedAdaptorAdjacencyIterator
@@ -235,21 +279,6 @@ struct get_undirected_adjacency_iterator
                                                          out_edge_iter_t>::type type;
 };
 
-// template <typename Graph>
-// class UndirectedAdaptorAdjacencyIterator
-//     : public boost::adjacency_iterator_generator<UndirectedAdaptor<Graph>,
-//                                                  typename graph_traits<Graph>::vertex_descriptor,
-//                                                  UndirectedAdaptorOutEdgeIterator<Graph> >::type
-// {
-// public:
-//     UndirectedAdaptorAdjacencyIterator(){};
-//     UndirectedAdaptorAdjacencyIterator(const typename graph_traits<UndirectedAdaptor<Graph> >::out_edge_iterator& e,
-//                                        const UndirectedAdaptor<Graph>& g)
-//         : boost::adjacency_iterator_generator<UndirectedAdaptor<Graph>,
-//                                               typename graph_traits<Graph>::vertex_descriptor,
-//                                               UndirectedAdaptorOutEdgeIterator<Graph> >::type(e, &g)
-//     {}
-// };
 
 //==============================================================================
 // graph_traits<UndirectedAdaptor>
@@ -260,13 +289,10 @@ struct graph_traits<UndirectedAdaptor<Graph> > {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
     typedef typename UndirectedAdaptor<Graph>::EdgeDescriptor edge_descriptor;
 
-    //typedef UndirectedAdaptorAdjacencyIterator<Graph> adjacency_iterator;
     typedef typename get_undirected_adjacency_iterator<Graph>::type adjacency_iterator;
-    //typedef UndirectedAdaptorOutEdgeIterator<Graph> out_edge_iterator;
     typedef typename get_undirected_out_edge_iterator<Graph>::type out_edge_iterator;
     typedef typename graph_traits<Graph>::in_edge_iterator in_edge_iterator;
     typedef typename graph_traits<Graph>::vertex_iterator vertex_iterator;
-    //typedef UndirectedAdaptorEdgeIterator<Graph> edge_iterator;
     typedef typename get_undirected_edge_iterator<Graph>::type edge_iterator;
 
 
@@ -281,6 +307,16 @@ struct graph_traits<UndirectedAdaptor<Graph> > {
     {
         return graph_traits<Graph>::null_vertex();
     }
+
+private:
+    typedef is_convertible<typename std::iterator_traits<typename graph_traits<Graph>::out_edge_iterator>::iterator_category,
+                           std::random_access_iterator_tag> is_orig_ra;
+    typedef is_convertible<typename std::iterator_traits<out_edge_iterator>::iterator_category,
+                           std::random_access_iterator_tag> is_ra;
+    BOOST_STATIC_ASSERT((!is_orig_ra::value || is_ra::value));
+    // typedef is_convertible<typename std::iterator_traits<adjacency_iterator>::iterator_category,
+    //                        std::random_access_iterator_tag> is_ara;
+    // BOOST_STATIC_ASSERT((!is_orig_ra::value || is_ara::value));
 };
 
 template <class Graph>
@@ -396,30 +432,27 @@ std::pair<typename graph_traits<UndirectedAdaptor<Graph> >::out_edge_iterator,
 out_edges(typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor u,
           const UndirectedAdaptor<Graph>& g)
 {
-    typename std::pair<typename graph_traits<Graph>::out_edge_iterator,
-                       typename graph_traits<Graph>::out_edge_iterator> out_range;
-    typename std::pair<typename graph_traits<Graph>::in_edge_iterator,
-                       typename graph_traits<Graph>::in_edge_iterator> in_range;
+    typedef typename graph_traits<Graph>::out_edge_iterator eo_t;
+    typedef typename graph_traits<Graph>::in_edge_iterator ei_t;
 
-    out_range = out_edges(u, g.OriginalGraph());
-    in_range = in_edges(u, g.OriginalGraph());
+    std::pair<eo_t, eo_t> range1 = out_edges(u, g.OriginalGraph());
+    std::pair<ei_t, ei_t> range2 = in_edges(u, g.OriginalGraph());
 
-    typename transformed_out_range<Graph>::type trans_out_range =
-        std::make_pair(typename transformed_out_iterator<Graph>::type(out_range.first,
-                                                                      make_undirected_edge<Graph>(false)),
-                       typename transformed_out_iterator<Graph>::type(out_range.second,
-                                                                      make_undirected_edge<Graph>(false)));
-    typename transformed_in_range<Graph>::type trans_in_range =
-        std::make_pair(typename transformed_in_iterator<Graph>::type(in_range.first,
-                                                                     make_undirected_edge<Graph>(true)),
-                       typename transformed_in_iterator<Graph>::type(in_range.second,
-                                                                     make_undirected_edge<Graph>(true)));
+    typedef typename transformed_iterator<Graph, eo_t>::type teo_t;
+    typedef typename transformed_iterator<Graph, ei_t>::type tei_t;
 
-    joined_range<typename transformed_out_range<Graph>::type,
-                 typename transformed_in_range<Graph>::type> jrange = join(trans_out_range,
-                                                                           trans_in_range);
+    std::pair<teo_t, teo_t> trange1(teo_t(range1.first,
+                                          make_undirected_edge<Graph>(false)),
+                                    teo_t(range1.second,
+                                          make_undirected_edge<Graph>(false)));
+    std::pair<tei_t, tei_t> trange2(tei_t(range2.first,
+                                          make_undirected_edge<Graph>(true)),
+                                    tei_t(range2.second,
+                                          make_undirected_edge<Graph>(true)));
 
-    return std::make_pair(begin(jrange), end(jrange));
+    joined_iterator<teo_t, tei_t> begin(trange1, trange2, trange1.first, trange2.first);
+    joined_iterator<teo_t, tei_t> end(trange1, trange2, trange1.second, trange2.second);
+    return std::make_pair(begin, end);
 }
 
 //==============================================================================

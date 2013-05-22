@@ -31,9 +31,12 @@
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/iterator/iterator_facade.hpp>
 
+#include "transform_iterator.hh"
+
 #include "tr1_include.hh"
 
 #include TR1_HEADER(tuple)
+
 
 namespace boost
 {
@@ -147,7 +150,7 @@ public:
         { return v.first; }
     };
 
-    typedef transform_iterator<get_vertex, typename edge_list_t::const_iterator>
+    typedef transform_random_access_iterator<get_vertex, typename edge_list_t::const_iterator>
         adjacency_iterator;
 
     struct make_out_edge
@@ -170,9 +173,9 @@ public:
         { return std::tr1::make_tuple(v.first, _tgt, v.second); }
     };
 
-    typedef transform_iterator<make_out_edge, typename edge_list_t::const_iterator>
+    typedef transform_random_access_iterator<make_out_edge, typename edge_list_t::const_iterator>
         out_edge_iterator;
-    typedef transform_iterator<make_in_edge, typename edge_list_t::const_iterator>
+    typedef transform_random_access_iterator<make_in_edge, typename edge_list_t::const_iterator>
         in_edge_iterator;
 
     class edge_iterator:
@@ -339,6 +342,13 @@ struct graph_traits<adj_list<Vertex> >
     typedef size_t degree_size_type;
 
     static Vertex null_vertex() { return adj_list<Vertex>::null_vertex(); }
+private:
+    BOOST_STATIC_ASSERT((is_convertible<typename std::iterator_traits<out_edge_iterator>::iterator_category,
+                                        std::random_access_iterator_tag>::value));
+    BOOST_STATIC_ASSERT((is_convertible<typename std::iterator_traits<in_edge_iterator>::iterator_category,
+                                        std::random_access_iterator_tag>::value));
+    BOOST_STATIC_ASSERT((is_convertible<typename std::iterator_traits<adjacency_iterator>::iterator_category,
+                                        std::random_access_iterator_tag>::value));
 };
 
 template <class Vertex>
@@ -676,6 +686,7 @@ inline void remove_edge(const typename adj_list<Vertex>::edge_descriptor& e,
     g._free_indexes.push_back(idx);
     g._n_edges--;
 }
+
 
 template <class Vertex>
 inline Vertex source(const typename adj_list<Vertex>::edge_descriptor& e,

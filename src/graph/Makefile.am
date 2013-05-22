@@ -57,7 +57,8 @@ libgraph_tool_core_la_include_HEADERS = \
     random.hh \
     str_repr.hh \
     shared_map.hh \
-    tr1_include.hh
+    tr1_include.hh \
+    transform_iterator.hh
 
 libgraph_tool_core_la_workarounddir = $(MOD_DIR)/include/boost-workaround/boost/graph/
 libgraph_tool_core_la_workaround_HEADERS = \
