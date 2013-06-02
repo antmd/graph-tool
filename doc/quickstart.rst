@@ -249,7 +249,7 @@ methods should be used:
 
    for v in g.vertices():
        print(v)
-   for e in e.edges():
+   for e in g.edges():
        print(e)
 
 The code above will print the vertices and edges of the graph in the order they
