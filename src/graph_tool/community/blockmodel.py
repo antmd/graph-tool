@@ -876,7 +876,7 @@ def mcmc_sweep(state, beta=1., sequential=True, vertices=None, random_move=False
 
 
 def mc_get_dl(state, nsweep, greedy, rng, checkpoint, checkpoint_state,
-              anneal=1, verbose=False):
+              anneal=1, epsilon=0, verbose=False):
 
     if len(state.vertices) == 1:
         return state._BlockState__min_dl()
@@ -974,7 +974,7 @@ def mc_get_dl(state, nsweep, greedy, rng, checkpoint, checkpoint_state,
         while count <= abs(nsweep):
             delta, nmoves = mcmc_sweep(state, beta=float("inf"))
             S += delta
-            if S < min_dl:
+            if S < min_dl - epsilon / abs(min_dl):
                 min_dl = S
                 count = 0
             else:
@@ -987,7 +987,7 @@ def mc_get_dl(state, nsweep, greedy, rng, checkpoint, checkpoint_state,
 
     return state._BlockState__min_dl()
 
-def get_b_dl(g, bs, B, nsweep, anneal, greedy, clabel, deg_corr, rng,
+def get_b_dl(g, bs, B, nsweep, anneal, greedy, epsilon, clabel, deg_corr, rng,
              checkpoint=None, checkpoint_state=None, verbose=False):
     if B not in checkpoint_state:
         checkpoint_state[B] = {}
@@ -1025,7 +1025,7 @@ def get_b_dl(g, bs, B, nsweep, anneal, greedy, clabel, deg_corr, rng,
 
             dl = mc_get_dl(bg_state, nsweep=nsweep, greedy=greedy, rng=rng,
                            checkpoint=None, checkpoint_state=None,
-                           anneal=anneal, verbose=verbose)
+                           anneal=anneal, epsilon=epsilon, verbose=verbose)
 
             ### FIXME: the following could be improved by moving it to the C++
             ### side
@@ -1041,7 +1041,7 @@ def get_b_dl(g, bs, B, nsweep, anneal, greedy, clabel, deg_corr, rng,
 
     dl = mc_get_dl(state, nsweep=nsweep,  greedy=greedy, rng=rng,
                    checkpoint=checkpoint, checkpoint_state=checkpoint_state,
-                   anneal=anneal, verbose=verbose)
+                   anneal=anneal, epsilon=epsilon, verbose=verbose)
 
     bs[B] = [dl, state.b.copy()]
     checkpoint_state[B]["done"] = True
@@ -1064,9 +1064,9 @@ def is_fibo(x):
     return fibo(fibo_n_floor(x)) == x
 
 def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=True,
-                           anneal=1., greedy_cooling=True, max_B=None, min_B=1,
-                           clabel=None, mid_B=None, b_cache=None, checkpoint=None,
-                           checkpoint_state=None, verbose=False):
+                           anneal=1., greedy_cooling=True, epsilon=0., max_B=None,
+                           min_B=1, clabel=None, mid_B=None, b_cache=None,
+                           checkpoint=None, checkpoint_state=None, verbose=False):
     r"""Find the block partition of an unspecified size which minimizes the description
     length of the network, according to the stochastic blockmodel ensemble which
     best describes it.
@@ -1094,6 +1094,10 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
     greedy_cooling : ``bool`` (optional, default: ``True``)
         If ``True``, a final abrupt cooling step is performed after the Markov
         chain has equilibrated.
+    epsilon : ``float`` (optional, default: ``0.``)
+        If ``greedy_cooling == True``, this is the relative change in the
+        entropy which is tolerated when determining that the minimum has been
+        found during the greedy search.
     max_B : ``int`` (optional, default: ``None``)
         Maximum number of blocks tried. If not supplied, it will be
         automatically determined.
@@ -1251,11 +1255,11 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
         checkpoint_state = {}
 
     while True:
-        f_max = get_b_dl(g, bs, max_B, nsweeps, anneal, greedy, clabel,
+        f_max = get_b_dl(g, bs, max_B, nsweeps, anneal, greedy, epsilon, clabel,
                          deg_corr, rng, checkpoint, checkpoint_state, verbose)
-        f_mid = get_b_dl(g, bs, mid_B, nsweeps, anneal, greedy, clabel,
+        f_mid = get_b_dl(g, bs, mid_B, nsweeps, anneal, greedy, epsilon, clabel,
                          deg_corr, rng, checkpoint, checkpoint_state, verbose)
-        f_min = get_b_dl(g, bs, min_B, nsweeps, anneal, greedy, clabel,
+        f_min = get_b_dl(g, bs, min_B, nsweeps, anneal, greedy, epsilon, clabel,
                          deg_corr, rng, checkpoint, checkpoint_state, verbose)
 
         if verbose:
@@ -1284,9 +1288,9 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
         else:
             x = get_mid(min_B, mid_B)
 
-        f_x = get_b_dl(g, bs, x, nsweeps, anneal, greedy, clabel,
+        f_x = get_b_dl(g, bs, x, nsweeps, anneal, greedy, epsilon, clabel,
                        deg_corr, rng, checkpoint, checkpoint_state, verbose)
-        f_mid = get_b_dl(g, bs, mid_B, nsweeps, anneal, greedy, clabel,
+        f_mid = get_b_dl(g, bs, mid_B, nsweeps, anneal, greedy, epsilon, clabel,
                          deg_corr, rng, checkpoint, checkpoint_state, verbose)
 
         if verbose:
