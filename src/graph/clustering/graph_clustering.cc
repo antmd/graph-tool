@@ -56,8 +56,8 @@ using namespace boost::python;
 
 void extended_clustering(GraphInterface& g, python::list props);
 void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
-                python::list hist, python::list p, bool comp_iso,
-                bool fill_list, rng_t& rng);
+                python::list hist, python::list pvmaps, bool collect_vmaps,
+                python::list p, bool comp_iso, bool fill_list, rng_t& rng);
 
 BOOST_PYTHON_MODULE(libgraph_tool_clustering)
 {

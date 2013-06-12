@@ -288,10 +288,20 @@ void get_sig(Graph& g, vector<size_t>& sig)
 // gets (or samples) all the subgraphs in graph g
 struct get_all_motifs
 {
-    template <class Graph, class Sampler>
+    get_all_motifs(bool collect_vmaps, double p, bool comp_iso, bool fill_list,
+                   rng_t& rng)
+        : collect_vmaps(collect_vmaps), p(p),
+          comp_iso(comp_iso), fill_list(fill_list), rng(rng) {}
+    bool collect_vmaps;
+    double p;
+    bool comp_iso;
+    bool fill_list;
+    rng_t& rng;
+
+    template <class Graph, class Sampler, class VMap>
     void operator()(Graph& g, size_t k, boost::any& list,
-                    vector<size_t>& hist, Sampler sampler, double p,
-                    bool comp_iso, bool fill_list, rng_t& rng) const
+                    vector<size_t>& hist, vector<vector<VMap> >& vmaps,
+                    Sampler sampler) const
     {
         typedef typename mpl::if_<typename is_directed::apply<Graph>::type,
                                   d_graph_t,
@@ -377,6 +387,7 @@ struct get_all_motifs
                 }
 
                 bool found = false;
+                size_t pos;
                 typeof(sub_list.begin()) sl = sub_list.find(sig);
                 if (sl != sub_list.end())
                 {
@@ -397,7 +408,8 @@ struct get_all_motifs
                         }
                         if (found)
                         {
-                            hist[sl->second[l].first]++;
+                            pos = sl->second[l].first;
+                            hist[pos]++;
                             break;
                         }
                     }
@@ -409,6 +421,17 @@ struct get_all_motifs
                     sub_list[sig].push_back(make_pair(subgraph_list.size() - 1,
                                                       sub));
                     hist.push_back(1);
+                    pos = hist.size() - 1;
+                    found = true;
+                }
+
+                if (found && collect_vmaps)
+                {
+                    if (pos >= vmaps.size())
+                        vmaps.resize(pos + 1);
+                    vmaps[pos].push_back(VMap(get(boost::vertex_index,sub)));
+                    for (size_t vi = 0; vi < num_vertices(sub); ++vi)
+                        vmaps[pos].back()[vertex(vi, sub)] = subgraphs[j][vi];
                 }
             }
         }

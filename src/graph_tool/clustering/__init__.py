@@ -46,7 +46,7 @@ from __future__ import division, absolute_import, print_function
 from .. dl_import import dl_import
 dl_import("from . import libgraph_tool_clustering as _gt")
 
-from .. import _degree, _prop, Graph, GraphView, _get_rng
+from .. import _degree, _prop, Graph, GraphView, PropertyMap, _get_rng
 from .. topology import isomorphism
 from .. generation import random_rewire
 from .. stats import vertex_hist
@@ -284,7 +284,7 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
     return props
 
 
-def motifs(g, k, p=1.0, motif_list=None):
+def motifs(g, k, p=1.0, motif_list=None, return_maps=False):
     r"""
     Count the occurrence of k-size subgraphs (motifs). A tuple with two lists is
     returned: the list of motifs found, and the list with their respective
@@ -296,7 +296,7 @@ def motifs(g, k, p=1.0, motif_list=None):
         Graph to be used.
     k : int
         number of vertices of the motifs
-    p : float or float list (optional, default: 1.0)
+    p : float or float list (optional, default: `1.0`)
         uniform fraction of the motifs to be sampled. If a float list is
         provided, it will be used as the fraction at each depth
         :math:`[1,\dots,k]` in the algorithm. See [wernicke-efficient-2006]_ for
@@ -304,6 +304,10 @@ def motifs(g, k, p=1.0, motif_list=None):
     motif_list : list of :class:`~graph_tool.Graph` objects, optional
         If supplied, the algorithms will only search for the motifs in this list
         (or isomorphisms).
+    return_maps : bool (optional, default `False`)
+        If true, a list will be returned, which provide for each motif graph a
+        list of vertex property maps which map the motif to its location in the
+        main graph.
 
     Returns
     -------
@@ -314,6 +318,9 @@ def motifs(g, k, p=1.0, motif_list=None):
         out-degree-sequence, and number of edges (in this order).
     counts : list of ints
         The number of times the respective motif in the motifs list was counted
+    vertex_maps : list of lists of :class:`~graph_tool.PropertyMap` objects
+        List for each motif graph containing the locations in the main
+        graph. This is only returned if `return_maps == True`.
 
     See Also
     --------
@@ -375,9 +382,10 @@ def motifs(g, k, p=1.0, motif_list=None):
         pd = [float(x) for x in p]
 
     hist = []
+    vertex_maps = []
     was_directed = g.is_directed()
-    _gt.get_motifs(g._Graph__graph, k, sub_list, hist, pd,
-                   True, len(sub_list) == 0,
+    _gt.get_motifs(g._Graph__graph, k, sub_list, hist, vertex_maps,
+                   return_maps,  pd, True, len(sub_list) == 0,
                    _get_rng())
 
     # assemble graphs
@@ -402,6 +410,11 @@ def motifs(g, k, p=1.0, motif_list=None):
     sub_list = [x[0] for x in list_hist]
     hist = [x[1] for x in list_hist]
 
+    if return_maps:
+        for i, vlist in enumerate(vertex_maps):
+            sub = sub_list[i]
+            vertex_maps[i] = [PropertyMap(vm, sub, "v") for vm in vlist]
+        return sub_list, hist, vertex_maps
     return sub_list, hist
 
 

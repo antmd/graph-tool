@@ -22,6 +22,8 @@
 #include "graph_properties.hh"
 #include "graph_util.hh"
 
+#include "graph_python_interface.hh"
+
 #include "graph_motifs.hh"
 
 #include <boost/python.hpp>
@@ -66,8 +68,8 @@ struct retrieve_from_list
 };
 
 void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
-                python::list hist, python::list p, bool comp_iso,
-                bool fill_list, rng_t& rng)
+                python::list hist, python::list pvmaps, bool collect_vmaps,
+                python::list p, bool comp_iso, bool fill_list, rng_t& rng)
 {
     boost::any list;
     if (g.GetDirected())
@@ -105,14 +107,28 @@ void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
     else
         sampler = sample_some(plist, rng);
 
+    typedef property_map_type
+            ::apply<int32_t, GraphInterface::vertex_index_map_t>::type
+            vmap_t;
+    vector<vector<vmap_t> > vmaps;
+
     run_action<>()
-        (g, boost::bind<void>(get_all_motifs(), _1, k, boost::ref(list),
-                              boost::ref(phist), _2,
-                              plist[0], comp_iso, fill_list, boost::ref(rng)),
+        (g, boost::bind<void>(get_all_motifs(collect_vmaps, plist[0], comp_iso,
+                                             fill_list, rng),
+                              _1, k, boost::ref(list), boost::ref(phist),
+                              boost::ref(vmaps),_2),
          mpl::vector<sample_all,sample_some>())(sampler);
 
     for (size_t i = 0; i < phist.size(); ++i)
         hist.append(phist[i]);
+
+    for (size_t i = 0; i < vmaps.size(); ++i)
+    {
+        python::list vlist;
+        for (size_t j = 0; j < vmaps[i].size(); ++j)
+            vlist.append(PythonPropertyMap<vmap_t>(vmaps[i][j]));
+        pvmaps.append(vlist);
+    }
 
     if (fill_list)
     {
