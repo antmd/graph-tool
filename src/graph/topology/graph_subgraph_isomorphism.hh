@@ -271,7 +271,8 @@ void find_mappings(const Graph1& sub, const Graph2& g, matrix_t& M0,
                      iter != M_prime[ni].end(); ++iter)
                 {
                     F.push_back(std::make_pair(ni, *iter));
-                    FF.push_back(F);
+                    if (max_n == 0 || FF.size() < max_n)
+                        FF.push_back(F);
                     F.pop_back();
                 }
 
