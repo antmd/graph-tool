@@ -183,10 +183,9 @@ def isomorphism(g1, g2, isomap=False):
         return iso
 
 
-def subgraph_isomorphism(sub, g, max_n=0, random=False):
-    r"""
-    Obtain all subgraph isomorphisms of `sub` in `g` (or at most `max_n`
-    subgraphs, if `max_n > 0`).
+def subgraph_isomorphism(sub, g, max_n=0, vertex_label=None, edge_label=None,
+                         random=False):
+    r"""Obtain all subgraph isomorphisms of `sub` in `g` (or at most `max_n` subgraphs, if `max_n > 0`).
 
 
     Parameters
@@ -195,9 +194,17 @@ def subgraph_isomorphism(sub, g, max_n=0, random=False):
         Subgraph for which to be searched.
     g : :class:`~graph_tool.Graph`
         Graph in which the search is performed.
-    max_n : int (optional, default: 0)
+    max_n : int (optional, default: `0`)
         Maximum number of matches to find. If `max_n == 0`, all matches are
         found.
+    vertex_label : pair of :class:`~graph_tool.PropertyMap` (optional, default: `None`)
+        If provided, this should be a pair of :class:`~graph_tool.PropertyMap`
+        objects, belonging to `sub` and `g` (in this order), which specify vertex labels
+        which should match, in addition to the topological isomorphism.
+    edge_label : pair of :class:`~graph_tool.PropertyMap` (optional, default: `None`)
+        If provided, this should be a pair of :class:`~graph_tool.PropertyMap`
+        objects, belonging to `sub` and `g` (in this order), which specify edge labels
+        which should match, in addition to the topological isomorphism.
     random : bool (optional, default: False)
         If `True`, the vertices of `g` are indexed in random order before
         the search.
@@ -269,10 +276,14 @@ def subgraph_isomorphism(sub, g, max_n=0, random=False):
     """
     if sub.num_vertices() == 0:
         raise ValueError("Cannot search for an empty subgraph.")
-    # vertex and edge labels disabled for the time being, until GCC is capable
-    # of compiling all the variants using reasonable amounts of memory
-    vlabels=(None, None)
-    elabels=(None, None)
+    if vertex_label is None:
+        vertex_label = (None, None)
+    elif vertex_label[0].value_type() != vertex_label[1].value_type():
+        raise ValueError("Both vertex label property maps must be of the same type!")
+    if edge_label is None:
+        edge_label = (None, None)
+    elif edge_label[0].value_type() != edge_label[1].value_type():
+        raise ValueError("Both edge label property maps must be of the same type!")
     vmaps = []
     emaps = []
     if random:
@@ -281,10 +292,10 @@ def subgraph_isomorphism(sub, g, max_n=0, random=False):
         rng = libcore.rng_t()
     libgraph_tool_topology.\
            subgraph_isomorphism(sub._Graph__graph, g._Graph__graph,
-                                _prop("v", sub, vlabels[0]),
-                                _prop("v", g, vlabels[1]),
-                                _prop("e", sub, elabels[0]),
-                                _prop("e", g, elabels[1]),
+                                _prop("v", sub, vertex_label[0]),
+                                _prop("v", g, vertex_label[1]),
+                                _prop("e", sub, edge_label[0]),
+                                _prop("e", g, edge_label[1]),
                                 vmaps, emaps, max_n, rng)
     for i in range(len(vmaps)):
         vmaps[i] = PropertyMap(vmaps[i], sub, "v")
