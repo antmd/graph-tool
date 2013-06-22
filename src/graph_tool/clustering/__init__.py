@@ -305,7 +305,7 @@ def motifs(g, k, p=1.0, motif_list=None, return_maps=False):
         If supplied, the algorithms will only search for the motifs in this list
         (or isomorphisms).
     return_maps : bool (optional, default `False`)
-        If true, a list will be returned, which provide for each motif graph a
+        If ``True``, a list will be returned, which provides for each motif graph a
         list of vertex property maps which map the motif to its location in the
         main graph.
 
