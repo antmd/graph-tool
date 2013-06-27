@@ -29,8 +29,11 @@ graphs.
 Stochastic blockmodel inference
 +++++++++++++++++++++++++++++++
 
+Non-hierarchical models
+=======================
+
 Summary
-=======
+^^^^^^^
 
 .. autosummary::
    :nosignatures:
@@ -38,6 +41,8 @@ Summary
    minimize_blockmodel_dl
    BlockState
    mcmc_sweep
+   MinimizeState
+   multilevel_minimize
    collect_vertex_marginals
    collect_edge_marginals
    mf_entropy
@@ -45,8 +50,24 @@ Summary
    model_entropy
    get_max_B
    get_akc
-   min_dist
    condensation_graph
+
+Hierarchical models
+===================
+
+Summary
+^^^^^^^
+
+.. autosummary::
+   :nosignatures:
+
+   minimize_nested_blockmodel_dl
+   NestedBlockState
+   NestedMinimizeState
+   init_nested_state
+   nested_mcmc_sweep
+   nested_tree_sweep
+   get_hierarchy_tree
 
 
 Modularity-based community detection
@@ -72,21 +93,41 @@ if sys.version_info < (3,):
     range = xrange
 
 from .. dl_import import dl_import
-dl_import("from . import libgraph_tool_community")
+#dl_import("from . import libgraph_tool_community")
 
 from .. import _degree, _prop, Graph, GraphView, libcore, _get_rng
 import random
 import sys
 
-__all__ = ["minimize_blockmodel_dl", "BlockState", "mcmc_sweep",
-           "collect_edge_marginals", "collect_vertex_marginals",
-           "bethe_entropy", "mf_entropy", "model_entropy", "get_max_B",
-           "get_akc", "min_dist", "condensation_graph",  "community_structure",
+__all__ = ["minimize_blockmodel_dl",
+           "BlockState",
+           "mcmc_sweep",
+           "MinimizeState",
+           "multilevel_minimize",
+           "collect_edge_marginals",
+           "collect_vertex_marginals",
+           "mf_entropy",
+           "bethe_entropy",
+           "model_entropy",
+           "get_max_B",
+           "get_akc",
+           "condensation_graph",
+           "minimize_nested_blockmodel_dl",
+           "NestedBlockState",
+           "NestedMinimizeState",
+           "init_nested_state",
+           "nested_mcmc_sweep",
+           "nested_tree_sweep",
+           "get_hierarchy_tree",
+           "community_structure",
            "modularity"]
 
 from . blockmodel import minimize_blockmodel_dl, BlockState, mcmc_sweep, \
-    model_entropy, get_max_B, get_akc, min_dist, condensation_graph, \
-    collect_edge_marginals, collect_vertex_marginals, bethe_entropy, mf_entropy
+    multilevel_minimize, model_entropy, get_max_B, get_akc, condensation_graph, \
+    collect_edge_marginals, collect_vertex_marginals, bethe_entropy, mf_entropy, MinimizeState
+
+from . nested_blockmodel import NestedBlockState, NestedMinimizeState, init_nested_state, \
+    nested_mcmc_sweep, nested_tree_sweep, minimize_nested_blockmodel_dl, get_hierarchy_tree
 
 def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
                         spins=None, weight=None, t_range=(100.0, 0.01),

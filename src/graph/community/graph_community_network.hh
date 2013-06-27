@@ -155,15 +155,31 @@ struct get_community_network_edges
             if (ct == cs && !self_loops)
                 continue;
             cedge_t ce;
-            if (comm_edges.find(make_pair(cs, ct)) != comm_edges.end())
-                ce = comm_edges[make_pair(cs, ct)];
-            else if (!is_directed::apply<Graph>::type::value &&
-                     comm_edges.find(make_pair(ct, cs)) != comm_edges.end())
-                ce = comm_edges[make_pair(ct, cs)];
+            typeof(comm_edges.begin()) iter = comm_edges.find(make_pair(cs, ct));
+            if (iter != comm_edges.end())
+            {
+                ce = iter->second;
+            }
             else
             {
-                ce = add_edge(cs, ct, cg).first;
-                comm_edges[make_pair(cs, ct)] = ce;
+                if (!is_directed::apply<Graph>::type::value)
+                {
+                    iter = comm_edges.find(make_pair(ct, cs));
+                    if (iter != comm_edges.end())
+                    {
+                        ce = iter->second;
+                    }
+                    else
+                    {
+                        ce = add_edge(cs, ct, cg).first;
+                        comm_edges[make_pair(cs, ct)] = ce;
+                    }
+                }
+                else
+                {
+                    ce = add_edge(cs, ct, cg).first;
+                    comm_edges[make_pair(cs, ct)] = ce;
+                }
             }
             put(edge_count, ce, get(edge_count, ce) + get(eweight, *e));
         }

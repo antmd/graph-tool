@@ -23,16 +23,32 @@ import sys
 if sys.version_info < (3,):
     range = xrange
 
-from .. import _degree, _prop, Graph, GraphView, libcore, _get_rng
+from .. import _degree, _prop, Graph, GraphView, libcore, _get_rng, PropertyMap
+from .. stats import label_self_loops
 import random
 from numpy import *
+import numpy
 from scipy.optimize import fsolve, fminbound
 import scipy.special
 from collections import defaultdict
+import copy
+import heapq
 
 from .. dl_import import dl_import
 dl_import("from . import libgraph_tool_community as libcommunity")
 
+
+def get_block_graph(g, B, b, vcount, ecount):
+    cg, br, vcount, ecount = condensation_graph(g, b,
+                                                vweight=vcount,
+                                                eweight=ecount,
+                                                self_loops=True)[:4]
+    cg.vp["count"] = vcount
+    cg.ep["count"] = ecount
+    cg = Graph(cg, vorder=br)
+
+    cg.add_vertex(B - cg.num_vertices())
+    return cg
 
 class BlockState(object):
     r"""This class encapsulates the block state of a given graph.
@@ -42,7 +58,7 @@ class BlockState(object):
     Parameters
     ----------
     g : :class:`~graph_tool.Graph`
-        Graph to be used.
+        Graph to be modelled.
     eweight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         Edge weights (i.e. multiplicity).
     vweight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
@@ -61,21 +77,15 @@ class BlockState(object):
     deg_corr : ``bool`` (optional, default: ``True``)
         If ``True``, the degree-corrected version of the blockmodel ensemble will
         be assumed, otherwise the traditional variant will be used.
-
+    max_BE : ``int`` (optional, default: ``1000``)
+        If the number of blocks exceeds this number, a sparse representation of
+        the block graph is used, which is slightly less efficient, but uses less
+        memory,
     """
 
-    def __init__(self, g, eweight=None, vweight=None, b=None, clabel=None, B=None,
-                 deg_corr=True):
+    def __init__(self, g, eweight=None, vweight=None, b=None,
+                 B=None, clabel=None, deg_corr=True, max_BE=1000):
         self.g = g
-        self.bg = Graph(directed=g.is_directed())
-        self.mrs = self.bg.new_edge_property("int")
-        self.mrp = self.bg.new_vertex_property("int")
-        if g.is_directed():
-            self.mrm = self.bg.new_vertex_property("int")
-        else:
-            self.mrm = self.mrp
-        self.wr = self.bg.new_vertex_property("int")
-
         if eweight is None:
             eweight = g.new_edge_property("int")
             eweight.a = 1
@@ -89,77 +99,107 @@ class BlockState(object):
         self.eweight = eweight
         self.vweight = vweight
 
-        self.E = self.eweight.a.sum()
-        self.N = self.vweight.a.sum()
+        self.E = int(self.eweight.fa.sum())
+        self.N = int(self.vweight.fa.sum())
 
         self.deg_corr = deg_corr
-
-        if clabel is None:
-            self.clabel = g.new_vertex_property("int")
-            self.L = 1
-        else:
-            self.clabel = clabel
-            self.L = int(self.clabel.a.max() + 1)
 
         if b is None:
             if B is None:
                 B = get_max_B(self.N, self.E, directed=g.is_directed())
-            B = int(ceil(B/float(self.L)) * self.L)
+            ba = random.randint(0, B, g.num_vertices())
+            ba[:B] = arange(B)        # avoid empty blocks
+            random.shuffle(ba)
             b = g.new_vertex_property("int")
-            b.a = random.randint(0, B / self.L, len(b.a))
-            b.a = self.clabel.a + b.a * self.L
+            b.fa = ba
             self.b = b
         else:
             if B is None:
-                B = int(b.a.max()) + 1
-            B = int(ceil(B/float(self.L)) * self.L)
+                B = int(b.fa.max()) + 1
             self.b = b = b.copy(value_type="int32_t")
 
-        cg, br, vcount, ecount = condensation_graph(g, b,
-                                                    vweight=vweight,
-                                                    eweight=eweight,
-                                                    self_loops=True)[:4]
-        self.bg.add_vertex(B)
-        if b.a.max() >= B:
-            raise ValueError("Maximum value of b is largest or equal to B!")
+        if b.fa.max() >= B:
+            raise ValueError("Maximum value of b is larger or equal to B!")
+
+        # Construct block-graph
+        self.bg = get_block_graph(g, B, b, vweight, eweight)
+        self.bg.set_fast_edge_removal()
+
+        self.mrs = self.bg.ep["count"]
+        self.wr = self.bg.vp["count"]
+        del self.bg.ep["count"]
+        del self.bg.vp["count"]
+
+        self.mrp = self.bg.degree_property_map("out", weight=self.mrs)
+
+        if g.is_directed():
+            self.mrm = self.bg.degree_property_map("in", weight=self.mrs)
+        else:
+            self.mrm = self.mrp
 
         self.vertices = libcommunity.get_vector(B)
         self.vertices.a = arange(B)
+        self.B = B
 
-        self.mrp.a = 0
-        self.mrm.a = 0
-        self.mrs.a = 0
-        for e in cg.edges():
-            r = self.bg.vertex(br[e.source()])
-            s = self.bg.vertex(br[e.target()])
-            be = self.bg.add_edge(r, s)
-            if self.bg.is_directed():
-                self.mrs[be] = ecount[e]
-            else:
-                self.mrs[be] = ecount[e] if r != s else 2 * ecount[e]
-            self.mrp[r] += ecount[e]
-            self.mrm[s] += ecount[e]
+        self.clabel = clabel
+        if self.clabel is None:
+            self.clabel = self.g.new_vertex_property("int")
 
-        self.wr.a = 0
-        for v in cg.vertices():
-            r = self.bg.vertex(br[v])
-            self.wr[r] = vcount[v]
+        self.bclabel = self.bg.new_vertex_property("int")
+        libcommunity.vector_rmap(self.b.a, self.bclabel.a)
+        libcommunity.vector_map(self.bclabel.a, self.clabel.a)
 
-        self.__regen_emat()
-        self.__build_egroups()
+        self.emat = None
+        if max_BE is None:
+            max_BE = 1000
+        self.max_BE = max_BE
+
+        # used by mcmc_sweep()
+        self.egroups = None
+        self.nsampler = None
+        self.sweep_vertices = None
+
+        # used by merge_sweep()
+        self.bnsampler = None
+
+        libcommunity.init_safelog(int(2 * max(self.E, self.N)))
+        libcommunity.init_xlogx(int(2 * max(self.E, self.N)))
+        libcommunity.init_lgamma(int(3 * max(self.E, self.N)))
+
+    def __get_emat(self):
+        if self.emat is None:
+            self.__regen_emat()
+        return self.emat
 
     def __regen_emat(self):
-        self.emat = libcommunity.create_emat(self.bg._Graph__graph, len(self.vertices))
+        if self.B <= self.max_BE:
+            self.emat = libcommunity.create_emat(self.bg._Graph__graph)
+        else:
+            self.emat = libcommunity.create_ehash(self.bg._Graph__graph)
 
-    def __build_egroups(self):
+    def __build_egroups(self, empty=False):
         self.esrcpos = self.g.new_edge_property("vector<int>")
         self.etgtpos = self.g.new_edge_property("vector<int>")
         self.egroups = libcommunity.build_egroups(self.g._Graph__graph,
-                                                self.bg._Graph__graph,
-                                                _prop("v", self.g, self.b),
-                                                _prop("e", self.g, self.eweight),
-                                                _prop("e", self.g, self.esrcpos),
-                                                _prop("e", self.g, self.etgtpos))
+                                                  self.bg._Graph__graph,
+                                                  _prop("v", self.g, self.b),
+                                                  _prop("e", self.g, self.eweight),
+                                                  _prop("e", self.g, self.esrcpos),
+                                                  _prop("e", self.g, self.etgtpos),
+                                                  empty)
+
+    def __build_nsampler(self):
+        self.nsampler = libcommunity.init_neighbour_sampler(self.g._Graph__graph,
+                                                            _prop("e", self.g, self.eweight))
+    def __build_bnsampler(self):
+        self.bnsampler = libcommunity.init_neighbour_sampler(self.bg._Graph__graph,
+                                                             _prop("e", self.bg, self.mrs))
+
+    def __cleanup_bg(self):
+        emask = self.bg.new_edge_property("bool")
+        emask.a = self.mrs.a[:len(emask.a)] > 0
+        self.bg.set_edge_filter(emask)
+        self.bg.purge_edges()
 
     def get_blocks(self):
         r"""Returns the property map which contains the block labels for each vertex."""
@@ -194,19 +234,12 @@ class BlockState(object):
         is :math:`e_{rr}/2`."""
         eweight = self.mrs.copy()
         if not self.g.is_directed():
-            for r in self.bg.vertices():
-                e = self.bg.edge(r, r)
-                if e is not None:
-                    eweight[e] /= 2
+            sl = label_self_loops(self.bg, mark_only=True)
+            eweight.a[sl.a > 0] /= 2
         return eweight
 
-    def get_clabel(self):
-        r"""Obtain the constraint label associated with each block."""
-        blabel = self.bg.vertex_index.copy(value_type="int")
-        blabel.a = blabel.a % self.L
-        return blabel
-
-    def entropy(self, complete=False, random=False, dl=False):
+    def entropy(self, complete=False, random=False, dl=False, dense=False,
+                multigraph=False):
         r"""Calculate the entropy per edge associated with the current block partition.
 
         Parameters
@@ -219,7 +252,11 @@ class BlockState(object):
             graph (i.e. no block partition) will be returned.
         dl : ``bool`` (optional, default: ``False``)
             If ``True``, the full description length will be returned.
-
+        dense : ``bool`` (optional, default: ``False``)
+            If ``True``, the "dense" variant of the entropy will be computed.
+        multigraph : ``bool`` (optional, default: ``False``)
+            If ``True``, the multigraph entropy will be used. Only has an effect
+            if ``dense == True``.
 
         Notes
         -----
@@ -265,7 +302,23 @@ class BlockState(object):
         where :math:`p_k` is the fraction of nodes with degree :math:`p_k`, and
         we have instead :math:`k \to (k^-, k^+)` for directed graphs.
 
-        Note that the value returned corresponds to the entropy `per edge`,
+        If the "dense" entropies are requested, they will be computed as
+
+        .. math::
+
+            \mathcal{S}_t  &= \sum_{r>s} \ln{\textstyle {n_rn_s \choose e_{rs}}} + \sum_r \ln{\textstyle {{n_r\choose 2}\choose e_{rr}/2}}\\
+            \mathcal{S}^d_t  &= \sum_{rs} \ln{\textstyle {n_rn_s \choose e_{rs}}},
+
+        for simple graphs, and
+
+        .. math::
+
+            \mathcal{S}_m  &= \sum_{r>s} \ln{\textstyle \left(\!\!{n_rn_s \choose e_{rs}}\!\!\right)} + \sum_r \ln{\textstyle \left(\!\!{\left(\!{n_r\choose 2}\!\right)\choose e_{rr}/2}\!\!\right)}\\
+            \mathcal{S}^d_m  &= \sum_{rs} \ln{\textstyle \left(\!\!{n_rn_s \choose e_{rs}}\!\!\right)},
+
+        for multigraphs (i.e. ``multigraph == True``).
+
+        Note that in all cases the value returned corresponds to the entropy `per edge`,
         i.e. :math:`(\mathcal{S}_{t/c}\; [\,+\, \mathcal{L}_{t/c}])/ E`.
 
         """
@@ -273,27 +326,59 @@ class BlockState(object):
         E = self.E
         N = self.N
 
-        if self.deg_corr:
-            if self.g.is_directed():
-                S_rand = E * log(E)
+        if dense:
+            if random:
+                bg = get_block_graph(self.bg, 1,
+                                     self.bg.new_vertex_property("int"),
+                                     self.wr, self.mrs)
+                S = libcommunity.entropy_dense(bg._Graph__graph,
+                                               _prop("e", bg, bg.ep["count"]),
+                                               _prop("v", bg, bg.vp["count"]),
+                                               multigraph)
             else:
-                S_rand = E * log(2 * E)
+                S = libcommunity.entropy_dense(self.bg._Graph__graph,
+                                               _prop("e", self.bg, self.mrs),
+                                               _prop("v", self.bg, self.wr),
+                                               multigraph)
         else:
-            ak = E / float(N) if self.g.is_directed() else  2 * E / float(N)
-            S_rand = E * log (N / ak)
-
-        if random:
-            S = S_rand
-        else:
-            S = libcommunity.entropy(self.bg._Graph__graph,
-                                   _prop("e", self.bg, self.mrs),
-                                   _prop("v", self.bg, self.mrp),
-                                   _prop("v", self.bg, self.mrm),
-                                   _prop("v", self.bg, self.wr),
-                                   self.deg_corr)
-
-        if complete:
             if self.deg_corr:
+                if self.g.is_directed():
+                    S_rand = E * log(E)
+                else:
+                    S_rand = E * log(2 * E)
+            else:
+                ak = E / float(N) if self.g.is_directed() else  2 * E / float(N)
+                S_rand = E * log (N / ak)
+
+            if random:
+                S = S_rand
+            else:
+                S = libcommunity.entropy(self.bg._Graph__graph,
+                                         _prop("e", self.bg, self.mrs),
+                                         _prop("v", self.bg, self.mrp),
+                                         _prop("v", self.bg, self.mrm),
+                                         _prop("v", self.bg, self.wr),
+                                         self.deg_corr)
+
+            if complete:
+                if self.deg_corr:
+                    S -= E
+                    for v in self.g.vertices():
+                        S -= scipy.special.gammaln(v.out_degree() + 1)
+                        if self.g.is_directed():
+                            S -= scipy.special.gammaln(v.in_degree() + 1)
+                else:
+                    S += E
+            else:
+                S -= S_rand
+
+        if dl:
+            if random:
+                S += model_entropy(1, N, E, directed=self.g.is_directed()) * E
+            else:
+                S += model_entropy(self.B, N, E, directed=self.g.is_directed(), nr=self.wr.a) * E
+
+            if complete and self.deg_corr:
                 S_seq = 0
                 hist = defaultdict(int)
                 for v in self.g.vertices():
@@ -304,50 +389,10 @@ class BlockState(object):
                 S_seq *= self.g.num_vertices()
                 S += S_seq
 
-                S -= E
-                for v in self.g.vertices():
-                    S -= scipy.special.gammaln(v.out_degree() + 1)
-                    if self.g.is_directed():
-                        S -= scipy.special.gammaln(v.in_degree() + 1)
-            else:
-                S += E
-        else:
-            S -= S_rand
-
-
-        if dl:
-            if random:
-                S += model_entropy(1, N, E, directed=self.g.is_directed()) * E
-            else:
-                S += model_entropy(len(self.vertices), N, E, directed=self.g.is_directed()) * E
-
         return S / E
 
-    def __min_dl(self):
-        return self.entropy(complete=False, dl=True)
-
-    def dist(self, r, s):
-        r"""Compute the "distance" between blocks `r` and `s`, i.e. the entropy
-        difference after they are merged together."""
-        return libcommunity.dist(self.bg._Graph__graph, int(r), int(s),
-                                 _prop("e", self.bg, self.mrs),
-                                 _prop("v", self.bg, self.mrp),
-                                 _prop("v", self.bg, self.mrm),
-                                 _prop("v", self.bg, self.wr),
-                                 self.deg_corr)
-
-
-    def join(self, r, s):
-        r"""Merge blocks `r` and `s` into a single block."""
-        libcommunity.join(self.bg._Graph__graph, int(r), int(s),
-                          _prop("e", self.bg, self.mrs),
-                          _prop("v", self.bg, self.mrp),
-                          _prop("v", self.bg, self.mrm),
-                          _prop("v", self.bg, self.wr))
-        del self.egroups
-
     def remove_vertex(self, v):
-        r"""Remove vertex `v` from its current block."""
+        r"""Remove vertex ``v`` from its current block."""
         libcommunity.remove_vertex(self.g._Graph__graph,
                                    self.bg._Graph__graph,
                                    int(v),
@@ -356,11 +401,13 @@ class BlockState(object):
                                    _prop("v", self.bg, self.mrm),
                                    _prop("v", self.bg, self.wr),
                                    _prop("v", self.g, self.b))
-        del self.egroups
+        self.egroups = None
+        self.nb_list = None
+        self.nb_count = None
 
 
     def add_vertex(self, v, r):
-        r"""Add vertex `v` to block `r`."""
+        r"""Add vertex ``v`` to block ``r``."""
         libcommunity.add_vertex(v.get_graph()._Graph__graph,
                                 self.bg._Graph__graph,
                                 int(v), int(r),
@@ -369,13 +416,15 @@ class BlockState(object):
                                 _prop("v", self.bg, self.mrm),
                                 _prop("v", self.bg, self.wr),
                                 _prop("v", self.g, self.b))
-        del self.egroups
+        self.egroups = None
+        self.nb_list = None
+        self.nb_count = None
 
     def move_vertex(self, v, nr):
-        r"""Move vertex `v` to block `r`, and return the entropy difference."""
+        r"""Move vertex ``v`` to block ``nr``, and return the entropy difference."""
         dS = libcommunity.move_vertex(self.g._Graph__graph,
                                       self.bg._Graph__graph,
-                                      self.emat,
+                                      self.__get_emat(),
                                       int(v), int(nr),
                                       _prop("e", self.bg, self.mrs),
                                       _prop("v", self.bg, self.mrp),
@@ -385,26 +434,12 @@ class BlockState(object):
                                       self.deg_corr,
                                       _prop("e", self.bg, self.eweight),
                                       _prop("v", self.bg, self.vweight))
-        del self.egroups
+        self.egroups = None
+        self.nb_list = None
+        self.nb_count = None
         return dS / float(self.E)
 
-
-    def get_dist_matrix(self):
-        r"""Return the distance matrix between all blocks. The distance is
-        defined as the entropy difference after two blocks are merged."""
-        dist_matrix = zeros((len(self.vertices), len(self.vertices)))
-        for ri, r in enumerate(self.vertices):
-            for si, s in enumerate(self.vertices):
-                if si > ri:
-                    dist_matrix[ri, si] = self.dist(r, s)
-        for ri, r in enumerate(self.vertices):
-            for si, s in enumerate(self.vertices):
-                if si < ri:
-                    dist_matrix[ri, si] = dist_matrix[si, ri]
-        return dist_matrix
-
-
-    def get_matrix(self, reorder=False, clabel=None, niter=0, ret_order=False):
+    def get_matrix(self, reorder=False, niter=0, ret_order=False):
         r"""Returns the block matrix.
 
         Parameters
@@ -412,9 +447,6 @@ class BlockState(object):
         reorder : ``bool`` (optional, default: ``False``)
             If ``True``, the matrix is reordered so that blocks which are
             'similar' are close together.
-        clabel : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
-            Constraint labels to be imposed during reordering. Only has
-            effect if ``reorder == True``.
         niter : ``int`` (optional, default: `0`)
             Number of iterations performed to obtain the best ordering. If
             ``niter == 0`` it will automatically determined. Only has effect
@@ -455,48 +487,49 @@ class BlockState(object):
            A  5x5 block matrix.
 
        """
-        B = len(self.vertices)
+        B = self.B
         vmap = {}
         for r in range(len(self.vertices)):
             vmap[self.vertices[r]] = r
 
         if reorder:
             if niter == 0:
-                niter = max(10 * len(self.vertices), 100)
+                niter = 10
 
             states = []
 
             label = None
             states = [self]
-            Bi = B / 2
+            Bi = self.B // 2
 
             while Bi > 1:
-                cblabel = states[-1].get_clabel()
-                if clabel is not None and len(states) == 1:
-                    clabel.a += (cblabel.a.max() + 1) * clabel.a
-                state = BlockState(states[-1].bg, B=Bi,
-                                   clabel=clabel,
+
+                state = BlockState(states[-1].bg,
+                                   b=states[-1].bg.vertex_index.copy("int"),
+                                   B=states[-1].bg.num_vertices(),
+                                   clabel=states[-1].bclabel,
                                    vweight=states[-1].wr,
-                                   eweight=states[-1].get_eweight(),
-                                   deg_corr=states[-1].deg_corr)
+                                   eweight=states[-1].mrs,
+                                   deg_corr=states[-1].deg_corr,
+                                   max_BE=states[-1].max_BE)
+
+                state = greedy_shrink(state, B=Bi, nsweeps=niter,
+                                      epsilon=1e-3, c=0,
+                                      nmerge_sweeps=niter, sequential=True)
 
                 for i in range(niter):
-                    mcmc_sweep(state, beta=1.)
-                for i in range(niter):
-                    mcmc_sweep(state, beta=float("inf"))
+                    mcmc_sweep(state, c=0, beta=float("inf"))
 
                 states.append(state)
 
-                Bi /= 2
+                Bi //= 2
 
-                if Bi < cblabel.a.max() + 1:
+                if Bi < self.bclabel.a.max() + 1:
                     break
-
 
             vorder = list(range(len(states[-1].vertices)))
             for state in reversed(states[1:]):
-                norder = [[] for i in range(len(state.vertices))]
-                #print(state.L)
+                norder = [[] for i in range(state.B)]
                 for v in state.g.vertices():
                     pos = vorder.index(state.b[v])
                     norder[pos].append(int(v))
@@ -520,32 +553,17 @@ class BlockState(object):
             if not self.bg.is_directed():
                 m[s, r] = m[r, s]
 
+        for r in range(B):
+            if r not in rmap:
+                rmap[r] = r
+
         if ret_order:
             return m, rmap
         else:
             return m
 
-    def modularity(self):
-        r"""Computes the modularity of the current block structure."""
-        Q = 0
-        for vi in self.vertices:
-            v = self.bg.vertex(vi)
-            err = 0
-            for e in v.out_edges():
-                if e.target() == v:
-                    err = self.mrs[e]
-                    break
-            er = 0
-            if self.bg.is_directed():
-                err /= float(self.E)
-                er = self.mrp[v] * self.mrm[v] / float(self.E ** 2)
-            else:
-                err /= float(2 * self.E)
-                er = self.mrp[v] ** 2 / float(4 * self.E ** 2)
-            Q += err - er
-        return Q
 
-def model_entropy(B, N, E, directed):
+def model_entropy(B, N, E, directed=False, nr=None):
     r"""Computes the amount of information necessary for the parameters of the traditional blockmodel ensemble, for ``B`` blocks, ``N`` vertices, ``E`` edges, and either a directed or undirected graph.
 
     A traditional blockmodel is defined as a set of :math:`N` vertices which can
@@ -572,25 +590,46 @@ def model_entropy(B, N, E, directed):
 
     .. math::
 
-       \mathcal{L}_t = \ln\Omega_m + N\ln B,
+       \mathcal{L}_t = \ln\Omega_m + \ln\left(\!\!{B \choose N}\!\!\right) + \ln N! - \sum_r \ln n_r!,
 
 
-    where :math:`N\ln B` is the information necessary to describe the
-    block partition.
+    where the remaining term is the information necessary to describe the
+    block partition, where :math:`n_r` is the number of nodes in block :math:`r`.
+
+    If ``nr`` is ``None``, it is assumed :math:`n_r=N/B`.
+
+    The value returned corresponds to the information per edge, i.e.
+    :math:`\mathcal{L}_t/E`.
 
     References
     ----------
 
     .. [peixoto-parsimonious-2013] Tiago P. Peixoto, "Parsimonious module inference in large networks",
        Phys. Rev. Lett. 110, 148701 (2013), :doi:`10.1103/PhysRevLett.110.148701`, :arxiv:`1212.4794`.
+    .. [peixoto-hierarchical-2013] Tiago P. Peixoto, "Hierarchical block structures and high-resolution
+       model selection in large networks ", :arxiv:`1310.4377`.
 
     """
-    return libcommunity.SB(float(B), int(N), int(E), directed)
 
+    if directed:
+        x = (B * B);
+    else:
+        x = (B * (B + 1)) / 2;
+    L = lbinom(x + E - 1, E) + partition_entropy(B, N, nr)
+    return L / E
 
 def Sdl(B, S, N, E, directed=False):
     return S + model_entropy(B, N, E, directed)
 
+def lbinom(n, k):
+    return scipy.special.gammaln(n + 1) - scipy.special.gammaln(n - k + 1) - scipy.special.gammaln(k + 1)
+
+def partition_entropy(B, N, nr=None):
+    if nr is None:
+        S = N * log(B) + log1p(-(1 - 1./B) ** N)
+    else:
+        S = lbinom(B + N - 1, N) + scipy.special.gammaln(N) - scipy.special.gammaln(nr + 1).sum()
+    return S
 
 def get_max_B(N, E, directed=False):
     r"""Return the maximum detectable number of blocks, obtained by minimizing:
@@ -658,7 +697,7 @@ def get_akc(B, I, N=float("inf"), directed=False):
     --------
 
     >>> gt.get_akc(10, log(10) / 100, N=100)
-    2.4199998936261204
+    2.414413200430159
 
     References
     ----------
@@ -679,62 +718,37 @@ def get_akc(B, I, N=float("inf"), directed=False):
             ak /= 2
     return ak
 
-def min_dist(state, n=0):
-    r"""Return the minimum distance between all blocks, and the block pair which minimizes it.
-
-    The parameter `state` must be an instance of the
-    :class:`~graph_tool.community.BlockState` class, and `n` is the number of
-    block pairs to sample. If `n == 0` all block pairs are sampled.
-
-
-    Examples
-    --------
-
-    .. testsetup:: min_dist
-
-       gt.seed_rng(42)
-       np.random.seed(42)
-
-    .. doctest:: min_dist
-
-       >>> g = gt.collection.data["polbooks"]
-       >>> state = gt.BlockState(g, B=4, deg_corr=True)
-       >>> for i in range(1000):
-       ...     ds, nmoves = gt.mcmc_sweep(state)
-       >>> gt.min_dist(state)
-       (795.7694502418633, 2, 3)
-
-    """
-    min_d, r, s = libcommunity.min_dist(state.bg._Graph__graph, int(n),
-                                        _prop("e", state.bg, state.mrs),
-                                        _prop("v", state.bg, state.mrp),
-                                        _prop("v", state.bg, state.mrm),
-                                        _prop("v", state.bg, state.wr),
-                                        state.deg_corr,
-                                        state.vertices,
-                                        _get_rng())
-    return min_d, r, s
-
-
-def mcmc_sweep(state, beta=1., sequential=True, vertices=None, random_move=False, verbose=False):
-    r"""Performs a Monte Carlo Markov chain sweep on the network, to sample the block partition according to a probability :math:`\propto e^{-\beta \mathcal{S}_{t/c}}`, where :math:`\mathcal{S}_{t/c}` is the blockmodel entropy.
+def mcmc_sweep(state, beta=1., random_move=False, c=1., dense=False,
+               multigraph=False, sequential=True, vertices=None,
+               verbose=False):
+    r"""Performs a Markov chain Monte Carlo sweep on the network, to sample the block partition according to a probability :math:`\propto e^{-\beta \mathcal{S}_{t/c}}`, where :math:`\mathcal{S}_{t/c}` is the blockmodel entropy.
 
     Parameters
     ----------
     state : :class:`~graph_tool.community.BlockState`
         The block state.
-    beta : `float` (optional, default: `1.0`)
+    beta : ``float`` (optional, default: `1.0`)
         The inverse temperature parameter :math:`\beta`.
-    sequential : ``bool`` (optional, default: ``True``)
-        If ``True``, the move attempts on the vertices are done in sequential
-        random order. Otherwise a total of `N` moves attempts are made, where
-        `N` is the number of vertices, where each vertex can be selected with
-        equal probability.
     random_move : ``bool`` (optional, default: ``False``)
         If ``True``, the proposed moves will attempt to place the vertices in
         fully randomly-chosen blocks. If ``False``, the proposed moves will be
         chosen with a probability depending on the membership of the neighbours
         and the currently-inferred block structure.
+    c : ``float`` (optional, default: ``1.0``)
+        This parameter specifies how often fully random moves are attempted,
+        instead of more likely moves based on the inferred block partition.
+        For ``c == 0``, no fully random moves are attempted, and for ``c == inf``
+        they are always attempted.
+    dense : ``bool`` (optional, default: ``False``)
+        If ``True``, the "dense" variant of the entropy will be computed.
+    multigraph : ``bool`` (optional, default: ``False``)
+        If ``True``, the multigraph entropy will be used. Only has an effect
+        if ``dense == True``.
+    sequential : ``bool`` (optional, default: ``True``)
+        If ``True``, the move attempts on the vertices are done in sequential
+        random order. Otherwise a total of `N` moves attempts are made, where
+        `N` is the number of vertices, where each vertex can be selected with
+        equal probability.
     vertices: ``list of ints`` (optional, default: ``None``)
         A list of vertices which will be attempted to be moved. If ``None``, all
         vertices will be attempted.
@@ -744,7 +758,7 @@ def mcmc_sweep(state, beta=1., sequential=True, vertices=None, random_move=False
     Returns
     -------
 
-    dS : `float`
+    dS : ``float``
        The entropy difference (per edge) after a full sweep.
     nmoves : ``int``
        The number of accepted block membership moves.
@@ -753,7 +767,7 @@ def mcmc_sweep(state, beta=1., sequential=True, vertices=None, random_move=False
     Notes
     -----
 
-    This algorithm performs a Monte Carlo Markov chain sweep on the network,
+    This algorithm performs a Markov chain Monte Carlo sweep on the network,
     where the block memberships are randomly moved, and either accepted or
     rejected, so that after sufficiently many sweeps the partitions are sampled
     with probability proportional to :math:`e^{-\beta\mathcal{S}_{t/c}}`, where
@@ -784,10 +798,10 @@ def mcmc_sweep(state, beta=1., sequential=True, vertices=None, random_move=False
     :math:`r`, respectively.
 
     The Monte Carlo algorithm employed attempts to improve the mixing time of
-    the markov chain by proposing membership moves :math:`r\to s` with
-    probability :math:`p(r\to s|t) \propto e_{ts} + 1`, where :math:`t` is the
+    the Markov chain by proposing membership moves :math:`r\to s` with
+    probability :math:`p(r\to s|t) \propto e_{ts} + c`, where :math:`t` is the
     block label of a random neighbour of the vertex being moved. See
-    [peixoto-parsimonious-2013]_ for more details.
+    [peixoto-efficient-2013]_ for more details.
 
     This algorithm has a complexity of :math:`O(E)`, where :math:`E` is the
     number of edges in the network.
@@ -838,213 +852,607 @@ def mcmc_sweep(state, beta=1., sequential=True, vertices=None, random_move=False
        :arxiv:`1112.6028`.
     .. [peixoto-parsimonious-2013] Tiago P. Peixoto, "Parsimonious module inference in large networks",
        Phys. Rev. Lett. 110, 148701 (2013), :doi:`10.1103/PhysRevLett.110.148701`, :arxiv:`1212.4794`.
+    .. [peixoto-efficient-2013] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
+       heuristic for the inference of stochastic block models", :arxiv:`1310.4378`.
     """
 
-    if len(state.vertices) == 1:
+    if state.B == 1:
         return 0., 0
 
-    if vertices is None:
-        vertices = libcommunity.get_vector(state.g.num_vertices())
-        vertices.a = state.g.vertex_index.copy("int").fa
-    else:
+    if vertices is not None:
         vlist = libcommunity.get_vector(len(vertices))
         vlist.a = vertices
         vertices = vlist
+        state.sweep_vertices = vertices
 
-    dS, nmoves = libcommunity.move_sweep(state.g._Graph__graph,
-                                         state.bg._Graph__graph,
-                                         state.emat,
-                                         _prop("e", state.bg, state.mrs),
-                                         _prop("v", state.bg, state.mrp),
-                                         _prop("v", state.bg, state.mrm),
-                                         _prop("v", state.bg, state.wr),
-                                         _prop("v", state.g, state.b),
-                                         _prop("v", state.g, state.clabel),
-                                         state.L,
-                                         vertices,
-                                         state.deg_corr,
-                                         _prop("e", state.g, state.eweight),
-                                         _prop("v", state.g, state.vweight),
-                                         state.egroups,
-                                         _prop("e", state.g, state.esrcpos),
-                                         _prop("e", state.g, state.etgtpos),
-                                         float(beta), sequential, random_move,
-                                         verbose, _get_rng())
+    if state.sweep_vertices is None:
+        vertices = libcommunity.get_vector(state.g.num_vertices())
+        vertices.a = state.g.vertex_index.copy("int").fa
+        state.sweep_vertices = vertices
+
+    if random_move:
+        state._BlockState__build_egroups(empty=True)
+    elif state.egroups is None:
+        state._BlockState__build_egroups(empty=False)
+
+    if state.nsampler is None:
+        state._BlockState__build_nsampler()
+
+    state.bnsampler = None
+
+    try:
+        dS, nmoves = libcommunity.move_sweep(state.g._Graph__graph,
+                                             state.bg._Graph__graph,
+                                             state._BlockState__get_emat(),
+                                             state.nsampler,
+                                             _prop("e", state.bg, state.mrs),
+                                             _prop("v", state.bg, state.mrp),
+                                             _prop("v", state.bg, state.mrm),
+                                             _prop("v", state.bg, state.wr),
+                                             _prop("v", state.g, state.b),
+                                             _prop("v", state.bg, state.bclabel),
+                                             state.sweep_vertices,
+                                             state.deg_corr, dense, multigraph,
+                                             _prop("e", state.g, state.eweight),
+                                             _prop("v", state.g, state.vweight),
+                                             state.egroups,
+                                             _prop("e", state.g, state.esrcpos),
+                                             _prop("e", state.g, state.etgtpos),
+                                             float(beta), sequential, random_move,
+                                             c, verbose, _get_rng())
+    finally:
+        if random_move:
+            state.egroups = None
     return dS / state.E, nmoves
 
 
+def merge_sweep(state, bm, nmerges, nsweeps=10, dense=False, multigraph=False,
+                random_moves=False, verbose=False):
+
+    if state.B == 1:
+        return 0., 0
+
+    if state.bnsampler is None:
+        state._BlockState__build_bnsampler()
+
+    state.egroups = None
+    state.nsampler = None
+
+    dS, nmoves = libcommunity.merge_sweep(state.bg._Graph__graph,
+                                          state._BlockState__get_emat(),
+                                          state.bnsampler,
+                                          _prop("e", state.bg, state.mrs),
+                                          _prop("v", state.bg, state.mrp),
+                                          _prop("v", state.bg, state.mrm),
+                                          _prop("v", state.bg, state.wr),
+                                          _prop("v", state.bg, bm),
+                                          _prop("v", state.bg, state.bclabel),
+                                          state.deg_corr, dense, multigraph,
+                                          nsweeps, nmerges, random_moves,
+                                          verbose, _get_rng())
+
+    return dS / state.E, nmoves
 
 
-def mc_get_dl(state, nsweep, greedy, rng, checkpoint, checkpoint_state,
-              anneal=1, epsilon=0, verbose=False):
+def greedy_shrink(state, B, nsweeps=10, adaptive_sweeps=True, nmerge_sweeps=None,
+                  epsilon=0, r=2, greedy=True, anneal=(1, 1), c=1, dense=False,
+                  multigraph=False, random_move=False, verbose=False,
+                  sequential=True):
+    if B > state.B:
+        raise ValueError("Cannot shrink to a larger size!")
 
-    if len(state.vertices) == 1:
-        return state._BlockState__min_dl()
+    if nmerge_sweeps is None:
+        nmerge_sweeps = max((2 * state.g.num_edges()) // state.g.num_vertices(), 1)
 
-    B = len(state.vertices)
-    if checkpoint_state is None:
-        checkpoint_state = defaultdict(dict)
-    if "S" in checkpoint_state[B]:
-        S = checkpoint_state[B]["S"]
-        niter = checkpoint_state[B]["niter"]
-    else:
-        S = state._BlockState__min_dl()
-        checkpoint_state[B]["S"] = S
-        niter = 0
-        checkpoint_state[B]["niter"] = niter
+    nmerged = 0
 
-    if nsweep >= 0:
-        ntotal = nsweep if not greedy else 2 * nsweep
-        for i in range(ntotal):
-            if i < niter:
-                continue
-            if i < nsweep:
-                beta = 1
-            else:
-                beta = float("inf") # greedy
-            delta, nmoves = mcmc_sweep(state, beta=beta, rng=rng)
-            S += delta
-            niter += 1
-            checkpoint_state[B]["S"] = S
-            checkpoint_state[B]["niter"] = niter
-            if checkpoint is not None:
-                checkpoint(state, S, delta, nmoves, checkpoint_state)
-    else:
-        # adaptive mode
-        min_dl = checkpoint_state[B].get("min_dl", S)
-        max_dl = checkpoint_state[B].get("max_dl", S)
-        count = checkpoint_state[B].get("count", 0)
-        time = checkpoint_state[B].get("time", 0)
-        bump = checkpoint_state[B].get("bump", False)
+    state = BlockState(state.g, b=state.b, B=state.B,
+                       clabel=state.clabel, vweight=state.vweight,
+                       eweight=state.eweight, deg_corr=state.deg_corr,
+                       max_BE=state.max_BE)
 
-        beta =  checkpoint_state[B].get("beta", 1.)
+    cg = state.bg.copy()
+    cg_vweight = cg.own_property(state.wr.copy())
+    cg_eweight = cg.own_property(state.mrs.copy())
+    cg_clabel = cg.own_property(state.bclabel.copy())
 
-        last_min = checkpoint_state[B].get("last_min", min_dl)
-
-        greedy = checkpoint_state[B].get("greedy", False)
-
+    # merge according to indirect neighbourhood
+    bm = state.bg.vertex_index.copy("int")
+    random = random_move
+    while nmerged < state.B - B:
+        dS, nmoves = merge_sweep(state, bm, nmerges=state.B - B - nmerged,
+                                 nsweeps=nmerge_sweeps, random_moves=random)
+        nmerged += nmoves
         if verbose:
-            print("beta = %g" % beta)
-        while True:
-            if greedy:
-                break
-            if count > abs(nsweep):
-                if not bump:
-                    min_dl = max_dl = S
-                    bump = True
+            print("merging", dS, nmoves, nmerged)
+        if nmoves == 0:
+            random = True
+            if verbose:
+                print("can't merge... switching to random")
+
+    # Merged block-level state
+    bmap = -ones(len(bm.a), dtype=bm.a.dtype)
+    libcommunity.vector_map(bm.a, bmap)
+
+    bm = cg.own_property(bm)
+    bg_state = BlockState(cg, b=bm, B=B, clabel=cg_clabel,
+                          vweight=cg_vweight, eweight=cg_eweight,
+                          deg_corr=state.deg_corr, max_BE=state.max_BE)
+
+    if bg_state.g.num_vertices() != state.g.num_vertices() and nsweeps > 0:
+        # Perform block-level moves
+        if verbose:
+            print("Performing block-level moves...")
+        multilevel_minimize(bg_state, B=B, nsweeps=nsweeps,
+                            adaptive_sweeps=adaptive_sweeps,
+                            epsilon=epsilon, r=r, greedy=greedy,
+                            anneal=anneal, c=c, dense=dense,
+                            multigraph=multigraph, random_move=random_move,
+                            sequential=sequential, verbose=verbose)
+
+    bm = bg_state.b
+    libcommunity.vector_map(state.b.a, bm.a)
+
+    state = BlockState(state.g, b=state.b, B=B, clabel=state.clabel,
+                       vweight=state.vweight, eweight=state.eweight,
+                       deg_corr=state.deg_corr, max_BE=state.max_BE)
+    return state
+
+
+class MinimizeState(object):
+    r"""This object stores information regarding the current entropy minimization
+    state, so that the algorithms can resume previously started runs.
+    This object can be saved to disk via the  :mod:`pickle` interface."""
+
+    def __init__(self):
+        self.b_cache = {}
+        self.checkpoint_state = defaultdict(dict)
+
+    def clear(self):
+        self.b_cache.clear()
+        self.checkpoint_state.clear()
+
+
+def multilevel_minimize(state, B, nsweeps=10, adaptive_sweeps=True, epsilon=0,
+                        anneal=(1., 1.), r=2., nmerge_sweeps=10, greedy=True,
+                        random_move=False, c=1., dense=False, multigraph=False,
+                        sequential=True, checkpoint=None,
+                        minimize_state=None, verbose=False):
+    r"""Performs an agglomerative heuristic, which progressively merges blocks
+    together (while allowing individual node moves) to achieve a good partition
+    in ``B`` blocks.
+
+    Parameters
+    ----------
+    state : :class:`~graph_tool.community.BlockState`
+        The block state.
+    B : ``int``
+        The desired number of blocks.
+    nsweeps : ``int`` (optional, default: ``10``)
+        The number of sweeps done after each merge step to reach the local
+        minimum.
+    adaptive_sweeps : ``bool`` (optional, default: ``True``)
+        If ``True``, the number of sweeps necessary for the local minimum will
+        be estimated to be enough so that no more than ``epsilon * N`` nodes
+        changes their states in the last ``nsweeps`` sweeps.
+    epsilon : ``float`` (optional, default: ``0``)
+        Converge criterion for ``adaptive_sweeps``.
+    anneal : pair of ``floats`` (optional, default: ``(1., 1.)``)
+        The first value specifies the starting value for  ``beta`` of the MCMC
+        steps, and the second value is the factor which is multiplied to ``beta``
+        after each estimated equilibration (according to ``nsweeps`` and
+        ``adaptive_sweeps``).
+    r : ``float`` (optional, default: ``2.``)
+        Agglomeration ratio for the merging steps. Each merge step will attempt
+        to find the best partition into :math:`B_{i-1} / r` blocks, where
+        :math:`B_{i-1}` is the number of blocks in the last step.
+    nmerge_sweeps : `int` (optional, default: `10`)
+        The number of merge sweeps done, where in each sweep a better merge
+        candidate is searched for every block.
+    greedy : ``bool`` (optional, default: ``True``)
+        If ``True``, the value of ``beta`` of the MCMC steps are kept at
+        infinity for all steps. Otherwise they change according to the ``anneal``
+        parameter.
+    random_move : ``bool`` (optional, default: ``False``)
+        If ``True``, the proposed moves will attempt to place the vertices in
+        fully randomly-chosen blocks. If ``False``, the proposed moves will be
+        chosen with a probability depending on the membership of the neighbours
+        and the currently-inferred block structure.
+    c : ``float`` (optional, default: ``1.0``)
+        This parameter specifies how often fully random moves are attempted,
+        instead of more likely moves based on the inferred block partition.
+        For ``c == 0``, no fully random moves are attempted, and for ``c == inf``
+        they are always attempted.
+    dense : ``bool`` (optional, default: ``False``)
+        If ``True``, the "dense" variant of the entropy will be computed.
+    multigraph : ``bool`` (optional, default: ``False``)
+        If ``True``, the multigraph entropy will be used. Only has an effect
+        if ``dense == True``.
+    sequential : ``bool`` (optional, default: ``True``)
+        If ``True``, the move attempts on the vertices are done in sequential
+        random order. Otherwise a total of `N` moves attempts are made, where
+        `N` is the number of vertices, where each vertex can be selected with
+        equal probability.
+    vertices: ``list of ints`` (optional, default: ``None``)
+        A list of vertices which will be attempted to be moved. If ``None``, all
+        vertices will be attempted.
+    checkpoint : function (optional, default: ``None``)
+        If provided, this function will be called after each call to
+        :func:`mcmc_sweep`. This can be used to store the current state, so it
+        can be continued later. The function must have the following signature:
+
+        .. code-block:: python
+
+            def checkpoint(state, S, delta, nmoves, minimize_state):
+                ...
+
+        where `state` is either a :class:`~graph_tool.community.BlockState`
+        instance or ``None``, `S` is the current entropy value, `delta` is
+        the entropy difference in the last MCMC sweep, and `nmoves` is the
+        number of accepted block membership moves. The ``minimize_state``
+        argument is a :class:`MinimizeState` instance which specifies the current
+        state of the algorithm, which can be stored via :mod:`pickle`, and
+        supplied via the ``minimize_state`` option below to continue from an
+        interrupted run.
+
+        This function will also be called when the MCMC has finished for the
+        current value of :math:`B`, in which case ``state == None``, and the
+        remaining parameters will be zero, except the last.
+    minimize_state : :class:`MinimizeState` (optional, default: ``None``)
+        If provided, this will specify an exact point of execution from which
+        the algorithm will continue. The expected object is a :class:`MinimizeState`
+        instance which will be passed to the callback of the ``checkpoint``
+        option above, and  can be stored by :mod:`pickle`.
+    verbose : ``bool`` (optional, default: ``False``)
+        If ``True``, verbose information is displayed.
+
+    Returns
+    -------
+
+    state : :class:`~graph_tool.community.BlockState`
+        The new :class:`~graph_tool.community.BlockState` with ``B`` blocks.
+
+    Notes
+    -----
+
+    This algorithm performs an agglomerative heuristic on the current block state,
+    where blocks are progressively merged together, using repeated applications of
+    the :func:`mcmc_sweep` moves, at different scales. See [peixoto-efficient-2013]_
+    for more details.
+
+    This algorithm has a complexity of :math:`O(N\ln^2 N)`, where :math:`N` is the
+    number of nodes in the network.
+
+    Examples
+    --------
+    .. testsetup:: multilevel_minimize
+
+       gt.seed_rng(42)
+       np.random.seed(42)
+
+    .. doctest:: multilevel_minimize
+
+       >>> g = gt.collection.data["polblogs"]
+       >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(gt.GraphView(g, directed=False)))
+       >>> state = gt.BlockState(g, B=g.num_vertices(), deg_corr=True)
+       >>> state = gt.multilevel_minimize(state, B=2)
+       >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=state.get_blocks(), output="polblogs_agg.pdf")
+       <...>
+
+    .. testcleanup:: multilevel_minimize
+
+       gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=state.get_blocks(), output="polblogs_agg.png")
+
+    .. figure:: polblogs_agg.*
+       :align: center
+
+       Block partition of a political blogs network with :math:`B=2`.
+
+     References
+    ----------
+
+    .. [peixoto-efficient-2013] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
+       heuristic for the inference of stochastic block models", :arxiv:`1310.4378`.
+    """
+
+    if minimize_state is None:
+        minimize_state = MinimizeState()
+    b_cache = minimize_state.b_cache
+    checkpoint_state = minimize_state.checkpoint_state
+
+    # some trivial boundary conditions
+    if B == 1:
+        bi = state.g.new_vertex_property("int")
+        state = BlockState(state.g, vweight=state.vweight, eweight=state.eweight,
+                           b=bi, clabel=state.clabel, deg_corr=state.deg_corr,
+                           max_BE=state.max_BE)
+        return state
+    if B == state.g.num_vertices():
+        bi = state.g.new_vertex_property("int")
+        bi.fa = range(state.g.num_vertices())
+        state = BlockState(state.g, vweight=state.vweight, eweight=state.eweight,
+                           B=state.g.num_vertices(), b=bi,
+                           clabel=state.clabel, deg_corr=state.deg_corr,
+                           max_BE=state.max_BE)
+        return state
+
+    Bi = state.B
+    while True:
+        Bi = max(int(round(Bi / r)), B)
+        if Bi == state.B and Bi > B:
+            Bi -= 1
+
+        if b_cache is not None and Bi in b_cache:
+            bi = state.g.new_vertex_property("int")
+            bi.fa = b_cache[Bi][1]
+            state = BlockState(state.g, B=Bi, b=bi,
+                               vweight=state.vweight, eweight=state.eweight,
+                               clabel=state.clabel, deg_corr=state.deg_corr,
+                               max_BE=state.max_BE)
+
+        if Bi < state.B:
+            if verbose:
+                print("Shrinking:", state.B, "->", Bi)
+            state = greedy_shrink(state, B=Bi, nsweeps=nsweeps, epsilon=epsilon, c=c,
+                                  dense=dense, multigraph=multigraph,
+                                  nmerge_sweeps=nmerge_sweeps, sequential=sequential,
+                                  verbose=verbose)
+
+        if "S" in checkpoint_state[Bi]:
+            S = checkpoint_state[Bi]["S"]
+            niter = checkpoint_state[Bi]["niter"]
+        else:
+            S = state.entropy(dl=True)
+            checkpoint_state[Bi]["S"] = S
+            niter = 0
+            checkpoint_state[Bi]["niter"] = niter
+
+        if b_cache is not None and Bi not in b_cache:
+            b_cache[Bi] = [float("inf"), array(state.b.fa), None]
+
+        if not adaptive_sweeps:
+            ntotal = nsweeps if greedy else 2 * nsweeps
+            if verbose:
+                print("Performing %d sweeps for B=%d..." % (ntotal, Bi))
+
+            for i in range(ntotal):
+                if i < niter:
+                    continue
+                if i < nsweeps and not greedy:
+                    beta = anneal[0]
+                else:
+                    beta = float("inf")
+                delta, nmoves = mcmc_sweep(state, beta=beta, c=c,
+                                           dense=dense, multigraph=multigraph,
+                                           sequential=sequential,
+                                           random_move=random_move)
+                S += delta
+                niter += 1
+                checkpoint_state[Bi]["S"] = S
+                checkpoint_state[Bi]["niter"] = niter
+                if b_cache is not None:
+                    b_cache[Bi][1] = array(state.b.fa)
+                if checkpoint is not None:
+                    checkpoint(state, S, delta, nmoves, minimize_state)
+        else:
+            # adaptive mode
+            min_dl = checkpoint_state[Bi].get("min_dl", S)
+            max_dl = checkpoint_state[Bi].get("max_dl", S)
+            count = checkpoint_state[Bi].get("count", 0)
+            bump = checkpoint_state[Bi].get("bump", False)
+            beta =  checkpoint_state[Bi].get("beta", anneal[0])
+            last_min = checkpoint_state[Bi].get("last_min", min_dl)
+            greedy_step = checkpoint_state[Bi].get("greedy_step", greedy)
+            total_nmoves = checkpoint_state[Bi].get("total_nmoves", 0)
+
+            if verbose and not greedy:
+                print("Performing sweeps for beta = %g, B=%d (N=%d)..." % \
+                       (beta, Bi, state.g.num_vertices()))
+
+            eps = 1e-8
+            niter = 0
+            while True:
+                if greedy_step:
+                    break
+                if count > nsweeps:
+                    if not bump:
+                        min_dl = max_dl = S
+                        bump = True
+                        count = 0
+                    else:
+                        if anneal[1] <= 1 or min_dl == last_min:
+                            break
+                        else:
+                            beta *= anneal[1]
+                            count = 0
+                            last_min = min_dl
+                            if verbose:
+                                print("Performing sweeps for beta = %g, B=%d (N=%d)..." % \
+                                       (beta, Bi, state.g.num_vertices()))
+
+                delta, nmoves = mcmc_sweep(state, beta=beta, c=c,
+                                           dense=dense, multigraph=multigraph,
+                                           sequential=sequential,
+                                           random_move=random_move)
+                S += delta
+                niter += 1
+                total_nmoves += nmoves
+
+                if S > max_dl + eps:
+                    max_dl = S
+                    count = 0
+                elif S < min_dl - eps:
+                    min_dl = S
                     count = 0
                 else:
-                    if anneal <= 1 or min_dl == last_min:
-                        break
-                    else:
-                        beta *= anneal
-                        count = 0
-                        last_min = min_dl
-                        if verbose:
-                            print("beta = %g" % beta)
+                    count += 1
 
-            delta, nmoves = mcmc_sweep(state, beta=beta)
-            S += delta
+                checkpoint_state[B]["S"] = S
+                checkpoint_state[B]["niter"] = niter
+                checkpoint_state[B]["min_dl"] = min_dl
+                checkpoint_state[B]["max_dl"] = max_dl
+                checkpoint_state[B]["count"] = count
+                checkpoint_state[B]["bump"] = bump
+                checkpoint_state[B]["total_nmoves"] = total_nmoves
 
-            if S < min_dl:
+                if b_cache is not None:
+                    b_cache[Bi][0] = float("inf")
+                    b_cache[Bi][1] = array(state.b.fa)
+                if checkpoint is not None:
+                    checkpoint(state, S, delta, nmoves, minimize_state)
+
+            if verbose:
+                if not greedy_step:
+                    print("... performed %d sweeps with %d vertex moves" % (niter, total_nmoves))
+                print(u"Performing sweeps for beta = ∞, B=%d (N=%d)..." % \
+                       (Bi, state.g.num_vertices()))
+
+            if not greedy_step:
+                checkpoint_state[Bi]["greedy_step"] = True
                 min_dl = S
                 count = 0
-            elif S > max_dl:
-                max_dl = S
-                count = 0
-            else:
-                count += 1
 
-            checkpoint_state[B]["S"] = S
-            checkpoint_state[B]["min_dl"] = min_dl
-            checkpoint_state[B]["max_dl"] = max_dl
-            checkpoint_state[B]["count"] = count
+            niter = 0
+            total_nmoves = 0
+            while count <= nsweeps:
+                delta, nmoves = mcmc_sweep(state, beta=float("inf"), c=c,
+                                           dense=dense, multigraph=multigraph,
+                                           sequential=sequential,
+                                           random_move=random_move)
+                S += delta
+                niter += 1
+                total_nmoves += nmoves
 
-            if checkpoint is not None:
-                checkpoint(state, S, delta, nmoves, checkpoint_state)
+                # if verbose:
+                #     print("Moved:", delta, nmoves,
+                #           nmoves / state.g.num_vertices(),
+                #           epsilon, count)
 
-        if verbose:
-            print("beta = inf")
+                #if nmoves > epsilon * state.g.num_vertices():
+                if abs(delta) > eps and nmoves / state.g.num_vertices() > epsilon:
+                    min_dl = S
+                    count = 0
+                else:
+                    count += 1
+                checkpoint_state[Bi]["S"] = S
+                checkpoint_state[Bi]["min_dl"] = min_dl
+                checkpoint_state[Bi]["count"] = count
+                checkpoint_state[B]["total_nmoves"] = total_nmoves
+                if b_cache is not None:
+                    b_cache[Bi][1] = array(state.b.fa)
+                if checkpoint is not None:
+                    checkpoint(state, S, delta, nmoves, minimize_state)
 
-        if not greedy:
-            checkpoint_state[B]["greedy"] = True
-            min_dl = S
-            count = 0
+            if verbose:
+                print("... performed %d sweeps with %d vertex moves" % (niter, total_nmoves))
 
-        while count <= abs(nsweep):
-            delta, nmoves = mcmc_sweep(state, beta=float("inf"))
-            S += delta
-            if S < min_dl - epsilon / abs(min_dl):
-                min_dl = S
-                count = 0
-            else:
-                count += 1
-            checkpoint_state[B]["S"] = S
-            checkpoint_state[B]["min_dl"] = min_dl
-            checkpoint_state[B]["count"] = count
-            if checkpoint is not None:
-                checkpoint(state, S, delta, nmoves, checkpoint_state)
+            bi = state.b
+            if Bi == B:
+                break
 
-    return state._BlockState__min_dl()
+    return state
 
-def get_b_dl(g, bs, B, nsweep, anneal, greedy, epsilon, clabel, deg_corr, rng,
-             checkpoint=None, checkpoint_state=None, verbose=False):
-    if B not in checkpoint_state:
-        checkpoint_state[B] = {}
+def get_state_dl(state, dense, nested_dl, clabel=None):
+    if not nested_dl:
+        dl = state.entropy(dense=dense, multigraph=dense, dl=True)
+    else:
+        dl = state.entropy(dense=dense, multigraph=dense, dl=False) + \
+             partition_entropy(B=state.B, N=state.N, nr=state.wr.a) / state.E
+        if clabel is None:
+            bclabel = state.bclabel
+        else:
+            bclabel = state.bg.new_vertex_property("int")
+            libcommunity.vector_rmap(state.b.a, bclabel.a)
+            libcommunity.vector_map(bclabel.a, clabel.a)
+
+        bstate = BlockState(state.bg, b=bclabel, eweight=state.mrs,
+                            deg_corr=False)
+        dl += bstate.entropy(dl=False, dense=True, multigraph=True) + \
+              partition_entropy(B=bstate.B, N=bstate.N, nr=bstate.wr.a) / state.E
+    return dl
+
+
+def get_b_dl(g, vweight, eweight, B, nsweeps, adaptive_sweeps, c, random_move,
+             sequential, shrink, r, anneal, greedy, epsilon, nmerge_sweeps, clabel,
+             deg_corr, dense, sparse_heuristic, checkpoint, minimize_state,
+             max_BE, nested_dl,  verbose):
+    bs = minimize_state.b_cache
+    checkpoint_state = minimize_state.checkpoint_state
+    previous = None
     if B in bs and checkpoint_state[B].get("done", False):
+        # A previous finished result is available. Use that and keep going.
+        if verbose:
+            print("(using previous finished result for B=%d)" % B)
         return bs[B][0]
     elif B in bs:
+        # A previous unfinished result is available. Use that as the starting point.
         if verbose:
-            print("starting from previous result for B=%d" % B)
-        b = bs[B][1]
-        state = BlockState(g, b=b.copy(), clabel=clabel, deg_corr=deg_corr)
+            print("(starting from previous result for B=%d)" % B)
+        b = g.new_vertex_property("int")
+        b.fa = bs[B][1]
+        state = BlockState(g, b=b, B=B, vweight=vweight, eweight=eweight,
+                           clabel=clabel, deg_corr=deg_corr, max_BE=max_BE)
+        previous = bs[B]
     else:
-        checkpoint_state[B] = {}
-        n_iter = 0
+        # No previous result is available.
         bs_keys = [k for k in bs.keys() if type(k) != str]
-        B_sup = max(bs_keys) if len(bs_keys) > 0 else B
+        B_sup = max(max(bs_keys), B) if len(bs_keys) > 0 else B
         for Bi in bs_keys:
             if Bi > B and Bi < B_sup:
                 B_sup = Bi
-        if B_sup == B:
-            state = BlockState(g, B=B, clabel=clabel, deg_corr=deg_corr)
-            b = state.b
+        if B_sup == B or not shrink:
+            # Start from scratch.
+            bi = g.new_vertex_property("int")
+            bi.fa = range(g.num_vertices())
+            state = BlockState(g, B=g.num_vertices(), b=bi,
+                               vweight=vweight,
+                               eweight=eweight, clabel=clabel,
+                               deg_corr=deg_corr, max_BE=max_BE)
         else:
+            # Start from result with B_sup > B, and shrink it.
             if verbose:
-                print("shrinking from", B_sup, "to", B)
-            b = bs[B_sup][1].copy()
+                print("(shrinking from B=%d to B=%d)" % (B_sup, B))
+            b = g.new_vertex_property("int")
+            b.fa = bs[B_sup][1]
 
-            cg, br, vcount, ecount = condensation_graph(g, b, self_loops=True)[:4]
+            if B > 1:
+                state = BlockState(g, B=B_sup, b=b, vweight=vweight, eweight=eweight,
+                                   clabel=clabel, deg_corr=deg_corr,
+                                   max_BE=max_BE)
+            else:
+                bi = g.new_vertex_property("int")
+                bi.fa = range(g.num_vertices())
+                state = BlockState(g, B=g.num_vertices(), b=bi,
+                                   vweight=vweight,
+                                   eweight=eweight, clabel=clabel,
+                                   deg_corr=deg_corr, max_BE=max_BE)
 
-            blabel = cg.new_vertex_property("int")
-            if clabel is not None:
-                blabel.a = br.a % (clabel.a.max() + 1)
+    # perform the actual minimization
+    state = multilevel_minimize(state, B, nsweeps=nsweeps,
+                                adaptive_sweeps=adaptive_sweeps,
+                                epsilon=epsilon, r=r, greedy=greedy,
+                                nmerge_sweeps=nmerge_sweeps, anneal=anneal,
+                                c=c, random_move=random_move,
+                                dense=dense and not sparse_heuristic,
+                                multigraph=dense,
+                                sequential=sequential,
+                                minimize_state=minimize_state,
+                                checkpoint=checkpoint,
+                                verbose=verbose)
+    dl = get_state_dl(state, dense, nested_dl)
 
-            bg_state = BlockState(cg, B=B, clabel=blabel, vweight=vcount, eweight=ecount,
-                                  deg_corr=deg_corr)
-
-            dl = mc_get_dl(bg_state, nsweep=nsweep, greedy=greedy, rng=rng,
-                           checkpoint=None, checkpoint_state=None,
-                           anneal=anneal, epsilon=epsilon, verbose=verbose)
-
-            ### FIXME: the following could be improved by moving it to the C++
-            ### side
-            bmap = {}
-            for v in bg_state.g.vertices():
-               bmap[br[v]] = v
-            for v in g.vertices():
-                b[v] = bg_state.b[bmap[b[v]]]
-
-            checkpoint_state[B] = {}
-            bs[B] = [dl, b.copy()]
-            state = BlockState(g, b=b, B=B, clabel=clabel, deg_corr=deg_corr)
-
-    dl = mc_get_dl(state, nsweep=nsweep,  greedy=greedy, rng=rng,
-                   checkpoint=checkpoint, checkpoint_state=checkpoint_state,
-                   anneal=anneal, epsilon=epsilon, verbose=verbose)
-
-    bs[B] = [dl, state.b.copy()]
+    if previous is None or dl < previous[0]:
+        # the current result improved the previous one
+        bs[B] = [dl, array(state.b.fa)]
+        if verbose:
+            print("(using new result for B=%d with L=%g)" % (B, dl))
+    else:
+        # the previous result is better than the current one
+        if verbose:
+            print("(kept old result for B=%d with L=%g [vs L=%g])" % (B, previous[0], dl))
+        dl = previous[0]
     checkpoint_state[B]["done"] = True
+    assert(not isinf(dl))
     return dl
 
 def fibo(n):
@@ -1063,10 +1471,14 @@ def get_mid(a, b):
 def is_fibo(x):
     return fibo(fibo_n_floor(x)) == x
 
-def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=True,
-                           anneal=1., greedy_cooling=True, epsilon=0., max_B=None,
-                           min_B=1, clabel=None, mid_B=None, b_cache=None,
-                           checkpoint=None, checkpoint_state=None, verbose=False):
+def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=False,
+                           sparse_heuristic=False, random_move=False, c=0, nsweeps=100,
+                           adaptive_sweeps=True, epsilon=0., anneal=(1., 1.),
+                           greedy_cooling=True, sequential=True, r=2,
+                           nmerge_sweeps=10, max_B=None, min_B=1, mid_B=None,
+                           clabel=None, checkpoint=None, minimize_state=None,
+                           exhaustive=False, max_BE=None, nested_dl=False,
+                           verbose=False):
     r"""Find the block partition of an unspecified size which minimizes the description
     length of the network, according to the stochastic blockmodel ensemble which
     best describes it.
@@ -1075,29 +1487,59 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
     ----------
     g : :class:`~graph_tool.Graph`
         Graph being used.
+    eweight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        Edge weights (i.e. multiplicity).
+    vweight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        Vertex weights (i.e. multiplicity).
     deg_corr : ``bool`` (optional, default: ``True``)
         If ``True``, the degree-corrected version of the blockmodel ensemble will
         be assumed, otherwise the traditional variant will be used.
-    nsweeps : ``int`` (optional, default: `50`)
-        Number of sweeps per value of `B` tried. If `adaptive_convergence ==
-        True`, this corresponds to the number of sweeps observed to determine
-        convergence, not the total number of sweeps performed, which can be much
-        larger.
-    adaptive_convergence : ``bool`` (optional, default: ``True``)
-        If ``True``, the parameter ``nsweeps`` represents not the total number
-        of sweeps performed per value of ``B``, but instead the number of sweeps
-        without an improvement on the value of :math:`S_{c/t}` so that
-        convergence is assumed.
-    anneal : ``float`` (optional, default: ``1.``)
-       Annealing factor which multiplies the inverse temperature :math:`\beta`
-       after each convergence. If ``anneal <= 1.``, no annealing is performed.
+    dense : ``bool`` (optional, default: ``False``)
+        If ``True``, the "dense" variant of the entropy will be computed.
+    sparse_heuristic : ``bool`` (optional, default: ``False``)
+        If ``True``, the sparse entropy will be used to find the best partition,
+        but the dense entropy will be used to compare different partitions. This
+        has an effect only if ``dense == True``.
+    random_move : ``bool`` (optional, default: ``False``)
+        If ``True``, the proposed moves will attempt to place the vertices in
+        fully randomly-chosen blocks. If ``False``, the proposed moves will be
+        chosen with a probability depending on the membership of the neighbours
+        and the currently-inferred block structure.
+    c : ``float`` (optional, default: ``1.0``)
+        This parameter specifies how often fully random moves are attempted,
+        instead of more likely moves based on the inferred block partition.
+        For ``c == 0``, no fully random moves are attempted, and for ``c == inf``
+        they are always attempted.
+    nsweeps : ``int`` (optional, default: ``10``)
+        The number of sweeps done after each merge step to reach the local
+        minimum.
+    adaptive_sweeps : ``bool`` (optional, default: ``True``)
+        If ``True``, the number of sweeps necessary for the local minimum will
+        be estimated to be enough so that no more than ``epsilon * N`` nodes
+        changes their states in the last ``nsweeps`` sweeps.
+    epsilon : ``float`` (optional, default: ``0``)
+        Converge criterion for ``adaptive_sweeps``.
+    anneal : pair of ``floats`` (optional, default: ``(1., 1.)``)
+        The first value specifies the starting value for  ``beta`` of the MCMC
+        steps, and the second value is the factor which is multiplied to ``beta``
+        after each estimated equilibration (according to ``nsweeps`` and
+        ``adaptive_sweeps``).
     greedy_cooling : ``bool`` (optional, default: ``True``)
-        If ``True``, a final abrupt cooling step is performed after the Markov
-        chain has equilibrated.
-    epsilon : ``float`` (optional, default: ``0.``)
-        If ``greedy_cooling == True``, this is the relative change in the
-        entropy which is tolerated when determining that the minimum has been
-        found during the greedy search.
+        If ``True``, the value of ``beta`` of the MCMC steps are kept at
+        infinity for all steps. Otherwise they change according to the ``anneal``
+        parameter.
+    sequential : ``bool`` (optional, default: ``True``)
+        If ``True``, the move attempts on the vertices are done in sequential
+        random order. Otherwise a total of `N` moves attempts are made, where
+        `N` is the number of vertices, where each vertex can be selected with
+        equal probability.
+    r : ``float`` (optional, default: ``2.``)
+        Agglomeration ratio for the merging steps. Each merge step will attempt
+        to find the best partition into :math:`B_{i-1} / r` blocks, where
+        :math:`B_{i-1}` is the number of blocks in the last step.
+    nmerge_sweeps : `int` (optional, default: `10`)
+        The number of merge sweeps done, where in each sweep a better merge
+        candidate is searched for every block.
     max_B : ``int`` (optional, default: ``None``)
         Maximum number of blocks tried. If not supplied, it will be
         automatically determined.
@@ -1109,13 +1551,6 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
     clabel : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         Constraint labels on the vertices, such that vertices with different
         labels cannot belong to the same block.
-    b_cache : :class:`dict` with ``int`` keys and (``float``, :class:`~graph_tool.PropertyMap`) values (optional, default: ``None``)
-        If provided, this corresponds to a dictionary where the keys are the
-        number of blocks, and the values are tuples containing two values: the
-        description length and its associated vertex partition. Values present
-        in this dictionary will not be computed, and will be used unmodified as
-        the solution for the corresponding number of blocks. This can be used to
-        continue from a previously unfinished run.
     checkpoint : function (optional, default: ``None``)
         If provided, this function will be called after each call to
         :func:`mcmc_sweep`. This can be used to store the current state, so it
@@ -1123,26 +1558,34 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
 
         .. code-block:: python
 
-            def checkpoint(state, L, delta, nmoves, checkpoint_state):
+            def checkpoint(state, L, delta, nmoves, minimize_state):
                 ...
 
         where `state` is either a :class:`~graph_tool.community.BlockState`
         instance or ``None``, `L` is the current description length, `delta` is
         the entropy difference in the last MCMC sweep, and `nmoves` is the
-        number of accepted block membership moves. The ``checkpoint_state``
-        argument is an opaque object which specifies the current state of the
-        algorithm, which can be stored via :mod:`pickle`, and supplied via the
-        ``checkpoint_state`` option below to continue from an interrupted run.
+        number of accepted block membership moves. The ``minimize_state``
+        argument is a :class:`~graph_tool.community.MinimizeState` instance
+        which specifies the current state of the algorithm, which can be stored
+        via :mod:`pickle`, and supplied via the ``minimize_state`` option below
+        to continue from an interrupted run.
 
         This function will also be called when the MCMC has finished for the
         current value of :math:`B`, in which case ``state == None``, and the
         remaining parameters will be zero, except the last.
-    checkpoint_state : object (optional, default: ``None``)
+    minimize_state : :class:`~graph_tool.community.MinimizeState` (optional, default: ``None``)
         If provided, this will specify an exact point of execution from which
-        the algorithm will continue. The expected object is an opaque type which
-        wiil be passed to the callback of the ``checkpoint`` option above, and
-        can be stored by :mod:`pickle`. This must be used in conjunction with
-        the option ``b_cache`` to continue from an interrupted run.
+        the algorithm will continue. The expected object is a
+        :class:`~graph_tool.community.MinimizeState`
+        instance which will be passed to the callback of the ``checkpoint``
+        option above, and  can be stored by :mod:`pickle`.
+    exhaustive : ``bool`` (optional, default: ``False``)
+        If ``True``, the best value of ``B`` will be found by testing all possible
+        values, instead of performing a bisection search.
+    max_BE : ``int`` (optional, default: ``1000``)
+        If the number of blocks exceeds this number, a sparse representation of
+        the block graph is used, which is slightly less efficient, but uses less
+        memory,
     verbose : ``bool`` (optional, default: ``False``)
         If ``True``, verbose information is displayed.
 
@@ -1150,12 +1593,8 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
     -------
     b : :class:`~graph_tool.PropertyMap`
        Vertex property map with the best block partition.
-    min_dl : `float`
-       Minimum value of the description length (in `nats <http://en.wikipedia.org/wiki/Nat_%28information%29>`_).
-    b_cache : :class:`dict` with ``int`` keys and (``float``, :class:`~graph_tool.PropertyMap`) values
-        Dictionary where the keys are the number of blocks visited during the
-        algorithm, and the values are tuples containing two values: the
-        description length and its associated vertex partition.
+    min_dl : ``float``
+       Minimum value of the description length (in `nats <http://en.wikipedia.org/wiki/Nat_%28information%29>`_ per edge).
 
     Notes
     -----
@@ -1179,8 +1618,8 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
     one-dimensional Fibonacci search on :math:`B`. See
     [peixoto-parsimonious-2013]_ for more details.
 
-    This algorithm has a complexity of :math:`O(\tau E\ln B_{\text{max}})`,
-    where :math:`E` is the number of edges in the network, :math:`\tau` is the
+    This algorithm has a complexity of :math:`O(\tau N\ln^2 B_{\text{max}})`,
+    where :math:`N` is the number of nodes in the network, :math:`\tau` is the
     mixing time of the MCMC, and :math:`B_{\text{max}}` is the maximum number of
     blocks considered. If :math:`B_{\text{max}}` is not supplied, it is computed
     as :math:`\sim\sqrt{E}` via :func:`get_max_B`, in which case the complexity
@@ -1197,7 +1636,7 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
     .. doctest:: mdl
 
        >>> g = gt.collection.data["polbooks"]
-       >>> b, mdl, b_cache = gt.minimize_blockmodel_dl(g)
+       >>> b, mdl = gt.minimize_blockmodel_dl(g)
        >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=b, vertex_shape=b, output="polbooks_blocks_mdl.pdf")
        <...>
 
@@ -1209,7 +1648,7 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
        :align: center
 
        Block partition of a political books network, which minimizes the description
-       lenght of the network according to the degree-corrected stochastic blockmodel.
+       length of the network according to the degree-corrected stochastic blockmodel.
 
     References
     ----------
@@ -1228,16 +1667,16 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
        :arxiv:`1112.6028`.
     .. [peixoto-parsimonious-2013] Tiago P. Peixoto, "Parsimonious module inference in large networks",
        Phys. Rev. Lett. 110, 148701 (2013), :doi:`10.1103/PhysRevLett.110.148701`, :arxiv:`1212.4794`.
+    .. [peixoto-efficient-2013] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
+       heuristic for the inference of stochastic block models", :arxiv:`1310.4378`.
 
     """
 
-    rng = _get_rng()
-
-    if adaptive_convergence:
-        nsweeps = -abs(nsweeps)
-
     if max_B is None:
-        max_B = get_max_B(g.num_vertices(), g.num_edges(), g.is_directed())
+        if dense:
+            max_B = max(g.num_vertices(), 1)
+        else:
+            max_B = get_max_B(g.num_vertices(), g.num_edges(), g.is_directed())
         if verbose:
             print("max_B:", max_B)
     if min_B is None:
@@ -1246,69 +1685,133 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
     if mid_B is None:
         mid_B = get_mid(min_B, max_B)
 
-
     greedy = greedy_cooling
-    bs = b_cache
-    if bs is None:
-        bs = {}
-    if checkpoint_state is None:
-        checkpoint_state = {}
+    shrink = True
 
+    if minimize_state is None:
+        minimize_state = MinimizeState()
+
+    b_cache = minimize_state.b_cache
+    checkpoint_state = minimize_state.checkpoint_state
+
+    if exhaustive:
+        if max_B not in b_cache:
+            bi = g.new_vertex_property("int")
+            bi.fa = range(g.num_vertices())
+            state = BlockState(g, B=g.num_vertices(), b=bi,
+                               vweight=vweight, eweight=eweight,
+                               clabel=clabel, deg_corr=deg_corr,
+                               max_BE=max_BE)
+
+        for B in reversed(range(min_B, max_B + 1)):
+            if B in b_cache:
+                bi = g.new_vertex_property("int")
+                bi.fa = b_cache[B][1]
+                state = BlockState(g, b=bi, vweight=vweight, eweight=eweight,
+                                   clabel=clabel, deg_corr=deg_corr,
+                                   max_BE=max_BE)
+
+                if checkpoint_state[B].get("done", False):
+                    continue
+
+            state = multilevel_minimize(state, B, nsweeps=nsweeps,
+                                        adaptive_sweeps=adaptive_sweeps,
+                                        r=r, greedy=greedy,
+                                        anneal=anneal, c=c,
+                                        dense=dense and not sparse_heuristic,
+                                        multigraph=dense,
+                                        random_move=random_move,
+                                        sequential=sequential,
+                                        nmerge_sweeps=nmerge_sweeps,
+                                        epsilon=epsilon,
+                                        checkpoint=checkpoint,
+                                        minimize_state=checkpoint_state,
+                                        verbose=verbose)
+
+            dl = get_state_dl(state, dense, nested_dl)
+
+            b_cache[B] = [dl, array(state.b.fa)]
+
+            if verbose:
+                print("Result for B=%d: L=%g" % (B, dl))
+
+        min_dl = float(inf)
+        best_B = None
+        for Bi in b_cache.keys():
+            if b_cache[Bi][0] <= min_dl:
+                min_dl = b_cache[Bi][0]
+                best_B = Bi
+        if verbose:
+            print("Best result: B=%d, L=%g" % (best_B, min_dl))
+        b = g.new_vertex_property("int")
+        b.fa = b_cache[best_B][1]
+
+        return b, b_cache[best_B][0]
+
+
+    args = dict(g=g, vweight=vweight, eweight=eweight, nsweeps=nsweeps,
+                adaptive_sweeps=adaptive_sweeps, c=c, random_move=random_move,
+                sequential=sequential, shrink=shrink, r=r, anneal=anneal,
+                greedy=greedy, epsilon=epsilon, nmerge_sweeps=nmerge_sweeps,
+                clabel=clabel, deg_corr=deg_corr, dense=dense,
+                sparse_heuristic=sparse_heuristic, checkpoint=checkpoint,
+                minimize_state=minimize_state, max_BE=max_BE,
+                nested_dl=nested_dl, verbose=verbose)
+
+
+    # Initial bracketing
     while True:
-        f_max = get_b_dl(g, bs, max_B, nsweeps, anneal, greedy, epsilon, clabel,
-                         deg_corr, rng, checkpoint, checkpoint_state, verbose)
-        f_mid = get_b_dl(g, bs, mid_B, nsweeps, anneal, greedy, epsilon, clabel,
-                         deg_corr, rng, checkpoint, checkpoint_state, verbose)
-        f_min = get_b_dl(g, bs, min_B, nsweeps, anneal, greedy, epsilon, clabel,
-                         deg_corr, rng, checkpoint, checkpoint_state, verbose)
+        f_max = get_b_dl(B=max_B, **args)
+        f_mid = get_b_dl(B=mid_B, **args)
+        f_min = get_b_dl(B=min_B, **args)
 
         if verbose:
-            print("bracket:", min_B, mid_B, max_B, f_min, f_mid, f_max)
+            print("Current bracket:", (min_B, mid_B, max_B), (f_min, f_mid, f_max))
 
         if checkpoint is not None:
-            checkpoint(None, 0, 0, 0, checkpoint_state)
+             checkpoint(None, 0, 0, 0, minimize_state)
 
         if f_max > f_mid > f_min:
             max_B = mid_B
             mid_B = get_mid(min_B, mid_B)
-            if verbose:
-                print("bracket:", min_B, mid_B, max_B, f_min, f_mid, f_max)
         elif f_max < f_mid < f_min:
-            min_d = mid_B
+            min_B = mid_B
             mid_B = get_mid(mid_B, max_B)
-            if verbose:
-                print("bracket:", min_B, mid_B, max_B, f_min, f_mid, f_max)
         else:
             break
 
-
+    # Fibonacci search
     while True:
         if max_B - mid_B > mid_B - min_B:
             x = get_mid(mid_B, max_B)
         else:
             x = get_mid(min_B, mid_B)
 
-        f_x = get_b_dl(g, bs, x, nsweeps, anneal, greedy, epsilon, clabel,
-                       deg_corr, rng, checkpoint, checkpoint_state, verbose)
-        f_mid = get_b_dl(g, bs, mid_B, nsweeps, anneal, greedy, epsilon, clabel,
-                         deg_corr, rng, checkpoint, checkpoint_state, verbose)
+        f_x = get_b_dl(B=x, **args)
+        f_mid = get_b_dl(B=mid_B, **args)
 
         if verbose:
-            print("bisect: (", min_B, mid_B, max_B, ") ->", x, f_x) #, is_fibo((mid_B - min_B)), is_fibo((max_B - mid_B)))
+            print("Current bracket:",
+                  (min_B, mid_B, max_B), (get_b_dl(B=min_B, **args), f_mid,
+                                          get_b_dl(B=max_B, **args)))
+            print("Bisect at", x, "with L=%g" % f_x)
 
         if max_B - mid_B <= 1:
             min_dl = float(inf)
             best_B = None
-            for Bi in bs.keys():
-                if bs[Bi][0] < min_dl:
-                    min_dl = bs[Bi][0]
+            for Bi in b_cache.keys():
+                if b_cache[Bi][0] <= min_dl:
+                    min_dl = b_cache[Bi][0]
                     best_B = Bi
             if verbose:
-                print("best:", best_B, min_dl)
-            return bs[best_B][1], bs[best_B][0], bs
+                print("Best result: B=%d, L=%g" % (best_B, min_dl))
+            b = g.new_vertex_property("int")
+            b.fa = b_cache[best_B][1]
+
+            return b, b_cache[best_B][0]
 
         if checkpoint is not None:
-            checkpoint(None, 0, 0, 0, checkpoint_state)
+            checkpoint(None, 0, 0, 0, minimize_state)
 
         if f_x < f_mid:
             if max_B - mid_B > mid_B - min_B:
@@ -1322,7 +1825,6 @@ def minimize_blockmodel_dl(g, deg_corr=True, nsweeps=100, adaptive_convergence=T
                 max_B = x
             else:
                 min_B = x
-
 
 
 def collect_edge_marginals(state, p=None):
@@ -1368,7 +1870,7 @@ def collect_edge_marginals(state, p=None):
        ...     ds, nmoves = gt.mcmc_sweep(state)
        ...     pe = gt.collect_edge_marginals(state, pe)
        >>> gt.bethe_entropy(state, pe)[0]
-       17.17007316834295
+       16.31947774487215
     """
 
     if p is None:
@@ -1376,7 +1878,7 @@ def collect_edge_marginals(state, p=None):
 
     libcommunity.edge_marginals(state.g._Graph__graph,
                                 state.bg._Graph__graph,
-                                len(state.vertices),
+                                state.B,
                                 _prop("v", state.g, state.b),
                                 _prop("e", state.g, p))
     return p
@@ -1420,7 +1922,7 @@ def collect_vertex_marginals(state, p=None):
        ...     ds, nmoves = gt.mcmc_sweep(state)
        ...     pv = gt.collect_vertex_marginals(state, pv)
        >>> gt.mf_entropy(state, pv)
-       20.001666525168361
+       18.348761352514927
        >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_shape="pie", vertex_pie_fractions=pv, output="polbooks_blocks_soft_B4.pdf")
        <...>
 
@@ -1434,7 +1936,7 @@ def collect_vertex_marginals(state, p=None):
        "Soft" block partition of a political books network with :math:`B=4`.
 
     """
-    B = len(state.vertices)
+    B = state.B
 
     if p is None:
         p = state.g.new_vertex_property("vector<int>")
@@ -1489,14 +1991,14 @@ def bethe_entropy(state, p):
     .. [mezard-information-2009] Marc Mézard, Andrea Montanari, "Information,
        Physics, and Computation", Oxford Univ Press, 2009.
     """
-    B = len(state.vertices)
+    B = state.B
     H = 0
     pv =  state.g.new_vertex_property("vector<double>")
 
     H, sH, Hmf, sHmf  = libcommunity.bethe_entropy(state.g._Graph__graph,
-                                                 len(state.vertices),
-                                                 _prop("e", state.g, p),
-                                                 _prop("v", state.g, pv))
+                                                   state.B,
+                                                   _prop("e", state.g, p),
+                                                   _prop("v", state.g, pv))
     return H, Hmf, pv
 
 
@@ -1553,7 +2055,7 @@ def condensation_graph(g, prop, vweight=None, eweight=None, avprops=None,
     Parameters
     ----------
     g : :class:`~graph_tool.Graph`
-        Graph to be used.
+        Graph to be modelled.
     prop : :class:`~graph_tool.PropertyMap`
         Vertex property map with the community partition.
     vweight : :class:`~graph_tool.PropertyMap` (optional, default: None)

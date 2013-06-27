@@ -20,21 +20,27 @@
 
 #include <cmath>
 #include <iostream>
+#include <queue>
 
 #include "config.h"
 #include "tr1_include.hh"
 #include TR1_HEADER(unordered_set)
+#include TR1_HEADER(unordered_map)
 #include TR1_HEADER(tuple)
 
 #ifdef HAVE_SPARSEHASH
 #include <dense_hash_set>
+#include <dense_hash_map>
 #endif
+
+#include "../generation/sampler.hh"
 
 namespace graph_tool
 {
 
 #ifdef HAVE_SPARSEHASH
 using google::dense_hash_set;
+using google::dense_hash_map;
 #endif
 
 using namespace boost;
@@ -42,6 +48,12 @@ using namespace boost;
 // ====================
 // Entropy calculation
 // ====================
+
+// Repeated computation of x*log(x) and log(x) actually adds up to a lot of
+// time. A significant speedup can be made by caching pre-computed values. This
+// is doable since the values of mrse are bounded in [0, 2E], where E is the
+// total number of edges in the network. Here we simply grow the cache as
+// needed.
 
 template <class Type>
 __attribute__((always_inline))
@@ -53,42 +65,28 @@ inline double safelog(Type x)
 }
 
 __attribute__((always_inline))
-inline double xlogx(size_t x)
-{
-    // Repeated computation of x*log(x) actually adds up to a lot of time. A
-    // significant speedup can be made by caching pre-computed values. This
-    // is doable since the values of mrse are bounded in [0, 2E], where E is
-    // the total number of edges in the network. Here we simply grow the
-    // cache as needed.
+inline double safelog(size_t x);
 
-    static vector<double> cache;  // FIXME: This will persist throughout the
-                                  // process' life. It would be better to
-                                  // replace with a version which will be
-                                  // cleaned up at some point.
-    {
-        //#pragma omp critical
-        if (x >= cache.size())
-        {
-            size_t old_size = cache.size();
-            cache.resize(x + 1);
-            for (size_t i = old_size; i < cache.size(); ++i)
-                cache[i] = i * safelog(i);
-        }
-    }
+__attribute__((always_inline))
+inline double xlogx(size_t x);
 
-    return cache[x];
-}
+__attribute__((always_inline))
+inline double lgamma_fast(size_t x);
+
+
+//
+// Sparse entropy
+//
 
 // "edge" term of the entropy
-template <class Graph, class Edge, class Eprop>
+template <class Graph>
 __attribute__((always_inline))
-inline double eterm(const Edge& e, const Eprop& mrs, const Graph& g)
+inline double eterm(size_t r, size_t s, size_t mrs, const Graph& g)
 {
-    typename graph_traits<Graph>::vertex_descriptor r, s;
-    r = source(e, g);
-    s = target(e, g);
+    if (!is_directed::apply<Graph>::type::value && r == s)
+        mrs *= 2;
 
-    double val = xlogx(mrs[e]);
+    double val = xlogx(mrs);
 
     if (is_directed::apply<Graph>::type::value || r != s)
         return -val;
@@ -97,8 +95,8 @@ inline double eterm(const Edge& e, const Eprop& mrs, const Graph& g)
 }
 
 // "vertex" term of the entropy
-template <class Graph, class Vertex, class Vprop>
-inline double vterm(Vertex v, Vprop& mrp, Vprop& mrm, Vprop& wr, bool deg_corr,
+template <class Graph, class Vertex>
+inline double vterm(Vertex v, size_t mrp, size_t mrm, size_t wr, bool deg_corr,
                     Graph&)
 {
     double one = 0.5;
@@ -107,9 +105,9 @@ inline double vterm(Vertex v, Vprop& mrp, Vprop& mrm, Vprop& wr, bool deg_corr,
         one = 1;
 
     if (deg_corr)
-        return one * (xlogx(mrm[v]) + xlogx(mrp[v]));
+        return one * (xlogx(mrm) + xlogx(mrp));
     else
-        return one * (mrm[v] * safelog(wr[v]) + mrp[v] * safelog(wr[v]));
+        return one * (mrm * safelog(wr) + mrp * safelog(wr));
 }
 
 struct entropy
@@ -121,292 +119,85 @@ struct entropy
         S = 0;
         typename graph_traits<Graph>::edge_iterator e, e_end;
         for (tie(e, e_end) = edges(g); e != e_end; ++e)
-            S += eterm(*e, mrs, g);
+            S += eterm(source(*e, g), target(*e, g), mrs[*e], g);
         typename graph_traits<Graph>::vertex_iterator v, v_end;
         for (tie(v, v_end) = vertices(g); v != v_end; ++v)
-            S += vterm(*v, mrp, mrm, wr, deg_corr, g);
+            S += vterm(*v, mrp[*v], mrm[*v], wr[*v], deg_corr, g);
     }
 };
 
-// ===============================
-// Block merge and merge distance
-// ===============================
 
+//
+// Dense entropy
+//
 
-// obtain the "super block" which is a merger of two blocks
-template <class Graph, class Vertex, class Eprop, class Vprop>
-void super_block(Vertex u, Vertex v, Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr,
-                 Graph& g, tr1::unordered_set<Vertex>& nsp,
-                 tr1::unordered_set<Vertex>& nsm, tr1::unordered_map<Vertex, size_t>& msp,
-                 tr1::unordered_map<Vertex, size_t>& msm, size_t& ml, size_t& m_rp,
-                 size_t& m_rm, size_t& w_r)
+double lbinom(double N, double k)
 {
-    ml = 0;
-    size_t ml2 = 0;
-
-    Vertex ws[2];
-    ws[0] = u;
-    ws[1] = v;
-
-    for (size_t i = 0; i < 2; ++i)
-    {
-        Vertex w = ws[i];
-        typename all_edges_iteratorS<Graph>::type e, e_end;
-        for (tie(e, e_end) = all_edges_iteratorS<Graph>::get_edges(w, g);
-             e != e_end; ++e)
-        {
-            Vertex t = target(*e, g);
-            Vertex s = source(*e, g);
-            if ((s == w && (t == u || t == v)) ||
-                (t == w && (s == u || s == v)))
-            {
-                if (target(*e, g) == w || is_directed::apply<Graph>::type::value)
-                    ml2 += mrs[*e];
-                else
-                    ml += mrs[*e];
-            }
-            else
-            {
-                if (s == w)
-                {
-                    nsp.insert(t);
-                    msp[t] += mrs[*e];
-                }
-                else
-                {
-                    nsm.insert(s);
-                    msm[s] += mrs[*e];
-                }
-            }
-        }
-    }
-    ml += ml2 / 2;
-
-    m_rp = mrp[u] + mrp[v];
-    m_rm = mrm[u] + mrm[v];
-    w_r = wr[u] + wr[v];
+    return lgamma(N + 1) - lgamma(N - k + 1) - lgamma(k + 1);
 }
 
-// compute the "distance" between two blocks (i.e. entropy difference when merged)
-struct dist
+double lbinom_fast(int N, int k)
 {
-    template <class Graph, class Vertex, class Eprop, class Vprop>
-    void operator()(Vertex r, Vertex s, const Eprop& mrs, const Vprop& mrp,
-                    const Vprop& mrm, const Vprop& wr, bool deg_corr, Graph& g,
-                    double& d) const
+    return lgamma_fast(N + 1) - lgamma_fast(N - k + 1) - lgamma_fast(k + 1);
+}
+
+
+// "edge" term of the entropy
+template <class Graph>
+__attribute__((always_inline))
+inline double eterm_dense(size_t r, size_t s, int mrs, int wr_r,
+                          int wr_s, bool multigraph, const Graph& g)
+{
+    int nrns;
+    int ers = mrs;
+
+    if (ers == 0)
+        return 0.;
+
+    if (r != s || is_directed::apply<Graph>::type::value)
     {
-        if (r == s)
-        {
-            d = 0;
-            return;
-        }
-
-        d = vterm(r, mrp, mrm, wr, deg_corr, g) +
-            vterm(s, mrp, mrm, wr, deg_corr, g);
-
-        typename all_edges_iteratorS<Graph>::type e, e_end;
-        for (tie(e, e_end) = all_edges_iteratorS<Graph>::get_edges(r, g);
-             e != e_end; ++e)
-        {
-            d += eterm(*e, mrs, g);
-        }
-
-        for (tie(e, e_end) = all_edges_iteratorS<Graph>::get_edges(s, g);
-             e != e_end; ++e)
-        {
-            if ((target(*e, g) == s && source(*e, g) == r) ||
-                (target(*e, g) == r && source(*e, g) == s))
-                continue;
-            d += eterm(*e, mrs, g);
-        }
-
-        tr1::unordered_set<Vertex> nsp, nsm;
-        tr1::unordered_map<Vertex, size_t> msp, msm;
-        size_t ml, m_rp, m_rm, w_r;
-
-        super_block(r, s, mrs, mrp, mrm, wr, g, nsp, nsm, msp, msm, ml, m_rp,
-                    m_rm, w_r);
-
-        if (!is_directed::apply<Graph>::type::value)
-        {
-            msm = msp;
-        }
-
-
-        for (typeof(nsp.begin()) iter = nsp.begin(); iter != nsp.end(); ++iter)
-        {
-            Vertex t = *iter;
-            if (deg_corr)
-                d += msp[t] * (safelog(msp[t]) - safelog(m_rp) - safelog(mrm[t]));
-            else
-                d += msp[t] * (safelog(msp[t]) - safelog(w_r) - safelog(wr[t]));
-        }
-
-        for (typeof(nsm.begin()) iter = nsm.begin(); iter != nsm.end(); ++iter)
-        {
-            Vertex t = *iter;
-            if (deg_corr)
-                d += msm[t] * (safelog(msm[t]) - safelog(m_rm) - safelog(mrp[t]));
-            else
-                d += msm[t] * (safelog(msm[t]) - safelog(w_r) - safelog(wr[t]));
-        }
-
-        if (ml > 0)
-        {
-            double one = 0.5;
-            if (is_directed::apply<Graph>::type::value)
-                one = 1;
-
-            if (deg_corr)
-                d += one * ml * (safelog(ml) - safelog(m_rp) - safelog(m_rm));
-            else
-                d += one * ml * (safelog(ml) - safelog(w_r) - safelog(w_r));
-        }
-
-        d *= -1;
+        nrns = wr_r * wr_s;
     }
-};
+    else
+    {
+        if (multigraph)
+            nrns = (wr_r * (wr_r + 1)) / 2;
+        else
+            nrns = (wr_r * (wr_r - 1)) / 2;
+    }
 
-// obtain the minimum distance between all block pairs
-template <class RNG>
-struct min_dist
+    double S;
+    if (multigraph)
+        S = lbinom_fast(nrns + ers - 1, ers);
+    else
+        S = lbinom_fast(nrns, ers);
+    return S;
+}
+
+struct entropy_dense
 {
-    min_dist(RNG& rng): rng(rng) {}
-    RNG& rng;
-
     template <class Graph, class Eprop, class Vprop>
-    void operator()(int n, Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr,
-                    bool deg_corr, Graph& g, vector<int>& vlist,
-                    boost::tuple<double, size_t, size_t>& min_d) const
+    void operator()(Eprop mrs, Vprop wr, bool multigraph, Graph& g, double& S) const
     {
-        get<0>(min_d) = numeric_limits<double>::max();
-        std::tr1::uniform_int<size_t> rand(0, vlist.size() - 1);
-
-        bool random = true;
-        if (n <= 0)
+        S = 0;
+        typename graph_traits<Graph>::edge_iterator e, e_end;
+        for (tie(e, e_end) = edges(g); e != e_end; ++e)
         {
-            n = vlist.size() * vlist.size();
-            random = false;
-        }
-
-        int l;
-        //#pragma omp parallel for default(shared) private(l)
-        for (l = 0; l < n; ++l)
-        {
-            typename graph_traits<Graph>::vertex_descriptor r;
-            if (random)
-            {
-                #pragma omp critical
-                r = vertex(vlist[rand(rng)], g);
-            }
-            else
-            {
-                r = vlist[l / vlist.size()];
-            }
-
-            if (wr[r] == 0)
-                continue;
-
-            typename graph_traits<Graph>::vertex_descriptor s;
-            if (random)
-            {
-                do
-                {
-                    #pragma omp critical
-                    s = vertex(vlist[rand(rng)], g);
-                }
-                while (s == r);
-            }
-            else
-            {
-                s = vlist[l % vlist.size()];
-                if (s <= r)
-                    continue;
-            }
-
-            if (wr[s] == 0)
-                continue;
-
-            if (s != r)
-            {
-                double d = 0;
-                dist()(r, s, mrs, mrp, mrm, wr, deg_corr, g, d);
-
-                {
-                    #pragma omp critical
-                    if (d < get<0>(min_d))
-                    {
-                        get<0>(min_d) = d;
-                        get<1>(min_d) = r;
-                        get<2>(min_d) = s;
-                    }
-                }
-            }
+            typename graph_traits<Graph>::vertex_descriptor r, s;
+            r = source(*e, g);
+            s = target(*e, g);
+            S += eterm_dense(r, s, mrs[*e], wr[r], wr[s], multigraph, g);
         }
     }
 };
 
-// merge two blocks into one
-struct b_join
-{
-    b_join(size_t r, size_t s): rr(r), ss(s) {}
-    size_t rr, ss;
-
-    template <class Graph, class Eprop, class Vprop>
-    void operator()(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Graph& g) const
-    {
-        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-        tr1::unordered_set<vertex_t> nsp, nsm;
-        tr1::unordered_map<vertex_t, size_t> msp, msm;
-        size_t ml, m_rp, m_rm, w_r;
-
-        vertex_t r = vertex(rr, g);
-        vertex_t s = vertex(ss, g);
-
-        super_block(r, s, mrs, mrp, mrm, wr, g, nsp, nsm, msp, msm, ml, m_rp,
-                    m_rm, w_r);
-
-        mrp[r] = m_rp;
-        mrm[r] = m_rm;
-        wr[r] = w_r;
-
-        clear_vertex(r, g);
-        clear_vertex(s, g);
-
-        for (typeof(nsp.begin()) iter = nsp.begin(); iter != nsp.end(); ++iter)
-        {
-            vertex_t t = *iter;
-            typename graph_traits<Graph>::edge_descriptor e = add_edge(r, t, g).first;
-            mrs[e] = msp[t];
-        };
-
-        for (typeof(nsm.begin()) iter = nsm.begin(); iter != nsm.end(); ++iter)
-        {
-            vertex_t s = *iter;
-            typename graph_traits<Graph>::edge_descriptor e = add_edge(s, r, g).first;
-            mrs[e] = msm[s];
-        };
-
-        if (ml > 0)
-        {
-            typename graph_traits<Graph>::edge_descriptor e = add_edge(r, r, g).first;
-            mrs[e] = ml;
-        }
-
-        mrp[s] = 0;
-        mrm[s] = 0;
-        wr[s] = 0;
-
-    }
-};
 
 // ===============================
 // Block moves
 // ===============================
 
-
-// this structure speeds up the access to the edges between to given blocks,
-// since we're using and adjacency list to store the block structure (the emat_t
+// this structure speeds up the access to the edges between given blocks,
+// since we're using an adjacency list to store the block structure (the emat_t
 // is simply a corresponding adjacency matrix)
 struct get_emat_t
 {
@@ -421,9 +212,10 @@ struct get_emat_t
 struct create_emat
 {
     template <class Graph>
-    void operator()(Graph& g, boost::any& oemap, size_t B) const
+    void operator()(Graph& g, boost::any& oemap) const
     {
         typedef typename get_emat_t::apply<Graph>::type emat_t;
+        size_t B = num_vertices(g);
         emat_t emat(boost::extents[B][B]);
 
         for (size_t i = 0; i < B; ++i)
@@ -443,6 +235,152 @@ struct create_emat
     }
 };
 
+template <class Graph>
+inline __attribute__((always_inline))
+pair<typename graph_traits<Graph>::edge_descriptor, bool>
+get_me(typename graph_traits<Graph>::vertex_descriptor r,
+       typename graph_traits<Graph>::vertex_descriptor s,
+       const typename get_emat_t::apply<Graph>::type& emat, const Graph& g)
+{
+    return emat[r][s];
+}
+
+template <class Graph>
+inline __attribute__((always_inline))
+void
+put_me(typename graph_traits<Graph>::vertex_descriptor r,
+       typename graph_traits<Graph>::vertex_descriptor s,
+       const typename graph_traits<Graph>::edge_descriptor& e,
+       typename get_emat_t::apply<Graph>::type& emat, const Graph& g)
+{
+    emat[r][s] = make_pair(e, true);
+    if (!is_directed::apply<Graph>::type::value && r != s)
+        emat[s][r] = make_pair(e, true);
+}
+
+template <class Graph>
+inline __attribute__((always_inline))
+void
+remove_me(typename graph_traits<Graph>::vertex_descriptor r,
+          typename graph_traits<Graph>::vertex_descriptor s,
+          const typename graph_traits<Graph>::edge_descriptor& e,
+          typename get_emat_t::apply<Graph>::type& emat, Graph& g,
+          bool delete_edge=true)
+{
+    if (!delete_edge)
+    {
+        emat[r][s].second = false;
+        if (!is_directed::apply<Graph>::type::value && r != s)
+            emat[s][r].second = false;
+    }
+}
+
+
+// this structure speeds up the access to the edges between given blocks, since
+// we're using an adjacency list to store the block structure (this is like
+// emat_t above, but takes less space and is slower)
+struct get_ehash_t
+{
+    template <class Graph>
+    struct apply
+    {
+        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
+        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
+#ifdef HAVE_SPARSEHASH
+        typedef dense_hash_map<vertex_t, edge_t> map_t;
+#else
+        typedef unordered_map<vertex_t, edge_t> map_t;
+#endif
+        typedef vector<map_t> type;
+    };
+};
+
+
+template<class Graph>
+inline __attribute__((always_inline))
+pair<typename graph_traits<Graph>::edge_descriptor, bool>
+get_me(typename graph_traits<Graph>::vertex_descriptor r,
+       typename graph_traits<Graph>::vertex_descriptor s,
+       const typename get_ehash_t::apply<Graph>::type& ehash, const Graph& bg)
+{
+    const typename get_ehash_t::apply<Graph>::map_t& map = ehash[r];
+    typeof(map.begin()) iter = map.find(s);
+    if (iter == map.end())
+        return (make_pair(typename graph_traits<Graph>::edge_descriptor(), false));
+    return make_pair(iter->second, true);
+}
+
+template<class Graph>
+inline __attribute__((always_inline))
+void
+put_me(typename graph_traits<Graph>::vertex_descriptor r,
+       typename graph_traits<Graph>::vertex_descriptor s,
+       const typename graph_traits<Graph>::edge_descriptor& e,
+       typename get_ehash_t::apply<Graph>::type& ehash,
+       const Graph& bg)
+{
+    ehash[r][s] = e;
+    if (!is_directed::apply<Graph>::type::value)
+        ehash[s][r] = e;
+}
+
+template<class Graph>
+inline __attribute__((always_inline))
+void
+remove_me(typename graph_traits<Graph>::vertex_descriptor r,
+          typename graph_traits<Graph>::vertex_descriptor s,
+          const typename graph_traits<Graph>::edge_descriptor& e,
+          typename get_ehash_t::apply<Graph>::type& ehash, Graph& bg,
+          bool delete_edge=true)
+{
+    ehash[r].erase(s);
+    if (!is_directed::apply<Graph>::type::value)
+        ehash[s].erase(r);
+    if (delete_edge)
+        remove_edge(e, bg);
+}
+
+struct create_ehash
+{
+    template <class Graph>
+    void operator()(Graph& g, boost::any& oemap) const
+    {
+        typedef typename get_ehash_t::apply<Graph>::type emat_t;
+        typedef typename get_ehash_t::apply<Graph>::map_t map_t;
+        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
+
+        emat_t emat(num_vertices(g));
+
+#ifdef HAVE_SPARSEHASH
+        typename graph_traits<Graph>::vertex_iterator v, v_end;
+        for (tie(v, v_end) = vertices(g); v != v_end; ++v)
+        {
+            emat[*v].set_empty_key(numeric_limits<vertex_t>::max());
+            emat[*v].set_deleted_key(num_vertices(g));
+        }
+#endif
+
+        typename graph_traits<Graph>::edge_iterator e, e_end;
+        for (tie(e, e_end) = edges(g); e != e_end; ++e)
+            put_me(source(*e, g), target(*e, g), *e, emat, g);
+
+        oemap = emat;
+    }
+};
+
+template <class Vertex, class Eprop, class Emat, class BGraph>
+__attribute__((always_inline))
+inline size_t get_mrs(Vertex r, Vertex s, const Eprop& mrs, Emat& emat,
+                      BGraph& bg)
+{
+    const pair<typename graph_traits<BGraph>::edge_descriptor, bool> me =
+        get_me(r, s, emat, bg);
+    if (me.second)
+        return mrs[me.first];
+    else
+        return 0;
+}
+
 // remove a vertex from its current block
 template <class Graph, class BGraph, class Eprop, class Vprop, class EWprop,
           class VWprop, class EMat>
@@ -453,28 +391,35 @@ void remove_vertex(size_t v, Eprop& mrs, Vprop& mrp, Vprop& mrm, Vprop& wr,
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
     vertex_t r = b[v];
 
+    bool self_count = false;
     typename graph_traits<Graph>::out_edge_iterator ei, ei_end;
-    for (tie(ei, ei_end) = out_edges(vertex(v, g), g); ei != ei_end; ++ei)
+    for (tie(ei, ei_end) = out_edges(v, g); ei != ei_end; ++ei)
     {
         typename graph_traits<Graph>::edge_descriptor e = *ei;
         vertex_t u = target(e, g);
+        if (u == v && !is_directed::apply<Graph>::type::value)
+        {
+            if (self_count)
+                continue;
+            self_count = true;
+        }
         vertex_t s = b[u];
 
         // if (!emat[r][s].second)
         //     throw GraphException("no edge? " + lexical_cast<string>(r) +
         //                          " " + lexical_cast<string>(s));
 
-        const typename graph_traits<BGraph>::edge_descriptor& me = emat[r][s].first;
+        typename graph_traits<BGraph>::edge_descriptor me =
+            get_me(r, s, emat, bg).first;
 
         size_t ew = eweight[e];
         mrs[me] -= ew;
 
-        if (u != v && r == s && !is_directed::apply<Graph>::type::value)
-            mrs[me] -= ew;
-
         mrp[r] -= ew;
-        if (u != v || is_directed::apply<Graph>::type::value)
-            mrm[s] -= ew;
+        mrm[s] -= ew;
+
+        if (mrs[me] == 0)
+            remove_me(r, s, me, emat, bg);
     }
 
     if (is_directed::apply<Graph>::type::value)
@@ -493,35 +438,44 @@ void remove_vertex(size_t v, Eprop& mrs, Vprop& mrp, Vprop& mrm, Vprop& wr,
             //     throw GraphException("no edge? " + lexical_cast<string>(s) +
             //                          " " + lexical_cast<string>(r));
 
-            typename graph_traits<BGraph>::edge_descriptor me = emat[s][r].first;
+            typename graph_traits<BGraph>::edge_descriptor me =
+                get_me(s, r, emat, bg).first;
 
             size_t ew = eweight[e];
             mrs[me] -= ew;
 
             mrp[s] -= ew;
             mrm[r] -= ew;
+
+            if (mrs[me] == 0)
+                remove_me(s, r, me, emat, bg);
         }
     }
 
-    wr[vertex(r, bg)] -= vweight[vertex(v, g)];
-
+    wr[r] -= vweight[v];
 }
 
 // add a vertex to block rr
 template <class Graph, class BGraph, class Eprop, class Vprop, class EWprop,
           class VWprop,class EMat>
-void add_vertex(size_t v, size_t rr, Eprop& mrs, Vprop& mrp, Vprop& mrm,
+void add_vertex(size_t v, size_t r, Eprop& mrs, Vprop& mrp, Vprop& mrm,
                 Vprop& wr, Vprop& b, const EWprop& eweight,
                 const VWprop& vweight, Graph& g, BGraph& bg, EMat& emat)
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-    vertex_t r = vertex(rr, bg);
 
+    bool self_count = false;
     typename graph_traits<Graph>::out_edge_iterator ei, ei_end;
     for (tie(ei, ei_end) = out_edges(vertex(v, g), g); ei != ei_end; ++ei)
     {
         typename graph_traits<Graph>::edge_descriptor e = *ei;
         vertex_t u = target(e, g);
+        if (u == v && !is_directed::apply<Graph>::type::value )
+        {
+            if (self_count)
+                continue;
+            self_count = true;
+        }
         vertex_t s;
 
         if (u != v)
@@ -531,31 +485,23 @@ void add_vertex(size_t v, size_t rr, Eprop& mrs, Vprop& mrp, Vprop& mrm,
 
         typename graph_traits<BGraph>::edge_descriptor me;
 
-        pair<typename graph_traits<BGraph>::edge_descriptor, bool>& mep = emat[r][s];
+        pair<typename graph_traits<BGraph>::edge_descriptor, bool> mep =
+                get_me(r, s, emat, bg);
 
         if (!mep.second)
         {
-            emat[r][s] = add_edge(r, s, bg);
-            if (!is_directed::apply<Graph>::type::value)
-                emat[s][r] = emat[r][s];
-            me = emat[r][s].first;
-            mrs[me] = 0;
+            mep = add_edge(r, s, bg);
+            put_me(r, s, mep.first, emat, bg);
+            mrs[mep.first] = 0;
         }
-        else
-        {
-            me = mep.first;
-        }
+        me = mep.first;
 
         size_t ew = eweight[e];
 
         mrs[me] += ew;
 
-        if (u != v && r == s && !is_directed::apply<Graph>::type::value)
-            mrs[me] += ew;
-
-        mrp[r] += eweight[e];
-        if (u != v || is_directed::apply<Graph>::type::value)
-            mrm[s] += ew;
+        mrp[r] += ew;
+        mrm[s] += ew;
     }
 
     typename in_edge_iteratorS<Graph>::type ie, ie_end;
@@ -570,18 +516,17 @@ void add_vertex(size_t v, size_t rr, Eprop& mrs, Vprop& mrp, Vprop& mrm,
         vertex_t s = b[u];
 
         typename graph_traits<BGraph>::edge_descriptor me;
-        pair<typename graph_traits<BGraph>::edge_descriptor, bool>& mep = emat[s][r];
+        pair<typename graph_traits<BGraph>::edge_descriptor, bool> mep =
+                get_me(s, r, emat, bg);
+
 
         if (!mep.second)
         {
-            emat[s][r] = add_edge(s, r, bg);
-            me = emat[s][r].first;
-            mrs[me] = 0;
+            mep = add_edge(s, r, bg);
+            put_me(s, r, mep.first, emat, bg);
+            mrs[mep.first] = 0;
         }
-        else
-        {
-            me = mep.first;
-        }
+        me = mep.first;
 
         size_t ew = eweight[e];
 
@@ -591,177 +536,431 @@ void add_vertex(size_t v, size_t rr, Eprop& mrs, Vprop& mrp, Vprop& mrm,
         mrm[r] += ew;
     }
 
-    wr[vertex(r, bg)] += vweight[vertex(v, g)];
+    wr[r] += vweight[v];
     b[v] = r;
 }
 
+// move a vertex from its current block to block nr
+template <class Graph, class BGraph, class Eprop, class Vprop, class EWprop,
+          class VWprop, class EMat>
+void move_vertex(size_t v, size_t nr, Eprop& mrs, Vprop& mrp, Vprop& mrm,
+                 Vprop& wr, Vprop& b, bool deg_corr, const EWprop& eweight,
+                 const VWprop& vweight, Graph& g, BGraph& bg, EMat& emat)
+
+{
+    remove_vertex(v, mrs, mrp, mrm, wr, b, eweight, vweight, g, bg, emat);
+    add_vertex(v, nr, mrs, mrp, mrm, wr, b, eweight, vweight, g, bg, emat);
+}
+
+
 template <class Type1, class Type2, class Graph>
+__attribute__((always_inline))
 inline pair<Type1,Type2> make_ordered_pair(const Type1& v1, const Type2& v2, const Graph&)
 {
     if (!is_directed::apply<Graph>::type::value)
-        return make_pair(min(v1, v2), max(v1, v2));
-     return make_pair(v1, v2);
+    {
+        if (v1 < v2)
+            return make_pair(v1, v2);
+        else
+            return make_pair(v2, v1);
+    }
+    return make_pair(v1, v2);
 }
 
-template <class Vertex, class MEntry, class MEntrySet, class Graph>
-inline void insert_m_entry(Vertex r, Vertex s, MEntry& m_entries,
-                           MEntrySet& m_entries_set, Graph& g)
+template <class Graph>
+class EntrySet
 {
-    pair<Vertex, Vertex> rs = make_ordered_pair(r, s, g);
-    if (m_entries_set.find(rs) == m_entries_set.end())
+public:
+    EntrySet(size_t B)
     {
-        m_entries.push_back(rs);
-        m_entries_set.insert(rs);
+        _null = numeric_limits<size_t>::max();
+        _r_field_t.resize(B, _null);
+        _nr_field_t.resize(B, _null);
+
+        if (is_directed::apply<Graph>::type::value)
+        {
+            _r_field_s.resize(B, _null);
+            _nr_field_s.resize(B, _null);
+        }
     }
-}
+
+    void SetMove(size_t r, size_t nr)
+    {
+        _rnr = make_pair(r, nr);
+    }
+
+    void InsertDeltaTarget(size_t r, size_t s, int delta)
+    {
+        if (!is_directed::apply<Graph>::type::value &&
+            (s == _rnr.first || s == _rnr.second) && s < r)
+        {
+            InsertDeltaTarget(s, r, delta);
+            return;
+        }
+
+        if (is_directed::apply<Graph>::type::value &&
+            (s == _rnr.first || s == _rnr.second) && s < r)
+        {
+            InsertDeltaSource(r, s, delta);
+            return;
+        }
+
+        vector<size_t>& field = (_rnr.first == r) ? _r_field_t : _nr_field_t;
+        if (field[s] == _null)
+        {
+            field[s] = _entries.size();
+            _entries.push_back(make_pair(r, s));
+            _delta.push_back(delta);
+        }
+        else
+        {
+            _delta[field[s]] += delta;
+        }
+    }
+
+    void InsertDeltaSource(size_t s, size_t r, int delta)
+    {
+        if (s == r)
+        {
+            InsertDeltaTarget(r, s, delta);
+            return;
+        }
+
+        if ((s == _rnr.first || s == _rnr.second) && s < r)
+        {
+            InsertDeltaTarget(s, r, delta);
+            return;
+        }
+
+        vector<size_t>& field = (_rnr.first == r) ? _r_field_s : _nr_field_s;
+        if (field[s] == _null)
+        {
+            field[s] = _entries.size();
+            _entries.push_back(make_pair(s, r));
+            _delta.push_back(delta);
+        }
+        else
+        {
+            _delta[field[s]] += delta;
+        }
+    }
+
+    int GetDelta(size_t t, size_t s)
+    {
+        if (is_directed::apply<Graph>::type::value)
+        {
+            if (t == _rnr.first || t == _rnr.second)
+                return GetDeltaTarget(t, s);
+            if (s == _rnr.first || s == _rnr.second)
+                return GetDeltaSource(t, s);
+        }
+        else
+        {
+            if (t == _rnr.first || t == _rnr.second)
+                return GetDeltaTarget(t, s);
+            if (s == _rnr.first || s == _rnr.second)
+                return GetDeltaTarget(s, t);
+        }
+        return 0;
+    }
+
+    int GetDeltaTarget(size_t r, size_t s)
+    {
+        vector<size_t>& field = (_rnr.first == r) ? _r_field_t : _nr_field_t;
+        if (field[s] == _null)
+        {
+            return 0;
+        }
+        else
+        {
+            return _delta[field[s]];
+        }
+    }
+
+    int GetDeltaSource(size_t s, size_t r)
+    {
+        vector<size_t>& field = (_rnr.first == r) ? _r_field_s : _nr_field_s;
+        if (field[s] == _null)
+        {
+            return 0;
+        }
+        else
+        {
+            return _delta[field[s]];
+        }
+    }
+
+    void Clear()
+    {
+        size_t r, s;
+        for (size_t i = 0; i < _entries.size(); ++i)
+        {
+            tie(r, s) = _entries[i];
+            _r_field_t[r] = _nr_field_t[r] = _null;
+            _r_field_t[s] = _nr_field_t[s] = _null;
+            if (is_directed::apply<Graph>::type::value)
+            {
+                _r_field_s[r] = _nr_field_s[r] = _null;
+                _r_field_s[s] = _nr_field_s[s] = _null;
+            }
+        }
+        _entries.clear();
+        _delta.clear();
+    }
+
+    vector<pair<size_t, size_t> >& GetEntries() { return _entries; }
+    vector<int>& GetDelta() { return _delta; }
+
+private:
+    pair<size_t, size_t> _rnr;
+    size_t _null;
+    vector<size_t> _r_field_t;
+    vector<size_t> _nr_field_t;
+    vector<size_t> _r_field_s;
+    vector<size_t> _nr_field_s;
+    vector<pair<size_t, size_t> > _entries;
+    vector<int> _delta;
+};
 
 // obtain the necessary entries in the e_rs matrix which need to be modified
 // after the move
-template <class Graph, class BGraph, class Vertex, class Vprop, class MEntry,
-          class MEntrySet>
-void move_entries(Vertex v, Vertex nr, Vprop& b, Graph& g, BGraph&,
-                  MEntry& m_entries, MEntrySet& m_entries_set)
+template <class Graph, class BGraph, class Vertex, class Vprop, class Eprop>
+void move_entries(Vertex v, Vertex nr, Vprop b, Eprop eweights, Graph& g,
+                  BGraph& bg, EntrySet<Graph>& m_entries)
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
     vertex_t r = b[v];
 
+    m_entries.SetMove(r, nr);
+
+    bool self_count = false;
     typename graph_traits<Graph>::out_edge_iterator e, e_end;
-    for (tie(e, e_end) = out_edges(vertex(v, g), g); e != e_end; ++e)
+    for (tie(e, e_end) = out_edges(v, g); e != e_end; ++e)
     {
-        vertex_t s = b[target(*e, g)];
-        insert_m_entry(r, s, m_entries, m_entries_set, g);
-        insert_m_entry(nr, s, m_entries, m_entries_set, g);
-        if (s == r || s == nr)
-            insert_m_entry(nr, nr, m_entries, m_entries_set, g);
-        if (s == nr)
-            insert_m_entry(r, r, m_entries, m_entries_set, g);
+        vertex_t u = target(*e, g);
+        if (u == v && !is_directed::apply<Graph>::type::value)
+        {
+            if (self_count)
+                continue;
+            self_count = true;
+        }
+        vertex_t s = b[u];
+        int ew = eweights[*e];
+        //assert(ew > 0);
+
+        m_entries.InsertDeltaTarget(r, s, -ew);
+
+        //insert_m_entry(r,  s, -ew, m_entries, m_entries_set, g);
+        if (u == v)
+            s = nr;
+        m_entries.InsertDeltaTarget(nr, s, +ew);
+
+        //insert_m_entry(nr, s, +ew, m_entries, m_entries_set, g);
     }
 
     typename in_edge_iteratorS<Graph>::type ie, ie_end;
-    for (tie(ie, ie_end) = in_edge_iteratorS<Graph>::get_edges(vertex(v, g), g);
+    for (tie(ie, ie_end) = in_edge_iteratorS<Graph>::get_edges(v, g);
          ie != ie_end; ++ie)
     {
-        vertex_t s = b[source(*ie, g)];
+        vertex_t u = source(*ie, g);
+        if (u == v)
+            continue;
+        vertex_t s = b[u];
+        int ew = eweights[*ie];
 
-        insert_m_entry(s, r, m_entries, m_entries_set, g);
-        insert_m_entry(s, nr, m_entries, m_entries_set, g);
-        if (s == r || s == nr)
-            insert_m_entry(nr, nr, m_entries, m_entries_set, g);
-        if (s == nr)
-            insert_m_entry(r, r, m_entries, m_entries_set, g);
+        m_entries.InsertDeltaSource(s,  r, -ew);
+        m_entries.InsertDeltaSource(s, nr, +ew);
+
+        // insert_m_entry(s,  r, -ew, m_entries, m_entries_set, g);
+        // insert_m_entry(s, nr, +ew, m_entries, m_entries_set, g);
     }
+
+    //clear_entries_set(m_entries, m_entries_set);
 }
 
-
 // obtain the entropy difference given a set of entries in the e_rs matrix
-template <class MEntry, class Eprop, class BGraph, class EMat>
-double entries_dS(MEntry& m_entries, Eprop& mrs, BGraph& bg, const EMat& emat)
+template <class Graph, class Eprop, class BGraph, class EMat>
+double entries_dS(EntrySet<Graph>& m_entries, Eprop& mrs, BGraph& bg, EMat& emat)
 {
     typedef typename graph_traits<BGraph>::vertex_descriptor vertex_t;
-    double dS = 0;
-    for (typeof(m_entries.begin()) iter = m_entries.begin(); iter != m_entries.end(); ++iter)
-    {
-        vertex_t er = iter->first;
-        vertex_t es = iter->second;
+    vector<pair<size_t, size_t> >& entries = m_entries.GetEntries();
+    vector<int>& delta = m_entries.GetDelta();
 
-        const pair<typename graph_traits<BGraph>::edge_descriptor, bool>& e = emat[er][es];
-        if (!e.second)
-            continue;
-        dS += eterm(e.first, mrs, bg);
+    double dS = 0;
+    for (size_t i = 0; i < entries.size(); ++i)
+    {
+        vertex_t er = entries[i].first;
+        vertex_t es = entries[i].second;
+        int d = delta[i];
+
+        int ers = get_mrs(er, es, mrs, emat, bg);
+        //assert(ers + delta >= 0);
+        dS += eterm(er, es, ers + d, bg) - eterm(er, es, ers, bg);
     }
     return dS;
 }
 
-
-// move a vertex from its current block to block nr, and return the entropy
-// difference
+// compute the entropy difference of a virtual move of vertex r to block nr
 template <class Graph, class BGraph, class Eprop, class Vprop, class EWprop,
           class VWprop, class EMat>
-double move_vertex(size_t v, size_t nr, Eprop& mrs, Vprop& mrp, Vprop& mrm,
-                   Vprop& wr, Vprop& b, bool deg_corr, const EWprop& eweight,
-                   const VWprop& vweight, Graph& g, BGraph& bg, EMat& emat,
-                   bool get_ds=true)
+double virtual_move(size_t v, size_t nr, Eprop& mrs, Vprop& mrp, Vprop& mrm,
+                    Vprop& wr, Vprop& b, bool deg_corr, const EWprop& eweight,
+                    const VWprop& vweight, Graph& g, BGraph& bg, EMat& emat,
+                    EntrySet<Graph>& m_entries)
 
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-    vertex_t r = b[vertex(v, g)];
+    vertex_t r = b[v];
+
+    if (r == nr)
+        return 0.;
+
+    m_entries.Clear();
+    move_entries(v, nr, b, eweight, g, bg, m_entries);
+    double dS = entries_dS(m_entries, mrs, bg, emat);
+    int kout = out_degreeS()(v, g, eweight);
+    int kin = kout;
+    if (is_directed::apply<Graph>::type::value)
+        kin = in_degreeS()(v, g, eweight);
+    //assert(mrm[r]  - kin >= 0);
+    //assert(mrp[r]  - kout >= 0);
+    dS += vterm(r,  mrp[r]  - kout, mrm[r]  - kin, wr[r]  - vweight[v], deg_corr, bg);
+    dS += vterm(nr, mrp[nr] + kout, mrm[nr] + kin, wr[nr] + vweight[v], deg_corr, bg);
+    dS -= vterm(r,  mrp[r]        , mrm[r]       , wr[r]              , deg_corr, bg);
+    dS -= vterm(nr, mrp[nr]       , mrm[nr]      , wr[nr]             , deg_corr, bg);
+    return dS;
+}
+
+
+// compute the entropy difference of a virtual move of vertex r to block nr
+template <class Graph, class BGraph, class Eprop, class Vprop, class EWprop,
+          class VWprop, class EMat>
+double virtual_move_dense(size_t v, size_t nr, Eprop& mrs, Vprop& mrp,
+                          Vprop& mrm, Vprop& wr, Vprop& b, bool deg_corr,
+                          const EWprop& eweight, const VWprop& vweight,
+                          Graph& g, BGraph& bg, EMat& emat, bool multigraph)
+
+{
+    typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
+    vertex_t r = b[v];
 
     if (r == nr)
         return 0;
 
-    double Si = 0, Sf = 0;
+    if (deg_corr)
+        throw GraphException("Dense entropy for degree corrected model not implemented!");
 
-    vector<pair<vertex_t, vertex_t> > m_entries;
-#ifdef HAVE_SPARSEHASH
-    dense_hash_set<pair<vertex_t, vertex_t>, boost::hash<pair<vertex_t, vertex_t> > > m_entries_set;
-#else
-    unordered_set<pair<vertex_t, vertex_t>, boost::hash<pair<vertex_t, vertex_t> > > m_entries_set;
-#endif
-    if (get_ds)
+    vector<int> deltap(num_vertices(bg), 0);
+    int deltal = 0;
+    bool self_count = false;
+    typename graph_traits<Graph>::out_edge_iterator e, e_end;
+    for (tie(e, e_end) = out_edges(v, g); e != e_end; ++e)
     {
-#ifdef HAVE_SPARSEHASH
-        m_entries_set.set_empty_key(make_pair(graph_traits<Graph>::null_vertex(),
-                                              graph_traits<Graph>::null_vertex()));
-#endif
-
-        move_entries(vertex(v, g), nr, b, g, bg, m_entries, m_entries_set);
-
-        Si = entries_dS(m_entries, mrs, bg, emat);
-        Si += vterm(r, mrp, mrm, wr, deg_corr, bg);
-        Si += vterm(nr, mrp, mrm, wr, deg_corr, bg);
+        vertex_t u = target(*e, g);
+        vertex_t s = b[u];
+        if (u == v)
+        {
+            if (self_count)
+                continue;
+            self_count = true;
+            deltal += eweight[*e];
+        }
+        else
+        {
+            deltap[s] += eweight[*e];
+        }
     }
 
-    remove_vertex(v, mrs, mrp, mrm, wr, b, eweight, vweight, g, bg, emat);
-    add_vertex(v, nr, mrs, mrp, mrm, wr, b, eweight, vweight, g, bg, emat);
-
-    if (get_ds)
+    vector<int> deltam(num_vertices(bg), 0);
+    typename in_edge_iteratorS<Graph>::type ie, ie_end;
+    for (tie(ie, ie_end) = in_edge_iteratorS<Graph>::get_edges(v, g);
+         ie != ie_end; ++ie)
     {
-        Sf = entries_dS(m_entries, mrs, bg, emat);
-        Sf += vterm(r, mrp, mrm, wr, deg_corr, bg);
-        Sf += vterm(nr, mrp, mrm, wr, deg_corr, bg);
+        vertex_t u = source(*ie, g);
+        if (u == v)
+            continue;
+        vertex_t s = b[u];
+        deltam[s] += eweight[*ie];
+    }
+
+    double Si = 0, Sf = 0;
+    for (vertex_t s = 0; s < num_vertices(bg); ++s)
+    {
+        int ers = get_mrs(r, s, mrs, emat, bg);
+        int enrs = get_mrs(nr, s, mrs, emat, bg);
+
+        if (!is_directed::apply<Graph>::type::value)
+        {
+            if (s != nr && s != r)
+            {
+                Si += eterm_dense(r,  s, ers,              wr[r],               wr[s], multigraph, bg);
+                Sf += eterm_dense(r,  s, ers - deltap[s],  wr[r] - vweight[v],  wr[s], multigraph, bg);
+                Si += eterm_dense(nr, s, enrs,             wr[nr],              wr[s], multigraph, bg);
+                Sf += eterm_dense(nr, s, enrs + deltap[s], wr[nr] + vweight[v], wr[s], multigraph, bg);
+            }
+
+            if (s == r)
+            {
+                Si += eterm_dense(r, r, ers,                      wr[r],              wr[r],              multigraph, bg);
+                Sf += eterm_dense(r, r, ers - deltap[r] - deltal, wr[r] - vweight[v], wr[r] - vweight[v], multigraph, bg);
+            }
+
+            if (s == nr)
+            {
+                Si += eterm_dense(nr, nr, enrs,                       wr[nr],              wr[nr],              multigraph, bg);
+                Sf += eterm_dense(nr, nr, enrs + deltap[nr] + deltal, wr[nr] + vweight[v], wr[nr] + vweight[v], multigraph, bg);
+
+                Si += eterm_dense(r, nr, ers,                          wr[r],              wr[nr], multigraph, bg);
+                Sf += eterm_dense(r, nr, ers - deltap[nr] + deltap[r], wr[r] - vweight[v], wr[nr] + vweight[v], multigraph, bg);
+            }
+        }
+        else
+        {
+            int esr = get_mrs(s, r, mrs, emat, bg);
+            int esnr = get_mrs(s, nr, mrs, emat, bg);
+
+            if (s != nr && s != r)
+            {
+                Si += eterm_dense(r, s, ers            , wr[r]             , wr[s]             , multigraph, bg);
+                Sf += eterm_dense(r, s, ers - deltap[s], wr[r] - vweight[v], wr[s]             , multigraph, bg);
+                Si += eterm_dense(s, r, esr            , wr[s]             , wr[r]             , multigraph, bg);
+                Sf += eterm_dense(s, r, esr - deltam[s], wr[s]             , wr[r] - vweight[v], multigraph, bg);
+
+                Si += eterm_dense(nr, s, enrs            , wr[nr]             , wr[s]              , multigraph, bg);
+                Sf += eterm_dense(nr, s, enrs + deltap[s], wr[nr] + vweight[v], wr[s]              , multigraph, bg);
+                Si += eterm_dense(s, nr, esnr            , wr[s]              , wr[nr]             , multigraph, bg);
+                Sf += eterm_dense(s, nr, esnr + deltam[s], wr[s]              , wr[nr] + vweight[v], multigraph, bg);
+            }
+
+            if(s == r)
+            {
+                Si += eterm_dense(r, r, ers                                  , wr[r]             , wr[r]             , multigraph, bg);
+                Sf += eterm_dense(r, r, ers - deltap[r]  - deltam[r] - deltal, wr[r] - vweight[v], wr[r] - vweight[v], multigraph, bg);
+
+                Si += eterm_dense(r, nr, esnr                         , wr[r]             , wr[nr]             , multigraph, bg);
+                Sf += eterm_dense(r, nr, esnr - deltap[nr] + deltam[r], wr[r] - vweight[v], wr[nr] + vweight[v], multigraph, bg);
+            }
+
+            if(s == nr)
+            {
+                Si += eterm_dense(nr, nr, esnr                                   , wr[nr]             , wr[nr]             , multigraph, bg);
+                Sf += eterm_dense(nr, nr, esnr + deltap[nr] + deltam[nr] + deltal, wr[nr] + vweight[v], wr[nr] + vweight[v], multigraph, bg);
+
+                Si += eterm_dense(nr, r, esr                         , wr[nr]             , wr[r]             , multigraph, bg);
+                Sf += eterm_dense(nr, r, esr + deltap[r] - deltam[nr], wr[nr] + vweight[v], wr[r] - vweight[v], multigraph, bg);
+            }
+        }
     }
     return Sf - Si;
 }
+
 
 //============
 // Main loops
 //============
 
-
-template <class Graph, class RNG>
-typename graph_traits<Graph>::vertex_descriptor
-random_neighbour(typename graph_traits<Graph>::vertex_descriptor v, Graph& g,
-                 RNG& rng)
-{
-    typedef is_convertible<typename iterator_traits<typename graph_traits<Graph>::out_edge_iterator>::iterator_category,
-                           std::random_access_iterator_tag> is_orig_ra;
-    typedef is_convertible<typename iterator_traits<typename all_edges_iteratorS<Graph>::type>::iterator_category,
-                           std::random_access_iterator_tag> is_ra;
-    BOOST_STATIC_ASSERT((!is_orig_ra::value || is_ra::value));
-
-    size_t k = total_degreeS()(v, g);
-    if (k == 0)
-        return v;
-    std::tr1::uniform_int<size_t> rand(0, k - 1);
-    size_t i = rand(rng);
-    typename all_edges_iteratorS<Graph>::type e, e_end;
-    tie(e, e_end) = all_edges_iteratorS<Graph>::get_edges(v, g);
-    std::advance(e, i);
-    return target(*e, g);
-}
-
-template <class Vertex, class Eprop, class Emat>
-inline size_t get_mrs(Vertex r, Vertex s, const Eprop& mrs, const Emat& emat)
-{
-    const typename Emat::element& me = emat[r][s];
-    if (me.second)
-        return mrs[me.first];
-    else
-        return 0;
-}
-
-//the following guarantee a stable (source, target) ordering even for undirected
-//graphs
+//the following guarantees a stable (source, target) ordering even for
+//undirected graphs
 template <class Edge, class Graph>
 inline typename graph_traits<Graph>::vertex_descriptor
 get_source(const Edge& e, const Graph &g)
@@ -783,218 +982,774 @@ get_target(const Edge& e, const Graph &g)
 }
 
 //computes the move proposal probability
-template <class Vertex, class Graph, class Vprop, class Eprop, class Emat>
+template <class Vertex, class Graph, class Vprop, class Eprop, class Emat,
+          class BGraph>
 inline double
-get_move_prob(Vertex v, Vertex s, Vprop b, Eprop mrs, Vprop mrp, Vprop mrm,
-              Emat& emat, Graph& g, size_t B)
+get_move_prob(Vertex v, Vertex r, Vertex s, double c, Vprop b, Eprop mrs,
+              Vprop mrp, Vprop mrm, Emat& emat, Eprop eweight, Graph& g,
+              BGraph& bg, EntrySet<Graph>& m_entries, bool reverse)
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
+    size_t B = num_vertices(bg);
     double p = 0;
+    size_t w = 0;
+
+    int kout = 0, kin = 0;
+    if (reverse)
+    {
+        kout = out_degreeS()(v, g, eweight);
+        kin = kout;
+        if (is_directed::apply<Graph>::type::value)
+            kin = in_degreeS()(v, g, eweight);
+    }
+
     typename all_edges_iteratorS<Graph>::type e, e_end;
     for (tie(e, e_end) = all_edges_iteratorS<Graph>::get_edges(v, g);
          e != e_end; ++e)
     {
-        vertex_t t = b[target(*e, g)];
+        vertex_t u = target(*e, g);
+        if (is_directed::apply<Graph>::type::value && u == v)
+            u = source(*e, g);
+        vertex_t t = b[u];
+        if (u == v)
+            t = r;
+        size_t ew = eweight[*e];
+        w += ew;
+
+        int mts = get_mrs(t, s, mrs, emat, bg);
+        int mtp = mrp[t];
+        int mst = mts;
+        int mtm = mtp;
+
         if (is_directed::apply<Graph>::type::value)
-            p += (get_mrs(t, s, mrs, emat) + get_mrs(s, t, mrs, emat) + 1.) / (mrp[t] + mrm[t] + B);
+        {
+            mst = get_mrs(s, t, mrs, emat, bg);
+            mtm = mrm[t];
+        }
+
+        if (reverse)
+        {
+            int dts = m_entries.GetDelta(t, s);
+            int dst = dts;
+            if (is_directed::apply<Graph>::type::value)
+                dst = m_entries.GetDelta(s, t);
+
+            mts += dts;
+            mst += dst;
+
+            if (t == s)
+            {
+                mtp -= kout;
+                mtm -= kin;
+            }
+
+            if (t == r)
+            {
+                mtp += kout;
+                mtm += kin;
+            }
+        }
+
+        if (is_directed::apply<Graph>::type::value)
+        {
+            p += ew * ((mts + mst + c) / (mtp + mtm + c * B));
+        }
         else
-            p += (get_mrs(t, s, mrs, emat) + 1.) / (mrp[t] + B);
+        {
+            if (t == s)
+                mts *= 2;
+            p += ew * (mts + c) / (mtp + c * B);
+        }
     }
-    return p / total_degreeS()(v, g);
+    return p / w;
+}
+
+
+template <class Vertex, class Graph, class EVprop, class Eprop, class VEprop>
+inline void
+remove_egroups(Vertex v, Vertex r, Eprop eweight, EVprop egroups,
+               VEprop esrcpos, VEprop etgtpos, Graph& g)
+{
+    typedef Vertex vertex_t;
+    bool self_count = false;
+
+    //update the half-edge lists
+    typename all_edges_iteratorS<Graph>::type e, e_end;
+    for (tie(e, e_end) = all_edges_iteratorS<Graph>::get_edges(v, g);
+         e != e_end; ++e)
+    {
+        vertex_t src = get_source(*e, g);
+        vertex_t tgt = get_target(*e, g);
+
+        bool is_src = (src == v);
+
+        // self-loops will appear twice
+        if (src == tgt)
+        {
+            is_src = !self_count;
+            self_count = true;
+        }
+
+        for (size_t i = 0; i < size_t(eweight[*e]); ++i)
+        {
+            size_t pos = (is_src) ? esrcpos[*e][i] : etgtpos[*e][i];
+
+            const boost::tuple<typename graph_traits<Graph>::edge_descriptor, bool, size_t>& eback = egroups[r].back();
+
+            if (get<1>(eback))
+                esrcpos[get<0>(eback)][get<2>(eback)] = pos;
+            else
+                etgtpos[get<0>(eback)][get<2>(eback)] = pos;
+
+            egroups[r][pos] = eback;
+            egroups[r].pop_back();
+        }
+    }
+}
+
+template <class Vertex, class Graph, class EVprop, class Eprop, class VEprop>
+inline void
+add_egroups(Vertex v, Vertex s, Eprop eweight, EVprop egroups, VEprop esrcpos,
+            VEprop etgtpos, Graph& g)
+{
+    typedef Vertex vertex_t;
+    bool self_count = false;
+
+    //update the half-edge lists
+    typename all_edges_iteratorS<Graph>::type e, e_end;
+    for (tie(e, e_end) = all_edges_iteratorS<Graph>::get_edges(v, g);
+         e != e_end; ++e)
+    {
+        vertex_t src = get_source(*e, g);
+        vertex_t tgt = get_target(*e, g);
+
+        bool is_src = (src == v);
+
+        // self-loops will appear twice
+        if (src == tgt)
+        {
+            is_src = !self_count;
+            self_count = true;
+        }
+
+        for (size_t i = 0; i < size_t(eweight[*e]); ++i)
+        {
+            egroups[s].push_back(boost::make_tuple(*e, is_src, i));
+            if (is_src)
+                esrcpos[*e][i] = egroups[s].size() - 1;
+            else
+                etgtpos[*e][i] = egroups[s].size() - 1;
+        }
+    }
+}
+
+template <class Vertex, class Graph, class EVprop, class Eprop, class VEprop>
+inline void
+update_egroups(Vertex v, Vertex r, Vertex s, Eprop eweight, EVprop egroups,
+               VEprop esrcpos, VEprop etgtpos, Graph& g)
+{
+    remove_egroups(v, r, eweight, egroups, esrcpos, etgtpos, g);
+    add_egroups(v, s, eweight, egroups, esrcpos, etgtpos, g);
 }
 
 //A single Monte Carlo Markov chain sweep
-template <class Graph, class BGraph, class Eprop, class Vprop, class EMat,
-          class EVprop, class VEprop, class RNG>
-void move_sweep(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b, Vprop label,
-                size_t L, vector<int>& vlist, bool deg_corr, double beta,
-                Eprop eweight, Vprop vweight, EVprop egroups, VEprop esrcpos,
-                VEprop etgtpos, Graph& g, BGraph& bg, EMat& emat,
-                bool sequential, bool random_move, bool verbose, RNG& rng,
-                double& S, size_t& nmoves)
+template <class Graph, class BGraph, class EMprop, class Eprop, class Vprop,
+          class EMat, class EVprop, class VEprop, class SamplerMap, class RNG>
+void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
+                Vprop clabel, vector<int>& vlist, bool deg_corr, bool dense,
+                bool multigraph, double beta, Eprop eweight, Vprop vweight,
+                EVprop egroups, VEprop esrcpos, VEprop etgtpos, Graph& g,
+                BGraph& bg, EMat& emat, SamplerMap neighbour_sampler,
+                bool sequential, bool random_move, double c, bool verbose,
+                RNG& rng, double& S, size_t& nmoves)
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-    nmoves = 0;
 
+    size_t B = num_vertices(bg);
+    auto_ptr<EntrySet<Graph> > m_entries;
+
+    vector<vertex_t> moves;
+    if (!sequential)
+        moves.resize(vlist.size());
 
     typedef std::tr1::uniform_real<> rdist_t;
     std::tr1::variate_generator<RNG&, rdist_t> rand_real(rng, rdist_t());
 
-    typedef random_permutation_iterator<typename vector<int>::iterator,
-                                        RNG> random_vertex_iter;
-    random_vertex_iter viter(vlist.begin(), vlist.end(), rng),
-        vi_end(vlist.end(), vlist.end(), rng);
-    for (; viter != vi_end; ++viter)
+    // it is useful to shuffle the vertex order even in the parallel case, so
+    // threads become more balanced
+    std::tr1::uniform_int<> uniint;
+    std::tr1::variate_generator<RNG&, std::tr1::uniform_int<> >gen(rng, uniint);
+    std::random_shuffle(vlist.begin(), vlist.end(), gen);
+
+    std::tr1::uniform_int<size_t> s_rand(0, B - 1);
+
+    nmoves = 0;
+    S = 0;
+
+    int i = 0, N = vlist.size();
+    #pragma omp parallel for default(shared) private(i) \
+        firstprivate(m_entries) schedule(static) if (!sequential && N > 100)
+    for (i = 0; i < N; ++i)
     {
-        std::tr1::uniform_int<size_t> rand(0, num_vertices(bg) / L - 1);
+        if (m_entries.get() == NULL && (!dense || (!isinf(beta) && !random_move)))
+            m_entries = auto_ptr<EntrySet<Graph> >(new EntrySet<Graph>(B));
 
-        vertex_t v = vertex(*viter, g);
-        if (!sequential)
-        {
-            std::tr1::uniform_int<size_t> randr(0, vlist.size() - 1);
-            v = vertex(vlist[randr(rng)], g);
-        }
-
+        vertex_t v = vertex(vlist[i], g);
         vertex_t r = b[v];
 
-        vertex_t u = random_neighbour(v, g, rng);
-        if (u == v)
-            continue;
-        vertex_t t = b[u];
+        if (!sequential)
+            moves[i] = r;
 
-        // attempt random block first
-        vertex_t s = vertex(rand(rng) * L + label[v], bg);
-        size_t B = num_vertices(bg);
-        double p_rand;
-        if (is_directed::apply<Graph>::type::value)
-            p_rand = B / double(mrp[t] + mrm[t] + B);
-        else
-            p_rand = B / double(mrp[t] + B);
-
-        if (rand_real() >= p_rand && !random_move)
+        // attempt random block
+        vertex_t s = r;
+        #pragma omp critical
         {
-            std::tr1::uniform_int<size_t> urand(0, egroups[t].size() - 1);
+            s = s_rand(rng);
+        }
 
-            const typename graph_traits<Graph>::edge_descriptor& e =
-                get<0>(egroups[t][urand(rng)]);
-            s = b[target(e, g)];
-            if (s == t)
-                s = b[source(e, g)];
+        if (!random_move && total_degreeS()(v, g) > 0)
+        {
+            vertex_t u;
+            #pragma omp critical
+            {
+                u = neighbour_sampler[v].sample(rng);
+            }
+            vertex_t t = b[u];
 
-            if (int(s % L) != label[v])
-                continue;
+            double p_rand = 0;
+            if (c > 0)
+            {
+                if (is_directed::apply<Graph>::type::value)
+                    p_rand = c * B / double(mrp[t] + mrm[t] + c * B);
+                else
+                    p_rand = c * B / double(mrp[t] + c * B);
+            }
+
+            double sample_real = 0;
+            #pragma omp critical
+            {
+                sample_real = rand_real();
+            }
+
+            if (sample_real >= p_rand)
+            {
+                std::tr1::uniform_int<size_t> urand(0, egroups[t].size() - 1);
+
+                size_t ur;
+                #pragma omp critical
+                {
+                    ur = urand(rng);
+                }
+
+                const typename graph_traits<Graph>::edge_descriptor& e =
+                    get<0>(egroups[t][ur]);
+
+                s = b[target(e, g)];
+                if (s == t)
+                    s = b[source(e, g)];
+            }
         }
 
         if (s == r)
             continue;
 
-        double pf = (isinf(beta) || random_move) ? 1 : get_move_prob(v, s, b, mrs, mrp, mrm, emat, g, B);
+        if (clabel[s] != clabel[r])
+            continue;
 
-        double dS = move_vertex(v, s, mrs, mrp, mrm, wr, b, deg_corr, eweight,
-                                vweight, g, bg, emat, true);
-
-        double pb = (isinf(beta) || random_move) ? 1 : get_move_prob(v, r, b, mrs, mrp, mrm, emat, g, B);
-
-        double a = isinf(beta) ? -dS : -beta * dS + log(pb) - log(pf);
-
-        bool accept = false;
-        if (a > 0)
-            accept = true;
-        else if (!isinf(beta))
-            accept = rand_real() < exp(a);
-
-        if (!accept)
+        double dS;
+        if (!dense)
         {
-            move_vertex(v, r, mrs, mrp, mrm, wr, b, deg_corr, eweight,
-                        vweight, g, bg, emat, false);
+            dS = virtual_move(v, s, mrs, mrp, mrm, wr, b, deg_corr, eweight,
+                              vweight, g, bg, emat, *m_entries);
         }
         else
         {
-            S += dS;
-            ++nmoves;
-
-            size_t self_count = 0;
-
-            //update the half-edge lists
-            typename all_edges_iteratorS<Graph>::type e, e_end;
-            for (tie(e, e_end) = all_edges_iteratorS<Graph>::get_edges(v, g);
-                 e != e_end; ++e)
+            if (!isinf(beta) && !random_move)
             {
-                vertex_t src = get_source(*e, g);
-                vertex_t tgt = get_target(*e, g);
-
-                bool is_src = (src == v);
-
-                // self-loops will appear twice
-                if (src == tgt)
-                {
-                    is_src = (self_count == 0);
-                    ++self_count;
-                }
-
-                for (size_t i = 0; i < size_t(eweight[*e]); ++i)
-                {
-                    size_t pos = (is_src) ? esrcpos[*e][i] : etgtpos[*e][i];
-
-                    const boost::tuple<typename graph_traits<Graph>::edge_descriptor, bool, size_t>& eback = egroups[r].back();
-
-                    if (get<1>(eback))
-                        esrcpos[get<0>(eback)][get<2>(eback)] = pos;
-                    else
-                        etgtpos[get<0>(eback)][get<2>(eback)] = pos;
-
-                    egroups[r][pos] = eback;
-                    egroups[r].pop_back();
-                }
+                m_entries->Clear();
+                move_entries(v, s, b, eweight, g, bg, *m_entries);
             }
 
-            self_count = 0;
-            for (tie(e, e_end) = all_edges_iteratorS<Graph>::get_edges(v, g);
-                 e != e_end; ++e)
+            dS = virtual_move_dense(v, s, mrs, mrp, mrm, wr, b, deg_corr,
+                                    eweight, vweight, g, bg, emat, multigraph);
+        }
+
+        bool accept = false;
+        if (isinf(beta))
+        {
+            accept = dS < 0;
+        }
+        else
+        {
+            double pf = random_move ? 1 :
+                get_move_prob(v, r, s, c, b, mrs, mrp, mrm, emat, eweight, g,
+                              bg, *m_entries, false);
+
+            double pb = random_move ? 1 :
+                get_move_prob(v, s, r, c, b, mrs, mrp, mrm, emat, eweight, g,
+                              bg, *m_entries, true);
+
+            double a = -beta * dS + log(pb) - log(pf);
+
+            if (a > 0)
             {
-                vertex_t src = get_source(*e, g);
-                vertex_t tgt = get_target(*e, g);
-
-                bool is_src = (src == v);
-
-                // self-loops will appear twice
-                if (src == tgt)
-                {
-                    is_src = (self_count == 0);
-                    ++self_count;
-                }
-
-                for (size_t i = 0; i < size_t(eweight[*e]); ++i)
-                {
-                    egroups[s].push_back(boost::make_tuple(*e, is_src, i));
-                    if (is_src)
-                        esrcpos[*e][i] = egroups[s].size() - 1;
-                    else
-                        etgtpos[*e][i] = egroups[s].size() - 1;
-                }
+                accept = true;
             }
+            else
+            {
+                double sample;
+                #pragma omp critical
+                {
+                    sample = rand_real();
+                }
+                accept = sample < exp(a);
+            }
+        }
 
-            if (verbose)
-                cout << v << ": " << r << " -> " << s << " " << S << " " << vlist.size() << endl;
+        if (!dense || (!isinf(beta) && !random_move))
+            m_entries->Clear();
+
+        if (accept)
+        {
+            if (sequential)
+            {
+                move_vertex(v, s, mrs, mrp, mrm, wr, b, deg_corr, eweight,
+                            vweight, g, bg, emat);
+                if (!random_move)
+                    update_egroups(v, r, s, eweight, egroups, esrcpos, etgtpos, g);
+                S += dS;
+                ++nmoves;
+                if (verbose)
+                    cout << v << ": " << r << " -> " << s << " " << S << " " << vlist.size() << endl;
+            }
+            else
+            {
+                moves[i] = s;
+            }
         }
     }
-}
 
+    if (m_entries.get() == NULL && !dense)
+        m_entries = auto_ptr<EntrySet<Graph> >(new EntrySet<Graph>(B));
+
+    for (size_t i = 0; i < moves.size(); ++i)
+    {
+         vertex_t v = vlist[i];
+         vertex_t r = b[v];
+         vertex_t s = moves[i];
+
+         if (s == r)
+             continue;
+
+         double dS;
+         if (!dense)
+         {
+             dS = virtual_move(v, s, mrs, mrp, mrm, wr, b, deg_corr, eweight,
+                               vweight, g, bg, emat, *m_entries);
+             m_entries->Clear();
+         }
+         else
+         {
+             dS = virtual_move_dense(v, s, mrs, mrp, mrm, wr, b, deg_corr,
+                                     eweight, vweight, g, bg, emat, multigraph);
+         }
+
+         if (isinf(beta) && dS > 0)
+             continue;
+
+         move_vertex(v, s, mrs, mrp, mrm, wr, b, deg_corr, eweight,
+                     vweight, g, bg, emat);
+         if (!random_move)
+             update_egroups(v, r, s, eweight, egroups, esrcpos, etgtpos, g);
+         S += dS;
+         ++nmoves;
+         if (verbose)
+             cout << v << ": " << r << " -> " << s << " " << S << " " << vlist.size() << endl;
+    }
+}
 
 // construct half-edge lists
 struct build_egroups
 {
-
     template <class Eprop, class Vprop, class VEprop, class Graph, class VertexIndex>
     void operator()(Vprop b, boost::any& oegroups, VEprop esrcpos, VEprop etgtpos,
-                    Eprop eweight, Graph& g, VertexIndex vertex_index) const
+                    Eprop eweight, Graph& g, VertexIndex vertex_index,
+                    bool empty) const
     {
-        typedef typename property_map_type::apply<vector<boost::tuple<typename graph_traits<Graph>::edge_descriptor, bool, size_t> >,
-                                                  GraphInterface::vertex_index_map_t>::type vemap_t;
-        vemap_t egroups(vertex_index);
-        oegroups = egroups;
+        typedef vector<boost::tuple<typename graph_traits<Graph>::edge_descriptor, bool, size_t> > elist_t;
+
+        typedef typename property_map_type::apply<elist_t, GraphInterface::vertex_index_map_t>::type vemap_t;
+        vemap_t egroups_checked(vertex_index);
+        oegroups = egroups_checked;
+
+        typename vemap_t::unchecked_t egroups = egroups_checked.get_unchecked(num_vertices(g));
+
+        if (empty)
+            return;
 
         typename graph_traits<Graph>::edge_iterator e, e_end;
         for (tie(e, e_end) = edges(g); e != e_end; ++e)
         {
             size_t r = b[get_source(*e, g)];
             esrcpos[*e].resize(eweight[*e]);
+            elist_t& r_elist = egroups[r];
+            size_t pos = r_elist.size();
+            r_elist.resize(r_elist.size() + size_t(eweight[*e]));
             for (size_t i = 0; i < size_t(eweight[*e]); ++i)
             {
-                egroups[r].push_back(boost::make_tuple(*e, true, i));
-                esrcpos[*e][i] = egroups[r].size() - 1;
+                r_elist[pos + i] = boost::make_tuple(*e, true, i);
+                esrcpos[*e][i] = pos + i;
             }
+
             size_t s = b[get_target(*e, g)];
             etgtpos[*e].resize(eweight[*e]);
+            elist_t& s_elist = egroups[s];
+            pos = s_elist.size();
+            s_elist.resize(s_elist.size() + size_t(eweight[*e]));
             for (size_t i = 0; i < size_t(eweight[*e]); ++i)
             {
-                egroups[s].push_back(boost::make_tuple(*e, false, i));
-                etgtpos[*e][i] = egroups[s].size() - 1;
+                s_elist[pos + i] = boost::make_tuple(*e, false, i);
+                etgtpos[*e][i] = pos + i;
             }
         }
     }
-
 };
+
+template <class Vertex, class Graph, class Eprop, class SMap>
+void build_neighbour_sampler(Vertex v, SMap sampler, Eprop eweight, Graph& g)
+{
+    vector<Vertex> neighbours;
+    vector<double> probs;
+    neighbours.reserve(total_degreeS()(v, g));
+    probs.reserve(total_degreeS()(v, g));
+
+    typename all_edges_iteratorS<Graph>::type e, e_end;
+    for(tie(e, e_end) = all_edges_iteratorS<Graph>::get_edges(v, g);
+        e != e_end; ++e)
+    {
+        Vertex u = target(*e, g);
+        if (is_directed::apply<Graph>::type::value && u == v)
+            u = source(*e, g);
+        neighbours.push_back(u);
+        probs.push_back(eweight[*e]); // Self-loops will be added twice, and
+                                      // hence will be sampled with probability
+                                      // 2 * eweight[e]
+    }
+
+    sampler[v] = Sampler<Vertex, mpl::false_>(neighbours, probs);
+};
+
+struct init_neighbour_sampler
+{
+    template <class Graph, class Eprop>
+    void operator()(Graph& g, Eprop eweight, boost::any& asampler) const
+    {
+        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
+
+        typedef typename property_map<Graph, vertex_index_t>::type vindex_map_t;
+        typedef typename property_map_type::apply<Sampler<vertex_t, mpl::false_>,
+                                                  vindex_map_t>::type::unchecked_t
+            sampler_map_t;
+
+        sampler_map_t sampler(get(vertex_index_t(), g), num_vertices(g));
+        asampler = sampler;
+
+        int i, N = num_vertices(g);
+        #pragma omp parallel for default(shared) private(i) schedule(static)
+        for (i = 0; i < N; ++i)
+        {
+            vertex_t v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+            build_neighbour_sampler(v, sampler, eweight, g);
+        }
+    }
+};
+
+
+struct merge_cmp_less
+{
+    template<class Vertex>
+    double operator()(const tr1::tuple<Vertex, Vertex, double>& a,
+                      const tr1::tuple<Vertex, Vertex, double>& b)
+    {
+        return get<2>(a) < get<2>(b);
+    }
+};
+
+struct match_cmp_less
+{
+    template<class Vertex>
+    double operator()(const pair<Vertex, double>& a,
+                      const pair<Vertex, double>& b)
+    {
+        return a.second < b.second;
+    }
+};
+
+
+// merge block r into s
+template <class BGraph, class Eprop, class Vprop, class EMat>
+void merge_blocks(size_t r, size_t s, Eprop& mrs, Vprop& mrp, Vprop& mrm,
+                  Vprop& wr, BGraph& bg, EMat& emat)
+{
+    typedef typename graph_traits<BGraph>::vertex_descriptor vertex_t;
+    bool self_count = false;
+    typename graph_traits<BGraph>::out_edge_iterator ei, ei_end;
+    for (tie(ei, ei_end) = out_edges(r, bg); ei != ei_end; ++ei)
+    {
+        typename graph_traits<BGraph>::edge_descriptor e = *ei;
+        vertex_t t = target(e, bg);
+        if (t == r && !is_directed::apply<BGraph>::type::value)
+        {
+            if (self_count)
+                continue;
+            self_count = true;
+        }
+
+        remove_me(r, t, e, emat, bg, false);
+
+        if (t == r)
+            t = s;
+
+        pair<typename graph_traits<BGraph>::edge_descriptor, bool> ne =
+            get_me(s, t, emat, bg);
+
+        if (!ne.second)
+        {
+            ne = add_edge(s, t, bg);
+            put_me(s, t, ne.first, emat, bg);
+        }
+        mrs[ne.first] += mrs[e];
+        mrs[e] = 0;
+    }
+
+    typename in_edge_iteratorS<BGraph>::type ie, ie_end;
+    for (tie(ie, ie_end) = in_edge_iteratorS<BGraph>::get_edges(r, bg);
+         ie != ie_end; ++ie)
+    {
+        typename graph_traits<BGraph>::edge_descriptor e = *ie;
+        vertex_t t = source(e, bg);
+        if (t == r)
+            continue;
+
+        remove_me(r, t, e, emat, bg, false);
+
+        pair<typename graph_traits<BGraph>::edge_descriptor, bool> ne =
+            get_me(t, s, emat, bg);
+
+        if (!ne.second)
+        {
+            ne = add_edge(t, s, bg);
+            put_me(t, s, ne.first, emat, bg);
+        }
+        mrs[ne.first] += mrs[e];
+        mrs[e] = 0;
+    }
+
+    mrp[s] += mrp[r];
+    if (is_directed::apply<BGraph>::type::value)
+        mrm[s] += mrm[r];
+    wr[s] += wr[r];
+    wr[r] = 0;
+    clear_vertex(r, bg);
+}
+
+
+template <class BGraph, class Eprop, class Vprop, class EMat, class SamplerMap,
+          class RNG>
+void merge_sweep(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
+                 Vprop clabel, bool deg_corr, bool dense, bool multigraph,
+                 BGraph& bg, EMat& emat, SamplerMap neighbour_sampler,
+                 size_t nmerges, size_t nsweeps, bool random_moves,
+                 bool verbose, RNG& rng, double& S, size_t& nmoves)
+{
+    typedef typename graph_traits<BGraph>::vertex_descriptor vertex_t;
+
+    size_t B = num_vertices(bg);
+    auto_ptr<EntrySet<BGraph> > m_entries;
+
+    typedef std::tr1::uniform_real<> rdist_t;
+    std::tr1::variate_generator<RNG&, rdist_t> rand_real(rng, rdist_t());
+
+    vector<set<pair<vertex_t, double>, match_cmp_less> > past_moves;
+    vector<pair<vertex_t, double> > best_move;
+    past_moves.resize(B);
+    best_move.resize(B, make_pair(vertex_t(0), numeric_limits<double>::max()));
+
+    nmoves = 0;
+    size_t n_attempts = 0;
+    while (n_attempts < nsweeps)
+    {
+        n_attempts++;
+
+        int i = 0, N = B;
+        #pragma omp parallel for default(shared) private(i) \
+            firstprivate(m_entries) schedule(static) if (N > 100)
+        for (i = 0; i < N; ++i)
+        {
+            if (m_entries.get() == NULL && !dense)
+                m_entries = auto_ptr<EntrySet<BGraph> >(new EntrySet<BGraph>(B));
+
+            vertex_t r = vertex(i, bg);
+
+            if (b[r] != r)
+                continue;
+
+            vertex_t s;
+            if (random_moves || total_degreeS()(r, bg) == 0)
+            {
+                std::tr1::uniform_int<size_t> srand(0, B - 1);
+                #pragma omp critical
+                {
+                    s = srand(rng);
+                    while (b[s] != s)
+                        s = srand(rng);
+                }
+            }
+            else
+            {
+                #pragma omp critical
+                {
+                    vertex_t t = neighbour_sampler[r].sample(rng);
+                    s = neighbour_sampler[t].sample(rng);
+                }
+            }
+
+            if (s == r)
+                continue;
+
+            if (clabel[r] != clabel[s])
+                continue;
+
+            double dS = 0;
+
+            typeof(past_moves[r]).begin() iter = past_moves[r].find(make_pair(s, dS));
+            if (iter == past_moves[r].end())
+            {
+                if (!dense)
+                {
+                    dS = virtual_move(r, s, mrs, mrp, mrm, wr, b, deg_corr, mrs,
+                                      wr, bg, bg, emat, *m_entries);
+                    m_entries->Clear();
+                }
+                else
+                {
+                    dS = virtual_move_dense(r, s, mrs, mrp, mrm, wr, b,
+                                            deg_corr, mrs, wr, bg, bg, emat,
+                                            multigraph);
+                }
+                past_moves[r].insert(make_pair(s, dS));
+            }
+            else
+            {
+                dS = iter->second;
+            }
+
+            if (dS < best_move[r].second)
+            {
+                best_move[r].first = s;
+                best_move[r].second = dS;
+            }
+
+        }
+    }
+
+    if (nmerges > 0)
+    {
+        if (m_entries.get() == NULL && !dense)
+            m_entries = auto_ptr<EntrySet<BGraph> >(new EntrySet<BGraph>(B));
+
+        // top is the merge with _largest_ dS
+        priority_queue<tr1::tuple<vertex_t, vertex_t, double>,
+                       vector<tr1::tuple<vertex_t, vertex_t, double> >,
+                       merge_cmp_less> merge_heap;
+
+        for (size_t i = 0; i < B; ++i)
+        {
+            vertex_t r = vertex(i, bg);
+            vertex_t s = best_move[r].first;
+            double dS = best_move[r].second;
+
+            if (r != s && dS < numeric_limits<double>::max() &&
+                (merge_heap.size() < nmerges || dS < get<2>(merge_heap.top())))
+            {
+                merge_heap.push(tr1::make_tuple(r, s, dS));
+                if (merge_heap.size() > nmerges)
+                    merge_heap.pop();
+            }
+        }
+
+        // back is the merge with _smallest_ dS
+        vector<pair<vertex_t, vertex_t> > best_merges;
+        best_merges.reserve(best_merges.size());
+
+        while (!merge_heap.empty())
+        {
+            tr1::tuple<vertex_t, vertex_t, double> v = merge_heap.top();
+            best_merges.push_back(make_pair(get<0>(v), get<1>(v)));
+            merge_heap.pop();
+        }
+
+        vector<bool> touched(B, false);
+
+        while (!best_merges.empty())
+        {
+            vertex_t r = best_merges.back().first;
+            vertex_t s = best_merges.back().second;
+            best_merges.pop_back();
+
+            double dS;
+            if (!dense)
+            {
+                dS = virtual_move(r, s, mrs, mrp, mrm, wr, b, deg_corr, mrs,
+                                  wr, bg, bg, emat, *m_entries);
+                m_entries->Clear();
+            }
+            else
+            {
+                dS = virtual_move_dense(r, s, mrs, mrp, mrm, wr, b,
+                                        deg_corr, mrs, wr, bg, bg, emat,
+                                        multigraph);
+            }
+
+            if (touched[r] || touched[s])
+                continue;
+
+            touched[r] = touched[s] = true;
+
+            typename Eprop::checked_t ew = mrs.get_checked();
+
+            merge_blocks(r, s, ew, mrp, mrm, wr, bg, emat);
+            b[r] = s;
+
+            ++nmoves;
+            S += dS;
+        }
+
+        // collapse merge tree across multiple calls
+        int i = 0, N = B;
+        for (i = 0; i < N; ++i)
+        {
+            vertex_t r = vertex(i, bg);
+            vertex_t s = r;
+            while (b[s] != s)
+                s = b[s];
+            b[r] = s;
+        }
+
+        #pragma omp parallel for default(shared) private(i) schedule(static) if (N > 100)
+        for (i = 0; i < N; ++i)
+        {
+            vertex_t r = vertex(i, bg);
+            if (total_degreeS()(r, bg) > 0)
+                build_neighbour_sampler(r, neighbour_sampler, mrs, bg);
+            else
+                neighbour_sampler[r] = Sampler<vertex_t, mpl::false_>();
+        }
+    }
+}
+
 
 // Sampling marginal probabilities on the edges
 template <class Graph, class Vprop, class MEprop>
@@ -1102,6 +1857,7 @@ void collect_vertex_marginals(Vprop b, VVprop p, Graph& g)
         p[*v][r]++;
     }
 }
+
 
 } // graph_tool namespace
 
