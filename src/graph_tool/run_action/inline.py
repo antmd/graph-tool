@@ -175,11 +175,11 @@ def inline(code, arg_names=None, local_dict=None,
             gi = "__gt__" + arg + "__gi"
             graph_type = get_graph_type(arg_val)
             gi_val = arg_val._Graph__graph
-            arg_def += "typedef GraphWrap<%s > %s_graph_t;\n" % (graph_type, arg)
+            arg_def += "typedef %s %s_graph_t;\n" % (graph_type, arg)
             arg_def += "GraphInterface& %s = python::extract<GraphInterface&>(%s);\n" % \
                         (gi, alias)
-            arg_def += "%s_graph_t %s = graph_wrap(*boost::any_cast<%s*>(%s.GetGraphView()), %s);\n" % \
-                        (arg, arg, graph_type, gi, gi)
+            arg_def += "%s_graph_t& %s = *boost::any_cast<%s*>(%s.GetGraphView());\n" % \
+                        (arg, arg, graph_type, gi)
             arg_alias.append(alias)
             alias_dict[alias] = gi_val
         elif type(arg_val) == PropertyMap:

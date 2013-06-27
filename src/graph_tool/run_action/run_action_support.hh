@@ -20,7 +20,6 @@
 #include <tr1/unordered_map>
 #include <tr1/tuple>
 #include "graph.hh"
-#include "graph_wrap.hh"
 #include "graph_filtering.hh"
 #include "graph_properties.hh"
 #include "histogram.hh"
