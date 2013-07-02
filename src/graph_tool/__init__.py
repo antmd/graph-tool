@@ -787,14 +787,12 @@ def group_vector_property(props, value_type=None, vprop=None, pos=None):
 
     for i, p in enumerate(props):
         if k != "g":
-            g.stash_filter(directed=True, reversed=True)
-            g.set_directed(True)
-            g.set_reversed(False)
-            libcore.group_vector_property(g._Graph__graph, _prop(k, g, vprop),
+            u = GraphView(g, directed=True)
+            u.set_reversed(False)
+            libcore.group_vector_property(u._Graph__graph, _prop(k, g, vprop),
                                           _prop(k, g, p),
                                           i if pos == None else pos[i],
                                           k == 'e')
-            g.pop_filter(directed=True, reversed=True)
         else:
             vprop[g][i if pos is None else pos[i]] = p[g]
     return vprop
@@ -853,14 +851,12 @@ def ungroup_vector_property(vprop, pos, props=None):
             raise ValueError("'props' must be of the same key type as 'vprop'.")
 
         if k != 'g':
-            g.stash_filter(directed=True, reversed=True)
-            g.set_directed(True)
-            g.set_reversed(False)
+            u = GraphView(g, directed=True)
+            u.set_reversed(False)
             libcore.ungroup_vector_property(g._Graph__graph,
                                             _prop(k, g, vprop),
                                             _prop(k, g, props[i]),
                                             p, k == 'e')
-            g.pop_filter(directed=True, reversed=True)
         else:
             if len(vprop[g]) <= pos[i]:
                 vprop[g].resize(pos[i] + 1)

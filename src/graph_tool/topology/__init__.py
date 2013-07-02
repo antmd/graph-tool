@@ -407,21 +407,17 @@ def min_spanning_tree(g, weights=None, root=None, tree_map=None):
     if tree_map.value_type() != "bool":
         raise ValueError("edge property 'tree_map' must be of value type bool.")
 
-    try:
-        g.stash_filter(directed=True)
-        g.set_directed(False)
-        if root is None:
-            libgraph_tool_topology.\
-                   get_kruskal_spanning_tree(g._Graph__graph,
-                                             _prop("e", g, weights),
-                                             _prop("e", g, tree_map))
-        else:
-            libgraph_tool_topology.\
-                   get_prim_spanning_tree(g._Graph__graph, int(root),
-                                          _prop("e", g, weights),
-                                          _prop("e", g, tree_map))
-    finally:
-        g.pop_filter(directed=True)
+    u = GraphView(g, directed=False)
+    if root is None:
+        libgraph_tool_topology.\
+               get_kruskal_spanning_tree(u._Graph__graph,
+                                         _prop("e", g, weights),
+                                         _prop("e", g, tree_map))
+    else:
+        libgraph_tool_topology.\
+               get_prim_spanning_tree(u._Graph__graph, int(root),
+                                      _prop("e", g, weights),
+                                      _prop("e", g, tree_map))
     return tree_map
 
 
@@ -1166,30 +1162,27 @@ def shortest_distance(g, source=None, target=None, weights=None, max_dist=None,
         max_dist = 0
 
     if directed is not None:
-        g.stash_filter(directed=True)
-        g.set_directed(directed)
+        u = GraphView(g, directed=directed)
+    else:
+        u = g
 
     if target is None:
         target = -1
 
-    try:
-        if source is not None:
-            pmap = g.copy_property(g.vertex_index, value_type="int64_t")
-            libgraph_tool_topology.get_dists(g._Graph__graph,
-                                             int(source),
-                                             int(target),
+    if source is not None:
+        pmap = g.copy_property(u.vertex_index, value_type="int64_t")
+        libgraph_tool_topology.get_dists(g._Graph__graph,
+                                         int(source),
+                                         int(target),
+                                         _prop("v", g, dist_map),
+                                         _prop("e", g, weights),
+                                         _prop("v", g, pmap),
+                                         float(max_dist))
+    else:
+        libgraph_tool_topology.get_all_dists(u._Graph__graph,
                                              _prop("v", g, dist_map),
-                                             _prop("e", g, weights),
-                                             _prop("v", g, pmap),
-                                             float(max_dist))
-        else:
-            libgraph_tool_topology.get_all_dists(g._Graph__graph,
-                                                 _prop("v", g, dist_map),
-                                                 _prop("e", g, weights), dense)
+                                             _prop("e", g, weights), dense)
 
-    finally:
-        if directed is not None:
-            g.pop_filter(directed=True)
 
     if source is not None and target != -1:
         dist_map = dist_map[target]
@@ -1511,8 +1504,7 @@ def is_planar(g, embedding=False, kuratowski=False):
     .. [boost-planarity] http://www.boost.org/libs/graph/doc/boyer_myrvold.html
     """
 
-    g.stash_filter(directed=True)
-    g.set_directed(False)
+    u = GraphView(g, directed=False)
 
     if embedding:
         embed = g.new_vertex_property("vector<int>")
@@ -1524,12 +1516,9 @@ def is_planar(g, embedding=False, kuratowski=False):
     else:
         kur = None
 
-    try:
-        is_planar = libgraph_tool_topology.is_planar(g._Graph__graph,
-                                                     _prop("v", g, embed),
-                                                     _prop("e", g, kur))
-    finally:
-        g.pop_filter(directed=True)
+    is_planar = libgraph_tool_topology.is_planar(u._Graph__graph,
+                                                 _prop("v", g, embed),
+                                                 _prop("e", g, kur))
 
     ret = [is_planar]
     if embed is not None:
