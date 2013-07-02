@@ -445,6 +445,9 @@ class PropertyMap(object):
         the value type is converted to the chosen type."""
         return self.get_graph().copy_property(self, value_type=value_type)
 
+    def __copy__(self):
+        return self.copy()
+
     def get_graph(self):
         """Get the graph class to which the map refers."""
         g = self.__g()
@@ -1140,6 +1143,9 @@ class Graph(object):
         """Return a deep copy of self. All :ref:`internal property maps <sec_internal_props>`
         are also copied."""
         return Graph(self)
+
+    def __copy__(self):
+        return self.copy()
 
     def __repr__(self):
         # provide more useful information
