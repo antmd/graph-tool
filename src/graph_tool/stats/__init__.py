@@ -294,10 +294,10 @@ def edge_average(g, eprop):
 
 def remove_labeled_edges(g, label):
     """Remove every edge `e` such that `label[e] != 0`."""
-    g.stash_filter(all=False, directed=True, reversed=True)
+    u = GraphView(g, directed=True, reversed=g.is_reversed(),
+                  skip_properties=True)
     libgraph_tool_stats.\
-          remove_labeled_edges(g._Graph__graph, _prop("e", g, label))
-    g.pop_filter(all=False, directed=True, reversed=True)
+          remove_labeled_edges(u._Graph__graph, _prop("e", g, label))
 
 
 def label_parallel_edges(g, mark_only=False, count_all=False, eprop=None):

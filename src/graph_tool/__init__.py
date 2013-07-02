@@ -495,14 +495,17 @@ class PropertyMap(object):
         g = self.get_graph()
         if g is None:
             return None
-        g.stash_filter(edge=True, vertex=True)
+        if g.get_edge_filter() is not None or g.get_vertex_filter() is not None:
+            u = GraphView(g, skip_properties=True, skip_efilt=True,
+                          skip_vfilt=True)
+        else:
+            u = g
         if self.__key_type == 'v':
-            n = g.num_vertices()
+            n = u.num_vertices()
         elif self.__key_type == 'e':
-            n = max(g.max_edge_index, 1)
+            n = max(u.max_edge_index, 1)
         else:
             n = 1
-        g.pop_filter(edge=True, vertex=True)
         a = self.__map.get_array(n)
         return a
 
@@ -787,8 +790,8 @@ def group_vector_property(props, value_type=None, vprop=None, pos=None):
 
     for i, p in enumerate(props):
         if k != "g":
-            u = GraphView(g, directed=True)
-            u.set_reversed(False)
+            u = GraphView(g, directed=True, reversed=g.is_reversed(),
+                          skip_properties=True)
             libcore.group_vector_property(u._Graph__graph, _prop(k, g, vprop),
                                           _prop(k, g, p),
                                           i if pos == None else pos[i],
@@ -851,9 +854,9 @@ def ungroup_vector_property(vprop, pos, props=None):
             raise ValueError("'props' must be of the same key type as 'vprop'.")
 
         if k != 'g':
-            u = GraphView(g, directed=True)
-            u.set_reversed(False)
-            libcore.ungroup_vector_property(g._Graph__graph,
+            u = GraphView(g, directed=True, reversed=g.is_reversed(),
+                          skip_properties=True)
+            libcore.ungroup_vector_property(u._Graph__graph,
                                             _prop(k, g, vprop),
                                             _prop(k, g, props[i]),
                                             p, k == 'e')
@@ -944,7 +947,7 @@ def edge_difference(g, prop, ediff=None):
         raise ValueError("'ediff' must be of the same value type as 'prop': " +
                          val_t)
     if not g.is_directed():
-        g = GraphView(g, directed=True)
+        g = GraphView(g, directed=True, skip_properties=True)
     libcore.edge_difference(g._Graph__graph, _prop("v", g, prop),
                             _prop("e", g, ediff))
     return ediff
@@ -1037,8 +1040,6 @@ class Graph(object):
                                "edge_filter": (None, False),
                                "vertex_filter": (None, False),
                                "directed": True}
-        self.__stashed_filter_state = []
-
         if g is None:
             self.__graph = libcore.GraphInterface()
             self.set_directed(directed)
@@ -1048,7 +1049,13 @@ class Graph(object):
             else:
                 vprune, eprune, rprune = prune
             if not (vprune or eprune or rprune):
-                g.stash_filter(vertex=vprune, edge=vprune, reversed=rprune)
+                g = GraphView(g)
+                if not vprune:
+                    g.set_vertex_filter(None)
+                if not eprune:
+                    g.set_edge_filter(None)
+                if not rprune:
+                    g.set_reversed(False)
 
             # Copy all internal properties from original graph.
             vprops = []
@@ -1087,44 +1094,43 @@ class Graph(object):
                 new_p[self] = v[g]
                 self.graph_properties[k] = new_p
 
-            if not (vprune or eprune or rprune):
-                g.pop_filter(vertex=vprune, edge=vprune, reversed=rprune)
-
-            self.__stashed_filter_state = [self.get_filter_state()]
-
+            new_v_filt = None
             if not vprune:
                 v_filt, v_rev = g.__filter_state["vertex_filter"]
-                if v_filt != None:
+                if v_filt is not None:
                     if v_filt not in list(g.vertex_properties.values()):
-                        new_filt = self.new_vertex_property("bool")
+                        new_v_filt = self.new_vertex_property("bool")
                         self.copy_property(v_filt, new_filt)
 
                     else:
                         for k, v in g.vertex_properties.items():
                             if v == v_filt:
-                                new_filt = self.vertex_properties[k]
-                    self.__stashed_filter_state[0]["vertex_filter"] = (new_filt,
-                                                                       v_rev)
+                                new_v_filt = self.vertex_properties[k]
+
+            new_e_filt = None
             if not eprune:
                 e_filt, e_rev = g.__filter_state["edge_filter"]
-                if e_filt != None:
+                if e_filt is not None:
                     if e_filt not in list(g.edge_properties.values()):
-                        new_filt = self.new_edge_property("bool")
+                        new_e_filt = self.new_edge_property("bool")
                         self.copy_property(e_filt, new_filt)
 
                     else:
                         for k, v in g.edge_properties.items():
                             if v == e_filt:
-                                new_filt = self.edge_properties[k]
-                    self.__stashed_filter_state[0]["edge_filter"] = (new_filt,
-                                                                     e_rev)
+                                new_e_filt = self.edge_properties[k]
+
+
+            if new_v_filt is not None:
+                self.set_vertex_filter(new_v_filt, v_rev)
+            if new_e_filt is not None:
+                self.set_vertex_filter(new_e_filt, e_rev)
+
             if not rprune:
-                self.__stashed_filter_state[0]["reversed"] = g.is_reversed()
+                self.set_reversed(g.is_reversed())
 
             # directedness is always a filter
-            self.__stashed_filter_state[0]["directed"] = g.is_directed()
-
-            self.pop_filter()
+            self.set_directed(g.is_directed())
 
         # internal index maps
         self.__vertex_index = \
@@ -1193,13 +1199,13 @@ class Graph(object):
         """Return the vertex with index ``i``. If ``use_index=False``, the
         ``i``-th vertex is returned (which can differ from the vertex with index
         ``i`` in case of filtered graphs). """
-        if use_index:
-            self.stash_filter(vertex=True)
+        vfilt = self.get_vertex_filter()
         try:
+            if use_index:
+                self.set_vertex_filter(None)
             v = libcore.get_vertex(weakref.ref(self), int(i))
         finally:
-            if use_index:
-                self.pop_filter(vertex=True)
+            self.set_vertex_filter(vfilt[0], vfilt[1])
         return v
 
     def edge(self, s, t, all_edges=False):
@@ -1274,9 +1280,8 @@ class Graph(object):
         vertex = self.vertex(int(vertex))
         index = self.vertex_index[vertex]
 
-        self.stash_filter(vertex=True)
-        back = self.num_vertices() - 1
-        self.pop_filter(vertex=True)
+        u = GraphView(self, skip_properties=True, skip_vfilt=True)
+        back = u.num_vertices() - 1
 
         # move / shift all known property maps
         if index != back:
@@ -1560,11 +1565,11 @@ class Graph(object):
         if src.key_type() != tgt.key_type():
             raise ValueError("source and target properties must have the same" +
                              " key type")
-        if g is None:
-            g = self
-        if g is not self:
-            g.stash_filter(directed=True, reversed=True)
-        self.stash_filter(directed=True, reversed=True)
+
+        u = self if g is None else g
+        g = GraphView(u, directed=True, reversed=u.is_reversed(),
+                      skip_properties=True)
+
         if src.key_type() == "v":
             self.__graph.CopyVertexProperty(g.__graph, _prop("v", g, src),
                                             _prop("v", self, tgt))
@@ -1573,9 +1578,6 @@ class Graph(object):
                                             _prop("e", self, tgt))
         else:
             tgt[self] = src[g]
-        self.pop_filter(directed=True, reversed=True)
-        if g is not self:
-            g.pop_filter(directed=True, reversed=True)
         return ret
 
     # degree property map
@@ -1658,18 +1660,21 @@ class Graph(object):
         file-like object). The format is guessed from the ``file_name``, or can
         be specified by ``fmt``, which can be either "xml", "dot" or "gml". """
 
+        u = GraphView(self, reversed=self.is_reversed(), skip_vfilt=True,
+                      skip_efilt=True)
+
         if self.get_vertex_filter()[0] is not None:
-            self.graph_properties["_Graph__save__vfilter"] = self.new_graph_property("bool")
-            self.vertex_properties["_Graph__save__vfilter"] =  self.get_vertex_filter()[0]
-            self.graph_properties["_Graph__save__vfilter"] = self.get_vertex_filter()[1]
+            u.graph_properties["_Graph__save__vfilter"] = self.new_graph_property("bool")
+            u.vertex_properties["_Graph__save__vfilter"] =  self.get_vertex_filter()[0]
+            u.graph_properties["_Graph__save__vfilter"] = self.get_vertex_filter()[1]
         if self.get_edge_filter()[0] is not None:
-            self.graph_properties["_Graph__save__efilter"] = self.new_graph_property("bool")
-            self.edge_properties["_Graph__save__efilter"] = self.get_edge_filter()[0]
-            self.graph_properties["_Graph__save__efilter"] = self.get_edge_filter()[1]
+            u.graph_properties["_Graph__save__efilter"] = self.new_graph_property("bool")
+            u.edge_properties["_Graph__save__efilter"] = self.get_edge_filter()[0]
+            u.graph_properties["_Graph__save__efilter"] = self.get_edge_filter()[1]
 
         if self.is_reversed():
-            self.graph_properties["_Graph__reversed"] = self.new_graph_property("bool")
-            self.graph_properties["_Graph__reversed"] = True
+            u.graph_properties["_Graph__reversed"] = self.new_graph_property("bool")
+            u.graph_properties["_Graph__reversed"] = True
 
         if type(file_name) == str:
             file_name = os.path.expanduser(file_name)
@@ -1679,23 +1684,11 @@ class Graph(object):
             fmt = "xml"
         props = [(name[1], prop._PropertyMap__map) for name, prop in \
                  self.__properties.items()]
-        self.stash_filter(vertex=True, edge=True, reversed=True)
-        try:
-            if isinstance(file_name, str):
-                self.__graph.WriteToFile(file_name, None, fmt, props)
-            else:
-                self.__graph.WriteToFile("", file_name, fmt, props)
-        finally:
-            self.pop_filter(vertex=True, edge=True, reversed=True)
 
-        if self.get_vertex_filter()[0] is not None:
-            del self.graph_properties["_Graph__save__vfilter"]
-            del self.vertex_properties["_Graph__save__vfilter"]
-        if self.get_edge_filter()[0] is not None:
-            del self.graph_properties["_Graph__save__efilter"]
-            del self.edge_properties["_Graph__save__efilter"]
-        if self.is_reversed():
-           del self.graph_properties["_Graph__reversed"]
+        if isinstance(file_name, str):
+            u.__graph.WriteToFile(file_name, None, fmt, props)
+        else:
+            u.__graph.WriteToFile("", file_name, fmt, props)
 
 
     # Directedness
@@ -1807,43 +1800,6 @@ class Graph(object):
         self.__graph.PurgeEdges()
         self.set_edge_filter(None)
 
-    def stash_filter(self, edge=False, vertex=False, directed=False,
-                     reversed=False, all=True):
-        """Stash current filter state and set the graph to its unfiltered
-        state. The optional keyword arguments specify which type of filter
-        should be stashed."""
-        if edge or vertex or directed or reversed:
-            all = False
-        self.__stashed_filter_state.append(self.get_filter_state())
-        if libcore.graph_filtering_enabled():
-            if vertex or all:
-                self.set_vertex_filter(None)
-            if edge or all:
-                self.set_edge_filter(None)
-        if directed or all:
-            self.set_directed(True)
-        if reversed or all:
-            self.set_reversed(False)
-
-    def pop_filter(self, edge=False, vertex=False, directed=False,
-                   reversed=False, all=True):
-        """Pop last stashed filter state. The optional keyword arguments specify
-        which type of filter should be recovered."""
-        if edge or vertex or directed or reversed:
-            all = False
-        state = self.__stashed_filter_state.pop()
-        if libcore.graph_filtering_enabled():
-            if vertex or all:
-                self.set_vertex_filter(state["vertex_filter"][0],
-                                       state["vertex_filter"][1])
-            if edge or all:
-                self.set_edge_filter(state["edge_filter"][0],
-                                     state["edge_filter"][1])
-        if directed or all:
-            self.set_directed(state["directed"])
-        if reversed or all:
-            self.set_reversed(state["reversed"])
-
     def get_filter_state(self):
         """Return a copy of the filter state of the graph."""
         self.__filter_state["directed"] = self.is_directed()
@@ -1919,6 +1875,106 @@ def load_graph(file_name, fmt="auto", ignore_vp=None, ignore_ep=None,
     g = Graph()
     g.load(file_name, fmt, ignore_vp, ignore_ep, ignore_gp)
     return g
+
+
+class GraphView(Graph):
+    """
+    A view of selected vertices or edges of another graph.
+
+    This class uses shared data from another :class:`~graph_tool.Graph`
+    instance, but allows for local filtering of vertices and/or edges, edge
+    directionality or reversal. See :ref:`sec_graph_views` for more details and
+    examples.
+
+    The existence of a :class:`~graph_tool.GraphView` object does not affect the
+    original graph, except if the graph view is modified (addition or removal of
+    vertices or edges), in which case the modification is directly reflected in
+    the original graph (and vice-versa), since they both point to the same
+    underlying data. Because of this, instances of
+    :class:`~graph_tool.PropertyMap` can be used interchangeably with a graph
+    and its views.
+
+    The argument ``g`` must be an instance of a :class:`~graph_tool.Graph`
+    class. If specified, ``vfilt`` and ``efilt`` select which vertices and edges
+    are filtered, respectively. These parameters can either be a
+    boolean-valued :class:`~graph_tool.PropertyMap` or a
+    :class:`~numpy.ndarray`, which specify which vertices/edges are selected, or
+    an unary function which returns ``True`` if a given vertex/edge is to be
+    selected, or ``False`` otherwise.
+
+    The boolean parameter ``directed`` can be used to set the directionality of
+    the graph view. If ``directed = None``, the directionality is inherited from
+    ``g``.
+
+    If ``reversed = True``, the direction of the edges is reversed.
+
+    If ``vfilt`` or ``efilt`` is anything other than a
+    :class:`~graph_tool.PropertyMap` instance, the instantiation running time is
+    :math:`O(V)` and :math:`O(E)`, respectively. Otherwise, the running time is
+    :math:`O(1)`.
+
+    If either ``skip_properties``, ``skip_vfilt`` or ``skip_efilt`` is ``True``,
+    then the internal properties, vertex filter or edge filter of the original
+    graph are ignored, respectively.
+
+    """
+
+    def __init__(self, g, vfilt=None, efilt=None, directed=None,
+                 reversed=False, skip_properties=False, skip_vfilt=False,
+                 skip_efilt=False):
+        self.__base = g if not isinstance(g, GraphView) else g.base
+        Graph.__init__(self)
+        # copy graph reference
+        self._Graph__graph = libcore.GraphInterface(g._Graph__graph, True,
+                                                    [], [],
+                                                    _prop("v", g, g.vertex_index))
+
+        if not skip_properties:
+            for k, v in g.properties.items():
+                self.properties[k] = self.own_property(v)
+
+        # set already existent filters
+        if not skip_vfilt:
+            vf = g.get_vertex_filter()
+            if vf[0] is not None:
+                self.set_vertex_filter(vf[0], vf[1])
+        if not skip_efilt:
+            ef = g.get_edge_filter()
+            if ef[0] is not None:
+                self.set_edge_filter(ef[0], ef[1])
+
+        if vfilt is not None:
+            if type(vfilt) is PropertyMap:
+                self.set_vertex_filter(vfilt)
+            else:
+                vmap = self.new_vertex_property("bool")
+                if issubclass(type(vfilt), numpy.ndarray):
+                    vmap.fa = vfilt
+                else:
+                    for v in g.vertices():
+                        vmap[v] = vfilt(v)
+                self.set_vertex_filter(vmap)
+
+        if efilt is not None:
+            if type(efilt) is PropertyMap:
+                self.set_edge_filter(efilt)
+            else:
+                emap = self.new_edge_property("bool")
+                if issubclass(type(efilt), numpy.ndarray):
+                    emap.fa = efilt
+                else:
+                    for e in g.edges():
+                        emap[e] = efilt(e)
+                self.set_edge_filter(emap)
+
+        if directed is not None:
+            self.set_directed(directed)
+        if reversed:
+            self.set_reversed(not g.is_reversed())
+
+    def __get_base(self):
+        return self.__base
+    base = property(__get_base, doc="Base graph.")
 
 
 def value_types():
@@ -2054,95 +2110,6 @@ Vector_string.a = None
 Vector_string.get_array = lambda self: None
 Vector_string.__repr__ = lambda self: repr(list(self))
 
-class GraphView(Graph):
-    """
-    A view of selected vertices or edges of another graph.
-
-    This class uses shared data from another :class:`~graph_tool.Graph`
-    instance, but allows for local filtering of vertices and/or edges, edge
-    directionality or reversal. See :ref:`sec_graph_views` for more details and
-    examples.
-
-    The existence of a :class:`~graph_tool.GraphView` object does not affect the
-    original graph, except if the graph view is modified (addition or removal of
-    vertices or edges), in which case the modification is directly reflected in
-    the original graph (and vice-versa), since they both point to the same
-    underlying data. Because of this, instances of
-    :class:`~graph_tool.PropertyMap` can be used interchangeably with a graph
-    and its views.
-
-    The argument ``g`` must be an instance of a :class:`~graph_tool.Graph`
-    class. If specified, ``vfilt`` and ``efilt`` select which vertices and edges
-    are filtered, respectively. These parameters can either be a
-    boolean-valued :class:`~graph_tool.PropertyMap` or a
-    :class:`~numpy.ndarray`, which specify which vertices/edges are selected, or
-    an unary function which returns ``True`` if a given vertex/edge is to be
-    selected, or ``False`` otherwise.
-
-    The boolean parameter ``directed`` can be used to set the directionality of
-    the graph view. If ``directed = None``, the directionality is inherited from
-    ``g``.
-
-    If ``reversed = True``, the direction of the edges is reversed.
-
-    If ``vfilt`` or ``efilt`` is anything other than a
-    :class:`~graph_tool.PropertyMap` instance, the instantiation running time is
-    :math:`O(V)` and :math:`O(E)`, respectively. Otherwise, the running time is
-    :math:`O(1)`.
-    """
-
-    def __init__(self, g, vfilt=None, efilt=None, directed=None,
-                 reversed=False):
-        self.__base = g if not isinstance(g, GraphView) else g.base
-        Graph.__init__(self)
-        # copy graph reference
-        self._Graph__graph = libcore.GraphInterface(g._Graph__graph, True,
-                                                    [], [],
-                                                    _prop("v", g, g.vertex_index))
-
-        for k, v in g.properties.items():
-            self.properties[k] = self.own_property(v)
-
-        # set already existent filters
-        vf = g.get_vertex_filter()
-        if vf[0] is not None:
-            self.set_vertex_filter(vf[0], vf[1])
-        ef = g.get_edge_filter()
-        if ef[0] is not None:
-            self.set_edge_filter(ef[0], ef[1])
-
-        if vfilt is not None:
-            if type(vfilt) is PropertyMap:
-                self.set_vertex_filter(vfilt)
-            else:
-                vmap = self.new_vertex_property("bool")
-                if issubclass(type(vfilt), numpy.ndarray):
-                    vmap.fa = vfilt
-                else:
-                    for v in g.vertices():
-                        vmap[v] = vfilt(v)
-                self.set_vertex_filter(vmap)
-
-        if efilt is not None:
-            if type(efilt) is PropertyMap:
-                self.set_edge_filter(efilt)
-            else:
-                emap = self.new_edge_property("bool")
-                if issubclass(type(efilt), numpy.ndarray):
-                    emap.fa = efilt
-                else:
-                    for e in g.edges():
-                        emap[e] = efilt(e)
-                self.set_edge_filter(emap)
-
-        if directed is not None:
-            self.set_directed(directed)
-        if reversed:
-            self.set_reversed(not g.is_reversed())
-
-    def __get_base(self):
-        return self.__base
-    base = property(__get_base, doc="Base graph.")
 
 
 

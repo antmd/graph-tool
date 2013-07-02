@@ -944,38 +944,32 @@ def graph_union(g1, g2, intersection=None, props=None, include=False):
         intersection.a[intersection.a >= 0] += 1
         intersection.a[intersection.a < 0] = 0
 
-    g1.stash_filter(directed=True)
-    g1.set_directed(True)
-    g2.stash_filter(directed=True)
-    g2.set_directed(True)
-    n_props = []
+    u1 = GraphView(g1, directed=True, skip_properties=True)
+    u2 = GraphView(g2, directed=True, skip_properties=True)
 
-    try:
-        vmap, emap = libgraph_tool_generation.graph_union(g1._Graph__graph,
-                                                          g2._Graph__graph,
-                                                          _prop("v", g1,
-                                                                intersection))
-        for p1, p2 in props:
-            if not include:
-                p1 = g1.copy_property(p1)
-            if p2.value_type() != p1.value_type():
-                p2 = g2.copy_property(p2, value_type=p1.value_type())
-            if p1.key_type() == 'v':
-                libgraph_tool_generation.\
-                      vertex_property_union(g1._Graph__graph, g2._Graph__graph,
-                                            vmap, emap,
-                                            _prop(p1.key_type(), g1, p1),
-                                            _prop(p2.key_type(), g2, p2))
-            else:
-                libgraph_tool_generation.\
-                      edge_property_union(g1._Graph__graph, g2._Graph__graph,
-                                          vmap, emap,
-                                          _prop(p1.key_type(), g1, p1),
-                                          _prop(p2.key_type(), g2, p2))
-            n_props.append(p1)
-    finally:
-        g1.pop_filter(directed=True)
-        g2.pop_filter(directed=True)
+    vmap, emap = libgraph_tool_generation.graph_union(u1._Graph__graph,
+                                                      u2._Graph__graph,
+                                                      _prop("v", g1,
+                                                            intersection))
+    n_props = []
+    for p1, p2 in props:
+        if not include:
+            p1 = g1.copy_property(p1)
+        if p2.value_type() != p1.value_type():
+            p2 = g2.copy_property(p2, value_type=p1.value_type())
+        if p1.key_type() == 'v':
+            libgraph_tool_generation.\
+                  vertex_property_union(u1._Graph__graph, u2._Graph__graph,
+                                        vmap, emap,
+                                        _prop(p1.key_type(), g1, p1),
+                                        _prop(p2.key_type(), g2, p2))
+        else:
+            libgraph_tool_generation.\
+                  edge_property_union(u1._Graph__graph, u2._Graph__graph,
+                                      vmap, emap,
+                                      _prop(p1.key_type(), g1, p1),
+                                      _prop(p2.key_type(), g2, p2))
+        n_props.append(p1)
 
     if len(n_props) > 0:
         return g1, n_props
