@@ -42,60 +42,69 @@ namespace graph_tool
 // This file also contains selectors for in_edge iterators of graphs, which
 // return an empty range for undirected graphs
 
-struct total_degreeS
+namespace detail
 {
-    typedef size_t value_type;
+    struct no_weightS {};
 
-    total_degreeS() {}
-    template <class Graph, class Vertex>
-    size_t operator()(const Vertex& v, const Graph &g) const
+    template <class Weight>
+    struct get_weight_type
     {
-        using namespace boost;
-        typedef typename is_convertible
-            <typename graph_traits<Graph>::directed_category,
-             directed_tag>::type is_directed;
-        return get_total_degree(v,g,is_directed());
-    }
+        typedef typename property_traits<Weight>::value_type type;
+    };
 
-    template <class Graph, class Vertex>
-    size_t get_total_degree(const Vertex& v, const Graph &g, boost::true_type)
-        const
+    template <>
+    struct get_weight_type<no_weightS>
     {
-        return in_degree(v,g)+out_degree(v,g);
-    }
-
-    template <class Graph, class Vertex>
-    size_t get_total_degree(const Vertex& v, const Graph &g, boost::false_type)
-        const
-    {
-        return out_degree(v,g);
-    }
-};
+        typedef size_t type;
+    };
+}
 
 struct in_degreeS
 {
     typedef size_t value_type;
 
     in_degreeS() {}
+
     template <class Graph, class Vertex>
     size_t operator()(const Vertex& v, const Graph &g) const
+    {
+        return in_degreeS::operator()(v, g, detail::no_weightS());
+    }
+
+    template <class Graph, class Vertex, class Weight>
+    typename detail::get_weight_type<Weight>::type
+    operator()(const Vertex& v, const Graph &g, Weight weight) const
     {
         using namespace boost;
         typedef typename is_convertible
             <typename graph_traits<Graph>::directed_category,
              directed_tag>::type is_directed;
-        return get_in_degree(v,g,is_directed());
+        return get_in_degree(v, g, is_directed(), weight);
     }
 
     template <class Graph, class Vertex>
-    size_t get_in_degree(const Vertex& v, const Graph &g, boost::true_type)
+    size_t get_in_degree(const Vertex& v, const Graph &g, boost::true_type,
+                         detail::no_weightS)
         const
     {
-        return in_degree(v,g);
+        return in_degree(v, g);
     }
 
-    template <class Graph, class Vertex>
-    size_t get_in_degree(const Vertex&, const Graph &, boost::false_type)
+    template <class Graph, class Vertex, class Weight>
+    typename detail::get_weight_type<Weight>::type
+    get_in_degree(const Vertex& v, const Graph &g, boost::true_type,
+                  Weight weight)
+        const
+    {
+        typename property_traits<Weight>::value_type d = 0;
+        typename graph_traits<Graph>::in_edge_iterator e, e_end;
+        for (tie(e, e_end) = in_edges(v, g); e != e_end; ++e)
+            d += get(weight, *e);
+        return d;
+    }
+
+    template <class Graph, class Vertex, class Weight>
+    size_t get_in_degree(const Vertex&, const Graph &, boost::false_type, Weight)
         const
     {
         return 0;
@@ -107,12 +116,79 @@ struct out_degreeS
     typedef size_t value_type;
 
     out_degreeS() {}
+
     template <class Graph, class Vertex>
     size_t operator()(const Vertex& v, const Graph &g) const
     {
-        return out_degree(v,g);
+        return out_degreeS::operator()(v, g, detail::no_weightS());
+    }
+
+    template <class Graph, class Vertex, class Weight>
+    typename detail::get_weight_type<Weight>::type
+    operator()(const Vertex& v, const Graph &g, Weight weight) const
+    {
+        return get_out_degree(v, g, weight);
+    }
+
+    template <class Graph, class Vertex, class Weight>
+    typename detail::get_weight_type<Weight>::type
+    get_out_degree(const Vertex& v, const Graph &g, Weight weight)
+        const
+    {
+        typename property_traits<Weight>::value_type d = 0;
+        typename graph_traits<Graph>::out_edge_iterator e, e_end;
+        for (tie(e, e_end) = out_edges(v, g); e != e_end; ++e)
+            d += get(weight, *e);
+        return d;
+    }
+
+    template <class Graph, class Vertex>
+    size_t get_out_degree(const Vertex& v, const Graph &g, detail::no_weightS)
+        const
+    {
+        return out_degree(v, g);
     }
 };
+
+struct total_degreeS
+{
+    typedef size_t value_type;
+
+    total_degreeS() {}
+    template <class Graph, class Vertex>
+    size_t operator()(const Vertex& v, const Graph &g) const
+    {
+        return total_degreeS::operator()(v, g, detail::no_weightS());
+    }
+
+    template <class Graph, class Vertex, class Weight>
+    typename detail::get_weight_type<Weight>::type
+    operator()(const Vertex& v, const Graph &g, Weight weight) const
+    {
+        using namespace boost;
+        typedef typename is_convertible
+            <typename graph_traits<Graph>::directed_category,
+             directed_tag>::type is_directed;
+        return get_total_degree(v, g, is_directed(), weight);
+    }
+
+    template <class Graph, class Vertex, class Weight>
+    typename detail::get_weight_type<Weight>::type
+    get_total_degree(const Vertex& v, const Graph &g, boost::true_type, Weight weight)
+        const
+    {
+        return in_degreeS()(v, g, weight) + out_degreeS()(v, g, weight);
+    }
+
+    template <class Graph, class Vertex, class Weight>
+    typename detail::get_weight_type<Weight>::type
+    get_total_degree(const Vertex& v, const Graph &g, boost::false_type, Weight weight)
+        const
+    {
+        return out_degreeS()(v, g, weight);
+    }
+};
+
 
 template <class PropertyMap>
 struct scalarS

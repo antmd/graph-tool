@@ -230,9 +230,19 @@ void remove_edge(GraphInterface& gi, const python::object& e)
 
 struct get_degree_map
 {
-    template <class Graph, class DegreeMap, class DegS>
-    void operator()(const Graph& g, DegreeMap deg_map, DegS deg) const
+    template <class Graph, class DegS, class Weight>
+    void operator()(const Graph& g, python::object& odeg_map, DegS deg, Weight weight) const
     {
+        typedef typename detail::get_weight_type<Weight>::type weight_t;
+        typedef typename mpl::if_<is_same<weight_t, size_t>, int32_t, weight_t>::type deg_t;
+
+        typedef typename property_map_type::apply<deg_t,
+                                                  GraphInterface::vertex_index_map_t>::type
+            map_t;
+
+        map_t cdeg_map(get(vertex_index, g));
+        typename map_t::unchecked_t deg_map = cdeg_map.get_unchecked(num_vertices(g));
+
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i) schedule(dynamic)
         for (i = 0; i < N; ++i)
@@ -240,33 +250,39 @@ struct get_degree_map
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
-            deg_map[v] = deg(v, g);
+            deg_map[v] = deg(v, g, weight);
         }
+
+        odeg_map = python::object(PythonPropertyMap<map_t>(cdeg_map));
     }
 };
 
-python::object GraphInterface::DegreeMap(string deg) const
+python::object GraphInterface::DegreeMap(string deg, boost::any weight) const
 {
-    typedef property_map_type::apply<double,
-                                     GraphInterface::vertex_index_map_t>::type
-        map_t;
 
-    map_t deg_map(_vertex_index);
-    deg_map.reserve(num_vertices(*_mg));
+    python::object deg_map;
+
+    typedef typename mpl::push_back<edge_scalar_properties,
+                                    detail::no_weightS>::type weight_t;
+    if (weight.empty())
+        weight = detail::no_weightS();
 
     if (deg == "in")
         run_action<>()(const_cast<GraphInterface&>(*this),
                        bind<void>(get_degree_map(), _1,
-                                  deg_map, in_degreeS()))();
+                                  ref(deg_map), in_degreeS(), _2), weight_t())
+            (weight);
     else if (deg == "out")
         run_action<>()(const_cast<GraphInterface&>(*this),
                        bind<void>(get_degree_map(), _1,
-                                  deg_map, out_degreeS()))();
+                                  ref(deg_map), out_degreeS(), _2), weight_t())
+            (weight);
     else if (deg == "total")
         run_action<>()(const_cast<GraphInterface&>(*this),
                        bind<void>(get_degree_map(), _1,
-                                  deg_map, total_degreeS()))();
-    return python::object(PythonPropertyMap<map_t>(deg_map));
+                                  ref(deg_map), total_degreeS(), _2), weight_t())
+            (weight);
+    return deg_map;
 }
 
 //

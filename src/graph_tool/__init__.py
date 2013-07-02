@@ -1068,7 +1068,8 @@ class Graph(object):
                 vorder.fa = numpy.arange(g.num_vertices())
 
             # The actual copying of the graph and property maps
-            self.__graph = libcore.GraphInterface(g.__graph, False, vprops, eprops)
+            self.__graph = libcore.GraphInterface(g.__graph, False, vprops, eprops,
+                                                  _prop("v", g, vorder))
 
             # Put the copied properties in the internal dictionary
             for k, v in g.vertex_properties.items():
@@ -1583,10 +1584,13 @@ class Graph(object):
 
     # degree property map
     @_limit_args({"deg": ["in", "out", "total"]})
-    def degree_property_map(self, deg):
+    def degree_property_map(self, deg, weight=None):
         """Create and return a vertex property map containing the degree type
-        given by ``deg``."""
-        return PropertyMap(self.__graph.DegreeMap(deg), self, "v")
+        given by ``deg``. If provided, ``weight`` should be an edge
+        :class:`~graph_tool.PropertyMap` containing the edge weights which
+        should be summed."""
+        pmap = self.__graph.DegreeMap(deg, _prop("e", self, weight))
+        return PropertyMap(pmap, self, "v")
 
     # I/O operations
     # ==============
@@ -2097,7 +2101,8 @@ class GraphView(Graph):
         Graph.__init__(self)
         # copy graph reference
         self._Graph__graph = libcore.GraphInterface(g._Graph__graph, True,
-                                                    [], [])
+                                                    [], [],
+                                                    _prop("v", g, g.vertex_index))
 
         for k, v in g.properties.items():
             self.properties[k] = self.own_property(v)

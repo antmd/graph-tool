@@ -111,7 +111,7 @@ public:
     //
     // python interface
     //
-    python::object DegreeMap(string deg) const;
+    python::object DegreeMap(string deg, boost::any weight) const;
 
     // used for graph properties
     graph_property_tag GetDescriptor() const { return graph_property_tag(); }
