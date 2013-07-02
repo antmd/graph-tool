@@ -59,7 +59,8 @@ class GraphInterface
 public:
     GraphInterface();
     GraphInterface(const GraphInterface& g, bool keep_ref,
-                   python::object ovprops, python::object oeprops);
+                   python::object ovprops, python::object oeprops,
+                   python::object vorder);
     ~GraphInterface();
 
     // useful enums

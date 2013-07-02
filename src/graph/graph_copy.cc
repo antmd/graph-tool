@@ -83,12 +83,13 @@ struct do_graph_copy
 {
     template <class GraphTgt, class GraphSrc, class TgtVertexIndexMap,
               class SrcVertexIndexMap,  class TgtEdgeIndexMap,
-              class SrcEdgeIndexMap>
+              class SrcEdgeIndexMap, class OrderMap>
     void operator()(const GraphSrc& src, GraphTgt& tgt,
                     TgtVertexIndexMap src_vertex_index,
                     SrcVertexIndexMap tgt_vertex_index,
                     TgtEdgeIndexMap,
                     SrcEdgeIndexMap tgt_edge_index,
+                    OrderMap vertex_order,
                     vector<pair<reference_wrapper<boost::any>,reference_wrapper<boost::any> > >& vprops,
                     vector<pair<reference_wrapper<boost::any>,reference_wrapper<boost::any> > >& eprops) const
     {
@@ -98,7 +99,8 @@ struct do_graph_copy
         {
             if (src_vertex_index[*v] >= index_map.size())
                 index_map.resize(src_vertex_index[*v]+1);
-            typename graph_traits<GraphTgt>::vertex_descriptor new_v =
+            typename graph_traits<GraphTgt>::vertex_descriptor new_v = get(vertex_order, *v);
+            while (new_v >= num_vertices(tgt))
                 add_vertex(tgt);
             index_map[src_vertex_index[*v]] = tgt_vertex_index[new_v];
 
@@ -126,7 +128,8 @@ struct do_graph_copy
 
 // copy constructor
 GraphInterface::GraphInterface(const GraphInterface& gi, bool keep_ref,
-                               python::object ovprops, python::object oeprops)
+                               python::object ovprops, python::object oeprops,
+                               python::object vorder)
     :_mg(keep_ref ? gi._mg : shared_ptr<multigraph_t>(new multigraph_t())),
      _vertex_index(get(vertex_index, *_mg)),
      _edge_index(get(edge_index_t(), *_mg)),
@@ -159,7 +162,7 @@ GraphInterface::GraphInterface(const GraphInterface& gi, bool keep_ref,
         (const_cast<GraphInterface&>(gi),
          bind<void>(do_graph_copy(), _1, ref(*_mg),
                     gi._vertex_index, _vertex_index,
-                    gi._edge_index, _edge_index, ref(vprops),
-                    ref(eprops)))();
+                    gi._edge_index, _edge_index, _2, ref(vprops),
+                    ref(eprops)), vertex_scalar_properties())(avorder);
     // filters will be copied in python
 }

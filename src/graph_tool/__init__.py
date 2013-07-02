@@ -1020,6 +1020,10 @@ class Graph(object):
     ``prune``, to specify a different behavior to vertex, edge, and reversal
     filters, respectively.
 
+    If ``vorder`` is specified, it should correspond to a vertex
+    :class:`~graph_tool.PropertyMap` specifying the ordering of the vertices in
+    the copied graph.
+
     The graph is implemented as an `adjacency list`_, where both vertex and edge
     lists are C++ STL vectors.
 
@@ -1027,7 +1031,7 @@ class Graph(object):
 
     """
 
-    def __init__(self, g=None, directed=True, prune=False):
+    def __init__(self, g=None, directed=True, prune=False, vorder=None):
         self.__properties = {}
         self.__known_properties = {}
         self.__filter_state = {"reversed": False,
@@ -1054,6 +1058,11 @@ class Graph(object):
                 vprops.append([_prop("v", g, v), libcore.any()])
             for k, v in g.edge_properties.items():
                 eprops.append([_prop("e", g, v), libcore.any()])
+
+            # The vertex ordering
+            if vorder is None:
+                vorder = g.new_vertex_property("int")
+                vorder.fa = numpy.arange(g.num_vertices())
 
             # The actual copying of the graph and property maps
             self.__graph = libcore.GraphInterface(g.__graph, False, vprops, eprops)
