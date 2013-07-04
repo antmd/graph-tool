@@ -151,16 +151,6 @@
 
        .. container:: sec_title
 
-           Stashing and popping the filter state
-
-       .. automethod:: stash_filter
-       .. automethod:: pop_filter
-
-       .. automethod:: get_filter_state
-       .. automethod:: set_filter_state
-
-       .. container:: sec_title
-
            I/O operations
 
        See :ref:`sec_graph_io` for more details.
