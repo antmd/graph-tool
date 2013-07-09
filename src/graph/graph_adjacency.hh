@@ -60,7 +60,7 @@ std::pair<typename adj_list<Vertex>::edge_iterator,
 edges(const adj_list<Vertex>& g);
 
 template <class Vertex>
-std::pair<typename adj_list<Vertex>::edge_iterator, bool>
+std::pair<typename adj_list<Vertex>::edge_descriptor, bool>
 edge(Vertex s, Vertex t, const adj_list<Vertex>& g);
 
 template <class Vertex>
@@ -274,7 +274,7 @@ private:
     friend std::pair<edge_iterator, edge_iterator>
     edges<>(const adj_list<Vertex>& g);
 
-    friend std::pair<edge_iterator, bool>
+    friend std::pair<edge_descriptor, bool>
     edge<>(Vertex s, Vertex t, const adj_list<Vertex>& g);
 
     friend size_t out_degree<>(Vertex v, const adj_list<Vertex>& g);
@@ -420,14 +420,14 @@ inline Vertex vertex(size_t i, const adj_list<Vertex>&)
 }
 
 template <class Vertex>
-inline std::pair<typename adj_list<Vertex>::edge_iterator, bool>
+inline std::pair<typename adj_list<Vertex>::edge_descriptor, bool>
 edge(Vertex s, Vertex t, const adj_list<Vertex>& g)
 {
-    typename adj_list<Vertex>::edge_list_t& oes = g._out_edges[s];
+    const typename adj_list<Vertex>::edge_list_t& oes = g._out_edges[s];
     for (size_t i = 0; i < oes.size(); ++i)
         if (oes[i].first == t)
             return std::make_pair(std::tr1::make_tuple(s, t, oes[i].second), true);
-    Vertex v = graph_traits<adj_list<Vertex> >::null_ertex();
+    Vertex v = graph_traits<adj_list<Vertex> >::null_vertex();
     return std::make_pair(std::tr1::make_tuple(v, v, v), false);
 }
 
