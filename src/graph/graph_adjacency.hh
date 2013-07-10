@@ -250,6 +250,28 @@ public:
                                                       _last_idx));
                 _last_idx++;
             }
+
+        if (_keep_epos)
+            rebuild_epos();
+    }
+
+    void set_keep_epos(bool keep)
+    {
+        if (keep)
+        {
+            if(!_keep_epos)
+                rebuild_epos();
+        }
+        else
+        {
+            _epos.clear();
+        }
+        _keep_epos = keep;
+    }
+
+    bool get_keep_epos()
+    {
+        return _keep_epos;
     }
 
     size_t get_last_index() const {return _last_idx;}
@@ -266,6 +288,27 @@ private:
                                       // for new edges to avoid very large
                                       // indexes, and unnecessary property map
                                       // memory use
+    bool _keep_epos;
+    std::vector<std::pair<int32_t, int32_t> > _epos;
+
+    void rebuild_epos()
+    {
+        _epos.resize(_last_idx + 1);
+        for (size_t i = 0; i < _out_edges.size(); ++i)
+        {
+            for (size_t j = 0; j < _out_edges[i].size(); ++j)
+            {
+                size_t idx = _out_edges[i][j].second;
+                _epos[idx].first = j;
+            }
+
+            for (size_t j = 0; j < _in_edges[i].size(); ++j)
+            {
+                size_t idx = _in_edges[i][j].second;
+                _epos[idx].second = j;
+            }
+        }
+    }
 
     // manipulation functions
     friend std::pair<vertex_iterator, vertex_iterator>
@@ -631,6 +674,14 @@ add_edge(Vertex s, Vertex t, adj_list<Vertex>& g)
     g._in_edges[t].push_back(std::make_pair(s, idx));
     g._n_edges++;
 
+    if (g._keep_epos)
+    {
+        if (idx >= g._epos.size())
+            g._epos.resize(idx + 1);
+        g._epos[idx].first = g._out_edges[s].size() - 1;
+        g._epos[idx].second = g._in_edges[t].size() - 1;
+    }
+
     return std::make_pair(std::tr1::make_tuple(s, t, idx), true);
 }
 
@@ -665,23 +716,39 @@ inline void remove_edge(const typename adj_list<Vertex>::edge_descriptor& e,
     Vertex t = get<1>(e);
     Vertex idx = get<2>(e);
     typename adj_list<Vertex>::edge_list_t& oes = g._out_edges[s];
-    for (size_t i = 0; i < oes.size(); ++i)
+    typename adj_list<Vertex>::edge_list_t& ies = g._in_edges[t];
+
+    if (!g._keep_epos) // O(k_s + k_t)
     {
-        if (t == oes[i].first && idx == oes[i].second)
+        for (size_t i = 0; i < oes.size(); ++i)
         {
-            oes.erase(oes.begin() + i);
-            break;
+            if (t == oes[i].first && idx == oes[i].second)
+            {
+                oes.erase(oes.begin() + i);
+                break;
+            }
+        }
+
+        for (size_t i = 0; i < ies.size(); ++i)
+        {
+            if (s == ies[i].first && idx == ies[i].second)
+            {
+                ies.erase(ies.begin() + i);
+                break;
+            }
         }
     }
-
-    typename adj_list<Vertex>::edge_list_t& ies = g._in_edges[t];
-    for (size_t i = 0; i < ies.size(); ++i)
+    else // O(1)
     {
-        if (s == ies[i].first && idx == ies[i].second)
-        {
-            ies.erase(ies.begin() + i);
-            break;
-        }
+        const std::pair<int32_t, int32_t>& pos = g._epos[idx];
+
+        g._epos[oes.back().second].first = pos.first;
+        oes[pos.first] = oes.back();
+        oes.pop_back();
+
+        g._epos[ies.back().second].second = pos.second;
+        ies[pos.second] = ies.back();
+        ies.pop_back();
     }
     g._free_indexes.push_back(idx);
     g._n_edges--;

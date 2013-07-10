@@ -86,6 +86,9 @@ public:
     bool GetDirected() {return _directed;}
     void SetReversed(bool reversed) {_reversed = reversed;}
     bool GetReversed() {return _reversed;}
+    void SetKeepEpos(bool keep) {_mg->set_keep_epos(keep);}
+    bool GetKeepEpos() {return _mg->get_keep_epos();}
+
 
     // graph filtering
     void SetVertexFilterProperty(boost::any prop, bool invert);

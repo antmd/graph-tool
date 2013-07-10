@@ -1246,7 +1246,9 @@ class Graph(object):
 
     def add_vertex(self, n=1):
         """Add a vertex to the graph, and return it. If ``n > 1``, ``n``
-        vertices are inserted and an iterator over the new vertices is returned."""
+        vertices are inserted and an iterator over the new vertices is returned.
+        This operation is :math:`O(n)`.
+        """
         self.__check_perms("add_vertex")
         v = libcore.add_vertex(weakref.ref(self), n)
 
@@ -1304,7 +1306,7 @@ class Graph(object):
 
     def add_edge(self, source, target):
         """Add a new edge from ``source`` to ``target`` to the graph, and return
-        it."""
+        it. This operation is :math:`O(1)`."""
         self.__check_perms("add_edge")
         e = libcore.add_edge(weakref.ref(self), self.vertex(int(source)),
                              self.vertex(int(target)))
@@ -1314,9 +1316,35 @@ class Graph(object):
         return e
 
     def remove_edge(self, edge):
-        """Remove an edge from the graph."""
+        r"""Remove an edge from the graph.
+
+        .. note::
+
+           This operation is normally :math:`O(k_s + k_t)`, where :math:`k_s`
+           and :math:`k_s` are the total degrees of the source and target
+           vertices, respectively. However, if :method:`~Graph.set_fast_edge_removal`
+           is set to `True`, this operation becomes :math:`O(1)`.
+
+        .. warning::
+
+           The relative ordering of the remaining edges in the graph is kept
+           unchanged, unless :method:`~Graph.set_fast_edge_removal` is set to
+           `True`, in which case it can change.
+        """
         self.__check_perms("del_edge")
         return libcore.remove_edge(self.__graph, edge)
+
+    def set_fast_edge_removal(self, fast=True):
+        r"""If ``fast == True`` the fast :math:`O(1)` removal of edges will be
+        enabled. This requires an additional data structure of size :math:`O(E)`
+        to be kept at all times.  If ``fast == False``, this data structure is
+        destroyed."""
+        self.__graph.SetKeepEpos(fast)
+
+    def get_fast_edge_removal(self):
+        r"""Return whether the fast :math:`O(1)` removal of edges is currently
+        enabled."""
+        return self.__graph.GetKeepEpos()
 
     def clear(self):
         """Remove all vertices and edges from the graph."""
@@ -2111,7 +2139,7 @@ Vector_string.get_array = lambda self: None
 Vector_string.__repr__ = lambda self: repr(list(self))
 
 
-
+# Global RNG
 
 _rng = libcore.get_rng(numpy.random.randint(0, sys.maxsize))
 

@@ -373,6 +373,8 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
         .def("GetDirected", &GraphInterface::GetDirected)
         .def("SetReversed", &GraphInterface::SetReversed)
         .def("GetReversed", &GraphInterface::GetReversed)
+        .def("SetKeepEpos", &GraphInterface::SetKeepEpos)
+        .def("GetKeepEpos", &GraphInterface::GetKeepEpos)
         .def("SetVertexFilterProperty",
              &GraphInterface::SetVertexFilterProperty)
         .def("IsVertexFilterActive", &GraphInterface::IsVertexFilterActive)
