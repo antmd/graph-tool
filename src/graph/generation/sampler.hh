@@ -20,6 +20,7 @@
 
 #include "random.hh"
 #include <functional>
+#include <boost/mpl/if.hpp>
 
 namespace graph_tool
 {
@@ -31,7 +32,7 @@ using namespace boost;
 // See http://www.keithschwarz.com/darts-dice-coins/ for a very clear
 // explanation,
 
-template <class Value>
+template <class Value, class KeepReference = mpl::true_>
 class Sampler
 {
 public:
@@ -76,6 +77,8 @@ public:
         _small.clear();
     }
 
+    Sampler() {}
+
     template <class RNG>
     const Value& sample(RNG& rng)
     {
@@ -103,7 +106,10 @@ private:
         }
     };
 
-    const vector<Value>& _items;
+    typedef typename mpl::if_<KeepReference,
+                              const vector<Value>&,
+                              vector<Value> >::type items_t;
+    items_t _items;
     vector<double> _probs;
     vector<size_t> _alias;
     vector<size_t> _small;
