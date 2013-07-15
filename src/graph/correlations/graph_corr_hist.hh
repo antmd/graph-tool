@@ -60,7 +60,7 @@ struct get_correlation_histogram
 
             int i, N = num_vertices(g);
             #pragma omp parallel for default(shared) private(i) \
-                firstprivate(s_hist) schedule(dynamic)
+                firstprivate(s_hist) schedule(static, 100)
             for (i = 0; i < N; ++i)
             {
                 typename graph_traits<Graph>::vertex_descriptor v =

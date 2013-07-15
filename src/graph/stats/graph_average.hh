@@ -77,7 +77,7 @@ struct get_average
         AverageTraverse traverse;
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i) \
-            reduction(+:a,aa,count) schedule(dynamic)
+            reduction(+:a,aa,count) schedule(static, 100)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);

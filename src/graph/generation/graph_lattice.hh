@@ -71,7 +71,7 @@ struct get_lattice
 
         vector<int> pos(shape.size());
         //#pragma omp parallel for default(shared) private(i) 
-        //    firstprivate(pos) schedule(dynamic)
+        //    firstprivate(pos) schedule(static, 100)
         for (int i = 0; i < N; ++i)
         {
             get_pos(i, shape, pos);

@@ -36,7 +36,7 @@ struct label_parallel_edges
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
 
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
+        #pragma omp parallel for default(shared) private(i) schedule(static, 100)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -74,7 +74,7 @@ struct label_self_loops
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
 
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(dynamic)
+        #pragma omp parallel for default(shared) private(i) schedule(static, 100)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);

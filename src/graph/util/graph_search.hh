@@ -75,7 +75,7 @@ struct find_vertices
         #endif
 
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(dynamic) \
+        #pragma omp parallel for default(shared) private(i) schedule(static, 100) \
             num_threads(nt)
         for (i = 0; i < N; ++i)
         {
@@ -117,7 +117,7 @@ struct find_edges
         #endif
 
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(dynamic) \
+        #pragma omp parallel for default(shared) private(i) schedule(static, 100) \
             num_threads(nt)
         for (i = 0; i < N; ++i)
         {

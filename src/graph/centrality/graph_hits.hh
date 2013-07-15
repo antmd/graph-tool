@@ -47,7 +47,7 @@ struct get_hits
         // init centrality
         int i, N = num_vertices(g), V = HardNumVertices()(g);
         #pragma omp parallel for default(shared) private(i)     \
-                schedule(dynamic)
+                schedule(static, 100)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -65,7 +65,7 @@ struct get_hits
         {
             x_norm = 0;
             #pragma omp parallel for default(shared) private(i) \
-                schedule(dynamic) reduction(+:x_norm)
+                schedule(static, 100) reduction(+:x_norm)
             for (i = 0; i < N; ++i)
             {
                 typename graph_traits<Graph>::vertex_descriptor v =
@@ -100,7 +100,7 @@ struct get_hits
 
             delta = 0;
             #pragma omp parallel for default(shared) private(i) \
-                schedule(dynamic) reduction(+:delta)
+                schedule(static, 100) reduction(+:delta)
             for (i = 0; i < N; ++i)
             {
                 typename graph_traits<Graph>::vertex_descriptor v =
@@ -122,7 +122,7 @@ struct get_hits
         if (iter % 2 != 0)
         {
             #pragma omp parallel for default(shared) private(i)     \
-                schedule(dynamic)
+                schedule(static, 100)
             for (i = 0; i < N; ++i)
             {
                 typename graph_traits<Graph>::vertex_descriptor v =

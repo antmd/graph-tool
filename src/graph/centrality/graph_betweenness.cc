@@ -45,7 +45,7 @@ void normalize_betweenness(const Graph& g,
 
     int i, N = num_vertices(g);
     #pragma omp parallel for default(shared) private(i)   \
-        schedule(dynamic)
+        schedule(static, 100)
     for (i = 0; i < N; ++i)
     {
         typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
