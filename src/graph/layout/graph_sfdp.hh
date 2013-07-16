@@ -20,6 +20,8 @@
 
 #include <limits>
 #include <iostream>
+#include <ext/numeric>
+using __gnu_cxx::power;
 
 namespace graph_tool
 {
@@ -95,8 +97,8 @@ public:
 
     double get_w()
     {
-        return sqrt(pow(_ur[0] - _ll[0], 2) +
-                    pow(_ur[1] - _ll[1], 2));
+        return sqrt(__gnu_cxx::power(_ur[0] - _ll[0], 2) +
+                    __gnu_cxx::power(_ur[1] - _ll[1], 2));
     }
 
     Weight get_count()
@@ -123,7 +125,7 @@ inline double dist(const Pos& p1, const Pos& p2)
 {
     double r = 0;
     for (size_t i = 0; i < 2; ++i)
-        r += pow(double(p1[i] - p2[i]), 2.);
+        r += __gnu_cxx::power(double(p1[i] - p2[i]), 2);
     return sqrt(r);
 }
 
@@ -139,7 +141,7 @@ inline double f_r(double C, double K, double p, const Pos& p1, const Pos& p2)
 template <class Pos>
 inline double f_a(double K, const Pos& p1, const Pos& p2)
 {
-    return pow(dist(p1, p2), 2) / K;
+    return __gnu_cxx::power(dist(p1, p2), 2) / K;
 }
 
 template <class Pos>
@@ -149,13 +151,14 @@ inline double get_diff(const Pos& p1, const Pos& p2, Pos& r)
     for (size_t i = 0; i < 2; ++i)
     {
         r[i] = p1[i] - p2[i];
-        abs += pow(r[i], 2);
+        abs += r[i] * r[i];
     }
     if (abs == 0)
         abs = 1;
+    abs = sqrt(abs);
     for (size_t i = 0; i < 2; ++i)
-        r[i] /= sqrt(abs);
-    return sqrt(abs);
+        r[i] /= abs;
+    return abs;
 }
 
 template <class Pos>
@@ -163,7 +166,7 @@ inline double norm(Pos& x)
 {
     double abs = 0;
     for (size_t i = 0; i < 2; ++i)
-        abs += pow(x[i], 2);
+        abs += __gnu_cxx::power(x[i], 2);
     for (size_t i = 0; i < 2; ++i)
         x[i] /= sqrt(abs);
     return sqrt(abs);
@@ -270,7 +273,7 @@ struct get_sfdp_layout
             size_t nmoves = 0;
             #pragma omp parallel for default(shared) private(i)  \
                 firstprivate(Q, diff, pos_u, ftot, cm) \
-                reduction(+:E, delta, nmoves)
+                reduction(+:E, delta, nmoves) schedule(static, 100)
             for (i = 0; i < N; ++i)
             {
                 typename graph_traits<Graph>::vertex_descriptor v =
@@ -366,7 +369,7 @@ struct get_sfdp_layout
                         val_t d = get_diff(group_cm[s], pos[v], diff);
                         if (d == 0)
                             continue;
-                        double Kp = K * pow(HN, 2.);
+                        double Kp = K * __gnu_cxx::power(HN, 2);
                         val_t f = f_a(Kp, group_cm[s], pos[v]) * gamma * \
                             group_size[s] * get(vweight, v);
                         for (size_t l = 0; l < 2; ++l)
@@ -407,7 +410,7 @@ struct get_sfdp_layout
                     }
                 }
 
-                E += pow(norm(ftot), 2);
+                E += __gnu_cxx::power(norm(ftot), 2);
 
                 {
                     #pragma omp critical
