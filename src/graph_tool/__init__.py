@@ -1245,10 +1245,13 @@ class Graph(object):
         return libcore.get_edges(weakref.ref(self))
 
     def add_vertex(self, n=1):
-        """Add a vertex to the graph, and return it. If ``n > 1``, ``n``
+        """Add a vertex to the graph, and return it. If ``n != 1``, ``n``
         vertices are inserted and an iterator over the new vertices is returned.
         This operation is :math:`O(n)`.
         """
+        if n == 0:
+            return (None for i in range(0, 0))
+
         self.__check_perms("add_vertex")
         v = libcore.add_vertex(weakref.ref(self), n)
 
