@@ -548,39 +548,76 @@ inline Vertex add_vertex(adj_list<Vertex>& g)
 template <class Vertex>
 inline void clear_vertex(Vertex v, adj_list<Vertex>& g)
 {
-    typename adj_list<Vertex>::edge_list_t& oes = g._out_edges[v];
-    for (size_t i = 0; i < oes.size(); ++i)
+    if (!g._keep_epos)
     {
-        Vertex t = oes[i].first;
-        typename adj_list<Vertex>::edge_list_t& ies = g._in_edges[t];
-        for (size_t j = 0; j < ies.size(); ++j)
+        typename adj_list<Vertex>::edge_list_t& oes = g._out_edges[v];
+        for (size_t i = 0; i < oes.size(); ++i)
         {
-            if (ies[j].first == v)
+            Vertex t = oes[i].first;
+            typename adj_list<Vertex>::edge_list_t& ies = g._in_edges[t];
+            for (size_t j = 0; j < ies.size(); ++j)
             {
-                g._free_indexes.push_back(ies[j].second);
-                ies.erase(ies.begin() + j);
+                if (ies[j].first == v)
+                {
+                    g._free_indexes.push_back(ies[j].second);
+                    ies.erase(ies.begin() + j);
+                }
             }
         }
-    }
-    g._n_edges -= oes.size();
-    oes.clear();
+        g._n_edges -= oes.size();
+        oes.clear();
 
-    typename adj_list<Vertex>::edge_list_t& ies = g._in_edges[v];
-    for (size_t i = 0; i < oes.size(); ++i)
-    {
-        Vertex s = ies[i].first;
-        typename adj_list<Vertex>::edge_list_t& oes = g._out_edges[s];
-        for (size_t j = 0; j < oes.size(); ++j)
+        typename adj_list<Vertex>::edge_list_t& ies = g._in_edges[v];
+        for (size_t i = 0; i < oes.size(); ++i)
         {
-            if (oes[j].first == v)
+            Vertex s = ies[i].first;
+            typename adj_list<Vertex>::edge_list_t& oes = g._out_edges[s];
+            for (size_t j = 0; j < oes.size(); ++j)
             {
-                g._free_indexes.push_back(oes[j].second);
-                oes.erase(oes.begin() + j);
+                if (oes[j].first == v)
+                {
+                    g._free_indexes.push_back(oes[j].second);
+                    oes.erase(oes.begin() + j);
+                }
             }
         }
+        g._n_edges -= ies.size();
+        ies.clear();
     }
-    g._n_edges -= ies.size();
-    ies.clear();
+    else
+    {
+        typename adj_list<Vertex>::edge_list_t& oes = g._out_edges[v];
+        for (size_t i = 0; i < oes.size(); ++i)
+        {
+            Vertex t = oes[i].first;
+            size_t idx = oes[i].second;
+            typename adj_list<Vertex>::edge_list_t& ies = g._in_edges[t];
+            const std::pair<int32_t, int32_t>& pos = g._epos[idx];
+
+            g._epos[ies.back().second].second = pos.second;
+            ies[pos.second] = ies.back();
+            ies.pop_back();
+            g._free_indexes.push_back(idx);
+        }
+        g._n_edges -= oes.size();
+        oes.clear();
+
+        typename adj_list<Vertex>::edge_list_t& ies = g._in_edges[v];
+        for (size_t i = 0; i < ies.size(); ++i)
+        {
+            Vertex s = ies[i].first;
+            size_t idx = ies[i].second;
+            typename adj_list<Vertex>::edge_list_t& oes = g._out_edges[s];
+            const std::pair<int32_t, int32_t>& pos = g._epos[idx];
+
+            g._epos[oes.back().second].first = pos.first;
+            oes[pos.first] = oes.back();
+            oes.pop_back();
+            g._free_indexes.push_back(idx);
+        }
+        g._n_edges -= ies.size();
+        ies.clear();
+    }
 }
 
 // O(V + E)
@@ -689,22 +726,29 @@ template <class Vertex>
 inline void remove_edge(Vertex s, Vertex t,
                         adj_list<Vertex>& g)
 {
-    typename adj_list<Vertex>::edge_list_t& oes = g._out_edges[s];
-    for (size_t i = 0; i < oes.size(); ++i)
+    if (!g._keep_epos)
     {
-        if (t == oes[i].first)
+        typename adj_list<Vertex>::edge_list_t& oes = g._out_edges[s];
+        for (size_t i = 0; i < oes.size(); ++i)
         {
-            g._free_indexes.push_back(oes[i].second);
-            oes.erase(oes.begin() + i);
-            g._n_edges--;
+            if (t == oes[i].first)
+            {
+                g._free_indexes.push_back(oes[i].second);
+                oes.erase(oes.begin() + i);
+                g._n_edges--;
+            }
+        }
+
+        typename adj_list<Vertex>::edge_list_t& ies = g._in_edges[t];
+        for (size_t i = 0; i < ies.size(); ++i)
+        {
+            if (s == ies[i].first)
+                ies.erase(ies.begin() + i);
         }
     }
-
-    typename adj_list<Vertex>::edge_list_t& ies = g._in_edges[t];
-    for (size_t i = 0; i < ies.size(); ++i)
+    else
     {
-        if (s == ies[i].first)
-            ies.erase(ies.begin() + i);
+        remove_edge(edge(s, t, g).first, g);
     }
 }
 
