@@ -227,7 +227,7 @@ vertex(const typename graph_traits<BidirectionalGraph>::vertices_size_type v,
 }
 
 template <class BidirectionalGraph, class GRef>
-inline std::pair<typename graph_traits<BidirectionalGraph>::edge_descriptor,
+inline std::pair<typename reverse_graph<BidirectionalGraph>::edge_descriptor,
                  bool>
 edge(const typename graph_traits<BidirectionalGraph>::vertex_descriptor u,
      const typename graph_traits<BidirectionalGraph>::vertex_descriptor v,
