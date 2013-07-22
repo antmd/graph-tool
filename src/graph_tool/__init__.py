@@ -1060,66 +1060,90 @@ class Graph(object):
             vfilt = g.get_vertex_filter()[0]
             efilt = g.get_edge_filter()[0]
 
-            # Copy all internal properties from original graph.
-            vprops = []
-            eprops = []
-            ef_pos = vf_pos = None
-            for k, m in gv.vertex_properties.items():
-                if not vprune and m is vfilt:
+            if (vorder is None and
+                ((g.get_vertex_filter()[0] is None and g.get_edge_filter()[0] is None) or
+                 (not vprune and not eprune))):
+                # Do a simpler, faster copy.
+                self.__graph = libcore.GraphInterface(gv.__graph, False,
+                                                      [], [], None)
+                nvfilt = nefilt = None
+                for k, m in g.properties.items():
+                    nmap = self.copy_property(m, g=gv)
+                    self.properties[k] = nmap
+                    if m is vfilt:
+                        nvfilt = nmap
+                    if m is efilt:
+                        nefilt = nmap
+                if vfilt is not None:
+                    if nvfilt is None:
+                        nvfilt = self.copy_property(vfilt, g=gv)
+                    self.set_vertex_filter(nvfilt, g.get_vertex_filter()[1])
+                if efilt is not None:
+                    if nefilt is None:
+                        nefilt = self.copy_property(efilt, g=gv)
+                    self.set_edge_filter(nefilt, g.get_edge_filter()[1])
+            else:
+
+                # Copy all internal properties from original graph.
+                vprops = []
+                eprops = []
+                ef_pos = vf_pos = None
+                for k, m in gv.vertex_properties.items():
+                    if not vprune and m is vfilt:
+                        vf_pos = len(vprops)
+                    vprops.append([_prop("v", gv, m), libcore.any()])
+                for k, m in gv.edge_properties.items():
+                    if not eprune and  m is efilt:
+                        ef_pos = len(eprops)
+                    eprops.append([_prop("e", gv, m), libcore.any()])
+                if not vprune and vf_pos is None and vfilt is not None:
                     vf_pos = len(vprops)
-                vprops.append([_prop("v", gv, m), libcore.any()])
-            for k, m in gv.edge_properties.items():
-                if not eprune and  m is efilt:
+                    vprops.append([_prop("v", gv, vfilt), libcore.any()])
+                if not eprune and ef_pos is None and efilt is not None:
                     ef_pos = len(eprops)
-                eprops.append([_prop("e", gv, m), libcore.any()])
-            if not vprune and vf_pos is None and vfilt is not None:
-                vf_pos = len(vprops)
-                vprops.append([_prop("v", gv, vfilt), libcore.any()])
-            if not eprune and ef_pos is None and efilt is not None:
-                ef_pos = len(eprops)
-                eprops.append([_prop("e", gv, efilt), libcore.any()])
+                    eprops.append([_prop("e", gv, efilt), libcore.any()])
 
-            # The vertex ordering
-            if vorder is None:
-                vorder = gv.new_vertex_property("int")
-                vorder.fa = numpy.arange(gv.num_vertices())
+                # The vertex ordering
+                if vorder is None:
+                    vorder = gv.new_vertex_property("int")
+                    vorder.fa = numpy.arange(gv.num_vertices())
 
-            # The actual copying of the graph and property maps
-            self.__graph = libcore.GraphInterface(gv.__graph, False,
-                                                  vprops,
-                                                  eprops,
-                                                  _prop("v", gv, vorder))
+                # The actual copying of the graph and property maps
+                self.__graph = libcore.GraphInterface(gv.__graph, False,
+                                                      vprops,
+                                                      eprops,
+                                                      _prop("v", gv, vorder))
 
-            # Put the copied properties in the internal dictionary
-            for i, (k, m) in enumerate(g.vertex_properties.items()):
-                pmap = new_vertex_property(m.value_type(),
-                                           self.__graph.GetVertexIndex(),
-                                           vprops[i][1])
-                self.vertex_properties[k] = PropertyMap(pmap, self, "v")
+                # Put the copied properties in the internal dictionary
+                for i, (k, m) in enumerate(g.vertex_properties.items()):
+                    pmap = new_vertex_property(m.value_type(),
+                                               self.__graph.GetVertexIndex(),
+                                               vprops[i][1])
+                    self.vertex_properties[k] = PropertyMap(pmap, self, "v")
 
-            for i, (k, m) in enumerate(g.edge_properties.items()):
-                pmap = new_edge_property(m.value_type(),
-                                         self.__graph.GetEdgeIndex(),
-                                         eprops[i][1])
-                self.edge_properties[k] = PropertyMap(pmap, self, "e")
+                for i, (k, m) in enumerate(g.edge_properties.items()):
+                    pmap = new_edge_property(m.value_type(),
+                                             self.__graph.GetEdgeIndex(),
+                                             eprops[i][1])
+                    self.edge_properties[k] = PropertyMap(pmap, self, "e")
 
-            for k, v in g.graph_properties.items():
-                new_p = self.new_graph_property(v.value_type())
-                new_p[self] = v[g]
-                self.graph_properties[k] = new_p
+                for k, v in g.graph_properties.items():
+                    new_p = self.new_graph_property(v.value_type())
+                    new_p[self] = v[g]
+                    self.graph_properties[k] = new_p
 
-            if vf_pos is not None:
-                pmap = new_vertex_property("bool",
-                                           self.__graph.GetVertexIndex(),
-                                           vprops[vf_pos][1])
-                pmap = PropertyMap(pmap, self, "v")
-                self.set_vertex_filter(pmap, g.get_vertex_filter()[1])
-            if ef_pos is not None:
-                pmap = new_edge_property("bool",
-                                         self.__graph.GetEdgeIndex(),
-                                         eprops[ef_pos][1])
-                pmap = PropertyMap(pmap, self, "e")
-                self.set_edge_filter(pmap, g.get_edge_filter()[1])
+                if vf_pos is not None:
+                    pmap = new_vertex_property("bool",
+                                               self.__graph.GetVertexIndex(),
+                                               vprops[vf_pos][1])
+                    pmap = PropertyMap(pmap, self, "v")
+                    self.set_vertex_filter(pmap, g.get_vertex_filter()[1])
+                if ef_pos is not None:
+                    pmap = new_edge_property("bool",
+                                             self.__graph.GetEdgeIndex(),
+                                             eprops[ef_pos][1])
+                    pmap = PropertyMap(pmap, self, "e")
+                    self.set_edge_filter(pmap, g.get_edge_filter()[1])
 
             if not rprune:
                 self.set_reversed(g.is_reversed())
