@@ -68,7 +68,7 @@ struct get_closeness
         get_vertex_dists_t get_vertex_dists;
         size_t HN = HardNumVertices()(g);
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(static, 100)
+        #pragma omp parallel for default(shared) private(i) schedule(static) if (N > 100)
         for (i = 0; i < N; ++i)
         {
             vertex_t v = vertex(i, g);

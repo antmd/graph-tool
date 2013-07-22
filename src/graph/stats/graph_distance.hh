@@ -80,7 +80,7 @@ struct get_distance_histogram
         get_vertex_dists_t get_vertex_dists;
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i,point) \
-            firstprivate(s_hist) schedule(static, 100)
+            firstprivate(s_hist) schedule(static) if (N > 100)
         for (i = 0; i < N; ++i)
         {
             vertex_t v = vertex(i, g);

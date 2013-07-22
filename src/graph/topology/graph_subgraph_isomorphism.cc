@@ -113,7 +113,7 @@ struct get_mapping
         elabelling_t edge_labelling(sub, *g, edge_label1,
                                     any_cast<EdgeLabel>(edge_label2));
         int i, N = F.size();
-        #pragma omp parallel for default(shared) private(i) schedule(static, 100)
+        #pragma omp parallel for default(shared) private(i) schedule(static) if (N > 100)
         for (i = 0; i < N; ++i)
         {
             if (vertex(i, sub) == graph_traits<Graph1>::null_vertex())

@@ -64,7 +64,7 @@ struct get_planar_embedding
              boyer_myrvold_params::kuratowski_subgraph = kur_insert);
 
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(static, 100)
+        #pragma omp parallel for default(shared) private(i) schedule(static) if (N > 100)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);

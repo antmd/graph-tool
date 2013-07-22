@@ -48,7 +48,7 @@ struct get_assortativity_coefficient
         SharedMap<tr1::unordered_map<double,count_t> > sa(a), sb(b);
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i) firstprivate(sa,sb)\
-            schedule(static, 100) reduction(+:e_kk, n_edges)
+            schedule(static) if (N > 100) reduction(+:e_kk, n_edges)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -82,7 +82,7 @@ struct get_assortativity_coefficient
 
         // "jackknife" variance
         double err = 0.0;
-        #pragma omp parallel for default(shared) private(i) schedule(static, 100)\
+        #pragma omp parallel for default(shared) private(i) schedule(static) if (N > 100)\
             reduction(+:err)
         for (i = 0; i < N; ++i)
         {
@@ -127,7 +127,7 @@ struct get_scalar_assortativity_coefficient
         double a = 0.0, b = 0.0, da = 0.0, db = 0.0;
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i) \
-            schedule(static, 100) reduction(+:e_xy,n_edges,a,b,da,db)
+            schedule(static) if (N > 100) reduction(+:e_xy,n_edges,a,b,da,db)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -163,7 +163,7 @@ struct get_scalar_assortativity_coefficient
         r_err = 0.0;
 
         double err = 0.0;
-        #pragma omp parallel for default(shared) private(i) schedule(static, 100)\
+        #pragma omp parallel for default(shared) private(i) schedule(static) if (N > 100)\
             reduction(+:err)
         for (i = 0; i < N; ++i)
         {

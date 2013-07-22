@@ -109,7 +109,7 @@ struct get_communities
             // sample a new spin for every vertex
             int NV = num_vertices(g),i;
             #pragma omp parallel for default(shared) private(i)\
-                reduction(+:E) schedule(static, 100)
+                reduction(+:E) schedule(static) if (NV > 100)
             for (i = 0; i < NV; ++i)
             {
                 vertex_t v = vertex(i, g);
@@ -212,7 +212,7 @@ struct get_communities
         {
             int NV = num_vertices(g), i;
             #pragma omp parallel for default(shared) private(i)\
-                schedule(static, 100)
+                schedule(static) if (NV > 100)
             for (i = 0; i < NV; ++i)
             {
                 vertex_t v = vertex(i, g);
@@ -381,7 +381,7 @@ public:
     void Update(size_t k, size_t old_s, size_t s)
     {
         int i, NK = _degs.size();
-        #pragma omp parallel for default(shared) private(i) schedule(static, 100)
+        #pragma omp parallel for default(shared) private(i) schedule(static) if (NK > 100)
         for (i = 0; i < NK; ++i)
         {
             size_t k1 = _degs[i], k2 = k;
@@ -407,7 +407,7 @@ public:
             _Nks[k].erase(old_s);
         _Nks[k][s]++;
 
-        #pragma omp parallel for default(shared) private(i) schedule(static, 100)
+        #pragma omp parallel for default(shared) private(i) schedule(static) if (NK > 100)
         for (i = 0; i < NK; ++i)
         {
             size_t k1 = _degs[i], k2 = k;

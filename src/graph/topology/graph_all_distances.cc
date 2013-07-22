@@ -37,7 +37,7 @@ struct do_all_pairs_search
             dist_t;
 
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(static, 100)
+        #pragma omp parallel for default(shared) private(i) schedule(static) if (N > 100)
         for (i = 0; i < N; ++i)
         {
             dist_map[i].clear();

@@ -273,7 +273,7 @@ struct get_sfdp_layout
             size_t nmoves = 0;
             #pragma omp parallel for default(shared) private(i)  \
                 firstprivate(Q, diff, pos_u, ftot, cm) \
-                reduction(+:E, delta, nmoves) schedule(static, 100)
+                reduction(+:E, delta, nmoves) schedule(static) if (N > 100)
             for (i = 0; i < N; ++i)
             {
                 typename graph_traits<Graph>::vertex_descriptor v =

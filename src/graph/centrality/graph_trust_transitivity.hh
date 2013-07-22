@@ -106,7 +106,7 @@ struct get_trust_transitivity
             property_traits<InferredTrustMap>::value_type::value_type t_type;
 
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(static, 100)
+        #pragma omp parallel for default(shared) private(i) schedule(static) if (N > 100)
         for (i = 0; i < N; ++i)
         {
             vertex_t v = vertex(i, g);
@@ -116,7 +116,7 @@ struct get_trust_transitivity
         }
 
         N = (target == -1) ? num_vertices(g) : target + 1;
-        #pragma omp parallel for default(shared) private(i) schedule(static, 100)
+        #pragma omp parallel for default(shared) private(i) schedule(static) if (N > 100)
         for (i = (target == -1) ? 0 : target; i < N; ++i)
         {
             vertex_t tgt = vertex(i, g);
@@ -210,7 +210,7 @@ struct get_trust_transitivity
                          distance_zero(t_type(1)));
 
                     #pragma omp parallel for default(shared) private(j) \
-                        schedule(static, 100)
+                        schedule(static) if (N > 100)
                     for (j = 0; j < N2; ++j)
                     {
                         vertex_t src = vertex(j, g);
@@ -224,7 +224,7 @@ struct get_trust_transitivity
                 }
 
                 #pragma omp parallel for default(shared) private(j) \
-                    schedule(static, 100)
+                    schedule(static) if (N > 100)
                 for (j = 0; j < N2; ++j)
                 {
                     vertex_t src = vertex(j, g);

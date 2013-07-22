@@ -101,7 +101,7 @@ struct do_bfs_search
         typedef unchecked_vector_property_map<size_t, VertexIndexMap> dist_map_t;
         dist_map_t dist_map(vertex_index, num_vertices(g));
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(static, 100)
+        #pragma omp parallel for default(shared) private(i) schedule(static) if (N > 100)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
