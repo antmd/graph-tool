@@ -300,18 +300,18 @@ namespace detail {
     friend reference
     get(const reverse_graph_edge_property_map& m,
         const key_type& e) {
-      return get(m.underlying_pm, e.underlying_desc);
+      return get(m.underlying_pm, e);
     }
 
     friend void
     put(const reverse_graph_edge_property_map& m,
         const key_type& e,
         const value_type& v) {
-      put(m.underlying_pm, e.underlying_desc, v);
+      put(m.underlying_pm, e, v);
     }
 
     reference operator[](const key_type& k) {
-      return (this->underlying_pm)[k.underlying_desc];
+      return (this->underlying_pm)[k];
     }
   };
 
