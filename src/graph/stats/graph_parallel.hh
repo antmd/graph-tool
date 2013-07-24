@@ -17,7 +17,11 @@
 #define GRAPH_PARALLEL_HH
 
 #include "tr1_include.hh"
-#include TR1_HEADER(unordered_set)
+#include TR1_HEADER(unordered_map)
+
+#ifdef HAVE_SPARSEHASH
+#include <dense_hash_map>
+#endif
 
 #include "graph_util.hh"
 
@@ -33,7 +37,9 @@ struct label_parallel_edges
     void operator()(const Graph& g, ParallelMap parallel, bool mark_only,
                     bool count_all) const
     {
+        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
+        typename property_map<Graph, edge_index_t>::type eidx = get(edge_index, g);
 
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i) schedule(static) if (N > 100)
@@ -43,23 +49,49 @@ struct label_parallel_edges
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
 
-            typename graph_traits<Graph>::out_edge_iterator e1, e2,
-                e_end1, e_end2;
-            for (tie(e1, e_end1) = out_edges(v, g); e1 != e_end1; ++e1)
+#ifdef HAVE_SPARSEHASH
+            google::dense_hash_map<vertex_t, edge_t> vset;
+            vset.set_empty_key(graph_traits<Graph>::null_vertex());
+            google::dense_hash_map<size_t, bool> self_loops;
+            self_loops.set_empty_key(numeric_limits<size_t>::max());
+#else
+            unordered_map<vertex_t, edge_t> vset;
+            unordered_map<size_t, bool> self_loops;
+#endif
+
+            typename graph_traits<Graph>::out_edge_iterator e, e_end;
+            for (tie(e, e_end) = out_edges(v, g); e != e_end; ++e)
             {
-                if (get(parallel, *e1) != 0)
-                    continue;
+                vertex_t u = target(*e, g);
 
                 // do not visit edges twice in undirected graphs
-                if (!is_directed::apply<Graph>::type::value &&
-                    target(*e1, g) < v)
+                if (!is_directed::apply<Graph>::type::value && u < v)
                     continue;
 
-                size_t n = count_all ? 1 : 0;
-                put(parallel, *e1, n);
-                for (tie(e2, e_end2) = out_edges(v, g); e2 != e_end2; ++e2)
-                    if (*e2 != *e1 && target(*e1, g) == target(*e2, g))
-                        put(parallel, *e2, mark_only ? 1 : ++n);
+                if (u == v)
+                {
+                    if (self_loops[eidx[*e]])
+                        continue;
+                    self_loops[eidx[*e]] = true;
+                }
+
+                typeof(vset.begin()) iter = vset.find(u);
+                if (iter == vset.end())
+                {
+                    vset[u] = *e;
+                }
+                else
+                {
+                    if (mark_only)
+                    {
+                        parallel[*e] = true;
+                    }
+                    else
+                    {
+                        parallel[*e] = parallel[iter->second] + 1;
+                        vset[u] = *e;
+                    }
+                }
             }
         }
     }
