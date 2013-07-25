@@ -829,13 +829,15 @@ def dijkstra_search(g, source, weight, visitor=DijkstraVisitor(), dist_map=None,
                              pred_map.value_type())
 
     try:
-        zero = _python_type(dist_map.value_type())(zero)
+        if dist_map.value_type() != "python::object":
+            zero = _python_type(dist_map.value_type())(zero)
     except OverflowError:
         zero = (weight.a.max() + 1) * g.num_vertices()
         zero = _python_type(dist_map.value_type())(zero)
 
     try:
-        infinity = _python_type(dist_map.value_type())(infinity)
+        if dist_map.value_type() != "python::object":
+            infinity = _python_type(dist_map.value_type())(infinity)
     except OverflowError:
         infinity = (weight.a.max() + 1) * g.num_vertices()
         infinity = _python_type(dist_map.value_type())(infinity)
@@ -1091,13 +1093,15 @@ def bellman_ford_search(g, source, weight, visitor=BellmanFordVisitor(),
                              pred_map.value_type())
 
     try:
-        zero = _python_type(dist_map.value_type())(zero)
+        if dist_map.value_type() != "python::object":
+            zero = _python_type(dist_map.value_type())(zero)
     except OverflowError:
         zero = (weight.a.max() + 1) * g.num_vertices()
         zero = _python_type(dist_map.value_type())(zero)
 
     try:
-        infinity = _python_type(dist_map.value_type())(infinity)
+        if dist_map.value_type() != "python::object":
+            infinity = _python_type(dist_map.value_type())(infinity)
     except OverflowError:
         infinity = (weight.a.max() + 1) * g.num_vertices()
         infinity = _python_type(dist_map.value_type())(infinity)
@@ -1548,13 +1552,15 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
         h = heuristic
 
     try:
-        zero = _python_type(dist_map.value_type())(zero)
+        if dist_map.value_type() != "python::object":
+            zero = _python_type(dist_map.value_type())(zero)
     except OverflowError:
         zero = (weight.a.max() + 1) * g.num_vertices()
         zero = _python_type(dist_map.value_type())(zero)
 
     try:
-        infinity = _python_type(dist_map.value_type())(infinity)
+        if dist_map.value_type() != "python::object":
+            infinity = _python_type(dist_map.value_type())(infinity)
     except OverflowError:
         infinity = (weight.a.max() + 1) * g.num_vertices()
         infinity = _python_type(dist_map.value_type())(infinity)
