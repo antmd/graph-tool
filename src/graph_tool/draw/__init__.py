@@ -386,6 +386,7 @@ def _propagate_pos(g, cg, c, cc, cpos, delta, mivs):
 
 
 def _avg_edge_distance(g, pos):
+    libgraph_tool_layout.sanitize_pos(g._Graph__graph, _prop("v", g, pos))
     ad = libgraph_tool_layout.avg_dist(g._Graph__graph, _prop("v", g, pos))
     if numpy.isnan(ad):
         ad = 1.
@@ -451,13 +452,62 @@ def coarse_graphs(g, method="hybrid", mivs_thres=0.9, ec_thres=0.75,
             pos = _propagate_pos(cg[i + 1][0], u, c, cc, pos,
                                  Ks[i] / 1000., mivs)
 
+def coarse_graph_stack(g, c, coarse_stack, eweight=None, vweight=None,
+                       weighted_coarse=True, verbose=False):
+    cg = [[g, c, None, None]]
+    if weighted_coarse:
+        cg[-1][2], cg[-1][3] = vweight, eweight
+    for u in coarse_stack:
+        c = u.vp["b"]
+        vcount = u.vp["count"]
+        ecount = u.ep["count"]
+        cg.append((u, c, vcount, ecount))
+        if verbose:
+            print("Coarse level:", end=' ')
+            print(len(cg), " num vertices:", end=' ')
+            print(u.num_vertices())
+    cg.reverse()
+    Ks = []
+    pos = random_layout(cg[0][0], dim=2)
+    for i in range(len(cg)):
+        if i == 0:
+            u = cg[i][0]
+            K = _avg_edge_distance(u, pos)
+            if K == 0:
+                K = 1.
+            Ks.append(K)
+            continue
+        if weighted_coarse:
+            gamma = 1.
+        else:
+            #u = cg[i - 1][0]
+            #w = cg[i][0]
+            #du = pseudo_diameter(u)[0]
+            #dw = pseudo_diameter(w)[0]
+            #gamma = du / float(max(dw, du))
+            gamma = 0.75
+        Ks.append(Ks[-1] * gamma)
+
+    for i in range(len(cg)):
+        u, c, vcount, ecount = cg[i]
+        yield u, pos, Ks[i], vcount, ecount
+
+        if verbose:
+            print("avg edge distance:", _avg_edge_distance(u, pos))
+
+        if i < len(cg) - 1:
+            if verbose:
+                print("propagating...")
+            pos = _propagate_pos(cg[i + 1][0], u, c, u.vertex_index.copy("int"),
+                                 pos, Ks[i] / 1000., None)
+
 
 def sfdp_layout(g, vweight=None, eweight=None, pin=None, groups=None, C=0.2,
                 K=None, p=2., theta=0.6, max_level=11, gamma=1., mu=0., mu_p=1.,
                 init_step=None, cooling_step=0.9, adaptive_cooling=True,
                 epsilon=1e-1, max_iter=0, pos=None, multilevel=None,
-                coarse_method= "hybrid", mivs_thres=0.9, ec_thres=0.75,
-                weighted_coarse=False, verbose=False):
+                coarse_method="hybrid", mivs_thres=0.9, ec_thres=0.75,
+                coarse_stack=None, weighted_coarse=False, verbose=False):
     r"""Obtain the SFDP spring-block layout of the graph.
 
     Parameters
@@ -589,14 +639,19 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, groups=None, C=0.2,
     if multilevel:
         if eweight is not None or vweight is not None:
             weighted_coarse = True
-        cgs = coarse_graphs(g, method=coarse_method,
-                            mivs_thres=mivs_thres,
-                            ec_thres=ec_thres,
-                            weighted_coarse=weighted_coarse,
-                            eweight=eweight,
-                            vweight=vweight,
-                            groups=groups,
-                            verbose=verbose)
+        if coarse_stack is None:
+            cgs = coarse_graphs(g, method=coarse_method,
+                                mivs_thres=mivs_thres,
+                                ec_thres=ec_thres,
+                                weighted_coarse=weighted_coarse,
+                                eweight=eweight,
+                                vweight=vweight,
+                                groups=groups,
+                                verbose=verbose)
+        else:
+            cgs = coarse_graph_stack(g, coarse_stack[0], coarse_stack[1],
+                                     eweight=eweight, vweight=vweight,
+                                     verbose=verbose)
         for count, (u, pos, K, vcount, ecount) in enumerate(cgs):
             if verbose:
                 print("Positioning level:", count, u.num_vertices(), end=' ')
@@ -633,6 +688,7 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, groups=None, C=0.2,
         groups = label_components(g)[0]
     elif groups.value_type() != "int32_t":
         raise ValueError("'groups' property must be of type 'int32_t'.")
+    libgraph_tool_layout.sanitize_pos(g._Graph__graph, _prop("v", g, pos))
     libgraph_tool_layout.sfdp_layout(g._Graph__graph, _prop("v", g, pos),
                                      _prop("v", g, vweight),
                                      _prop("e", g, eweight),

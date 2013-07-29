@@ -266,6 +266,34 @@ double avg_dist(GraphInterface& gi, boost::any pos)
     return d;
 }
 
+
+struct do_sanitize_pos
+{
+    template <class Graph, class PosMap>
+    void operator()(Graph& g, PosMap pos) const
+    {
+        int i, N = num_vertices(g);
+        #pragma omp parallel for default(shared) private(i) schedule(static) if (N > 100)
+        for (i = 0; i < N; ++i)
+        {
+            typename graph_traits<Graph>::vertex_descriptor v =
+                vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+            pos[v].resize(2);
+        }
+    }
+};
+
+
+void sanitize_pos(GraphInterface& gi, boost::any pos)
+{
+    run_action<>()
+        (gi, bind<void>(do_sanitize_pos(), _1, _2),
+         vertex_scalar_vector_properties()) (pos);
+}
+
+
 #include <boost/python.hpp>
 
 void export_sfdp()
@@ -274,4 +302,5 @@ void export_sfdp()
     python::def("propagate_pos", &propagate_pos);
     python::def("propagate_pos_mivs", &propagate_pos_mivs);
     python::def("avg_dist", &avg_dist);
+    python::def("sanitize_pos", &sanitize_pos);
 }
