@@ -1457,7 +1457,8 @@ class Graph(object):
                   doc="Alias to :attr:`~Graph.graph_properties`.")
 
     def own_property(self, prop):
-        """'Own' property map 'prop', which may belong to another graph."""
+        """Return a version of the property map 'prop' (possibly belonging to
+        another graph) which is owned by the current graph."""
         return PropertyMap(prop._PropertyMap__map, self, prop.key_type())
 
     def list_properties(self):
