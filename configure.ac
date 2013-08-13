@@ -240,6 +240,17 @@ AC_CHECK_LIB(CGAL,main)
 [CGAL_LIBADD="-lCGAL -lgmp"]
 AC_SUBST(CGAL_LIBADD)
 [CGAL_FLAGS="-frounding-math"]
+AC_MSG_CHECKING(whether to cgal debbuging with valgrind...)
+AC_ARG_ENABLE([cgal-valgrind], [AS_HELP_STRING([--enable-cgal-valgrind],[enable CGAL valgrind debugging [default=disabled] ])],
+        if test $enableval = yes; then
+           [AC_MSG_RESULT(yes)]
+	   [CGAL_FLAGS="${CGAL_FLAGS} -DCGAL_DISABLE_ROUNDING_MATH_CHECK=ON"]
+        else
+           [AC_MSG_RESULT(no)]	
+        fi
+        ,
+        [AC_MSG_RESULT(no)]
+        )
 AC_SUBST(CGAL_FLAGS)
 
 dnl Checks for header files.
