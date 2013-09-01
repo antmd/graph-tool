@@ -518,8 +518,8 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         (pixels for the screen, points for PDF, etc).
     fit_view : bool (optional, default: ``True``)
         If ``True``, the layout will be scaled to fit the entire display area.
-    output : string (optional, default: ``None``)
-        Output file name. If not given, the graph will be displayed via
+    output : string or file object (optional, default: ``None``)
+        Output file name (or object). If not given, the graph will be displayed via
         :func:`interactive_window`.
     fmt : string (default: ``"auto"``)
         Output file format. Possible values are ``"auto"``, ``"ps"``, ``"pdf"``,
@@ -784,7 +784,12 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         return interactive_window(g, pos, vprops, eprops, vorder, eorder,
                                   nodesfirst, **kwargs)
     else:
-        out, auto_fmt = open_file(output, mode="wb")
+        if isinstance(output, str):
+            out, auto_fmt = open_file(output, mode="wb")
+        else:
+            out = output
+            if fmt == "auto":
+                raise ValueError("File format must be specified.")
 
         if fmt == "auto":
             fmt = auto_fmt
@@ -832,7 +837,7 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                    nodesfirst, **kwargs)
         del cr
 
-        if output.endswith(".png"):
+        if fmt == "png":
             srf.write_to_png(out)
         return pos
 
