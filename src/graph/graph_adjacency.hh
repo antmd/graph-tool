@@ -142,6 +142,8 @@ public:
     typedef std::vector<std::pair<vertex_t, vertex_t> > edge_list_t;
     typedef typename integer_range<Vertex>::iterator vertex_iterator;
 
+    adj_list(): _n_edges(0), _last_idx(0), _keep_epos(false) {}
+
     struct get_vertex
     {
         get_vertex() {}
@@ -274,7 +276,7 @@ public:
         return _keep_epos;
     }
 
-    size_t get_last_index() const {return _last_idx;}
+    size_t get_last_index() const { return _last_idx; }
 
     static Vertex null_vertex() { return std::numeric_limits<Vertex>::max(); }
 
