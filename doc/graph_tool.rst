@@ -43,6 +43,9 @@
        .. automethod:: add_edge
        .. automethod:: remove_edge
 
+       .. automethod:: set_fast_edge_removal
+       .. automethod:: get_fast_edge_removal
+
        The following functions allow for easy removal of vertices of
        edges from the graph.
 

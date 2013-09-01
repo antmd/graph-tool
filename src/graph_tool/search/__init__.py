@@ -1396,6 +1396,13 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
     ...               edge_pen_width=ewidth, output="astar-delaunay.pdf")
     <...>
 
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output_size=(300, 300), vertex_fill_color=touch_v,
+                     vcmap=matplotlib.cm.binary, edge_color=ecolor,
+                     edge_pen_width=ewidth, output="astar-delaunay.png")
+
     .. figure:: astar-delaunay.*
        :align: center
 

@@ -159,7 +159,7 @@ html_copy_source = True
 # If true, an OpenSearch description file will be output, and all pages will
 # contain a <link> tag referring to it.  The value of this option must be the
 # base URL from which the finished HTML is served.
-html_use_opensearch = 'http://projects.skewed.de/graph-tool/doc/'
+html_use_opensearch = 'http://graph-tool.skewed.de/doc/'
 
 # If nonempty, this is the file name suffix for HTML files (e.g. ".xhtml").
 #html_file_suffix = ''
@@ -199,7 +199,7 @@ intersphinx_mapping = {'python': ('http://docs.python.org', None),
                        'matplotlib': ('http://matplotlib.sourceforge.net', None),
                        'cairo': ('http://www.cairographics.org/documentation/pycairo/3/', None)}
 
-extlinks = {'ticket': ('http://projects.skewed.de/graph-tool/ticket/%s',
+extlinks = {'ticket': ('http://graph-tool.skewed.de/tickets/ticket/%s',
                        'ticket '),
             'doi': ('http://dx.doi.org/%s', 'DOI: '),
             'arxiv': ('http://arxiv.org/abs/%s', 'arXiv: ')}

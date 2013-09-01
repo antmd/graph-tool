@@ -261,6 +261,14 @@ def subgraph_isomorphism(sub, g, max_n=0, vertex_label=None, edge_label=None,
     >>> gt.graph_draw(sub, output_size=(200, 200), output="subgraph-iso.pdf")
     <...>
 
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, vertex_fill_color=vmask, edge_color=emask,
+                     edge_pen_width=ewidth, output_size=(200, 200),
+                     output="subgraph-iso-embed.png")
+       gt.graph_draw(sub, output_size=(200, 200), output="subgraph-iso.png")
+
     .. image:: subgraph-iso.*
     .. image:: subgraph-iso-embed.*
 
@@ -383,6 +391,11 @@ def min_spanning_tree(g, weights=None, root=None, tree_map=None):
     >>> gt.graph_draw(g, pos=pos, output="triang_min_span_tree.pdf")
     <...>
 
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output="triang_orig.png")
+       gt.graph_draw(g, pos=pos, output="triang_min_span_tree.png")
 
     .. image:: triang_orig.*
         :width: 400px
@@ -469,6 +482,11 @@ def random_spanning_tree(g, weights=None, root=None, tree_map=None):
     >>> gt.graph_draw(g, pos=pos, output="triang_random_span_tree.pdf")
     <...>
 
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output="rtriang_orig.png")
+       gt.graph_draw(g, pos=pos, output="triang_random_span_tree.png")
 
     .. image:: rtriang_orig.*
         :width: 400px
@@ -1408,6 +1426,11 @@ def is_bipartite(g, partition=False):
     >>> gt.graph_draw(g, vertex_fill_color=part, output_size=(300, 300), output="bipartite.pdf")
     <...>
 
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, vertex_fill_color=part, output_size=(300, 300), output="bipartite.png")
+
     .. figure:: bipartite.*
         :align: center
 
@@ -1491,6 +1514,11 @@ def is_planar(g, embedding=False, kuratowski=False):
     >>> gt.graph_draw(g, output_size=(300, 300), output="kuratowski.pdf")
     <...>
 
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, output_size=(300, 300), output="kuratowski.png")
+
     .. figure:: kuratowski.*
         :align: center
 
@@ -1563,6 +1591,11 @@ def make_maximal_planar(g, unfilter=False):
     1764 5286
     >>> gt.graph_draw(g, output_size=(300, 300), output="maximal_planar.pdf")
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, output_size=(300, 300), output="maximal_planar.png")
 
     .. figure:: maximal_planar.*
         :align: center
@@ -1677,6 +1710,12 @@ def max_cardinality_matching(g, heuristic=False, weight=None, minimize=True,
     ...               output="max_card_match.pdf")
     <...>
 
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, edge_color=res[0], edge_pen_width=w, vertex_fill_color="grey",
+                     output="max_card_match.png")
+
     .. figure:: max_card_match.*
         :align: center
 
@@ -1748,6 +1787,11 @@ def max_independent_vertex_set(g, high_deg=False, mivs=None):
     >>> res = gt.max_independent_vertex_set(g)
     >>> gt.graph_draw(g, vertex_fill_color=res, output="mivs.pdf")
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, vertex_fill_color=res, output="mivs.png")
 
     .. figure:: mivs.*
         :align: center

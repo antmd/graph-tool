@@ -89,14 +89,14 @@ visualize the graph we created so far with the
 .. doctest::
 
    >>> graph_draw(g, vertex_text=g.vertex_index, vertex_font_size=18,
-   ...            output_size=(200, 200), output="two-nodes.pdf")
+   ...            output_size=(200, 200), output="two-nodes.png")
    <...>
 
 .. doctest::
    :hide:
 
    graph_draw(g, vertex_text=g.vertex_index, vertex_font_size=18,
-              output_size=(200, 200), output="two-nodes.png")
+              output_size=(200, 200), output="two-nodes.pdf")
 
 
 .. figure:: two-nodes.*
@@ -157,12 +157,22 @@ Edges and vertices can also be removed at any time with the
    internally stored in a `STL vector <http://en.wikipedia.org/wiki/Vector_%28STL%29>`_,
    so removing an element somewhere in the middle of the list requires
    the shifting of the rest of the list. Thus, fast :math:`O(1)`
-   removals are only possible if one can guarantee that only vertices in
-   the end of the list are removed (the ones last added to the graph).
+   removals are only possible either if one can guarantee that only
+   vertices in the end of the list are removed (the ones last added to
+   the graph), or if the relative vertex ordering is invalidated. This
+   last behavior can be achieved by passing the option ``fast == True``,
+   to :meth:`~graph_tool.Graph.remove_vertex`, which causes vertex
+   being deleted to be 'swapped' with the last vertex (i.e. with the
+   largest index), which will in turn inherit the index of the vertex
+   being deleted.
+
 
    Removing an edge is an :math:`O(k_{s} + k_{t})` operation, where
    :math:`k_{s}` is the out-degree of the source vertex, and
-   :math:`k_{t}` is the in-degree of the target vertex.
+   :math:`k_{t}` is the in-degree of the target vertex. This can be made
+   faster by setting :meth:`~graph_tool.Graph.set_fast_edge_removal` to
+   `True`, in which case it becomes :math:`O(1)`, at the expense of
+   additional data of size :math:`O(E)`.
 
 Each vertex in a graph has an unique index, which is numbered from 0 to
 N-1, where N is the number of vertices. This index can be obtained by

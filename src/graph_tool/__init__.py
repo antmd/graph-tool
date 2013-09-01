@@ -1344,13 +1344,13 @@ class Graph(object):
 
            This operation is normally :math:`O(k_s + k_t)`, where :math:`k_s`
            and :math:`k_s` are the total degrees of the source and target
-           vertices, respectively. However, if :method:`~Graph.set_fast_edge_removal`
+           vertices, respectively. However, if :meth:`~Graph.set_fast_edge_removal`
            is set to `True`, this operation becomes :math:`O(1)`.
 
         .. warning::
 
            The relative ordering of the remaining edges in the graph is kept
-           unchanged, unless :method:`~Graph.set_fast_edge_removal` is set to
+           unchanged, unless :meth:`~Graph.set_fast_edge_removal` is set to
            `True`, in which case it can change.
         """
         self.__check_perms("del_edge")

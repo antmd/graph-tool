@@ -393,7 +393,7 @@ def combined_corr_hist(g, deg1, deg2, bins=[[0, 1], [0, 1]], float_count=True):
     .. testcode::
        :hide:
 
-       savefig("combined_corr.pdf")
+       savefig("combined_corr.png")
 
     .. figure:: combined_corr.*
         :align: center

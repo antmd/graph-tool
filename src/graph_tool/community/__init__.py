@@ -189,10 +189,22 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
     ...                                history_file="community-history1")
     >>> gt.graph_draw(g, pos=pos, vertex_fill_color=spins, output_size=(420, 420), output="comm1.pdf")
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, vertex_fill_color=spins, output_size=(420, 420), output="comm1.png")
+
     >>> spins = gt.community_structure(g, 10000, 40, t_range=(5, 0.1),
     ...                                gamma=2.5, history_file="community-history2")
     >>> gt.graph_draw(g, pos=pos, vertex_fill_color=spins, output_size=(420, 420), output="comm2.pdf")
     <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, vertex_fill_color=spins, output_size=(420, 420), output="comm2.png")
+
     >>> figure(figsize=(6, 4))
     <...>
     >>> xlabel("iterations")
@@ -203,6 +215,12 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
     >>> plot(a[0], a[2])
     [...]
     >>> savefig("comm1-hist.pdf")
+
+    .. testcode::
+       :hide:
+
+       savefig("comm1-hist.png")
+
     >>> clf()
     >>> xlabel("iterations")
     <...>
@@ -212,6 +230,11 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
     >>> plot(a[0], a[2])
     [...]
     >>> savefig("comm2-hist.pdf")
+
+    .. testcode::
+       :hide:
+
+       savefig("comm2-hist.png")
 
 
     The community structure with :math:`\gamma=1`:
