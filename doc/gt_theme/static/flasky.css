@@ -12,7 +12,7 @@
 @import url("basic.css");
 
 /* webfonts */
-@import url("http://fonts.googleapis.com/css?family=Droid+Serif:400,400italic,700,700italic|Droid+Sans+Mono");
+@import url("//fonts.googleapis.com/css?family=Droid+Serif:400,400italic,700,700italic|Droid+Sans+Mono");
  
 /* -- page layout ----------------------------------------------------------- */
 body {
