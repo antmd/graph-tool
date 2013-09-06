@@ -15,13 +15,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+#include <graph_python_interface.hh>
+
 #include "graph.hh"
 #include "graph_filtering.hh"
 
 #include "random.hh"
 
 #include <graph_subgraph_isomorphism.hh>
-#include <graph_python_interface.hh>
 
 #include "tr1_include.hh"
 #include TR1_HEADER(unordered_map)

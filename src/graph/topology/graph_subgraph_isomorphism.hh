@@ -213,7 +213,7 @@ void find_mappings(const Graph1& sub, const Graph2& g, matrix_t& M0,
     // [current M] [current sub vertex] [current mapping vertex]
     typedef tuple<matrix_t, size_t,
                   typename matrix_t::value_type::const_iterator> state_t;
-    list<state_t> Mstack;
+    std::list<state_t> Mstack;
     Mstack.push_back(make_tuple(M0, i, M0[i].begin()));
     get<2>(Mstack.back()) = get<0>(Mstack.back())[i].begin();
     tr1::unordered_set<size_t> already_mapped;

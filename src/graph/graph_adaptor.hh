@@ -139,8 +139,8 @@ struct make_undirected_edge
 template <class Graph, class Iter>
 struct transformed_iterator
 {
-    typedef typename mpl::if_<std::tr1::is_convertible<typename std::iterator_traits<Iter>::iterator_category,
-                                                       std::random_access_iterator_tag>,
+    typedef typename mpl::if_<is_convertible<typename std::iterator_traits<Iter>::iterator_category,
+                                             std::random_access_iterator_tag>,
                               transform_random_access_iterator<make_undirected_edge<Graph>, Iter>,
                               transform_iterator<make_undirected_edge<Graph>, Iter> >::type type;
     typedef is_convertible<typename std::iterator_traits<Iter>::iterator_category,
