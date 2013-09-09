@@ -50,11 +50,11 @@ Reporting Bugs
 ==============
 
 A list of known bugs can be found in the website:
-https://projects.skewed.de/graph-tool/report
+
+http://graph-tool.skewed.de/tickets
 
 If you found a bug in the program which is not included in this list,
-please submit a ticket through the website at
-https://projects.skewed.de/graph-tool/newticket
+please submit a ticket through the provided interface.
 
 --
 Tiago de Paula Peixoto <tiago@skewed.de>
