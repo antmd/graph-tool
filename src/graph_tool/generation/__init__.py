@@ -864,15 +864,15 @@ def graph_union(g1, g2, intersection=None, props=None, include=False):
     g2 : :class:`~graph_tool.Graph`
        Second graph in the union.
     intersection : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
-       Vertex property map owned by `g1` which maps each of each of its vertices
+       Vertex property map owned by `g1` which maps each of its vertices
        to vertex indexes belonging to `g2`. Negative values mean no mapping
        exists, and thus both vertices in `g1` and `g2` will be present in the
        union graph.
     props : list of tuples of :class:`~graph_tool.PropertyMap` (optional, default: ``[]``)
        Each element in this list must be a tuple of two PropertyMap objects. The
-       first element must be a property of `g1`, and the second of `g2`. The
-       values of the property maps are propagated into the union graph, and
-       returned.
+       first element must be a property of `g1`, and the second of `g2`. If either
+       value is ``None``, an empty map is created. The values of the property
+       maps are propagated into the union graph, and returned.
     include : bool (optional, default: ``False``)
        If true, graph `g2` is inserted into `g1` which is modified. If false, a
        new graph is created, and both graphs remain unmodified.
@@ -953,6 +953,10 @@ def graph_union(g1, g2, intersection=None, props=None, include=False):
                                                             intersection))
     n_props = []
     for p1, p2 in props:
+        if p1 is None:
+            p1 = g1.new_property(p2.key_type(), p2.value_type())
+        if p2 is None:
+            p2 = g2.new_property(p1.key_type(), p1.value_type())
         if not include:
             p1 = g1.copy_property(p1)
         if p2.value_type() != p1.value_type():
