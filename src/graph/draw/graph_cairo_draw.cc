@@ -58,6 +58,8 @@ enum vertex_attr_t {
     VERTEX_TEXT,
     VERTEX_TEXT_COLOR,
     VERTEX_TEXT_POSITION,
+    VERTEX_TEXT_ROTATION,
+    VERTEX_TEXT_OFFSET,
     VERTEX_FONT_FAMILY,
     VERTEX_FONT_SLANT,
     VERTEX_FONT_WEIGHT,
@@ -118,7 +120,7 @@ typedef pair<double, double> pos_t;
 typedef tuple<double, double, double, double> color_t;
 typedef tr1::unordered_map<int, boost::any> attrs_t;
 
-typedef mpl::map37<
+typedef mpl::map39<
     mpl::pair<mpl::int_<VERTEX_SHAPE>, vertex_shape_t>,
     mpl::pair<mpl::int_<VERTEX_COLOR>, color_t>,
     mpl::pair<mpl::int_<VERTEX_FILL_COLOR>, color_t>,
@@ -132,6 +134,8 @@ typedef mpl::map37<
     mpl::pair<mpl::int_<VERTEX_TEXT>, string>,
     mpl::pair<mpl::int_<VERTEX_TEXT_COLOR>, color_t>,
     mpl::pair<mpl::int_<VERTEX_TEXT_POSITION>, double>,
+    mpl::pair<mpl::int_<VERTEX_TEXT_ROTATION>, double>,
+    mpl::pair<mpl::int_<VERTEX_TEXT_OFFSET>, vector<double> >,
     mpl::pair<mpl::int_<VERTEX_FONT_FAMILY>, string>,
     mpl::pair<mpl::int_<VERTEX_FONT_SLANT>, int32_t>,
     mpl::pair<mpl::int_<VERTEX_FONT_WEIGHT>, int32_t>,
@@ -452,9 +456,9 @@ void move_radially(pos_t& pos, const pos_t& origin, double dr)
     pos.second += dr * sin(angle);
 }
 
-double get_user_dist(Cairo::Context& cr)
+double get_user_dist(Cairo::Context& cr, double norm = 1.)
 {
-    double x = 1./sqrt(2), y = 1./sqrt(2);
+    double x = norm / sqrt(2.), y = norm / sqrt(2.);
     cr.device_to_user_distance(x, y);
     return sqrt(x * x + y * y);
 }
@@ -485,7 +489,7 @@ public:
     double get_size(Cairo::Context& cr)
     {
         double size = _attrs.template get<double>(VERTEX_SIZE);
-        size *= get_user_dist(cr);
+        size = get_user_dist(cr, size);
 
         string text = _attrs.template get<string>(VERTEX_TEXT);
         if (text != "")
@@ -496,8 +500,7 @@ public:
                 cr.select_font_face(_attrs.template get<string>(VERTEX_FONT_FAMILY),
                                     static_cast<Cairo::FontSlant>(_attrs.template get<int32_t>(VERTEX_FONT_SLANT)),
                                     static_cast<Cairo::FontWeight>(_attrs.template get<int32_t>(VERTEX_FONT_WEIGHT)));
-                cr.set_font_size(_attrs.template get<double>(VERTEX_FONT_SIZE) *
-                                 get_user_dist(cr));
+                cr.set_font_size(get_user_dist(cr, _attrs.template get<double>(VERTEX_FONT_SIZE)));
                 Cairo::TextExtents extents;
                 cr.get_text_extents(text, extents);
                 double s = max(extents.width, extents.height) * 1.4;
@@ -506,7 +509,7 @@ public:
                 {
                     s /= 0.7;
                     double pw = _attrs.template get<double>(VERTEX_PENWIDTH);
-                    pw *= get_user_dist(cr);
+                    pw = get_user_dist(cr, pw);
                     s += pw;
                 }
                 size = max(size, s);
@@ -515,10 +518,11 @@ public:
         return size;
     }
 
-    pos_t get_anchor(const pos_t& origin, Cairo::Context& cr)
+    pos_t get_anchor(const pos_t& origin, Cairo::Context& cr,
+                     bool force_border=false)
     {
         int anchor_type =_attrs.template get<int32_t>(VERTEX_ANCHOR);
-        if (anchor_type == 0)
+        if (anchor_type == 0 && !force_border)
             return _pos;
 
         double angle = atan2(_pos.second - origin.second,
@@ -529,7 +533,7 @@ public:
         double dr = r;
 
         double pw = _attrs.template get<double>(VERTEX_PENWIDTH);
-        pw *= get_user_dist(cr);
+        pw = get_user_dist(cr, pw);
         r += pw / 2.5;
 
         pos_t anchor;
@@ -585,18 +589,6 @@ public:
         size = get_size(cr);
         aspect = _attrs.template get<double>(VERTEX_ASPECT);
 
-        string text = _attrs.template get<string>(VERTEX_TEXT);
-        double text_pos = 0;
-        if (text != "" && !outline)
-        {
-            cr.select_font_face(_attrs.template get<string>(VERTEX_FONT_FAMILY),
-                                static_cast<Cairo::FontSlant>(_attrs.template get<int32_t>(VERTEX_FONT_SLANT)),
-                                static_cast<Cairo::FontWeight>(_attrs.template get<int32_t>(VERTEX_FONT_WEIGHT)));
-            cr.set_font_size(_attrs.template get<double>(VERTEX_FONT_SIZE) *
-                             get_user_dist(cr));
-            text_pos = _attrs.template get<double>(VERTEX_TEXT_POSITION);
-        }
-
         if (!outline)
             cr.save();
         cr.translate(_pos.first, _pos.second);
@@ -617,7 +609,7 @@ public:
         if (osrc == python::object())
         {
             pw =_attrs.template get<double>(VERTEX_PENWIDTH);
-            pw *= get_user_dist(cr);
+            pw = get_user_dist(cr, pw);
             cr.set_line_width(pw);
 
             color = _attrs.template get<color_t>(VERTEX_COLOR);
@@ -734,31 +726,54 @@ public:
             }
         }
 
+        string text = _attrs.template get<string>(VERTEX_TEXT);
         if (text != "" && !outline)
         {
             cr.save();
+
+            double text_pos = 0;
+            double text_rotation = 0;
+            vector<double> text_offset;
+
+            cr.select_font_face(_attrs.template get<string>(VERTEX_FONT_FAMILY),
+                                static_cast<Cairo::FontSlant>(_attrs.template get<int32_t>(VERTEX_FONT_SLANT)),
+                                static_cast<Cairo::FontWeight>(_attrs.template get<int32_t>(VERTEX_FONT_WEIGHT)));
+            cr.set_font_size(get_user_dist(cr, _attrs.template get<double>(VERTEX_FONT_SIZE)));
+            text_pos = _attrs.template get<double>(VERTEX_TEXT_POSITION);
+            text_rotation = _attrs.template get<double>(VERTEX_TEXT_ROTATION);
+            text_offset = _attrs.template get<vector<double> >(VERTEX_TEXT_OFFSET);
+            text_offset.resize(2, 0.0);
+
+            cr.rotate(text_rotation);
+
             Cairo::TextExtents extents;
             cr.get_text_extents(text, extents);
+            Cairo::FontExtents fextents;
+            cr.get_font_extents(fextents);
 
             if (text_pos < 0)
             {
-                cr.translate(-extents.width/2 - extents.x_bearing,
-                             extents.height / 2);
+                cr.translate(-extents.width / 2 - extents.x_bearing + text_offset[0],
+                             extents.height / 2 + text_offset[1]);
             }
             else
             {
                 pos_t origin;
                 origin.first = _pos.first + size * cos(text_pos);
                 origin.second = _pos.second + size * sin(text_pos);
-                pos_t anchor = get_anchor(origin, cr);
+
+                pos_t anchor = get_anchor(origin, cr, true);
                 double angle = atan2(_pos.second - anchor.second,
-                                     _pos.first - anchor.first);
+                                     _pos.first - anchor.first) + M_PI;
                 anchor.first = size * 1.2 * cos(angle);
                 anchor.second = size * 1.2 * sin(angle);
+
+                anchor.first += text_offset[0];
+                anchor.second += text_offset[1] + extents.height / 2;
+
                 if (anchor.first < 0)
                     anchor.first -= extents.width;
-                if (anchor.second > 0)
-                    anchor.second += extents.height;
+
                 cr.translate(anchor.first, anchor.second);
             }
             color = _attrs.template get<color_t>(VERTEX_TEXT_COLOR);
@@ -856,7 +871,7 @@ public:
 
         pos_t pos_end_c = pos_end, pos_begin_c = pos_begin;
         double marker_size = _attrs.template get<double>(EDGE_MARKER_SIZE);
-        marker_size *= get_user_dist(cr);
+        marker_size = get_user_dist(cr, marker_size);
 
         if (start_marker == MARKER_SHAPE_NONE && !sloppy)
             pos_begin = _s.get_pos();
@@ -870,7 +885,7 @@ public:
         color_t color = _attrs.template get<color_t>(EDGE_COLOR);
         double pw;
         pw = _attrs.template get<double>(EDGE_PENWIDTH);
-        pw *= get_user_dist(cr);
+        pw = get_user_dist(cr, pw);
         cr.set_line_width(pw);
 
         double a = get<3>(color);
@@ -924,10 +939,9 @@ public:
             cr.select_font_face(_attrs.template get<string>(EDGE_FONT_FAMILY),
                                 static_cast<Cairo::FontSlant>(_attrs.template get<int32_t>(EDGE_FONT_SLANT)),
                                 static_cast<Cairo::FontWeight>(_attrs.template get<int32_t>(EDGE_FONT_WEIGHT)));
-            cr.set_font_size(_attrs.template get<double>(EDGE_FONT_SIZE) *
-                             get_user_dist(cr));
+            cr.set_font_size(get_user_dist(cr, _attrs.template get<double>(EDGE_FONT_SIZE)));
             double text_dist = _attrs.template get<double>(EDGE_TEXT_DISTANCE);
-            text_dist *= get_user_dist(cr);
+            text_dist = get_user_dist(cr, text_dist);
 
             bool text_parallel = _attrs.template get<uint8_t>(EDGE_TEXT_PARALLEL);
 
@@ -1638,6 +1652,8 @@ BOOST_PYTHON_MODULE(libgraph_tool_draw)
         .value("text", VERTEX_TEXT)
         .value("text_color", VERTEX_TEXT_COLOR)
         .value("text_position", VERTEX_TEXT_POSITION)
+        .value("text_rotation", VERTEX_TEXT_ROTATION)
+        .value("text_offset", VERTEX_TEXT_OFFSET)
         .value("font_family", VERTEX_FONT_FAMILY)
         .value("font_slant", VERTEX_FONT_SLANT)
         .value("font_weight", VERTEX_FONT_WEIGHT)

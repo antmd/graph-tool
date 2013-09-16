@@ -84,6 +84,8 @@ _vdefaults = {
     "text": "",
     "text_color": [0., 0., 0., 1.],
     "text_position": -1.,
+    "text_rotation": 0.,
+    "text_offset": [0., 0.],
     "font_family": "serif",
     "font_slant": cairo.FONT_SLANT_NORMAL,
     "font_weight": cairo.FONT_WEIGHT_NORMAL,
@@ -381,8 +383,10 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
     parallel_distance : float (optional, default: ``None``)
         Distance used between parallel edges. If not provided, it will be
         determined automatically.
-    fit_view : bool (optional, default: ``True``)
+    fit_view : bool or float (optional, default: ``True``)
         If ``True``, the layout will be scaled to fit the entire clip region.
+        If a float value is given, it will be interpreted as ``True``, and in
+        addition the viewport will be scaled out by that factor.
     vertex_* : :class:`~graph_tool.PropertyMap` or arbitrary types (optional, default: ``None``)
         Parameters following the pattern ``vertex_<prop-name>`` specify the
         vertex property with name ``<prop-name>``, as an alternative to the
@@ -405,7 +409,7 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
         warnings.warn("Unknown parameter: " + k, UserWarning)
 
     cr.save()
-    if fit_view:
+    if fit_view != False:
         extents = cr.clip_extents()
         output_size = (extents[2] - extents[0], extents[3] - extents[1])
         offset, zoom = fit_to_view(g, pos, output_size,
@@ -418,6 +422,8 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
                                               _vdefaults["font_size"]),
                                    cr)
         cr.translate(offset[0], offset[1])
+        if not isinstance(fit_view, bool):
+            zoom /= fit_view
         cr.scale(zoom, zoom)
 
     if "control_points" not in eprops:
@@ -608,6 +614,12 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         |               | will be placed inside the vertex. If the value is |                        |                                  |
         |               | ``-1``, the vertex size will be automatically     |                        |                                  |
         |               | increased to accommodate the text.                |                        |                                  |
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
+        | text_offset   | Text position offset.                             | list of ``float``      | ``[0.0, 0.0]``                   |
+        +---------------+---------------------------------------------------+------------------------+----------------------------------+
+        | text_rotation | Angle of rotation (in radians) for the text.      | ``float``              | ``0.0``                          |
+        |               | The center of rotation is the position of the     |                        |                                  |
+        |               | vertex.                                           |                        |                                  |
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
         | font_family   | Font family used to draw the text.                | ``str``                | ``"serif"``                      |
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
