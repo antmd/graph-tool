@@ -103,6 +103,7 @@ _edefaults = {
     "end_marker": "none",
     "marker_size": 4.,
     "control_points": [],
+    "gradient": [],
     "dash_style": [],
     "text": "",
     "text_color": [0., 0., 0., 1.],
@@ -662,7 +663,15 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         |                | output format (normally either pixels or points). |                        |                                  |
         +----------------+---------------------------------------------------+------------------------+----------------------------------+
         | control_points | Control points of a Bézier spline used to draw    | sequence of ``floats`` | ``[]``                           |
-        |                | the edge.                                         |                        |                                  |
+        |                | the edge. Each spline segment requires 6 values   |                        |                                  |
+        |                | corresponding to the (x,y) coordinates of the two |                        |                                  |
+        |                | intermediary control points and the final point.  |                        |                                  |
+        +----------------+---------------------------------------------------+------------------------+----------------------------------+
+        | gradient       | Stop points of a linear gradient used to stroke   | sequence of ``floats`` | ``[]``                           |
+        |                | the edge. Each group of 5 elements is interpreted |                        |                                  |
+        |                | as ``[o, r, g, b, a]`` where ``o`` is the offset  |                        |                                  |
+        |                | in the range [0, 1] and the remaining values      |                        |                                  |
+        |                | specify the colors.                               |                        |                                  |
         +----------------+---------------------------------------------------+------------------------+----------------------------------+
         | dash_style     | Dash pattern is specified by an array of positive | sequence of ``floats`` | ``[]``                           |
         |                | values. Each value provides the length of         |                        |                                  |

@@ -78,6 +78,7 @@ enum edge_attr_t {
     EDGE_MARKER_SIZE,
     EDGE_CONTROL_POINTS,
     EDGE_DASH_STYLE,
+    EDGE_GRADIENT,
     EDGE_TEXT,
     EDGE_TEXT_COLOR,
     EDGE_TEXT_DISTANCE,
@@ -120,7 +121,7 @@ typedef pair<double, double> pos_t;
 typedef tuple<double, double, double, double> color_t;
 typedef tr1::unordered_map<int, boost::any> attrs_t;
 
-typedef mpl::map39<
+typedef mpl::map40<
     mpl::pair<mpl::int_<VERTEX_SHAPE>, vertex_shape_t>,
     mpl::pair<mpl::int_<VERTEX_COLOR>, color_t>,
     mpl::pair<mpl::int_<VERTEX_FILL_COLOR>, color_t>,
@@ -151,6 +152,7 @@ typedef mpl::map39<
     mpl::pair<mpl::int_<EDGE_MARKER_SIZE>, double>,
     mpl::pair<mpl::int_<EDGE_CONTROL_POINTS>, vector<double> >,
     mpl::pair<mpl::int_<EDGE_DASH_STYLE>, vector<double> >,
+    mpl::pair<mpl::int_<EDGE_GRADIENT>, vector<double> >,
     mpl::pair<mpl::int_<EDGE_TEXT>, string>,
     mpl::pair<mpl::int_<EDGE_TEXT_COLOR>, color_t>,
     mpl::pair<mpl::int_<EDGE_TEXT_DISTANCE>, double>,
@@ -813,6 +815,9 @@ public:
 
         vector<double> controls =
             _attrs.template get<vector<double> >(EDGE_CONTROL_POINTS);
+        vector<double> gradient =
+            _attrs.template get<vector<double> >(EDGE_GRADIENT);
+        bool has_gradient = gradient.size() >= 2;
 
         edge_marker_t start_marker = _attrs.template get<edge_marker_t>(EDGE_START_MARKER);
         edge_marker_t end_marker = _attrs.template get<edge_marker_t>(EDGE_END_MARKER);
@@ -894,7 +899,7 @@ public:
         a *= get<3>(_t._attrs.template get<color_t>(VERTEX_COLOR));
         a *= get<3>(_t._attrs.template get<color_t>(VERTEX_FILL_COLOR));
 
-        if (!sloppy && a < 1)
+        if (!sloppy && a < 1 && !has_gradient)
         {
             // set the clip region to the correct size for better push/pop_group
             // performance
@@ -925,7 +930,27 @@ public:
         }
         else
         {
-            cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color), get<3>(color));
+            Cairo::RefPtr<Cairo::LinearGradient> gd =
+                Cairo::LinearGradient::create(pos_begin.first, pos_begin.second,
+                                              pos_end.first, pos_end.second);
+
+            if (!has_gradient)
+            {
+                cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color), get<3>(color));
+            }
+            else
+            {
+                for (size_t i = 0; i < gradient.size() / 5; ++i)
+                {
+                    size_t pos = i * 5;
+                    gd->add_color_stop_rgba(gradient[pos],
+                                            gradient[pos + 1],
+                                            gradient[pos + 2],
+                                            gradient[pos + 3],
+                                            gradient[pos + 4]);
+                }
+                cr.set_source(gd);
+            }
             draw_edge_markers(pos_begin, pos_end, controls, marker_size, cr);
             cr.fill();
             draw_edge_line(pos_begin_c, pos_end_c, controls, cr);
@@ -1670,6 +1695,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_draw)
         .value("end_marker", EDGE_END_MARKER)
         .value("marker_size", EDGE_MARKER_SIZE)
         .value("control_points", EDGE_CONTROL_POINTS)
+        .value("gradient", EDGE_GRADIENT)
         .value("dash_style", EDGE_DASH_STYLE)
         .value("text", EDGE_TEXT)
         .value("text_color", EDGE_TEXT_COLOR)
