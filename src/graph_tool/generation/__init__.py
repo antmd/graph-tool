@@ -935,7 +935,42 @@ def graph_union(g1, g2, intersection=None, props=None, include=False):
     if props == None:
         props = []
     if not include:
-        g1 = Graph(g1)
+        g1 = GraphView(g1, skip_properties=True)
+        p1s = []
+        for i, (p1, p2) in enumerate(props):
+            if p1 is None:
+                continue
+            if p1.key_type() == "v":
+                g1.vp[str(i)] = p1
+            elif p1.key_type() == "e":
+                g1.ep[str(i)] = p1
+
+        g1 = Graph(g1, prune=True)
+
+        for i, (p1, p2) in enumerate(props):
+            if p1 is None:
+                continue
+            if str(i) in g1.vp:
+                props[i] = (g1.vp[str(i)], p2)
+                del g1.vp[str(i)]
+            else:
+                props[i] = (g1.ep[str(i)], p2)
+                del g1.ep[str(i)]
+    else:
+        emask, emask_flip = g1.get_edge_filter()
+        emask_flipped = False
+        if emask is not None and not emask_flip:
+            emask.a = not emask.a
+            emask_flipped = True
+            g1.set_edge_filter(emask, True)
+
+        vmask, vmask_flip = g1.get_vertex_filter()
+        vmask_flipped = False
+        if vmask is not None and not vmask_flip:
+            vmask.a = not vmask.a
+            g1.set_vertex_filter(vmask, True)
+            vmask_flipped = True
+
     if intersection is None:
         intersection = g1.new_vertex_property("int32_t")
         intersection.a = 0
@@ -951,6 +986,18 @@ def graph_union(g1, g2, intersection=None, props=None, include=False):
                                                       u2._Graph__graph,
                                                       _prop("v", g1,
                                                             intersection))
+
+    if include:
+        emask, emask_flip = g1.get_edge_filter()
+        if emask is not None and emask_flipped:
+            emask.a = not emask.a
+            g1.set_edge_filter(emask, False)
+
+        vmask, vmask_flip = g1.get_vertex_filter()
+        if vmask is not None and vmask_flipped:
+            vmask.a = not vmask.a
+            g1.set_vertex_filter(vmask, False)
+
     n_props = []
     for p1, p2 in props:
         if p1 is None:
