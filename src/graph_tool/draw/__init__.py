@@ -35,7 +35,7 @@ Layout algorithms
    fruchterman_reingold_layout
    arf_layout
    random_layout
-
+   get_hierarchy_control_points
 
 Graph drawing
 =============
@@ -82,7 +82,7 @@ dl_import("from . import libgraph_tool_layout")
 __all__ = ["graph_draw", "graphviz_draw",
            "fruchterman_reingold_layout",
            "arf_layout", "sfdp_layout", "random_layout",
-           "cairo_draw", "prop_to_size"]
+           "cairo_draw", "prop_to_size", "get_hierarchy_control_points"]
 
 
 def random_layout(g, shape=None, pos=None, dim=2):
@@ -700,7 +700,7 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, groups=None, C=0.2,
     return pos
 
 try:
-    from .cairo_draw import graph_draw, cairo_draw
+    from .cairo_draw import graph_draw, cairo_draw, get_hierarchy_control_points
 except ImportError:
     pass
 

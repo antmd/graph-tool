@@ -15,6 +15,7 @@ libgraph_tool_draw_la_LIBADD = $(MOD_LIBADD)
 libgraph_tool_draw_la_LDFLAGS = $(MOD_LDFLAGS) $(CAIROMM_LIBS)
 
 libgraph_tool_draw_la_SOURCES = \
-    graph_cairo_draw.cc
+    graph_cairo_draw.cc \
+    graph_tree_cts.cc
 
 libgraph_tool_draw_la_include_HEADERS = 

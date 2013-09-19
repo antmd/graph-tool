@@ -1009,6 +1009,63 @@ def transform_scale(M, scale):
                              scale / np.sqrt(2))
     return np.sqrt(p[0] ** 2 + p[1] ** 2)
 
+def get_hierarchy_control_points(g, t, tpos, beta=0.8):
+    r"""Return the Bézier spline control points for the edges in ``g``, given
+    the hierarchical structure encoded in graph `t`.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be drawn.
+    t : :class:`~graph_tool.Graph`
+        Directed graph containing the hierarchy of ``g``. It must be a directed
+        tree with a single root. The direction of the edges point from the root
+        to the leaves, and the vertices in ``t`` with index in the range
+        :math:`[0, N-1]`, with `:math:`N` being the number of vertices in ``g``,
+        must correspond to the respective vertex in ``g``.
+    tpos : :class:`~graph_tool.PropertyMap`
+        Vector-valued vertex property map containing the x and y coordinates of
+        the vertices in graph ``t``.
+    beta : ``float`` (optional, default: ``0.8``)
+        Edge bundling strength. For ``beta == 0`` the edges are straight lines,
+        and for ``beta == 1`` they strictly follow the hierarchy.
+
+    Returns
+    -------
+
+    ctp : :class:`~graph_tool.PropertyMap`
+        Vector-valued edge property map containing the Bézier spline control
+        points for the edges in ``g``.
+
+    Notes
+    -----
+    This is an implementation of the edge-bundling algorithm described in
+    [holten-hierarchical-2006]_.
+
+
+    Examples
+    --------
+    TODO
+
+
+    References
+    ----------
+
+    .. [holten-hierarchical-2006] Holten, D. "Hierarchical Edge Bundles:
+       Visualization of Adjacency Relations in Hierarchical Data.", IEEE
+       Transactions on Visualization and Computer Graphics 12, no. 5, 741–748
+       (2006). :doi:`10.1109/TVCG.2006.147`
+    """
+
+    cts = g.new_edge_property("vector<double>")
+
+    u = GraphView(g, directed=True)
+    tu = GraphView(t, directed=True)
+
+    libgraph_tool_draw.get_cts(u._Graph__graph, tu._Graph__graph,
+                               _prop("v", tu, tpos), beta,
+                               _prop("e", u, cts))
+    return cts
 
 #
 # The functions and classes below depend on GTK

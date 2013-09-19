@@ -1656,6 +1656,8 @@ struct enum_from_int
     }
 };
 
+void get_cts(GraphInterface& gi, GraphInterface& tgi,
+             boost::any otpos, double beta, boost::any octs);
 
 BOOST_PYTHON_MODULE(libgraph_tool_draw)
 {
@@ -1738,6 +1740,8 @@ BOOST_PYTHON_MODULE(libgraph_tool_draw)
     enum_from_int<edge_attr_t>();
     enum_from_int<vertex_shape_t>();
     enum_from_int<edge_marker_t>();
+
+    def("get_cts", &get_cts);
 }
 
 #else
