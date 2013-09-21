@@ -977,24 +977,22 @@ public:
             origin.first = (pos_begin_c.first + pos_end_c.first) / 2;
             origin.second = (pos_begin_c.second + pos_end_c.second) / 2;
             cr.translate(origin.first, origin.second);
-            double angle = atan2(pos_end_c.second - pos_begin_c.second,
-                                 pos_end_c.first - pos_begin_c.first);
             if (text_parallel)
             {
+                double angle = atan2(pos_end_c.second - pos_begin_c.second,
+                                     pos_end_c.first - pos_begin_c.first);
                 if (angle > M_PI / 2)
                     angle -= M_PI;
                 if (angle < -M_PI / 2)
                     angle += M_PI;
-            }
-            cr.rotate(angle);
-            if (text_parallel)
+                cr.rotate(angle);
                 cr.translate(0, -text_dist);
-            else
-                cr.translate(0, text_dist);
-            if (!text_parallel)
-                cr.rotate(-angle);
-            else
                 cr.translate(-extents.width / 2, 0);
+            }
+            else
+            {
+                cr.translate(text_dist, 0);
+            }
 
             color = _attrs.template get<color_t>(EDGE_TEXT_COLOR);
             cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color),
