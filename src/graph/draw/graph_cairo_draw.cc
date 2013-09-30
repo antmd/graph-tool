@@ -832,7 +832,7 @@ public:
         {
             double angle = 0;
             double len = 0;
-            if (pos_begin != pos_end)
+            if (_t.get_pos() != _s.get_pos())
             {
                 angle = atan2(pos_end.second - pos_begin.second,
                               pos_end.first - pos_begin.first);
@@ -844,12 +844,12 @@ public:
                 cr.rotate(angle);
                 cr.scale(len, 1.);
 
-                for (size_t i = 0; i < controls.size(); i += 2)
-                    cr.user_to_device(controls[i], controls[i + 1]);
+                for (size_t i = 0; i < controls.size() / 2; ++i)
+                    cr.user_to_device(controls[2 * i], controls[2 * i + 1]);
                 cr.restore();
 
-                for (size_t i = 0; i < controls.size(); i += 2)
-                    cr.device_to_user(controls[i], controls[i + 1]);
+                for (size_t i = 0; i < controls.size() / 2; ++i)
+                    cr.device_to_user(controls[2 * i], controls[2 * i + 1]);
             }
             else
             {
@@ -858,12 +858,12 @@ public:
                 cr.save();
                 cr.translate(pos_begin.first, pos_begin.second);
                 cr.scale(len / sqrt(2), len / sqrt(2));
-                for (size_t i = 0; i < controls.size(); i += 2)
-                    cr.user_to_device(controls[i], controls[i + 1]);
+                for (size_t i = 0; i < controls.size() / 2; ++i)
+                    cr.user_to_device(controls[2 * i], controls[2 * i + 1]);
                 cr.restore();
 
-                for (size_t i = 0; i < controls.size(); i += 2)
-                    cr.device_to_user(controls[i], controls[i + 1]);
+                for (size_t i = 0; i < controls.size() / 2; ++i)
+                    cr.device_to_user(controls[2 * i], controls[2 * i + 1]);
             }
 
             size_t N = controls.size();
@@ -871,8 +871,24 @@ public:
                                                 controls[1]), cr);
             pos_end = _t.get_anchor(make_pair(controls[N - 2],
                                               controls[N - 1]), cr);
-        }
 
+            if (_s.get_pos() == _t.get_pos())
+            {
+                double ox = pos_begin.first - _s.get_pos().first +
+                    pos_end.first - _t.get_pos().first;
+                double oy = pos_begin.second - _s.get_pos().second +
+                    pos_end.second - _t.get_pos().second;
+                for (size_t i = 0; i < controls.size() / 2; ++i)
+                {
+                    controls[2 * i] += ox / 2;
+                    controls[2 * i + 1] += oy / 2;
+                }
+                pos_begin = _s.get_anchor(make_pair(controls[0],
+                                                    controls[1]), cr);
+                pos_end = _t.get_anchor(make_pair(controls[N - 2],
+                                                  controls[N - 1]), cr);
+            }
+        }
 
         pos_t pos_end_c = pos_end, pos_begin_c = pos_begin;
         double marker_size = _attrs.template get<double>(EDGE_MARKER_SIZE);
@@ -1428,9 +1444,10 @@ void apply_transforms(GraphInterface& gi, boost::any pos, double xx, double yx,
 
 struct do_put_parallel_splines
 {
-    template <class Graph, class PosMap, class LabelMap, class SplinesMap>
+    template <class Graph, class PosMap, class LabelMap, class SplinesMap,
+              class AngleMap>
     void operator()(Graph& g, PosMap pos, LabelMap l, SplinesMap spline,
-                    double loop_angle, double parallel_distance) const
+                    AngleMap loop_angle, double parallel_distance) const
     {
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
@@ -1466,21 +1483,54 @@ struct do_put_parallel_splines
                 pair<double, double> dist;
                 dist.first = get(pos, s)[0] - cm.first;
                 dist.second = get(pos, s)[1] - cm.second;
-                double theta = atan2(dist.second, dist.first) - M_PI / 2;
-                if (!isnan(loop_angle))
-                    theta = loop_angle;
-                typename property_traits<SplinesMap>::value_type sp(4), sp2(4);
+                double theta = get(loop_angle, s);
+                if (isnan(theta))
+                    theta = atan2(dist.second, dist.first) - M_PI / 2;
+                typename property_traits<SplinesMap>::value_type sp(22), sp2(22);
                 for (size_t j = 0; j < pes.size(); ++j)
                 {
-                    sp[0] = -0.5 * (j + 1);
-                    sp[1] = 0.75 * (j + 1);
-                    sp[2] = 0.5 * (j + 1);
-                    sp[3] = 0.75 * (j + 1);
+                    double d = 4 * (sqrt(2) - 1) / 3;
+                    double r = (j + 1) / 4.;
+                    double yoff = r / 4;
 
-                    sp2[0] = sp[0] * cos(theta) - sp[1] * sin(theta);
-                    sp2[1] = sp[0] * sin(theta) + sp[1] * cos(theta);
-                    sp2[2] = sp[2] * cos(theta) - sp[3] * sin(theta);
-                    sp2[3] = sp[2] * sin(theta) + sp[3] * cos(theta);
+                    sp[0] = d * r;
+                    sp[1] = 0 + yoff;
+
+                    sp[1 * 2 + 0] = r;
+                    sp[1 * 2 + 1] = r - d * r + yoff;
+
+                    sp[2 * 2 + 0] = r;
+                    sp[2 * 2 + 1] = r + yoff;
+
+                    sp[3 * 2 + 0] = r;
+                    sp[3 * 2 + 1] = r + d * r + yoff;
+
+                    sp[4 * 2 + 0] = d * r;
+                    sp[4 * 2 + 1] = 2 * r + yoff;
+
+                    sp[5 * 2 + 0] = 0;
+                    sp[5 * 2 + 1] = 2 * r + yoff;
+
+                    sp[6 * 2 + 0] = -d * r;
+                    sp[6 * 2 + 1] = 2 * r + yoff;
+
+                    sp[7 * 2 + 0] = - r;
+                    sp[7 * 2 + 1] = r + d * r + yoff;
+
+                    sp[8 * 2 + 0] = -r;
+                    sp[8 * 2 + 1] = r + yoff;
+
+                    sp[9 * 2 + 0] = - r;
+                    sp[9 * 2 + 1] = r - d * r + yoff;
+
+                    sp[10 * 2 + 0] = - d * r;
+                    sp[10 * 2 + 1] = 0 + yoff;
+
+                    for (size_t i = 0; i < 11; ++i)
+                    {
+                        sp2[i * 2 + 0] = sp[i * 2 + 0] * cos(theta) - sp[i * 2 + 1] * sin(theta);
+                        sp2[i * 2 + 1] = sp[i * 2 + 0] * sin(theta) + sp[i * 2 + 1] * cos(theta);
+                    }
 
                     put(spline, skey_t(pes[j]), sp2);
                 }
@@ -1522,15 +1572,18 @@ struct do_put_parallel_splines
 
 void put_parallel_splines(GraphInterface& gi, boost::any opos,
                           boost::any ol, boost::any splines,
-                          double loop_angle, double parallel_distance)
+                          boost::any loop_angle,
+                          double parallel_distance)
 {
     DynamicPropertyMapWrap<vector<double>, GraphInterface::vertex_t>
         pos(opos, vertex_scalar_vector_properties());
     DynamicPropertyMapWrap<int, GraphInterface::edge_t>
         l(ol, edge_scalar_properties());
+    DynamicPropertyMapWrap<double, GraphInterface::vertex_t>
+        angle(loop_angle, vertex_scalar_properties());
 
     run_action<graph_tool::detail::always_directed>()
-        (gi, bind<void>(do_put_parallel_splines(), _1, pos, l, _2, loop_angle,
+        (gi, bind<void>(do_put_parallel_splines(), _1, pos, l, _2, angle,
                         parallel_distance),
          edge_scalar_vector_properties())(splines);
 }

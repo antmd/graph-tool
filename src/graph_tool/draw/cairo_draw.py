@@ -318,6 +318,12 @@ def position_parallel_edges(g, pos, loop_angle=float("nan"),
                             parallel_distance=1):
     lp = label_parallel_edges(GraphView(g, directed=False))
     ll = label_self_loops(g)
+    if isinstance(loop_angle, PropertyMap):
+        angle = loop_angle
+    else:
+        angle = g.new_vertex_property("double")
+        angle.a = float(loop_angle)
+
     g = GraphView(g, directed=True)
     if ((len(lp.fa) == 0 or lp.fa.max() == 0) and
         (len(ll.fa) == 0 or ll.fa.max() == 0)):
@@ -328,7 +334,7 @@ def position_parallel_edges(g, pos, loop_angle=float("nan"),
                                                 _prop("v", g, pos),
                                                 _prop("e", g, lp),
                                                 _prop("e", g, spline),
-                                                loop_angle,
+                                                _prop("v", g, angle),
                                                 parallel_distance)
         return spline
 
@@ -378,7 +384,7 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
         Vertex color map.
     ecmap : :class:`matplotlib.colors.Colormap` (default: :class:`matplotlib.cm.jet`)
         Edge color map.
-    loop_angle : float (optional, default: ``nan``)
+    loop_angle : float or :class:`~graph_tool.PropertyMap` (optional, default: ``nan``)
         Angle used to draw self-loops. If ``nan`` is given, they will be placed
         radially from the center of the layout.
     parallel_distance : float (optional, default: ``None``)
