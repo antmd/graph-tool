@@ -124,27 +124,30 @@ struct get_community_network_edges
             s_type;
 
 #ifdef HAVE_SPARSEHASH
-        google::dense_hash_map<s_type, vertex_t, hash<s_type> > comms(num_vertices(cg));
+        typedef google::dense_hash_map<s_type, vertex_t, hash<s_type> > comms_t;
+        comms_t comms(num_vertices(cg));
         comms.set_empty_key(numeric_limits<s_type>::max());
+        typedef google::dense_hash_map<cvertex_t, cedge_t> ecomms_t;
 #else
-        tr1::unordered_map<s_type, vertex_t, hash<s_type> > comms(num_vertices(cg));
+        typedef tr1::unordered_map<s_type, vertex_t, hash<s_type> > comms_t;
+        comms_t comms(num_vertices(cg));
+        typedef tr1::unordered_map<cvertex_t, cedge_t> ecomms_t;
 #endif
+
+        unchecked_vector_property_map<ecomms_t,
+                                      typename property_map<CommunityGraph, vertex_index_t>::type>
+            comm_edges(get(vertex_index_t(), cg),
+                       num_vertices(cg));
 
         typename graph_traits<CommunityGraph>::vertex_iterator v, v_end;
         for (tie(v, v_end) = vertices(cg); v != v_end; ++v)
+        {
             comms[cs_map[*v]] = *v;
-
 #ifdef HAVE_SPARSEHASH
-        google::dense_hash_map<pair<size_t, size_t>, cedge_t,
-                               hash<pair<size_t, size_t> > >
-             comm_edges(num_vertices(cg));
-        comm_edges.set_empty_key(make_pair(numeric_limits<size_t>::max(),
-                                           numeric_limits<size_t>::max()));
-#else
-        tr1::unordered_map<pair<size_t, size_t>, cedge_t,
-                           hash<pair<size_t, size_t> > >
-            comm_edges(num_vertices(cg));
+            comm_edges[*v].set_empty_key(numeric_limits<cvertex_t>::max());
 #endif
+        }
+
 
         // create edges
         typename graph_traits<Graph>::edge_iterator e, e_end;
@@ -155,8 +158,9 @@ struct get_community_network_edges
             if (ct == cs && !self_loops)
                 continue;
             cedge_t ce;
-            typeof(comm_edges.begin()) iter = comm_edges.find(make_pair(cs, ct));
-            if (iter != comm_edges.end())
+
+            typeof(comm_edges[cs].begin()) iter = comm_edges[cs].find(ct);
+            if (iter != comm_edges[cs].end())
             {
                 ce = iter->second;
             }
@@ -164,21 +168,21 @@ struct get_community_network_edges
             {
                 if (!is_directed::apply<Graph>::type::value)
                 {
-                    iter = comm_edges.find(make_pair(ct, cs));
-                    if (iter != comm_edges.end())
+                    iter = comm_edges[ct].find(cs);
+                    if (iter != comm_edges[ct].end())
                     {
                         ce = iter->second;
                     }
                     else
                     {
                         ce = add_edge(cs, ct, cg).first;
-                        comm_edges[make_pair(cs, ct)] = ce;
+                        comm_edges[cs][ct] = ce;
                     }
                 }
                 else
                 {
                     ce = add_edge(cs, ct, cg).first;
-                    comm_edges[make_pair(cs, ct)] = ce;
+                    comm_edges[cs][ct] = ce;
                 }
             }
             put(edge_count, ce, get(edge_count, ce) + get(eweight, *e));
