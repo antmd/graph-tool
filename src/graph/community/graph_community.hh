@@ -489,35 +489,50 @@ struct get_communities_selector
 struct get_modularity
 {
     template <class Graph, class WeightMap, class CommunityMap>
-    void operator()(const Graph& g, WeightMap weights, CommunityMap s,
-                    double& modularity) const
+    void operator()(const Graph& g, WeightMap weights, CommunityMap b, double& Q) const
     {
         typedef typename property_traits<WeightMap>::key_type weight_key_t;
         typedef typename property_traits<WeightMap>::value_type weight_val_t;
         typedef typename property_traits<CommunityMap>::value_type s_val_t;
 
-        modularity = 0.0;
+        vector<double> er, err;
         double W = 0;
 
         typename graph_traits<Graph>::edge_iterator e, e_end;
-        for (tie(e,e_end) = edges(g); e != e_end; ++e)
-            if (target(*e,g) != source(*e,g))
+        for (tie(e, e_end) = edges(g); e != e_end; ++e)
+        {
+            size_t r = get(b, source(*e,g));
+            size_t s = get(b, target(*e,g));
+
+            double w = get(weights, *e);
+            W += 2 * w;
+
+            if (er.size() <= r)
+                er.resize(r + 1);
+            er[r] += w;
+
+            if (er.size() <= s)
+                er.resize(s + 1);
+            er[s] += w;
+
+            if (r == s)
             {
-                W += get(weights, *e);
-                if (get(s, target(*e,g)) == get(s, source(*e,g)))
-                    modularity += 2 * get(weights, weight_key_t(*e));
+                if (err.size() <= r)
+                    err.resize(r + 1);
+                err[r] += 2 * w;
             }
+        }
 
-        unordered_map<s_val_t, weight_val_t> Ks;
+        Q = 0;
+        for (size_t r = 0; r < er.size(); ++r)
+        {
+            if (err.size() <= r)
+                err.resize(r + 1);
 
-        typename graph_traits<Graph>::vertex_iterator v, v_end;
-        for (tie(v,v_end) = vertices(g); v != v_end; ++v)
-            Ks[get(s, *v)] += out_degree_no_loops_weighted(*v, weights, g);
+            Q += err[r] - (er[r] * er[r]) / W;
+        }
+        Q /= W;
 
-        for (typeof(Ks.begin()) iter = Ks.begin(); iter != Ks.end(); ++iter)
-            modularity -= (iter->second*iter->second)/double(2*W);
-
-        modularity /= 2*W;
     }
 };
 

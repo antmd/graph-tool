@@ -305,12 +305,15 @@ def modularity(g, prop, weight=None):
 
     .. math::
 
-          Q = \sum_s e_{ss}-\left(\sum_r e_{rs}\right)^2
+          Q = \frac{1}{2E} \sum_r e_{rr}- \frac{e_r^2}{2E}
 
-    where :math:`e_{rs}` is the fraction of edges which fall between
-    vertices with spin s and r.
+    where :math:`e_{rs}` is the number of edges which fall between
+    vertices in communities s and r, or twice that number if :math:`r = s`, and
+    :math:`e_r = \sum_s e_{rs}`.
 
-    If enabled during compilation, this algorithm runs in parallel.
+    If weights are provided, the matrix :math:`e_{rs}` corresponds to the sum
+    of edge weights instead of number of edges, and the value of :math:`E`
+    becomes the total sum of edge weights.
 
     Examples
     --------
@@ -318,9 +321,9 @@ def modularity(g, prop, weight=None):
     >>> from numpy.random import seed
     >>> seed(42)
     >>> g = gt.load_graph("community.xml")
-    >>> spins = gt.community_structure(g, 10000, 10)
-    >>> gt.modularity(g, spins)
-    0.535314188562404
+    >>> b = gt.community_structure(g, 10000, 10)
+    >>> gt.modularity(g, b)
+    0.5353141885624041
 
     References
     ----------
