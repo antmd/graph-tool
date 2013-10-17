@@ -256,3 +256,30 @@ void edge_difference(GraphInterface& gi, boost::any prop,
                                   gi.GetEdgeIndex(), _2, eprop),
                    vprops_t())(prop);
 }
+
+
+struct do_mark_edges
+{
+    template <class Graph, class EdgePropertyMap>
+    void operator()(Graph& g, EdgePropertyMap prop) const
+    {
+        int i, N = num_vertices(g);
+        #pragma omp parallel for default(shared) private(i)     \
+                schedule(static) if (N > 100)
+        for (i = 0; i < N; ++i)
+        {
+            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+            typename graph_traits<Graph>::out_edge_iterator e, e_end;
+            for (tie(e, e_end) = out_edges(v, g); e != e_end; ++e)
+                prop[*e] = true;
+        }
+    }
+};
+
+void mark_edges(GraphInterface& gi, boost::any prop)
+{
+    run_action<graph_tool::detail::always_directed>()(gi, bind<void>(do_mark_edges(), _1, _2),
+                                                      writable_edge_scalar_properties())(prop);
+}

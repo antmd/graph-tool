@@ -536,6 +536,12 @@ class PropertyMap(object):
             filt = g.get_vertex_filter()
         elif self.__key_type == 'e':
             filt = g.get_edge_filter()
+            if g.get_vertex_filter()[0] is not None:
+                filt = (g.new_edge_property("bool"), filt[1])
+                u = GraphView(g, directed=True, skip_properties=True)
+                libcore.mark_edges(u._Graph__graph, _prop("e", g, filt[0]))
+                if filt[1]:
+                    filt[0].a = 1 - filt[0].a
         if get:
             if a is None:
                 return a
@@ -580,6 +586,12 @@ class PropertyMap(object):
             filt = g.get_vertex_filter()
         elif self.__key_type == 'e':
             filt = g.get_edge_filter()
+            if g.get_vertex_filter()[0] is not None:
+                filt = (g.new_edge_property("bool"), filt[1])
+                u = GraphView(g, directed=True, skip_properties=True)
+                libcore.mark_edges(u._Graph__graph, _prop("e", g, filt[0]))
+                if filt[1]:
+                    filt[0].a = 1 - filt[0].a
         if filt[0] is None or a is None:
             if get:
                 return a
