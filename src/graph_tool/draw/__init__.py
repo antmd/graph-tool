@@ -34,6 +34,7 @@ Layout algorithms
    sfdp_layout
    fruchterman_reingold_layout
    arf_layout
+   radial_tree_layout
    random_layout
    get_hierarchy_control_points
 
@@ -68,9 +69,10 @@ from __future__ import division, absolute_import, print_function
 from .. import GraphView, _check_prop_vector, group_vector_property, \
      ungroup_vector_property, infect_vertex_property, _prop, _get_rng
 from .. topology import max_cardinality_matching, max_independent_vertex_set, \
-    label_components,  pseudo_diameter
+    label_components, pseudo_diameter, shortest_distance
 from .. community import condensation_graph
 from .. stats import label_parallel_edges
+from .. generation import predecessor_tree
 import numpy.random
 from numpy import sqrt
 import sys
@@ -82,6 +84,7 @@ dl_import("from . import libgraph_tool_layout")
 __all__ = ["graph_draw", "graphviz_draw",
            "fruchterman_reingold_layout",
            "arf_layout", "sfdp_layout", "random_layout",
+           "radial_tree_layout",
            "cairo_draw", "prop_to_size", "get_hierarchy_control_points"]
 
 
@@ -698,6 +701,69 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, groups=None, C=0.2,
                                      epsilon, max_iter, not adaptive_cooling,
                                      verbose)
     return pos
+
+def radial_tree_layout(g, root, weighted=False, r=1.):
+    r"""Computes a radial layout of the graph according to the minimum spanning
+    tree centered at the ``root`` vertex.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    root : :class:`~graph_tool.Vertex` or ``int``
+        The root of the radial tree.
+    weighted : ``bool`` (optional, default: ``False``)
+        If true, the angle between the child branches will be computed according
+        to weight of the entire sub-branches.
+    r : ``float`` (optional, default: ``1.``)
+        Layer spacing.
+
+    Returns
+    -------
+    pos : :class:`~graph_tool.PropertyMap`
+        A vector-valued vertex property map with the coordinates of the
+        vertices.
+
+    Notes
+    -----
+    This algorithm has complexity :math:`O(V + E)`.
+
+    Examples
+    --------
+    .. testcode::
+       :hide:
+
+       np.random.seed(42)
+       gt.seed_rng(42)
+
+    >>> g = gt.price_network(1000)
+    >>> pos = gt.radial_tree_layout(g, g.vertex(0))
+    >>> gt.graph_draw(g, pos=pos, output="graph-draw-radial.pdf")
+    <...>
+
+    .. testcode::
+       :hide:
+
+       gt.graph_draw(g, pos=pos, output="graph-draw-radial.png")
+
+    .. figure:: graph-draw-radial.*
+        :align: center
+
+        Radial tree layout of a Price network.
+
+    """
+
+    levels, pred_map = shortest_distance(GraphView(g, directed=False), root,
+                                         pred_map=True)
+    t = predecessor_tree(g, pred_map)
+    pos = t.new_vertex_property("vector<double>")
+    levels = t.own_property(levels)
+
+    libgraph_tool_layout.get_radial(t._Graph__graph,
+                                    _prop("v", g, pos),
+                                    _prop("v", g, levels),
+                                    int(root), weighted, r)
+    return g.own_property(pos)
 
 try:
     from .cairo_draw import graph_draw, cairo_draw, get_hierarchy_control_points

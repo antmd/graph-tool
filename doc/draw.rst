@@ -6,6 +6,7 @@
     .. autofunction:: sfdp_layout
     .. autofunction:: fruchterman_reingold_layout
     .. autofunction:: arf_layout
+    .. autofunction:: radial_tree_layout
     .. autofunction:: random_layout
 
 
