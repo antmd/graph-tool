@@ -205,11 +205,6 @@ extlinks = {'ticket': ('http://graph-tool.skewed.de/tickets/ticket/%s',
             'arxiv': ('http://arxiv.org/abs/%s', 'arXiv: ')}
 
 
-# autodoc_default_flags = ['members']
-numpydoc_show_class_members = False
-autodoc_member_order = 'bysource'
-autodoc_docstring_signature = False
-
 def process_docstring(app, what, name, obj, options, lines):
     for i, line in enumerate(lines):
         if "arg1" in line and "->" in line:
@@ -224,3 +219,8 @@ def setup(app):
 import pyenv
 plot_rcparams = pyenv.rcParams
 #plot_pre_code = open("pyenv.py").read()
+
+autodoc_default_flags = ['members', 'undoc-members']
+numpydoc_show_class_members = False
+autodoc_docstring_signature = False
+autodoc_member_order = 'bysource'
