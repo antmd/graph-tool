@@ -821,6 +821,8 @@ public:
 
         edge_marker_t start_marker = _attrs.template get<edge_marker_t>(EDGE_START_MARKER);
         edge_marker_t end_marker = _attrs.template get<edge_marker_t>(EDGE_END_MARKER);
+        double marker_size = _attrs.template get<double>(EDGE_MARKER_SIZE);
+        marker_size = get_user_dist(cr, marker_size);
         bool sloppy = _attrs.template get<uint8_t>(EDGE_SLOPPY);
 
         pos_begin = _s.get_anchor(_t.get_pos(), cr);
@@ -878,11 +880,27 @@ public:
                     pos_end.first - _t.get_pos().first;
                 double oy = pos_begin.second - _s.get_pos().second +
                     pos_end.second - _t.get_pos().second;
+
                 for (size_t i = 0; i < controls.size() / 2; ++i)
                 {
                     controls[2 * i] += ox / 2;
                     controls[2 * i + 1] += oy / 2;
                 }
+
+                if ((start_marker != MARKER_SHAPE_NONE && start_marker != MARKER_SHAPE_BAR) ||
+                    (end_marker != MARKER_SHAPE_NONE && end_marker != MARKER_SHAPE_BAR))
+                {
+                    for (size_t i = 0; i < controls.size() / 2; ++i)
+                    {
+                        pos_t cpos;
+                        cpos.first = controls[2 * i];
+                        cpos.second = controls[2 * i + 1];
+                        move_radially(cpos, _s.get_pos(), marker_size / 2);
+                        controls[2 * i] = cpos.first;
+                        controls[2 * i + 1] = cpos.second;
+                    }
+                }
+
                 pos_begin = _s.get_anchor(make_pair(controls[0],
                                                     controls[1]), cr);
                 pos_end = _t.get_anchor(make_pair(controls[N - 2],
@@ -890,24 +908,22 @@ public:
             }
         }
 
-        pos_t pos_end_c = pos_end, pos_begin_c = pos_begin;
-        double marker_size = _attrs.template get<double>(EDGE_MARKER_SIZE);
-        marker_size = get_user_dist(cr, marker_size);
-
-        if (start_marker == MARKER_SHAPE_NONE && !sloppy)
-            pos_begin = _s.get_pos();
-        else if ((start_marker != MARKER_SHAPE_NONE && start_marker != MARKER_SHAPE_BAR))
-            move_radially(pos_begin_c, _s.get_pos(), marker_size / 2);
-        if (end_marker == MARKER_SHAPE_NONE && !sloppy)
-            pos_end = _t.get_pos();
-        else if ((end_marker != MARKER_SHAPE_NONE && end_marker != MARKER_SHAPE_BAR))
-            move_radially(pos_end_c, _t.get_pos(), marker_size / 2);
 
         color_t color = _attrs.template get<color_t>(EDGE_COLOR);
         double pw;
         pw = _attrs.template get<double>(EDGE_PENWIDTH);
         pw = get_user_dist(cr, pw);
         cr.set_line_width(pw);
+
+        pos_t pos_begin_c = pos_begin;
+        pos_t pos_end_c = pos_end;
+
+        if ((start_marker != MARKER_SHAPE_NONE && start_marker != MARKER_SHAPE_BAR))
+            move_radially(pos_begin_c, _s.get_pos(), marker_size / 2);
+        if ((end_marker != MARKER_SHAPE_NONE && end_marker != MARKER_SHAPE_BAR))
+            move_radially(pos_end_c, _t.get_pos(), marker_size / 2);
+
+
 
         double a = get<3>(color);
         a *= get<3>(_s._attrs.template get<color_t>(VERTEX_COLOR));
@@ -990,13 +1006,13 @@ public:
             cr.get_text_extents(text, extents);
 
             pos_t origin;
-            origin.first = (pos_begin_c.first + pos_end_c.first) / 2;
-            origin.second = (pos_begin_c.second + pos_end_c.second) / 2;
+            origin.first = (pos_begin.first + pos_end.first) / 2;
+            origin.second = (pos_begin.second + pos_end.second) / 2;
             cr.translate(origin.first, origin.second);
             if (text_parallel)
             {
-                double angle = atan2(pos_end_c.second - pos_begin_c.second,
-                                     pos_end_c.first - pos_begin_c.first);
+                double angle = atan2(pos_end.second - pos_begin.second,
+                                     pos_end.first - pos_begin.first);
                 if (angle > M_PI / 2)
                     angle -= M_PI;
                 if (angle < -M_PI / 2)
@@ -1061,7 +1077,11 @@ public:
             cr.save();
             cr.translate(pos_end.first, pos_end.second);
             cr.rotate(angle_b);
-            cr.translate(-len/2. + marker_size / 2, 0);
+            edge_marker_t marker = _attrs.template get<edge_marker_t>(EDGE_MID_MARKER);
+            if (marker == MARKER_SHAPE_BAR)
+                cr.translate(-len/2., 0);
+            else
+                cr.translate(-len/2. + marker_size / 2, 0);
             draw_marker(EDGE_MID_MARKER, marker_size, cr);
             cr.restore();
         }
