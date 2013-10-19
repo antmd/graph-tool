@@ -270,6 +270,65 @@ struct scxx_to_python
 };
 #endif
 
+template <class T>
+struct integer_from_convertible
+{
+    integer_from_convertible()
+    {
+        converter::registry::push_back(&convertible, &construct,
+                                       boost::python::type_id<T>());
+    }
+
+    static void* convertible(PyObject* obj_ptr)
+    {
+        if (PyObject_HasAttrString(obj_ptr, "__int__"))
+            return obj_ptr;
+        return 0;
+    }
+
+    static void construct(PyObject* obj_ptr,
+                          converter::rvalue_from_python_stage1_data* data)
+    {
+        handle<> x(borrowed(obj_ptr));
+        object o(x);
+        T value = extract<T>(o.attr("__int__")());
+        void* storage =
+            ( (boost::python::converter::rvalue_from_python_storage<T>*) data)->storage.bytes;
+        new (storage) T(value);
+        data->convertible = storage;
+    }
+};
+
+template <class T>
+struct float_from_convertible
+{
+    float_from_convertible()
+    {
+        converter::registry::push_back(&convertible, &construct,
+                                       boost::python::type_id<T>());
+    }
+
+    static void* convertible(PyObject* obj_ptr)
+    {
+        if (PyObject_HasAttrString(obj_ptr, "__float__"))
+            return obj_ptr;
+        return 0;
+    }
+
+    static void construct(PyObject* obj_ptr,
+                          converter::rvalue_from_python_stage1_data* data)
+    {
+        handle<> x(borrowed(obj_ptr));
+        object o(x);
+        T value = extract<T>(o.attr("__float__")());
+        void* storage =
+            ( (boost::python::converter::rvalue_from_python_storage<T>*) data)->storage.bytes;
+        new (storage) T(value);
+        data->convertible = storage;
+    }
+};
+
+
 // persistent python object IO
 namespace graph_tool
 {
@@ -417,6 +476,17 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
     to_python_converter<pair<double,double>, pair_to_tuple<double,double> >();
     pair_from_tuple<double,double>();
     pair_from_tuple<size_t,size_t>();
+    integer_from_convertible<uint8_t>();
+    integer_from_convertible<int32_t>();
+    integer_from_convertible<int64_t>();
+    integer_from_convertible<uint32_t>();
+    integer_from_convertible<uint64_t>();
+    integer_from_convertible<size_t>();
+    integer_from_convertible<bool>();
+    float_from_convertible<float>();
+    float_from_convertible<double>();
+    float_from_convertible<long double>();
+
 #ifdef HAVE_SCIPY
     to_python_converter<py::object, scxx_to_python<py::object> >();
     to_python_converter<py::tuple, scxx_to_python<py::tuple> >();
