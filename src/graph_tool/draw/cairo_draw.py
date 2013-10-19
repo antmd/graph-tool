@@ -102,6 +102,7 @@ _edefaults = {
     "mid_marker": "none",
     "end_marker": "none",
     "marker_size": 4.,
+    "mid_marker_pos": .5,
     "control_points": [],
     "gradient": [],
     "dash_style": [],
@@ -664,6 +665,8 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         | mid_marker,    | "circle", "square", "diamond", or "bar".          |                        |                                  |
         | end_marker     | Optionally, this might take a numeric value       |                        |                                  |
         |                | corresponding to position in the list above.      |                        |                                  |
+        +----------------+---------------------------------------------------+------------------------+----------------------------------+
+        | mid_marker_pos | Relative position of the middle marker.           | ``float``              | ``0.5``                          |
         +----------------+---------------------------------------------------+------------------------+----------------------------------+
         | marker_size    | Size of edge markers, in units appropriate to the | ``float`` or ``int``   | ``4``                            |
         |                | output format (normally either pixels or points). |                        |                                  |

@@ -76,6 +76,7 @@ enum edge_attr_t {
     EDGE_MID_MARKER,
     EDGE_END_MARKER,
     EDGE_MARKER_SIZE,
+    EDGE_MID_MARKER_POSITION,
     EDGE_CONTROL_POINTS,
     EDGE_DASH_STYLE,
     EDGE_GRADIENT,
@@ -121,7 +122,7 @@ typedef pair<double, double> pos_t;
 typedef tuple<double, double, double, double> color_t;
 typedef tr1::unordered_map<int, boost::any> attrs_t;
 
-typedef mpl::map40<
+typedef mpl::map41<
     mpl::pair<mpl::int_<VERTEX_SHAPE>, vertex_shape_t>,
     mpl::pair<mpl::int_<VERTEX_COLOR>, color_t>,
     mpl::pair<mpl::int_<VERTEX_FILL_COLOR>, color_t>,
@@ -150,6 +151,7 @@ typedef mpl::map40<
     mpl::pair<mpl::int_<EDGE_MID_MARKER>, edge_marker_t>,
     mpl::pair<mpl::int_<EDGE_END_MARKER>, edge_marker_t>,
     mpl::pair<mpl::int_<EDGE_MARKER_SIZE>, double>,
+    mpl::pair<mpl::int_<EDGE_MID_MARKER_POSITION>, double>,
     mpl::pair<mpl::int_<EDGE_CONTROL_POINTS>, vector<double> >,
     mpl::pair<mpl::int_<EDGE_DASH_STYLE>, vector<double> >,
     mpl::pair<mpl::int_<EDGE_GRADIENT>, vector<double> >,
@@ -1072,19 +1074,76 @@ public:
         draw_marker(EDGE_START_MARKER, marker_size, cr);
         cr.restore();
 
-        if (angle_e == angle_b)
+        double mid_point = _attrs.template get<double>(EDGE_MID_MARKER_POSITION);
+
+        cr.save();
+        edge_marker_t marker = _attrs.template get<edge_marker_t>(EDGE_MID_MARKER);
+        if (controls.size() < 4)
         {
-            cr.save();
             cr.translate(pos_end.first, pos_end.second);
             cr.rotate(angle_b);
-            edge_marker_t marker = _attrs.template get<edge_marker_t>(EDGE_MID_MARKER);
             if (marker == MARKER_SHAPE_BAR)
                 cr.translate(-len/2., 0);
             else
                 cr.translate(-len/2. + marker_size / 2, 0);
-            draw_marker(EDGE_MID_MARKER, marker_size, cr);
-            cr.restore();
         }
+        else
+        {
+            vector<double> cts = controls;
+            cts.insert(cts.begin(), pos_begin.second);
+            cts.insert(cts.begin(), pos_begin.first);
+            cts.push_back(pos_end.first);
+            cts.push_back(pos_end.second);
+
+            double len = 0;
+            for (size_t i = 0; i + 7 < cts.size(); i += 6)
+            {
+                double dx = cts[i + 6] - cts[i];
+                double dy = cts[i + 6 + 1] - cts[i + 1];
+                len += sqrt(dx * dx + dy * dy);
+            }
+
+            pos_t mid_pos;
+            double pos = 0;
+            for (size_t i = 0; i + 7 < cts.size(); i += 6)
+            {
+                double dx = cts[i + 6] - cts[i];
+                double dy = cts[i + 6 + 1] - cts[i + 1];
+                double l = sqrt(dx * dx + dy * dy);
+                if (pos + l >= len * mid_point)
+                {
+                    double t = 1 - (pos + l - len * mid_point) / l;
+
+                    mid_pos.first = pow(1 - t, 3) * cts[i] +
+                        3 * t * pow(1 - t, 2) * cts[i + 2] +
+                        3 * t * t * (1 - t) * cts[i + 4] +
+                        t * t * t * cts[i + 6];
+                    mid_pos.second = pow(1 - t, 3) * cts[i + 1] +
+                        3 * t * pow(1 - t, 2) * cts[i + 3] +
+                        3 * t * t * (1 - t) * cts[i + 5] +
+                        t * t * t * cts[i + 7];
+
+                    dx = -3 * pow(1 - t, 2) * cts[i] +
+                        (3 * pow(1 - t, 2) - 6 * t * (1-t)) * cts[i + 2] +
+                        (-3 * t * t + 6 * t * (1 - t)) * cts[i + 4] +
+                        3 * t * t * cts[i + 6];
+                    dy = -3 * pow(1 - t, 2) * cts[i + 1] +
+                        (3 * pow(1 - t, 2) - 6 * t * (1-t)) * cts[i + 3] +
+                        (-3 * t * t + 6 * t * (1 - t)) * cts[i + 5] +
+                        3 * t * t * cts[i + 7];
+
+                    double angle_t = atan2(dy, dx);
+                    cr.translate(mid_pos.first, mid_pos.second);
+                    cr.rotate(angle_t);
+                    if (marker != MARKER_SHAPE_BAR)
+                        cr.translate(marker_size / 2, 0);
+                    break;
+                }
+                pos += l;
+            }
+        }
+        draw_marker(EDGE_MID_MARKER, marker_size, cr);
+        cr.restore();
     }
 
     void draw_edge_line(pos_t& pos_begin_c, pos_t& pos_end_c,
@@ -1768,6 +1827,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_draw)
         .value("end_marker", EDGE_END_MARKER)
         .value("marker_size", EDGE_MARKER_SIZE)
         .value("control_points", EDGE_CONTROL_POINTS)
+        .value("mid_marker_pos", EDGE_MID_MARKER_POSITION)
         .value("gradient", EDGE_GRADIENT)
         .value("dash_style", EDGE_DASH_STYLE)
         .value("text", EDGE_TEXT)
