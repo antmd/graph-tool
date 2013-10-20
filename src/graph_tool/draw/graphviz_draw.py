@@ -373,7 +373,7 @@ def graphviz_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
             if minmax[0] == minmax[1]:
                 minmax[1] += 1
             if vnorm:
-                vnorm = matplotlib.colors.normalize(vmin=minmax[0], vmax=minmax[1])
+                vnorm = matplotlib.colors.Normalize(vmin=minmax[0], vmax=minmax[1])
             else:
                 vnorm = lambda x: x
 
@@ -387,7 +387,7 @@ def graphviz_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
             if minmax[0] == minmax[1]:
                 minmax[1] += 1
             if enorm:
-                enorm = matplotlib.colors.normalize(vmin=minmax[0],
+                enorm = matplotlib.colors.Normalize(vmin=minmax[0],
                                                     vmax=minmax[1])
             else:
                 enorm = lambda x: x
