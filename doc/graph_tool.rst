@@ -50,7 +50,7 @@
     .. automethod:: set_fast_edge_removal
     .. automethod:: get_fast_edge_removal
 
-    The following functions allow for easy removal of vertices of
+    The following functions allow for easy removal of vertices and
     edges from the graph.
 
     .. automethod:: clear
@@ -169,15 +169,12 @@
 
    .. autoclass:: GraphView
        :show-inheritance:
-       :members:
    .. autoclass:: Vertex
-       :members:
    .. autoclass:: Edge
-       :members:
    .. autoclass:: PropertyMap
-       :members:
    .. autoclass:: PropertyArray
        :show-inheritance:
+       :no-members:
        :members: prop_map
    .. autofunction:: load_graph
    .. autofunction:: group_vector_property

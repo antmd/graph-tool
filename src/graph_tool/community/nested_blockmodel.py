@@ -1013,27 +1013,25 @@ def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, deg_corr=True,
 
     .. doctest:: nested_mdl
 
-       >>> g = gt.collection.data["netscience"]
-       >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(g))
-       >>> g.purge_vertices()
-       >>> bstack, mdl = gt.minimize_nested_blockmodel_dl(g)
+       >>> g = gt.collection.data["power"]
+       >>> bstack, mdl = gt.minimize_nested_blockmodel_dl(g, deg_corr=True)
        >>> t = gt.get_hierarchy_tree(bstack)[0]
        >>> tpos = pos = gt.radial_tree_layout(t, t.vertex(t.num_vertices() - 1), weighted=True)
        >>> cts = gt.get_hierarchy_control_points(g, t, tpos)
        >>> pos = g.own_property(tpos)
        >>> b = bstack[0].vp["b"]
        >>> gt.graph_draw(g, pos=pos, vertex_fill_color=b, vertex_shape=b, edge_control_points=cts,
-       ...               edge_color=[0, 0, 0, 0.3], vertex_anchor=0, output="netscience_nested_mdl.pdf")
+       ...               edge_color=[0, 0, 0, 0.3], vertex_anchor=0, output="power_nested_mdl.pdf")
        <...>
 
     .. testcleanup:: nested_mdl
 
-       gt.graph_draw(g, pos=pos, vertex_fill_color=b, vertex_shape=b, edge_control_points=cts, edge_color=[0, 0, 0, 0.3], vertex_anchor=0, output="netscience_nested_mdl.png")
+       gt.graph_draw(g, pos=pos, vertex_fill_color=b, vertex_shape=b, edge_control_points=cts, edge_color=[0, 0, 0, 0.3], vertex_anchor=0, output="power_nested_mdl.png")
 
-    .. figure:: netscience_nested_mdl.*
+    .. figure:: power_nested_mdl.*
        :align: center
 
-       Block partition of a co-authorship network, which minimizes the description
+       Block partition of a power-grid network, which minimizes the description
        length of the network according to the nested (degree-corrected) stochastic blockmodel.
 
     References
