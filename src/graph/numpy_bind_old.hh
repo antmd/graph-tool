@@ -15,23 +15,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef NUMPY_BIND_HH
-#define NUMPY_BIND_HH
+#ifndef NUMPY_BIND_OLD_HH
+#define NUMPY_BIND_OLD_HH
 
 #include <vector>
 #include <boost/python.hpp>
-
-// numpy unique symbol weirdness
-#define PY_ARRAY_UNIQUE_SYMBOL graph_tool_numpy
-#ifndef NUMPY_EXPORT
-#define NO_IMPORT_ARRAY
-#endif
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-#include "arrayobject.h"
-
-#if NPY_API_VERSION < 0x00000007
-#include "numpy_bind_old.hh"
-#else
 
 #include <boost/array.hpp>
 #define BOOST_DISABLE_ASSERTS
@@ -79,8 +67,8 @@ python::object wrap_vector_owned(vector<ValueType>& vec)
         ndarray = (PyArrayObject*) PyArray_SimpleNewFromData(1, size, val_type,
                                                              new_data);
     }
-    PyArray_ENABLEFLAGS(ndarray, NPY_ARRAY_ALIGNED | NPY_ARRAY_C_CONTIGUOUS |
-                        NPY_ARRAY_OWNDATA | NPY_ARRAY_WRITEABLE);
+    ndarray->flags = NPY_ALIGNED | NPY_C_CONTIGUOUS | NPY_OWNDATA |
+        NPY_WRITEABLE;
     handle<> x((PyObject*) ndarray);
     object o(x);
     return o;
@@ -97,8 +85,7 @@ python::object wrap_vector_not_owned(vector<ValueType>& vec)
     else
         ndarray = (PyArrayObject*) PyArray_SimpleNewFromData(1, &size, val_type,
                                                              &vec[0]);
-    PyArray_ENABLEFLAGS(ndarray,NPY_ARRAY_ALIGNED | NPY_ARRAY_C_CONTIGUOUS |
-                        NPY_ARRAY_WRITEABLE);
+    ndarray->flags = NPY_ALIGNED | NPY_C_CONTIGUOUS | NPY_WRITEABLE;
     handle<> x((PyObject*) ndarray);
     object o(x);
     return o;
@@ -117,8 +104,8 @@ python::object wrap_multi_array_owned(multi_array<ValueType,Dim>& array)
     PyArrayObject* ndarray =
         (PyArrayObject*) PyArray_SimpleNewFromData(Dim, shape, val_type,
                                                    new_data);
-    PyArray_ENABLEFLAGS(ndarray, NPY_ARRAY_ALIGNED | NPY_ARRAY_C_CONTIGUOUS |
-                        NPY_ARRAY_OWNDATA | NPY_ARRAY_WRITEABLE);
+    ndarray->flags = NPY_ALIGNED | NPY_C_CONTIGUOUS | NPY_OWNDATA |
+        NPY_WRITEABLE;
     handle<> x((PyObject*) ndarray);
     object o(x);
     return o;
@@ -131,8 +118,7 @@ python::object wrap_multi_array_not_owned(multi_array<ValueType,Dim>& array)
     PyArrayObject* ndarray =
         (PyArrayObject*) PyArray_SimpleNewFromData(Dim, array.shape(), val_type,
                                                    array.origin());
-    PyArray_ENABLEFLAGS(ndarray, NPY_ARRAY_ALIGNED | NPY_ARRAY_C_CONTIGUOUS |
-                        NPY_ARRAY_WRITEABLE);
+    ndarray->flags = NPY_ALIGNED | NPY_C_CONTIGUOUS | NPY_WRITEABLE;
     handle<> x((PyObject*) ndarray);
     object o(x);
     return o;
@@ -155,31 +141,30 @@ multi_array_ref<ValueType,dim> get_array(python::object points)
 {
     PyArrayObject* pa = (PyArrayObject*) points.ptr();
 
-    if (PyArray_NDIM(pa) != dim)
+    if (pa->nd != dim)
         throw invalid_numpy_conversion("invalid array dimension!");
 
-    if (mpl::at<numpy_types,ValueType>::type::value != PyArray_DESCR(pa)->type_num)
+    if (mpl::at<numpy_types,ValueType>::type::value != pa->descr->type_num)
     {
         using python::detail::gcc_demangle;
-        handle<> x((PyObject*) PyArray_DESCR(pa)->typeobj);
+        handle<> x((PyObject*)  pa->descr->typeobj);
         object dtype(x);
         string type_name = python::extract<string>(python::str(dtype));
         string error = "invalid array value type: " + type_name;
-        error += " (id: " + lexical_cast<string>(PyArray_DESCR(pa)->type_num) + ")";
+        error += " (id: " + lexical_cast<string>(pa->descr->type_num) + ")";
         error += ", wanted: " + string(gcc_demangle(typeid(ValueType).name()));
         error += " (id: " + lexical_cast<string>(mpl::at<numpy_types,ValueType>::type::value) + ")";
         throw invalid_numpy_conversion(error);
     }
 
-    vector<size_t> shape(PyArray_NDIM(pa));
-    for (int i = 0; i < PyArray_NDIM(pa); ++i)
-        shape[i] =  PyArray_DIMS(pa)[i];
-    if ((PyArray_FLAGS(pa) ^ NPY_ARRAY_C_CONTIGUOUS) != 0)
-        return multi_array_ref<ValueType,dim>((ValueType *) PyArray_DATA(pa), shape);
+    vector<size_t> shape(pa->nd);
+    for (int i = 0; i < pa->nd; ++i)
+        shape[i] = pa->dimensions[i];
+    if ((pa->flags ^ NPY_C_CONTIGUOUS) != 0)
+        return multi_array_ref<ValueType,dim>((ValueType *) pa->data, shape);
     else
-        return multi_array_ref<ValueType,dim>((ValueType *) PyArray_DATA(pa), shape,
+        return multi_array_ref<ValueType,dim>((ValueType *) pa->data, shape,
                                               fortran_storage_order());
 }
 
-#endif
-#endif // NUMPY_BIND_HH
+#endif // NUMPY_BIND_OLD_HH

@@ -53,6 +53,7 @@ libgraph_tool_core_la_include_HEADERS = \
     histogram.hh \
     mpl_nested_loop.hh \
     numpy_bind.hh \
+    numpy_bind_old.hh \
     random.hh \
     str_repr.hh \
     shared_map.hh \
