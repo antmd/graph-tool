@@ -60,7 +60,10 @@ while len(incs) > 0:
     if os.path.isdir(inc):
         incs += glob.glob(inc + "/*")
     else:
-        headers_hash = hashlib.md5((headers_hash + open(inc).read()).encode('utf-8')).hexdigest()
+        try:
+            headers_hash = hashlib.md5((headers_hash + open(inc).read()).encode('utf-8')).hexdigest()
+        except UnicodeDecodeError:
+            headers_hash = hashlib.md5(headers_hash + open(inc).read()).hexdigest()
 
 # property map types
 props = """
