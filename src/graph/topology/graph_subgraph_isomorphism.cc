@@ -209,10 +209,10 @@ struct edge_label_mapping
 //                        ConstantPropertyMap<bool,GraphInterface::edge_t> >
 //     ::type edge_props_t;
 
-typedef typename property_map_type::apply<int32_t, GraphInterface::vertex_index_map_t>::type vlabel_t;
+typedef property_map_type::apply<int32_t, GraphInterface::vertex_index_map_t>::type vlabel_t;
 typedef mpl::vector<vlabel_t, ConstantPropertyMap<bool,GraphInterface::vertex_t> > vertex_props_t;
 
-typedef typename property_map_type::apply<int32_t, GraphInterface::edge_index_map_t>::type elabel_t;
+typedef property_map_type::apply<int32_t, GraphInterface::edge_index_map_t>::type elabel_t;
 typedef mpl::vector<elabel_t, ConstantPropertyMap<bool,GraphInterface::edge_t> > edge_props_t;
 
 void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,

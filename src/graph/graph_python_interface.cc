@@ -262,8 +262,8 @@ python::object GraphInterface::DegreeMap(string deg, boost::any weight) const
 
     python::object deg_map;
 
-    typedef typename mpl::push_back<edge_scalar_properties,
-                                    detail::no_weightS>::type weight_t;
+    typedef mpl::push_back<edge_scalar_properties,
+                           detail::no_weightS>::type weight_t;
     if (weight.empty())
         weight = detail::no_weightS();
 
