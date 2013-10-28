@@ -53,6 +53,7 @@ from .. import _prop, ungroup_vector_property
 from .. topology import shortest_distance
 import sys
 import numpy
+import numpy.linalg
 
 __all__ = ["pagerank", "betweenness", "central_point_dominance", "closeness",
            "eigentrust", "eigenvector", "katz", "hits", "trust_transitivity"]
@@ -622,7 +623,8 @@ def eigenvector(g, weight=None, vprop=None, epsilon=1e-6, max_iter=None):
     return ee, vprop
 
 
-def katz(g, alpha=0.01, beta=None, weight=None, vprop=None, epsilon=1e-6, max_iter=None):
+def katz(g, alpha=0.01, beta=None, weight=None, vprop=None, epsilon=1e-6,
+         max_iter=None, norm=True):
     r"""
     Calculate the Katz centrality of each vertex in the graph.
 
@@ -646,6 +648,8 @@ def katz(g, alpha=0.01, beta=None, weight=None, vprop=None, epsilon=1e-6, max_it
         vertices are below this value.
     max_iter : int, optional (default: ``None``)
         If supplied, this will limit the total number of iterations.
+    norm : bool, optional (default: ``True``)
+        Whether or not the centrality values should be normalized.
 
     Returns
     -------
@@ -723,15 +727,15 @@ def katz(g, alpha=0.01, beta=None, weight=None, vprop=None, epsilon=1e-6, max_it
        Weblogging Ecosystem (2005). :DOI:`10.1145/1134271.1134277`
     """
 
-    if vprop == None:
+    if vprop is None:
         vprop = g.new_vertex_property("double")
-        N = len(vprop.a)
-        vprop.a = beta.a[:N] if beta is not None else 1.
     if max_iter is None:
         max_iter = 0
-    ee = libgraph_tool_centrality.\
+    libgraph_tool_centrality.\
          get_katz(g._Graph__graph, _prop("e", g, weight), _prop("v", g, vprop),
-         _prop("v", beta, vprop), float(alpha), epsilon, max_iter)
+                  _prop("v", g, beta), float(alpha), epsilon, max_iter)
+    if norm:
+        vprop.fa = vprop.fa / numpy.linalg.norm(vprop.fa)
     return vprop
 
 

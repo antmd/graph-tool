@@ -44,14 +44,12 @@ struct get_katz
         CentralityMap c_temp(vertex_index, num_vertices(g));
 
         t_type delta = epsilon + 1;
-        t_type norm = 0;
         size_t iter = 0;
         int i, N = num_vertices(g);
         while (delta >= epsilon)
         {
-            norm = 0;
             #pragma omp parallel for default(shared) private(i) \
-                schedule(static) if (N > 100) reduction(+:norm)
+                schedule(static) if (N > 100)
             for (i = 0; i < N; ++i)
             {
                 typename graph_traits<Graph>::vertex_descriptor v =
@@ -66,14 +64,12 @@ struct get_katz
                 {
                     typename graph_traits<Graph>::vertex_descriptor s;
                     if (is_directed::apply<Graph>::type::value)
-                        s = source(*e,g);
+                        s = source(*e, g);
                     else
-                        s = target(*e,g);
+                        s = target(*e, g);
                     c_temp[v] += alpha * get(w, *e) * c[s];
                 }
-                norm += power(c_temp[v], 2);
             }
-            norm = sqrt(norm);
 
             delta = 0;
             #pragma omp parallel for default(shared) private(i) \
@@ -84,13 +80,12 @@ struct get_katz
                     vertex(i, g);
                 if (v == graph_traits<Graph>::null_vertex())
                     continue;
-                c_temp[v] /= norm;
                 delta += abs(c_temp[v] - c[v]);
             }
             swap(c_temp, c);
 
             ++iter;
-            if (max_iter > 0 && iter== max_iter)
+            if (max_iter > 0 && iter == max_iter)
                 break;
         }
 
@@ -104,7 +99,7 @@ struct get_katz
                     vertex(i, g);
                 if (v == graph_traits<Graph>::null_vertex())
                     continue;
-                c[v] = c_temp[v];
+                c_temp[v] = c[v];
             }
         }
     }

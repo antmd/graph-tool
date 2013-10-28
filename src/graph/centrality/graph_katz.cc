@@ -39,19 +39,19 @@ void katz(GraphInterface& g, boost::any w, boost::any c, boost::any beta,
         throw ValueException("personalization vertex property must be of floating point"
                              " value type");
 
-    typedef ConstantPropertyMap<int, GraphInterface::edge_t> weight_map_t;
+    typedef ConstantPropertyMap<double, GraphInterface::edge_t> weight_map_t;
     typedef mpl::push_back<writable_edge_scalar_properties, weight_map_t>::type
         weight_props_t;
 
     if(w.empty())
-        w = weight_map_t(1);
+        w = weight_map_t(1.);
 
-    typedef ConstantPropertyMap<int, GraphInterface::vertex_t> beta_map_t;
+    typedef ConstantPropertyMap<double, GraphInterface::vertex_t> beta_map_t;
     typedef mpl::push_back<vertex_floating_properties, beta_map_t>::type
         beta_props_t;
 
     if(beta.empty())
-        beta = beta_map_t(1);
+        beta = beta_map_t(1.);
 
     run_action<>()(g, bind<void>
                    (get_katz(), _1, g.GetVertexIndex(), _2,
