@@ -60,7 +60,7 @@ long double hits(GraphInterface& g, boost::any w, boost::any x, boost::any y,
                              " value type");
 
     typedef ConstantPropertyMap<int, GraphInterface::edge_t> weight_map_t;
-    typedef mpl::push_back<writable_edge_scalar_properties, weight_map_t>::type
+    typedef boost::mpl::push_back<writable_edge_scalar_properties, weight_map_t>::type
         weight_props_t;
 
     if(w.empty())
@@ -68,9 +68,9 @@ long double hits(GraphInterface& g, boost::any w, boost::any x, boost::any y,
 
     long double eig = 0;
     run_action<>()
-        (g, bind<void>
-         (get_hits_dispatch(), _1, g.GetVertexIndex(), _2,
-          _3, y, epsilon, max_iter, ref(eig)),
+        (g, std::bind(get_hits_dispatch(), placeholders::_1, g.GetVertexIndex(),
+                      placeholders::_2,  placeholders::_3, y, epsilon, max_iter,
+                      std::ref(eig)),
          weight_props_t(),
          vertex_floating_properties())(w, x);
     return eig;

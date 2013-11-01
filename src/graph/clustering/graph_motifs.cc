@@ -15,21 +15,18 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#include "graph_filtering.hh"
-
 #include "graph.hh"
-#include "graph_selectors.hh"
+#include "graph_filtering.hh"
 #include "graph_properties.hh"
 #include "graph_util.hh"
-
-#include "graph_python_interface.hh"
+#include "graph_selectors.hh"
 
 #include "graph_motifs.hh"
 
+#include "graph_python_interface.hh"
 #include <boost/python.hpp>
 
 using namespace std;
-using namespace boost;
 using namespace graph_tool;
 
 
@@ -39,9 +36,9 @@ struct append_to_list
     template <class Graph>
     void operator()(Graph& g, boost::any& list) const
     {
-        typedef typename mpl::if_<typename is_directed::apply<Graph>::type,
-                                  d_graph_t,
-                                  u_graph_t>::type graph_t;
+        typedef typename boost::mpl::if_<typename is_directed::apply<Graph>::type,
+                                         d_graph_t,
+                                         u_graph_t>::type graph_t;
         vector<graph_t>& glist = any_cast<vector<graph_t>&>(list);
         glist.push_back(graph_t());
         graph_copy(g, glist.back());
@@ -53,9 +50,9 @@ struct retrieve_from_list
     template <class Graph>
     void operator()(Graph& g, boost::any& list, bool& done) const
     {
-        typedef typename mpl::if_<typename is_directed::apply<Graph>::type,
-                                  d_graph_t,
-                                  u_graph_t>::type graph_t;
+        typedef typename boost::mpl::if_<typename is_directed::apply<Graph>::type,
+                                         d_graph_t,
+                                         u_graph_t>::type graph_t;
         vector<graph_t>& glist = any_cast<vector<graph_t>&>(list);
         if (glist.empty())
         {
@@ -67,9 +64,10 @@ struct retrieve_from_list
     }
 };
 
-void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
-                python::list hist, python::list pvmaps, bool collect_vmaps,
-                python::list p, bool comp_iso, bool fill_list, rng_t& rng)
+void get_motifs(GraphInterface& g, size_t k, boost::python::list subgraph_list,
+                boost::python::list hist, boost::python::list pvmaps,
+                bool collect_vmaps, boost::python::list p, bool comp_iso,
+                bool fill_list, rng_t& rng)
 {
     boost::any list;
     if (g.GetDirected())
@@ -78,12 +76,13 @@ void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
         list = vector<u_graph_t>();
     try
     {
-        for (int i = 0; i < python::len(subgraph_list); ++i)
+        for (int i = 0; i <  boost::python::len(subgraph_list); ++i)
         {
             GraphInterface& sub =
-                python::extract<GraphInterface&>(subgraph_list[i]);
-            run_action<>()(sub, bind<void>(append_to_list(), _1,
-                                           boost::ref(list)))();
+                 boost::python::extract<GraphInterface&>(subgraph_list[i]);
+            run_action<>()(sub, std::bind(append_to_list(),
+                                          placeholders::_1,
+                                          std::ref(list)))();
         }
     }
     catch (bad_any_cast&)
@@ -95,9 +94,9 @@ void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
     vector<size_t> phist;
     vector<double> plist;
     double total = 1;
-    for (int i = 0; i < python::len(p); ++i)
+    for (int i = 0; i < boost::python::len(p); ++i)
     {
-        plist.push_back(python::extract<double>(p[i]));
+        plist.push_back(boost::python::extract<double>(p[i]));
         total *= plist[i];
     }
 
@@ -113,18 +112,18 @@ void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
     vector<vector<vmap_t> > vmaps;
 
     run_action<>()
-        (g, boost::bind<void>(get_all_motifs(collect_vmaps, plist[0], comp_iso,
-                                             fill_list, rng),
-                              _1, k, boost::ref(list), boost::ref(phist),
-                              boost::ref(vmaps),_2),
-         mpl::vector<sample_all,sample_some>())(sampler);
+        (g, std::bind(get_all_motifs(collect_vmaps, plist[0], comp_iso,
+                                     fill_list, rng),
+                      placeholders::_1, k, std::ref(list), std::ref(phist),
+                      std::ref(vmaps), placeholders::_2),
+         boost::mpl::vector<sample_all,sample_some>())(sampler);
 
     for (size_t i = 0; i < phist.size(); ++i)
         hist.append(phist[i]);
 
     for (size_t i = 0; i < vmaps.size(); ++i)
     {
-        python::list vlist;
+         boost::python::list vlist;
         for (size_t j = 0; j < vmaps[i].size(); ++j)
             vlist.append(PythonPropertyMap<vmap_t>(vmaps[i][j]));
         pvmaps.append(vlist);
@@ -132,7 +131,7 @@ void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
 
     if (fill_list)
     {
-        for (int i = 0; i < python::len(subgraph_list); ++i)
+        for (int i = 0; i < boost::python::len(subgraph_list); ++i)
             subgraph_list.pop();
 
         bool done = false;
@@ -143,12 +142,12 @@ void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
             sub.SetDirected(g.GetDirected());
             typedef graph_tool::detail::get_all_graph_views::apply
                 <graph_tool::detail::scalar_pairs,
-                mpl::bool_<false>,mpl::bool_<false>,
-                mpl::bool_<false>,mpl::bool_<true>,
-                mpl::bool_<true> >::type gviews;
+                 boost::mpl::bool_<false>, boost::mpl::bool_<false>,
+                 boost::mpl::bool_<false>, boost::mpl::bool_<true>,
+                 boost::mpl::bool_<true> >::type gviews;
             run_action<gviews>()
-                (sub, boost::bind<void>(retrieve_from_list(), _1,
-                                        boost::ref(list), boost::ref(done)))();
+                (sub, std::bind(retrieve_from_list(), placeholders::_1,
+                                std::ref(list), std::ref(done)))();
             if (!done)
                 subgraph_list.append(sub);
         }

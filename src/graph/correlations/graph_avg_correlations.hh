@@ -53,7 +53,7 @@ struct get_avg_correlation
         typedef Histogram<type1,count_type,1> count_t;
         typedef Histogram<val_type,avg_type,1> sum_t;
 
-        array<vector<val_type>,1> bins;
+        std::array<vector<val_type>,1> bins;
         bins[0].resize(_bins.size());
         clean_bins(_bins, bins[0]);
 

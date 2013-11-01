@@ -72,14 +72,14 @@ struct property_union
         typename UnionProp::checked_t prop =
             any_cast<typename UnionProp::checked_t>(aprop);
         dispatch(ug, g, vmap, emap, uprop, prop,
-                 is_same<typename property_traits<UnionProp>::key_type,
-                         typename graph_traits<Graph>::vertex_descriptor>());
+                 std::is_same<typename property_traits<UnionProp>::key_type,
+                              typename graph_traits<Graph>::vertex_descriptor>());
     }
 
     template <class UnionGraph, class Graph, class VertexMap, class EdgeMap,
               class UnionProp, class Prop>
     void dispatch(UnionGraph&, Graph& g, VertexMap vmap, EdgeMap,
-                  UnionProp uprop, Prop prop, mpl::true_) const
+                  UnionProp uprop, Prop prop, std::true_type) const
     {
         typename graph_traits<Graph>::vertex_iterator v, v_end;
         for (tie(v,v_end) = vertices(g); v != v_end; ++v)
@@ -89,7 +89,7 @@ struct property_union
     template <class UnionGraph, class Graph, class VertexMap, class EdgeMap,
               class UnionProp, class Prop>
     void dispatch(UnionGraph&, Graph& g, VertexMap, EdgeMap emap,
-                  UnionProp uprop, Prop prop, mpl::false_) const
+                  UnionProp uprop, Prop prop, std::false_type) const
     {
         typename graph_traits<Graph>::edge_iterator e, e_end;
         for (tie(e,e_end) = edges(g); e != e_end; ++e)

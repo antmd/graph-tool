@@ -28,53 +28,53 @@ using namespace graph_tool;
 class PythonFuncWrap
 {
 public:
-    PythonFuncWrap(python::object o): _o(o) {}
+    PythonFuncWrap(boost::python::object o): _o(o) {}
 
     pair<size_t, size_t> operator()(size_t i) const
     {
-        python::object ret = _o(i);
-        return python::extract<pair<size_t,size_t> >(ret);
+        boost::python::object ret = _o(i);
+        return boost::python::extract<pair<size_t,size_t> >(ret);
     }
 
     size_t operator()(size_t i, bool) const
     {
-        python::object ret = _o(i);
-        return python::extract<size_t>(ret);
+        boost::python::object ret = _o(i);
+        return boost::python::extract<size_t>(ret);
     }
 
 private:
-    python::object _o;
+    boost::python::object _o;
 };
 
-void generate_graph(GraphInterface& gi, size_t N, python::object deg_sample,
+void generate_graph(GraphInterface& gi, size_t N, boost::python::object deg_sample,
                     bool no_parallel, bool no_self_loops, bool undirected,
                     rng_t& rng, bool verbose, bool verify)
 {
     typedef graph_tool::detail::get_all_graph_views::apply<
-    graph_tool::detail::scalar_pairs, mpl::bool_<false>,
-        mpl::bool_<false>, mpl::bool_<false>,
-        mpl::bool_<true>, mpl::bool_<true> >::type graph_views;
+    graph_tool::detail::scalar_pairs, boost::mpl::bool_<false>,
+        boost::mpl::bool_<false>, boost::mpl::bool_<false>,
+        boost::mpl::bool_<true>, boost::mpl::bool_<true> >::type graph_views;
 
     if (undirected)
         gi.SetDirected(false);
 
     run_action<graph_views>()
-        (gi, bind<void>(gen_graph(), _1, N,
-                        PythonFuncWrap(deg_sample),
-                        no_parallel, no_self_loops,
-                        ref(rng), verbose, verify))();
+        (gi, std::bind(gen_graph(), placeholders::_1, N,
+                       PythonFuncWrap(deg_sample),
+                       no_parallel, no_self_loops,
+                       std::ref(rng), verbose, verify))();
 }
 
 size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
                      bool no_sweep, bool self_loops, bool parallel_edges,
                      bool alias, bool traditional, bool persist,
-                     python::object corr_prob, boost::any block, bool cache,
+                     boost::python::object corr_prob, boost::any block, bool cache,
                      rng_t& rng, bool verbose);
 void predecessor_graph(GraphInterface& gi, GraphInterface& gpi,
                        boost::any pred_map);
 void line_graph(GraphInterface& gi, GraphInterface& lgi,
                 boost::any edge_index);
-python::tuple graph_union(GraphInterface& ugi, GraphInterface& gi,
+boost::python::tuple graph_union(GraphInterface& ugi, GraphInterface& gi,
                           boost::any avprop);
 void vertex_property_union(GraphInterface& ugi, GraphInterface& gi,
                            boost::any p_vprop, boost::any p_eprop,
@@ -82,11 +82,11 @@ void vertex_property_union(GraphInterface& ugi, GraphInterface& gi,
 void edge_property_union(GraphInterface& ugi, GraphInterface& gi,
                          boost::any p_vprop, boost::any p_eprop,
                          boost::any uprop, boost::any prop);
-void triangulation(GraphInterface& gi, python::object points, boost::any pos,
+void triangulation(GraphInterface& gi, boost::python::object points, boost::any pos,
                    string type, bool periodic);
-void lattice(GraphInterface& gi, python::object oshape, bool periodic);
-void geometric(GraphInterface& gi, python::object opoints, double r,
-               python::object orange, bool periodic, boost::any pos);
+void lattice(GraphInterface& gi, boost::python::object oshape, bool periodic);
+void geometric(GraphInterface& gi, boost::python::object opoints, double r,
+               boost::python::object orange, bool periodic, boost::any pos);
 void price(GraphInterface& gi, size_t N, double gamma, double c, size_t m,
            rng_t& rng);
 void complete(GraphInterface& gi, size_t N, bool directed, bool self_loops);

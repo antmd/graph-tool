@@ -19,6 +19,7 @@
 #define GRAPH_SELECTORS_HH
 
 #include <utility>
+#include <type_traits>
 #include <boost/mpl/pair.hpp>
 #include <boost/mpl/map.hpp>
 #include <boost/mpl/at.hpp>
@@ -33,6 +34,7 @@
 
 namespace graph_tool
 {
+using namespace std;
 
 // This file contain selector for degree types for different types of
 // graphs. Namely, they will return the in degree, out degree, and total degree
@@ -49,7 +51,7 @@ namespace detail
     template <class Weight>
     struct get_weight_type
     {
-        typedef typename property_traits<Weight>::value_type type;
+        typedef typename boost::property_traits<Weight>::value_type type;
     };
 
     template <>
@@ -75,15 +77,14 @@ struct in_degreeS
     typename detail::get_weight_type<Weight>::type
     operator()(const Vertex& v, const Graph &g, Weight weight) const
     {
-        using namespace boost;
         typedef typename is_convertible
-            <typename graph_traits<Graph>::directed_category,
-             directed_tag>::type is_directed;
+            <typename boost::graph_traits<Graph>::directed_category,
+             boost::directed_tag>::type is_directed;
         return get_in_degree(v, g, is_directed(), weight);
     }
 
     template <class Graph, class Vertex>
-    size_t get_in_degree(const Vertex& v, const Graph &g, boost::true_type,
+    size_t get_in_degree(const Vertex& v, const Graph &g, std::true_type,
                          detail::no_weightS)
         const
     {
@@ -92,19 +93,19 @@ struct in_degreeS
 
     template <class Graph, class Vertex, class Weight>
     typename detail::get_weight_type<Weight>::type
-    get_in_degree(const Vertex& v, const Graph &g, boost::true_type,
+    get_in_degree(const Vertex& v, const Graph &g, std::true_type,
                   Weight weight)
         const
     {
-        typename property_traits<Weight>::value_type d = 0;
-        typename graph_traits<Graph>::in_edge_iterator e, e_end;
+        typename boost::property_traits<Weight>::value_type d = 0;
+        typename boost::graph_traits<Graph>::in_edge_iterator e, e_end;
         for (tie(e, e_end) = in_edges(v, g); e != e_end; ++e)
             d += get(weight, *e);
         return d;
     }
 
     template <class Graph, class Vertex, class Weight>
-    size_t get_in_degree(const Vertex&, const Graph &, boost::false_type, Weight)
+    size_t get_in_degree(const Vertex&, const Graph &, std::false_type, Weight)
         const
     {
         return 0;
@@ -135,8 +136,8 @@ struct out_degreeS
     get_out_degree(const Vertex& v, const Graph &g, Weight weight)
         const
     {
-        typename property_traits<Weight>::value_type d = 0;
-        typename graph_traits<Graph>::out_edge_iterator e, e_end;
+        typename boost::property_traits<Weight>::value_type d = 0;
+        typename boost::graph_traits<Graph>::out_edge_iterator e, e_end;
         for (tie(e, e_end) = out_edges(v, g); e != e_end; ++e)
             d += get(weight, *e);
         return d;
@@ -165,16 +166,15 @@ struct total_degreeS
     typename detail::get_weight_type<Weight>::type
     operator()(const Vertex& v, const Graph &g, Weight weight) const
     {
-        using namespace boost;
         typedef typename is_convertible
-            <typename graph_traits<Graph>::directed_category,
-             directed_tag>::type is_directed;
+            <typename boost::graph_traits<Graph>::directed_category,
+             boost::directed_tag>::type is_directed;
         return get_total_degree(v, g, is_directed(), weight);
     }
 
     template <class Graph, class Vertex, class Weight>
     typename detail::get_weight_type<Weight>::type
-    get_total_degree(const Vertex& v, const Graph &g, boost::true_type, Weight weight)
+    get_total_degree(const Vertex& v, const Graph &g, std::true_type, Weight weight)
         const
     {
         return in_degreeS()(v, g, weight) + out_degreeS()(v, g, weight);
@@ -182,7 +182,7 @@ struct total_degreeS
 
     template <class Graph, class Vertex, class Weight>
     typename detail::get_weight_type<Weight>::type
-    get_total_degree(const Vertex& v, const Graph &g, boost::false_type, Weight weight)
+    get_total_degree(const Vertex& v, const Graph &g, std::false_type, Weight weight)
         const
     {
         return out_degreeS()(v, g, weight);
@@ -193,13 +193,13 @@ struct total_degreeS
 template <class PropertyMap>
 struct scalarS
 {
-    typedef typename property_traits<PropertyMap>::value_type value_type;
+    typedef typename boost::property_traits<PropertyMap>::value_type value_type;
 
     scalarS() {}
     scalarS(PropertyMap pmap): _pmap(pmap) {}
 
     template <class Descriptor, class Graph>
-    typename property_traits<PropertyMap>::value_type
+    typename boost::property_traits<PropertyMap>::value_type
     operator()(const Descriptor& d, const Graph &) const
     {
         return get(_pmap, d);
@@ -222,7 +222,7 @@ struct get_degree_selector
     template <class Selector>
         void operator()(Selector, int deg_index, boost::any& deg) const
     {
-        if (mpl::at<degree_selector_index, Selector>::type::value == deg_index)
+        if (boost::mpl::at<degree_selector_index, Selector>::type::value == deg_index)
             deg = Selector();
     }
 };
@@ -235,11 +235,11 @@ struct get_scalar_selector
     {
         try
         {
-            PropertyMap map = any_cast<PropertyMap>(prop);
+            PropertyMap map = boost::any_cast<PropertyMap>(prop);
             sec = scalarS<PropertyMap>(map);
             found = true;
         }
-        catch (bad_any_cast&) {}
+        catch (boost::bad_any_cast&) {}
     }
 };
 
@@ -263,13 +263,13 @@ boost::any degree_selector(GraphInterface::deg_t deg);
 template <class Graph, class IsDirected>
 struct get_in_edges
 {
-    BOOST_MPL_ASSERT((is_same<IsDirected,boost::true_type>));
+    BOOST_MPL_ASSERT((is_same<IsDirected,std::true_type>));
     BOOST_MPL_ASSERT((is_convertible
-                      <typename graph_traits<Graph>::directed_category,
+                      <typename boost::graph_traits<Graph>::directed_category,
                       boost::directed_tag>));
-    typedef typename graph_traits<Graph>::vertex_descriptor
+    typedef typename boost::graph_traits<Graph>::vertex_descriptor
         vertex_descriptor;
-    typedef typename graph_traits<Graph>::in_edge_iterator type;
+    typedef typename boost::graph_traits<Graph>::in_edge_iterator type;
     static std::pair<type,type> get_edges(vertex_descriptor v,
                                           const Graph& g)
     {
@@ -279,14 +279,14 @@ struct get_in_edges
 };
 
 template <class Graph>
-struct get_in_edges<Graph,boost::false_type>
+struct get_in_edges<Graph,std::false_type>
 {
     BOOST_MPL_ASSERT((is_convertible
-                      <typename graph_traits<Graph>::directed_category,
+                      <typename boost::graph_traits<Graph>::directed_category,
                       boost::undirected_tag>));
-    typedef typename graph_traits<Graph>::vertex_descriptor
+    typedef typename boost::graph_traits<Graph>::vertex_descriptor
         vertex_descriptor;
-    typedef typename graph_traits<Graph>::out_edge_iterator type;
+    typedef typename boost::graph_traits<Graph>::out_edge_iterator type;
     static std::pair<type,type> get_edges(vertex_descriptor,
                                           const Graph&)
     {
@@ -319,7 +319,7 @@ struct in_edge_iteratorS
 template <class Graph>
 struct out_edge_iteratorS
 {
-    typedef typename graph_traits<Graph>::out_edge_iterator type;
+    typedef typename boost::graph_traits<Graph>::out_edge_iterator type;
 
     typedef typename boost::graph_traits<Graph>::vertex_descriptor
         vertex_descriptor;
@@ -334,32 +334,32 @@ struct out_edge_iteratorS
 template <class Graph, class IsDirected>
 struct get_all_edges
 {
-    BOOST_MPL_ASSERT((is_same<IsDirected,boost::true_type>));
+    BOOST_MPL_ASSERT((is_same<IsDirected,std::true_type>));
     BOOST_MPL_ASSERT((is_convertible
-                      <typename graph_traits<Graph>::directed_category,
+                      <typename boost::graph_traits<Graph>::directed_category,
                       boost::directed_tag>));
-    typedef typename graph_traits<Graph>::vertex_descriptor
+    typedef typename boost::graph_traits<Graph>::vertex_descriptor
         vertex_descriptor;
-    typedef typename graph_traits<UndirectedAdaptor<Graph> >::out_edge_iterator
+    typedef typename boost::graph_traits<boost::UndirectedAdaptor<Graph> >::out_edge_iterator
         type;
     static std::pair<type,type> get_edges(vertex_descriptor v,
                                           const Graph& g)
     {
         using namespace boost;
-        const UndirectedAdaptor<Graph> ug(g);
+        const boost::UndirectedAdaptor<Graph> ug(g);
         return out_edges(v, ug);
     }
 };
 
 template <class Graph>
-struct get_all_edges<Graph,boost::false_type>
+struct get_all_edges<Graph,std::false_type>
 {
     BOOST_MPL_ASSERT((is_convertible
-                      <typename graph_traits<Graph>::directed_category,
+                      <typename boost::graph_traits<Graph>::directed_category,
                       boost::undirected_tag>));
-    typedef typename graph_traits<Graph>::vertex_descriptor
+    typedef typename boost::graph_traits<Graph>::vertex_descriptor
         vertex_descriptor;
-    typedef typename graph_traits<Graph>::out_edge_iterator type;
+    typedef typename boost::graph_traits<Graph>::out_edge_iterator type;
     static std::pair<type,type> get_edges(vertex_descriptor v,
                                           const Graph& g)
     {
@@ -396,8 +396,8 @@ struct get_in_or_out_edges
 {};
 
 template <class Graph>
-struct get_in_or_out_edges<Graph,boost::false_type>
-    : public get_all_edges<Graph,boost::false_type>
+struct get_in_or_out_edges<Graph,std::false_type>
+    : public get_all_edges<Graph,std::false_type>
 {};
 
 // this "in or out" iterator selector returns the in-edge range for directed
@@ -423,7 +423,7 @@ struct in_or_out_edge_iteratorS
 
 // useful type lists
 
-typedef mpl::vector<in_degreeS, out_degreeS, total_degreeS>
+typedef boost::mpl::vector<in_degreeS, out_degreeS, total_degreeS>
     degree_selectors;
 
 typedef property_map_types::apply<value_types,
@@ -431,7 +431,7 @@ typedef property_map_types::apply<value_types,
     vertex_properties;
 typedef property_map_types::apply<value_types,
                                   GraphInterface::vertex_index_map_t,
-                                  mpl::bool_<false> >::type
+                                  boost::mpl::bool_<false> >::type
     writable_vertex_properties;
 
 typedef property_map_types::apply<value_types,
@@ -439,7 +439,7 @@ typedef property_map_types::apply<value_types,
     edge_properties;
 typedef property_map_types::apply<value_types,
                                   GraphInterface::edge_index_map_t,
-                                  mpl::bool_<false> >::type
+                                  boost::mpl::bool_<false> >::type
     writable_edge_properties;
 
 typedef property_map_types::apply<scalar_types,
@@ -447,7 +447,7 @@ typedef property_map_types::apply<scalar_types,
     vertex_scalar_properties;
 typedef property_map_types::apply<scalar_types,
                                   GraphInterface::vertex_index_map_t,
-                                  mpl::bool_<false> >::type
+                                  boost::mpl::bool_<false> >::type
     writable_vertex_scalar_properties;
 
 typedef property_map_types::apply<integer_types,
@@ -456,22 +456,22 @@ typedef property_map_types::apply<integer_types,
 
 typedef property_map_types::apply<floating_types,
                                   GraphInterface::vertex_index_map_t,
-                                  mpl::bool_<false> >::type
+                                  boost::mpl::bool_<false> >::type
     vertex_floating_properties;
 
 typedef property_map_types::apply<scalar_vector_types,
                                   GraphInterface::vertex_index_map_t,
-                                  mpl::bool_<false> >::type
+                                  boost::mpl::bool_<false> >::type
     vertex_scalar_vector_properties;
 
 typedef property_map_types::apply<integer_vector_types,
                                   GraphInterface::vertex_index_map_t,
-                                  mpl::bool_<false> >::type
+                                  boost::mpl::bool_<false> >::type
     vertex_integer_vector_properties;
 
 typedef property_map_types::apply<floating_vector_types,
                                   GraphInterface::vertex_index_map_t,
-                                  mpl::bool_<false> >::type
+                                  boost::mpl::bool_<false> >::type
     vertex_floating_vector_properties;
 
 typedef property_map_types::apply<scalar_types,
@@ -480,7 +480,7 @@ typedef property_map_types::apply<scalar_types,
 
 typedef property_map_types::apply<scalar_types,
                                   GraphInterface::edge_index_map_t,
-                                  mpl::bool_<false> >::type
+                                  boost::mpl::bool_<false> >::type
     writable_edge_scalar_properties;
 
 typedef property_map_types::apply<integer_types,
@@ -489,37 +489,37 @@ typedef property_map_types::apply<integer_types,
 
 typedef property_map_types::apply<floating_types,
                                   GraphInterface::edge_index_map_t,
-                                  mpl::bool_<false> >::type
+                                  boost::mpl::bool_<false> >::type
     edge_floating_properties;
 
 typedef property_map_types::apply<scalar_vector_types,
                                   GraphInterface::edge_index_map_t,
-                                  mpl::bool_<false> >::type
+                                  boost::mpl::bool_<false> >::type
     edge_scalar_vector_properties;
 
 typedef property_map_types::apply<integer_vector_types,
                                   GraphInterface::edge_index_map_t,
-                                  mpl::bool_<false> >::type
+                                  boost::mpl::bool_<false> >::type
     edge_integer_vector_properties;
 
 typedef property_map_types::apply<floating_vector_types,
                                   GraphInterface::edge_index_map_t,
-                                  mpl::bool_<false> >::type
+                                  boost::mpl::bool_<false> >::type
     edge_floating_vector_properties;
 
 struct vertex_scalar_selectors:
-    mpl::transform<vertex_scalar_properties,
-                   scalar_selector_type>::type {};
+    boost::mpl::transform<vertex_scalar_properties,
+                          scalar_selector_type>::type {};
 
 struct all_selectors:
-    mpl::transform<vertex_properties,
-                   scalar_selector_type,
-                   mpl::back_inserter<degree_selectors> >::type {};
+    boost::mpl::transform<vertex_properties,
+                          scalar_selector_type,
+                          boost::mpl::back_inserter<degree_selectors> >::type {};
 
 struct scalar_selectors:
-    mpl::transform<vertex_scalar_properties,
-                   scalar_selector_type,
-                   mpl::back_inserter<degree_selectors> >::type {};
+    boost::mpl::transform<vertex_scalar_properties,
+                          scalar_selector_type,
+                          boost::mpl::back_inserter<degree_selectors> >::type {};
 
 } //namespace graph_tool
 

@@ -328,8 +328,8 @@ std::string print_value(dynamic_property_map& pmap, Descriptor v)
 {
     std::string val;
     boost::any oval = pmap.get(v);
-    mpl::for_each<ValueTypes>(bind<void>(get_string(), ref(oval),
-                                         ref(val), _1));
+    mpl::for_each<ValueTypes>(boost::bind<void>(get_string(), boost::ref(oval),
+                                                boost::ref(val), _1));
     return val;
 }
 

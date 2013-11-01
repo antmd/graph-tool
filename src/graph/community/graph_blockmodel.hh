@@ -23,10 +23,9 @@
 #include <queue>
 
 #include "config.h"
-#include "tr1_include.hh"
-#include TR1_HEADER(unordered_set)
-#include TR1_HEADER(unordered_map)
-#include TR1_HEADER(tuple)
+#include <unordered_set>
+#include <unordered_map>
+#include <tuple>
 
 #ifdef HAVE_SPARSEHASH
 #include <dense_hash_set>
@@ -1094,7 +1093,7 @@ remove_egroups(Vertex v, Vertex r, Eprop eweight, EVprop egroups,
         {
             size_t pos = (is_src) ? esrcpos[*e][i] : etgtpos[*e][i];
 
-            const boost::tuple<typename graph_traits<Graph>::edge_descriptor, bool, size_t>& eback = egroups[r].back();
+            const std::tuple<typename graph_traits<Graph>::edge_descriptor, bool, size_t>& eback = egroups[r].back();
 
             if (get<1>(eback))
                 esrcpos[get<0>(eback)][get<2>(eback)] = pos;
@@ -1134,7 +1133,7 @@ add_egroups(Vertex v, Vertex s, Eprop eweight, EVprop egroups, VEprop esrcpos,
 
         for (size_t i = 0; i < size_t(eweight[*e]); ++i)
         {
-            egroups[s].push_back(boost::make_tuple(*e, is_src, i));
+            egroups[s].push_back(std::make_tuple(*e, is_src, i));
             if (is_src)
                 esrcpos[*e][i] = egroups[s].size() - 1;
             else
@@ -1172,16 +1171,16 @@ void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
     if (!sequential)
         moves.resize(vlist.size());
 
-    typedef std::tr1::uniform_real<> rdist_t;
-    std::tr1::variate_generator<RNG&, rdist_t> rand_real(rng, rdist_t());
+    typedef std::uniform_real_distribution<> rdist_t;
+    auto rand_real = std::bind(rdist_t(), std::ref(rng));
 
     // it is useful to shuffle the vertex order even in the parallel case, so
     // threads become more balanced
-    std::tr1::uniform_int<> uniint;
-    std::tr1::variate_generator<RNG&, std::tr1::uniform_int<> >gen(rng, uniint);
+    std::uniform_int_distribution<> uniint;
+    auto gen = std::bind(uniint, std::ref(rng));
     std::random_shuffle(vlist.begin(), vlist.end(), gen);
 
-    std::tr1::uniform_int<size_t> s_rand(0, B - 1);
+    std::uniform_int_distribution<size_t> s_rand(0, B - 1);
 
     nmoves = 0;
     S = 0;
@@ -1191,7 +1190,7 @@ void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
         firstprivate(m_entries) schedule(static) if (!sequential && N > 100)
     for (i = 0; i < N; ++i)
     {
-        if (m_entries.get() == NULL && (!dense || (!isinf(beta) && !random_move)))
+        if (m_entries.get() == NULL && (!dense || (!std::isinf(beta) && !random_move)))
             m_entries = auto_ptr<EntrySet<Graph> >(new EntrySet<Graph>(B));
 
         vertex_t v = vertex(vlist[i], g);
@@ -1237,7 +1236,7 @@ void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
 
             if (sample_real >= p_rand)
             {
-                std::tr1::uniform_int<size_t> urand(0, egroups[t].size() - 1);
+                std::uniform_int_distribution<size_t> urand(0, egroups[t].size() - 1);
 
                 size_t ur;
                 #pragma omp critical
@@ -1268,7 +1267,7 @@ void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
         }
         else
         {
-            if (!isinf(beta) && !random_move)
+            if (!std::isinf(beta) && !random_move)
             {
                 m_entries->Clear();
                 move_entries(v, s, b, eweight, g, bg, *m_entries);
@@ -1279,7 +1278,7 @@ void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
         }
 
         bool accept = false;
-        if (isinf(beta))
+        if (std::isinf(beta))
         {
             accept = dS < 0;
         }
@@ -1310,7 +1309,7 @@ void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
             }
         }
 
-        if (!dense || (!isinf(beta) && !random_move))
+        if (!dense || (!std::isinf(beta) && !random_move))
             m_entries->Clear();
 
         if (accept)
@@ -1358,7 +1357,7 @@ void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
                                      eweight, vweight, g, bg, emat, multigraph);
          }
 
-         if (isinf(beta) && dS > 0)
+         if (std::isinf(beta) && dS > 0)
              continue;
 
          move_vertex(v, s, mrs, mrp, mrm, wr, b, deg_corr, eweight,
@@ -1380,7 +1379,7 @@ struct build_egroups
                     Eprop eweight, Graph& g, VertexIndex vertex_index,
                     bool empty) const
     {
-        typedef vector<boost::tuple<typename graph_traits<Graph>::edge_descriptor, bool, size_t> > elist_t;
+        typedef vector<std::tuple<typename graph_traits<Graph>::edge_descriptor, bool, size_t> > elist_t;
 
         typedef typename property_map_type::apply<elist_t, GraphInterface::vertex_index_map_t>::type vemap_t;
         vemap_t egroups_checked(vertex_index);
@@ -1401,7 +1400,7 @@ struct build_egroups
             r_elist.resize(r_elist.size() + size_t(eweight[*e]));
             for (size_t i = 0; i < size_t(eweight[*e]); ++i)
             {
-                r_elist[pos + i] = boost::make_tuple(*e, true, i);
+                r_elist[pos + i] = std::make_tuple(*e, true, i);
                 esrcpos[*e][i] = pos + i;
             }
 
@@ -1412,7 +1411,7 @@ struct build_egroups
             s_elist.resize(s_elist.size() + size_t(eweight[*e]));
             for (size_t i = 0; i < size_t(eweight[*e]); ++i)
             {
-                s_elist[pos + i] = boost::make_tuple(*e, false, i);
+                s_elist[pos + i] = std::make_tuple(*e, false, i);
                 etgtpos[*e][i] = pos + i;
             }
         }
@@ -1474,8 +1473,8 @@ struct init_neighbour_sampler
 struct merge_cmp_less
 {
     template<class Vertex>
-    double operator()(const tr1::tuple<Vertex, Vertex, double>& a,
-                      const tr1::tuple<Vertex, Vertex, double>& b)
+    double operator()(const std::tuple<Vertex, Vertex, double>& a,
+                      const std::tuple<Vertex, Vertex, double>& b)
     {
         return get<2>(a) < get<2>(b);
     }
@@ -1573,9 +1572,6 @@ void merge_sweep(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
     size_t B = num_vertices(bg);
     auto_ptr<EntrySet<BGraph> > m_entries;
 
-    typedef std::tr1::uniform_real<> rdist_t;
-    std::tr1::variate_generator<RNG&, rdist_t> rand_real(rng, rdist_t());
-
     vector<set<pair<vertex_t, double>, match_cmp_less> > past_moves;
     vector<pair<vertex_t, double> > best_move;
     past_moves.resize(B);
@@ -1603,7 +1599,7 @@ void merge_sweep(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
             vertex_t s;
             if (random_moves || total_degreeS()(r, bg) == 0)
             {
-                std::tr1::uniform_int<size_t> srand(0, B - 1);
+                std::uniform_int_distribution<size_t> srand(0, B - 1);
                 #pragma omp critical
                 {
                     s = srand(rng);
@@ -1665,8 +1661,8 @@ void merge_sweep(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
             m_entries = auto_ptr<EntrySet<BGraph> >(new EntrySet<BGraph>(B));
 
         // top is the merge with _largest_ dS
-        priority_queue<tr1::tuple<vertex_t, vertex_t, double>,
-                       vector<tr1::tuple<vertex_t, vertex_t, double> >,
+        priority_queue<std::tuple<vertex_t, vertex_t, double>,
+                       vector<std::tuple<vertex_t, vertex_t, double> >,
                        merge_cmp_less> merge_heap;
 
         for (size_t i = 0; i < B; ++i)
@@ -1678,7 +1674,7 @@ void merge_sweep(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
             if (r != s && dS < numeric_limits<double>::max() &&
                 (merge_heap.size() < nmerges || dS < get<2>(merge_heap.top())))
             {
-                merge_heap.push(tr1::make_tuple(r, s, dS));
+                merge_heap.push(std::make_tuple(r, s, dS));
                 if (merge_heap.size() > nmerges)
                     merge_heap.pop();
             }
@@ -1690,7 +1686,7 @@ void merge_sweep(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
 
         while (!merge_heap.empty())
         {
-            tr1::tuple<vertex_t, vertex_t, double> v = merge_heap.top();
+            std::tuple<vertex_t, vertex_t, double> v = merge_heap.top();
             best_merges.push_back(make_pair(get<0>(v), get<1>(v)));
             merge_heap.pop();
         }

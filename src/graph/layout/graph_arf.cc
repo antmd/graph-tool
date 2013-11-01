@@ -32,15 +32,14 @@ void arf_layout(GraphInterface& g, boost::any pos, boost::any weight, double d,
                 size_t dim)
 {
     typedef ConstantPropertyMap<int32_t,GraphInterface::edge_t> weight_map_t;
-    typedef mpl::push_back<edge_scalar_properties, weight_map_t>::type
+    typedef boost::mpl::push_back<edge_scalar_properties, weight_map_t>::type
         edge_props_t;
 
     if(weight.empty())
         weight = weight_map_t(1);
     run_action<graph_tool::detail::never_directed>()
-        (g,
-         lambda::bind<void>(get_arf_layout(), lambda::_1, lambda::_2,
-                            lambda::_3, a, d, dt, epsilon, max_iter, dim),
+        (g, std::bind(get_arf_layout(), placeholders::_1, placeholders::_2,
+                      placeholders::_3, a, d, dt, epsilon, max_iter, dim),
          vertex_floating_vector_properties(), edge_props_t())(pos, weight);
 }
 
@@ -48,5 +47,5 @@ void arf_layout(GraphInterface& g, boost::any pos, boost::any weight, double d,
 
 void export_arf()
 {
-    python::def("arf_layout", &arf_layout);
+    boost::python::def("arf_layout", &arf_layout);
 }

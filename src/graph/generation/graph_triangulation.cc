@@ -21,6 +21,8 @@
 //  software in the executable aside from CGAL.
 
 #include "graph.hh"
+#include "graph_util.hh"
+#include "graph_filtering.hh"
 
 #if (GCC_VERSION < 40400 || defined __clang__)
 #   define CGAL_CFG_NO_TR1_ARRAY
@@ -66,16 +68,14 @@ bool operator==(const PeriodicDelaunayTriangulation::Vertex& a,
 #endif
 
 #include "graph_triangulation.hh"
-#include "graph_util.hh"
-#include "graph_filtering.hh"
 #include "numpy_bind.hh"
 
 using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-void triangulation(GraphInterface& gi, python::object points, boost::any pos,
-                   string type, bool periodic)
+void triangulation(GraphInterface& gi, boost::python::object points,
+                   boost::any pos, string type, bool periodic)
 {
     UndirectedAdaptor<GraphInterface::multigraph_t> g(gi.GetGraph());
     multi_array_ref<double,2> points_array = get_array<double,2>(points);

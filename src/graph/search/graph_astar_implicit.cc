@@ -72,11 +72,12 @@ void a_star_search_implicit(GraphInterface& g, python::object gi, size_t source,
                             python::object inf, python::object h)
 {
     run_action<graph_tool::detail::all_graph_views,mpl::true_>()
-        (g, bind<void>(do_astar_search(), _1, source, _2, make_pair(pred, cost),
-                       weight,
-                       AStarVisitorWrapper(gi, vis), make_pair(AStarCmp(cmp),
-                                                               AStarCmb(cmb)),
-                       make_pair(zero, inf), make_pair(gi, h)),
+        (g, std::bind(do_astar_search(), placeholders::_1, source,
+                      placeholders::_2, make_pair(pred, cost),
+                      weight,
+                      AStarVisitorWrapper(gi, vis), make_pair(AStarCmp(cmp),
+                                                              AStarCmb(cmb)),
+                      make_pair(zero, inf), make_pair(gi, h)),
          writable_vertex_properties())(dist_map);
 }
 

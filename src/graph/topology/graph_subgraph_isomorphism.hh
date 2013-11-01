@@ -20,8 +20,7 @@
 
 #include <boost/graph/graph_traits.hpp>
 #include <utility>
-#include "tr1_include.hh"
-#include TR1_HEADER(unordered_set)
+#include <unordered_set>
 
 namespace boost
 {
@@ -31,14 +30,14 @@ using namespace std;
 namespace detail {
 
 //sparse matrix
-typedef vector<tr1::unordered_set<size_t> > matrix_t;
+typedef vector<std::unordered_set<size_t> > matrix_t;
 
 struct check_adjacency
 {
     template <class Graph>
     typename graph_traits<Graph>::vertex_descriptor
     get_vertex(const typename graph_traits<Graph>::edge_descriptor& e, Graph& g,
-               mpl::true_ out_edges)
+               std::true_type out_edges)
     {
         return target(e, g);
     }
@@ -46,7 +45,7 @@ struct check_adjacency
     template <class Graph>
     typename graph_traits<Graph>::vertex_descriptor
     get_vertex(const typename graph_traits<Graph>::edge_descriptor& e, Graph& g,
-               mpl::false_ out_edges)
+               std::false_type out_edges)
     {
         return source(e, g);
     }
@@ -64,7 +63,7 @@ struct check_adjacency
     };
 
     template <class Graph>
-    struct get_edge_iterator<Graph, mpl::false_>
+    struct get_edge_iterator<Graph, std::false_type>
     {
         typedef typename graph_traits<Graph>::in_edge_iterator type;
 
@@ -80,20 +79,20 @@ struct check_adjacency
                     typename graph_traits<Graph2>::vertex_descriptor l,
                     matrix_t& M, EdgeLabelling& edge_labelling,
                     Graph1& g1, Graph2& g2, vector<size_t>& vindex,
-                    mpl::true_ directed)
+                    std::true_type directed)
     {
         return do_check(k, l, M, edge_labelling, g1, g2, vindex,
-                        mpl::true_()) &&
-            do_check(k, l, M, edge_labelling, g1, g2, vindex, mpl::false_());
+                        std::true_type()) &&
+            do_check(k, l, M, edge_labelling, g1, g2, vindex, std::false_type());
     }
 
     template <class Graph1, class Graph2, class EdgeLabelling>
     bool operator()(typename graph_traits<Graph1>::vertex_descriptor k,
                     typename graph_traits<Graph2>::vertex_descriptor l,
                     matrix_t& M, EdgeLabelling& edge_labelling, Graph1& g1,
-                    Graph2& g2, vector<size_t>& vindex, mpl::false_ directed)
+                    Graph2& g2, vector<size_t>& vindex, std::false_type directed)
     {
-        return do_check(k, l, M, edge_labelling, g1, g2, vindex, mpl::true_());
+        return do_check(k, l, M, edge_labelling, g1, g2, vindex, std::true_type());
     }
 
     template <class Graph1, class Graph2, class EdgeLabelling, class IsOut>
@@ -141,7 +140,7 @@ struct check_adjacency
 
 template <class Graph1, class Graph2, class EdgeLabelling>
 bool refine_check(const Graph1& sub, const Graph2& g, matrix_t& M, size_t count,
-                  tr1::unordered_set<size_t>& already_mapped,
+                  std::unordered_set<size_t>& already_mapped,
                   EdgeLabelling edge_labelling, vector<size_t>& vlist,
                   vector<size_t>& vindex)
 {
@@ -165,7 +164,7 @@ bool refine_check(const Graph1& sub, const Graph2& g, matrix_t& M, size_t count,
                 continue;
             if (vertex(k, sub) == graph_traits<Graph1>::null_vertex())
                 continue;
-            tr1::unordered_set<size_t> m_new;
+            std::unordered_set<size_t> m_new;
             for (typeof(M[k].begin()) li = M[k].begin(); li != M[k].end(); ++li)
             {
                 size_t l = *li;
@@ -211,20 +210,20 @@ void find_mappings(const Graph1& sub, const Graph2& g, matrix_t& M0,
 
     Mapping F;
     // [current M] [current sub vertex] [current mapping vertex]
-    typedef tuple<matrix_t, size_t,
-                  typename matrix_t::value_type::const_iterator> state_t;
+    typedef std::tuple<matrix_t, size_t,
+                       typename matrix_t::value_type::const_iterator> state_t;
     std::list<state_t> Mstack;
-    Mstack.push_back(make_tuple(M0, i, M0[i].begin()));
-    get<2>(Mstack.back()) = get<0>(Mstack.back())[i].begin();
-    tr1::unordered_set<size_t> already_mapped;
+    Mstack.push_back(std::make_tuple(M0, i, M0[i].begin()));
+    std::get<2>(Mstack.back()) = std::get<0>(Mstack.back())[i].begin();
+    std::unordered_set<size_t> already_mapped;
 
     // perform depth-first search of combination space
     while (!Mstack.empty() && (max_n == 0 || FF.size() < max_n))
     {
         state_t& state = Mstack.back();
-        const matrix_t& M = get<0>(state);
-        size_t& i = get<1>(state);
-        typename matrix_t::value_type::const_iterator& mi = get<2>(state);
+        const matrix_t& M = std::get<0>(state);
+        size_t& i = std::get<1>(state);
+        typename matrix_t::value_type::const_iterator& mi = std::get<2>(state);
 
         if (mi == M[i].end()) // no more candidate mappings available
         {
@@ -261,8 +260,8 @@ void find_mappings(const Graph1& sub, const Graph2& g, matrix_t& M0,
             if (ni < size_t(last_i))
             {
                 // proceed with search at a higher depth
-                Mstack.push_back(make_tuple(M_prime, ni, M_prime[ni].begin()));
-                get<2>(Mstack.back()) = get<0>(Mstack.back())[ni].begin();
+                Mstack.push_back(std::make_tuple(M_prime, ni, M_prime[ni].begin()));
+                std::get<2>(Mstack.back()) = std::get<0>(Mstack.back())[ni].begin();
             }
             else
             {

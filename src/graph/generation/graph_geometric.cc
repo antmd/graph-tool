@@ -59,8 +59,9 @@ void geometric(GraphInterface& gi, python::object opoints, double r,
         range[i].second = python::extract<double>(orange[i][1]);
     }
 
-    run_action<graph_views>()(gi, bind<void>(get_geometric(), _1, _2,
-                                             ref(points), ref(range), r,
-                                             periodic),
+    run_action<graph_views>()(gi, std::bind(get_geometric(), placeholders::_1,
+                                            placeholders::_2, std::ref(points),
+                                            std::ref(range), r,
+                                            periodic),
                               prop_types())(pos);
 }

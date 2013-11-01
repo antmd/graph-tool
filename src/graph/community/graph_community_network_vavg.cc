@@ -69,9 +69,9 @@ void community_network_vavg(GraphInterface& gi, GraphInterface& cgi,
                             boost::any condensed_community_property,
                             boost::any vertex_count,
                             boost::any vweight,
-                            python::list avprops)
+                            boost::python::list avprops)
 {
-    typedef mpl::push_back<writable_vertex_scalar_properties, no_vweight_map_t>::type
+    typedef boost::mpl::push_back<writable_vertex_scalar_properties, no_vweight_map_t>::type
         vweight_properties;
 
     bool no_weight = false;
@@ -81,35 +81,37 @@ void community_network_vavg(GraphInterface& gi, GraphInterface& cgi,
         vweight = no_vweight_map_t(1);
     }
 
-    typedef mpl::insert_range<writable_vertex_scalar_properties,
-                              mpl::end<writable_vertex_scalar_properties>::type,
-                              vertex_scalar_vector_properties>::type vprops_temp;
-    typedef mpl::push_back<vprops_temp,
-                           property_map_type::apply<python::object,
-                                                    GraphInterface::vertex_index_map_t>::type>::type
+    typedef boost::mpl::insert_range<writable_vertex_scalar_properties,
+                                     boost::mpl::end<writable_vertex_scalar_properties>::type,
+                                     vertex_scalar_vector_properties>::type vprops_temp;
+    typedef boost::mpl::push_back<vprops_temp,
+                                  property_map_type::apply<boost::python::object,
+                                                           GraphInterface::vertex_index_map_t>::type>::type
         vprops_t;
 
-    for(int i = 0; i < python::len(avprops); ++i)
+    for(int i = 0; i < boost::python::len(avprops); ++i)
     {
-        boost::any vprop = python::extract<any>(avprops[i][0]);
-        boost::any temp = python::extract<any>(avprops[i][1]);
-        boost::any cvprop = python::extract<any>(avprops[i][2]);
+        boost::any vprop = boost::python::extract<any>(avprops[i][0]);
+        boost::any temp = boost::python::extract<any>(avprops[i][1]);
+        boost::any cvprop = boost::python::extract<any>(avprops[i][2]);
 
         if (!no_weight)
         {
             // compute weighted values to temp
             run_action<graph_tool::detail::always_directed>()
-                (gi, bind<void>(get_weighted_vertex_property_dispatch(),
-                                _1, _2, _3, temp),
+                (gi, std::bind(get_weighted_vertex_property_dispatch(),
+                               placeholders::_1, placeholders::_2,
+                               placeholders::_3, temp),
                  vweight_properties(), vprops_t())
                 (vweight, vprop);
 
             // sum weighted values
             run_action<graph_tool::detail::always_directed>()
-                (gi, bind<void>(get_vertex_sum_dispatch(),
-                                _1, ref(cgi.GetGraph()), _2,
-                                condensed_community_property,
-                                _3, cvprop),
+                (gi, std::bind(get_vertex_sum_dispatch(),
+                               placeholders::_1, std::ref(cgi.GetGraph()),
+                               placeholders::_2,
+                               condensed_community_property,
+                               placeholders::_3, cvprop),
                  writable_vertex_properties(), vprops_t())
                 (community_property, temp);
         }
@@ -117,18 +119,19 @@ void community_network_vavg(GraphInterface& gi, GraphInterface& cgi,
         {
             // sum unweighted values
             run_action<graph_tool::detail::always_directed>()
-                (gi, bind<void>(get_vertex_sum_dispatch(),
-                                _1, ref(cgi.GetGraph()), _2,
-                                condensed_community_property,
-                                _3, cvprop),
+                (gi, std::bind(get_vertex_sum_dispatch(),
+                               placeholders::_1, std::ref(cgi.GetGraph()),
+                               placeholders::_2,
+                               condensed_community_property,
+                               placeholders::_3, cvprop),
                  writable_vertex_properties(), vprops_t())
                 (community_property, vprop);
         }
 
         // norm summed values
         run_action<graph_tool::detail::never_filtered>()
-            (cgi, bind<void>(get_vertex_community_property_norm(),
-                            _1, _2, _3),
+            (cgi, std::bind(get_vertex_community_property_norm(),
+                            placeholders::_1, placeholders::_2, placeholders::_3),
              vweight_properties(), vprops_t())
             (vertex_count, cvprop);
     }

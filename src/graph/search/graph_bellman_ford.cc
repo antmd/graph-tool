@@ -84,7 +84,7 @@ public:
     template <class Value1, class Value2>
     bool operator()(const Value1& v1, const Value2& v2) const
     {
-        return extract<bool>(_cmp(v1, v2));
+        return python::extract<bool>(_cmp(v1, v2));
     }
 
 private:
@@ -144,10 +144,11 @@ bool bellman_ford_search(GraphInterface& g, python::object gi, size_t source,
 {
     bool ret = false;
     run_action<graph_tool::detail::all_graph_views,mpl::true_>()
-        (g, bind<void>(do_bf_search(), _1, source, _2, pred_map, weight,
-                       BFVisitorWrapper(gi, vis),
-                       make_pair(BFCmp(cmp), BFCmb(cmb)), make_pair(zero, inf),
-                       ref(ret)),
+        (g, std::bind(do_bf_search(),  placeholders::_1, source,
+                      placeholders::_2, pred_map, weight,
+                      BFVisitorWrapper(gi, vis),
+                      make_pair(BFCmp(cmp), BFCmb(cmb)), make_pair(zero, inf),
+                      std::ref(ret)),
          writable_vertex_properties())
         (dist_map);
     return ret;

@@ -31,14 +31,13 @@
 namespace graph_tool
 {
 using namespace std;
-using namespace boost;
 
 struct no_weightS {};
 
 template <class Map>
 struct get_val_type
 {
-    typedef typename property_traits<Map>::value_type type;
+    typedef typename boost::property_traits<Map>::value_type type;
 };
 
 template <>
@@ -49,16 +48,17 @@ struct get_val_type<no_weightS>
 
 struct get_closeness
 {
-
+    typedef void result_type;
     template <class Graph, class VertexIndex, class WeightMap, class Closeness>
     void operator()(const Graph& g, VertexIndex vertex_index, WeightMap weights,
                     Closeness closeness, bool harmonic, bool norm)
         const
     {
+        using namespace boost;
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
         // select get_vertex_dists based on the existence of weights
-        typedef typename mpl::if_<is_same<WeightMap, no_weightS>,
+        typedef typename mpl::if_<std::is_same<WeightMap, no_weightS>,
                                   get_dists_bfs,
                                   get_dists_djk>::type get_vertex_dists_t;
 
@@ -113,7 +113,7 @@ struct get_closeness
          }
     }
 
-    class component_djk_visitor: public dijkstra_visitor<>
+    class component_djk_visitor: public boost::dijkstra_visitor<>
     {
     public:
         //component_visitor() { }
@@ -139,6 +139,7 @@ struct get_closeness
                         DistanceMap dist_map, WeightMap weights,
                         size_t& comp_size) const
         {
+            using namespace boost;
             component_djk_visitor vis(comp_size);
             dijkstra_shortest_paths(g, s, vertex_index_map(vertex_index).
                                     weight_map(weights).distance_map(dist_map).visitor(vis));
@@ -146,7 +147,7 @@ struct get_closeness
     };
 
     template <class DistMap>
-    class component_bfs_visitor: public bfs_visitor<>
+    class component_bfs_visitor: public boost::bfs_visitor<>
     {
     public:
         //component_visitor() { }
@@ -179,9 +180,10 @@ struct get_closeness
         void operator()(const Graph& g, Vertex s, VertexIndex vertex_index,
                         DistanceMap dist_map, no_weightS, size_t& comp_size) const
         {
+            using namespace boost;
             typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-            typedef tr1::unordered_map<vertex_t,default_color_type,
-                                       DescriptorHash<VertexIndex> > cmap_t;
+            typedef unordered_map<vertex_t,default_color_type,
+                                  DescriptorHash<VertexIndex> > cmap_t;
             cmap_t cmap(0, DescriptorHash<VertexIndex>(vertex_index));
             InitializedPropertyMap<cmap_t>
                 color_map(cmap, color_traits<default_color_type>::white());

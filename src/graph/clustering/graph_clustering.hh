@@ -20,16 +20,23 @@
 
 #include "config.h"
 
-#include "tr1_include.hh"
-#include TR1_HEADER(unordered_set)
+#include <unordered_set>
 #include <boost/mpl/if.hpp>
 
 #ifdef HAVE_SPARSEHASH
 #include <dense_hash_set>
 #endif
 
+#ifndef __clang__
 #include <ext/numeric>
 using __gnu_cxx::power;
+#else
+template <class Value>
+Value power(Value value, int n)
+{
+    return pow(value, n);
+}
+#endif
 
 namespace graph_tool
 {
@@ -37,6 +44,8 @@ using namespace boost;
 
 #ifdef HAVE_SPARSEHASH
 using google::dense_hash_set;
+#else
+using std::unordered_set;
 #endif
 
 // calculates the number of triangles to which v belongs
@@ -162,10 +171,10 @@ struct set_clustering_to_property
     struct get_undirected_graph
     {
         typedef typename mpl::if_
-            < is_convertible<typename graph_traits<Graph>::directed_category,
-                             directed_tag>,
-              const UndirectedAdaptor<Graph>,
-              const Graph& >::type type;
+           <std::is_convertible<typename graph_traits<Graph>::directed_category,
+                                directed_tag>,
+            const UndirectedAdaptor<Graph>,
+            const Graph& >::type type;
     };
 };
 

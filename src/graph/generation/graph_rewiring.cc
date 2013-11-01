@@ -31,25 +31,25 @@ using namespace boost;
 class PythonFuncWrap
 {
 public:
-    PythonFuncWrap(python::object o): _o(o) {}
+    PythonFuncWrap(boost::python::object o): _o(o) {}
 
     double operator()(pair<size_t, size_t> deg1, pair<size_t, size_t> deg2)
         const
     {
-        python::object ret = _o(python::make_tuple(deg1.first, deg1.second),
-                                python::make_tuple(deg2.first, deg2.second));
-        return python::extract<double>(ret);
+        boost::python::object ret = _o(boost::python::make_tuple(deg1.first, deg1.second),
+                                       boost::python::make_tuple(deg2.first, deg2.second));
+        return boost::python::extract<double>(ret);
     }
 
     template <class Type>
     double operator()(const Type& deg1, const Type& deg2) const
     {
-        python::object ret = _o(python::object(deg1), python::object(deg2));
-        return python::extract<double>(ret);
+        boost::python::object ret = _o(boost::python::object(deg1), boost::python::object(deg2));
+        return boost::python::extract<double>(ret);
     }
 
 private:
-    python::object _o;
+    boost::python::object _o;
 };
 
 struct graph_rewire_block
@@ -62,7 +62,7 @@ struct graph_rewire_block
     void operator()(Graph& g, EdgeIndexMap edge_index, CorrProb corr_prob,
                     pair<bool, bool> rest, BlockProp block_prop,
                     pair<size_t, bool> iter_sweep,
-                    tr1::tuple<bool, bool, bool> cache_verbose, size_t& pcount, rng_t& rng)
+                    std::tuple<bool, bool, bool> cache_verbose, size_t& pcount, rng_t& rng)
         const
     {
         if (traditional)
@@ -89,7 +89,7 @@ struct graph_rewire_block
 size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
                      bool no_sweep, bool self_loops, bool parallel_edges,
                      bool alias, bool traditional, bool persist,
-                     python::object corr_prob, boost::any block, bool cache,
+                     boost::python::object corr_prob, boost::any block, bool cache,
                      rng_t& rng, bool verbose)
 {
     PythonFuncWrap corr(corr_prob);
@@ -97,44 +97,47 @@ size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
 
     if (strat == "erdos")
         run_action<graph_tool::detail::never_reversed>()
-            (gi, boost::bind<void>(graph_rewire<ErdosRewireStrategy>(),
-                                   _1, gi.GetEdgeIndex(), boost::ref(corr),
-                                   self_loops, parallel_edges,
-                                   make_pair(niter, no_sweep),
-                                   tr1::make_tuple(persist, cache, verbose),
-                                   boost::ref(pcount), boost::ref(rng)))();
+            (gi, std::bind(graph_rewire<ErdosRewireStrategy>(),
+                           placeholders::_1, gi.GetEdgeIndex(),
+                           std::ref(corr),
+                           self_loops, parallel_edges,
+                           make_pair(niter, no_sweep),
+                           std::make_tuple(persist, cache, verbose),
+                           std::ref(pcount), std::ref(rng)))();
     else if (strat == "uncorrelated")
         run_action<graph_tool::detail::never_reversed>()
-            (gi, boost::bind<void>(graph_rewire<RandomRewireStrategy>(),
-                                   _1, gi.GetEdgeIndex(), boost::ref(corr),
-                                   self_loops, parallel_edges,
-                                   make_pair(niter, no_sweep),
-                                   tr1::make_tuple(persist, cache, verbose),
-                                   boost::ref(pcount), boost::ref(rng)))();
+            (gi, std::bind(graph_rewire<RandomRewireStrategy>(),
+                           placeholders::_1, gi.GetEdgeIndex(), std::ref(corr),
+                           self_loops, parallel_edges,
+                           make_pair(niter, no_sweep),
+                           std::make_tuple(persist, cache, verbose),
+                           std::ref(pcount), std::ref(rng)))();
     else if (strat == "correlated")
         run_action<graph_tool::detail::never_reversed>()
-            (gi, boost::bind<void>(graph_rewire<CorrelatedRewireStrategy>(),
-                                   _1, gi.GetEdgeIndex(), boost::ref(corr),
-                                   self_loops, parallel_edges,
-                                   make_pair(niter, no_sweep),
-                                   tr1::make_tuple(persist, cache, verbose),
-                                   boost::ref(pcount), boost::ref(rng)))();
+            (gi, std::bind(graph_rewire<CorrelatedRewireStrategy>(),
+                           placeholders::_1, gi.GetEdgeIndex(), std::ref(corr),
+                           self_loops, parallel_edges,
+                           make_pair(niter, no_sweep),
+                           std::make_tuple(persist, cache, verbose),
+                           std::ref(pcount), std::ref(rng)))();
     else if (strat == "probabilistic")
         run_action<>()
-            (gi, boost::bind<void>(graph_rewire<ProbabilisticRewireStrategy>(),
-                                   _1, gi.GetEdgeIndex(), boost::ref(corr),
-                                   self_loops, parallel_edges,
-                                   make_pair(niter, no_sweep),
-                                   tr1::make_tuple(persist, cache, verbose),
-                                   boost::ref(pcount), boost::ref(rng)))();
+            (gi, std::bind(graph_rewire<ProbabilisticRewireStrategy>(),
+                           placeholders::_1, gi.GetEdgeIndex(), std::ref(corr),
+                           self_loops, parallel_edges,
+                           make_pair(niter, no_sweep),
+                           std::make_tuple(persist, cache, verbose),
+                           std::ref(pcount), std::ref(rng)))();
     else if (strat == "blockmodel")
         run_action<>()
-            (gi, boost::bind<void>(graph_rewire_block(alias, traditional),
-                                   _1, gi.GetEdgeIndex(), boost::ref(corr),
-                                   make_pair(self_loops, parallel_edges), _2,
-                                   make_pair(niter, no_sweep),
-                                   tr1::make_tuple(persist, cache, verbose),
-                                   boost::ref(pcount), boost::ref(rng)),
+            (gi, std::bind(graph_rewire_block(alias, traditional),
+                           placeholders::_1, gi.GetEdgeIndex(),
+                           std::ref(corr),
+                           make_pair(self_loops, parallel_edges),
+                           placeholders::_2,
+                           make_pair(niter, no_sweep),
+                           std::make_tuple(persist, cache, verbose),
+                           std::ref(pcount), std::ref(rng)),
              vertex_properties())(block);
     else
         throw ValueException("invalid random rewire strategy: " + strat);

@@ -18,9 +18,8 @@
 #ifndef GRAPH_COMMUNITY_HH
 #define GRAPH_COMMUNITY_HH
 
-#include "tr1_include.hh"
-#include TR1_HEADER(unordered_set)
-#include TR1_HEADER(tuple)
+#include <unordered_set>
+#include <tuple>
 #include <iostream>
 #include <fstream>
 #include <iomanip>
@@ -38,8 +37,8 @@ namespace graph_tool
 using namespace std;
 using namespace boost;
 
-using std::tr1::unordered_map;
-using std::tr1::unordered_set;
+using std::unordered_map;
+using std::unordered_set;
 
 // computes the community structure through a spin glass system with
 // simulated annealing
@@ -58,8 +57,8 @@ struct get_communities
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
         typedef typename property_traits<WeightMap>::key_type weight_key_t;
 
-        tr1::variate_generator<rng_t&, tr1::uniform_real<> >
-            random(rng, tr1::uniform_real<>());
+
+        auto random = std::bind(std::uniform_real_distribution<>(), std::ref(rng));
 
         stringstream out_str;
         ofstream out_file;
@@ -80,7 +79,7 @@ struct get_communities
         CommunityMap temp_s(vertex_index, num_vertices(g));
 
         // init spins from [0,N-1] and global info
-        tr1::uniform_int<size_t> sample_spin(0, n_spins-1);
+        uniform_int_distribution<size_t> sample_spin(0, n_spins-1);
         typename graph_traits<Graph>::vertex_iterator vi,vi_end;
         for (tie(vi,vi_end) = vertices(g); vi != vi_end; ++vi)
         {
@@ -104,7 +103,7 @@ struct get_communities
             double T = Tmax*exp(-cooling_rate*temp_count);
             double E = 0;
 
-            vector<tr1::tuple<size_t, size_t, size_t> > updates;
+            vector<std::tuple<size_t, size_t, size_t> > updates;
 
             // sample a new spin for every vertex
             int NV = num_vertices(g),i;
@@ -151,7 +150,7 @@ struct get_communities
                     curr_e = new_e;
                     {
                         #pragma omp critical
-                        updates.push_back(tr1::make_tuple(k, size_t(s[v]),
+                        updates.push_back(std::make_tuple(k, size_t(s[v]),
                                                           new_s));
                         Ns[s[v]]--;
                         Ns[new_s]++;
@@ -167,8 +166,8 @@ struct get_communities
 
             for (typeof(updates.begin()) iter = updates.begin();
                  iter != updates.end(); ++iter)
-                Nnnks.Update(tr1::get<0>(*iter), tr1::get<1>(*iter),
-                             tr1::get<2>(*iter));
+                Nnnks.Update(std::get<0>(*iter), std::get<1>(*iter),
+                             std::get<2>(*iter));
 
             if (verbose.first)
             {

@@ -21,7 +21,7 @@
 namespace graph_tool
 {
 
-template <class Group = mpl::true_, class Edge = mpl::false_>
+template <class Group = boost::mpl::true_, class Edge = boost::mpl::false_>
 struct do_group_vector_property
 {
 
@@ -33,8 +33,8 @@ struct do_group_vector_property
         #pragma omp parallel for default(shared) private(i)
         for (i = 0; i < N; ++i)
         {
-            typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
-            if (v == graph_traits<Graph>::null_vertex())
+            typename boost::graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
+            if (v == boost::graph_traits<Graph>::null_vertex())
                 continue;
             dispatch_descriptor(g, vector_map, map, v, pos, Edge());
         }
@@ -44,12 +44,12 @@ struct do_group_vector_property
               class Descriptor>
     inline void dispatch_descriptor(Graph& g, VectorPropertyMap& vector_map,
                                     PropertyMap& map, const Descriptor& v,
-                                    size_t pos, mpl::true_) const
+                                    size_t pos, boost::mpl::true_) const
     {
-        typename graph_traits<Graph>::out_edge_iterator e, e_end;
+        typename boost::graph_traits<Graph>::out_edge_iterator e, e_end;
         for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
         {
-            typename property_traits<VectorPropertyMap>::value_type& vec =
+            typename boost::property_traits<VectorPropertyMap>::value_type& vec =
                 vector_map[*e];
             if (vec.size() <= pos)
                 vec.resize(pos+1);
@@ -61,7 +61,7 @@ struct do_group_vector_property
               class Descriptor>
     inline void dispatch_descriptor(Graph&, VectorPropertyMap& vector_map,
                                     PropertyMap& map, const Descriptor& v,
-                                    size_t pos, mpl::false_) const
+                                    size_t pos, boost::mpl::false_) const
     {
         if (vector_map[v].size() <= pos)
             vector_map[v].resize(pos+1);
@@ -71,7 +71,7 @@ struct do_group_vector_property
     template <class VectorPropertyMap, class PropertyMap, class Descriptor>
     inline void group_or_ungroup(VectorPropertyMap& vector_map,
                                  PropertyMap& map, const Descriptor& v,
-                                 size_t pos, mpl::true_) const
+                                 size_t pos, boost::mpl::true_) const
     {
         convert(get(map,v),  vector_map[v][pos]);
     }
@@ -79,7 +79,7 @@ struct do_group_vector_property
     template <class VectorPropertyMap, class PropertyMap, class Descriptor>
     inline void group_or_ungroup(VectorPropertyMap& vector_map,
                                  PropertyMap& map, const Descriptor& v,
-                                 size_t pos, mpl::false_) const
+                                 size_t pos, boost::mpl::false_) const
     {
         convert(vector_map[v][pos], map[v]);
     }
@@ -87,21 +87,21 @@ struct do_group_vector_property
     template <class RetVal, class Value>
     inline void convert(const Value& v, RetVal& r)  const
     {
-        r = lexical_cast<RetVal>(v);
+        r = boost::lexical_cast<RetVal>(v);
     }
 
     template <class RetVal>
-    inline void convert(const python::object& v, RetVal& r)  const
+    inline void convert(const boost::python::object& v, RetVal& r)  const
     {
         #pragma omp critical
-        r = python::extract<RetVal>(v);
+        r = boost::python::extract<RetVal>(v);
     }
 
     template <class Value>
-    inline void convert(const Value& v, python::object& r)  const
+    inline void convert(const Value& v, boost::python::object& r)  const
     {
         #pragma omp critical
-        r = python::object(v);
+        r = boost::python::object(v);
     }
 
     template <class Value>
@@ -110,7 +110,7 @@ struct do_group_vector_property
         r = v;
     }
 
-    inline void convert(const python::object& v, python::object& r)  const
+    inline void convert(const boost::python::object& v, boost::python::object& r)  const
     {
        #pragma omp critical
         r = v;

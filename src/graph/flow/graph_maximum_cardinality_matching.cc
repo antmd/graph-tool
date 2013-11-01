@@ -75,8 +75,9 @@ bool max_cardinality_matching(GraphInterface& gi, boost::any match)
 {
     bool check;
     run_action<graph_tool::detail::never_directed>()
-        (gi, bind<void>(get_max_cardinality_matching(),
-                        _1, gi.GetVertexIndex(),  _2, ref(check)),
+        (gi, std::bind(get_max_cardinality_matching(),
+                        placeholders::_1, gi.GetVertexIndex(),
+                       placeholders::_2, std::ref(check)),
          writable_edge_scalar_properties()) (match);
     return check;
 }

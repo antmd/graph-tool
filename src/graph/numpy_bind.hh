@@ -45,26 +45,24 @@
 #include <boost/mpl/for_each.hpp>
 
 using namespace std;
-using namespace boost;
-using namespace boost::python;
 
-typedef mpl::map<
-    mpl::pair<bool, mpl::int_<NPY_BOOL> >,
-    mpl::pair<uint8_t, mpl::int_<NPY_BYTE> >,
-    mpl::pair<uint32_t, mpl::int_<NPY_UINT32> >,
-    mpl::pair<int16_t, mpl::int_<NPY_INT16> >,
-    mpl::pair<int32_t, mpl::int_<NPY_INT32> >,
-    mpl::pair<int64_t, mpl::int_<NPY_INT64> >,
-    mpl::pair<uint64_t, mpl::int_<NPY_UINT64> >,
-    mpl::pair<unsigned long int, mpl::int_<NPY_ULONG> >,
-    mpl::pair<double, mpl::int_<NPY_DOUBLE> >,
-    mpl::pair<long double, mpl::int_<NPY_LONGDOUBLE> >
+typedef boost::mpl::map<
+    boost::mpl::pair<bool, boost::mpl::int_<NPY_BOOL> >,
+    boost::mpl::pair<uint8_t, boost::mpl::int_<NPY_BYTE> >,
+    boost::mpl::pair<uint32_t, boost::mpl::int_<NPY_UINT32> >,
+    boost::mpl::pair<int16_t, boost::mpl::int_<NPY_INT16> >,
+    boost::mpl::pair<int32_t, boost::mpl::int_<NPY_INT32> >,
+    boost::mpl::pair<int64_t, boost::mpl::int_<NPY_INT64> >,
+    boost::mpl::pair<uint64_t, boost::mpl::int_<NPY_UINT64> >,
+    boost::mpl::pair<unsigned long int, boost::mpl::int_<NPY_ULONG> >,
+    boost::mpl::pair<double, boost::mpl::int_<NPY_DOUBLE> >,
+    boost::mpl::pair<long double, boost::mpl::int_<NPY_LONGDOUBLE> >
     > numpy_types;
 
 template <class ValueType>
-python::object wrap_vector_owned(vector<ValueType>& vec)
+boost::python::object wrap_vector_owned(vector<ValueType>& vec)
 {
-    int val_type = mpl::at<numpy_types,ValueType>::type::value;
+    int val_type = boost::mpl::at<numpy_types,ValueType>::type::value;
     npy_intp size[1];
     size[0] = vec.size();
     PyArrayObject* ndarray;
@@ -81,16 +79,16 @@ python::object wrap_vector_owned(vector<ValueType>& vec)
     }
     PyArray_ENABLEFLAGS(ndarray, NPY_ARRAY_ALIGNED | NPY_ARRAY_C_CONTIGUOUS |
                         NPY_ARRAY_OWNDATA | NPY_ARRAY_WRITEABLE);
-    handle<> x((PyObject*) ndarray);
-    object o(x);
+    boost::python::handle<> x((PyObject*) ndarray);
+    boost::python::object o(x);
     return o;
 }
 
 template <class ValueType>
-python::object wrap_vector_not_owned(vector<ValueType>& vec)
+boost::python::object wrap_vector_not_owned(vector<ValueType>& vec)
 {
     PyArrayObject* ndarray;
-    int val_type = mpl::at<numpy_types,ValueType>::type::value;
+    int val_type = boost::mpl::at<numpy_types,ValueType>::type::value;
     npy_intp size = vec.size();
     if (vec.empty())
         return wrap_vector_owned(vec); // return an _owned_ array of size one.
@@ -99,18 +97,18 @@ python::object wrap_vector_not_owned(vector<ValueType>& vec)
                                                              &vec[0]);
     PyArray_ENABLEFLAGS(ndarray,NPY_ARRAY_ALIGNED | NPY_ARRAY_C_CONTIGUOUS |
                         NPY_ARRAY_WRITEABLE);
-    handle<> x((PyObject*) ndarray);
-    object o(x);
+    boost::python::handle<> x((PyObject*) ndarray);
+    boost::python::object o(x);
     return o;
 }
 
 
 template <class ValueType, int Dim>
-python::object wrap_multi_array_owned(multi_array<ValueType,Dim>& array)
+boost::python::object wrap_multi_array_owned(boost::multi_array<ValueType,Dim>& array)
 {
     ValueType* new_data = new ValueType[array.num_elements()];
     memcpy(new_data, array.data(), array.num_elements()*sizeof(ValueType));
-    int val_type = mpl::at<numpy_types,ValueType>::type::value;
+    int val_type = boost::mpl::at<numpy_types,ValueType>::type::value;
     npy_intp shape[Dim];
     for (int i = 0; i < Dim; ++i)
         shape[i] = array.shape()[i];
@@ -119,22 +117,22 @@ python::object wrap_multi_array_owned(multi_array<ValueType,Dim>& array)
                                                    new_data);
     PyArray_ENABLEFLAGS(ndarray, NPY_ARRAY_ALIGNED | NPY_ARRAY_C_CONTIGUOUS |
                         NPY_ARRAY_OWNDATA | NPY_ARRAY_WRITEABLE);
-    handle<> x((PyObject*) ndarray);
-    object o(x);
+    boost::python::handle<> x((PyObject*) ndarray);
+    boost::python::object o(x);
     return o;
 }
 
 template <class ValueType, int Dim>
-python::object wrap_multi_array_not_owned(multi_array<ValueType,Dim>& array)
+boost::python::object wrap_multi_array_not_owned(boost::multi_array<ValueType,Dim>& array)
 {
-    int val_type = mpl::at<numpy_types,ValueType>::type::value;
+    int val_type = boost::mpl::at<numpy_types,ValueType>::type::value;
     PyArrayObject* ndarray =
         (PyArrayObject*) PyArray_SimpleNewFromData(Dim, array.shape(), val_type,
                                                    array.origin());
     PyArray_ENABLEFLAGS(ndarray, NPY_ARRAY_ALIGNED | NPY_ARRAY_C_CONTIGUOUS |
                         NPY_ARRAY_WRITEABLE);
-    handle<> x((PyObject*) ndarray);
-    object o(x);
+    boost::python::handle<> x((PyObject*) ndarray);
+    boost::python::object o(x);
     return o;
 }
 
@@ -151,23 +149,23 @@ public:
 };
 
 template <class ValueType, size_t dim>
-multi_array_ref<ValueType,dim> get_array(python::object points)
+boost::multi_array_ref<ValueType,dim> get_array(boost::python::object points)
 {
     PyArrayObject* pa = (PyArrayObject*) points.ptr();
 
     if (PyArray_NDIM(pa) != dim)
         throw invalid_numpy_conversion("invalid array dimension!");
 
-    if (mpl::at<numpy_types,ValueType>::type::value != PyArray_DESCR(pa)->type_num)
+    if (boost::mpl::at<numpy_types,ValueType>::type::value != PyArray_DESCR(pa)->type_num)
     {
-        using python::detail::gcc_demangle;
-        handle<> x((PyObject*) PyArray_DESCR(pa)->typeobj);
-        object dtype(x);
-        string type_name = python::extract<string>(python::str(dtype));
+        using boost::python::detail::gcc_demangle;
+        boost::python::handle<> x((PyObject*) PyArray_DESCR(pa)->typeobj);
+        boost::python::object dtype(x);
+        string type_name = boost::python::extract<string>(boost::python::str(dtype));
         string error = "invalid array value type: " + type_name;
-        error += " (id: " + lexical_cast<string>(PyArray_DESCR(pa)->type_num) + ")";
+        error += " (id: " + boost::lexical_cast<string>(PyArray_DESCR(pa)->type_num) + ")";
         error += ", wanted: " + string(gcc_demangle(typeid(ValueType).name()));
-        error += " (id: " + lexical_cast<string>(mpl::at<numpy_types,ValueType>::type::value) + ")";
+        error += " (id: " + boost::lexical_cast<string>(boost::mpl::at<numpy_types,ValueType>::type::value) + ")";
         throw invalid_numpy_conversion(error);
     }
 
@@ -175,10 +173,10 @@ multi_array_ref<ValueType,dim> get_array(python::object points)
     for (int i = 0; i < PyArray_NDIM(pa); ++i)
         shape[i] =  PyArray_DIMS(pa)[i];
     if ((PyArray_FLAGS(pa) ^ NPY_ARRAY_C_CONTIGUOUS) != 0)
-        return multi_array_ref<ValueType,dim>((ValueType *) PyArray_DATA(pa), shape);
+        return boost::multi_array_ref<ValueType,dim>((ValueType *) PyArray_DATA(pa), shape);
     else
-        return multi_array_ref<ValueType,dim>((ValueType *) PyArray_DATA(pa), shape,
-                                              fortran_storage_order());
+        return boost::multi_array_ref<ValueType,dim>((ValueType *) PyArray_DATA(pa), shape,
+                                                     boost::fortran_storage_order());
 }
 
 #endif

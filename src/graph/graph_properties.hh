@@ -21,11 +21,11 @@
 #include <typeinfo>
 #include <string>
 #include <vector>
-#include "tr1_include.hh"
-#include TR1_HEADER(unordered_set)
-#include TR1_HEADER(unordered_map)
-#include TR1_HEADER(memory)
-#include TR1_HEADER(random)
+#include <unordered_set>
+#include <unordered_map>
+#include <memory>
+#include <random>
+#include <functional>
 #include <boost/functional/hash.hpp>
 #include <boost/python/object.hpp>
 #include <boost/python/extract.hpp>
@@ -43,7 +43,6 @@
 #include <boost/mpl/for_each.hpp>
 #include <boost/mpl/transform.hpp>
 #include <boost/mpl/find.hpp>
-#include <boost/bind.hpp>
 
 #include "graph.hh"
 #include "graph_exceptions.hh"
@@ -53,7 +52,6 @@
 namespace graph_tool
 {
 using namespace std;
-using namespace boost;
 
 // Metaprogramming
 // ===============
@@ -67,24 +65,24 @@ using namespace boost;
 //       broken, and use a vector<uint8_t> instead!
 //       see: http://www.gotw.ca/publications/N1211.pdf
 
-typedef mpl::vector<uint8_t, int16_t, int32_t, int64_t, double, long double, string,
-                    vector<uint8_t>, vector<int16_t>, vector<int32_t>, vector<int64_t>,
-                    vector<double>, vector<long double>, vector<string>,
-                    python::object>
+typedef boost::mpl::vector<uint8_t, int16_t, int32_t, int64_t, double, long double, string,
+                           vector<uint8_t>, vector<int16_t>, vector<int32_t>, vector<int64_t>,
+                           vector<double>, vector<long double>, vector<string>,
+                           boost::python::object>
     value_types;
 
 extern const char* type_names[]; // respective type names (defined in
                                  // graph_properties.cc)
 
 // scalar types: types contained in value_types which are scalar
-typedef mpl::vector<uint8_t, int16_t, int32_t, int64_t, double, long double>
+typedef boost::mpl::vector<uint8_t, int16_t, int32_t, int64_t, double, long double>
     scalar_types;
 
 // integer_types: scalar types which are integer
-typedef mpl::vector<uint8_t, int16_t, int32_t, int64_t> integer_types;
+typedef boost::mpl::vector<uint8_t, int16_t, int32_t, int64_t> integer_types;
 
 // floating_types: scalar types which are floating point
-typedef mpl::vector<double, long double> floating_types;
+typedef boost::mpl::vector<double, long double> floating_types;
 
 struct make_vector
 {
@@ -92,13 +90,13 @@ struct make_vector
 };
 
 // scalar_vector_types: vector types with floating point values
-typedef mpl::transform<scalar_types,make_vector>::type scalar_vector_types;
+typedef boost::mpl::transform<scalar_types,make_vector>::type scalar_vector_types;
 
 // integer_vector_types: vector types with floating point values
-typedef mpl::transform<integer_types,make_vector>::type integer_vector_types;
+typedef boost::mpl::transform<integer_types,make_vector>::type integer_vector_types;
 
 // floating_vector_types: vector types with floating point values
-typedef mpl::transform<floating_types,make_vector>::type floating_vector_types;
+typedef boost::mpl::transform<floating_types,make_vector>::type floating_vector_types;
 
 //
 // Property Map Types
@@ -111,7 +109,7 @@ struct property_map_type
     template <class ValueType, class IndexMap>
     struct apply
     {
-        typedef checked_vector_property_map<ValueType,IndexMap> type;
+        typedef boost::checked_vector_property_map<ValueType,IndexMap> type;
     };
 };
 
@@ -131,20 +129,20 @@ struct property_map_types
     };
 
     template <class ValueTypes, class IndexMap,
-              class IncludeIndexMap = mpl::bool_<true> >
+              class IncludeIndexMap = boost::mpl::bool_<true>>
     struct apply
     {
-        typedef typename mpl::transform<
+        typedef typename boost::mpl::transform<
             ValueTypes,
-            bind_wrap1<mpl::bind2<property_map_type,
-                                  mpl::_1,
-                                  IndexMap> >
+            bind_wrap1<boost::mpl::bind2<property_map_type,
+                                         boost::mpl::_1,
+                                         IndexMap>>
             >::type scalar_properties;
 
         // put index map itself
-        typedef typename mpl::if_<
+        typedef typename boost::mpl::if_<
             IncludeIndexMap,
-            typename mpl::push_back<scalar_properties,IndexMap>::type,
+            typename boost::mpl::push_back<scalar_properties,IndexMap>::type,
             scalar_properties
             >::type type;
     };
@@ -169,7 +167,7 @@ struct belongs
         template <class Type>
         void operator()(Type) const
         {
-            const Type* ptr = any_cast<Type>(&_val);
+            const Type* ptr = boost::any_cast<Type>(&_val);
             if (ptr != 0)
                 _found = true;
         }
@@ -181,7 +179,7 @@ struct belongs
     bool operator()(const boost::any& prop)
     {
         bool found = false;
-        mpl::for_each<Sequence>(get_type(prop, found));
+        boost::mpl::for_each<Sequence>(get_type(prop, found));
         return found;
     }
 };
@@ -197,18 +195,18 @@ public:
     {
         if (_all_names.empty())
         {
-            mpl::for_each<TypeSequence>
-                (bind<void>(get_all_names(), _1,
-                            ref(_type_names), ref(_all_names)));
+            boost::mpl::for_each<TypeSequence>
+                (bind(get_all_names(), placeholders::_1,
+                      ref(_type_names), ref(_all_names)));
         }
     }
 
     const string& operator()(const std::type_info& type) const
     {
         string const* name;
-        mpl::for_each<TypeSequence>
-            (bind<void>(find_name(), _1, ref(type),
-                        ref(_all_names), ref(name)));
+        boost::mpl::for_each<TypeSequence>
+            (bind(find_name(), placeholders::_1, ref(type),
+                  ref(_all_names), ref(name)));
         return *name;
     }
 
@@ -225,7 +223,7 @@ private:
                         const vector<string>& all_names,
                         string const*& name) const
         {
-            size_t index = mpl::find<TypeSequence,Type>::type::pos::value;
+            size_t index = boost::mpl::find<TypeSequence,Type>::type::pos::value;
             if (type == typeid(Type))
                 name = &all_names[index];
         }
@@ -233,11 +231,12 @@ private:
 
     struct get_all_names
     {
+        typedef void result_type;
         template <class Type>
         void operator()(Type, const char** t_names,
                         vector<string>& names) const
         {
-            size_t index = mpl::find<NamedSequence,Type>::type::pos::value;
+            size_t index = boost::mpl::find<NamedSequence,Type>::type::pos::value;
             names.push_back(t_names[index]);
         }
     };
@@ -262,12 +261,12 @@ struct convert
         return do_convert(v, is_convertible<Type2,Type1>());
     }
 
-    Type1 do_convert(const Type2& v, mpl::bool_<true>) const
+    Type1 do_convert(const Type2& v, std::true_type) const
     {
         return Type1(v);
     }
 
-    Type1 do_convert(const Type2& v, mpl::bool_<false>) const
+    Type1 do_convert(const Type2& v, std::false_type) const
     {
         return specific_convert<Type1,Type2>()(v);
     }
@@ -277,7 +276,7 @@ struct convert
     {
         T1 operator()(const T2&) const
         {
-            throw bad_lexical_cast(); // default action
+            throw boost::bad_lexical_cast(); // default action
         }
     };
 
@@ -285,15 +284,15 @@ struct convert
 
     // python::object
     template <class T1>
-    struct specific_convert<T1,python::object>
+    struct specific_convert<T1,boost::python::object>
     {
-        T1 operator()(const python::object& v) const
+        T1 operator()(const boost::python::object& v) const
         {
-            python::extract<Type1> x(v);
+            boost::python::extract<Type1> x(v);
             if (x.check())
                 return x();
             else
-                throw bad_lexical_cast();
+                throw boost::bad_lexical_cast();
         }
     };
 
@@ -305,9 +304,9 @@ struct convert
         {
             //uint8_t is not char, it is bool!
             if (is_same<T1, uint8_t>::value)
-                return convert<T1,int>()(lexical_cast<int>(v));
+                return convert<T1,int>()(boost::lexical_cast<int>(v));
             else
-                return lexical_cast<T1>(v);
+                return boost::lexical_cast<T1>(v);
         }
     };
 
@@ -318,15 +317,15 @@ struct convert
         {
             //uint8_t is not char, it is bool!
             if (is_same<T2, uint8_t>::value)
-                return lexical_cast<string>(convert<int,T2>()(v));
+                return boost::lexical_cast<string>(convert<int,T2>()(v));
             else
-                return lexical_cast<string>(v);
+                return boost::lexical_cast<string>(v);
         }
     };
 
     // vectors
     template <class T1, class T2>
-    struct specific_convert<vector<T1>, vector<T2> >
+    struct specific_convert<vector<T1>, vector<T2>>
     {
         vector<T1> operator()(const vector<T2>& v) const
         {
@@ -342,15 +341,15 @@ struct convert
 
 // python::object to string, to solve ambiguity
 template<> template<>
-struct convert<string,python::object>::specific_convert<string,python::object>
+struct convert<string,boost::python::object>::specific_convert<string,boost::python::object>
 {
-    string operator()(const python::object& v) const
+    string operator()(const boost::python::object& v) const
     {
-        python::extract<string> x(v);
+        boost::python::extract<string> x(v);
         if (x.check())
                 return x();
         else
-            throw bad_lexical_cast();
+            throw boost::bad_lexical_cast();
     }
 };
 
@@ -367,18 +366,19 @@ public:
     typedef Value value_type;
     typedef Value reference;
     typedef Key key_type;
-    typedef read_write_property_map_tag category;
+    typedef boost::read_write_property_map_tag category;
 
     template <class PropertyTypes>
     DynamicPropertyMapWrap(boost::any pmap, PropertyTypes)
     {
         ValueConverter* converter = 0;
-        mpl::for_each<PropertyTypes>
-            (bind<void>(choose_converter(), _1, ref(pmap), ref(converter)));
+        boost::mpl::for_each<PropertyTypes>
+            (std::bind(choose_converter(), placeholders::_1, std::ref(pmap),
+                       std::ref(converter)));
         if (converter == 0)
-            throw bad_lexical_cast();
+            throw boost::bad_lexical_cast();
         else
-            _converter = tr1::shared_ptr<ValueConverter>(converter);
+            _converter = shared_ptr<ValueConverter>(converter);
     }
 
     DynamicPropertyMapWrap() {}
@@ -408,49 +408,49 @@ private:
     public:
         ValueConverterImp(PropertyMap pmap): _pmap(pmap) {}
         virtual ~ValueConverterImp() {}
-        typedef typename property_traits<PropertyMap>::value_type val_t;
-        typedef typename property_traits<PropertyMap>::key_type key_t;
+        typedef typename boost::property_traits<PropertyMap>::value_type val_t;
+        typedef typename boost::property_traits<PropertyMap>::key_type key_t;
 
         virtual Value get(const Key& k)
         {
             return get_dispatch(_pmap, k,
-                                is_convertible<typename property_traits<PropertyMap>::category,
-                                readable_property_map_tag>());
+                                is_convertible<typename boost::property_traits<PropertyMap>::category,
+                                               boost::readable_property_map_tag>());
         }
 
         virtual void put(const Key& k, const Value& val)
         {
             return  put_dispatch(_pmap, k, _c_put(val),
-                                 is_convertible<typename property_traits<PropertyMap>::category,
-                                                writable_property_map_tag>());
+                                 is_convertible<typename boost::property_traits<PropertyMap>::category,
+                                                boost::writable_property_map_tag>());
         }
 
         template <class PMap>
-        Value get_dispatch(PMap pmap, const typename property_traits<PMap>::key_type& k,
-                           mpl::bool_<true>)
+        Value get_dispatch(PMap pmap, const typename boost::property_traits<PMap>::key_type& k,
+                           std::true_type)
         {
             return _c_get(boost::get(pmap, k));
         }
 
         template <class PMap>
-        Value get_dispatch(PMap, const typename property_traits<PMap>::key_type&,
-                           mpl::bool_<false>)
+        Value get_dispatch(PMap, const typename boost::property_traits<PMap>::key_type&,
+                           std::false_type)
         {
             throw graph_tool::ValueException("Property map is not readable.");
         }
 
         template <class PMap>
-        void put_dispatch(PMap pmap, const typename property_traits<PMap>::key_type& k,
-                          typename property_traits<PMap>::value_type val,
-                          mpl::bool_<true>)
+        void put_dispatch(PMap pmap, const typename boost::property_traits<PMap>::key_type& k,
+                          typename boost::property_traits<PMap>::value_type val,
+                          std::true_type)
         {
             boost::put(pmap, k, val);
         }
 
         template <class PMap>
-        void put_dispatch(PMap, const typename property_traits<PMap>::key_type&,
-                          typename property_traits<PMap>::value_type,
-                          mpl::bool_<false>)
+        void put_dispatch(PMap, const typename boost::property_traits<PMap>::key_type&,
+                          typename boost::property_traits<PMap>::value_type,
+                          std::false_type)
         {
             throw ValueException("Property map is not writable.");
         }
@@ -463,17 +463,18 @@ private:
 
     struct choose_converter
     {
+        typedef void return_type;
         template <class PropertyMap>
         void operator()(PropertyMap, boost::any& dmap,
                         ValueConverter*& converter) const
         {
             if (typeid(PropertyMap) == dmap.type())
                 converter = new ValueConverterImp<PropertyMap>
-                    (any_cast<PropertyMap>(dmap));
+                    (boost::any_cast<PropertyMap>(dmap));
         }
     };
 
-    tr1::shared_ptr<ValueConverter> _converter;
+    shared_ptr<ValueConverter> _converter;
 };
 
 template <class Value, class Key, class ConvKey>
@@ -502,7 +503,8 @@ public:
     DescriptorHash(IndexMap index_map): _index_map(index_map) {}
     size_t operator()(typename IndexMap::key_type const& d) const
     {
-        return hash_value(_index_map[d]);
+        std::hash<typename IndexMap::value_type> hash;
+        return hash(_index_map[d]);
     }
 private:
     IndexMap _index_map;
@@ -512,18 +514,18 @@ private:
 // above hash function for vertex or edge descriptors
 template <class IndexMap, class Value>
 class HashedDescriptorMap
-    : public put_get_helper<Value&, HashedDescriptorMap<IndexMap,Value> >
+    : public boost::put_get_helper<Value&, HashedDescriptorMap<IndexMap,Value>>
 {
 public:
     typedef DescriptorHash<IndexMap> hashfc_t;
-    typedef tr1::unordered_map<typename IndexMap::key_type,Value,hashfc_t>
+    typedef unordered_map<typename IndexMap::key_type,Value,hashfc_t>
         map_t;
-    typedef associative_property_map<map_t> prop_map_t;
+    typedef boost::associative_property_map<map_t> prop_map_t;
 
-    typedef typename property_traits<prop_map_t>::value_type value_type;
-    typedef typename property_traits<prop_map_t>::reference reference;
-    typedef typename property_traits<prop_map_t>::key_type key_type;
-    typedef typename property_traits<prop_map_t>::category category;
+    typedef typename boost::property_traits<prop_map_t>::value_type value_type;
+    typedef typename boost::property_traits<prop_map_t>::reference reference;
+    typedef typename boost::property_traits<prop_map_t>::key_type key_type;
+    typedef typename boost::property_traits<prop_map_t>::category category;
 
     HashedDescriptorMap(IndexMap index_map)
         : _base_map(new map_t(0, hashfc_t(index_map))), _prop_map(*_base_map) {}
@@ -542,14 +544,14 @@ private:
 // with a given default value
 template <class Container>
 class InitializedPropertyMap
-    : public put_get_helper<typename Container::value_type::second_type&,
-                            InitializedPropertyMap<Container> >
+    : public boost::put_get_helper<typename Container::value_type::second_type&,
+                                   InitializedPropertyMap<Container>>
 {
 public:
     typedef typename Container::value_type::second_type value_type;
     typedef value_type& reference;
     typedef typename Container::key_type key_type;
-    typedef read_write_property_map_tag category;
+    typedef boost::read_write_property_map_tag category;
 
     InitializedPropertyMap(Container& base_map, value_type def)
         : _base_map(&base_map), _default(def) {}
@@ -582,13 +584,13 @@ private:
 // the following is a property map which always returns a constant value
 template <class Value, class Key>
 class ConstantPropertyMap
-    : public put_get_helper<Value, ConstantPropertyMap<Value,Key> >
+    : public boost::put_get_helper<Value, ConstantPropertyMap<Value,Key>>
 {
 public:
     typedef Value value_type;
     typedef value_type& reference;
     typedef Key key_type;
-    typedef readable_property_map_tag category;
+    typedef boost::readable_property_map_tag category;
 
     ConstantPropertyMap(const value_type& c): _c(c) {}
     ConstantPropertyMap(){}
@@ -608,10 +610,10 @@ class ConvertedPropertyMap
 {
 public:
     typedef Type value_type;
-    typedef typename property_traits<PropertyMap>::value_type orig_type;
+    typedef typename boost::property_traits<PropertyMap>::value_type orig_type;
     typedef value_type reference;
-    typedef typename property_traits<PropertyMap>::key_type key_type;
-    typedef read_write_property_map_tag category;
+    typedef typename boost::property_traits<PropertyMap>::key_type key_type;
+    typedef boost::read_write_property_map_tag category;
 
     ConvertedPropertyMap(PropertyMap base_map)
         : _base_map(base_map) {}
@@ -641,7 +643,7 @@ Type get(ConvertedPropertyMap<PropertyMap,Type> pmap,
 
 template <class PropertyMap, class Type>
 void put(ConvertedPropertyMap<PropertyMap,Type> pmap,
-         typename property_traits<PropertyMap>::key_type k,
+         typename boost::property_traits<PropertyMap>::key_type k,
          const typename ConvertedPropertyMap<PropertyMap,Type>::value_type& val)
 {
     pmap.do_put(k, val);

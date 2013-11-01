@@ -29,7 +29,6 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-
 void sfdp_layout(GraphInterface& g, boost::any pos, boost::any vweight,
                  boost::any eweight, boost::any pin, python::object spring_parms,
                  double theta, double init_step, double step_schedule,
@@ -68,12 +67,13 @@ void sfdp_layout(GraphInterface& g, boost::any pos, boost::any vweight,
 
     run_action<graph_tool::detail::never_directed>()
         (g,
-         bind<void>(get_sfdp_layout(C, K, p, theta, gamma, mu, mu_p, init_step,
-                                    step_schedule, max_level, epsilon,
-                                    max_iter, adaptive),
-                    _1, g.GetVertexIndex(), _2, _3, _4,
-                    pin_map.get_unchecked(num_vertices(g.GetGraph())),
-                    groups.get_unchecked(num_vertices(g.GetGraph())), verbose),
+         std::bind(get_sfdp_layout(C, K, p, theta, gamma, mu, mu_p, init_step,
+                              step_schedule, max_level, epsilon,
+                                   max_iter, adaptive),
+                   placeholders::_1, g.GetVertexIndex(), placeholders::_2,
+                   placeholders::_3, placeholders::_4,
+              pin_map.get_unchecked(num_vertices(g.GetGraph())),
+              groups.get_unchecked(num_vertices(g.GetGraph())), verbose),
          vertex_floating_vector_properties(), vertex_props_t(), edge_props_t())
         (pos, vweight, eweight);
 }
@@ -82,7 +82,7 @@ struct do_propagate_pos
 {
     template <class Graph, class CoarseGraph, class VertexMap, class PosMap,
               class RNG>
-    void operator()(Graph& g, CoarseGraph* cg, VertexMap& vmap,
+    void operator()(Graph& g, CoarseGraph* cg, VertexMap vmap,
                     boost::any acvmap, PosMap pos, boost::any acpos,
                     double delta, RNG& rng) const
     {
@@ -94,10 +94,8 @@ struct do_propagate_pos
         typedef typename property_traits<PosMap>::value_type pos_t;
         typedef typename pos_t::value_type val_t;
 
-        tr1::variate_generator<RNG&, tr1::uniform_real<val_t> >
-            noise(rng, tr1::uniform_real<val_t>(-delta, delta));
-
-        tr1::unordered_map<c_t, pos_t, boost::hash<c_t> >
+        uniform_real_distribution<val_t> noise(-delta, delta);
+        unordered_map<c_t, pos_t, boost::hash<c_t> >
             cmap(num_vertices(*cg));
         int i, N = num_vertices(*cg);
         #pragma omp parallel for default(shared) private(i)
@@ -124,7 +122,7 @@ struct do_propagate_pos
                 {
                     #pragma omp critical
                     for (size_t j = 0; j < pos[v].size(); ++j)
-                        pos[v][j] += noise();
+                        pos[v][j] += noise(rng);
                 }
             }
         }
@@ -137,7 +135,7 @@ struct get_pointers
     struct apply
     {
         typedef typename mpl::transform<List,
-                                        mpl::quote1<add_pointer> >::type type;
+                                        mpl::quote1<std::add_pointer> >::type type;
     };
 };
 
@@ -152,8 +150,9 @@ void propagate_pos(GraphInterface& gi, GraphInterface& cgi, boost::any vmap,
 
 
     run_action<>()
-        (gi, bind<void>(do_propagate_pos(),
-                        _1, _2, _3, cvmap, _4, cpos, delta, ref(rng)),
+        (gi, std::bind(do_propagate_pos(),
+                       placeholders::_1, placeholders::_2, placeholders::_3,
+                       cvmap, placeholders::_4, cpos, delta, std::ref(rng)),
          get_pointers::apply<graph_tool::detail::all_graph_views>::type(),
          vmaps_t(), vertex_floating_vector_properties())
         (cgi.GetGraphView(), vmap, pos);
@@ -168,8 +167,7 @@ struct do_propagate_pos_mivs
         typedef typename property_traits<PosMap>::value_type pos_t;
         typedef typename pos_t::value_type val_t;
 
-        tr1::variate_generator<RNG&, tr1::uniform_real<val_t> >
-            noise(rng, tr1::uniform_real<val_t>(-delta, delta));
+        uniform_real_distribution<val_t> noise(-delta, delta);
 
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i)
@@ -204,7 +202,7 @@ struct do_propagate_pos_mivs
                 {
                     #pragma omp critical
                     for (size_t j = 0; j < pos[v].size(); ++j)
-                        pos[v][j] += noise();
+                        pos[v][j] += noise(rng);
                 }
             }
             else
@@ -221,8 +219,9 @@ void propagate_pos_mivs(GraphInterface& gi, boost::any mivs, boost::any pos,
                         double delta, rng_t& rng)
 {
     run_action<>()
-        (gi, bind<void>(do_propagate_pos_mivs(),
-                        _1, _2, _3, delta, ref(rng)),
+        (gi, std::bind(do_propagate_pos_mivs(),
+                       placeholders::_1, placeholders::_2, placeholders::_3,
+                       delta, std::ref(rng)),
          vertex_scalar_properties(), vertex_floating_vector_properties())
         (mivs, pos);
 }
@@ -261,7 +260,8 @@ double avg_dist(GraphInterface& gi, boost::any pos)
 {
     double d;
     run_action<>()
-        (gi, bind<void>(do_avg_dist(), _1, _2, ref(d)),
+        (gi, std::bind(do_avg_dist(), placeholders::_1,
+                       placeholders::_2, std::ref(d)),
          vertex_scalar_vector_properties()) (pos);
     return d;
 }
@@ -289,10 +289,9 @@ struct do_sanitize_pos
 void sanitize_pos(GraphInterface& gi, boost::any pos)
 {
     run_action<>()
-        (gi, bind<void>(do_sanitize_pos(), _1, _2),
+        (gi, std::bind(do_sanitize_pos(), placeholders::_1, placeholders::_2),
          vertex_scalar_vector_properties()) (pos);
 }
-
 
 #include <boost/python.hpp>
 

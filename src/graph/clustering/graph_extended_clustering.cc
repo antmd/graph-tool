@@ -35,9 +35,9 @@ struct prop_vector
     boost::any operator()(const vector<boost::any>& props, size_t size) const
     {
         boost::any prop_vec;
-        mpl::for_each<PropertySequence>
-            (bind<void>(get_prop_vector(), _1, ref(props), ref(prop_vec),
-                        size));
+        boost::mpl::for_each<PropertySequence>
+            (std::bind(get_prop_vector(), placeholders::_1, std::ref(props),
+                       std::ref(prop_vec), size));
         return prop_vec;
     }
 
@@ -74,11 +74,11 @@ struct get_property_vector_type
     };
 };
 
-void extended_clustering(GraphInterface& g, python::list props)
+void extended_clustering(GraphInterface& g, boost::python::list props)
 {
-    vector<any> cmaps(python::len(props));
+    vector<any> cmaps(boost::python::len(props));
     for (size_t i = 0; i < cmaps.size(); ++i)
-        cmaps[i] = python::extract<boost::any>(props[i])();
+        cmaps[i] = boost::python::extract<boost::any>(props[i])();
 
     boost::any vprop =
         prop_vector<writable_vertex_scalar_properties>()
@@ -87,14 +87,13 @@ void extended_clustering(GraphInterface& g, python::list props)
         throw ValueException("all vertex properties must be of the same"
                              " floating point type");
 
-    typedef mpl::transform<writable_vertex_scalar_properties,
-                           get_property_vector_type>::type
+    typedef boost::mpl::transform<writable_vertex_scalar_properties,
+                                  get_property_vector_type>::type
         properties_vector;
 
     run_action<>()
-        (g, bind<void>(get_extended_clustering(), _1,
-                       any_cast<GraphInterface::vertex_index_map_t>
-                       (g.GetVertexIndex()), _2),
+        (g, std::bind<void>(get_extended_clustering(), placeholders::_1,
+                            any_cast<GraphInterface::vertex_index_map_t>(g.GetVertexIndex()),
+                            placeholders::_2),
          properties_vector()) (vprop);
 }
-

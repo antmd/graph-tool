@@ -31,15 +31,16 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-python::tuple global_clustering(GraphInterface& g)
+boost::python::tuple global_clustering(GraphInterface& g)
 {
     double c, c_err;
     bool directed = g.GetDirected();
     g.SetDirected(false);
     run_action<graph_tool::detail::never_directed>()
-        (g, bind<void>(get_global_clustering(), _1, ref(c), ref(c_err)))();
+        (g, std::bind(get_global_clustering(), std::placeholders::_1,
+                      std::ref(c), std::ref(c_err)))();
     g.SetDirected(directed);
-    return python::make_tuple(c, c_err);
+    return boost::python::make_tuple(c, c_err);
 }
 
 void local_clustering(GraphInterface& g, boost::any prop)
@@ -47,17 +48,19 @@ void local_clustering(GraphInterface& g, boost::any prop)
     bool directed = g.GetDirected();
     g.SetDirected(false);
     run_action<graph_tool::detail::never_directed>()
-        (g, bind<void>(set_clustering_to_property(), _1, _2),
+        (g, std::bind(set_clustering_to_property(),
+                      std::placeholders::_1,
+                      std::placeholders::_2),
          writable_vertex_scalar_properties())(prop);
     g.SetDirected(directed);
 }
 
 using namespace boost::python;
 
-void extended_clustering(GraphInterface& g, python::list props);
-void get_motifs(GraphInterface& g, size_t k, python::list subgraph_list,
-                python::list hist, python::list pvmaps, bool collect_vmaps,
-                python::list p, bool comp_iso, bool fill_list, rng_t& rng);
+void extended_clustering(GraphInterface& g, boost::python::list props);
+void get_motifs(GraphInterface& g, size_t k, boost::python::list subgraph_list,
+                boost::python::list hist, boost::python::list pvmaps, bool collect_vmaps,
+                boost::python::list p, bool comp_iso, bool fill_list, rng_t& rng);
 
 BOOST_PYTHON_MODULE(libgraph_tool_clustering)
 {

@@ -15,16 +15,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#include <boost/python.hpp>
-#include <boost/python/suite/indexing/vector_indexing_suite.hpp>
-#include "bytesobject.h"
-
 #define NUMPY_EXPORT
 #include "numpy_bind.hh"
 
 #include "graph.hh"
-#include "graph_python_interface.hh"
 #include "graph_util.hh"
+#include "graph_python_interface.hh"
 
 #include "random.hh"
 
@@ -35,6 +31,10 @@
 #include "weave/scxx/dict.h"
 #include "weave/scxx/str.h"
 #endif
+
+#include <boost/python.hpp>
+#include <boost/python/suite/indexing/vector_indexing_suite.hpp>
+#include "bytesobject.h"
 
 using namespace std;
 using namespace graph_tool;
@@ -65,7 +65,7 @@ struct vector_from_list
 {
     vector_from_list()
     {
-        converter::registry::push_back
+         boost::python::converter::registry::push_back
             (&convertible, &construct,
              boost::python::type_id<vector<ValueType> >());
     }
@@ -85,7 +85,7 @@ struct vector_from_list
     }
 
     static void construct(PyObject* obj_ptr,
-                          converter::rvalue_from_python_stage1_data* data)
+                          boost::python::converter::rvalue_from_python_stage1_data* data)
     {
         handle<> x(borrowed(obj_ptr));
         object o(x);
@@ -135,18 +135,18 @@ struct export_vector_types
         vc.def(vector_indexing_suite<vector<ValueType> >())
             .def("__eq__", &vector_equal_compare<ValueType>)
             .def("__ne__", &vector_nequal_compare<ValueType>);
-        wrap_array(vc, typename mpl::has_key<numpy_types,ValueType>::type());
+        wrap_array(vc, typename boost::mpl::has_key<numpy_types,ValueType>::type());
         vector_from_list<ValueType>();
     }
 
     template <class ValueType>
-    void wrap_array(class_<vector<ValueType> >& vc, mpl::true_) const
+    void wrap_array(class_<vector<ValueType> >& vc, boost::mpl::true_) const
     {
         vc.def("get_array", &wrap_vector_not_owned<ValueType>);
     }
 
     template <class ValueType>
-    void wrap_array(class_<vector<ValueType> >& vc, mpl::false_) const
+    void wrap_array(class_<vector<ValueType> >& vc, boost::mpl::false_) const
     {
     }
 };
@@ -156,11 +156,11 @@ template <class Exception>
 void graph_exception_translator(const Exception& e)
 {
     PyObject* error;
-    if (is_same<Exception, GraphException>::value)
+    if (std::is_same<Exception, GraphException>::value)
         error = PyExc_RuntimeError;
-    if (is_same<Exception, IOException>::value)
+    if (std::is_same<Exception, IOException>::value)
         error = PyExc_IOError;
-    if (is_same<Exception, ValueException>::value)
+    if (std::is_same<Exception, ValueException>::value)
         error = PyExc_ValueError;
 
     PyObject* message = PyUnicode_FromString(e.what());
@@ -196,7 +196,7 @@ struct pair_from_tuple
     {
         handle<> x(borrowed(obj_ptr));
         object o(x);
-        if (python::len(o) < 2)
+        if (boost::python::len(o) < 2)
             return 0;
         extract<T1> first(o[0]);
         extract<T2> second(o[1]);
@@ -211,7 +211,7 @@ struct pair_from_tuple
         handle<> x(borrowed(obj_ptr));
         object o(x);
         pair<T1,T2> value;
-        if (python::len(o) < 2)
+        if (boost::python::len(o) < 2)
             throw ValueException("Invalid conversion to pair... Sequence is too short.");
         value.first = extract<T1>(o[0]);
         value.second = extract<T2>(o[1]);
@@ -336,30 +336,31 @@ extern python::object object_pickler;
 extern python::object object_unpickler;
 }
 
-void set_pickler(python::object o)
+void set_pickler(boost::python::object o)
 {
     graph_tool::object_pickler = o;
 }
 
-void set_unpickler(python::object o)
+void set_unpickler(boost::python::object o)
 {
     graph_tool::object_unpickler = o;
 }
 
-python::list get_property_types()
+boost::python::list get_property_types()
 {
-    python::list plist;
-    for (int i = 0; i < mpl::size<value_types>::value; ++i)
+    boost::python::list plist;
+    for (int i = 0; i < boost::mpl::size<value_types>::value; ++i)
         plist.append(string(type_names[i]));
     return plist;
 }
 
 struct graph_type_name
 {
+    typedef void result_type;
     template <class Graph>
     void operator()(const Graph& g, string& name) const
     {
-        using python::detail::gcc_demangle;
+        using boost::python::detail::gcc_demangle;
         name = string(gcc_demangle(typeid(Graph).name()));
     }
 };
@@ -367,7 +368,8 @@ struct graph_type_name
 string get_graph_type(GraphInterface& g)
 {
     string name;
-    run_action<>()(g, bind<void>(graph_type_name(), _1, ref(name)))();
+    run_action<>()(g, std::bind(graph_type_name(), std::placeholders::_1,
+                                std::ref(name)))();
     return name;
 }
 
@@ -392,7 +394,7 @@ void ungroup_vector_property(GraphInterface& g, boost::any vector_prop,
 void group_vector_property(GraphInterface& g, boost::any vector_prop,
                            boost::any prop, size_t pos, bool edge);
 void infect_vertex_property(GraphInterface& gi, boost::any prop,
-                            python::object val);
+                            boost::python::object val);
 void edge_difference(GraphInterface& gi, boost::any prop,
                      boost::any eprop);
 void mark_edges(GraphInterface& gi, boost::any prop);
@@ -401,6 +403,8 @@ void export_python_interface();
 
 BOOST_PYTHON_MODULE(libgraph_tool_core)
 {
+    using namespace boost::python;
+
     // numpy
     do_import_array();
     export_python_interface();
@@ -424,10 +428,11 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
     def("graph_filtering_enabled", &graph_filtering_enabled);
     def("openmp_enabled", &openmp_enabled);
 
-    mpl::for_each<mpl::push_back<scalar_types,string>::type>(export_vector_types());
+    boost::mpl::for_each<boost::mpl::push_back<scalar_types,string>::type>(export_vector_types());
 
     class_<GraphInterface>("GraphInterface", init<>())
-        .def(init<GraphInterface,bool,python::object,python::object,python::object>())
+        .def(init<GraphInterface,bool,boost::python::object,
+                  boost::python::object, boost::python::object>())
         .def("GetNumberOfVertices", &GraphInterface::GetNumberOfVertices)
         .def("GetNumberOfEdges", &GraphInterface::GetNumberOfEdges)
         .def("SetDirected", &GraphInterface::SetDirected)

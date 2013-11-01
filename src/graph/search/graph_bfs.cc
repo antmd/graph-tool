@@ -29,7 +29,6 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-
 class BFSVisitorWrapper
 {
 public:
@@ -108,13 +107,12 @@ struct do_bfs
     }
 };
 
-
 void bfs_search(GraphInterface& g, python::object gi, size_t s,
                 python::object vis)
 {
     run_action<graph_tool::detail::all_graph_views,mpl::true_>()
-        (g, bind<void>(do_bfs(), _1, s,
-                       BFSVisitorWrapper(gi, vis)))();
+        (g, std::bind(do_bfs(), placeholders::_1, s,
+                      BFSVisitorWrapper(gi, vis)))();
 }
 
 void export_bfs()

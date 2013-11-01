@@ -29,7 +29,6 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/xpressive/xpressive.hpp>
 
-#include "gml.hh"
 #include "graph.hh"
 #include "graph_filtering.hh"
 #include "graph_properties.hh"
@@ -37,6 +36,8 @@
 
 #include "graph_python_interface.hh"
 #include "str_repr.hh"
+
+#include "gml.hh"
 
 using namespace std;
 using namespace boost;
@@ -89,14 +90,14 @@ public:
     typedef char                 char_type;
     typedef iostreams::seekable_device_tag  category;
 
-    python_file_device(python::object file): _file(file) {}
+    python_file_device(boost::python::object file): _file(file) {}
     std::streamsize read(char* s, std::streamsize n)
     {
-        python::object pbuf = _file.attr("read")(n);
+        boost::python::object pbuf = _file.attr("read")(n);
 #if (PY_MAJOR_VERSION >= 3)
-        string buf = python::extract<string>(pbuf.attr("decode")("utf-8"));
+        string buf = boost::python::extract<string>(pbuf.attr("decode")("utf-8"));
 #else
-        string buf = python::extract<string>(pbuf);
+        string buf = boost::python::extract<string>(pbuf);
 #endif
         for (size_t i = 0; i < buf.size(); ++i)
             s[i] = buf[i];
@@ -106,7 +107,7 @@ public:
     std::streamsize write(const char* s, std::streamsize n)
     {
         string buf(s, s+n);
-        python::object pbuf(buf);
+        boost::python::object pbuf(buf);
         _file.attr("write")(pbuf.attr("encode")("utf-8"));
         return n;
     }
@@ -115,11 +116,11 @@ public:
                                   std::ios_base::seekdir way)
     {
         _file.attr("seek")(off, int(way));
-        return python::extract<iostreams::stream_offset>(_file.attr("tell")());
+        return boost::python::extract<iostreams::stream_offset>(_file.attr("tell")());
     }
 
 private:
-    python::object _file;
+    boost::python::object _file;
 };
 
 // Property Maps
@@ -129,13 +130,13 @@ struct get_python_property
 {
     template <class ValueType, class IndexMap>
     void operator()(ValueType, IndexMap, dynamic_property_map& map,
-                    python::object& pmap) const
+                    boost::python::object& pmap) const
     {
         typedef typename property_map_type::apply<ValueType, IndexMap>::type
             map_t;
         try
         {
-            pmap = python::object
+            pmap = boost::python::object
                 (PythonPropertyMap<map_t>
                  (dynamic_cast
                   <boost::detail::dynamic_property_map_adaptor<map_t>&>(map)
@@ -145,12 +146,12 @@ struct get_python_property
 };
 
 template <class IndexMap>
-python::object find_property_map(dynamic_property_map& map, IndexMap)
+boost::python::object find_property_map(dynamic_property_map& map, IndexMap)
 {
-    python::object pmap;
-    mpl::for_each<value_types>(boost::bind<void>(get_python_property(),
-                                                 _1, IndexMap(), ref(map),
-                                                 boost::ref(pmap)));
+    boost::python::object pmap;
+    boost::mpl::for_each<value_types>(std::bind(get_python_property(),
+                                                std::placeholders::_1, IndexMap(), std::ref(map),
+                                                std::ref(pmap)));
     return pmap;
 }
 
@@ -203,7 +204,7 @@ struct create_dynamic_map
         dynamic_property_map* map;
         try
         {
-            mpl::for_each<value_types>
+            boost::mpl::for_each<value_types>
                 (check_value_type<VertexIndexMap>(_vertex_map,
                                                   any_cast<vertex_t>(key),
                                                   value, map));
@@ -212,7 +213,7 @@ struct create_dynamic_map
         {
             try
             {
-                mpl::for_each<value_types>
+                boost::mpl::for_each<value_types>
                     (check_value_type<EdgeIndexMap>(_edge_map,
                                                     any_cast<edge_t>(key),
                                                     value, map));
@@ -220,7 +221,7 @@ struct create_dynamic_map
             catch (bad_any_cast)
             {
                 ConstantPropertyMap<size_t,graph_property_tag> graph_index(0);
-                mpl::for_each<value_types>
+                boost::mpl::for_each<value_types>
                     (check_value_type<ConstantPropertyMap<size_t,
                                                           graph_property_tag> >
                      (graph_index, any_cast<graph_property_tag>(key),
@@ -282,14 +283,14 @@ struct graph_traits<FakeUndirGraph<Graph> >
 
 void build_stream
     (boost::iostreams::filtering_stream<boost::iostreams::input>& stream,
-     const string& file,  python::object& pfile, std::ifstream& file_stream)
+     const string& file,  boost::python::object& pfile, std::ifstream& file_stream)
 {
     stream.reset();
     if (file == "-")
         stream.push(std::cin);
     else
     {
-        if (pfile == python::object())
+        if (pfile == boost::python::object())
         {
             file_stream.open(file.c_str(), std::ios_base::in |
                              std::ios_base::binary);
@@ -310,11 +311,11 @@ void build_stream
 }
 
 
-python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
+boost::python::tuple GraphInterface::ReadFromFile(string file, boost::python::object pfile,
                                            string format,
-                                           python::list ignore_vp,
-                                           python::list ignore_ep,
-                                           python::list ignore_gp)
+                                           boost::python::list ignore_vp,
+                                           boost::python::list ignore_ep,
+                                           boost::python::list ignore_gp)
 {
     if (format != "dot" && format != "xml" && format != "gml")
         throw ValueException("error reading from file '" + file +
@@ -328,11 +329,11 @@ python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
 
         set<string> ivp, iep, igp;
         for (int i = 0; i < len(ignore_vp); ++i)
-            ivp.insert(python::extract<string>(ignore_vp[i]));
+            ivp.insert(boost::python::extract<string>(ignore_vp[i]));
         for (int i = 0; i < len(ignore_ep); ++i)
-            iep.insert(python::extract<string>(ignore_ep[i]));
+            iep.insert(boost::python::extract<string>(ignore_ep[i]));
         for (int i = 0; i < len(ignore_gp); ++i)
-            igp.insert(python::extract<string>(ignore_gp[i]));
+            igp.insert(boost::python::extract<string>(ignore_gp[i]));
 
         create_dynamic_map<vertex_index_map_t,edge_index_map_t>
             map_creator(_vertex_index, _edge_index);
@@ -348,7 +349,7 @@ python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
         else if (format == "gml")
             _directed = read_gml(stream, *_mg, dp, ivp, iep, igp);
 
-        python::dict vprops, eprops, gprops;
+        boost::python::dict vprops, eprops, gprops;
         for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)
         {
             if (iter->second->key() == typeid(vertex_t))
@@ -361,7 +362,7 @@ python::tuple GraphInterface::ReadFromFile(string file, python::object pfile,
                 gprops[iter->first] = find_property_map(*iter->second,
                                                         _graph_index);
         }
-        return python::make_tuple(vprops, eprops, gprops);
+        return boost::python::make_tuple(vprops, eprops, gprops);
     }
     catch (ios_base::failure &e)
     {
@@ -446,8 +447,8 @@ struct generate_index
     }
 };
 
-void GraphInterface::WriteToFile(string file, python::object pfile,
-                                 string format, python::list props)
+void GraphInterface::WriteToFile(string file, boost::python::object pfile,
+                                 string format, boost::python::list props)
 {
     if (format != "xml" && format != "dot" && format != "gml")
         throw ValueException("error writing to file '" + file +
@@ -460,7 +461,7 @@ void GraphInterface::WriteToFile(string file, python::object pfile,
             stream.push(std::cout);
         else
         {
-            if (pfile == python::object())
+            if (pfile == boost::python::object())
             {
                 file_stream.open(file.c_str(), std::ios_base::out |
                                  std::ios_base::binary);
@@ -484,16 +485,16 @@ void GraphInterface::WriteToFile(string file, python::object pfile,
         {
             dynamic_property_map* pmap =
                 any_cast<dynamic_property_map*>
-                (python::extract<boost::any>
+                (boost::python::extract<boost::any>
                  (props[i][1].attr("get_dynamic_map")()));
-            dp.insert(python::extract<string>(props[i][0]),
+            dp.insert(boost::python::extract<string>(props[i][0]),
                       DP_SMART_PTR<dynamic_property_map>(pmap));
         }
 
         if (IsVertexFilterActive())
         {
             // vertex indexes must be between the [0, HardNumVertices(g)] range
-            typedef tr1::unordered_map<vertex_t, size_t>  map_t;
+            typedef std::unordered_map<vertex_t, size_t>  map_t;
             map_t vertex_to_index;
             associative_property_map<map_t> index_map(vertex_to_index);
             run_action<>()(*this, boost::bind<void>(generate_index(),

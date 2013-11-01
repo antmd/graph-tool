@@ -25,16 +25,17 @@
 namespace graph_tool
 {
 using namespace std;
-using namespace boost;
 
 struct get_eigentrust
 {
+    typedef void result_type;
     template <class Graph, class VertexIndex, class EdgeIndex, class TrustMap,
               class InferredTrustMap>
     void operator()(Graph& g, VertexIndex vertex_index,
                     EdgeIndex edge_index, TrustMap c, InferredTrustMap t,
                     double epslon, size_t max_iter, size_t& iter) const
     {
+        using namespace boost;
         typedef typename property_traits<TrustMap>::value_type c_type;
         typedef typename property_traits<InferredTrustMap>::value_type t_type;
 

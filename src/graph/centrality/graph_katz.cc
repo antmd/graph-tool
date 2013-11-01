@@ -40,22 +40,22 @@ void katz(GraphInterface& g, boost::any w, boost::any c, boost::any beta,
                              " value type");
 
     typedef ConstantPropertyMap<double, GraphInterface::edge_t> weight_map_t;
-    typedef mpl::push_back<writable_edge_scalar_properties, weight_map_t>::type
+    typedef boost::mpl::push_back<writable_edge_scalar_properties, weight_map_t>::type
         weight_props_t;
 
     if(w.empty())
         w = weight_map_t(1.);
 
     typedef ConstantPropertyMap<double, GraphInterface::vertex_t> beta_map_t;
-    typedef mpl::push_back<vertex_floating_properties, beta_map_t>::type
+    typedef boost::mpl::push_back<vertex_floating_properties, beta_map_t>::type
         beta_props_t;
 
     if(beta.empty())
         beta = beta_map_t(1.);
 
-    run_action<>()(g, bind<void>
-                   (get_katz(), _1, g.GetVertexIndex(), _2,
-                    _3, _4, alpha, epsilon, max_iter),
+    run_action<>()(g, std::bind(get_katz(), placeholders::_1, g.GetVertexIndex(),
+                                placeholders::_2, placeholders::_3,
+                                placeholders::_4, alpha, epsilon, max_iter),
                    weight_props_t(),
                    vertex_floating_properties(),
                    beta_props_t())(w, c, beta);

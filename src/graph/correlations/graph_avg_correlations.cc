@@ -33,8 +33,8 @@ using namespace graph_tool;
 
 // implementations spread across different compile units to minimize memory
 // usage during compilation
-void graph_avg_corr_imp1(GraphInterface& g, python::object& avg,
-                         python::object& dev, python::object& ret_bins,
+void graph_avg_corr_imp1(GraphInterface& g, boost::python::object& avg,
+                         boost::python::object& dev, boost::python::object& ret_bins,
                          boost::any deg1, boost::any deg2,
                          boost::any weight,
                          const vector<long double>& bins);
@@ -42,15 +42,15 @@ void graph_avg_corr_imp1(GraphInterface& g, python::object& avg,
 
 typedef ConstantPropertyMap<int,GraphInterface::edge_t> cweight_map_t;
 
-python::object
+boost::python::object
 get_vertex_avg_correlation(GraphInterface& gi,
                            GraphInterface::deg_t deg1,
                            GraphInterface::deg_t deg2,
                            boost::any weight,
                            const vector<long double>& bins)
 {
-    python::object avg, dev;
-    python::object ret_bins;
+    boost::python::object avg, dev;
+    boost::python::object ret_bins;
 
     any weight_prop;
     typedef DynamicPropertyMapWrap<long double, GraphInterface::edge_t>
@@ -68,7 +68,7 @@ get_vertex_avg_correlation(GraphInterface& gi,
         run_action<>()(gi, get_avg_correlation<GetNeighboursPairs>
                        (avg, dev, bins, ret_bins),
                        scalar_selectors(), scalar_selectors(),
-                       mpl::vector<cweight_map_t>())
+                       boost::mpl::vector<cweight_map_t>())
             (degree_selector(deg1), degree_selector(deg2), weight_prop);
     }
     catch (ActionNotFound&)
@@ -78,7 +78,7 @@ get_vertex_avg_correlation(GraphInterface& gi,
                             degree_selector(deg2), weight_prop, bins);
     }
 
-    return python::make_tuple(avg, dev, ret_bins);
+    return boost::python::make_tuple(avg, dev, ret_bins);
 }
 
 using namespace boost::python;

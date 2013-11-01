@@ -20,8 +20,17 @@
 
 #include <limits>
 #include <iostream>
+
+#ifndef __clang__
 #include <ext/numeric>
 using __gnu_cxx::power;
+#else
+template <class Value>
+Value power(Value value, int n)
+{
+    return pow(value, n);
+}
+#endif
 
 namespace graph_tool
 {
@@ -61,7 +70,7 @@ public:
         return _leafs[i];
     }
 
-    vector<tuple<Pos,Weight> >& get_dense_leafs()
+    vector<std::tuple<Pos,Weight> >& get_dense_leafs()
     {
         return _dense_leafs;
     }
@@ -76,7 +85,7 @@ public:
         {
             if (_count == w)
                 _dense_leafs.reserve(10);
-            _dense_leafs.push_back(make_tuple(p, w));
+            _dense_leafs.push_back(std::make_tuple(p, w));
             return 1;
         }
         else
@@ -97,8 +106,8 @@ public:
 
     double get_w()
     {
-        return sqrt(__gnu_cxx::power(_ur[0] - _ll[0], 2) +
-                    __gnu_cxx::power(_ur[1] - _ll[1], 2));
+        return sqrt(power(_ur[0] - _ll[0], 2) +
+                    power(_ur[1] - _ll[1], 2));
     }
 
     Weight get_count()
@@ -114,7 +123,7 @@ public:
 private:
     Pos _ll, _ur;
     vector<QuadTree> _leafs;
-    vector<tuple<Pos,Weight> > _dense_leafs;
+    vector<std::tuple<Pos,Weight> > _dense_leafs;
     Pos _cm;
     Weight _count;
     int _max_level;
@@ -125,7 +134,7 @@ inline double dist(const Pos& p1, const Pos& p2)
 {
     double r = 0;
     for (size_t i = 0; i < 2; ++i)
-        r += __gnu_cxx::power(double(p1[i] - p2[i]), 2);
+        r += power(double(p1[i] - p2[i]), 2);
     return sqrt(r);
 }
 
@@ -141,7 +150,7 @@ inline double f_r(double C, double K, double p, const Pos& p1, const Pos& p2)
 template <class Pos>
 inline double f_a(double K, const Pos& p1, const Pos& p2)
 {
-    return __gnu_cxx::power(dist(p1, p2), 2) / K;
+    return power(dist(p1, p2), 2) / K;
 }
 
 template <class Pos>
@@ -166,7 +175,7 @@ inline double norm(Pos& x)
 {
     double abs = 0;
     for (size_t i = 0; i < 2; ++i)
-        abs += __gnu_cxx::power(x[i], 2);
+        abs += power(x[i], 2);
     for (size_t i = 0; i < 2; ++i)
         x[i] /= sqrt(abs);
     return sqrt(abs);
@@ -246,7 +255,7 @@ struct get_sfdp_layout
         val_t step = init_step;
         size_t progress = 0;
 
-        vector<reference_wrapper<QuadTree<pos_t, vweight_t> > > Q;
+        vector<std::reference_wrapper<QuadTree<pos_t, vweight_t> > > Q;
         Q.reserve(max_level * 2);
 
         while (delta > epsilon * K && (max_iter == 0 || n_iter < max_iter))
@@ -288,7 +297,7 @@ struct get_sfdp_layout
 
                 // global repulsive forces
                 Q.clear();
-                Q.push_back(ref(qt));
+                Q.push_back(std::ref(qt));
                 while (!Q.empty())
                 {
                     QuadTree<pos_t, vweight_t>& q = Q.back();
@@ -296,7 +305,7 @@ struct get_sfdp_layout
 
                     if (q.max_level() == 0)
                     {
-                        vector<tuple<pos_t,vweight_t> >& dleafs =
+                        vector<std::tuple<pos_t,vweight_t> >& dleafs =
                             q.get_dense_leafs();
                         for(size_t j = 0; j < dleafs.size(); ++j)
                         {
@@ -321,7 +330,7 @@ struct get_sfdp_layout
                             {
                                 QuadTree<pos_t, vweight_t>& leaf = q.get_leaf(j);
                                 if (leaf.get_count() > 0)
-                                    Q.push_back(ref(leaf));
+                                    Q.push_back(std::ref(leaf));
                             }
                         }
                         else
@@ -369,7 +378,7 @@ struct get_sfdp_layout
                         val_t d = get_diff(group_cm[s], pos[v], diff);
                         if (d == 0)
                             continue;
-                        double Kp = K * __gnu_cxx::power(HN, 2);
+                        double Kp = K * power(HN, 2);
                         val_t f = f_a(Kp, group_cm[s], pos[v]) * gamma * \
                             group_size[s] * get(vweight, v);
                         for (size_t l = 0; l < 2; ++l)
@@ -410,7 +419,7 @@ struct get_sfdp_layout
                     }
                 }
 
-                E += __gnu_cxx::power(norm(ftot), 2);
+                E += power(norm(ftot), 2);
 
                 {
                     #pragma omp critical

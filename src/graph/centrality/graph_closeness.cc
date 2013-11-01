@@ -22,8 +22,9 @@
 
 #include "graph_closeness.hh"
 
+#include <functional>
+
 using namespace std;
-using namespace boost;
 using namespace graph_tool;
 
 void do_get_closeness(GraphInterface& gi, boost::any weight,
@@ -32,17 +33,17 @@ void do_get_closeness(GraphInterface& gi, boost::any weight,
     if (weight.empty())
     {
         run_action<>()(gi,
-                       bind<void>(get_closeness(), _1,
-                                  gi.GetVertexIndex(), no_weightS(),
-                                  _2, harmonic, norm),
+                       std::bind(get_closeness(), placeholders::_1,
+                                 gi.GetVertexIndex(), no_weightS(),
+                                 placeholders::_2, harmonic, norm),
                        writable_vertex_scalar_properties())(closeness);
     }
     else
     {
         run_action<>()(gi,
-                       bind<void>(get_closeness(), _1,
-                                  gi.GetVertexIndex(), _2,
-                                  _3, harmonic, norm),
+                       std::bind(get_closeness(), placeholders::_1,
+                                 gi.GetVertexIndex(), placeholders::_2,
+                                 placeholders::_3, harmonic, norm),
                        edge_scalar_properties(),
                        writable_vertex_scalar_properties())(weight, closeness);
     }
@@ -50,5 +51,5 @@ void do_get_closeness(GraphInterface& gi, boost::any weight,
 
 void export_closeness()
 {
-    python::def("closeness", &do_get_closeness);
+    boost::python::def("closeness", &do_get_closeness);
 }

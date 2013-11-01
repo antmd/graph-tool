@@ -18,8 +18,7 @@
 #ifndef GRAPH_COMMUNITY_NETWORK_HH
 #define GRAPH_COMMUNITY_NETWORK_HH
 
-#include "tr1_include.hh"
-#include TR1_HEADER(unordered_map)
+#include <unordered_map>
 
 #ifdef HAVE_SPARSEHASH
 #include <dense_hash_map>
@@ -57,10 +56,10 @@ struct get_community_network_vertices
             vprop_type;
 
 #ifdef HAVE_SPARSEHASH
-        google::dense_hash_map<s_type, vertex_t, hash<s_type> > comms;
+        google::dense_hash_map<s_type, vertex_t, std::hash<s_type> > comms;
         comms.set_empty_key(numeric_limits<s_type>::max());
 #else
-        tr1::unordered_map<s_type, vertex_t, hash<s_type> > comms;
+        std::unordered_map<s_type, vertex_t, std::hash<s_type> > comms;
 #endif
         // create vertices
         typename graph_traits<Graph>::vertex_iterator vi, vi_end;
@@ -124,14 +123,14 @@ struct get_community_network_edges
             s_type;
 
 #ifdef HAVE_SPARSEHASH
-        typedef google::dense_hash_map<s_type, vertex_t, hash<s_type> > comms_t;
+        typedef google::dense_hash_map<s_type, vertex_t, std::hash<s_type> > comms_t;
         comms_t comms(num_vertices(cg));
         comms.set_empty_key(numeric_limits<s_type>::max());
         typedef google::dense_hash_map<cvertex_t, cedge_t> ecomms_t;
 #else
-        typedef tr1::unordered_map<s_type, vertex_t, hash<s_type> > comms_t;
+        typedef std::unordered_map<s_type, vertex_t, std::hash<s_type> > comms_t;
         comms_t comms(num_vertices(cg));
-        typedef tr1::unordered_map<cvertex_t, cedge_t> ecomms_t;
+        typedef std::unordered_map<cvertex_t, cedge_t> ecomms_t;
 #endif
 
         unchecked_vector_property_map<ecomms_t,
@@ -264,10 +263,10 @@ struct get_vertex_community_property_sum
             s_type;
 
 #ifdef HAVE_SPARSEHASH
-        google::dense_hash_map<s_type, vertex_t, hash<s_type> > comms(num_vertices(cg));
+        google::dense_hash_map<s_type, vertex_t, std::hash<s_type> > comms(num_vertices(cg));
         comms.set_empty_key(numeric_limits<s_type>::max());
 #else
-        tr1::unordered_map<s_type, vertex_t, hash<s_type> > comms(num_vertices(cg));
+        std::unordered_map<s_type, vertex_t, std::hash<s_type> > comms(num_vertices(cg));
 #endif
         typename graph_traits<CommunityGraph>::vertex_iterator v, v_end;
         for (tie(v, v_end) = vertices(cg); v != v_end; ++v)
@@ -325,10 +324,10 @@ struct get_edge_community_property_sum
             s_type;
 
 #ifdef HAVE_SPARSEHASH
-        google::dense_hash_map<s_type, vertex_t, hash<s_type> > comms(num_vertices(cg));
+        google::dense_hash_map<s_type, vertex_t, std::hash<s_type> > comms(num_vertices(cg));
         comms.set_empty_key(numeric_limits<s_type>::max());
 #else
-        tr1::unordered_map<s_type, vertex_t, hash<s_type> > comms(num_vertices(cg));
+        std::unordered_map<s_type, vertex_t, std::hash<s_type> > comms(num_vertices(cg));
 #endif
         typename graph_traits<CommunityGraph>::vertex_iterator v, v_end;
         for (tie(v, v_end) = vertices(cg); v != v_end; ++v)
@@ -336,13 +335,13 @@ struct get_edge_community_property_sum
 
 #ifdef HAVE_SPARSEHASH
         google::dense_hash_map<pair<size_t, size_t>, cedge_t,
-                               hash<pair<size_t, size_t> > >
+                               boost::hash<pair<size_t, size_t> > >
              comm_edges(num_vertices(cg));
         comm_edges.set_empty_key(make_pair(numeric_limits<size_t>::max(),
                                            numeric_limits<size_t>::max()));
 #else
-        tr1::unordered_map<pair<size_t, size_t>, cedge_t,
-                           hash<pair<size_t, size_t> > >
+        std::unordered_map<pair<size_t, size_t>, cedge_t,
+                           boost::hash<pair<size_t, size_t> > >
             comm_edges(num_vertices(cg));
 #endif
 

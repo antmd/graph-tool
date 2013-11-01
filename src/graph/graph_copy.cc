@@ -72,9 +72,9 @@ void copy_property(const Descriptor& src_d, const Descriptor& tgt_d,
                    IndexMap& index_map)
 {
     bool found = false;
-    mpl::for_each<PropertyMaps>(copy_property_dispatch<Descriptor, GraphTgt, GraphSrc, IndexMap>
-                                (src_d, tgt_d, tgt, src, prop_src, prop_tgt, index_map,
-                                 found));
+    boost::mpl::for_each<PropertyMaps>(copy_property_dispatch<Descriptor, GraphTgt, GraphSrc, IndexMap>
+                                       (src_d, tgt_d, tgt, src, prop_src, prop_tgt, index_map,
+                                        found));
     if (!found)
         throw ValueException("Cannot find property map type.");
 }
@@ -144,9 +144,9 @@ void copy_vertex_property(boost::any& prop_src, boost::any& prop_tgt,
                           TgtIndexMap& tgt_vertex_index)
 {
     bool found = false;
-    mpl::for_each<PropertyMaps>(copy_vertex_property_dispatch<GraphSrc, GraphTgt,
-                                                              IndexMap, SrcIndexMap,
-                                                              TgtIndexMap>
+    boost::mpl::for_each<PropertyMaps>(copy_vertex_property_dispatch<GraphSrc, GraphTgt,
+                                                                     IndexMap, SrcIndexMap,
+                                                                     TgtIndexMap>
             (src, tgt, prop_src, prop_tgt, index_map, src_vertex_index,
              tgt_vertex_index, found));
     if (!found)
@@ -227,8 +227,8 @@ void copy_edge_property(boost::any& prop_src, boost::any& prop_tgt,
                         size_t max_src_edge_index)
 {
     bool found = false;
-    mpl::for_each<PropertyMaps>(copy_edge_property_dispatch<GraphSrc, GraphTgt,
-                                                            IndexMap, SrcIndexMap>
+    boost::mpl::for_each<PropertyMaps>(copy_edge_property_dispatch<GraphSrc, GraphTgt,
+                                                                   IndexMap, SrcIndexMap>
             (src, tgt, prop_src, prop_tgt, index_map, src_vertex_index,
              max_src_edge_index, found));
     if (!found)
@@ -251,8 +251,8 @@ struct do_graph_copy
                     TgtEdgeIndexMap,
                     SrcEdgeIndexMap src_edge_index,
                     OrderMap vertex_order,
-                    vector<pair<reference_wrapper<boost::any>,reference_wrapper<boost::any> > >& vprops,
-                    vector<pair<reference_wrapper<boost::any>,reference_wrapper<boost::any> > >& eprops) const
+                    vector<pair<std::reference_wrapper<boost::any>,std::reference_wrapper<boost::any>>>& vprops,
+                    vector<pair<std::reference_wrapper<boost::any>,std::reference_wrapper<boost::any>>>& eprops) const
     {
         vector<size_t> index_map(num_vertices(src));
         typename graph_traits<GraphSrc>::vertex_iterator v, v_end;
@@ -301,7 +301,7 @@ struct do_graph_copy
 GraphInterface::GraphInterface(const GraphInterface& gi, bool keep_ref,
                                python::object ovprops, python::object oeprops,
                                python::object vorder)
-    :_mg(keep_ref ? gi._mg : shared_ptr<multigraph_t>(new multigraph_t())),
+    :_mg(keep_ref ? gi._mg : std::shared_ptr<multigraph_t>(new multigraph_t())),
      _vertex_index(get(vertex_index, *_mg)),
      _edge_index(get(edge_index_t(), *_mg)),
      _reversed(gi._reversed),
@@ -323,25 +323,27 @@ GraphInterface::GraphInterface(const GraphInterface& gi, bool keep_ref,
         return;
     }
 
-    vector<pair<reference_wrapper<boost::any>,reference_wrapper<boost::any> > > vprops;
+    vector<pair<std::reference_wrapper<boost::any>,std::reference_wrapper<boost::any>>> vprops;
     for (int i = 0; i < python::len(ovprops); ++i)
     {
-        vprops.push_back(make_pair(ref(python::extract<boost::any&>(ovprops[i][0])()),
-                                   ref(python::extract<boost::any&>(ovprops[i][1])())));
+        vprops.push_back(make_pair(std::ref(python::extract<boost::any&>(ovprops[i][0])()),
+                                   std::ref(python::extract<boost::any&>(ovprops[i][1])())));
     }
-    vector<pair<reference_wrapper<boost::any>,reference_wrapper<boost::any> > > eprops;
+    vector<pair<std::reference_wrapper<boost::any>,std::reference_wrapper<boost::any>>> eprops;
     for (int i = 0; i < python::len(oeprops); ++i)
     {
-        eprops.push_back(make_pair(ref(python::extract<boost::any&>(oeprops[i][0])()),
-                                   ref(python::extract<boost::any&>(oeprops[i][1])())));
+        eprops.push_back(make_pair(std::ref(python::extract<boost::any&>(oeprops[i][0])()),
+                                   std::ref(python::extract<boost::any&>(oeprops[i][1])())));
     }
 
     boost::any avorder = python::extract<boost::any>(vorder);
     run_action<>()
         (const_cast<GraphInterface&>(gi),
-         bind<void>(do_graph_copy(gi._mg->get_last_index()), _1, ref(*_mg),
-                    gi._vertex_index, _vertex_index, gi._edge_index,
-                    _edge_index, _2, ref(vprops), ref(eprops)),
+         std::bind(do_graph_copy(gi._mg->get_last_index()),
+                   std::placeholders::_1, std::ref(*_mg),
+                   gi._vertex_index, _vertex_index, gi._edge_index,
+                   _edge_index, std::placeholders::_2, std::ref(vprops),
+                   std::ref(eprops)),
          vertex_scalar_properties())(avorder);
     // filters will be copied in python
 }

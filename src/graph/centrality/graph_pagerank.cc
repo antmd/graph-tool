@@ -38,14 +38,14 @@ size_t pagerank(GraphInterface& g, boost::any rank, boost::any pers,
         throw ValueException("personalization vertex property must have a scalar value type");
 
     typedef ConstantPropertyMap<double, GraphInterface::vertex_t> pers_map_t;
-    typedef mpl::push_back<vertex_scalar_properties, pers_map_t>::type
+    typedef boost::mpl::push_back<vertex_scalar_properties, pers_map_t>::type
         pers_props_t;
 
     if(pers.empty())
         pers = pers_map_t(1.0 / g.GetNumberOfVertices());
 
     typedef ConstantPropertyMap<double, GraphInterface::edge_t> weight_map_t;
-    typedef mpl::push_back<edge_scalar_properties, weight_map_t>::type
+    typedef boost::mpl::push_back<edge_scalar_properties, weight_map_t>::type
         weight_props_t;
 
     if (!weight.empty() && !belongs<edge_scalar_properties>()(weight))
@@ -56,9 +56,10 @@ size_t pagerank(GraphInterface& g, boost::any rank, boost::any pers,
 
     size_t iter;
     run_action<>()
-        (g, bind<void>(get_pagerank(),
-                       _1, g.GetVertexIndex(), _2, _3, _4, d,
-                       epsilon, max_iter, ref(iter)),
+        (g, std::bind(get_pagerank(),
+                      placeholders::_1, g.GetVertexIndex(), placeholders::_2,
+                      placeholders::_3, placeholders::_4, d,
+                      epsilon, max_iter, std::ref(iter)),
          vertex_floating_properties(),
          pers_props_t(), weight_props_t())(rank, pers, weight);
     return iter;

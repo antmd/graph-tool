@@ -94,7 +94,7 @@ public:
     template <class Value1, class Value2>
     bool operator()(const Value1& v1, const Value2& v2) const
     {
-        return extract<bool>(_cmp(v1, v2));
+        return python::extract<bool>(_cmp(v1, v2));
     }
 
 private:
@@ -149,9 +149,10 @@ void dijkstra_search(GraphInterface& g, python::object gi, size_t source,
                      python::object inf)
 {
     run_action<graph_tool::detail::all_graph_views,mpl::true_>()
-        (g, bind<void>(do_djk_search(), _1, source, _2, pred_map, weight,
-                        DJKVisitorWrapper(gi, vis), DJKCmp(cmp), DJKCmb(cmb),
-                       make_pair(zero, inf)),
+        (g, std::bind(do_djk_search(), placeholders::_1, source, 
+                      placeholders::_2, pred_map, weight,
+                      DJKVisitorWrapper(gi, vis), DJKCmp(cmp), DJKCmb(cmb),
+                      make_pair(zero, inf)),
          writable_vertex_properties())(dist_map);
 }
 

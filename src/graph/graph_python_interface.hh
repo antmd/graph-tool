@@ -21,16 +21,30 @@
 #include <boost/python.hpp>
 #include <boost/python/type_id.hpp>
 
+#include <functional>
+
+namespace std
+{
+    template<>
+    struct hash<boost::python::object>
+    {
+        size_t operator()(const boost::python::object& o) const
+        {
+            return boost::python::extract<size_t>(o.attr("__hash__")());
+        }
+    };
+}
+
 namespace boost
 {
     size_t hash_value(const boost::python::object& o);
 }
 
-
 #include <boost/graph/graph_traits.hpp>
 #include <boost/mpl/logical.hpp>
-#include <boost/functional/hash.hpp>
 #include <boost/iterator/iterator_facade.hpp>
+
+#include <type_traits>
 
 #include "graph.hh"
 #include "graph_filtering.hh"
@@ -46,7 +60,6 @@ namespace boost
 
 namespace graph_tool
 {
-using namespace boost;
 
 // generic iterator adaptor which can be used to iterate vertices, edges,
 // out_edges and in_edges through python
@@ -54,13 +67,13 @@ template <class Descriptor, class Iterator>
 class PythonIterator
 {
 public:
-    PythonIterator(const python::object& g, std::pair<Iterator,Iterator> e)
+    PythonIterator(const boost::python::object& g, std::pair<Iterator,Iterator> e)
         : _g(g), _e(e) {}
     Descriptor Next()
     {
         if (_e.first == _e.second)
-            python::objects::stop_iteration_error();
-        if (_g() == python::object())
+            boost::python::objects::stop_iteration_error();
+        if (_g() == boost::python::object())
             throw GraphException("The corresponding graph object has been"
                                  " deleted during iteration!");
         Descriptor e(_g, *_e.first);
@@ -68,7 +81,7 @@ public:
         return e;
     }
 private:
-    python::object _g;
+    boost::python::object _g;
     std::pair<Iterator,Iterator> _e;
 };
 
@@ -81,7 +94,7 @@ class PythonEdge;
 class PythonVertex
 {
 public:
-    PythonVertex(const python::object& g, GraphInterface::vertex_t v):
+    PythonVertex(const boost::python::object& g, GraphInterface::vertex_t v):
         _g(g), _v(v), _valid(true)
     {
         CheckValid();
@@ -91,9 +104,9 @@ public:
     {
         if (_g().ptr() == Py_None)
             return false;
-        GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
+        GraphInterface& gi = boost::python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
         return _valid &&
-            (_v != graph_traits<GraphInterface::multigraph_t>::null_vertex()) &&
+            (_v != boost::graph_traits<GraphInterface::multigraph_t>::null_vertex()) &&
             (_v < num_vertices(*gi._mg));
     }
 
@@ -106,10 +119,10 @@ public:
     {
         if (!IsValid())
             throw ValueException("invalid vertex descriptor: " +
-                                 lexical_cast<string>(_v));
+                                 boost::lexical_cast<string>(_v));
     }
 
-    python::object GetGraph() const
+    boost::python::object GetGraph() const
     {
         return _g();
     }
@@ -124,7 +137,7 @@ public:
     {
         template<class Graph>
         void operator()(const Graph& g,
-                        typename graph_traits<Graph>::vertex_descriptor v,
+                        typename boost::graph_traits<Graph>::vertex_descriptor v,
                         size_t& deg) const
         {
             deg = DegSelector()(v, g);
@@ -134,21 +147,22 @@ public:
     size_t GetInDegree() const
     {
         CheckValid();
-        GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
+        GraphInterface& gi = boost::python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
         size_t in_deg;
-        run_action<>()(gi, bind<void>(get_degree<in_degreeS>(),
-                                      _1, _v,
-                                      ref(in_deg)))();
+        run_action<>()(gi, std::bind(get_degree<in_degreeS>(),
+                                     std::placeholders::_1, _v,
+                                     std::ref(in_deg)))();
         return in_deg;
     }
 
     size_t GetOutDegree() const
     {
         CheckValid();
-        GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
+        GraphInterface& gi = boost::python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
         size_t out_deg;
-        run_action<>()(gi, bind<void>(get_degree<out_degreeS>(), _1, _v,
-                                      ref(out_deg)))();
+        run_action<>()(gi, std::bind(get_degree<out_degreeS>(),
+                                     std::placeholders::_1, _v,
+                                     std::ref(out_deg)))();
         return out_deg;
     }
 
@@ -157,68 +171,69 @@ public:
     struct get_out_edges
     {
         template<class Graph>
-        void operator()(const Graph& g, const python::object& pg,
-                        typename graph_traits<Graph>::vertex_descriptor v,
-                        python::object& iter) const
+        void operator()(const Graph& g, const boost::python::object& pg,
+                        typename boost::graph_traits<Graph>::vertex_descriptor v,
+                        boost::python::object& iter) const
         {
-            typedef typename graph_traits<Graph>::out_edge_iterator
+            typedef typename boost::graph_traits<Graph>::out_edge_iterator
                 out_edge_iterator;
-            iter = python::object(PythonIterator<PythonEdge<Graph>,
+            iter = boost::python::object(PythonIterator<PythonEdge<Graph>,
                                                  out_edge_iterator>
                                   (pg, out_edges(v, g)));
         }
     };
 
-    python::object OutEdges() const
+    boost::python::object OutEdges() const
     {
         CheckValid();
-        GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
-        python::object iter;
-        run_action<>()(gi, bind<void>(get_out_edges(), _1,
-                                      ref(_g), _v, ref(iter)))();
+        GraphInterface& gi = boost::python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
+        boost::python::object iter;
+        run_action<>()(gi, std::bind(get_out_edges(), std::placeholders::_1,
+                                     std::ref(_g), _v, std::ref(iter)))();
         return iter;
     }
 
     struct get_in_edges
     {
         template<class Graph>
-        void operator()(const Graph& g, const python::object& pg,
-                        typename graph_traits<Graph>::vertex_descriptor v,
-                        python::object& iter) const
+        void operator()(const Graph& g, const boost::python::object& pg,
+                        typename boost::graph_traits<Graph>::vertex_descriptor v,
+                        boost::python::object& iter) const
         {
             typedef typename in_edge_iteratorS<Graph>::type
                 in_edge_iterator;
-            iter = python::object
+            iter = boost::python::object
                 (PythonIterator<PythonEdge<Graph>,in_edge_iterator>
                  (pg, in_edge_iteratorS<Graph>::get_edges(v, g)));
         }
     };
 
-    python::object InEdges() const
+    boost::python::object InEdges() const
     {
         CheckValid();
-        GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
-        python::object iter;
-        run_action<>()(gi, bind<void>(get_in_edges(), _1, ref(_g), _v,
-                                      ref(iter)))();
+        GraphInterface& gi = boost::python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
+        boost::python::object iter;
+        run_action<>()(gi, std::bind(get_in_edges(), placeholders::_1,
+                                     std::ref(_g), _v,
+                                     std::ref(iter)))();
         return iter;
     }
 
     std::string GetString() const
     {
         CheckValid();
-        return lexical_cast<std::string>(_v);
+        return boost::lexical_cast<std::string>(_v);
     }
 
     size_t GetHash() const
     {
-        return hash<size_t>()(_v);
+        return std::hash<size_t>()(_v);
     }
 
     size_t GetIndex() const
     {
         CheckValid();
-        GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
+        GraphInterface& gi = boost::python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
         return gi._vertex_index[_v];
     }
 
@@ -237,7 +252,7 @@ public:
     }
 
 private:
-    python::object _g;
+    boost::python::object _g;
     GraphInterface::vertex_t _v;
     bool _valid;
 };
@@ -250,8 +265,8 @@ template <class Graph>
 class PythonEdge : public EdgeBase
 {
 public:
-    typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
-    PythonEdge(const python::object& g, edge_descriptor e)
+    typedef typename boost::graph_traits<Graph>::edge_descriptor edge_descriptor;
+    PythonEdge(const boost::python::object& g, edge_descriptor e)
         : _g(g), _e(e), _valid(true)
     {
         CheckValid();
@@ -261,7 +276,7 @@ public:
     {
         if (_g().ptr() == Py_None || !_valid)
             return false;
-        GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
+        GraphInterface& gi = boost::python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
         GraphInterface::edge_t e(_e);
         bool valid = PythonVertex(_g, source(e, *gi._mg)).IsValid() &&
             PythonVertex(_g, target(e, *gi._mg)).IsValid();
@@ -282,7 +297,7 @@ public:
             throw ValueException("invalid edge descriptor");
     }
 
-    python::object GetGraph() const
+    boost::python::object GetGraph() const
     {
         return _g();
     }
@@ -295,59 +310,60 @@ public:
     struct get_source
     {
         template<class GraphType>
-        void operator()(const GraphType& g, const python::object& pg,
-                        const edge_descriptor& edge, python::object& vertex)
+        void operator()(const GraphType& g, const boost::python::object& pg,
+                        const edge_descriptor& edge, boost::python::object& vertex)
             const
         {
-            typedef typename graph_traits<GraphType>::edge_descriptor edge_t;
-            vertex = python::object(PythonVertex(pg, source(edge_t(edge), g)));
+            typedef typename boost::graph_traits<GraphType>::edge_descriptor edge_t;
+            vertex = boost::python::object(PythonVertex(pg, source(edge_t(edge), g)));
         }
     };
 
-    python::object GetSource() const
+    boost::python::object GetSource() const
     {
         CheckValid();
-        GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
-        python::object v;
-        run_action<>()(gi, bind<void>(get_source(), _1, ref(_g), ref(_e),
-                                      ref(v)))();
+        GraphInterface& gi = boost::python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
+        boost::python::object v;
+        run_action<>()(gi, std::bind(get_source(), std::placeholders::_1,
+                                     std::ref(_g), std::ref(_e),
+                                     std::ref(v)))();
         return v;
     }
 
     struct get_target
     {
         template<class GraphType>
-        void operator()(const GraphType& g, const python::object& pg,
-                        const edge_descriptor& edge, python::object& vertex)
+        void operator()(const GraphType& g, const boost::python::object& pg,
+                        const edge_descriptor& edge, boost::python::object& vertex)
             const
         {
-            typedef typename graph_traits<GraphType>::edge_descriptor edge_t;
-            vertex = python::object(PythonVertex(pg, target(edge_t(edge), g)));
+            typedef typename boost::graph_traits<GraphType>::edge_descriptor edge_t;
+            vertex = boost::python::object(PythonVertex(pg, target(edge_t(edge), g)));
         }
     };
 
-    python::object GetTarget() const
+    boost::python::object GetTarget() const
     {
         CheckValid();
-        GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
-        python::object v;
-        run_action<>()(gi, bind<void>(get_target(), _1, ref(_g), ref(_e),
-                                      ref(v)))();
+        GraphInterface& gi = boost::python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
+        boost::python::object v;
+        run_action<>()(gi, std::bind(get_target(), std::placeholders::_1,
+                                     std::ref(_g), std::ref(_e), std::ref(v)))();
         return v;
     }
 
     std::string GetString() const
     {
-        PythonVertex src = python::extract<PythonVertex>(GetSource());
-        PythonVertex tgt = python::extract<PythonVertex>(GetTarget());
+        PythonVertex src = boost::python::extract<PythonVertex>(GetSource());
+        PythonVertex tgt = boost::python::extract<PythonVertex>(GetTarget());
         return "(" + src.GetString() + ", " + tgt.GetString() + ")";
     }
 
     size_t GetHash() const
     {
         CheckValid();
-        GraphInterface& gi = python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
-        return hash<size_t>()(gi._edge_index[_e]);
+        GraphInterface& gi = boost::python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
+        return std::hash<size_t>()(gi._edge_index[_e]);
     }
 
     bool operator==(const PythonEdge& other) const
@@ -365,7 +381,7 @@ public:
     }
 
 private:
-    python::object _g;
+    boost::python::object _g;
     edge_descriptor _e;
     bool _valid;
 };
@@ -380,17 +396,17 @@ struct return_reference
         // return actual references only for non-string and non-python::object
         // classes
 
-        typedef typename mpl::if_<
-            typename mpl::and_<
-                is_class<ValueType>,
-                typename mpl::and_<
-                    typename mpl::not_<is_same<ValueType,
-                                               string> >::type,
-                    typename mpl::not_<is_same<ValueType,
-                                               python::object> >::type>::type
+        typedef typename boost::mpl::if_<
+            typename boost::mpl::and_<
+                std::is_class<ValueType>,
+                typename boost::mpl::and_<
+                    typename boost::mpl::not_<std::is_same<ValueType,
+                                                           string> >::type,
+                    typename boost::mpl::not_<std::is_same<ValueType,
+                                                           boost::python::object> >::type>::type
                 >::type,
-            mpl::bool_<true>,
-            mpl::bool_<false> >::type type;
+            boost::mpl::bool_<true>,
+            boost::mpl::bool_<false> >::type type;
     };
 };
 
@@ -401,9 +417,9 @@ public:
     PythonPropertyMap(const PropertyMap& pmap)
         : _pmap(pmap) {}
 
-    typedef typename property_traits<PropertyMap>::value_type value_type;
+    typedef typename boost::property_traits<PropertyMap>::value_type value_type;
 
-    typedef typename mpl::if_<
+    typedef typename boost::mpl::if_<
         typename return_reference::apply<value_type>::type,
         value_type&,
         value_type>::type reference;
@@ -421,14 +437,13 @@ public:
     void SetValue(const PythonDescriptor& key, value_type val)
     {
         set_value(key, val,
-                  is_convertible<
-                  typename property_traits<PropertyMap>::category,
-                  writable_property_map_tag>());
+                  std::is_convertible<typename boost::property_traits<PropertyMap>::category,
+                                      boost::writable_property_map_tag>());
     }
 
     template <class PythonDescriptor>
     void set_value(const PythonDescriptor& key, const value_type& val,
-                   true_type)
+                   std::true_type)
     {
         key.CheckValid();
         put(_pmap, key.GetDescriptor(), val);
@@ -436,24 +451,24 @@ public:
 
     template <class PythonDescriptor>
     void set_value(const PythonDescriptor& key, const value_type& val,
-                   false_type)
+                   std::false_type)
     {
         throw ValueException("property is read-only");
     }
 
     size_t GetHash() const
     {
-        return hash<size_t>()(size_t(this));
+        return std::hash<size_t>()(size_t(this));
     }
 
     std::string GetType() const
     {
-        using python::detail::gcc_demangle;
-        if (is_same<typename mpl::find<value_types,value_type>::type,
-                    typename mpl::end<value_types>::type>::value)
+        using boost::python::detail::gcc_demangle;
+        if (std::is_same<typename boost::mpl::find<value_types,value_type>::type,
+                         typename boost::mpl::end<value_types>::type>::value)
             return gcc_demangle(typeid(value_type).name());
         else
-            return type_names[mpl::find<value_types,
+            return type_names[boost::mpl::find<value_types,
                                         value_type>::type::pos::value];
     }
 
@@ -464,40 +479,40 @@ public:
 
     boost::any GetDynamicMap() const
     {
-        return (dynamic_property_map*)
+        return (boost::dynamic_property_map*)
             (new boost::detail::dynamic_property_map_adaptor<PropertyMap>
              (_pmap));
     }
 
-    python::object GetArray(size_t size)
+    boost::python::object GetArray(size_t size)
     {
-        typedef typename mpl::or_<
-              typename mpl::or_<
-                   is_same<PropertyMap,
-                           GraphInterface::vertex_index_map_t>,
-                   is_same<PropertyMap,
-                           GraphInterface::edge_index_map_t> >::type,
-              typename mpl::not_<
-                  typename mpl::has_key<numpy_types, value_type>::type >
+        typedef typename boost::mpl::or_<
+            typename boost::mpl::or_<
+                std::is_same<PropertyMap,
+                             GraphInterface::vertex_index_map_t>,
+                std::is_same<PropertyMap,
+                             GraphInterface::edge_index_map_t> >::type,
+            typename boost::mpl::not_<
+                typename boost::mpl::has_key<numpy_types, value_type>::type >
             ::type>::type isnt_vector_map;
         return get_array(_pmap, size, isnt_vector_map());
     }
 
-    python::object get_array(PropertyMap pmap, size_t size, mpl::bool_<false>)
+    boost::python::object get_array(PropertyMap pmap, size_t size, boost::mpl::bool_<false>)
     {
         _pmap.reserve(size);
         return wrap_vector_not_owned(_pmap.get_storage());
     }
 
-    python::object get_array(PropertyMap pmap, size_t size, mpl::bool_<true>)
+    boost::python::object get_array(PropertyMap pmap, size_t size, boost::mpl::bool_<true>)
     {
-        return python::object();
+        return boost::python::object();
     }
 
     bool IsWritable() const
     {
-        return is_convertible<typename property_traits<PropertyMap>::category,
-                              writable_property_map_tag>::value;
+        return std::is_convertible<typename boost::property_traits<PropertyMap>::category,
+                                   boost::writable_property_map_tag>::value;
     }
 
 private:
@@ -513,9 +528,9 @@ struct new_property_map
 {
     template <class ValueType, class IndexMap>
     void operator()(ValueType, IndexMap index, const string& type_name,
-                     boost::any pmap, python::object& new_prop, bool& found) const
+                     boost::any pmap, boost::python::object& new_prop, bool& found) const
     {
-        size_t i = mpl::find<value_types,ValueType>::type::pos::value;
+        size_t i = boost::mpl::find<value_types,ValueType>::type::pos::value;
         if (type_name == type_names[i])
         {
             typedef typename property_map_type::apply<ValueType, IndexMap>::type
@@ -524,22 +539,24 @@ struct new_property_map
             if (pmap.empty())
                 prop = map_t(index);
             else
-                prop = any_cast<map_t>(pmap);
+                prop = boost::any_cast<map_t>(pmap);
 
-            new_prop = python::object(PythonPropertyMap<map_t>(prop));
+            new_prop = boost::python::object(PythonPropertyMap<map_t>(prop));
             found = true;
         }
     }
 };
 
 template <class IndexMap>
-python::object new_property(const string& type, IndexMap index_map,
-                            boost::any pmap)
+boost::python::object new_property(const string& type, IndexMap index_map,
+                                   boost::any pmap)
 {
-    python::object prop;
+    boost::python::object prop;
     bool found = false;
-    mpl::for_each<value_types>(bind<void>(new_property_map(), _1, index_map,
-                                          ref(type), pmap, ref(prop), ref(found)));
+    boost::mpl::for_each<value_types>(std::bind(new_property_map(),
+                                                std::placeholders::_1, index_map,
+                                                std::ref(type), pmap, std::ref(prop),
+                                                std::ref(found)));
     if (!found)
         throw ValueException("Invalid property type: " + type);
     return prop;

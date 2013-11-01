@@ -100,8 +100,8 @@ void dfs_search(GraphInterface& g, python::object gi, size_t s,
                 python::object vis)
 {
     run_action<graph_tool::detail::all_graph_views,mpl::true_>()
-        (g, bind<void>(do_dfs(), _1, g.GetVertexIndex(),
-                       s, DFSVisitorWrapper(gi, vis)))();
+        (g, std::bind(do_dfs(), placeholders::_1, g.GetVertexIndex(),
+                      s, DFSVisitorWrapper(gi, vis)))();
 }
 
 void export_dfs()

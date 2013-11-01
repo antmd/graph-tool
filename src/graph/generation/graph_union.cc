@@ -40,20 +40,20 @@ struct get_pointers
     template <class List>
     struct apply
     {
-        typedef typename mpl::transform<List,
-                                        mpl::quote1<add_pointer> >::type type;
+        typedef typename boost::mpl::transform<List,
+                                               boost::mpl::quote1<std::add_pointer> >::type type;
     };
 };
 
-python::tuple graph_union(GraphInterface& ugi, GraphInterface& gi,
-                          boost::any avprop)
+boost::python::tuple graph_union(GraphInterface& ugi, GraphInterface& gi,
+                                 boost::any avprop)
 {
     vprop_t vprop = boost::any_cast<vprop_t>(avprop);
     eprop_t eprop(gi.GetEdgeIndex());
-    run_action<graph_tool::detail::always_directed,mpl::true_>()
-        (ugi, bind<void>(graph_tool::graph_union(),
-                         _1, _2, vprop, eprop),
+    run_action<graph_tool::detail::always_directed,boost::mpl::true_>()
+        (ugi, std::bind(graph_tool::graph_union(),
+                        placeholders::_1, placeholders::_2, vprop, eprop),
          get_pointers::apply<graph_tool::detail::always_directed>::type())
         (gi.GetGraphView());
-    return python::make_tuple(avprop, boost::any(eprop));
+    return boost::python::make_tuple(avprop, boost::any(eprop));
 }

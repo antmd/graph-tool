@@ -70,9 +70,9 @@ void get_all_dists(GraphInterface& gi, boost::any dist_map, boost::any weight,
         weight = boost::any(cweight_map_t(1));
 
     run_action<>()
-        (gi,
-         bind<void>(do_all_pairs_search(), _1, gi.GetVertexIndex(),
-                    _2, _3, dense),
+        (gi, std::bind(do_all_pairs_search(), placeholders::_1,
+                       gi.GetVertexIndex(), placeholders::_2, placeholders::_3,
+                       dense),
          vertex_scalar_vector_properties(),
          mpl::push_back<edge_scalar_properties,cweight_map_t>::type())
         (dist_map, weight);
@@ -82,4 +82,3 @@ void export_all_dists()
 {
     python::def("get_all_dists", &get_all_dists);
 };
-

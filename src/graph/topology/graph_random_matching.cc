@@ -78,7 +78,7 @@ struct do_random_matching
 
             if (!candidates.empty())
             {
-                tr1::uniform_int<> sample(0, candidates.size() - 1);
+                uniform_int_distribution<> sample(0, candidates.size() - 1);
                 size_t j = sample(rng);
                 match[candidates[j]] = true;
                 matched[v] = true;
@@ -99,8 +99,8 @@ void random_matching(GraphInterface& gi, boost::any weight, boost::any match,
         weight = weight_map_t(1);
 
     run_action<>()
-        (gi, bind<void>(do_random_matching(), _1, gi.GetVertexIndex(),
-                        _2, _3, minimize, ref(rng)),
+        (gi, std::bind(do_random_matching(), placeholders::_1, gi.GetVertexIndex(),
+                       placeholders::_2, placeholders::_3, minimize, std::ref(rng)),
          edge_props_t(), writable_edge_scalar_properties())(weight, match);
 }
 

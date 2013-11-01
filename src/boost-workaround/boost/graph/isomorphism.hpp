@@ -144,12 +144,12 @@ namespace boost {
           std::vector<invar1_value> invar1_array;
           BGL_FORALL_VERTICES_T(v, G1, Graph1)
             invar1_array.push_back(invariant1(v));
-          sort(invar1_array);
+          std::sort(invar1_array.begin(), invar1_array.end());
         
           std::vector<invar2_value> invar2_array;
           BGL_FORALL_VERTICES_T(v, G2, Graph2)
             invar2_array.push_back(invariant2(v));
-          sort(invar2_array);
+          std::sort(invar2_array.begin(), invar2_array.end());
           if (! equal(invar1_array, invar2_array))
             return false;
         }
@@ -161,7 +161,8 @@ namespace boost {
           std::vector<size_type> multiplicity(max_invariant, 0);
           BGL_FORALL_VERTICES_T(v, G1, Graph1)
             ++multiplicity.at(invariant1(v));
-          sort(V_mult, compare_multiplicity(invariant1, &multiplicity[0]));
+          std::sort(V_mult.begin(), V_mult.end(),
+                    compare_multiplicity(invariant1, &multiplicity[0]));
         }
         
         std::vector<default_color_type> color_vec(num_vertices(G1));
@@ -193,7 +194,7 @@ namespace boost {
         for (vertex_iter v = dfs_vertices.begin(); v != dfs_vertices.end(); ++v)
           dfs_num[*v] = n++;
         
-        sort(ordered_edges, edge_cmp(G1, dfs_num));
+        std::sort(ordered_edges.begin(), ordered_edges.end(), edge_cmp(G1, dfs_num));
         
     
         int dfs_num_k = -1;

@@ -19,18 +19,19 @@
 #define GRAPH_MOTIFS_HH
 
 #include <boost/graph/isomorphism.hpp>
-#include "tr1_include.hh"
-#include TR1_HEADER(unordered_set)
+#include <unordered_set>
 #include <boost/functional/hash.hpp>
 #include <algorithm>
+#include <vector>
 
 #include "random.hh"
 
 namespace graph_tool
 {
+using namespace boost;
 
 template <class Value>
-void insert_sorted(vector<Value>& v, const Value& val)
+void insert_sorted(std::vector<Value>& v, const Value& val)
 {
     typeof(v.begin()) iter = lower_bound(v.begin(), v.end(), val);
     if (iter != v.end() && *iter == val)
@@ -39,7 +40,7 @@ void insert_sorted(vector<Value>& v, const Value& val)
 }
 
 template <class Value>
-bool has_val(vector<Value>& v, const Value& val)
+bool has_val(std::vector<Value>& v, const Value& val)
 {
     typeof(v.begin()) iter = lower_bound(v.begin(), v.end(), val);
     if (iter == v.end())
@@ -51,15 +52,15 @@ bool has_val(vector<Value>& v, const Value& val)
 template <class Graph, class Sampler>
 void get_subgraphs(Graph& g, typename graph_traits<Graph>::vertex_descriptor v,
                    size_t n,
-                   vector<vector<typename graph_traits<Graph>::vertex_descriptor> >& subgraphs,
+                   std::vector<std::vector<typename graph_traits<Graph>::vertex_descriptor> >& subgraphs,
                    Sampler sampler)
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
     // extension and subgraph stack
-    vector<vector<vertex_t> > ext_stack(1);
-    vector<vector<vertex_t> > sub_stack(1);
-    vector<vector<vertex_t> > sub_neighbours_stack(1);
+    std::vector<std::vector<vertex_t> > ext_stack(1);
+    std::vector<std::vector<vertex_t> > sub_stack(1);
+    std::vector<std::vector<vertex_t> > sub_neighbours_stack(1);
 
     sub_stack[0].push_back(v);
     typename graph_traits<Graph>::out_edge_iterator e, e_end;
@@ -75,9 +76,9 @@ void get_subgraphs(Graph& g, typename graph_traits<Graph>::vertex_descriptor v,
 
     while (!sub_stack.empty())
     {
-        vector<vertex_t>& ext = ext_stack.back();
-        vector<vertex_t>& sub = sub_stack.back();
-        vector<vertex_t>& sub_neighbours = sub_neighbours_stack.back();
+        std::vector<vertex_t>& ext = ext_stack.back();
+        std::vector<vertex_t>& sub = sub_stack.back();
+        std::vector<vertex_t>& sub_neighbours = sub_neighbours_stack.back();
 
         if (sub.size() == n)
         {
@@ -101,7 +102,7 @@ void get_subgraphs(Graph& g, typename graph_traits<Graph>::vertex_descriptor v,
         else
         {
             // extend subgraph
-            vector<vertex_t> new_ext, new_sub = sub,
+            std::vector<vertex_t> new_ext, new_sub = sub,
                 new_sub_neighbours = sub_neighbours;
 
             // remove w from ext
@@ -138,19 +139,19 @@ void get_subgraphs(Graph& g, typename graph_traits<Graph>::vertex_descriptor v,
 struct sample_all
 {
     template <class val_type>
-    void operator()(vector<val_type>&, size_t) {}
+    void operator()(std::vector<val_type>&, size_t) {}
 };
 
 struct sample_some
 {
-    sample_some(vector<double>& p, rng_t& rng): _p(&p), _rng(&rng) {}
+    sample_some(std::vector<double>& p, rng_t& rng): _p(&p), _rng(&rng) {}
     sample_some() {}
 
     template <class val_type>
-    void operator()(vector<val_type>& extend, size_t d)
+    void operator()(std::vector<val_type>& extend, size_t d)
     {
-        typedef tr1::uniform_real<double> rdist_t;
-        tr1::variate_generator<rng_t&, rdist_t> random(*_rng, rdist_t());
+        typedef std::uniform_real_distribution<double> rdist_t;
+        auto random = std::bind(rdist_t(), std::ref(*_rng));
 
         double pd = (*_p)[d+1];
         size_t nc = extend.size();
@@ -174,11 +175,11 @@ struct sample_some
             return;
         }
 
-        typedef tr1::uniform_int<size_t> idist_t;
+        typedef std::uniform_int_distribution<size_t> idist_t;
         for (size_t i = 0; i < n; ++i)
         {
-            tr1::variate_generator<rng_t&, idist_t>
-                random_v(*_rng, idist_t(0, extend.size()-i-1));
+            auto random_v = std::bind(idist_t(0, extend.size()-i-1),
+                                      std::ref(*_rng));
             size_t j;
             {
                 #pragma omp critical
@@ -189,7 +190,7 @@ struct sample_some
         extend.resize(n);
     }
 
-    vector<double>* _p;
+    std::vector<double>* _p;
     rng_t* _rng;
 };
 
@@ -197,7 +198,7 @@ struct sample_some
 // build the actual induced subgraph from the vertex list
 template <class Graph, class GraphSG>
 void make_subgraph
-    (vector<typename graph_traits<Graph>::vertex_descriptor>& vlist,
+    (std::vector<typename graph_traits<Graph>::vertex_descriptor>& vlist,
      Graph& g, GraphSG& sub)
 {
     for (size_t i = 0; i < vlist.size(); ++i)
@@ -237,7 +238,7 @@ bool graph_cmp(Graph& g1, Graph& g2)
         if (in_degreeS()(*v1, g1) != in_degreeS()(*v2, g2))
             return false;
 
-        vector<typename graph_traits<Graph>::vertex_descriptor> out1, out2;
+        std::vector<typename graph_traits<Graph>::vertex_descriptor> out1, out2;
         typename graph_traits<Graph>::out_edge_iterator e, e_end;
         for (tie(e, e_end) = out_edges(*v1, g1); e != e_end; ++e)
             out1.push_back(target(*e, g1));
@@ -269,7 +270,7 @@ struct wrap_undirected
 
 // get the signature of the graph: sorted degree sequence
 template <class Graph>
-void get_sig(Graph& g, vector<size_t>& sig)
+void get_sig(Graph& g, std::vector<size_t>& sig)
 {
     sig.clear();
     size_t N = num_vertices(g);
@@ -300,7 +301,7 @@ struct get_all_motifs
 
     template <class Graph, class Sampler, class VMap>
     void operator()(Graph& g, size_t k, boost::any& list,
-                    vector<size_t>& hist, vector<vector<VMap> >& vmaps,
+                    std::vector<size_t>& hist, std::vector<std::vector<VMap> >& vmaps,
                     Sampler sampler) const
     {
         typedef typename mpl::if_<typename is_directed::apply<Graph>::type,
@@ -308,14 +309,14 @@ struct get_all_motifs
                                   u_graph_t>::type graph_sg_t;
 
         // the main subgraph lists
-        vector<graph_sg_t>& subgraph_list =
-            any_cast<vector<graph_sg_t>&>(list);
+        std::vector<graph_sg_t>& subgraph_list =
+            any_cast<std::vector<graph_sg_t>&>(list);
 
         // this hashes subgraphs according to their signature
-        tr1::unordered_map<vector<size_t>,
-                           vector<pair<size_t, graph_sg_t> >,
-                           hash<vector<size_t> > > sub_list;
-        vector<size_t> sig; // current signature
+        std::unordered_map<std::vector<size_t>,
+                           std::vector<pair<size_t, graph_sg_t> >,
+                           std::hash<std::vector<size_t>>> sub_list;
+        std::vector<size_t> sig; // current signature
 
         for (size_t i = 0; i < subgraph_list.size(); ++i)
         {
@@ -326,11 +327,11 @@ struct get_all_motifs
         // the subgraph count
         hist.resize(subgraph_list.size());
 
-        typedef tr1::uniform_real<double> rdist_t;
-        tr1::variate_generator<rng_t&, rdist_t> random(rng, rdist_t());
+        typedef std::uniform_real_distribution<double> rdist_t;
+        auto random = std::bind(rdist_t(), std::ref(rng));
 
         // the set of vertices V to be sampled (filled only if p < 1)
-        vector<size_t> V;
+        std::vector<size_t> V;
         if (p < 1)
         {
             typename graph_traits<Graph>::vertex_iterator v, v_end;
@@ -343,12 +344,11 @@ struct get_all_motifs
             else
                 n = size_t(floor(V.size()*p));
 
-            typedef tr1::uniform_int<size_t> idist_t;
+            typedef std::uniform_int_distribution<size_t> idist_t;
             for (size_t i = 0; i < n; ++i)
             {
-                tr1::variate_generator<rng_t&, idist_t>
-                    random_v(rng, idist_t(0, V.size()-i-1));
-
+                auto random_v = std::bind(idist_t(0, V.size()-i-1),
+                                          std::ref(rng));
                 size_t j = i + random_v();
                 swap(V[i], V[j]);
             }
@@ -360,7 +360,7 @@ struct get_all_motifs
             schedule(static) if (N > 100)
         for (i = 0; i < N; ++i)
         {
-            vector<vector<typename graph_traits<Graph>::vertex_descriptor> >
+            std::vector<std::vector<typename graph_traits<Graph>::vertex_descriptor> >
                 subgraphs;
             typename graph_traits<Graph>::vertex_descriptor v =
                 (p < 1) ? V[i] : vertex(i, g);

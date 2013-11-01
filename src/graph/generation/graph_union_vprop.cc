@@ -40,8 +40,8 @@ struct get_pointers
     template <class List>
     struct apply
     {
-        typedef typename mpl::transform<List,
-                                        mpl::quote1<add_pointer> >::type type;
+        typedef typename boost::mpl::transform<List,
+                                               boost::mpl::quote1<std::add_pointer> >::type type;
     };
 };
 
@@ -53,8 +53,9 @@ void vertex_property_union(GraphInterface& ugi, GraphInterface& gi,
     eprop_t eprop = any_cast<eprop_t>(p_eprop);
 
     run_action<graph_tool::detail::always_directed>()
-        (ugi, bind<void>(graph_tool::property_union(),
-                         _1, _2, vprop, eprop, _3, prop),
+        (ugi, std::bind(graph_tool::property_union(),
+                        placeholders::_1, placeholders::_2, vprop, eprop,
+                        placeholders::_3, prop),
          get_pointers::apply<graph_tool::detail::always_directed>::type(),
          writable_vertex_properties())
         (gi.GetGraphView(), uprop);

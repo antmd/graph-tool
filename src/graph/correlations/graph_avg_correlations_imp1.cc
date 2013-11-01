@@ -28,8 +28,8 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-void graph_avg_corr_imp1(GraphInterface& g, python::object& avg,
-                         python::object& dev, python::object& ret_bins,
+void graph_avg_corr_imp1(GraphInterface& g, boost::python::object& avg,
+                         boost::python::object& dev, boost::python::object& ret_bins,
                          boost::any deg1, boost::any deg2,
                          boost::any weight,
                          const vector<long double>& bins)
@@ -39,7 +39,6 @@ void graph_avg_corr_imp1(GraphInterface& g, python::object& avg,
     run_action<>()(g, get_avg_correlation<GetNeighboursPairs>
                    (avg, dev, bins, ret_bins),
                    scalar_selectors(), scalar_selectors(),
-                   mpl::vector<wrapped_weight_t>())
+                   boost::mpl::vector<wrapped_weight_t>())
         (deg1, deg2, weight);
 }
-

@@ -36,8 +36,8 @@ void normalize_betweenness(const Graph& g,
 {
     double vfactor = (n > 2) ? 1.0/((n-1)*(n-2)) : 1.0;
     double efactor = (n > 1) ? 1.0/(n*(n-1)) : 1.0;
-    if (is_convertible<typename graph_traits<Graph>::directed_category,
-                       undirected_tag>::value)
+    if (std::is_convertible<typename graph_traits<Graph>::directed_category,
+                            undirected_tag>::value)
     {
         vfactor *= 2;
         efactor *= 2;
@@ -63,6 +63,7 @@ void normalize_betweenness(const Graph& g,
 
 struct get_betweenness
 {
+    typedef void result_type;
     template <class Graph, class EdgeBetweenness, class VertexBetweenness>
     void operator()(Graph& g,
                     GraphInterface::vertex_index_map_t index_map,
@@ -90,6 +91,7 @@ struct get_betweenness
 
 struct get_weighted_betweenness
 {
+    typedef void result_type;
     template <class Graph, class EdgeBetweenness, class VertexBetweenness,
               class VertexIndexMap>
         void operator()(Graph& g, VertexIndexMap vertex_index,
@@ -137,10 +139,11 @@ void betweenness(GraphInterface& g, boost::any weight,
     if (!weight.empty())
     {
         run_action<>()
-            (g, bind<void>
-             (get_weighted_betweenness(), _1, g.GetVertexIndex(),
-              _2, _3, weight, normalize,
-              g.GetNumberOfVertices(), g.GetMaxEdgeIndex()),
+            (g, std::bind<>(get_weighted_betweenness(),
+                            std::placeholders::_1, g.GetVertexIndex(),
+                            std::placeholders::_2,
+                            std::placeholders::_3, weight, normalize,
+                            g.GetNumberOfVertices(), g.GetMaxEdgeIndex()),
              edge_floating_properties(),
              vertex_floating_properties())
             (edge_betweenness, vertex_betweenness);
@@ -148,8 +151,10 @@ void betweenness(GraphInterface& g, boost::any weight,
     else
     {
         run_action<>()
-            (g, bind<void>(get_betweenness(), _1, g.GetVertexIndex(), _2,
-                           _3, normalize, g.GetNumberOfVertices()),
+            (g, std::bind<void>(get_betweenness(), std::placeholders::_1,
+                                g.GetVertexIndex(), std::placeholders::_2,
+                                std::placeholders::_3, normalize,
+                                g.GetNumberOfVertices()),
              edge_floating_properties(),
              vertex_floating_properties())
             (edge_betweenness, vertex_betweenness);
@@ -171,8 +176,8 @@ double central_point(GraphInterface& g,
 {
     double c = 0.0;
     run_action<graph_tool::detail::never_reversed>()
-        (g, bind<void>(get_central_point_dominance(), _1,
-                       _2, ref(c)),
+        (g, std::bind<>(get_central_point_dominance(), std::placeholders::_1,
+                        std::placeholders::_2, std::ref(c)),
          vertex_scalar_properties()) (vertex_betweenness);
     return c;
 }

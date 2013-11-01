@@ -30,7 +30,7 @@ template <class GetDegreePair>
 struct get_correlation_histogram
 {
     get_correlation_histogram(python::object& hist,
-                              const array<vector<long double>,2>& bins,
+                              const std::array<vector<long double>,2>& bins,
                               python::object& ret_bins)
         : _hist(hist), _bins(bins), _ret_bins(ret_bins) {}
 
@@ -50,7 +50,7 @@ struct get_correlation_histogram
         typedef typename property_traits<WeightMap>::value_type count_type;
         typedef Histogram<val_type, count_type, 2> hist_t;
 
-        array<vector<val_type>,2> bins;
+        std::array<vector<val_type>,2> bins;
         for (size_t i = 0; i < bins.size(); ++i)
             clean_bins(_bins[i], bins[i]);
 
@@ -79,7 +79,7 @@ struct get_correlation_histogram
         _hist = wrap_multi_array_owned<count_type,2>(hist.GetArray());
     }
     python::object& _hist;
-    const array<vector<long double>,2>& _bins;
+    const std::array<vector<long double>,2>& _bins;
     python::object& _ret_bins;
 };
 

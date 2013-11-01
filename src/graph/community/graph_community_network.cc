@@ -48,8 +48,8 @@ struct get_community_network_vertices_dispatch
     {
         typename CommunityMap::checked_t cs_map = boost::any_cast<typename CommunityMap::checked_t>(acs_map);
 
-        typedef typename mpl::if_<is_same<no_vweight_map_t, VertexWeightMap>,
-                                  vcount_map_t, VertexWeightMap>::type vweight_t;
+        typedef typename boost::mpl::if_<std::is_same<no_vweight_map_t, VertexWeightMap>,
+                                         vcount_map_t, VertexWeightMap>::type vweight_t;
         typename vweight_t::checked_t vertex_count = boost::any_cast<typename vweight_t::checked_t>(vcount);
 
         get_community_network_vertices()(g, cg, s_map, cs_map, vweight, vertex_count);
@@ -70,8 +70,8 @@ struct get_community_network_edges_dispatch
     {
         typename CommunityMap::checked_t cs_map = boost::any_cast<typename CommunityMap::checked_t>(acs_map);
 
-        typedef typename mpl::if_<is_same<no_eweight_map_t, EdgeWeightMap>,
-                                  ecount_map_t, EdgeWeightMap>::type eweight_t;
+        typedef typename boost::mpl::if_<std::is_same<no_eweight_map_t, EdgeWeightMap>,
+                                         ecount_map_t, EdgeWeightMap>::type eweight_t;
 
         typename eweight_t::checked_t edge_count = boost::any_cast<typename eweight_t::checked_t>(ecount);
         get_community_network_edges()(g, cg, cedge_index, s_map,
@@ -89,9 +89,9 @@ void community_network(GraphInterface& gi, GraphInterface& cgi,
                        boost::any eweight,
                        bool self_loops)
 {
-    typedef mpl::push_back<writable_vertex_scalar_properties, no_vweight_map_t>::type
+    typedef boost::mpl::push_back<writable_vertex_scalar_properties, no_vweight_map_t>::type
         vweight_properties;
-    typedef mpl::push_back<writable_edge_scalar_properties, no_eweight_map_t>::type
+    typedef boost::mpl::push_back<writable_edge_scalar_properties, no_eweight_map_t>::type
         eweight_properties;
 
     if (eweight.empty())
@@ -99,36 +99,36 @@ void community_network(GraphInterface& gi, GraphInterface& cgi,
     if (vweight.empty())
         vweight = no_vweight_map_t(1);
 
-    typedef mpl::insert_range<writable_vertex_scalar_properties,
-                              mpl::end<writable_vertex_scalar_properties>::type,
-                              vertex_scalar_vector_properties>::type vprops_temp;
-    typedef mpl::push_back<vprops_temp,
-                           property_map_type::apply<python::object,
-                                                    GraphInterface::vertex_index_map_t>::type>::type
+    typedef boost::mpl::insert_range<writable_vertex_scalar_properties,
+                                     boost::mpl::end<writable_vertex_scalar_properties>::type,
+                                     vertex_scalar_vector_properties>::type vprops_temp;
+    typedef boost::mpl::push_back<vprops_temp,
+                                  property_map_type::apply<boost::python::object,
+                                                           GraphInterface::vertex_index_map_t>::type>::type
         vprops_t;
 
-    typedef mpl::insert_range<writable_edge_scalar_properties,
-                              mpl::end<writable_edge_scalar_properties>::type,
-                              edge_scalar_vector_properties>::type eprops_temp;
-    typedef mpl::push_back<eprops_temp,
-                           property_map_type::apply<python::object,
-                                                    GraphInterface::edge_index_map_t>::type>::type
+    typedef boost::mpl::insert_range<writable_edge_scalar_properties,
+                                     boost::mpl::end<writable_edge_scalar_properties>::type,
+                                     edge_scalar_vector_properties>::type eprops_temp;
+    typedef boost::mpl::push_back<eprops_temp,
+                                  property_map_type::apply<boost::python::object,
+                                                           GraphInterface::edge_index_map_t>::type>::type
         eprops_t;
 
 
     run_action<>()
-        (gi, bind<void>(get_community_network_vertices_dispatch(),
-                        _1, ref(cgi.GetGraph()),
-                         _2, condensed_community_property,
-                        _3, vertex_count),
+        (gi, std::bind(get_community_network_vertices_dispatch(),
+                       placeholders::_1, std::ref(cgi.GetGraph()),
+                       placeholders::_2, condensed_community_property,
+                       placeholders::_3, vertex_count),
          writable_vertex_properties(), vweight_properties())
         (community_property, vweight);
 
     run_action<>()
-        (gi, bind<void>(get_community_network_edges_dispatch(self_loops),
-                        _1, ref(cgi.GetGraph()), cgi.GetEdgeIndex(),
-                         _2, condensed_community_property,
-                        _3, edge_count),
+        (gi, std::bind(get_community_network_edges_dispatch(self_loops),
+                       placeholders::_1, std::ref(cgi.GetGraph()), cgi.GetEdgeIndex(),
+                       placeholders::_2, condensed_community_property,
+                       placeholders::_3, edge_count),
          writable_vertex_properties(), eweight_properties())
         (community_property, eweight);
 }

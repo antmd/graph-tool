@@ -21,8 +21,17 @@
 
 #include <boost/bind.hpp>
 
+#ifndef __clang__
 #include <ext/numeric>
 using __gnu_cxx::power;
+#else
+template <class Value>
+Value power(Value value, int n)
+{
+    return pow(value, n);
+}
+#endif
+
 #include <boost/math/special_functions/gamma.hpp>
 #include <boost/math/special_functions/hypot.hpp>
 #include <boost/math/constants/constants.hpp>
@@ -158,7 +167,7 @@ void fruchterman_reingold_layout(GraphInterface& g, boost::any pos,
                                  double ti, double tf, size_t max_iter)
 {
     typedef ConstantPropertyMap<double,GraphInterface::edge_t> weight_map_t;
-    typedef mpl::push_back<edge_scalar_properties, weight_map_t>::type
+    typedef boost::mpl::push_back<edge_scalar_properties, weight_map_t>::type
         edge_props_t;
 
     if(weight.empty())
@@ -166,19 +175,18 @@ void fruchterman_reingold_layout(GraphInterface& g, boost::any pos,
     if (square)
         run_action<graph_tool::detail::never_directed>()
             (g,
-             bind<void>(get_layout<square_topology<> >(), _1,
-                        _2, _3, make_pair(a, r), scale,
-                        grid, make_pair(ti, tf), max_iter),
+             std::bind(get_layout<square_topology<> >(), placeholders::_1,
+                       placeholders::_2, placeholders::_3, make_pair(a, r), scale,
+                       grid, make_pair(ti, tf), max_iter),
              vertex_floating_vector_properties(), edge_props_t())
             (pos, weight);
     else
         run_action<graph_tool::detail::never_directed>()
             (g,
-             bind<void>(get_layout<circle_topology<> >(), _1,
-                        _2, _3, make_pair(a, r), scale,
-                        grid, make_pair(ti, tf), max_iter),
-             vertex_floating_vector_properties(), edge_props_t())
-            (pos, weight);
+             std::bind(get_layout<circle_topology<> >(), placeholders::_1,
+                       placeholders::_2, placeholders::_3, make_pair(a, r),
+                       scale, grid, make_pair(ti, tf), max_iter),
+             vertex_floating_vector_properties(), edge_props_t()) (pos, weight);
 }
 
 #include <boost/python.hpp>

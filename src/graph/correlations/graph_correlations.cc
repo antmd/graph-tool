@@ -34,16 +34,16 @@ using namespace graph_tool;
 
 // implementations spread across different compile units to minimize memory
 // usage during compilation
-void graph_correlations_imp1(GraphInterface& g, python::object& hist,
-                             python::object& ret_bins,
+void graph_correlations_imp1(GraphInterface& g, boost::python::object& hist,
+                             boost::python::object& ret_bins,
                              boost::any deg1, boost::any deg2,
                              boost::any weight,
-                             const array<vector<long double>,2>& bins);
+                             const std::array<vector<long double>,2>& bins);
 
 
 typedef ConstantPropertyMap<int,GraphInterface::edge_t> cweight_map_t;
 
-python::object
+boost::python::object
 get_vertex_correlation_histogram(GraphInterface& gi,
                                  GraphInterface::deg_t deg1,
                                  GraphInterface::deg_t deg2,
@@ -51,10 +51,10 @@ get_vertex_correlation_histogram(GraphInterface& gi,
                                  const vector<long double>& xbin,
                                  const vector<long double>& ybin)
 {
-    python::object hist;
-    python::object ret_bins;
+    boost::python::object hist;
+    boost::python::object ret_bins;
 
-    array<vector<long double>,2> bins;
+    std::array<vector<long double>,2> bins;
     bins[0] = xbin;
     bins[1] = ybin;
 
@@ -74,7 +74,7 @@ get_vertex_correlation_histogram(GraphInterface& gi,
         run_action<>()(gi, get_correlation_histogram<GetNeighboursPairs>
                        (hist, bins, ret_bins),
                        scalar_selectors(), scalar_selectors(),
-                       mpl::vector<cweight_map_t>())
+                       boost::mpl::vector<cweight_map_t>())
             (degree_selector(deg1), degree_selector(deg2), weight_prop);
     }
     catch (ActionNotFound&)
@@ -83,7 +83,7 @@ get_vertex_correlation_histogram(GraphInterface& gi,
                                 degree_selector(deg2), weight_prop, bins);
     }
 
-    return python::make_tuple(hist, ret_bins);
+    return boost::python::make_tuple(hist, ret_bins);
 }
 
 using namespace boost::python;

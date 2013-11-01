@@ -36,17 +36,17 @@ python::object distance_histogram(GraphInterface& gi, boost::any weight,
     if (weight.empty())
     {
         run_action<>()(gi,
-                       bind<void>(get_distance_histogram(), _1,
-                                  gi.GetVertexIndex(), no_weightS(),
-                                  ref(bins), ref(ret)))();
+                       std::bind(get_distance_histogram(), placeholders::_1,
+                                 gi.GetVertexIndex(), no_weightS(),
+                                 std::ref(bins), std::ref(ret)))();
     }
     else
     {
         run_action<>()(gi,
-                       bind<void>(get_distance_histogram(), _1,
-                                  gi.GetVertexIndex(), _2,
-                                  ref(bins), ref(ret)),
-                           edge_scalar_properties())(weight);
+                       std::bind(get_distance_histogram(), placeholders::_1,
+                                 gi.GetVertexIndex(), placeholders::_2,
+                                 std::ref(bins), std::ref(ret)),
+                       edge_scalar_properties())(weight);
     }
     return ret;
 }

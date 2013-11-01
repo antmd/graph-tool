@@ -18,8 +18,7 @@
 #ifndef GRAPH_ASSORTATIVITY_HH
 #define GRAPH_ASSORTATIVITY_HH
 
-#include "tr1_include.hh"
-#include TR1_HEADER(unordered_map)
+#include <unordered_map>
 
 #include "shared_map.hh"
 #include "graph_util.hh"
@@ -28,6 +27,7 @@ namespace graph_tool
 {
 using namespace std;
 using namespace boost;
+
 
 // this will calculate the assortativity coefficient, based on the property
 // pointed by 'deg'
@@ -44,8 +44,12 @@ struct get_assortativity_coefficient
         count_t c = (is_directed::apply<Graph>::type::value) ? count_t(1) : count_t(0.5);
         count_t n_edges = 0;
         count_t e_kk = 0;
-        tr1::unordered_map<double,count_t> a, b;
-        SharedMap<tr1::unordered_map<double,count_t> > sa(a), sb(b);
+
+        typedef typename DegreeSelector::value_type val_t;
+        typedef unordered_map<val_t, count_t> map_t;
+        map_t a, b;
+
+        SharedMap<map_t> sa(a), sb(b);
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i) firstprivate(sa,sb)\
             schedule(static) if (N > 100) reduction(+:e_kk, n_edges)
@@ -55,11 +59,11 @@ struct get_assortativity_coefficient
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
 
-            double k1 = double(deg(v, g));
+            val_t k1 = deg(v, g);
             typename graph_traits<Graph>::out_edge_iterator e, e_end;
             for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
             {
-                double k2 = double(deg(target(*e, g), g));
+                val_t k2 = deg(target(*e, g), g);
                 if (k1 == k2)
                     e_kk += c;
                 sa[k1] += c;
@@ -71,7 +75,7 @@ struct get_assortativity_coefficient
         sa.Gather();
         sb.Gather();
 
-        double t1=double(e_kk)/n_edges, t2=0.0;
+        double t1 = double(e_kk) / n_edges, t2 = 0.0;
 
         for (typeof(a.begin()) iter = a.begin(); iter != a.end(); ++iter)
             if (b.find(iter->second) != b.end())
@@ -90,13 +94,13 @@ struct get_assortativity_coefficient
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
 
-            double k1 = double(deg(v, g));
+            val_t k1 = deg(v, g);
             typename graph_traits<Graph>::out_edge_iterator e, e_end;
             for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
             {
-                double k2 = double(deg(target(*e,g),g));
+                val_t k2 = deg(target(*e,g), g);
                 double tl2 = (t2*(n_edges*n_edges) - b[k1] - a[k2])/
-                    ((n_edges-1)*(n_edges-1));
+                    ((n_edges-1.)*(n_edges-1.));
                 double tl1 = t1*n_edges;
                 if (k1 == k2)
                     tl1 -= 1;

@@ -116,7 +116,7 @@ struct do_bfs_search
         target = source;
         breadth_first_search(g, vertex(source, g),
                              visitor(bfs_diam_visitor<dist_map_t>
-                                     (dist_map, ref(target))).
+                                      (dist_map, std::ref(target))).
                              vertex_index_map(vertex_index).
                              color_map(color_map));
         max_dist = dist_map[vertex(target, g)];
@@ -138,7 +138,7 @@ struct do_djk_search
                                 distance_map(dist_map).
                                 vertex_index_map(vertex_index).
                                 visitor(djk_diam_visitor<dist_map_t>
-                                        (dist_map, ref(target))));
+                                        (dist_map, std::ref(target))));
         max_dist = dist_map[vertex(target, g)];
     }
 };
@@ -150,14 +150,14 @@ python::object get_diam(GraphInterface& gi, size_t source, boost::any weight)
     if (weight.empty())
     {
         run_action<>()
-            (gi, bind<void>(do_bfs_search(), _1, source, gi.GetVertexIndex(),
-                            ref(target), ref(max_dist)))();
+            (gi, std::bind(do_bfs_search(), placeholders::_1, source, gi.GetVertexIndex(),
+                           std::ref(target), std::ref(max_dist)))();
     }
     else
     {
         run_action<>()
-            (gi, bind<void>(do_djk_search(), _1, source, gi.GetVertexIndex(),
-                            _2, ref(target), ref(max_dist)),
+            (gi, std::bind(do_djk_search(), placeholders::_1, source, gi.GetVertexIndex(),
+                           placeholders::_2, std::ref(target), std::ref(max_dist)),
              edge_scalar_properties())(weight);
 
     }

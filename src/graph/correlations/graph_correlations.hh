@@ -128,10 +128,10 @@ struct select_float_and_larger
     struct apply
     {
         typedef typename mpl::if_<
-            typename mpl::and_<is_floating_point<Type1>,
-                               is_floating_point<Type2> >::type,
+            typename mpl::and_<std::is_floating_point<Type1>,
+                               std::is_floating_point<Type2> >::type,
             typename select_larger_type::apply<Type1,Type2>::type,
-            typename mpl::if_<is_floating_point<Type1>,
+            typename mpl::if_<std::is_floating_point<Type1>,
                               Type1,
                               Type2>::type>::type type;
     };

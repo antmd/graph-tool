@@ -18,11 +18,9 @@
 #ifndef RANDOM_HH
 #define RANDOM_HH
 
-#include "graph.hh"
-#include "tr1_include.hh"
-#include TR1_HEADER(random)
+#include <random>
 
-typedef std::tr1::mt19937 rng_t;
+typedef std::mt19937 rng_t;
 
 rng_t get_rng(size_t seed);
 

@@ -60,7 +60,7 @@ struct get_distance_histogram
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
         // select get_vertex_dists based on the existence of weights
-        typedef typename mpl::if_<is_same<WeightMap, no_weightS>,
+        typedef typename mpl::if_<std::is_same<WeightMap, no_weightS>,
                                   get_dists_bfs,
                                   get_dists_djk>::type get_vertex_dists_t;
 
@@ -68,7 +68,7 @@ struct get_distance_histogram
         typedef typename get_val_type<WeightMap>::type val_type;
         typedef Histogram<val_type, size_t, 1> hist_t;
 
-        array<vector<val_type>,1> bins;
+        std::array<vector<val_type>,1> bins;
         bins[0].resize(obins.size());
         for (size_t i = 0; i < obins.size(); ++i)
             bins[0][i] = obins[i];
@@ -137,8 +137,8 @@ struct get_distance_histogram
                         DistanceMap dist_map, no_weightS) const
         {
             typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-            typedef tr1::unordered_map<vertex_t,default_color_type,
-                                       DescriptorHash<VertexIndex> > cmap_t;
+            typedef unordered_map<vertex_t,default_color_type,
+                                  DescriptorHash<VertexIndex> > cmap_t;
             cmap_t cmap(0, DescriptorHash<VertexIndex>(vertex_index));
             InitializedPropertyMap<cmap_t>
                 color_map(cmap, color_traits<default_color_type>::white());

@@ -54,10 +54,10 @@
 #include "graph_util.hh"
 #include "mpl_nested_loop.hh"
 
+#include <type_traits>
+
 namespace graph_tool
 {
-
-using namespace boost;
 
 // Graph filtering
 // ---------------
@@ -141,7 +141,7 @@ template <class DescriptorProperty>
 class MaskFilter
 {
 public:
-    typedef typename property_traits<DescriptorProperty>::value_type value_t;
+    typedef typename boost::property_traits<DescriptorProperty>::value_type value_t;
     MaskFilter(){}
     MaskFilter(DescriptorProperty filtered_property, bool invert)
         : _filtered_property(filtered_property), _invert(invert) {}
@@ -179,9 +179,9 @@ struct get_predicate
 };
 
 template <>
-struct get_predicate<keep_all>
+struct get_predicate<boost::keep_all>
 {
-    typedef keep_all type;
+    typedef boost::keep_all type;
 };
 
 // metafunction to get the filtered graph type
@@ -194,18 +194,18 @@ struct graph_filter
         typedef typename get_predicate<EdgeProperty>::type edge_predicate;
         typedef typename get_predicate<VertexProperty>::type vertex_predicate;
 
-        typedef filtered_graph<Graph,
-                               edge_predicate,
-                               vertex_predicate> filtered_graph_t;
+        typedef boost::filtered_graph<Graph,
+                                      edge_predicate,
+                                      vertex_predicate> filtered_graph_t;
 
         // If both predicates are keep_all, then return the original graph
         // type. Otherwise return the filtered_graph type.
-        typedef typename mpl::if_<
-            typename mpl::and_<
+        typedef typename boost::mpl::if_<
+            typename boost::mpl::and_<
                 is_same<edge_predicate,
-                        keep_all>,
+                        boost::keep_all>,
                 is_same<vertex_predicate,
-                        keep_all>
+                        boost::keep_all>
                 >::type,
             Graph,
             filtered_graph_t>::type type;
@@ -218,7 +218,7 @@ struct graph_undirect
     template <class Graph>
     struct apply
     {
-        typedef UndirectedAdaptor<Graph> type;
+        typedef boost::UndirectedAdaptor<Graph> type;
     };
 };
 
@@ -228,7 +228,7 @@ struct graph_reverse
     template <class Graph>
     struct apply
     {
-        typedef reverse_graph<Graph> type;
+        typedef boost::reverse_graph<Graph> type;
     };
 };
 
@@ -252,7 +252,7 @@ struct get_all_pairs
         template <class T1, class T2>
         struct apply
         {
-            typedef mpl::pair<T1,T2> type;
+            typedef boost::mpl::pair<T1,T2> type;
         };
     };
 
@@ -264,18 +264,18 @@ struct get_all_pairs
             template <class T1>
             struct apply
             {
-                typedef typename mpl::transform<
+                typedef typename boost::mpl::transform<
                     TR2,
                     bind_wrap1<
-                        mpl::bind2<make_pair, T1, mpl::_1>
+                        boost::mpl::bind2<make_pair, T1, boost::mpl::_1>
                     > >::type type;
             };
         };
 
-        typedef typename mpl::transform<
+        typedef typename boost::mpl::transform<
             TR1,
             get_second_types,
-            mpl::back_inserter<mpl::vector<> >
+            boost::mpl::back_inserter<boost::mpl::vector<> >
             >::type pair_combinations; // nested sequence (vector of vectors) of
                                        // pair combinations
 
@@ -317,9 +317,9 @@ struct get_property_map_type
 };
 
 template <class IndexMap>
-struct get_property_map_type<keep_all, IndexMap>
+struct get_property_map_type<boost::keep_all, IndexMap>
 {
-    typedef keep_all type;
+    typedef boost::keep_all type;
 };
 
 // this metafunction returns a filtered graph type, given the scalar types to be
@@ -334,7 +334,7 @@ struct get_graph_filtered
 
         // if the 'scalar' is the index map itself, use simply that, otherwise
         // get the specific property map
-        typedef typename mpl::if_<
+        typedef typename boost::mpl::if_<
             is_same<edge_scalar,
                     GraphInterface::edge_index_map_t>,
             GraphInterface::edge_index_map_t,
@@ -343,7 +343,7 @@ struct get_graph_filtered
                 GraphInterface::edge_index_map_t>::type
             >::type edge_property_map;
 
-        typedef typename mpl::if_<
+        typedef typename boost::mpl::if_<
             is_same<vertex_scalar,
                     GraphInterface::vertex_index_map_t>,
             GraphInterface::vertex_index_map_t,
@@ -362,52 +362,52 @@ struct get_graph_filtered
 struct get_all_graph_views
 {
     template <class TypePairs,
-              class AlwaysDirected = mpl::bool_<false>,
-              class NeverDirected = mpl::bool_<false>,
-              class AlwaysReversed = mpl::bool_<false>,
-              class NeverReversed = mpl::bool_<false>,
-              class NeverFiltered = mpl::bool_<false> >
+              class AlwaysDirected = boost::mpl::bool_<false>,
+              class NeverDirected = boost::mpl::bool_<false>,
+              class AlwaysReversed = boost::mpl::bool_<false>,
+              class NeverReversed = boost::mpl::bool_<false>,
+              class NeverFiltered = boost::mpl::bool_<false> >
     struct apply
     {
         // filtered graphs
         struct filtered_graphs:
-            mpl::if_
+            boost::mpl::if_
             <NeverFiltered,
-             mpl::vector<GraphInterface::multigraph_t>,
-             typename mpl::transform<TypePairs,
-                                     get_graph_filtered>::type>::type {};
+             boost::mpl::vector<GraphInterface::multigraph_t>,
+             typename boost::mpl::transform<TypePairs,
+                                            get_graph_filtered>::type>::type {};
 
         // filtered + reversed graphs
         struct reversed_graphs:
-            mpl::if_<AlwaysReversed,
-                     typename mpl::transform<filtered_graphs,
-                                             graph_reverse>::type,
-                     typename mpl::if_<
-                         NeverReversed,
-                         filtered_graphs,
-                         typename mpl::transform<
-                             filtered_graphs,
-                             graph_reverse,
-                             mpl::back_inserter<filtered_graphs>
-                             >::type
-                         >::type
-                >::type {};
+            boost::mpl::if_<AlwaysReversed,
+                            typename boost::mpl::transform<filtered_graphs,
+                                                           graph_reverse>::type,
+                            typename boost::mpl::if_<
+                                NeverReversed,
+                                filtered_graphs,
+                                typename boost::mpl::transform<
+                                    filtered_graphs,
+                                    graph_reverse,
+                                    boost::mpl::back_inserter<filtered_graphs>
+                                    >::type
+                                >::type
+                            >::type {};
 
         // undirected + filtereed + reversed graphs
         struct undirected_graphs:
-            mpl::if_<AlwaysDirected,
-                     reversed_graphs,
-                     typename mpl::if_<
-                         NeverDirected,
-                         typename mpl::transform<filtered_graphs,
-                                                 graph_undirect>::type,
-                         typename mpl::transform<
-                             filtered_graphs,
-                             graph_undirect,
-                             mpl::back_inserter<reversed_graphs>
-                             >::type
-                         >::type
-                     >::type {};
+            boost::mpl::if_<AlwaysDirected,
+                            reversed_graphs,
+                            typename boost::mpl::if_<
+                                NeverDirected,
+                                typename boost::mpl::transform<filtered_graphs,
+                                                               graph_undirect>::type,
+                                typename boost::mpl::transform<
+                                    filtered_graphs,
+                                    graph_undirect,
+                                    boost::mpl::back_inserter<reversed_graphs>
+                                    >::type
+                                >::type
+                            >::type {};
         typedef undirected_graphs type;
     };
 };
@@ -421,25 +421,25 @@ struct split
         template <class Index>
         struct apply
         {
-            typedef typename mpl::at<Sequence,Index>::type type;
+            typedef typename boost::mpl::at<Sequence,Index>::type type;
         };
     };
 
     template <class Sequence>
     struct apply
     {
-        typedef typename mpl::size<Sequence>::type size;
-        typedef typename mpl::divides<size, mpl::int_<2> >::type half_size;
-        typedef typename mpl::transform<mpl::range_c<int, 0, half_size::value>,
-                                        get_element<Sequence>,
-                                        mpl::back_inserter<mpl::vector<> > >
+        typedef typename boost::mpl::size<Sequence>::type size;
+        typedef typename boost::mpl::divides<size, boost::mpl::int_<2> >::type half_size;
+        typedef typename boost::mpl::transform<boost::mpl::range_c<int, 0, half_size::value>,
+                                               get_element<Sequence>,
+                                               boost::mpl::back_inserter<boost::mpl::vector<> > >
             ::type first_part;
-        typedef typename mpl::transform<mpl::range_c<int, half_size::value,
-                                                     size::value>,
-                                        get_element<Sequence>,
-                                        mpl::back_inserter<mpl::vector<> > >
+        typedef typename boost::mpl::transform<boost::mpl::range_c<int, half_size::value,
+                                                                   size::value>,
+                                               get_element<Sequence>,
+                                               boost::mpl::back_inserter<boost::mpl::vector<> > >
             ::type second_part;
-        typedef typename mpl::pair<first_part,second_part> type;
+        typedef typename boost::mpl::pair<first_part,second_part> type;
     };
 };
 
@@ -450,14 +450,14 @@ struct split
 
 #ifndef NO_GRAPH_FILTERING
 struct edge_scalars:
-    mpl::vector<keep_all, uint8_t> {};
+        boost::mpl::vector<boost::keep_all, uint8_t> {};
 struct vertex_scalars:
-    mpl::vector<keep_all, uint8_t> {};
+        boost::mpl::vector<boost::keep_all, uint8_t> {};
 #else
 struct edge_scalars:
-    mpl::vector<keep_all> {};
+        boost::mpl::vector<boost::keep_all> {};
 struct vertex_scalars:
-    mpl::vector<keep_all> {};
+        boost::mpl::vector<boost::keep_all> {};
 #endif
 
 // all scalar pairs
@@ -469,37 +469,37 @@ struct all_graph_views:
 
 // restricted graph views
 struct always_directed:
-    get_all_graph_views::apply<scalar_pairs,mpl::bool_<true> >::type {};
+    get_all_graph_views::apply<scalar_pairs,boost::mpl::bool_<true> >::type {};
 
 struct never_directed:
-    get_all_graph_views::apply<scalar_pairs,mpl::bool_<false>,
-                               mpl::bool_<true> >::type {};
+    get_all_graph_views::apply<scalar_pairs,boost::mpl::bool_<false>,
+                               boost::mpl::bool_<true> >::type {};
 
 struct always_reversed:
-    get_all_graph_views::apply<scalar_pairs,mpl::bool_<true>,
-                               mpl::bool_<false>,mpl::bool_<true> >::type {};
+    get_all_graph_views::apply<scalar_pairs,boost::mpl::bool_<true>,
+                               boost::mpl::bool_<false>,boost::mpl::bool_<true> >::type {};
 
 struct never_reversed:
-    get_all_graph_views::apply<scalar_pairs,mpl::bool_<false>,
-                               mpl::bool_<false>,mpl::bool_<false>,
-                               mpl::bool_<true> >::type {};
+    get_all_graph_views::apply<scalar_pairs,boost::mpl::bool_<false>,
+                               boost::mpl::bool_<false>,boost::mpl::bool_<false>,
+                               boost::mpl::bool_<true> >::type {};
 
 struct always_directed_never_reversed:
-    get_all_graph_views::apply<scalar_pairs,mpl::bool_<true>,
-                               mpl::bool_<false>,mpl::bool_<false>,
-                               mpl::bool_<true> >::type {};
+    get_all_graph_views::apply<scalar_pairs,boost::mpl::bool_<true>,
+                               boost::mpl::bool_<false>,boost::mpl::bool_<false>,
+                               boost::mpl::bool_<true> >::type {};
 
 struct never_filtered:
-    get_all_graph_views::apply<scalar_pairs,mpl::bool_<false>,
-                               mpl::bool_<false>,mpl::bool_<false>,
-                               mpl::bool_<false>,mpl::bool_<true> >::type {};
+    get_all_graph_views::apply<scalar_pairs,boost::mpl::bool_<false>,
+                               boost::mpl::bool_<false>,boost::mpl::bool_<false>,
+                               boost::mpl::bool_<false>,boost::mpl::bool_<true> >::type {};
 
 // sanity check
-typedef mpl::size<all_graph_views>::type n_views;
+typedef boost::mpl::size<all_graph_views>::type n_views;
 #ifndef NO_GRAPH_FILTERING
-BOOST_MPL_ASSERT_RELATION(n_views::value, == , mpl::int_<12>::value);
+BOOST_MPL_ASSERT_RELATION(n_views::value, == , boost::mpl::int_<12>::value);
 #else
-BOOST_MPL_ASSERT_RELATION(n_views::value, == , mpl::int_<3>::value);
+BOOST_MPL_ASSERT_RELATION(n_views::value, == , boost::mpl::int_<3>::value);
 #endif
 
 // run_action() implementation
@@ -514,43 +514,43 @@ struct action_wrap
         : _a(a), _g(g), _max_v(max_v), _max_e(max_e) {}
 
     template <class Type>
-    checked_vector_property_map<Type,GraphInterface::vertex_index_map_t>&
-    uncheck(checked_vector_property_map
-            <Type,GraphInterface::vertex_index_map_t>& a, mpl::true_) const
+    boost::checked_vector_property_map<Type,GraphInterface::vertex_index_map_t>&
+    uncheck(boost::checked_vector_property_map
+            <Type,GraphInterface::vertex_index_map_t>& a, boost::mpl::true_) const
     {
         return a;
     }
 
     template <class Type>
-    unchecked_vector_property_map<Type,GraphInterface::vertex_index_map_t>
-    uncheck(checked_vector_property_map
-            <Type,GraphInterface::vertex_index_map_t> a, mpl::false_) const
+    boost::unchecked_vector_property_map<Type,GraphInterface::vertex_index_map_t>
+    uncheck(boost::checked_vector_property_map
+            <Type,GraphInterface::vertex_index_map_t> a, boost::mpl::false_) const
     {
         return a.get_unchecked(_max_v);
     }
 
     template <class Type>
-    checked_vector_property_map<Type,GraphInterface::edge_index_map_t>&
-    uncheck(checked_vector_property_map
-            <Type,GraphInterface::edge_index_map_t>& a, mpl::true_) const
+    boost::checked_vector_property_map<Type,GraphInterface::edge_index_map_t>&
+    uncheck(boost::checked_vector_property_map
+            <Type,GraphInterface::edge_index_map_t>& a, boost::mpl::true_) const
     {
         return a;
     }
 
     template <class Type>
-    unchecked_vector_property_map<Type,GraphInterface::edge_index_map_t>
-    uncheck(checked_vector_property_map
-            <Type,GraphInterface::edge_index_map_t> a, mpl::false_) const
+    boost::unchecked_vector_property_map<Type,GraphInterface::edge_index_map_t>
+    uncheck(boost::checked_vector_property_map
+            <Type,GraphInterface::edge_index_map_t> a, boost::mpl::false_) const
     {
         return a.get_unchecked(_max_e);
     }
 
     template <class Type>
     scalarS<typename Type::unchecked_t>
-    uncheck(scalarS<Type> a, mpl::false_) const
+    uncheck(scalarS<Type> a, boost::mpl::false_) const
     {
         return scalarS<typename Type::unchecked_t>(uncheck(a._pmap,
-                                                           mpl::false_()));
+                                                           boost::mpl::false_()));
     }
 
     //no op
@@ -588,7 +588,7 @@ template <class Action, class GraphViews, class Wrap, class TR1, class TR2,
 struct graph_action
 {
     struct graph_view_pointers:
-        mpl::transform<GraphViews, mpl::quote1<add_pointer> >::type {};
+        boost::mpl::transform<GraphViews, boost::mpl::quote1<add_pointer> >::type {};
 
     graph_action(GraphInterface& g, Action a)
         : _g(g), _a(a, g, num_vertices(*g._mg),
@@ -677,7 +677,7 @@ struct graph_action
 
 
 // all definitions of run_action with different arity
-template <class GraphViews = detail::all_graph_views, class Wrap = mpl::false_>
+template <class GraphViews = detail::all_graph_views, class Wrap = boost::mpl::false_>
 struct run_action
 {
     template <class Action>

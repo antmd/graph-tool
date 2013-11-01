@@ -82,10 +82,10 @@ public:
     template <class RNG>
     const Value& sample(RNG& rng)
     {
-        tr1::uniform_int<> sample(0, _probs.size() - 1);
+        uniform_int_distribution<size_t> sample(0, _probs.size() - 1);
         size_t i = sample(rng);
 
-        tr1::bernoulli_distribution coin(_probs[i]);
+        bernoulli_distribution coin(_probs[i]);
         if (coin(rng))
             return _items[i];
         else

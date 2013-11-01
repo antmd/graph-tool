@@ -23,6 +23,7 @@
 #include <utility>
 #include <numeric>
 #include <iostream>
+#include <tuple>
 #include <boost/iterator.hpp>
 #include <boost/graph/graph_traits.hpp>
 #include <boost/range/irange.hpp>
@@ -32,11 +33,6 @@
 #include <boost/iterator/iterator_facade.hpp>
 
 #include "transform_iterator.hh"
-
-#include "tr1_include.hh"
-
-#include TR1_HEADER(tuple)
-
 
 namespace boost
 {
@@ -138,7 +134,7 @@ class adj_list
 public:
     struct graph_tag {};
     typedef Vertex vertex_t;
-    typedef std::tr1::tuple<vertex_t, vertex_t, vertex_t> edge_descriptor;
+    typedef std::tuple<vertex_t, vertex_t, vertex_t> edge_descriptor;
     typedef std::vector<std::pair<vertex_t, vertex_t> > edge_list_t;
     typedef typename integer_range<Vertex>::iterator vertex_iterator;
 
@@ -162,7 +158,7 @@ public:
         vertex_t _src;
         typedef edge_descriptor result_type;
         edge_descriptor operator()(const std::pair<vertex_t, vertex_t>& v) const
-        { return std::tr1::make_tuple(_src, v.first, v.second); }
+        { return std::make_tuple(_src, v.first, v.second); }
     };
 
     struct make_in_edge
@@ -172,7 +168,7 @@ public:
         vertex_t _tgt;
         typedef edge_descriptor result_type;
         edge_descriptor operator()(const std::pair<vertex_t, vertex_t>& v) const
-        { return std::tr1::make_tuple(v.first, _tgt, v.second); }
+        { return std::make_tuple(v.first, _tgt, v.second); }
     };
 
     typedef transform_random_access_iterator<make_out_edge, typename edge_list_t::const_iterator>
@@ -227,7 +223,7 @@ public:
 
         edge_descriptor dereference() const
         {
-            return std::tr1::make_tuple(vertex_t(_vi - _vi_begin),
+            return std::make_tuple(vertex_t(_vi - _vi_begin),
                                         _ei->first, _ei->second);
         }
 
@@ -471,9 +467,9 @@ edge(Vertex s, Vertex t, const adj_list<Vertex>& g)
     const typename adj_list<Vertex>::edge_list_t& oes = g._out_edges[s];
     for (size_t i = 0; i < oes.size(); ++i)
         if (oes[i].first == t)
-            return std::make_pair(std::tr1::make_tuple(s, t, oes[i].second), true);
+            return std::make_pair(std::make_tuple(s, t, oes[i].second), true);
     Vertex v = graph_traits<adj_list<Vertex> >::null_vertex();
-    return std::make_pair(std::tr1::make_tuple(v, v, v), false);
+    return std::make_pair(std::make_tuple(v, v, v), false);
 }
 
 template <class Vertex>
@@ -721,7 +717,7 @@ add_edge(Vertex s, Vertex t, adj_list<Vertex>& g)
         g._epos[idx].second = g._in_edges[t].size() - 1;
     }
 
-    return std::make_pair(std::tr1::make_tuple(s, t, idx), true);
+    return std::make_pair(std::make_tuple(s, t, idx), true);
 }
 
 template <class Vertex>

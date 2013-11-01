@@ -51,8 +51,9 @@ void adjacency(GraphInterface& g, boost::any index, boost::any weight,
     multi_array_ref<int32_t,1> i = get_array<int32_t,1>(oi);
     multi_array_ref<int32_t,1> j = get_array<int32_t,1>(oj);
     run_action<>()
-        (g, bind<void>(get_adjacency(),
-                       _1, _2, _3, ref(data), ref(i), ref(j)),
+        (g, std::bind(get_adjacency(),
+                      placeholders::_1, placeholders::_2, placeholders::_3,
+                      std::ref(data), std::ref(i), std::ref(j)),
          vertex_scalar_properties(),
          weight_props_t())(index, weight);
 

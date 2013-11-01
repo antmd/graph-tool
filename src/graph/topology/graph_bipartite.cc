@@ -66,8 +66,8 @@ bool is_bipartite(GraphInterface& gi, boost::any part_map)
                            dummy_property_map>::type vertex_map_types;
 
     run_action<graph_tool::detail::never_directed>()
-        (gi, bind<void>(get_bipartite(), _1, gi.GetVertexIndex(),
-                        _2, ref(is_bip)),
+        (gi, std::bind(get_bipartite(), placeholders::_1, gi.GetVertexIndex(),
+                       placeholders::_2, std::ref(is_bip)),
          vertex_map_types())(part_map);
     return is_bip;
 }

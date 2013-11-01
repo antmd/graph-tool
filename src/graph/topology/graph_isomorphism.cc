@@ -37,11 +37,11 @@ struct check_iso
 
 struct directed_graph_view_pointers:
     mpl::transform<graph_tool::detail::always_directed,
-                   mpl::quote1<add_pointer> >::type {};
+                   mpl::quote1<std::add_pointer> >::type {};
 
 struct undirected_graph_view_pointers:
     mpl::transform<graph_tool::detail::never_directed,
-                   mpl::quote1<add_pointer> >::type {};
+                   mpl::quote1<std::add_pointer> >::type {};
 
 typedef property_map_types::apply<integer_types,
                                   GraphInterface::vertex_index_map_t,
@@ -58,18 +58,20 @@ bool check_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
     if (gi1.GetDirected())
     {
         run_action<graph_tool::detail::always_directed>()
-            (gi1, bind<void>(check_iso(),
-                             _1, _2, _3, gi1.GetVertexIndex(),
-                             gi2.GetVertexIndex(), ref(result)),
+            (gi1, std::bind(check_iso(),
+                            placeholders::_1, placeholders::_2,
+                            placeholders::_3, gi1.GetVertexIndex(),
+                            gi2.GetVertexIndex(), std::ref(result)),
              directed_graph_view_pointers(), vertex_props_t())
             (gi2.GetGraphView(), iso_map);
     }
     else
     {
         run_action<graph_tool::detail::never_directed>()
-            (gi1, bind<void>(check_iso(),
-                             _1, _2, _3, gi1.GetVertexIndex(),
-                             gi2.GetVertexIndex(), ref(result)),
+            (gi1, std::bind(check_iso(),
+                            placeholders::_1, placeholders::_2, placeholders::_3,
+                            gi1.GetVertexIndex(),
+                            gi2.GetVertexIndex(), std::ref(result)),
              undirected_graph_view_pointers(), vertex_props_t())
             (gi2.GetGraphView(), iso_map);
     }

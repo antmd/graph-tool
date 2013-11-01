@@ -47,7 +47,7 @@ struct get_edmonds_karp_max_flow
         unchecked_vector_property_map<edge_t,VertexIndex>
             pred(vertex_index, num_vertices(g));
 
-        typedef typename remove_const<Graph>::type GT;
+        typedef typename std::remove_const<Graph>::type GT;
         GT& u = const_cast<GT&>(g);
         augment_graph(u,
                       augmented.get_checked(),
@@ -69,10 +69,10 @@ void edmonds_karp_max_flow(GraphInterface& gi, size_t src, size_t sink,
                            boost::any capacity, boost::any res)
 {
     run_action<graph_tool::detail::always_directed>()
-        (gi, bind<void>(get_edmonds_karp_max_flow(),
-                        _1, gi.GetVertexIndex(), gi.GetEdgeIndex(),
-                        gi.GetMaxEdgeIndex(),
-                        src, sink, _2, _3),
+        (gi, std::bind(get_edmonds_karp_max_flow(),
+                       placeholders::_1, gi.GetVertexIndex(), gi.GetEdgeIndex(),
+                       gi.GetMaxEdgeIndex(),
+                       src, sink, placeholders::_2, placeholders::_3),
          writable_edge_scalar_properties(), writable_edge_scalar_properties())
         (capacity,res);
 }

@@ -23,9 +23,8 @@
 #ifndef GRAPH_TRIANGULATION_HH
 #define GRAPH_TRIANGULATION_HH
 
-#include "tr1_include.hh"
-#include TR1_HEADER(unordered_set)
-#include TR1_HEADER(tuple)
+#include <unordered_set>
+#include <tuple>
 
 #include <boost/functional/hash.hpp>
 
@@ -107,7 +106,7 @@ struct get_triangulation
     template <class Graph, class Points, class PosMap>
     void operator()(Graph& g, Points& points, PosMap pos) const
     {
-        typedef tr1::unordered_map
+        typedef std::unordered_map
             <typename Triang::Vertex,
              typename graph_traits<Graph>::vertex_descriptor,
              hash_point> vertex_map_t;

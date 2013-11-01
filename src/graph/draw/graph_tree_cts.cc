@@ -22,6 +22,8 @@
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
 
+#include <boost/mpl/quote.hpp>
+
 #include <cmath>
 
 using namespace std;
@@ -195,8 +197,8 @@ struct get_pointers
     template <class List>
     struct apply
     {
-        typedef typename mpl::transform<List,
-                                        mpl::quote1<add_pointer> >::type type;
+        typedef typename boost::mpl::transform<List,
+                                               boost::mpl::quote1<std::add_pointer> >::type type;
     };
 };
 
@@ -210,8 +212,9 @@ void get_cts(GraphInterface& gi, GraphInterface& tgi,
     eprop_t cts = boost::any_cast<eprop_t>(octs);
 
 
-    run_action<graph_tool::detail::always_directed,mpl::true_>()
-        (gi, bind<void>(do_get_cts(), _1, _2, _3, beta, cts),
+    run_action<graph_tool::detail::always_directed, boost::mpl::true_>()
+        (gi, std::bind(do_get_cts(), placeholders::_1, placeholders::_2,
+                       placeholders::_3, beta, cts),
          get_pointers::apply<graph_tool::detail::always_directed>::type(),
          vertex_scalar_vector_properties())
         (tgi.GetGraphView(), otpos);

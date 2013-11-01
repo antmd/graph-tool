@@ -28,10 +28,10 @@ using namespace graph_tool;
 
 namespace boost
 {
-    size_t hash_value(const boost::python::object& o)
-    {
-        return boost::python::extract<size_t>(o.attr("__hash__")());
-    }
+size_t hash_value(const boost::python::object& o)
+{
+    return std::hash<boost::python::object>()(o);
+}
 }
 
 namespace graph_tool
@@ -53,9 +53,9 @@ python::object get_vertices(python::object g)
 {
     GraphInterface& gi = python::extract<GraphInterface&>(g().attr("_Graph__graph"));
     python::object iter;
-    run_action<>()(gi, bind<void>(get_vertex_iterator(), _1,
-                                  ref(g),
-                                  ref(iter)))();
+    run_action<>()(gi, std::bind(get_vertex_iterator(), placeholders::_1,
+                                 std::ref(g),
+                                 std::ref(iter)))();
     return iter;
 }
 
@@ -98,10 +98,12 @@ python::object get_vertex(python::object g, size_t i)
     python::object v;
     if (gi.IsVertexFilterActive())
         run_action<>()(gi,
-                       bind<void>(get_vertex_hard(), _1, ref(g), i, ref(v)))();
+                       std::bind(get_vertex_hard(), placeholders::_1,
+                                 std::ref(g), i, std::ref(v)))();
     else
         run_action<>()(gi,
-                       bind<void>(get_vertex_soft(), _1, ref(g), i, ref(v)))();
+                       std::bind(get_vertex_soft(), placeholders::_1,
+                                 std::ref(g), i, std::ref(v)))();
     return v;
 }
 
@@ -122,7 +124,8 @@ python::object get_edges(python::object g)
     GraphInterface& gi = python::extract<GraphInterface&>(g().attr("_Graph__graph"));
     python::object iter;
     run_action<>()(gi,
-                   bind<void>(get_edge_iterator(), _1, ref(g), ref(iter)))();
+                   std::bind(get_edge_iterator(), placeholders::_1,
+                             std::ref(g), std::ref(iter)))();
     return iter;
 }
 
@@ -190,8 +193,9 @@ python::object add_edge(python::object g, const python::object& s,
     tgt.CheckValid();
     GraphInterface& gi = python::extract<GraphInterface&>(g().attr("_Graph__graph"));
     python::object new_e;
-    run_action<>()(gi, bind<void>(add_new_edge(), _1, ref(g), ref(gi), src, tgt,
-                                  gi.GetEdgeIndex(), ref(new_e)))();
+    run_action<>()(gi, std::bind(add_new_edge(), placeholders::_1, std::ref(g),
+                                 std::ref(gi), src, tgt, gi.GetEdgeIndex(),
+                                 std::ref(new_e)))();
     return new_e;
 }
 
@@ -221,8 +225,8 @@ void remove_edge(GraphInterface& gi, const python::object& e)
 {
     GraphInterface::edge_t de;
     bool found = false;
-    run_action<>()(gi, bind<void>(get_edge_descriptor(), _1, ref(e), ref(de),
-                                  ref(found)))();
+    run_action<>()(gi, std::bind(get_edge_descriptor(), placeholders::_1,
+                                 std::ref(e), std::ref(de), std::ref(found)))();
     remove_edge(de, gi.GetGraph());
     if (!found)
         throw ValueException("invalid edge descriptor");
@@ -234,7 +238,7 @@ struct get_degree_map
     void operator()(const Graph& g, python::object& odeg_map, DegS deg, Weight weight) const
     {
         typedef typename detail::get_weight_type<Weight>::type weight_t;
-        typedef typename mpl::if_<is_same<weight_t, size_t>, int32_t, weight_t>::type deg_t;
+        typedef typename mpl::if_<std::is_same<weight_t, size_t>, int32_t, weight_t>::type deg_t;
 
         typedef typename property_map_type::apply<deg_t,
                                                   GraphInterface::vertex_index_map_t>::type
@@ -269,18 +273,18 @@ python::object GraphInterface::DegreeMap(string deg, boost::any weight) const
 
     if (deg == "in")
         run_action<>()(const_cast<GraphInterface&>(*this),
-                       bind<void>(get_degree_map(), _1,
-                                  ref(deg_map), in_degreeS(), _2), weight_t())
+                       std::bind(get_degree_map(), placeholders::_1,
+                                 std::ref(deg_map), in_degreeS(), placeholders::_2), weight_t())
             (weight);
     else if (deg == "out")
         run_action<>()(const_cast<GraphInterface&>(*this),
-                       bind<void>(get_degree_map(), _1,
-                                  ref(deg_map), out_degreeS(), _2), weight_t())
+                       std::bind(get_degree_map(), placeholders::_1,
+                                 std::ref(deg_map), out_degreeS(), placeholders::_2), weight_t())
             (weight);
     else if (deg == "total")
         run_action<>()(const_cast<GraphInterface&>(*this),
-                       bind<void>(get_degree_map(), _1,
-                                  ref(deg_map), total_degreeS(), _2), weight_t())
+                       std::bind(get_degree_map(), placeholders::_1,
+                                 std::ref(deg_map), total_degreeS(), placeholders::_2), weight_t())
             (weight);
     return deg_map;
 }
@@ -348,8 +352,8 @@ struct export_python_interface
 
         typedef typename graph_traits<Graph>::directed_category
             directed_category;
-        typedef typename is_convertible<directed_category,
-                                        boost::directed_tag>::type is_directed;
+        typedef typename std::is_convertible<directed_category,
+                                             boost::directed_tag>::type is_directed;
         if (is_directed::value)
         {
             typedef typename in_edge_iteratorS<Graph>::type in_edge_iterator;
@@ -402,18 +406,18 @@ void export_python_interface()
              "Return whether the vertex is valid.")
         .def("get_graph", &PythonVertex::GetGraph,
              "Return the graph to which the vertex belongs.")
-        .def(python::self == python::self)
-        .def(python::self != python::self)
+        .def(boost::python::self == boost::python::self)
+        .def(boost::python::self != boost::python::self)
         .def("__str__", &PythonVertex::GetString)
         .def("__int__", &PythonVertex::GetIndex)
         .def("__hash__", &PythonVertex::GetHash);
     class_<EdgeBase>("EdgeBase", no_init);
 
     set<string> v_iterators;
-    typedef mpl::transform<graph_tool::detail::all_graph_views,
-                           mpl::quote1<add_pointer> >::type graph_views;
-    mpl::for_each<graph_views>(bind<void>(graph_tool::export_python_interface(),
-                                          _1, ref(v_iterators)));
+    typedef boost::mpl::transform<graph_tool::detail::all_graph_views,
+                                  boost::mpl::quote1<std::add_pointer> >::type graph_views;
+    boost::mpl::for_each<graph_views>(std::bind(graph_tool::export_python_interface(),
+                                      placeholders::_1, std::ref(v_iterators)));
     export_python_properties();
     def("new_vertex_property",
         &new_property<GraphInterface::vertex_index_map_t>);

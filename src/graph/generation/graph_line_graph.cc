@@ -101,14 +101,14 @@ struct get_line_graph
 void line_graph(GraphInterface& gi, GraphInterface& lgi,
                 boost::any edge_index)
 {
-    typedef property_map_types::apply<mpl::vector<int64_t>,
+    typedef property_map_types::apply<boost::mpl::vector<int64_t>,
                                       GraphInterface::vertex_index_map_t,
-                                       mpl::false_>::type
+                                      boost::mpl::false_>::type
         vertex_properties;
 
-     run_action<>()(gi, bind<void>(get_line_graph(), _1,
-                                   gi.GetVertexIndex(),
-                                   ref(lgi.GetGraph()), lgi.GetEdgeIndex(),
-                                   _2),
-                    vertex_properties())(edge_index);
+    run_action<>()(gi, std::bind(get_line_graph(), placeholders::_1,
+                                 gi.GetVertexIndex(),
+                                 std::ref(lgi.GetGraph()), lgi.GetEdgeIndex(),
+                                 placeholders::_2),
+                   vertex_properties())(edge_index);
 }

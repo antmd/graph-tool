@@ -70,10 +70,10 @@ void community_network_eavg(GraphInterface& gi, GraphInterface& cgi,
                             boost::any condensed_community_property,
                             boost::any edge_count,
                             boost::any eweight,
-                            python::list aeprops,
+                            boost::python::list aeprops,
                             bool self_loops)
 {
-    typedef mpl::push_back<writable_edge_scalar_properties, no_eweight_map_t>::type
+    typedef boost::mpl::push_back<writable_edge_scalar_properties, no_eweight_map_t>::type
         eweight_properties;
 
     bool no_weight = false;
@@ -83,35 +83,37 @@ void community_network_eavg(GraphInterface& gi, GraphInterface& cgi,
         eweight = no_eweight_map_t(1);
     }
 
-    typedef mpl::insert_range<writable_edge_scalar_properties,
-                              mpl::end<writable_edge_scalar_properties>::type,
-                              edge_scalar_vector_properties>::type eprops_temp;
-    typedef mpl::push_back<eprops_temp,
-                           property_map_type::apply<python::object,
-                                                    GraphInterface::edge_index_map_t>::type>::type
+    typedef boost::mpl::insert_range<writable_edge_scalar_properties,
+                                     boost::mpl::end<writable_edge_scalar_properties>::type,
+                                     edge_scalar_vector_properties>::type eprops_temp;
+    typedef boost::mpl::push_back<eprops_temp,
+                                  property_map_type::apply<boost::python::object,
+                                                           GraphInterface::edge_index_map_t>::type>::type
         eprops_t;
 
-    for(int i = 0; i < python::len(aeprops); ++i)
+    for(int i = 0; i < boost::python::len(aeprops); ++i)
     {
-        boost::any eprop = python::extract<any>(aeprops[i][0]);
-        boost::any temp = python::extract<any>(aeprops[i][1]);
-        boost::any ceprop = python::extract<any>(aeprops[i][2]);
+        boost::any eprop = boost::python::extract<any>(aeprops[i][0]);
+        boost::any temp = boost::python::extract<any>(aeprops[i][1]);
+        boost::any ceprop = boost::python::extract<any>(aeprops[i][2]);
 
         if (!no_weight)
         {
             // compute weighted values to temp
             run_action<graph_tool::detail::always_directed>()
-                (gi, bind<void>(get_weighted_edge_property_dispatch(),
-                                _1, _2, _3, temp),
+                (gi, std::bind(get_weighted_edge_property_dispatch(),
+                               placeholders::_1, placeholders::_2,
+                               placeholders::_3, temp),
                  eweight_properties(), eprops_t())
                 (eweight, eprop);
 
             // sum weighted values
             run_action<graph_tool::detail::always_directed>()
-                (gi, bind<void>(get_edge_sum_dispatch(),
-                                _1, ref(cgi.GetGraph()), _2,
-                                condensed_community_property, _3, ceprop,
-                                self_loops),
+                (gi, std::bind(get_edge_sum_dispatch(),
+                               placeholders::_1, std::ref(cgi.GetGraph()),
+                               placeholders::_2,
+                               condensed_community_property, placeholders::_3, ceprop,
+                               self_loops),
                  writable_vertex_properties(), eprops_t())
                 (community_property, temp);
         }
@@ -119,18 +121,20 @@ void community_network_eavg(GraphInterface& gi, GraphInterface& cgi,
         {
             // sum unweighted values
             run_action<graph_tool::detail::always_directed>()
-                (gi, bind<void>(get_edge_sum_dispatch(),
-                                _1, ref(cgi.GetGraph()), _2,
-                                condensed_community_property, _3, ceprop,
-                                self_loops),
+                (gi, std::bind(get_edge_sum_dispatch(),
+                               placeholders::_1, std::ref(cgi.GetGraph()),
+                               placeholders::_2,
+                               condensed_community_property, placeholders::_3,
+                               ceprop, self_loops),
                  writable_vertex_properties(), eprops_t())
                 (community_property, eprop);
         }
 
         // norm summed values
         run_action<graph_tool::detail::never_filtered>()
-            (cgi, bind<void>(get_edge_community_property_norm(),
-                            _1, _2, _3),
+            (cgi, std::bind(get_edge_community_property_norm(),
+                            placeholders::_1, placeholders::_2,
+                            placeholders::_3),
              eweight_properties(), eprops_t())
             (edge_count, ceprop);
     }

@@ -22,8 +22,16 @@
 #include "graph_filtering.hh"
 #include "graph_util.hh"
 
+#ifndef __clang__
 #include <ext/numeric>
 using __gnu_cxx::power;
+#else
+template <class Value>
+Value power(Value value, int n)
+{
+    return pow(value, n);
+}
+#endif
 
 namespace graph_tool
 {

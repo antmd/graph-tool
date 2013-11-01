@@ -21,7 +21,7 @@
 #include <vector>
 #include <utility>
 #include <algorithm>
-#include <boost/array.hpp>
+#include <array>
 #define BOOST_DISABLE_ASSERTS
 #include <boost/multi_array.hpp>
 
@@ -39,9 +39,9 @@ template <class ValueType, class CountType, size_t Dim>
 class Histogram
 {
 public:
-    typedef boost::array<ValueType,Dim> point_t; // point type to be
-                                                 // histogrammed
-    typedef boost::array<size_t,Dim> bin_t;      // bin type
+    typedef std::array<ValueType,Dim> point_t; // point type to be
+                                               // histogrammed
+    typedef std::array<size_t,Dim> bin_t;      // bin type
 
     typedef boost::multi_array<CountType,Dim> count_t; // the histogram itself
 
@@ -53,7 +53,7 @@ public:
     typedef typename boost::mpl::if_<boost::is_floating_point<ValueType>,
                                      ValueType, double>::type mean_t;
 
-    Histogram(const boost::array<std::vector<ValueType>, Dim>& bins):
+    Histogram(const std::array<std::vector<ValueType>, Dim>& bins):
         _bins(bins)
     {
         bin_t new_shape;
@@ -156,16 +156,16 @@ public:
 
     boost::multi_array<CountType,Dim>& GetArray() { return _counts; }
 
-    boost::array<std::pair<ValueType,ValueType>,Dim>& GetDataRange()
+    std::array<std::pair<ValueType,ValueType>,Dim>& GetDataRange()
     { return _data_range; }
 
-    boost::array<std::vector<ValueType>, Dim>& GetBins() { return _bins; }
+    std::array<std::vector<ValueType>, Dim>& GetBins() { return _bins; }
 
 protected:
     boost::multi_array<CountType,Dim> _counts;
-    boost::array<std::vector<ValueType>, Dim> _bins;
-    boost::array<std::pair<ValueType,ValueType>,Dim> _data_range;
-    boost::array<bool,Dim> _const_width;
+    std::array<std::vector<ValueType>, Dim> _bins;
+    std::array<std::pair<ValueType,ValueType>,Dim> _data_range;
+    std::array<bool,Dim> _const_width;
 };
 
 

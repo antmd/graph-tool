@@ -38,7 +38,6 @@
 namespace graph_tool
 {
 using namespace std;
-using namespace boost;
 
 // GraphInterface
 // this class is the main interface to the internally kept graph. This is how
@@ -48,7 +47,7 @@ using namespace boost;
 namespace detail
 {
 // Generic graph_action functor. See graph_filtering.hh for details.
-template <class Action, class GraphViews, class Wrap = mpl::false_,
+template <class Action, class GraphViews, class Wrap = boost::mpl::false_,
           class TR1=boost::mpl::vector<>, class TR2=boost::mpl::vector<>,
           class TR3=boost::mpl::vector<>, class TR4=boost::mpl::vector<> >
 struct graph_action;
@@ -59,8 +58,8 @@ class GraphInterface
 public:
     GraphInterface();
     GraphInterface(const GraphInterface& g, bool keep_ref,
-                   python::object ovprops, python::object oeprops,
-                   python::object vorder);
+                   boost::python::object ovprops, boost::python::object oeprops,
+                   boost::python::object vorder);
     ~GraphInterface();
 
     // useful enums
@@ -114,18 +113,20 @@ public:
     //
     // python interface
     //
-    python::object DegreeMap(string deg, boost::any weight) const;
+    boost::python::object DegreeMap(string deg, boost::any weight) const;
 
     // used for graph properties
-    graph_property_tag GetDescriptor() const { return graph_property_tag(); }
+    boost::graph_property_tag GetDescriptor() const { return boost::graph_property_tag(); }
     bool CheckValid() const {return true;}
 
     // I/O
-    void WriteToFile(string s, python::object pf, string format,
-                     python::list properties);
-    python::tuple ReadFromFile(string s, python::object pf, string format,
-                               python::list ignore_vp, python::list ignore_ep,
-                               python::list ignore_gp);
+    void WriteToFile(string s, boost::python::object pf, string format,
+                     boost::python::list properties);
+    boost::python::tuple ReadFromFile(string s, boost::python::object pf,
+                                      string format,
+                                      boost::python::list ignore_vp,
+                                      boost::python::list ignore_ep,
+                                      boost::python::list ignore_gp);
 
     //
     // Internal types
@@ -141,13 +142,13 @@ public:
     //                         no_property,
     //                         EdgeProperty,
     //                         vecS>  multigraph_t;
-    typedef adj_list<size_t> multigraph_t;
-    typedef graph_traits<multigraph_t>::vertex_descriptor vertex_t;
-    typedef graph_traits<multigraph_t>::edge_descriptor edge_t;
+    typedef boost::adj_list<size_t> multigraph_t;
+    typedef boost::graph_traits<multigraph_t>::vertex_descriptor vertex_t;
+    typedef boost::graph_traits<multigraph_t>::edge_descriptor edge_t;
 
-    typedef property_map<multigraph_t,vertex_index_t>::type vertex_index_map_t;
-    typedef property_map<multigraph_t,edge_index_t>::type edge_index_map_t;
-    typedef ConstantPropertyMap<size_t,graph_property_tag> graph_index_map_t;
+    typedef boost::property_map<multigraph_t, boost::vertex_index_t>::type vertex_index_map_t;
+    typedef boost::property_map<multigraph_t, boost::edge_index_t>::type edge_index_map_t;
+    typedef ConstantPropertyMap<size_t, boost::graph_property_tag> graph_index_map_t;
 
     // internal access
 
@@ -193,14 +194,14 @@ private:
     graph_index_map_t _graph_index;
 
     // vertex filter
-    typedef unchecked_vector_property_map<uint8_t,vertex_index_map_t>
+    typedef boost::unchecked_vector_property_map<uint8_t,vertex_index_map_t>
         vertex_filter_t;
     vertex_filter_t _vertex_filter_map;
     bool _vertex_filter_invert;
     bool _vertex_filter_active;
 
     // edge filter
-    typedef unchecked_vector_property_map<uint8_t,edge_index_map_t>
+    typedef boost::unchecked_vector_property_map<uint8_t,edge_index_map_t>
         edge_filter_t;
     edge_filter_t _edge_filter_map;
     bool _edge_filter_invert;

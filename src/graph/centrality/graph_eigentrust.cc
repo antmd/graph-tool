@@ -24,7 +24,6 @@
 #include "graph_eigentrust.hh"
 
 using namespace std;
-using namespace boost;
 using namespace graph_tool;
 
 size_t eigentrust(GraphInterface& g, boost::any c, boost::any t,
@@ -38,10 +37,9 @@ size_t eigentrust(GraphInterface& g, boost::any c, boost::any t,
 
     size_t iter = 0;
     run_action<>()
-        (g, bind<void>
-         (get_eigentrust(),
-          _1, g.GetVertexIndex(), g.GetEdgeIndex(), _2,
-          _3, epslon, max_iter, ref(iter)),
+        (g, bind(get_eigentrust(),
+                 _1, g.GetVertexIndex(), g.GetEdgeIndex(), _2,
+                 _3, epslon, max_iter, ref(iter)),
          writable_edge_scalar_properties(),
          vertex_floating_properties())(c,t);
     return iter;

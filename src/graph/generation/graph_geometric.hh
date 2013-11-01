@@ -19,14 +19,21 @@
 #define GRAPH_GEOMETRIC_HH
 
 #include <iostream>
-#include "tr1_include.hh"
-#include TR1_HEADER(unordered_map)
+#include <unordered_map>
 
 #include <boost/functional/hash.hpp>
 #include "graph_util.hh"
 
+#ifndef __clang__
 #include <ext/numeric>
 using __gnu_cxx::power;
+#else
+template <class Value>
+Value power(Value value, int n)
+{
+    return pow(value, n);
+}
+#endif
 
 namespace graph_tool
 {
@@ -113,7 +120,7 @@ struct get_geometric
             }
         }
 
-        tr1::unordered_multimap<vector<int>,
+        std::unordered_multimap<vector<int>,
                                 typename graph_traits<Graph>::vertex_descriptor,
                                 boost::hash<vector<int> > > boxes;
 
@@ -126,9 +133,10 @@ struct get_geometric
             boxes.insert(make_pair(box, v));
         }
 
+        int i;
         #pragma omp parallel for default(shared) private(i, box) \
             schedule(static) if (N > 100)
-        for (int i = 0; i < N; ++i)
+        for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
 

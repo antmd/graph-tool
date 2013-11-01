@@ -26,9 +26,9 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-void lattice(GraphInterface& gi, python::object oshape, bool periodic)
+void lattice(GraphInterface& gi, boost::python::object oshape, bool periodic)
 {
-    vector<size_t> shape(python::len(oshape));
+    vector<size_t> shape(boost::python::len(oshape));
     for(size_t i = 0; i < shape.size(); ++i)
         shape[i] = python::extract<size_t>(oshape[i]);
     get_lattice()(gi.GetGraph(), shape, periodic);

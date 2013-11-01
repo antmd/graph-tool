@@ -51,11 +51,12 @@ double min_cut(GraphInterface& gi, boost::any weight, boost::any part_map)
     if (weight.empty())
         weight = cweight_t(1);
 
-    typedef mpl::push_back<writable_edge_scalar_properties, cweight_t>::type
+    typedef boost::mpl::push_back<writable_edge_scalar_properties, cweight_t>::type
         weight_maps;
 
     run_action<graph_tool::detail::never_directed>()
-        (gi, bind<void>(get_min_cut(), _1, _2, _3, ref(mc)),
+        (gi, std::bind(get_min_cut(),  placeholders::_1,  placeholders::_2,
+                       placeholders::_3, std::ref(mc)),
          weight_maps(), writable_vertex_scalar_properties())(weight, part_map);
     return mc;
 }

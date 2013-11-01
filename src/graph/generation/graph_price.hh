@@ -23,8 +23,7 @@
 #include "graph_util.hh"
 #include "random.hh"
 
-#include "tr1_include.hh"
-#include TR1_HEADER(unordered_set)
+#include <unordered_set>
 
 #include <map>
 #include <iostream>
@@ -62,7 +61,7 @@ struct get_price
         if (probs.empty() || probs.rbegin()->first <= 0)
             throw GraphException("Cannot connect edges: probabilities are <= 0!");
 
-        tr1::unordered_set<typename graph_traits<Graph>::vertex_descriptor>
+        std::unordered_set<typename graph_traits<Graph>::vertex_descriptor>
             visited;
         for (size_t i = 0; i < N; ++i)
         {
@@ -70,9 +69,8 @@ struct get_price
             typename graph_traits<Graph>::vertex_descriptor v = add_vertex(g);
             for (size_t j = 0; j < min(m, n_possible); ++j)
             {
-                tr1::variate_generator<rng_t&, tr1::uniform_real<> >
-                    sample(rng, tr1::uniform_real<>(0, probs.rbegin()->first));
-                double r = sample();
+                uniform_real_distribution<> sample(0, probs.rbegin()->first);
+                double r = sample(rng);
                 typeof(probs.begin()) iter = probs.lower_bound(r);
                 typename graph_traits<Graph>::vertex_descriptor w =
                     iter->second;

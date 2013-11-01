@@ -53,7 +53,10 @@ AC_ARG_ENABLE([debug], [AS_HELP_STRING([--enable-debug],[compile debug informati
 	[AC_MSG_RESULT(no)]
         )
 
-dnl set template depth and hidden visibility
+dnl enable c++11
+[CXXFLAGS="${CXXFLAGS} -std=gnu++11"]
+
+dnl set template depth
 [CXXFLAGS="${CXXFLAGS} -ftemplate-depth-150"]
 
 dnl disable deprecation warning, to silence some harmless BGL-related warnings

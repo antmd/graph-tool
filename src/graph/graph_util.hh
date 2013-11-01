@@ -34,12 +34,13 @@
 #include <boost/type_traits/is_convertible.hpp>
 #include <string>
 
-#include "tr1_include.hh"
-#include TR1_HEADER(random)
+#include <boost/functional/hash.hpp>
+
+#include <functional>
+#include <random>
 
 namespace graph_tool
 {
-using namespace boost;
 
 //
 // Metaprogramming
@@ -52,8 +53,8 @@ struct is_directed
     template <class Graph>
     struct apply
     {
-        typedef is_convertible<typename graph_traits<Graph>::directed_category,
-                               directed_tag> type;
+        typedef is_convertible<typename boost::graph_traits<Graph>::directed_category,
+                               boost::directed_tag> type;
     };
 };
 
@@ -65,7 +66,7 @@ struct HardNumVertices
     size_t operator()(Graph& g) const
     {
         size_t n = 0;
-        typename graph_traits<Graph>::vertex_iterator v_iter, v_begin, v_end;
+        typename boost::graph_traits<Graph>::vertex_iterator v_iter, v_begin, v_end;
         tie(v_begin, v_end) = vertices(g);
         for (v_iter = v_begin; v_iter != v_end; ++v_iter)
             n++;
@@ -88,7 +89,7 @@ struct HardNumEdges
     size_t operator()(Graph& g) const
     {
         size_t n = 0;
-        typename graph_traits<Graph>::edge_iterator e_iter, e_begin, e_end;
+        typename boost::graph_traits<Graph>::edge_iterator e_iter, e_begin, e_end;
         tie(e_begin, e_end) = edges(g);
         for (e_iter = e_begin; e_iter != e_end; ++e_iter)
             n++;
@@ -106,11 +107,11 @@ struct SoftNumEdges
 
 // returns true if vertices u and v are adjacent. This is O(k(u)).
 template <class Graph>
-bool is_adjacent(typename graph_traits<Graph>::vertex_descriptor u,
-                 typename graph_traits<Graph>::vertex_descriptor v,
+bool is_adjacent(typename boost::graph_traits<Graph>::vertex_descriptor u,
+                 typename boost::graph_traits<Graph>::vertex_descriptor v,
                  const Graph& g )
 {
-    typename graph_traits<Graph>::out_edge_iterator e, e_end;
+    typename boost::graph_traits<Graph>::out_edge_iterator e, e_end;
     for (tie(e, e_end) = out_edges(u, g); e != e_end; ++e)
     {
         if (target(*e,g) == v)
@@ -122,11 +123,11 @@ bool is_adjacent(typename graph_traits<Graph>::vertex_descriptor u,
 // computes the out-degree of a graph, ignoring self-edges
 template <class Graph>
 inline size_t
-out_degree_no_loops(typename graph_traits<Graph>::vertex_descriptor v,
+out_degree_no_loops(typename boost::graph_traits<Graph>::vertex_descriptor v,
                     const Graph &g)
 {
     size_t k = 0;
-    typename graph_traits<Graph>::adjacency_iterator a,a_end;
+    typename boost::graph_traits<Graph>::adjacency_iterator a,a_end;
     for (tie(a,a_end) = adjacent_vertices(v,g); a != a_end; ++a)
         if (*a != v)
             k++;
@@ -135,12 +136,12 @@ out_degree_no_loops(typename graph_traits<Graph>::vertex_descriptor v,
 
 // computes the out-degree of a graph, ignoring self-edges
 template <class Graph, class Weights>
-inline typename property_traits<Weights>::value_type
-out_degree_no_loops_weighted(typename graph_traits<Graph>::vertex_descriptor v,
+inline typename boost::property_traits<Weights>::value_type
+out_degree_no_loops_weighted(typename boost::graph_traits<Graph>::vertex_descriptor v,
                              Weights w, const Graph &g)
 {
-    typename property_traits<Weights>::value_type k = 0;
-    typename graph_traits<Graph>::out_edge_iterator e, e_end;
+    typename boost::property_traits<Weights>::value_type k = 0;
+    typename boost::graph_traits<Graph>::out_edge_iterator e, e_end;
     for (tie(e, e_end) = out_edges(v, g); e != e_end; ++e)
         if (target(*e, g) != v)
             k += get(w, *e);
@@ -151,14 +152,14 @@ out_degree_no_loops_weighted(typename graph_traits<Graph>::vertex_descriptor v,
 template <class GraphOrig, class GraphTarget>
 void graph_copy(const GraphOrig& g, GraphTarget& gt)
 {
-    typename property_map<GraphOrig, vertex_index_t>::type index = get(vertex_index, g);
-    typedef typename graph_traits<GraphTarget>::vertex_descriptor tvertex_t;
+    typename boost::property_map<GraphOrig, boost::vertex_index_t>::type index = get(boost::vertex_index, g);
+    typedef typename boost::graph_traits<GraphTarget>::vertex_descriptor tvertex_t;
     vector<tvertex_t> vmap(num_vertices(g));
-    typename graph_traits<GraphOrig>::vertex_iterator v, v_end;
+    typename boost::graph_traits<GraphOrig>::vertex_iterator v, v_end;
     for (tie(v, v_end) = vertices(g); v != v_end; ++v)
         vmap[index[*v]] = add_vertex(gt);
 
-    typename graph_traits<GraphOrig>::edge_iterator e, e_end;
+    typename boost::graph_traits<GraphOrig>::edge_iterator e, e_end;
     for (tie(e, e_end) = edges(g); e != e_end; ++e)
         add_edge(vmap[index[source(*e, g)]], vmap[index[target(*e, g)]], gt);
 }
@@ -173,12 +174,12 @@ namespace boost
 //==============================================================================
 template <class Graph, class EdgePredicate, class VertexPredicate>
 inline
-typename graph_traits<filtered_graph<Graph,
-                                     EdgePredicate,
-                                     VertexPredicate> >::vertex_descriptor
+typename boost::graph_traits<filtered_graph<Graph,
+                                            EdgePredicate,
+                                            VertexPredicate>>::vertex_descriptor
 vertex(size_t i, const filtered_graph<Graph,EdgePredicate,VertexPredicate>& g)
 {
-    typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g.m_g);
+    typename boost::graph_traits<Graph>::vertex_descriptor v = vertex(i, g.m_g);
     if (g.m_vertex_pred(v))
         return v;
     else
@@ -190,7 +191,7 @@ vertex(size_t i, const filtered_graph<Graph,EdgePredicate,VertexPredicate>& g)
 //==============================================================================
 template <class Graph>
 inline
-typename graph_traits<reverse_graph<Graph> >::vertex_descriptor
+typename boost::graph_traits<reverse_graph<Graph>>::vertex_descriptor
 vertex(size_t i, const reverse_graph<Graph>& g)
 {
     return vertex(i, g.m_g);
@@ -201,15 +202,15 @@ vertex(size_t i, const reverse_graph<Graph>& g)
 //==============================================================================
 template <class Graph, class EdgePredicate, class VertexPredicate>
 inline
-std::pair<typename graph_traits
+std::pair<typename boost::graph_traits
               <filtered_graph<Graph,EdgePredicate,
-                              VertexPredicate> >::edge_descriptor, bool>
-add_edge(typename graph_traits
+                              VertexPredicate>>::edge_descriptor, bool>
+add_edge(typename boost::graph_traits
               <filtered_graph<Graph,EdgePredicate,
-                              VertexPredicate> >::vertex_descriptor u,
-         typename graph_traits
+                              VertexPredicate>>::vertex_descriptor u,
+         typename boost::graph_traits
               <filtered_graph<Graph,EdgePredicate,
-                              VertexPredicate> >::vertex_descriptor v,
+                              VertexPredicate>>::vertex_descriptor v,
          filtered_graph<Graph,EdgePredicate,VertexPredicate>& g)
 {
     return add_edge(u,v, const_cast<Graph&>(g.m_g));
@@ -220,8 +221,8 @@ add_edge(typename graph_traits
 //==============================================================================
 template <class Graph, class EdgePredicate, class VertexPredicate>
 inline void
-clear_vertex(typename graph_traits
-             <filtered_graph<Graph,EdgePredicate,VertexPredicate> >::vertex_descriptor v,
+clear_vertex(typename boost::graph_traits
+             <filtered_graph<Graph,EdgePredicate,VertexPredicate>>::vertex_descriptor v,
              filtered_graph<Graph,EdgePredicate,VertexPredicate>& g)
 {
     return clear_vertex(v, const_cast<Graph&>(g.m_g));
@@ -245,12 +246,15 @@ clear_vertex(typename graph_traits
 //==============================================================================
 template <class Graph>
 inline
-std::pair<typename graph_traits<reverse_graph<Graph> >::edge_descriptor,bool>
-add_edge(typename graph_traits<reverse_graph<Graph> >::vertex_descriptor u,
-         typename graph_traits<reverse_graph<Graph> >::vertex_descriptor v,
+std::pair<typename boost::graph_traits<reverse_graph<Graph>>::edge_descriptor,bool>
+add_edge(typename boost::graph_traits<reverse_graph<Graph>>::vertex_descriptor u,
+         typename boost::graph_traits<reverse_graph<Graph>>::vertex_descriptor v,
          reverse_graph<Graph>& g)
 {
-    return add_edge(v, u, const_cast<Graph&>(g.m_g)); // insert reversed
+    typedef typename boost::graph_traits<reverse_graph<Graph>>::edge_descriptor e_t;
+    std::pair<typename boost::graph_traits<Graph>::edge_descriptor,bool> ret =
+        add_edge(v, u, const_cast<Graph&>(g.m_g)); // insert reversed
+    return std::make_pair(e_t(ret.first), ret.second);
 }
 
 //==============================================================================
@@ -258,9 +262,9 @@ add_edge(typename graph_traits<reverse_graph<Graph> >::vertex_descriptor u,
 //==============================================================================
 template <class Graph, class EdgePredicate, class VertexPredicate>
 inline
-void remove_edge(typename graph_traits
+void remove_edge(typename boost::graph_traits
                      <filtered_graph<Graph,EdgePredicate,
-                                     VertexPredicate> >::edge_descriptor e,
+                                     VertexPredicate>>::edge_descriptor e,
                  filtered_graph<Graph,EdgePredicate,VertexPredicate>& g)
 {
     return remove_edge(e,const_cast<Graph&>(g.m_g));
@@ -272,7 +276,7 @@ void remove_edge(typename graph_traits
 template <class Graph>
 inline
 void remove_edge
-(typename graph_traits<reverse_graph<Graph> >::edge_descriptor e,
+(typename boost::graph_traits<reverse_graph<Graph>>::edge_descriptor e,
  reverse_graph<Graph>& g)
 {
     return remove_edge(e,const_cast<Graph&>(g.m_g));
@@ -284,7 +288,7 @@ void remove_edge
 template <class Graph>
 inline
 void clear_vertex
-(typename graph_traits<reverse_graph<Graph> >::vertex_descriptor v,
+(typename boost::graph_traits<reverse_graph<Graph>>::vertex_descriptor v,
  reverse_graph<Graph>& g)
 {
     return clear_vertex(v,const_cast<Graph&>(g.m_g));
@@ -295,8 +299,8 @@ void clear_vertex
 //==============================================================================
 template <class Graph, class EdgePredicate, class VertexPredicate>
 inline
-typename graph_traits
-    <filtered_graph<Graph,EdgePredicate,VertexPredicate> >::vertex_descriptor
+typename boost::graph_traits
+    <filtered_graph<Graph,EdgePredicate,VertexPredicate>>::vertex_descriptor
 add_vertex(filtered_graph<Graph,EdgePredicate,VertexPredicate>& g)
 {
     return add_vertex(const_cast<Graph&>(g.m_g));
@@ -307,7 +311,7 @@ add_vertex(filtered_graph<Graph,EdgePredicate,VertexPredicate>& g)
 //==============================================================================
 template <class Graph>
 inline
-typename graph_traits<reverse_graph<Graph> >::vertex_descriptor
+typename boost::graph_traits<reverse_graph<Graph>>::vertex_descriptor
 add_vertex(reverse_graph<Graph>& g)
 {
     return add_vertex(const_cast<Graph&>(g.m_g));
@@ -440,7 +444,7 @@ private:
 // This will iterate over a random permutation of a random access sequence, by
 // swapping the values of the sequence as it iterates
 template <class RandomAccessIterator, class RNG,
-          class RandomDist = std::tr1::uniform_int<size_t> >
+          class RandomDist = std::uniform_int_distribution<size_t>>
 class random_permutation_iterator : public
     std::iterator<std::input_iterator_tag, typename RandomAccessIterator::value_type>
 {
@@ -491,6 +495,25 @@ private:
     RandomAccessIterator _i, _end;
     RNG* _rng;
 };
+
+
+//
+// Vector hash function
+//
+
+namespace std
+{
+
+template <class Value>
+struct hash<vector<Value>>
+{
+    size_t operator()(const vector<Value>& v) const
+    {
+        return boost::hash_range(v.begin(), v.end());
+    }
+};
+
+}
 
 
 #endif // GRAPH_UTIL_HH

@@ -33,30 +33,30 @@ struct export_vertex_property_map
     template <class PropertyMap>
     void operator()(PropertyMap) const
     {
-        using python::detail::gcc_demangle;
+        using boost::python::detail::gcc_demangle;
 
         typedef PythonPropertyMap<PropertyMap> pmap_t;
 
         string type_name;
-        if (is_same<typename mpl::find<value_types,
-                                       typename pmap_t::value_type>::type,
-                    typename mpl::end<value_types>::type>::value)
+        if (std::is_same<typename boost::mpl::find<value_types,
+                                                   typename pmap_t::value_type>::type,
+                         typename boost::mpl::end<value_types>::type>::value)
             type_name =
                 gcc_demangle(typeid(typename pmap_t::value_type).name());
         else
             type_name =
-                type_names[mpl::find<value_types,typename pmap_t::value_type>
+                type_names[boost::mpl::find<value_types,typename pmap_t::value_type>
                            ::type::pos::value];
         string class_name = "VertexPropertyMap<" + type_name + ">";
 
-        typedef typename mpl::if_<
+        typedef typename boost::mpl::if_<
             typename return_reference::apply<typename pmap_t::value_type>::type,
-            python::return_internal_reference<>,
-            python::return_value_policy<python::return_by_value> >
+            boost::python::return_internal_reference<>,
+            boost::python::return_value_policy<boost::python::return_by_value> >
             ::type return_policy;
 
-        python::class_<pmap_t> pclass(class_name.c_str(),
-                                      python::no_init);
+        boost::python::class_<pmap_t> pclass(class_name.c_str(),
+                                      boost::python::no_init);
         pclass.def("__hash__", &pmap_t::GetHash)
             .def("value_type", &pmap_t::GetType)
             .def("__getitem__", &pmap_t::template GetValue<PythonVertex>,
@@ -76,13 +76,13 @@ struct export_edge_property_map
     {
         typedef PythonPropertyMap<PropertyMap> pmap_t;
 
-        export_access(python::class_<pmap_t>& pclass)
+        export_access(boost::python::class_<pmap_t>& pclass)
             : _pclass(pclass) {}
 
-        typedef typename mpl::if_<
+        typedef typename boost::mpl::if_<
             typename return_reference::apply<typename pmap_t::value_type>::type,
-            python::return_internal_reference<>,
-            python::return_value_policy<python::return_by_value> >
+            boost::python::return_internal_reference<>,
+            boost::python::return_value_policy<boost::python::return_by_value> >
             ::type return_policy;
 
         template <class Graph>
@@ -96,30 +96,30 @@ struct export_edge_property_map
                      &pmap_t::template SetValue<PythonEdge<Graph> >);
         }
 
-        python::class_<PythonPropertyMap<PropertyMap> >& _pclass;
+        boost::python::class_<PythonPropertyMap<PropertyMap> >& _pclass;
     };
 
     template <class PropertyMap>
     void operator()(PropertyMap) const
     {
-        using python::detail::gcc_demangle;
+        using boost::python::detail::gcc_demangle;
 
         typedef PythonPropertyMap<PropertyMap> pmap_t;
 
         string type_name;
-        if (is_same<typename mpl::find<value_types,
-                                       typename pmap_t::value_type>::type,
-                    typename mpl::end<value_types>::type>::value)
+        if (std::is_same<typename boost::mpl::find<value_types,
+                                                   typename pmap_t::value_type>::type,
+                         typename boost::mpl::end<value_types>::type>::value)
             type_name =
                 gcc_demangle(typeid(typename pmap_t::value_type).name());
         else
             type_name =
-                type_names[mpl::find<value_types,typename pmap_t::value_type>
+                type_names[boost::mpl::find<value_types,typename pmap_t::value_type>
                            ::type::pos::value];
         string class_name = "EdgePropertyMap<" + type_name + ">";
 
-        python::class_<pmap_t> pclass(class_name.c_str(),
-                                      python::no_init);
+        boost::python::class_<pmap_t> pclass(class_name.c_str(),
+                                             boost::python::no_init);
         pclass.def("__hash__", &pmap_t::GetHash)
             .def("value_type", &pmap_t::GetType)
             .def("get_map", &pmap_t::GetMap)
@@ -128,10 +128,10 @@ struct export_edge_property_map
             .def("is_writable", &pmap_t::IsWritable);
 
 
-        typedef mpl::transform<graph_tool::detail::all_graph_views,
-                               mpl::quote1<add_pointer> >::type graph_views;
+        typedef boost::mpl::transform<graph_tool::detail::all_graph_views,
+                                      boost::mpl::quote1<std::add_pointer> >::type graph_views;
 
-        mpl::for_each<graph_views>(export_access<PropertyMap>(pclass));
+        boost::mpl::for_each<graph_views>(export_access<PropertyMap>(pclass));
     }
 };
 
@@ -143,18 +143,18 @@ struct export_graph_property_map
         typedef PythonPropertyMap<PropertyMap> pmap_t;
 
         string type_name =
-            type_names[mpl::find<value_types,
+            type_names[boost::mpl::find<value_types,
                        typename pmap_t::value_type>::type::pos::value];
         string class_name = "GraphPropertyMap<" + type_name + ">";
 
-        typedef typename mpl::if_<
+        typedef typename boost::mpl::if_<
             typename return_reference::apply<typename pmap_t::value_type>::type,
-            python::return_internal_reference<>,
-            python::return_value_policy<python::return_by_value> >
+            boost::python::return_internal_reference<>,
+            boost::python::return_value_policy<boost::python::return_by_value> >
             ::type return_policy;
 
-        python::class_<pmap_t> pclass(class_name.c_str(),
-                                      python::no_init);
+        boost::python::class_<pmap_t> pclass(class_name.c_str(),
+                                             boost::python::no_init);
         pclass.def("__hash__", &pmap_t::GetHash)
             .def("value_type", &pmap_t::GetType)
             .def("__getitem__", &pmap_t::template GetValue<GraphInterface>,
@@ -172,20 +172,20 @@ void export_python_properties()
     typedef property_map_types::apply<
             value_types,
             GraphInterface::vertex_index_map_t,
-            mpl::bool_<true>
+            boost::mpl::bool_<true>
         >::type vertex_property_maps;
     typedef property_map_types::apply<
             value_types,
             GraphInterface::edge_index_map_t,
-            mpl::bool_<true>
+            boost::mpl::bool_<true>
         >::type edge_property_maps;
     typedef property_map_types::apply<
             value_types,
             ConstantPropertyMap<size_t,graph_property_tag>,
-            mpl::bool_<false>
+            boost::mpl::bool_<false>
         >::type graph_property_maps;
 
-    mpl::for_each<vertex_property_maps>(export_vertex_property_map());
-    mpl::for_each<edge_property_maps>(export_edge_property_map());
-    mpl::for_each<graph_property_maps>(export_graph_property_map());
+    boost::mpl::for_each<vertex_property_maps>(export_vertex_property_map());
+    boost::mpl::for_each<edge_property_maps>(export_edge_property_map());
+    boost::mpl::for_each<graph_property_maps>(export_graph_property_map());
 }

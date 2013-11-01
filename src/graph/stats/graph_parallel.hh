@@ -16,8 +16,7 @@
 #ifndef GRAPH_PARALLEL_HH
 #define GRAPH_PARALLEL_HH
 
-#include "tr1_include.hh"
-#include TR1_HEADER(unordered_map)
+#include <unordered_map>
 
 #ifdef HAVE_SPARSEHASH
 #include <dense_hash_map>

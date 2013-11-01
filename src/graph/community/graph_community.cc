@@ -37,9 +37,9 @@ void community_structure(GraphInterface& g, double gamma, string corr_name,
                          rng_t& rng, bool verbose, string history_file,
                          boost::any weight, boost::any property)
 {
-    typedef property_map_types::apply<mpl::vector<int32_t,int64_t>,
+    typedef property_map_types::apply<boost::mpl::vector<int32_t,int64_t>,
                                       GraphInterface::vertex_index_map_t,
-                                      mpl::bool_<false> >::type
+                                      boost::mpl::bool_<false> >::type
         allowed_spin_properties;
 
     if (!belongs<allowed_spin_properties>()(property))
@@ -48,7 +48,7 @@ void community_structure(GraphInterface& g, double gamma, string corr_name,
 
     typedef DynamicPropertyMapWrap<double,GraphInterface::edge_t> weight_map_t;
     typedef ConstantPropertyMap<double,GraphInterface::edge_t> no_weight_map_t;
-    typedef mpl::vector<weight_map_t,no_weight_map_t> weight_properties;
+    typedef boost::mpl::vector<weight_map_t,no_weight_map_t> weight_properties;
 
     if (weight.empty())
         weight = no_weight_map_t(1.0);
@@ -66,10 +66,10 @@ void community_structure(GraphInterface& g, double gamma, string corr_name,
         throw ValueException("invalid correlation type: " + corr_name);
 
     run_action<graph_tool::detail::never_directed>()
-        (g, bind<void>(get_communities_selector(corr, g.GetVertexIndex()),
-                       _1, _2, _3, gamma, n_iter,
-                       make_pair(Tmin, Tmax), Nspins,
-                       ref(rng), make_pair(verbose,history_file)),
+        (g, std::bind(get_communities_selector(corr, g.GetVertexIndex()),
+                      placeholders::_1, placeholders::_2, placeholders::_3, gamma, n_iter,
+                      make_pair(Tmin, Tmax), Nspins,
+                      std::ref(rng), make_pair(verbose,history_file)),
          weight_properties(), allowed_spin_properties())
         (weight, property);
 }
@@ -80,14 +80,15 @@ double modularity(GraphInterface& g, boost::any weight, boost::any property)
     double modularity = 0;
 
     typedef ConstantPropertyMap<int32_t,GraphInterface::edge_t> weight_map_t;
-    typedef mpl::push_back<edge_scalar_properties, weight_map_t>::type
+    typedef boost::mpl::push_back<edge_scalar_properties, weight_map_t>::type
         edge_props_t;
 
     if(weight.empty())
         weight = weight_map_t(1);
 
     run_action<graph_tool::detail::never_directed>()
-        (g, bind<void>(get_modularity(), _1, _2, _3, ref(modularity)),
+        (g, std::bind(get_modularity(), placeholders::_1, placeholders::_2,
+                      placeholders::_3, std::ref(modularity)),
          edge_props_t(), vertex_scalar_properties())
         (weight, property);
     return modularity;
@@ -108,14 +109,14 @@ void community_network_vavg(GraphInterface& gi, GraphInterface& cgi,
                             boost::any condensed_community_property,
                             boost::any vertex_count,
                             boost::any vweight,
-                            python::list avprops);
+                            boost::python::list avprops);
 
 void community_network_eavg(GraphInterface& gi, GraphInterface& cgi,
                             boost::any community_property,
                             boost::any condensed_community_property,
                             boost::any edge_count,
                             boost::any eweight,
-                            python::list aeprops,
+                            boost::python::list aeprops,
                             bool self_loops);
 
 

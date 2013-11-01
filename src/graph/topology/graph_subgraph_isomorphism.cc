@@ -24,8 +24,7 @@
 
 #include <graph_subgraph_isomorphism.hh>
 
-#include "tr1_include.hh"
-#include TR1_HEADER(unordered_map)
+#include <unordered_map>
 
 using namespace graph_tool;
 using namespace boost;
@@ -71,7 +70,7 @@ struct get_subgraphs
                     VertexLabel vertex_label1, boost::any vertex_label2,
                     EdgeLabel edge_label1, boost::any edge_label2,
                     vector<vector<pair<size_t, size_t> > >& F,
-                    vector<size_t>& vlist, pair<reference_wrapper<rng_t>,size_t> sn) const
+                    vector<size_t>& vlist, pair<std::reference_wrapper<rng_t>,size_t> sn) const
     {
         typedef PropLabelling<Graph1,Graph2,VertexLabel,VertexLabel>
             vlabelling_t;
@@ -86,7 +85,7 @@ struct get_subgraphs
             vlist[i] = i;
         for (i = 0; i < N - 1; ++i)
         {
-            tr1::uniform_int<> random(i, N - 1);
+            uniform_int_distribution<> random(i, N - 1);
             swap(vlist[i], vlist[random(rng)]);
         }
 
@@ -149,11 +148,11 @@ struct get_mapping
 
 struct directed_graph_view_pointers:
     mpl::transform<graph_tool::detail::always_directed,
-                   mpl::quote1<add_pointer> >::type {};
+                   mpl::quote1<std::add_pointer> >::type {};
 
 struct undirected_graph_view_pointers:
     mpl::transform<graph_tool::detail::never_directed,
-                   mpl::quote1<add_pointer> >::type {};
+                   mpl::quote1<std::add_pointer> >::type {};
 
 struct vertex_label_mapping
 {
@@ -162,9 +161,9 @@ struct vertex_label_mapping
                     boost::any& vlist) const
     {
         typedef typename property_traits<VertexMap>::value_type value_t;
-        tr1::unordered_map<value_t, int32_t> values;
+        unordered_map<value_t, int32_t> values;
         if (!vlist.empty())
-            values = boost::any_cast<tr1::unordered_map<value_t, int32_t> >(vlist);
+            values = boost::any_cast<unordered_map<value_t, int32_t> >(vlist);
 
         typename graph_traits<Graph>::vertex_iterator v, v_end;
         for (tie(v, v_end) = vertices(g); v != v_end; ++v)
@@ -185,9 +184,9 @@ struct edge_label_mapping
                     boost::any& vlist) const
     {
         typedef typename property_traits<EdgeMap>::value_type value_t;
-        tr1::unordered_map<value_t, int32_t> values;
+        unordered_map<value_t, int32_t> values;
         if (!vlist.empty())
-            values = boost::any_cast<tr1::unordered_map<value_t, int32_t> >(vlist);
+            values = boost::any_cast<unordered_map<value_t, int32_t> >(vlist);
 
         typename graph_traits<Graph>::edge_iterator e, e_end;
         for (tie(e, e_end) = edges(g); e != e_end; ++e)
@@ -239,15 +238,17 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
         {
             boost::any vlist;
             vlabel_t vlabel1(gi1.GetVertexIndex());
-            run_action<>()(gi1, bind<void>(vertex_label_mapping(),
-                                           _1, _2, vlabel1, ref(vlist)),
+            run_action<>()(gi1, std::bind(vertex_label_mapping(),
+                                          placeholders::_1, placeholders::_2,
+                                          vlabel1, std::ref(vlist)),
                            vertex_properties())
                 (vertex_label1);
             vertex_label1 = vlabel1;
 
             vlabel_t vlabel2(gi2.GetVertexIndex());
-            run_action<>()(gi2, bind<void>(vertex_label_mapping(),
-                                           _1, _2, vlabel2, ref(vlist)),
+            run_action<>()(gi2, std::bind(vertex_label_mapping(),
+                                          placeholders::_1, placeholders::_2,
+                                          vlabel2, std::ref(vlist)),
                            vertex_properties())
                 (vertex_label2);
             vertex_label2 = vlabel2.get_unchecked(num_vertices(gi2.GetGraph()));
@@ -269,15 +270,17 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
         {
             boost::any vlist;
             elabel_t elabel1(gi1.GetEdgeIndex());
-            run_action<>()(gi1, bind<void>(edge_label_mapping(),
-                                           _1, _2, elabel1, ref(vlist)),
+            run_action<>()(gi1, std::bind(edge_label_mapping(),
+                                          placeholders::_1, placeholders::_2,
+                                          elabel1, std::ref(vlist)),
                            edge_properties())
                 (edge_label1);
             edge_label1 = elabel1;
 
             elabel_t elabel2(gi2.GetEdgeIndex());
-            run_action<>()(gi2, bind<void>(edge_label_mapping(),
-                                           _1, _2, elabel2, ref(vlist)),
+            run_action<>()(gi2, std::bind(edge_label_mapping(),
+                                          placeholders::_1, placeholders::_2,
+                                          elabel2, std::ref(vlist)),
                            edge_properties())
                 (edge_label2);
             edge_label2 = elabel2.get_unchecked(num_edges(gi2.GetGraph()));
@@ -290,9 +293,10 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
     if (gi1.GetDirected())
     {
         run_action<graph_tool::detail::always_directed>()
-            (gi1, bind<void>(get_subgraphs(),
-                             _1, _2, _3, vertex_label2, _4, edge_label2,
-                             ref(F), ref(vlist), make_pair(ref(rng), max_n)),
+            (gi1, std::bind(get_subgraphs(), placeholders::_1, placeholders::_2,
+                            placeholders::_3, vertex_label2, placeholders::_4,
+                            edge_label2, std::ref(F), std::ref(vlist),
+                            make_pair(std::ref(rng), max_n)),
              directed_graph_view_pointers(), vertex_props_t(),
              edge_props_t())
             (gi2.GetGraphView(), vertex_label1,  edge_label1);
@@ -300,9 +304,10 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
     else
     {
         run_action<graph_tool::detail::never_directed>()
-            (gi1, bind<void>(get_subgraphs(),
-                             _1, _2, _3, vertex_label2, _4, edge_label2,
-                             ref(F), ref(vlist), make_pair(ref(rng), max_n)),
+            (gi1, std::bind(get_subgraphs(), placeholders::_1, placeholders::_2,
+                            placeholders::_3, vertex_label2, placeholders::_4,
+                            edge_label2, std::ref(F), std::ref(vlist),
+                            make_pair(std::ref(rng), max_n)),
              undirected_graph_view_pointers(), vertex_props_t(),
              edge_props_t())
             (gi2.GetGraphView(), vertex_label1, edge_label1);
@@ -321,21 +326,23 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
         if (gi1.GetDirected())
         {
             run_action<graph_tool::detail::always_directed>()
-                (gi1, bind<void>(get_mapping(),
-                                 _1, _2, _3, edge_label2,
-                                 ref(F[i]), ref(vm), ref(ep),
-                                 gi2.GetEdgeIndex(), ref(vlist)),
+                (gi1, std::bind(get_mapping(),
+                                 placeholders::_1, placeholders::_2,
+                                 placeholders::_3, edge_label2,
+                                 std::ref(F[i]), std::ref(vm), std::ref(ep),
+                                 gi2.GetEdgeIndex(), std::ref(vlist)),
                  directed_graph_view_pointers(), edge_props_t())
                 (gi2.GetGraphView(), edge_label1);
         }
         else
         {
             run_action<graph_tool::detail::never_directed>()
-                (gi1, bind<void>(get_mapping(),
-                                 _1, _2, _3, edge_label2,
-                                 ref(F[i]), ref(vm), ref(ep),
-                                 gi2.GetEdgeIndex(), ref(vlist)),
-                 undirected_graph_view_pointers(), edge_props_t())
+                (gi1, std::bind(get_mapping(),
+                                placeholders::_1, placeholders::_2,
+                                placeholders::_3, edge_label2,
+                                std::ref(F[i]), std::ref(vm), std::ref(ep),
+                                gi2.GetEdgeIndex(), std::ref(vlist)),
+                                undirected_graph_view_pointers(), edge_props_t())
                 (gi2.GetGraphView(), edge_label1);
         }
         vmapping.append(PythonPropertyMap<vmap_t>(vm.get_checked()));

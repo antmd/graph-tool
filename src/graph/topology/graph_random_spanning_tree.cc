@@ -94,7 +94,7 @@ void get_random_spanning_tree(GraphInterface& gi, size_t root,
         weight_maps;
 
     run_action<>()
-        (gi, bind<void>(get_random_span_tree(), _1, root, gi.GetVertexIndex(),
-                        _2, _3, ref(rng)),
+        (gi, std::bind(get_random_span_tree(), placeholders::_1, root, gi.GetVertexIndex(),
+            placeholders::_2, placeholders::_3, std::ref(rng)),
          weight_maps(), tree_properties())(weight_map, tree_map);
 }

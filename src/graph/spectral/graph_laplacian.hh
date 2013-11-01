@@ -24,6 +24,7 @@
 
 namespace graph_tool
 {
+using namespace boost;
 
 enum deg_t
 {

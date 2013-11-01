@@ -16,8 +16,7 @@
 #ifndef GRAPH_SIMILARITY_HH
 #define GRAPH_SIMILARITY_HH
 
-#include "tr1_include.hh"
-#include TR1_HEADER(unordered_set)
+#include <unordered_set>
 
 namespace graph_tool
 {
@@ -50,9 +49,9 @@ struct get_similarity
 
         typedef typename property_traits<LabelMap>::value_type label_t;
 
-        tr1::unordered_map<label_t, typename graph_traits<Graph1>::vertex_descriptor>
+        std::unordered_map<label_t, typename graph_traits<Graph1>::vertex_descriptor>
             lmap1;
-        tr1::unordered_map<label_t, typename graph_traits<Graph2>::vertex_descriptor>
+        std::unordered_map<label_t, typename graph_traits<Graph2>::vertex_descriptor>
             lmap2;
 
         typename graph_traits<Graph1>::vertex_iterator v1, v1_end;
@@ -72,9 +71,9 @@ struct get_similarity
                 continue;
             typename graph_traits<Graph2>::vertex_descriptor v2 = li2->second;
 
-            tr1::unordered_set<label_t> keys;
-            tr1::unordered_multiset<label_t> adj1;
-            tr1::unordered_multiset<label_t> adj2;
+            std::unordered_set<label_t> keys;
+            std::unordered_multiset<label_t> adj1;
+            std::unordered_multiset<label_t> adj2;
 
             typename graph_traits<Graph1>::adjacency_iterator a1, a1_end;
             for(tie(a1, a1_end) = adjacent_vertices(v1, g1); a1 != a1_end; ++a1)

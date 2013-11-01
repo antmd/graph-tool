@@ -17,14 +17,11 @@
 
 #include "graph_filtering.hh"
 
-#include <boost/python.hpp>
-
 #include "graph.hh"
 #include "graph_selectors.hh"
 #include "graph_eigenvector.hh"
 
 using namespace std;
-using namespace boost;
 using namespace graph_tool;
 
 long double eigenvector(GraphInterface& g, boost::any w, boost::any c,
@@ -37,7 +34,7 @@ long double eigenvector(GraphInterface& g, boost::any w, boost::any c,
                              " value type");
 
     typedef ConstantPropertyMap<int, GraphInterface::edge_t> weight_map_t;
-    typedef mpl::push_back<writable_edge_scalar_properties, weight_map_t>::type
+    typedef boost::mpl::push_back<writable_edge_scalar_properties, weight_map_t>::type
         weight_props_t;
 
     if(w.empty())
@@ -45,13 +42,15 @@ long double eigenvector(GraphInterface& g, boost::any w, boost::any c,
 
     long double eig = 0;
     run_action<>()
-        (g, bind<void>
-         (get_eigenvector(), _1, g.GetVertexIndex(), _2,
-          _3, epsilon, max_iter, ref(eig)),
+        (g, std::bind(get_eigenvector(), placeholders::_1, g.GetVertexIndex(),
+                      placeholders::_2, placeholders::_3, epsilon, max_iter,
+                      std::ref(eig)),
          weight_props_t(),
          vertex_floating_properties())(w, c);
     return eig;
 }
+
+#include <boost/python.hpp>
 
 void export_eigenvector()
 {

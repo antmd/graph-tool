@@ -69,6 +69,6 @@ struct do_maximal_planar
 void maximal_planar(GraphInterface& gi)
 {
     run_action<graph_tool::detail::never_directed, mpl::true_>()
-        (gi, bind<void>(do_maximal_planar(), _1, gi.GetVertexIndex(),
-                        gi.GetEdgeIndex()))();
+        (gi, std::bind(do_maximal_planar(), placeholders::_1, gi.GetVertexIndex(),
+                       gi.GetEdgeIndex()))();
 }

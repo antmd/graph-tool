@@ -32,7 +32,7 @@ struct get_pointers
     struct apply
     {
         typedef typename mpl::transform<List,
-                                        mpl::quote1<add_pointer> >::type type;
+                                        mpl::quote1<std::add_pointer> >::type type;
     };
 };
 
@@ -42,7 +42,8 @@ size_t similarity(GraphInterface& gi1, GraphInterface& gi2, boost::any label1,
 {
     size_t s = 0;
     run_action<>()
-        (gi1, bind<void>(get_similarity(), _1, _2, _3, label2, ref(s)),
+        (gi1, std::bind(get_similarity(), placeholders::_1, placeholders::_2,
+                        placeholders::_3, label2, std::ref(s)),
          get_pointers::apply<graph_tool::detail::all_graph_views>::type(),
          vertex_scalar_properties())(gi2.GetGraphView(), label1);
     return s;

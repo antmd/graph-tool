@@ -31,9 +31,9 @@ using namespace boost;
 // we need a min() function with arguments of different types
 
 template <class T1, class T2>
-typename mpl::if_<
-    typename mpl::or_<typename is_floating_point<T1>::type,
-                      typename is_floating_point<T2>::type>::type,
+typename boost::mpl::if_<
+    typename boost::mpl::or_<typename std::is_floating_point<T1>::type,
+                             typename std::is_floating_point<T2>::type>::type,
     double, int>::type
 min(const T1& v1, const T2& v2)
 {
@@ -67,7 +67,7 @@ struct get_push_relabel_max_flow
         unchecked_vector_property_map<edge_t,EdgeIndex>
             reverse_map(edge_index, max_e);
 
-        typedef typename remove_const<Graph>::type GT;
+        typedef typename std::remove_const<Graph>::type GT;
         GT& u = const_cast<GT&>(g);
 
         augment_graph(u, augmented, cm,
@@ -85,11 +85,11 @@ struct get_push_relabel_max_flow
 void push_relabel_max_flow(GraphInterface& gi, size_t src, size_t sink,
                            boost::any capacity, boost::any res)
 {
-    run_action<graph_tool::detail::always_directed, mpl::true_>()
-        (gi, bind<void>(get_push_relabel_max_flow(),
-                        _1, gi.GetVertexIndex(), gi.GetEdgeIndex(),
-                        gi.GetMaxEdgeIndex(),
-                        src, sink, _2, _3),
+    run_action<graph_tool::detail::always_directed, boost::mpl::true_>()
+        (gi, std::bind(get_push_relabel_max_flow(),
+                       placeholders::_1, gi.GetVertexIndex(), gi.GetEdgeIndex(),
+                       gi.GetMaxEdgeIndex(),
+                       src, sink,  placeholders::_2,  placeholders::_3),
          writable_edge_scalar_properties(), writable_edge_scalar_properties())
         (capacity,res);
 }

@@ -38,8 +38,7 @@ struct do_maximal_vertex_set
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
         typedef typename property_traits<VertexSet>::value_type wval_t;
 
-        tr1::variate_generator<RNG&, tr1::uniform_real<> >
-            sample(rng, tr1::uniform_real<>(0, 1));
+        uniform_real_distribution<> sample(0, 1);
 
         VertexSet marked(vertex_index, num_vertices(g));
         vector<vertex_t> vlist;
@@ -90,9 +89,10 @@ struct do_maximal_vertex_set
                         p = out_degree(v, g) / max_deg;
                     else
                         p = 1. / (2 * out_degree(v, g));
+
+                    #pragma omp critical
                     {
-                        #pragma omp critical
-                        r = sample();
+                        r = sample(rng);
                     }
                     if (r < p)
                         include = true;
@@ -105,16 +105,18 @@ struct do_maximal_vertex_set
                 if (include)
                 {
                     marked[v] = true;
+                    #pragma omp critical
                     {
-                        #pragma omp critical
                         selected.push_back(v);
                     }
                 }
                 else
                 {
                     #pragma omp critical
-                    tmp.push_back(v);
-                    tmp_max_deg = max(tmp_max_deg, out_degree(v, g));
+                    {
+                        tmp.push_back(v);
+                        tmp_max_deg = max(tmp_max_deg, out_degree(v, g));
+                    }
                 }
             }
 
@@ -171,8 +173,8 @@ void maximal_vertex_set(GraphInterface& gi, boost::any mvs, bool high_deg,
                         rng_t& rng)
 {
     run_action<>()
-        (gi, bind<void>(do_maximal_vertex_set(), _1, gi.GetVertexIndex(),
-                        _2, high_deg, ref(rng)),
+        (gi, std::bind(do_maximal_vertex_set(), placeholders::_1, gi.GetVertexIndex(),
+                       placeholders::_2, high_deg, std::ref(rng)),
          writable_vertex_scalar_properties())(mvs);
 }
 

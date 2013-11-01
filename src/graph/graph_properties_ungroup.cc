@@ -28,15 +28,15 @@ using namespace std;
 using namespace boost;
 using namespace graph_tool;
 
-typedef mpl::transform<value_types,make_vector>::type vector_types;
+typedef boost::mpl::transform<value_types,make_vector>::type vector_types;
 typedef property_map_types::apply<vector_types,
                                   GraphInterface::vertex_index_map_t,
-                                  mpl::bool_<false> >::type
+                                  boost::mpl::bool_<false> >::type
     vertex_vector_properties;
 
 typedef property_map_types::apply<vector_types,
                                   GraphInterface::edge_index_map_t,
-                                  mpl::bool_<false> >::type
+                                  boost::mpl::bool_<false> >::type
     edge_vector_properties;
 
 void ungroup_vector_property(GraphInterface& g, boost::any vector_prop,
@@ -44,14 +44,14 @@ void ungroup_vector_property(GraphInterface& g, boost::any vector_prop,
 {
     if (edge)
         run_action<graph_tool::detail::always_directed_never_reversed>()
-            (g, bind<void>(do_group_vector_property<mpl::false_,mpl::true_>(),
-                           _1, _2, _3, pos),
+            (g, bind(do_group_vector_property<boost::mpl::false_,boost::mpl::true_>(),
+                     placeholders::_1, placeholders::_2, placeholders::_3, pos),
              edge_vector_properties(), writable_edge_properties())
             (vector_prop, prop);
     else
         run_action<graph_tool::detail::always_directed_never_reversed>()
-            (g, bind<void>(do_group_vector_property<mpl::false_,mpl::false_>(),
-                           _1, _2, _3, pos),
+            (g, bind(do_group_vector_property<boost::mpl::false_,boost::mpl::false_>(),
+                     placeholders::_1, placeholders::_2, placeholders::_3, pos),
              vertex_vector_properties(), writable_vertex_properties())
             (vector_prop, prop);
 }

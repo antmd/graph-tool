@@ -18,9 +18,8 @@
 #ifndef GRAPH_REWIRING_HH
 #define GRAPH_REWIRING_HH
 
-#include "tr1_include.hh"
-#include TR1_HEADER(unordered_set)
-#include TR1_HEADER(tuple)
+#include <unordered_set>
+#include <tuple>
 
 #include <boost/functional/hash.hpp>
 
@@ -196,14 +195,14 @@ struct graph_rewire
     void operator()(Graph& g, EdgeIndexMap edge_index, CorrProb corr_prob,
                     bool self_loops, bool parallel_edges,
                     pair<size_t, bool> iter_sweep,
-                    tr1::tuple<bool, bool, bool> cache_verbose,
+                    std::tuple<bool, bool, bool> cache_verbose,
                     size_t& pcount, rng_t& rng, BlockDeg bd)
         const
     {
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
-        bool persist = tr1::get<0>(cache_verbose);
-        bool cache = tr1::get<1>(cache_verbose);
-        bool verbose = tr1::get<2>(cache_verbose);
+        bool persist = std::get<0>(cache_verbose);
+        bool cache = std::get<1>(cache_verbose);
+        bool verbose = std::get<2>(cache_verbose);
 
         vector<edge_t> edges;
         vector<size_t> edge_pos;
@@ -263,7 +262,7 @@ struct graph_rewire
     void operator()(Graph& g, EdgeIndexMap edge_index, CorrProb corr_prob,
                     bool self_loops, bool parallel_edges,
                     pair<size_t, bool> iter_sweep,
-                    tr1::tuple<bool, bool, bool> cache_verbose,
+                    std::tuple<bool, bool, bool> cache_verbose,
                     size_t& pcount, rng_t& rng)
         const
     {
@@ -297,7 +296,7 @@ public:
     bool operator()(size_t ei, bool self_loops, bool parallel_edges)
     {
         //try randomly drawn pairs of vertices
-        tr1::uniform_int<size_t> sample(0, _vertices.size() - 1);
+        std::uniform_int_distribution<size_t> sample(0, _vertices.size() - 1);
         typename graph_traits<Graph>::vertex_descriptor s, t;
         while (true)
         {
@@ -426,11 +425,11 @@ public:
 
     pair<size_t,bool> get_target_edge(size_t)
     {
-        tr1::uniform_int<> sample(0, base_t::_edges.size() - 1);
+        std::uniform_int_distribution<> sample(0, base_t::_edges.size() - 1);
         pair<size_t, bool> et = make_pair(sample(base_t::_rng), false);
         if (!is_directed::apply<Graph>::type::value)
         {
-            tr1::bernoulli_distribution coin(0.5);
+            std::bernoulli_distribution coin(0.5);
             et.second = coin(base_t::_rng);
         }
         return et;
@@ -495,7 +494,7 @@ public:
         deg_t tdeg = make_pair(in_degreeS()(t, _g), out_degree(t, _g));
         typename edges_by_end_deg_t::mapped_type& elist =
             _edges_by_target[tdeg];
-        tr1::uniform_int<> sample(0, elist.size() - 1);
+        std::uniform_int_distribution<> sample(0, elist.size() - 1);
 
         return elist[sample(base_t::_rng)];
     }
@@ -504,9 +503,9 @@ public:
 
 private:
     typedef pair<size_t, size_t> deg_t;
-    typedef tr1::unordered_map<deg_t,
+    typedef std::unordered_map<deg_t,
                                vector<pair<size_t, bool> >,
-                               hash<deg_t> >
+                               boost::hash<deg_t> >
         edges_by_end_deg_t;
     edges_by_end_deg_t _edges_by_target;
 
@@ -547,7 +546,7 @@ public:
         if (cache)
         {
             // cache probabilities
-            tr1::unordered_set<deg_t, hash<deg_t> > deg_set;
+            std::unordered_set<deg_t, boost::hash<deg_t> > deg_set;
             for (size_t ei = 0; ei < base_t::_edges.size(); ++ei)
             {
                 edge_t& e = base_t::_edges[ei];
@@ -561,7 +560,7 @@ public:
                      t_iter != deg_set.end(); ++t_iter)
                 {
                     double p = _corr_prob(*s_iter, *t_iter);
-                    if (isnan(p) || isinf(p) || p < 0)
+                    if (std::isnan(p) || std::isinf(p) || p < 0)
                         p = 0;
                     // avoid zero probability to not get stuck in rejection step
                     if (p == 0)
@@ -576,7 +575,7 @@ public:
         if (_probs.empty())
         {
             double p = _corr_prob(s_deg, t_deg);
-            if (isnan(p) || isinf(p) || p < 0)
+            if (std::isnan(p) || std::isinf(p) || p < 0)
                 p = 0;
             // avoid zero probability to not get stuck in rejection step
             if (p == 0)
@@ -596,13 +595,13 @@ public:
         deg_t s_deg = get_deg(source(base_t::_edges[ei], _g), _g);
         deg_t t_deg = get_deg(target(base_t::_edges[ei], _g), _g);
 
-        tr1::uniform_int<> sample(0, base_t::_edges.size() - 1);
+        std::uniform_int_distribution<> sample(0, base_t::_edges.size() - 1);
         size_t epi = sample(base_t::_rng);
         pair<size_t, bool> ep = make_pair(epi, false);
         if (!is_directed::apply<Graph>::type::value)
         {
             // for undirected graphs we must select a random direction
-            tr1::bernoulli_distribution coin(0.5);
+            std::bernoulli_distribution coin(0.5);
             ep.second = coin(base_t::_rng);
         }
 
@@ -622,9 +621,8 @@ public:
 
         double a = exp(log(pf) - log(pi));
 
-        tr1::variate_generator<rng_t&, tr1::uniform_real<> >
-            rsample(base_t::_rng, tr1::uniform_real<>(0.0, 1.0));
-        double r = rsample();
+        std::uniform_real_distribution<> rsample(0.0, 1.0);
+        double r = rsample(base_t::_rng);
         if (r > a)
             return make_pair(ei, false); // reject
         else
@@ -638,7 +636,7 @@ private:
     EdgeIndexMap _edge_index;
     CorrProb _corr_prob;
     BlockDeg _blockdeg;
-    tr1::unordered_map<pair<deg_t, deg_t>, double, hash<pair<deg_t, deg_t> > >
+    std::unordered_map<pair<deg_t, deg_t>, double, boost::hash<pair<deg_t, deg_t> > >
         _probs;
 };
 
@@ -672,7 +670,7 @@ public:
         : base_t(g, edge_index, edges, rng), _g(g), _corr_prob(corr_prob),
           _blockdeg(blockdeg)
     {
-        tr1::unordered_set<deg_t, hash<deg_t> > deg_set;
+        std::unordered_set<deg_t> deg_set;
         for (size_t ei = 0; ei < base_t::_edges.size(); ++ei)
         {
             edge_t& e = base_t::_edges[ei];
@@ -692,7 +690,7 @@ public:
                  t_iter != deg_set.end(); ++t_iter)
             {
                 double p = _corr_prob(*s_iter, *t_iter);
-                if (isnan(p) || isinf(p) || p < 0)
+                if (std::isnan(p) || std::isinf(p) || p < 0)
                     p = 0;
                 // avoid zero probability to not get stuck in rejection step
                 if (p == 0)
@@ -749,14 +747,14 @@ public:
         deg_t nt = _sampler[s_deg]->sample(base_t::_rng);
 
         pair<size_t, bool> ep;
-        tr1::bernoulli_distribution coin(_in_edges[nt].size() /
+        std::bernoulli_distribution coin(_in_edges[nt].size() /
                                          double(_in_edges[nt].size() +
                                                 _out_edges[nt].size()));
         if (is_directed::apply<Graph>::type::value || coin(base_t::_rng))
         {
             vector<size_t>& ies = _in_edges[nt];
 
-            tr1::uniform_int<> sample(0, ies.size() - 1);
+            std::uniform_int_distribution<> sample(0, ies.size() - 1);
             size_t epi = ies[sample(base_t::_rng)];
 
             ep = make_pair(epi, false);
@@ -765,7 +763,7 @@ public:
         {
             vector<size_t>& oes = _out_edges[nt];
 
-            tr1::uniform_int<> sample(0, oes.size() - 1);
+            std::uniform_int_distribution<> sample(0, oes.size() - 1);
             size_t epi = oes[sample(base_t::_rng)];
 
             ep = make_pair(epi, true);
@@ -787,9 +785,8 @@ public:
 
         double a = exp(log(pf) - log(pi));
 
-        tr1::variate_generator<rng_t&, tr1::uniform_real<> >
-            rsample(base_t::_rng, tr1::uniform_real<>(0.0, 1.0));
-        double r = rsample();
+        std::uniform_real_distribution<> rsample(0.0, 1.0);
+        double r = rsample(base_t::_rng);
         if (r > a)
             return make_pair(ei, false); // reject
         else
@@ -834,12 +831,12 @@ private:
     BlockDeg _blockdeg;
 
     vector<deg_t> _items;
-    tr1::unordered_map<deg_t, Sampler<deg_t>* > _sampler;
-    tr1::unordered_map<pair<deg_t, deg_t>, double, hash<pair<deg_t, deg_t> > >
+    std::unordered_map<deg_t, Sampler<deg_t>* > _sampler;
+    std::unordered_map<pair<deg_t, deg_t>, double, boost::hash<pair<deg_t, deg_t> > >
         _probs;
 
-    tr1::unordered_map<deg_t, vector<size_t> > _in_edges;
-    tr1::unordered_map<deg_t, vector<size_t> > _out_edges;
+    std::unordered_map<deg_t, vector<size_t> > _in_edges;
+    std::unordered_map<deg_t, vector<size_t> > _out_edges;
     vector<size_t> _in_pos;
     vector<size_t> _out_pos;
 };
@@ -878,7 +875,7 @@ public:
                  t_iter != _vertices.end(); ++t_iter)
             {
                 double p = _corr_prob(s_iter->first, t_iter->first);
-                if (isnan(p) || isinf(p) || p < 0)
+                if (std::isnan(p) || std::isinf(p) || p < 0)
                     p = 0;
 
                 _items.push_back(make_pair(s_iter->first, t_iter->first));
@@ -899,8 +896,8 @@ public:
 
         vector<vertex_t>& svs = _vertices[deg.first];
         vector<vertex_t>& tvs = _vertices[deg.second];
-        tr1::uniform_int<size_t> s_sample(0, svs.size() - 1);
-        tr1::uniform_int<size_t> t_sample(0, tvs.size() - 1);
+        std::uniform_int_distribution<size_t> s_sample(0, svs.size() - 1);
+        std::uniform_int_distribution<size_t> t_sample(0, tvs.size() - 1);
 
         typename graph_traits<Graph>::vertex_descriptor s, t;
         s = svs[s_sample(_rng)];
@@ -929,7 +926,7 @@ private:
     BlockDeg _blockdeg;
     rng_t& _rng;
 
-    tr1::unordered_map<deg_t, vector<vertex_t> > _vertices;
+    std::unordered_map<deg_t, vector<vertex_t> > _vertices;
 
     vector<pair<deg_t, deg_t> > _items;
     Sampler<pair<deg_t, deg_t> >* _sampler;

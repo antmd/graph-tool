@@ -46,8 +46,7 @@
 #include <string>
 #include <vector>
 
-#include "tr1_include.hh"
-#include TR1_HEADER(unordered_map)
+#include <unordered_map>
 
 namespace graph_tool{
 
@@ -222,10 +221,10 @@ private:
     Graph& _g;
     dynamic_properties& _dp;
     bool _directed;
-    tr1::unordered_map<int, typename graph_traits<Graph>::vertex_descriptor> _vmap;
+    std::unordered_map<int, typename graph_traits<Graph>::vertex_descriptor> _vmap;
 
     // the stack holds the keys, and its properties (but omits nested lists)
-    typedef tr1::unordered_map<std::string, val_t> prop_list_t;
+    typedef std::unordered_map<std::string, val_t> prop_list_t;
     vector<pair<std::string,  prop_list_t> > _stack;
 
     std::set<std::string> _ignore_vp;
@@ -319,7 +318,7 @@ struct get_str
         try
         {
             ValueType v = any_cast<ValueType>(val);
-            if (is_same<ValueType, python::object>::value)
+            if (std::is_same<ValueType, python::object>::value)
             {
                 sval = lexical_cast<string>(v);
             }
@@ -330,7 +329,7 @@ struct get_str
                 sval = s.str();
             }
 
-            if (!is_scalar<ValueType>::value)
+            if (!std::is_scalar<ValueType>::value)
             {
                 replace_all(sval, "\"", "\\\"");
                 sval = "\"" + sval + "\"";
@@ -347,8 +346,8 @@ std::string print_val(dynamic_property_map& pmap, const Descriptor& v)
 {
     std::string val;
     boost::any oval = pmap.get(v);
-    mpl::for_each<ValueTypes>(bind<void>(get_str(), ref(oval),
-                                         ref(val), _1));
+    mpl::for_each<ValueTypes>(bind<void>(get_str(), boost::ref(oval),
+                                         boost::ref(val), _1));
     return val;
 }
 
@@ -369,8 +368,8 @@ void write_gml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
                         std::string, python::object> value_types;
 
     BOOST_STATIC_CONSTANT(bool, graph_is_directed =
-                          (is_convertible<directed_category*,
-                                          directed_tag*>::value));
+                          (std::is_convertible<directed_category*,
+                                               directed_tag*>::value));
 
     out << "graph [" << endl;
 

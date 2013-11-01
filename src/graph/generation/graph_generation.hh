@@ -18,9 +18,8 @@
 #ifndef GRAPH_GENERATION_HH
 #define GRAPH_GENERATION_HH
 
-#include "tr1_include.hh"
-#include TR1_HEADER(unordered_map)
-#include TR1_HEADER(tuple)
+#include <unordered_map>
+#include <tuple>
 #include <boost/functional/hash.hpp>
 #include <map>
 #include <set>
@@ -185,7 +184,7 @@ public:
         }
 
         // Sequence must be graphical. Re-sample random pairs until this holds
-        tr1::uniform_int<size_t> vertex_sample(0, _N-1);
+        uniform_int_distribution<size_t> vertex_sample(0, _N-1);
         size_t count = 0;
         while(sum_j != sum_k || (_no_parallel && !is_graphical(_deg_seq)) ||
               (_no_self_loops && !_no_parallel &&
@@ -326,7 +325,7 @@ public:
         // sum_k must be an even number (2*num_edges), and degree sequence must
         // be graphical, if multiple edges are not allowed. Re-sample degrees
         // until this holds.
-        tr1::uniform_int<size_t> vertex_sample(0, _N-1);
+        uniform_int_distribution<size_t> vertex_sample(0, _N-1);
         size_t count = 0;
         while (sum_k % 2 != 0 || (_no_parallel && !is_graphical(_deg_seq)) ||
                (_no_self_loops && !_no_parallel &&
@@ -466,8 +465,8 @@ struct gen_graph
         set<deg_t, cmp_in<greater<size_t> > > targets;
 
         // vertices with a given degree
-        tr1::unordered_map<deg_t, vector<size_t>,
-                           hash<deg_t> > vset;
+        unordered_map<deg_t, vector<size_t>,
+                      boost::hash<deg_t> > vset;
 
         size_t num_e = 0;
         for (size_t i = 0; i < vertices.size();  ++i)

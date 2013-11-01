@@ -33,15 +33,16 @@ boost::any graph_tool::degree_selector(GraphInterface::deg_t deg)
     if (d != 0)
     {
         mpl::for_each<selectors>
-            (bind<void>(get_degree_selector(), _1, *d, ref(sel)));
+            (std::bind(get_degree_selector(), std::placeholders::_1, *d,
+                       std::ref(sel)));
     }
     else
     {
         boost::any* d = boost::get<boost::any>(&deg);
         bool found = false;
         mpl::for_each<vertex_properties>
-            (bind<void>(get_scalar_selector(), _1, *d, ref(sel),
-                        ref(found)));
+            (std::bind(get_scalar_selector(), std::placeholders::_1, *d,
+                       std::ref(sel), std::ref(found)));
         if (!found)
             throw ValueException("invalid degree selector");
     }

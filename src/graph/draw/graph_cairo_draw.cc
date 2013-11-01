@@ -29,8 +29,7 @@
 
 #include <iostream>
 
-#include "tr1_include.hh"
-#include TR1_HEADER(unordered_map)
+#include <unordered_map>
 
 #include <cairommconfig.h>
 #include <cairomm/context.h>
@@ -42,7 +41,6 @@
 using namespace std;
 using namespace boost;
 using namespace graph_tool;
-
 
 enum vertex_attr_t {
     VERTEX_SHAPE = 100,
@@ -119,64 +117,64 @@ enum edge_marker_t {
 };
 
 typedef pair<double, double> pos_t;
-typedef tuple<double, double, double, double> color_t;
-typedef tr1::unordered_map<int, boost::any> attrs_t;
+typedef std::tuple<double, double, double, double> color_t;
+typedef std::unordered_map<int, boost::any> attrs_t;
 
-typedef mpl::map41<
-    mpl::pair<mpl::int_<VERTEX_SHAPE>, vertex_shape_t>,
-    mpl::pair<mpl::int_<VERTEX_COLOR>, color_t>,
-    mpl::pair<mpl::int_<VERTEX_FILL_COLOR>, color_t>,
-    mpl::pair<mpl::int_<VERTEX_SIZE>, double>,
-    mpl::pair<mpl::int_<VERTEX_ASPECT>, double>,
-    mpl::pair<mpl::int_<VERTEX_ANCHOR>, int32_t>,
-    mpl::pair<mpl::int_<VERTEX_PENWIDTH>, double>,
-    mpl::pair<mpl::int_<VERTEX_HALO>, uint8_t>,
-    mpl::pair<mpl::int_<VERTEX_HALO_COLOR>, color_t>,
-    mpl::pair<mpl::int_<VERTEX_HALO_SIZE>, double>,
-    mpl::pair<mpl::int_<VERTEX_TEXT>, string>,
-    mpl::pair<mpl::int_<VERTEX_TEXT_COLOR>, color_t>,
-    mpl::pair<mpl::int_<VERTEX_TEXT_POSITION>, double>,
-    mpl::pair<mpl::int_<VERTEX_TEXT_ROTATION>, double>,
-    mpl::pair<mpl::int_<VERTEX_TEXT_OFFSET>, vector<double> >,
-    mpl::pair<mpl::int_<VERTEX_FONT_FAMILY>, string>,
-    mpl::pair<mpl::int_<VERTEX_FONT_SLANT>, int32_t>,
-    mpl::pair<mpl::int_<VERTEX_FONT_WEIGHT>, int32_t>,
-    mpl::pair<mpl::int_<VERTEX_FONT_SIZE>, double>,
-    mpl::pair<mpl::int_<VERTEX_SURFACE>, python::object>,
-    mpl::pair<mpl::int_<VERTEX_PIE_FRACTIONS>, vector<double> >,
-    mpl::pair<mpl::int_<VERTEX_PIE_COLORS>, vector<color_t> >,
-    mpl::pair<mpl::int_<EDGE_COLOR>, color_t>,
-    mpl::pair<mpl::int_<EDGE_PENWIDTH>, double>,
-    mpl::pair<mpl::int_<EDGE_START_MARKER>, edge_marker_t>,
-    mpl::pair<mpl::int_<EDGE_MID_MARKER>, edge_marker_t>,
-    mpl::pair<mpl::int_<EDGE_END_MARKER>, edge_marker_t>,
-    mpl::pair<mpl::int_<EDGE_MARKER_SIZE>, double>,
-    mpl::pair<mpl::int_<EDGE_MID_MARKER_POSITION>, double>,
-    mpl::pair<mpl::int_<EDGE_CONTROL_POINTS>, vector<double> >,
-    mpl::pair<mpl::int_<EDGE_DASH_STYLE>, vector<double> >,
-    mpl::pair<mpl::int_<EDGE_GRADIENT>, vector<double> >,
-    mpl::pair<mpl::int_<EDGE_TEXT>, string>,
-    mpl::pair<mpl::int_<EDGE_TEXT_COLOR>, color_t>,
-    mpl::pair<mpl::int_<EDGE_TEXT_DISTANCE>, double>,
-    mpl::pair<mpl::int_<EDGE_TEXT_PARALLEL>, uint8_t>,
-    mpl::pair<mpl::int_<EDGE_FONT_FAMILY>, string>,
-    mpl::pair<mpl::int_<EDGE_FONT_SLANT>, int32_t>,
-    mpl::pair<mpl::int_<EDGE_FONT_WEIGHT>, int32_t>,
-    mpl::pair<mpl::int_<EDGE_FONT_SIZE>, double>,
-    mpl::pair<mpl::int_<EDGE_SLOPPY>, uint8_t> >
+typedef boost::mpl::map41<
+    boost::mpl::pair<boost::mpl::int_<VERTEX_SHAPE>, vertex_shape_t>,
+    boost::mpl::pair<boost::mpl::int_<VERTEX_COLOR>, color_t>,
+    boost::mpl::pair<boost::mpl::int_<VERTEX_FILL_COLOR>, color_t>,
+    boost::mpl::pair<boost::mpl::int_<VERTEX_SIZE>, double>,
+    boost::mpl::pair<boost::mpl::int_<VERTEX_ASPECT>, double>,
+    boost::mpl::pair<boost::mpl::int_<VERTEX_ANCHOR>, int32_t>,
+    boost::mpl::pair<boost::mpl::int_<VERTEX_PENWIDTH>, double>,
+    boost::mpl::pair<boost::mpl::int_<VERTEX_HALO>, uint8_t>,
+    boost::mpl::pair<boost::mpl::int_<VERTEX_HALO_COLOR>, color_t>,
+    boost::mpl::pair<boost::mpl::int_<VERTEX_HALO_SIZE>, double>,
+    boost::mpl::pair<boost::mpl::int_<VERTEX_TEXT>, string>,
+    boost::mpl::pair<boost::mpl::int_<VERTEX_TEXT_COLOR>, color_t>,
+    boost::mpl::pair<boost::mpl::int_<VERTEX_TEXT_POSITION>, double>,
+    boost::mpl::pair<boost::mpl::int_<VERTEX_TEXT_ROTATION>, double>,
+    boost::mpl::pair<boost::mpl::int_<VERTEX_TEXT_OFFSET>, vector<double> >,
+    boost::mpl::pair<boost::mpl::int_<VERTEX_FONT_FAMILY>, string>,
+    boost::mpl::pair<boost::mpl::int_<VERTEX_FONT_SLANT>, int32_t>,
+    boost::mpl::pair<boost::mpl::int_<VERTEX_FONT_WEIGHT>, int32_t>,
+    boost::mpl::pair<boost::mpl::int_<VERTEX_FONT_SIZE>, double>,
+    boost::mpl::pair<boost::mpl::int_<VERTEX_SURFACE>, boost::python::object>,
+    boost::mpl::pair<boost::mpl::int_<VERTEX_PIE_FRACTIONS>, vector<double> >,
+    boost::mpl::pair<boost::mpl::int_<VERTEX_PIE_COLORS>, vector<color_t> >,
+    boost::mpl::pair<boost::mpl::int_<EDGE_COLOR>, color_t>,
+    boost::mpl::pair<boost::mpl::int_<EDGE_PENWIDTH>, double>,
+    boost::mpl::pair<boost::mpl::int_<EDGE_START_MARKER>, edge_marker_t>,
+    boost::mpl::pair<boost::mpl::int_<EDGE_MID_MARKER>, edge_marker_t>,
+    boost::mpl::pair<boost::mpl::int_<EDGE_END_MARKER>, edge_marker_t>,
+    boost::mpl::pair<boost::mpl::int_<EDGE_MARKER_SIZE>, double>,
+    boost::mpl::pair<boost::mpl::int_<EDGE_MID_MARKER_POSITION>, double>,
+    boost::mpl::pair<boost::mpl::int_<EDGE_CONTROL_POINTS>, vector<double> >,
+    boost::mpl::pair<boost::mpl::int_<EDGE_DASH_STYLE>, vector<double> >,
+    boost::mpl::pair<boost::mpl::int_<EDGE_GRADIENT>, vector<double> >,
+    boost::mpl::pair<boost::mpl::int_<EDGE_TEXT>, string>,
+    boost::mpl::pair<boost::mpl::int_<EDGE_TEXT_COLOR>, color_t>,
+    boost::mpl::pair<boost::mpl::int_<EDGE_TEXT_DISTANCE>, double>,
+    boost::mpl::pair<boost::mpl::int_<EDGE_TEXT_PARALLEL>, uint8_t>,
+    boost::mpl::pair<boost::mpl::int_<EDGE_FONT_FAMILY>, string>,
+    boost::mpl::pair<boost::mpl::int_<EDGE_FONT_SLANT>, int32_t>,
+    boost::mpl::pair<boost::mpl::int_<EDGE_FONT_WEIGHT>, int32_t>,
+    boost::mpl::pair<boost::mpl::int_<EDGE_FONT_SIZE>, double>,
+    boost::mpl::pair<boost::mpl::int_<EDGE_SLOPPY>, uint8_t> >
         attr_types;
 
 namespace std
 {
 ostream& operator<<(ostream& out, const color_t& c)
 {
-    out << get<0>(c) << " " << get<1>(c) << " " << get<2>(c) << " " << get<3>(c);
+    out << std::get<0>(c) << " " << std::get<1>(c) << " " << std::get<2>(c) << " " << std::get<3>(c);
     return out;
 }
 
 istream& operator>>(istream& in, color_t& c)
 {
-    in >> get<0>(c) >> get<1>(c) >> get<2>(c) >>  get<3>(c);
+    in >> std::get<0>(c) >> std::get<1>(c) >> std::get<2>(c) >> std::get<3>(c);
     return in;
 }
 }
@@ -205,15 +203,15 @@ struct Converter
 {
     Type1 operator()(const Type2& v) const
     {
-        return do_convert(v, is_convertible<Type2,Type1>());
+        return do_convert(v, std::is_convertible<Type2,Type1>());
     }
 
-    Type1 do_convert(const Type2& v, mpl::bool_<true>) const
+    Type1 do_convert(const Type2& v, std::true_type) const
     {
         return Type1(v);
     }
 
-    Type1 do_convert(const Type2& v, mpl::bool_<false>) const
+    Type1 do_convert(const Type2& v, std::false_type) const
     {
         return specific_convert<Type1,Type2>()(v);
     }
@@ -223,15 +221,15 @@ struct Converter
     {
         T1 operator()(const T2& v) const
         {
-            return dispatch(v, typename is_convertible<T2, T1>::type());
+            return dispatch(v, typename std::is_convertible<T2, T1>::type());
         }
 
-        T1 dispatch(const T2& v, mpl::true_) const
+        T1 dispatch(const T2& v, std::true_type) const
         {
             return T1(v);
         }
 
-        T1 dispatch(const T2& v, mpl::false_) const
+        T1 dispatch(const T2& v, std::false_type) const
         {
             return lexical_cast<T1>(v);
         }
@@ -254,20 +252,20 @@ struct Converter
         T1 operator()(const string& v) const
         {
             //uint8_t is not char, it is bool!
-            if (is_same<T1, uint8_t>::value)
+            if (std::is_same<T1, uint8_t>::value)
                 return convert<T1,int>()(lexical_cast<int>(v));
             else
                 return lexical_cast<T1>(v);
         }
     };
 
-    // python::object
+    // boost::python::object
     template <class T1>
-    struct specific_convert<T1,python::object>
+    struct specific_convert<T1,boost::python::object>
     {
-        T1 operator()(const python::object& v) const
+        T1 operator()(const boost::python::object& v) const
         {
-            python::extract<T1> x(v);
+            boost::python::extract<T1> x(v);
             if (x.check())
                 return x();
             else
@@ -277,14 +275,14 @@ struct Converter
 
     template <class T2>
     struct specific_convert<string, T2,
-                            typename enable_if
-                                <typename mpl::not_<
-                                     boost::is_same<T2,python::object> >::type>::type>
+                            typename std::enable_if
+                            <boost::mpl::not_<
+                                 std::is_same<T2,boost::python::object> >::type::value>::type>
     {
         string operator()(const T2& v) const
         {
             //uint8_t is not char, it is bool!
-            if (is_same<T2, uint8_t>::value)
+            if (std::is_same<T2, uint8_t>::value)
                 return convert<string, int>()(lexical_cast<int>(v));
             else
                 return lexical_cast<string>(v);
@@ -314,7 +312,7 @@ struct Converter
         {
             if (cv.size() < 4)
                 throw bad_lexical_cast();
-            return make_tuple(c(cv[0]), c(cv[1]), c(cv[2]), c(cv[3]));
+            return std::make_tuple(c(cv[0]), c(cv[1]), c(cv[2]), c(cv[3]));
         }
     };
 
@@ -322,11 +320,11 @@ struct Converter
     // vertex_shape_t
     template <class T2>
     struct specific_convert<vertex_shape_t, T2,
-                            typename enable_if
-                            <typename mpl::and_<typename mpl::not_<
-                                                    boost::is_same<T2,string> >::type,
-                                                typename mpl::not_<
-                                                    boost::is_same<T2,python::object> >::type>::type>::type>
+                            typename std::enable_if
+                            <boost::mpl::and_<typename boost::mpl::not_<
+                                                  std::is_same<T2,string> >::type,
+                                              typename boost::mpl::not_<
+                                                  std::is_same<T2,boost::python::object> >::type>::type::value>::type>
     {
         specific_convert<int, T2> c;
         vertex_shape_t operator()(const T2& v) const
@@ -338,11 +336,11 @@ struct Converter
     // edge_marker_t
     template <class T2>
     struct specific_convert<edge_marker_t, T2,
-                            typename enable_if
-                            <typename mpl::and_<typename mpl::not_<
-                                                    boost::is_same<T2,string> >::type,
-                                                typename mpl::not_<
-                                                    boost::is_same<T2,python::object> >::type>::type>::type>
+                            typename std::enable_if
+                            <boost::mpl::and_<typename boost::mpl::not_<
+                                                  std::is_same<T2,string> >::type,
+                                              typename boost::mpl::not_<
+                                                  std::is_same<T2,boost::python::object> >::type>::type::value>::type>
     {
         specific_convert<int, T2> c;
         edge_marker_t operator()(const T2& v) const
@@ -378,9 +376,9 @@ public:
         {
             throw ValueException("Error getting attribute " + lexical_cast<string>(k) +
                                  ", wanted: " +
-                                 python::detail::gcc_demangle(typeid(Value).name()) +
+                                 boost::python::detail::gcc_demangle(typeid(Value).name()) +
                                  ", got: " +
-                                 python::detail::gcc_demangle(_defaults[k].type().name()));
+                                 boost::python::detail::gcc_demangle(_defaults[k].type().name()));
         }
     }
 
@@ -609,8 +607,8 @@ public:
             cr.restore();
         }
 
-        python::object osrc = _attrs.template get<python::object>(VERTEX_SURFACE);
-        if (osrc == python::object())
+        boost::python::object osrc = _attrs.template get<boost::python::object>(VERTEX_SURFACE);
+        if (osrc == boost::python::object())
         {
             pw =_attrs.template get<double>(VERTEX_PENWIDTH);
             pw = get_user_dist(cr, pw);
@@ -1382,15 +1380,15 @@ struct get_pmap
 
 
 template <class Descriptor, class PropMaps>
-void populate_attrs(python::dict vattrs, attrs_t& attrs)
+void populate_attrs(boost::python::dict vattrs, attrs_t& attrs)
 {
-    python::list items = vattrs.items();
-    for (int i = 0; i < python::len(items); ++i)
+    boost::python::list items = vattrs.items();
+    for (int i = 0; i < boost::python::len(items); ++i)
     {
-        boost::any oattr = python::extract<boost::any>(items[i][1]);
+        boost::any oattr = boost::python::extract<boost::any>(items[i][1]);
         boost::any pmap;
-        int type = python::extract<int>(items[i][0]);
-        mpl::for_each<attr_types>(get_pmap<Descriptor,PropMaps>(oattr, pmap,
+        int type = boost::python::extract<int>(items[i][0]);
+        boost::mpl::for_each<attr_types>(get_pmap<Descriptor,PropMaps>(oattr, pmap,
                                                                 type));
         attrs[type] = pmap;
     }
@@ -1399,9 +1397,9 @@ void populate_attrs(python::dict vattrs, attrs_t& attrs)
 
 struct get_dval
 {
-    get_dval(python::object& odval, boost::any& dval, int type)
+    get_dval(boost::python::object& odval, boost::any& dval, int type)
         : _odval(odval), _dval(dval), _type(type) {}
-    python::object& _odval;
+    boost::python::object& _odval;
     boost::any& _dval;
     int _type;
 
@@ -1410,19 +1408,19 @@ struct get_dval
     {
         typedef typename ValueType::second val_t;
         if (_type == int(ValueType::first::value))
-            _dval = python::extract<val_t>(_odval)();
+            _dval = boost::python::extract<val_t>(_odval)();
     }
 };
 
-void populate_defaults(python::dict odefaults, attrs_t& defaults)
+void populate_defaults(boost::python::dict odefaults, attrs_t& defaults)
 {
-    python::list items = odefaults.items();
-    for (int i = 0; i < python::len(items); ++i)
+    boost::python::list items = odefaults.items();
+    for (int i = 0; i < boost::python::len(items); ++i)
     {
-        python::object odval = items[i][1];
+        boost::python::object odval = items[i][1];
         boost::any dval;
-        int type = python::extract<int>(items[i][0]);
-        mpl::for_each<attr_types>(get_dval(odval, dval, type));
+        int type = boost::python::extract<int>(items[i][0]);
+        boost::mpl::for_each<attr_types>(get_dval(odval, dval, type));
         if (dval.empty())
             throw ValueException("Invalid attribute type.");
         defaults[type] = dval;
@@ -1432,8 +1430,8 @@ void populate_defaults(python::dict odefaults, attrs_t& defaults)
 struct populate_edge_attrs
 {
     template <class Graph>
-    void operator()(Graph&, python::dict oeattrs, attrs_t& eattrs,
-                    python::dict oedefaults, attrs_t& edefaults) const
+    void operator()(Graph&, boost::python::dict oeattrs, attrs_t& eattrs,
+                    boost::python::dict oedefaults, attrs_t& edefaults) const
     {
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
         populate_attrs<edge_t, edge_properties>(oeattrs, eattrs);
@@ -1447,11 +1445,11 @@ void cairo_draw(GraphInterface& gi,
                 boost::any vorder,
                 boost::any eorder,
                 bool nodesfirst,
-                python::dict ovattrs,
-                python::dict oeattrs,
-                python::dict ovdefaults,
-                python::dict oedefaults,
-                python::object ocr)
+                boost::python::dict ovattrs,
+                boost::python::dict oeattrs,
+                boost::python::dict ovdefaults,
+                boost::python::dict oedefaults,
+                boost::python::object ocr)
 {
     attrs_t vattrs, eattrs, vdefaults, edefaults;
     typedef graph_traits<GraphInterface::multigraph_t>::vertex_descriptor vertex_t;
@@ -1460,12 +1458,12 @@ void cairo_draw(GraphInterface& gi,
     populate_defaults(ovdefaults, vdefaults);
 
     run_action<graph_tool::detail::always_directed>()
-        (gi, bind<void>(populate_edge_attrs(), _1, oeattrs,
-                        ref(eattrs), oedefaults, ref(edefaults)))();
+        (gi, std::bind(populate_edge_attrs(), placeholders::_1, oeattrs,
+                       std::ref(eattrs), oedefaults, std::ref(edefaults)))();
 
-    typedef mpl::push_back<vertex_scalar_properties, no_order>::type
+    typedef boost::mpl::push_back<vertex_scalar_properties, no_order>::type
         vorder_t;
-    typedef mpl::push_back<edge_scalar_properties, no_order>::type
+    typedef boost::mpl::push_back<edge_scalar_properties, no_order>::type
         eorder_t;
     if (vorder.empty())
         vorder = no_order();
@@ -1475,22 +1473,24 @@ void cairo_draw(GraphInterface& gi,
     Cairo::Context cr(PycairoContext_GET(ocr.ptr()));
     if (nodesfirst)
         run_action<graph_tool::detail::always_directed>()
-            (gi, bind<void>(do_cairo_draw_vertices(), _1, _2, _3,
-                            ref(vattrs), ref(eattrs), ref(vdefaults),
-                            ref(edefaults), ref(cr)),
+            (gi, std::bind(do_cairo_draw_vertices(), placeholders::_1,
+                           placeholders::_2, placeholders::_3,
+                           std::ref(vattrs), std::ref(eattrs), std::ref(vdefaults),
+                           std::ref(edefaults), std::ref(cr)),
              vertex_scalar_vector_properties(),
              vorder_t())(pos, vorder);
     run_action<graph_tool::detail::always_directed>()
-        (gi, bind<void>(do_cairo_draw_edges(), _1, _2, _3,
-                        ref(vattrs), ref(eattrs), ref(vdefaults),
-                        ref(edefaults), ref(cr)),
+        (gi, std::bind(do_cairo_draw_edges(), placeholders::_1, placeholders::_2,
+                       placeholders::_3, std::ref(vattrs), std::ref(eattrs),
+                       std::ref(vdefaults), std::ref(edefaults), std::ref(cr)),
          vertex_scalar_vector_properties(),
          eorder_t())(pos, eorder);
     if (!nodesfirst)
         run_action<graph_tool::detail::always_directed>()
-            (gi, bind<void>(do_cairo_draw_vertices(), _1, _2, _3,
-                            ref(vattrs), ref(eattrs), ref(vdefaults),
-                            ref(edefaults), ref(cr)),
+            (gi, std::bind(do_cairo_draw_vertices(), placeholders::_1,
+                           placeholders::_2, placeholders::_3,
+                           std::ref(vattrs), std::ref(eattrs), std::ref(vdefaults),
+                           std::ref(edefaults), std::ref(cr)),
              vertex_scalar_vector_properties(),
              vorder_t())(pos, vorder);
 }
@@ -1517,7 +1517,8 @@ void apply_transforms(GraphInterface& gi, boost::any pos, double xx, double yx,
 {
     Cairo::Matrix m(xx, yx, xy, yy, x0, y0);
     run_action<graph_tool::detail::always_directed>()
-        (gi, bind<void>(do_apply_transforms(), _1, _2, ref(m)),
+        (gi, std::bind(do_apply_transforms(), placeholders::_1,
+                       placeholders::_2, std::ref(m)),
          vertex_scalar_vector_properties())(pos);
 }
 
@@ -1563,7 +1564,7 @@ struct do_put_parallel_splines
                 dist.first = get(pos, s)[0] - cm.first;
                 dist.second = get(pos, s)[1] - cm.second;
                 double theta = get(loop_angle, s);
-                if (isnan(theta))
+                if (std::isnan(theta))
                     theta = atan2(dist.second, dist.first) - M_PI / 2;
                 typename property_traits<SplinesMap>::value_type sp(22), sp2(22);
                 for (size_t j = 0; j < pes.size(); ++j)
@@ -1662,8 +1663,8 @@ void put_parallel_splines(GraphInterface& gi, boost::any opos,
         angle(loop_angle, vertex_scalar_properties());
 
     run_action<graph_tool::detail::always_directed>()
-        (gi, bind<void>(do_put_parallel_splines(), _1, pos, l, _2, angle,
-                        parallel_distance),
+        (gi, std::bind(do_put_parallel_splines(), placeholders::_1, pos, l,
+                       placeholders::_2, angle, parallel_distance),
          edge_scalar_vector_properties())(splines);
 }
 

@@ -111,7 +111,7 @@ struct get_histogram
         }
         bins = temp_bin;
 
-        boost::array<vector<value_type>, 1> bin_list;
+        std::array<vector<value_type>, 1> bin_list;
         bin_list[0] = bins;
 
         hist_t hist(bin_list);

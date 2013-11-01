@@ -102,7 +102,7 @@ public:
     template <class Value1, class Value2>
     bool operator()(const Value1& v1, const Value2& v2) const
     {
-        return extract<bool>(_cmp(v1, v2));
+        return python::extract<bool>(_cmp(v1, v2));
     }
 
 private:

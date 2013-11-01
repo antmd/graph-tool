@@ -107,20 +107,20 @@ struct label_components
             directed_category;
         HistogramPropertyMap<CompMap> cm(comp_map, num_vertices(g), hist);
         get_components(g, cm,
-                       typename is_convertible<directed_category,
-                                               directed_tag>::type());
+                       typename std::is_convertible<directed_category,
+                                                    directed_tag>::type());
     }
 
     template <class Graph, class CompMap>
     void get_components(Graph& g, CompMap comp_map,
-                        boost::true_type) const
+                        std::true_type) const
     {
         boost::strong_components(g, comp_map);
     }
 
     template <class Graph, class CompMap>
     void get_components(Graph& g, CompMap comp_map,
-                        boost::false_type) const
+                        std::false_type) const
     {
         boost::connected_components(g, comp_map);
     }

@@ -30,21 +30,24 @@ using namespace graph_tool;
 void do_label_parallel_edges(GraphInterface& gi, boost::any property,
                              bool mark_only, bool count_all)
 {
-    run_action<>()(gi, bind<void>(label_parallel_edges(), _1, _2, mark_only, count_all),
+    run_action<>()(gi, std::bind(label_parallel_edges(), placeholders::_1,
+                                 placeholders::_2, mark_only, count_all),
                    writable_edge_scalar_properties())(property);
 }
 
 void do_label_self_loops(GraphInterface& gi, boost::any property,
                          bool mark_only)
 {
-    run_action<>()(gi, bind<void>(label_self_loops(), _1, _2, mark_only),
+    run_action<>()(gi, std::bind(label_self_loops(),
+                                 placeholders::_1, placeholders::_2, mark_only),
                    writable_edge_scalar_properties())(property);
 }
 
 void do_remove_labeled_edges(GraphInterface& gi, boost::any property)
 {
     run_action<graph_tool::detail::always_directed_never_reversed, mpl::true_>()
-        (gi, bind<void>(remove_labeled_edges(), _1, _2),
+        (gi, std::bind(remove_labeled_edges(), placeholders::_1,
+                       placeholders::_2),
          edge_scalar_properties())(property);
 }
 

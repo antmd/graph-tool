@@ -63,18 +63,18 @@ const char * graph_tool::ActionNotFound::what () const throw ()
 // this function retrieves a graph view stored in graph_views, or stores one if
 // non-existent
 template <class Graph>
-typename remove_const<Graph>::type&
+typename std::remove_const<Graph>::type&
 retrieve_graph(vector<boost::any>& graph_views, Graph& init)
 {
-    typedef typename remove_const<Graph>::type g_t;
-    size_t index = mpl::find<all_graph_views,g_t>::type::pos::value;
+    typedef typename std::remove_const<Graph>::type g_t;
+    size_t index = boost::mpl::find<all_graph_views,g_t>::type::pos::value;
     if (index >= graph_views.size())
         graph_views.resize(index+1);
     boost::any gview = graph_views[index];
-    shared_ptr<g_t>* gptr = any_cast<shared_ptr<g_t> >(&gview);
+    std::shared_ptr<g_t>* gptr = any_cast<std::shared_ptr<g_t> >(&gview);
     if (gptr == 0)
     {
-        shared_ptr<g_t> new_g(new g_t(init));
+        std::shared_ptr<g_t> new_g(new g_t(init));
         gptr = &new_g;
         gview = new_g;
         graph_views[index] = gview;
@@ -91,10 +91,9 @@ boost::any check_reverse(const Graph &g, bool reverse,
 {
     if (reverse)
     {
-        typedef typename mpl::if_<is_const<Graph>,
-                                  const reverse_graph
-                                      <typename remove_const<Graph>::type>,
-                                  reverse_graph<Graph> >::type
+        typedef typename boost::mpl::if_<std::is_const<Graph>,
+                                         const reverse_graph<typename std::remove_const<Graph>::type>,
+                                         reverse_graph<Graph> >::type
             reverse_graph_t;
 
         reverse_graph_t rg(g);

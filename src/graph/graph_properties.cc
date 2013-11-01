@@ -22,8 +22,7 @@
 #include "graph_selectors.hh"
 #include "graph_util.hh"
 
-#include "tr1_include.hh"
-#include TR1_HEADER(unordered_set)
+#include <unordered_set>
 
 #include <boost/mpl/for_each.hpp>
 
@@ -66,8 +65,8 @@ void GraphInterface::ShiftVertexProperty(boost::any prop, size_t index) const
 {
     bool found = false;
     mpl::for_each<writable_vertex_properties>
-        (bind<void>(shift_vertex_property(), _1, ref(*_mg),
-                    prop, index, ref(found)));
+        (std::bind(shift_vertex_property(), std::placeholders::_1, std::ref(*_mg),
+                   prop, index, std::ref(found)));
     if (!found)
         throw GraphException("invalid writable property map");
 }
@@ -94,8 +93,8 @@ void GraphInterface::MoveVertexProperty(boost::any prop, size_t index) const
     size_t back = num_vertices(*_mg) - 1;
     bool found = false;
     mpl::for_each<writable_vertex_properties>
-        (bind<void>(move_vertex_property(), _1, ref(*_mg),
-                    prop, index, back, ref(found)));
+        (std::bind(move_vertex_property(), std::placeholders::_1, std::ref(*_mg),
+                   prop, index, back, std::ref(found)));
     if (!found)
         throw GraphException("invalid writable property map");
 }
@@ -133,8 +132,8 @@ void GraphInterface::ReIndexVertexProperty(boost::any map,
 
     bool found = false;
     mpl::for_each<writable_vertex_properties>
-        (bind<void>(reindex_vertex_property(), _1, ref(*_mg),
-                    map, old_index, ref(found)));
+        (std::bind(reindex_vertex_property(), std::placeholders::_1, std::ref(*_mg),
+                   map, old_index, std::ref(found)));
     if (!found)
         throw GraphException("invalid writable property map");
 
@@ -147,13 +146,13 @@ struct do_infect_vertex_property
 {
     template <class Graph, class IndexMap, class PropertyMap>
     void operator()(Graph& g, IndexMap index, PropertyMap prop,
-                    python::object oval) const
+                    boost::python::object oval) const
     {
         typedef typename property_traits<PropertyMap>::value_type val_t;
         bool all = false;
 
-        tr1::unordered_set<val_t, boost::hash<val_t> > vals;
-        if (oval == python::object())
+        std::unordered_set<val_t, std::hash<val_t> > vals;
+        if (oval == boost::python::object())
         {
             all = true;
         }
@@ -161,7 +160,7 @@ struct do_infect_vertex_property
         {
             for (int i = 0; i < len(oval); ++i)
             {
-                val_t val = python::extract<val_t>(oval[i]);
+                val_t val = boost::python::extract<val_t>(oval[i]);
                 vals.insert(val);
             }
         }
@@ -201,10 +200,10 @@ struct do_infect_vertex_property
 };
 
 void infect_vertex_property(GraphInterface& gi, boost::any prop,
-                            python::object val)
+                            boost::python::object val)
 {
-    run_action<>()(gi, bind<void>(do_infect_vertex_property(), _1,
-                                  gi.GetVertexIndex(), _2, val),
+        run_action<>()(gi, std::bind(do_infect_vertex_property(), std::placeholders::_1,
+                                     gi.GetVertexIndex(), std::placeholders::_2, val),
                    writable_vertex_properties())(prop);
 }
 
@@ -225,7 +224,7 @@ struct do_edge_difference
                     boost::any eprop) const
     {
         typedef typename property_traits<VertexPropertyMap>::value_type vval_t;
-        typedef typename mpl::if_<is_same<vval_t, size_t>, int32_t, vval_t>::type
+        typedef typename boost::mpl::if_<std::is_same<vval_t, size_t>, int32_t, vval_t>::type
             val_t;
         typedef typename property_map_type::apply<val_t, EdgeIndexMap>::type
             eprop_t;
@@ -249,9 +248,9 @@ struct do_edge_difference
 void edge_difference(GraphInterface& gi, boost::any prop,
                      boost::any eprop)
 {
-    typedef mpl::insert_range<vertex_scalar_properties,
-                              mpl::end<vertex_scalar_properties>::type,
-                              vertex_scalar_vector_properties>::type vprops_t;
+    typedef boost::mpl::insert_range<vertex_scalar_properties,
+                                     boost::mpl::end<vertex_scalar_properties>::type,
+                                     vertex_scalar_vector_properties>::type vprops_t;
     run_action<>()(gi, bind<void>(do_edge_difference(), _1,
                                   gi.GetEdgeIndex(), _2, eprop),
                    vprops_t())(prop);
