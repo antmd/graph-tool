@@ -134,7 +134,7 @@ def local_clustering(g, prop=None, undirected=True):
         prop = g.new_vertex_property("double")
     if g.is_directed() and undirected:
         g = GraphView(g, directed=False)
-    _gt.extended_clustering(g._Graph__graph, [_prop("v", g, prop)])
+    _gt.local_clustering(g._Graph__graph, _prop("v", g, prop))
     return prop
 
 

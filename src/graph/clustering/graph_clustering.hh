@@ -18,9 +18,15 @@
 #ifndef GRAPH_CLUSTERING_HH
 #define GRAPH_CLUSTERING_HH
 
+#include "config.h"
+
 #include "tr1_include.hh"
 #include TR1_HEADER(unordered_set)
 #include <boost/mpl/if.hpp>
+
+#ifdef HAVE_SPARSEHASH
+#include <dense_hash_set>
+#endif
 
 #include <ext/numeric>
 using __gnu_cxx::power;
@@ -29,59 +35,53 @@ namespace graph_tool
 {
 using namespace boost;
 
+#ifdef HAVE_SPARSEHASH
+using google::dense_hash_set;
+#endif
+
 // calculates the number of triangles to which v belongs
 template <class Graph>
 pair<int,int>
 get_triangles(typename graph_traits<Graph>::vertex_descriptor v, const Graph &g)
 {
-    tr1::unordered_set<typename graph_traits<Graph>::vertex_descriptor>
-        neighbour_set1, neighbour_set2, neighbour_set3;
+    typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
-    size_t triangles = 0, k = 0;
+#ifdef HAVE_SPARSEHASH
+    typedef dense_hash_set<vertex_t> set_t;
+#else
+    typedef unordered_set<vertex_t> set_t;
+#endif
 
-    typename graph_traits<Graph>::adjacency_iterator n1_begin, n1_end, n1;
-    tie(n1_begin, n1_end) = adjacent_vertices(v, g);
-    for (n1 = n1_begin; n1 != n1_end; ++n1)
+    set_t neighbour_set;
+
+#ifdef HAVE_SPARSEHASH
+     neighbour_set.set_empty_key(numeric_limits<vertex_t>::max());
+     neighbour_set.resize(out_degree(v, g));
+#endif
+
+    size_t triangles = 0;
+
+    typename graph_traits<Graph>::adjacency_iterator n, n_end;
+    for (tie(n, n_end) = adjacent_vertices(v, g); n != n_end; ++n)
     {
-        if (*n1 == v) // no self-loops
+        if (*n == v) // no self-loops
             continue;
-        if (neighbour_set1.find(*n1) != neighbour_set1.end())
-            continue;
-        else
-            neighbour_set1.insert(*n1);
-
-        typename graph_traits<Graph>::adjacency_iterator n2_begin, n2_end, n2;
-        tie(n2_begin, n2_end) = adjacent_vertices(*n1, g);
-        for (n2 = n2_begin; n2 != n2_end; ++n2)
-        {
-            if (*n2 == *n1) // no self-loops
-                continue;
-            if (neighbour_set2.find(*n2) != neighbour_set2.end())
-                continue;
-            else
-                neighbour_set2.insert(*n2);
-
-            typename graph_traits<Graph>::adjacency_iterator
-                n3_begin, n3_end, n3;
-            tie(n3_begin, n3_end) = adjacent_vertices(*n2, g);
-            for (n3 = n3_begin; n3 != n3_end; ++n3)
-            {
-                if (*n3 == *n2) // no self-loops
-                    continue;
-                if (neighbour_set3.find(*n3) != neighbour_set3.end())
-                    continue;
-                else
-                    neighbour_set3.insert(*n3);
-
-                if (*n3 == v) //found a triangle
-                    triangles++;
-            }
-            neighbour_set3.clear();
-        }
-        neighbour_set2.clear();
-        k++;
+        neighbour_set.insert(*n);
     }
-    neighbour_set1.clear();
+
+    for (tie(n, n_end) = adjacent_vertices(v, g); n != n_end; ++n)
+    {
+        typename graph_traits<Graph>::adjacency_iterator n2, n2_end;
+        for (tie(n2, n2_end) = adjacent_vertices(*n, g); n2 != n2_end; ++n2)
+        {
+            if (*n2 == *n) // no self-loops
+                continue;
+            if (neighbour_set.find(*n2) != neighbour_set.end())
+                ++triangles;
+        }
+    }
+
+    size_t k = out_degree(v, g);
     return make_pair(triangles/2,(k*(k-1))/2);
 }
 
@@ -113,8 +113,7 @@ struct get_global_clustering
 
         // "jackknife" variance
         c_err = 0.0;
-
-	double cerr = 0.0;
+        double cerr = 0.0;
 
         #pragma omp parallel for default(shared) private(i,temp) \
             schedule(static) if (N > 100) reduction(+:cerr)
@@ -155,10 +154,7 @@ struct set_clustering_to_property
                 double(triangles.first)/triangles.second :
                 0.0;
 
-            #pragma omp critical
-            {
-                clust_map[v] = c_type(clustering);
-            }
+            clust_map[v] = c_type(clustering);
         }
     }
 
