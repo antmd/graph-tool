@@ -1197,6 +1197,10 @@ void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
         vertex_t v = vertex(vlist[i], g);
         vertex_t r = b[v];
 
+        // blocks can't become empty
+        if (wr[r] == 1)
+            continue;
+
         if (!sequential)
             moves[i] = r;
 
