@@ -21,7 +21,6 @@
 #include <iostream>
 #include <clocale>
 #include <boost/lexical_cast.hpp>
-#include <boost/algorithm/string.hpp>
 
 //
 // Data type string representation
