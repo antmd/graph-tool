@@ -760,6 +760,7 @@ inline void remove_edge(const typename adj_list<Vertex>::edge_descriptor& e,
     typename adj_list<Vertex>::edge_list_t& oes = g._out_edges[s];
     typename adj_list<Vertex>::edge_list_t& ies = g._in_edges[t];
 
+    bool found = false;
     if (!g._keep_epos) // O(k_s + k_t)
     {
         for (size_t i = 0; i < oes.size(); ++i)
@@ -767,6 +768,7 @@ inline void remove_edge(const typename adj_list<Vertex>::edge_descriptor& e,
             if (t == oes[i].first && idx == oes[i].second)
             {
                 oes.erase(oes.begin() + i);
+                found = true;
                 break;
             }
         }
@@ -776,24 +778,34 @@ inline void remove_edge(const typename adj_list<Vertex>::edge_descriptor& e,
             if (s == ies[i].first && idx == ies[i].second)
             {
                 ies.erase(ies.begin() + i);
+                found = true;
                 break;
             }
         }
     }
     else // O(1)
     {
-        const std::pair<int32_t, int32_t>& pos = g._epos[idx];
+        if (idx < g._epos.size())
+        {
+            const std::pair<int32_t, int32_t>& pos = g._epos[idx];
 
-        g._epos[oes.back().second].first = pos.first;
-        oes[pos.first] = oes.back();
-        oes.pop_back();
+            g._epos[oes.back().second].first = pos.first;
+            oes[pos.first] = oes.back();
+            oes.pop_back();
 
-        g._epos[ies.back().second].second = pos.second;
-        ies[pos.second] = ies.back();
-        ies.pop_back();
+            g._epos[ies.back().second].second = pos.second;
+            ies[pos.second] = ies.back();
+            ies.pop_back();
+
+            found = true;
+        }
     }
-    g._free_indexes.push_back(idx);
-    g._n_edges--;
+
+    if (found)
+    {
+        g._free_indexes.push_back(idx);
+        g._n_edges--;
+    }
 }
 
 

@@ -210,12 +210,6 @@ struct get_edge_descriptor
         PythonEdge<Graph>& pe = python::extract<PythonEdge<Graph>&>(e);
         pe.CheckValid();
         pe.SetValid(false);
-        typename graph_traits<Graph>::out_edge_iterator e_begin, e_end;
-        tie(e_begin, e_end) = out_edges(source(edge_t(pe.GetDescriptor()),g),g);
-        while(e_begin != e_end && *e_begin != pe.GetDescriptor())
-            ++e_begin;
-        if (e_begin == e_end)
-            return; // invalid edge descriptor
         edge = pe.GetDescriptor();
         found = true;
     }
