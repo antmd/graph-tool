@@ -42,6 +42,10 @@ void incidence(GraphInterface& g, boost::any vindex, boost::any eindex,
                python::object odata, python::object oi,
                python::object oj);
 
+void transition(GraphInterface& g, boost::any index, boost::any weight,
+                python::object odata, python::object oi,
+                python::object oj);
+
 BOOST_PYTHON_MODULE(libgraph_tool_spectral)
 {
     using namespace boost::python;
@@ -49,4 +53,5 @@ BOOST_PYTHON_MODULE(libgraph_tool_spectral)
     def("laplacian", &laplacian);
     def("norm_laplacian", &norm_laplacian);
     def("incidence", &incidence);
+    def("transition", &transition);
 }

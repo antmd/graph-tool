@@ -19,9 +19,11 @@ libgraph_tool_spectral_la_SOURCES = \
     graph_incidence.cc \
     graph_laplacian.cc \
     graph_norm_laplacian.cc \
-    graph_matrix.cc
+    graph_matrix.cc \
+    graph_transition.cc
 
 libgraph_tool_spectral_la_include_HEADERS = \
     graph_adjacency.hh \
     graph_incidence.hh \
-    graph_laplacian.hh
+    graph_laplacian.hh \
+    graph_transition.hh

@@ -31,6 +31,8 @@ Summary
    adjacency
    laplacian
    incidence
+   transition
+   modularity_matrix
 
 Contents
 ++++++++
@@ -42,11 +44,12 @@ from .. import _degree, _prop, Graph, _limit_args
 from .. stats import label_self_loops
 import numpy
 import scipy.sparse
+import scipy.sparse.linalg
 
 from .. dl_import import dl_import
 dl_import("from . import libgraph_tool_spectral")
 
-__all__ = ["adjacency", "laplacian", "incidence"]
+__all__ = ["adjacency", "laplacian", "incidence", "transition", "modularity_matrix"]
 
 
 def adjacency(g, weight=None, index=None):
@@ -376,3 +379,197 @@ def incidence(g, vindex=None, eindex=None):
     m = scipy.sparse.coo_matrix((data, (i,j)))
     m = m.tocsr()
     return m
+
+def transition(g, weight=None, index=None):
+    r"""Return the transition matrix of the graph.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    weight : :class:`~graph_tool.PropertyMap` (optional, default: True)
+        Edge property map with the edge weights.
+    index : :class:`~graph_tool.PropertyMap` (optional, default: None)
+        Vertex property map specifying the row/column indexes. If not provided, the
+        internal vertex index is used.
+
+    Returns
+    -------
+    T : :class:`~scipy.sparse.csr_matrix`
+        The (sparse) transition matrix.
+
+    Notes
+    -----
+    The transition matrix is defined as
+
+    .. math::
+
+        T_{ij} = \frac{A_{ij}}{k_i}
+
+    where :math:`k_i = \sum_j A_{ij}`, and :math:`A_{ij}` is the adjacency
+    matrix.
+
+    In the case of weighted edges, the values of the adjacency matrix are
+    multiplied by the edge weights.
+
+    Examples
+    --------
+    .. testsetup::
+
+       import scipy.linalg
+       from pylab import *
+
+    >>> g = gt.collection.data["polblogs"]
+    >>> T = gt.transition(g)
+    >>> ew, ev = scipy.linalg.eig(T.todense())
+
+    >>> figure(figsize=(8, 2))
+    <...>
+    >>> scatter(real(ew), imag(ew), c=abs(ew))
+    <...>
+    >>> xlabel(r"$\operatorname{Re}(\lambda)$")
+    <...>
+    >>> ylabel(r"$\operatorname{Im}(\lambda)$")
+    <...>
+    >>> tight_layout()
+    >>> savefig("transition-spectrum.pdf")
+
+    .. testcode::
+       :hide:
+
+       savefig("transition-spectrum.png")
+
+    .. figure:: transition-spectrum.*
+        :align: center
+
+        Transition matrix spectrum for the political blog network.
+
+    References
+    ----------
+    .. [wikipedia-transition] https://en.wikipedia.org/wiki/Stochastic_matrix
+    """
+
+    if index is None:
+        if g.get_vertex_filter()[0] != None:
+            index = g.new_vertex_property("int64_t")
+            index.fa = numpy.arange(g.num_vertices())
+        else:
+            index = g.vertex_index
+
+    E = g.num_edges() if g.is_directed() else 2 * g.num_edges()
+    data = numpy.zeros(E, dtype="double")
+    i = numpy.zeros(E, dtype="int32")
+    j = numpy.zeros(E, dtype="int32")
+
+    libgraph_tool_spectral.transition(g._Graph__graph, _prop("v", g, index),
+                                      _prop("e", g, weight), data, i, j)
+    V = max(g.num_vertices(), max(i.max() + 1, j.max() + 1))
+    m = scipy.sparse.coo_matrix((data, (i,j)), shape=(V, V))
+    m = m.tocsr()
+    return m
+
+
+
+def modularity_matrix(g, weight=None, index=None):
+    r"""Return the modularity matrix of the graph.
+
+    Parameters
+    ----------
+    g : :class:`~graph_tool.Graph`
+        Graph to be used.
+    weight : :class:`~graph_tool.PropertyMap` (optional, default: True)
+        Edge property map with the edge weights.
+    index : :class:`~graph_tool.PropertyMap` (optional, default: None)
+        Vertex property map specifying the row/column indexes. If not provided, the
+        internal vertex index is used.
+
+    Returns
+    -------
+    B : :class:`~scipy.sparse.linalg.LinearOperator`
+        The (sparse) modularity matrix, represented as a
+        :class:`~scipy.sparse.linalg.LinearOperator`.
+
+    Notes
+    -----
+    The modularity matrix is defined as
+
+    .. math::
+
+        B_{ij} =  A_{ij} - \frac{k^+_i k^-_j}{2E}
+
+    where :math:`k^+_i = \sum_j A_{ij}`, :math:`k^-_i = \sum_j A_{ji}`,
+    :math:`2E=\sum_{ij}A_{ij}` and :math:`A_{ij}` is the adjacency matrix.
+
+    In the case of weighted edges, the values of the adjacency matrix are
+    multiplied by the edge weights.
+
+    Examples
+    --------
+
+    .. testsetup::
+
+       import scipy.linalg
+       from pylab import *
+
+    >>> g = gt.collection.data["polblogs"]
+    >>> B = gt.modularity_matrix(g)
+    >>> B = B * np.identity(B.shape[0])  # transform to a dense matrix
+    >>> ew, ev = scipy.linalg.eig(B)
+
+    >>> figure(figsize=(8, 2))
+    <...>
+    >>> scatter(real(ew), imag(ew), c=abs(ew))
+    <...>
+    >>> xlabel(r"$\operatorname{Re}(\lambda)$")
+    <...>
+    >>> ylabel(r"$\operatorname{Im}(\lambda)$")
+    <...>
+    >>> tight_layout()
+    >>> savefig("modularity-spectrum.pdf")
+
+    .. testcode::
+       :hide:
+
+       savefig("modularity-spectrum.png")
+
+    .. figure:: modularity-spectrum.*
+        :align: center
+
+        Modularity matrix spectrum for the political blog network.
+
+    References
+    ----------
+    .. [newman-modularity]  M. E. J. Newman, M. Girvan, "Finding and evaluating
+       community structure in networks", Phys. Rev. E 69, 026113 (2004).
+       :doi:`10.1103/PhysRevE.69.026113`
+    """
+
+    A = adjacency(g, weight=weight, index=index)
+    if g.is_directed():
+        k_in = g.degree_property_map("in", weight=weight).fa
+    else:
+        k_in = g.degree_property_map("out", weight=weight).fa
+    k_out = g.degree_property_map("out", weight=weight).fa
+
+    N = A.shape[0]
+    E2 = float(k_out.sum())
+
+    def matvec(x):
+        M = x.shape[0]
+        if len(x.shape) > 1:
+            x = x.reshape(M)
+        nx = A * x - k_out * numpy.dot(k_in, x) / E2
+        return nx
+
+    def rmatvec(x):
+        M = x.shape[0]
+        if len(x.shape) > 1:
+            x = x.reshape(M)
+        nx = A.T * x - k_in * numpy.dot(k_out, x) / E2
+        return nx
+
+    B = scipy.sparse.linalg.LinearOperator((g.num_vertices(), g.num_vertices()),
+                                           matvec=matvec, rmatvec=rmatvec,
+                                           dtype="float")
+
+    return B
