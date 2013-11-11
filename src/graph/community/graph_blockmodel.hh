@@ -1176,9 +1176,7 @@ void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
 
     // it is useful to shuffle the vertex order even in the parallel case, so
     // threads become more balanced
-    std::uniform_int_distribution<> uniint;
-    auto gen = std::bind(uniint, std::ref(rng));
-    std::random_shuffle(vlist.begin(), vlist.end(), gen);
+    std::shuffle(vlist.begin(), vlist.end(), rng);
 
     std::uniform_int_distribution<size_t> s_rand(0, B - 1);
 
