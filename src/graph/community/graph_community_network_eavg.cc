@@ -93,9 +93,9 @@ void community_network_eavg(GraphInterface& gi, GraphInterface& cgi,
 
     for(int i = 0; i < boost::python::len(aeprops); ++i)
     {
-        boost::any eprop = boost::python::extract<any>(aeprops[i][0]);
-        boost::any temp = boost::python::extract<any>(aeprops[i][1]);
-        boost::any ceprop = boost::python::extract<any>(aeprops[i][2]);
+        boost::any eprop = boost::python::extract<any>(aeprops[i][0])();
+        boost::any temp = boost::python::extract<any>(aeprops[i][1])();
+        boost::any ceprop = boost::python::extract<any>(aeprops[i][2])();
 
         if (!no_weight)
         {

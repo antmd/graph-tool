@@ -1385,9 +1385,9 @@ void populate_attrs(boost::python::dict vattrs, attrs_t& attrs)
     boost::python::list items = vattrs.items();
     for (int i = 0; i < boost::python::len(items); ++i)
     {
-        boost::any oattr = boost::python::extract<boost::any>(items[i][1]);
+        boost::any oattr = boost::python::extract<boost::any>(items[i][1])();
         boost::any pmap;
-        int type = boost::python::extract<int>(items[i][0]);
+        int type = boost::python::extract<int>(items[i][0])();
         boost::mpl::for_each<attr_types>(get_pmap<Descriptor,PropMaps>(oattr, pmap,
                                                                 type));
         attrs[type] = pmap;
@@ -1419,7 +1419,7 @@ void populate_defaults(boost::python::dict odefaults, attrs_t& defaults)
     {
         boost::python::object odval = items[i][1];
         boost::any dval;
-        int type = boost::python::extract<int>(items[i][0]);
+        int type = boost::python::extract<int>(items[i][0])();
         boost::mpl::for_each<attr_types>(get_dval(odval, dval, type));
         if (dval.empty())
             throw ValueException("Invalid attribute type.");
@@ -1697,10 +1697,10 @@ struct color_from_list
         object o(x);
         color_t c;
         assert(len(o) >= 4);
-        get<0>(c) = extract<double>(o[0]);
-        get<1>(c) = extract<double>(o[1]);
-        get<2>(c) = extract<double>(o[2]);
-        get<3>(c) = extract<double>(o[3]);
+        get<0>(c) = extract<double>(o[0])();
+        get<1>(c) = extract<double>(o[1])();
+        get<2>(c) = extract<double>(o[2])();
+        get<3>(c) = extract<double>(o[3])();
         void* storage =
             ( (boost::python::converter::rvalue_from_python_storage
                <color_t >*) data)->storage.bytes;
@@ -1738,10 +1738,10 @@ struct color_vector_from_list
         for (int i = 0; i < len(o) / 4; ++i)
         {
             c.push_back(color_t());
-            get<0>(c[i]) = extract<double>(o[0 + 4 * i]);
-            get<1>(c[i]) = extract<double>(o[1 + 4 * i]);
-            get<2>(c[i]) = extract<double>(o[2 + 4 * i]);
-            get<3>(c[i]) = extract<double>(o[3 + 4 * i]);
+            get<0>(c[i]) = extract<double>(o[0 + 4 * i])();
+            get<1>(c[i]) = extract<double>(o[1 + 4 * i])();
+            get<2>(c[i]) = extract<double>(o[2 + 4 * i])();
+            get<3>(c[i]) = extract<double>(o[3 + 4 * i])();
         }
 
         void* storage =

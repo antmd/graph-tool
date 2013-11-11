@@ -92,7 +92,7 @@ struct vector_from_list
         vector<ValueType> value;
         size_t N = len(o);
         for (size_t i = 0; i < N; ++i)
-            value.push_back(extract<ValueType>(o[i]));
+            value.push_back(extract<ValueType>(o[i])());
         void* storage =
             ( (boost::python::converter::rvalue_from_python_storage
                <vector<ValueType> >*) data)->storage.bytes;
@@ -213,8 +213,8 @@ struct pair_from_tuple
         pair<T1,T2> value;
         if (boost::python::len(o) < 2)
             throw ValueException("Invalid conversion to pair... Sequence is too short.");
-        value.first = extract<T1>(o[0]);
-        value.second = extract<T2>(o[1]);
+        value.first = extract<T1>(o[0])();
+        value.second = extract<T2>(o[1])();
         void* storage =
             ( (boost::python::converter::rvalue_from_python_storage
                <pair<T1,T2> >*) data)->storage.bytes;
@@ -248,7 +248,7 @@ struct variant_from_python
     {
         handle<> x(borrowed(obj_ptr));
         object o(x);
-        ValueType value = extract<ValueType>(o);
+        ValueType value = extract<ValueType>(o)();
         GraphInterface::deg_t deg = value;
         void* storage =
             ( (boost::python::converter::rvalue_from_python_storage
@@ -291,7 +291,7 @@ struct integer_from_convertible
     {
         handle<> x(borrowed(obj_ptr));
         object o(x);
-        T value = extract<T>(o.attr("__int__")());
+        T value = extract<T>(o.attr("__int__")())();
         void* storage =
             ( (boost::python::converter::rvalue_from_python_storage<T>*) data)->storage.bytes;
         new (storage) T(value);
@@ -320,7 +320,7 @@ struct float_from_convertible
     {
         handle<> x(borrowed(obj_ptr));
         object o(x);
-        T value = extract<T>(o.attr("__float__")());
+        T value = extract<T>(o.attr("__float__")())();
         void* storage =
             ( (boost::python::converter::rvalue_from_python_storage<T>*) data)->storage.bytes;
         new (storage) T(value);

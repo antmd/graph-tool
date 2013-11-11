@@ -336,7 +336,7 @@ GraphInterface::GraphInterface(const GraphInterface& gi, bool keep_ref,
                                    std::ref(python::extract<boost::any&>(oeprops[i][1])())));
     }
 
-    boost::any avorder = python::extract<boost::any>(vorder);
+    boost::any avorder = python::extract<boost::any>(vorder)();
     run_action<>()
         (const_cast<GraphInterface&>(gi),
          std::bind(do_graph_copy(gi._mg->get_last_index()),

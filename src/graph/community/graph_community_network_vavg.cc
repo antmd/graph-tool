@@ -91,9 +91,9 @@ void community_network_vavg(GraphInterface& gi, GraphInterface& cgi,
 
     for(int i = 0; i < boost::python::len(avprops); ++i)
     {
-        boost::any vprop = boost::python::extract<any>(avprops[i][0]);
-        boost::any temp = boost::python::extract<any>(avprops[i][1]);
-        boost::any cvprop = boost::python::extract<any>(avprops[i][2]);
+        boost::any vprop = boost::python::extract<any>(avprops[i][0])();
+        boost::any temp = boost::python::extract<any>(avprops[i][1])();
+        boost::any cvprop = boost::python::extract<any>(avprops[i][2])();
 
         if (!no_weight)
         {
