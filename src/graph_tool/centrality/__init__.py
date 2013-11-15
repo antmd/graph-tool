@@ -695,7 +695,7 @@ def katz(g, alpha=0.01, beta=None, weight=None, vprop=None, epsilon=1e-6,
        >>> g = gt.collection.data["polblogs"]
        >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(g))
        >>> w = g.new_edge_property("double")
-       >>> w.a = np.random.random(len(w.a)) * 42
+       >>> w.a = np.random.random(len(w.a))
        >>> x = gt.katz(g, weight=w)
        >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=x,
        ...               vertex_size=gt.prop_to_size(x, mi=5, ma=15),

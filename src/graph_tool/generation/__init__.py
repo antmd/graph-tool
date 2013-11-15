@@ -189,7 +189,7 @@ def random_graph(N, deg_sampler, directed=True,
     ...                     vertex_corr=lambda i, k: 1.0 / (1 + abs(i - k)), directed=False,
     ...                     n_iter=100)
     >>> gt.scalar_assortativity(g, "out")
-    (0.6285094791115295, 0.010745128857935755)
+    (0.6197157767573332, 0.010781011616659146)
 
     The following samples an in,out-degree pair from the joint distribution:
 
@@ -584,7 +584,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
        gt.graph_draw(g, pos=pos, output="rewire_orig.png", output_size=(300, 300))
 
     >>> gt.random_rewire(g, "correlated")
-    189
+    212
     >>> pos = gt.arf_layout(g)
     >>> gt.graph_draw(g, pos=pos, output="rewire_corr.pdf", output_size=(300, 300))
     <...>
@@ -595,7 +595,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
        gt.graph_draw(g, pos=pos, output="rewire_corr.png", output_size=(300, 300))
 
     >>> gt.random_rewire(g)
-    197
+    207
     >>> pos = gt.arf_layout(g)
     >>> gt.graph_draw(g, pos=pos, output="rewire_uncorr.pdf", output_size=(300, 300))
     <...>
@@ -606,7 +606,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
        gt.graph_draw(g, pos=pos, output="rewire_uncorr.png", output_size=(300, 300))
 
     >>> gt.random_rewire(g, "erdos")
-    26
+    21
     >>> pos = gt.arf_layout(g)
     >>> gt.graph_draw(g, pos=pos, output="rewire_erdos.pdf", output_size=(300, 300))
     <...>
@@ -637,17 +637,17 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label="Original")
     <...>
     >>> gt.random_rewire(g, "correlated")
-    206
+    212
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="*", label="Correlated")
     <...>
     >>> gt.random_rewire(g)
-    109
+    120
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label="Uncorrelated")
     <...>
     >>> gt.random_rewire(g, "erdos")
-    13
+    20
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label=r"Erd\H{o}s")
     <...>
@@ -693,7 +693,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
     ...          label=r"$\left<\text{i}\right>$ vs o")
     <...>
     >>> gt.random_rewire(g, "correlated")
-    4323
+    4130
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{o}\right>$ vs i, corr.")
@@ -703,7 +703,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
     ...          label=r"$\left<\text{i}\right>$ vs o, corr.")
     <...>
     >>> gt.random_rewire(g, "uncorrelated")
-    153
+    194
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{o}\right>$ vs i, uncorr.")

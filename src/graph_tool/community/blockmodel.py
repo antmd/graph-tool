@@ -1870,7 +1870,7 @@ def collect_edge_marginals(state, p=None):
        ...     ds, nmoves = gt.mcmc_sweep(state)
        ...     pe = gt.collect_edge_marginals(state, pe)
        >>> gt.bethe_entropy(state, pe)[0]
-       16.31947774487215
+       17.443089842818125
     """
 
     if p is None:
@@ -1922,7 +1922,7 @@ def collect_vertex_marginals(state, p=None):
        ...     ds, nmoves = gt.mcmc_sweep(state)
        ...     pv = gt.collect_vertex_marginals(state, pv)
        >>> gt.mf_entropy(state, pv)
-       18.348761352514927
+       19.94955528942717
        >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_shape="pie", vertex_pie_fractions=pv, output="polbooks_blocks_soft_B4.pdf")
        <...>
 
