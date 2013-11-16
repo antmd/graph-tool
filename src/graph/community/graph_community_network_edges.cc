@@ -34,28 +34,7 @@ using namespace boost;
 using namespace graph_tool;
 
 typedef ConstantPropertyMap<int32_t,GraphInterface::edge_t> no_eweight_map_t;
-typedef ConstantPropertyMap<int32_t,GraphInterface::vertex_t> no_vweight_map_t;
 typedef property_map_type::apply<int32_t,GraphInterface::edge_index_map_t>::type::unchecked_t ecount_map_t;
-typedef property_map_type::apply<int32_t,GraphInterface::vertex_index_map_t>::type::unchecked_t vcount_map_t;
-
-struct get_community_network_vertices_dispatch
-{
-    template <class Graph, class CommunityGraph, class CommunityMap,
-              class VertexWeightMap>
-    void operator()(const Graph& g, CommunityGraph& cg,
-                    CommunityMap s_map, boost::any acs_map,
-                    VertexWeightMap vweight, boost::any vcount) const
-    {
-        typename CommunityMap::checked_t cs_map = boost::any_cast<typename CommunityMap::checked_t>(acs_map);
-
-        typedef typename boost::mpl::if_<std::is_same<no_vweight_map_t, VertexWeightMap>,
-                                         vcount_map_t, VertexWeightMap>::type vweight_t;
-        typename vweight_t::checked_t vertex_count = boost::any_cast<typename vweight_t::checked_t>(vcount);
-
-        get_community_network_vertices()(g, cg, s_map, cs_map, vweight, vertex_count);
-    }
-
-};
 
 struct get_community_network_edges_dispatch
 {
@@ -80,35 +59,24 @@ struct get_community_network_edges_dispatch
     }
 };
 
+
 void community_network_edges(GraphInterface& gi, GraphInterface& cgi,
                              boost::any community_property,
                              boost::any condensed_community_property,
                              boost::any edge_count, boost::any eweight,
-                             bool self_loops);
-
-void community_network(GraphInterface& gi, GraphInterface& cgi,
-                       boost::any community_property,
-                       boost::any condensed_community_property,
-                       boost::any vertex_count,
-                       boost::any edge_count, boost::any vweight,
-                       boost::any eweight,
-                       bool self_loops)
+                             bool self_loops)
 {
-    typedef boost::mpl::push_back<writable_vertex_scalar_properties, no_vweight_map_t>::type
-        vweight_properties;
+    typedef boost::mpl::push_back<writable_edge_scalar_properties, no_eweight_map_t>::type
+        eweight_properties;
 
-    if (vweight.empty())
-        vweight = no_vweight_map_t(1);
+    if (eweight.empty())
+        eweight = no_eweight_map_t(1);
 
     run_action<>()
-        (gi, std::bind(get_community_network_vertices_dispatch(),
-                       placeholders::_1, std::ref(cgi.GetGraph()),
+        (gi, std::bind(get_community_network_edges_dispatch(self_loops),
+                       placeholders::_1, std::ref(cgi.GetGraph()), cgi.GetEdgeIndex(),
                        placeholders::_2, condensed_community_property,
-                       placeholders::_3, vertex_count),
-         writable_vertex_properties(), vweight_properties())
-        (community_property, vweight);
-
-    community_network_edges(gi, cgi, community_property,
-                            condensed_community_property, edge_count,
-                            eweight, self_loops);
+                       placeholders::_3, edge_count),
+         writable_vertex_properties(), eweight_properties())
+        (community_property, eweight);
 }
