@@ -54,7 +54,13 @@ AC_ARG_ENABLE([debug], [AS_HELP_STRING([--enable-debug],[compile debug informati
         )
 
 dnl enable c++11
+old_cxxflags="$CXXFLAGS"
 [CXXFLAGS="${CXXFLAGS} -std=gnu++11"]
+AC_MSG_CHECKING([whether C++ compiler supports -std=gnu++11])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
+    [AC_MSG_RESULT([yes])],
+    [AC_MSG_RESULT([no])]
+    [CXXFLAGS="${old_cxxflags} -std=gnu++0x"])
 
 dnl set template depth
 [CXXFLAGS="${CXXFLAGS} -ftemplate-depth-150"]
