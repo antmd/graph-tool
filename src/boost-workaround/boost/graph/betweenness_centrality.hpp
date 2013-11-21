@@ -342,29 +342,32 @@ namespace detail { namespace graph {
       shortest_paths(g, s, ordered_vertices, incoming, distance,
                      path_count, vertex_index);
 
-      while (!ordered_vertices.empty())
+      #pragma omp critical
       {
-          vertex_descriptor u = ordered_vertices.top();
-          ordered_vertices.pop();
+          while (!ordered_vertices.empty())
+          {
+              vertex_descriptor u = ordered_vertices.top();
+              ordered_vertices.pop();
 
-          typedef typename property_traits<IncomingMap>::value_type
-              incoming_type;
-          typedef typename incoming_type::iterator incoming_iterator;
-          typedef typename property_traits<DependencyMap>::value_type
-              dependency_type;
+              typedef typename property_traits<IncomingMap>::value_type
+                  incoming_type;
+              typedef typename incoming_type::iterator incoming_iterator;
+              typedef typename property_traits<DependencyMap>::value_type
+                  dependency_type;
 
-          for (incoming_iterator vw = incoming[u].begin();
-               vw != incoming[u].end(); ++vw) {
-              vertex_descriptor v = source(*vw, g);
-              dependency_type factor = dependency_type(get(path_count, v))
-                  / dependency_type(get(path_count, u));
-              factor *= (dependency_type(1) + get(dependency, u));
-              put(dependency, v, get(dependency, v) + factor);
-              update_centrality(edge_centrality_map, *vw, factor);
-          }
+              for (incoming_iterator vw = incoming[u].begin();
+                   vw != incoming[u].end(); ++vw) {
+                  vertex_descriptor v = source(*vw, g);
+                  dependency_type factor = dependency_type(get(path_count, v))
+                      / dependency_type(get(path_count, u));
+                  factor *= (dependency_type(1) + get(dependency, u));
+                  put(dependency, v, get(dependency, v) + factor);
+                  update_centrality(edge_centrality_map, *vw, factor);
+              }
 
-          if (u != s) {
-              update_centrality(centrality, u, get(dependency, u));
+              if (u != s) {
+                  update_centrality(centrality, u, get(dependency, u));
+              }
           }
       }
 
