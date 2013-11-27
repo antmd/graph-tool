@@ -1012,8 +1012,11 @@ def kcore_decomposition(g, deg="out", vprop=None):
     References
     ----------
     .. [k-core] http://en.wikipedia.org/wiki/Degeneracy_%28graph_theory%29
-    .. [batagelk-algorithm] V. Batagelj, M. Zaversnik, "An O(m) Algorithm for
-       Cores Decomposition of Networks", 2003, :arxiv:`cs/0310049`
+    .. [batagelk-algorithm]  Vladimir Batagelj, Matjaž Zaveršnik, "Fast
+       algorithms for determining (generalized) core groups in social
+       networks", Advances in Data Analysis and Classification
+       Volume 5, Issue 2, pp 129-145 (2011), :DOI:`10.1007/s11634-010-0079-y`,
+       :arxiv:`cs/0310049`
 
     """
 
