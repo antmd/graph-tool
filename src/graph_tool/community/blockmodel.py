@@ -628,7 +628,7 @@ def partition_entropy(B, N, nr=None):
     if nr is None:
         S = N * log(B) + log1p(-(1 - 1./B) ** N)
     else:
-        S = lbinom(B + N - 1, N) + scipy.special.gammaln(N) - scipy.special.gammaln(nr + 1).sum()
+        S = lbinom(B + N - 1, N) + scipy.special.gammaln(N + 1) - scipy.special.gammaln(nr + 1).sum()
     return S
 
 def get_max_B(N, E, directed=False):
