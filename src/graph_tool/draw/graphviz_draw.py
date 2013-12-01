@@ -71,6 +71,16 @@ try:
     # create a context to use the whole time (if we keep freeing and recreating
     # it, we will hit a memory leak in graphviz)
     gvc = libgv.gvContext()
+
+    try:
+        gv_new_api = True
+        libgv_directed = libgv.Agdirected
+        libgv_undirected = libgv.Agundirected
+    except AttributeError:
+        gv_new_api = False
+        libgv_directed = 1
+        libgv_undirected = 0
+
 except OSError:
     msg = "Error importing graphviz C library (libgvc)... graphviz_draw() will not work."
     warnings.filterwarnings("always", msg, ImportWarning)
@@ -302,7 +312,13 @@ def graphviz_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
 
     has_layout = False
     try:
-        gvg = libgv.agopen("G".encode("utf8"), 1 if g.is_directed() else 0)
+        if gv_new_api:
+            gvg = libgv.agopen("G".encode("utf8"),
+                               libgv_directed if g.is_directed() else libgv_undirected,
+                               None)
+        else:
+            gvg = libgv.agopen("G".encode("utf8"),
+                               libgv_directed if g.is_directed() else libgv_undirected)
 
         if layout is None:
             if pin == False:
