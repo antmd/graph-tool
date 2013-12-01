@@ -97,33 +97,24 @@ struct do_propagate_pos
         uniform_real_distribution<val_t> noise(-delta, delta);
         unordered_map<c_t, pos_t, boost::hash<c_t> >
             cmap(num_vertices(*cg));
-        int i, N = num_vertices(*cg);
-        #pragma omp parallel for default(shared) private(i)
-        for (i = 0; i < N; ++i)
+
+        typename graph_traits<Graph>::vertex_iterator vi, vi_end;
+        for(tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
         {
-            typename graph_traits<CoarseGraph>::vertex_descriptor v =
-                vertex(i, *cg);
-            if (v == graph_traits<CoarseGraph>::null_vertex())
-                continue;
+            typename graph_traits<Graph>::vertex_descriptor v = *vi;
             cmap[cvmap[v]] = cpos[v];
+            pos[v].resize(2, 0);
         }
 
-        N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i)
-        for (i = 0; i < N; ++i)
+        for(tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
         {
-            typename graph_traits<Graph>::vertex_descriptor v =
-                vertex(i, g);
-            if (v == graph_traits<Graph>::null_vertex())
-                continue;
+            typename graph_traits<Graph>::vertex_descriptor v = *vi;
             pos[v] = cmap[vmap[v]];
+
+            if (delta > 0)
             {
-                if (delta > 0)
-                {
-                    #pragma omp critical
-                    for (size_t j = 0; j < pos[v].size(); ++j)
-                        pos[v][j] += noise(rng);
-                }
+                for (size_t j = 0; j < pos[v].size(); ++j)
+                    pos[v][j] += noise(rng);
             }
         }
     }
@@ -169,14 +160,10 @@ struct do_propagate_pos_mivs
 
         uniform_real_distribution<val_t> noise(-delta, delta);
 
-        int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i)
-        for (i = 0; i < N; ++i)
+        typename graph_traits<Graph>::vertex_iterator vi, vi_end;
+        for(tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
         {
-            typename graph_traits<Graph>::vertex_descriptor v =
-                vertex(i, g);
-            if (v == graph_traits<Graph>::null_vertex())
-                continue;
+            typename graph_traits<Graph>::vertex_descriptor v = *vi;
             if (mivs[v])
                 continue;
             pos[v].resize(2);
@@ -187,6 +174,7 @@ struct do_propagate_pos_mivs
             {
                 if (!mivs[*a])
                     continue;
+                pos[*a].resize(2, 0);
                 for (size_t j = 0; j < pos[v].size(); ++j)
                     pos[v][j] += pos[*a][j];
                 ++count;
@@ -200,7 +188,6 @@ struct do_propagate_pos_mivs
             {
                 if (delta > 0)
                 {
-                    #pragma omp critical
                     for (size_t j = 0; j < pos[v].size(); ++j)
                         pos[v][j] += noise(rng);
                 }
