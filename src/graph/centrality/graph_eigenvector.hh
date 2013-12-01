@@ -116,7 +116,7 @@ struct get_eigenvector
             }
         }
 
-        eig = 1. / norm;
+        eig = norm;
     }
 };
 
