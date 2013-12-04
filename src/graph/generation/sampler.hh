@@ -94,18 +94,6 @@ public:
 
 private:
 
-    struct _cmp : binary_function <size_t, size_t, bool>
-    {
-        _cmp(const vector<double>& prob):_prob(prob) {}
-        const vector<double>& _prob;
-        bool operator() (const size_t& x, const size_t& y) const
-        {
-            if (_prob[x] == _prob[y])
-                return x < y;
-            return _prob[x] < _prob[y];
-        }
-    };
-
     typedef typename mpl::if_<KeepReference,
                               const vector<Value>&,
                               vector<Value> >::type items_t;

@@ -49,7 +49,7 @@ from __future__ import division, absolute_import, print_function
 from .. dl_import import dl_import
 dl_import("from . import libgraph_tool_generation")
 
-from .. import Graph, GraphView, _check_prop_scalar, _prop, _limit_args, _gt_type, _get_rng
+from .. import Graph, GraphView, _check_prop_scalar, _prop, _limit_args, _gt_type, _get_rng, libcore
 from .. stats import label_parallel_edges, label_self_loops
 import inspect
 import types
@@ -109,6 +109,10 @@ def random_graph(N, deg_sampler, directed=True,
         types. It must be callable either with no arguments or with a single
         argument which will be the vertex index. In either case it must return
         a type compatible with the ``block_type`` parameter.
+
+        See the documentation for the ``vertex_corr`` parameter of the
+        :func:`~graph_tool.generation.random_rewire` function which specifies
+        the correlation matrix.
     block_type : string (optional, default: ``"int"``)
         Value type of block labels. Valid only if ``block_membership != None``.
     degree_block : bool (optional, default: ``False``)
@@ -189,7 +193,7 @@ def random_graph(N, deg_sampler, directed=True,
     ...                     vertex_corr=lambda i, k: 1.0 / (1 + abs(i - k)), directed=False,
     ...                     n_iter=100)
     >>> gt.scalar_assortativity(g, "out")
-    (0.6197157767573332, 0.010781011616659146)
+    (0.6321636468713748, 0.01082292099309249)
 
     The following samples an in,out-degree pair from the joint distribution:
 
@@ -449,8 +453,11 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
            graph will remain unmodified.
         ``correlated``
            The edges will be rewired randomly, but both the degree sequence of
-           the graph and the *vertex-vertex degree correlations* will remain
-           unmodified.
+           the graph and the *vertex-vertex (in,out)-degree correlations* will
+           remain exactly preserved. If the ``block_membership`` parameter is
+           passed, the block variables at the endpoints of the edges will be
+           preserved (instead of the degrees), in addition to the degree
+           sequence.
         ``probabilistic``
            This is similar to the ``correlated`` option, but the vertex-vertex
            correlations are not kept unmodified, but instead are sampled from an
@@ -477,21 +484,39 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
         If ``True``, parallel edges are allowed.
     self_loops : bool (optional, default: ``False``)
         If ``True``, self-loops are allowed.
-    vertex_corr : function (optional, default: ``None``)
-        A function which gives the vertex-vertex correlation of the graph.
+    vertex_corr : function or sequence of triples (optional, default: ``None``)
 
-        If ``model == probabilistic`` it should be callable with two parameters:
-        the (in, out)-degree pair of the source vertex an edge, and the
-        (in,out)-degree pair of the target of the same edge (for undirected
-        graphs, both parameters are single values). The function should return a
-        number proportional to the probability of such an edge existing in the
-        generated graph.
+        A function which gives the vertex-vertex correlation of the edges in the
+        graph. In general it should have the following signature:
+
+        .. code::
+
+            def vertex_corr(r, s):
+                ...
+                return p
+
+        where the return value should be a scalar.
+
+        Alternatively, this parameter can be a list of triples of the form
+        ``(r, s, p)``, with the same meaning as the ``r``, ``s`` and ``p``
+        values above. If a given ``(r, s)`` combination is not present in this
+        list, the corresponding value of ``p`` is assumed to be zero. If the same
+        ``(r, s)`` combination appears more than once, their ``p`` values will
+        be summed together. This is useful when the correlation matrix is sparse,
+        i.e. most entries are zero.
+
+        If ``model == probabilistic`` the parameters ``r`` and ``s`` correspond
+        respectively to the (in, out)-degree pair of the source vertex an edge,
+        and the (in,out)-degree pair of the target of the same edge (for
+        undirected graphs, both parameters are scalars instead). The value of
+        ``p`` should be a number proportional to the probability of such an
+        edge existing in the generated graph.
 
         If ``model == blockmodel`` or ``model == blockmodel-traditional``, the
-        values passed to the function will be the block value of the respective
-        vertices, as specified via the ``block_membership``. The function should
-        also return a number proportional to the probability of such an edge
-        existing in the generated graph.
+        ``r`` and ``s`` values passed to the function will be the block values
+        of the respective vertices, as specified via the ``block_membership``
+        parameter. The value of  ``p`` should be a number proportional to the
+        probability of such an edge existing in the generated graph.
     block_membership : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         If supplied, the graph will be rewired to conform to a blockmodel
         ensemble. The value must be a vertex property map which defines the
@@ -770,10 +795,15 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
     if model not in ["probabilistic", "blockmodel", "blockmodel-traditional"]:
         g = GraphView(g, reversed=False)
 
+    if model == "blockmodel" and alias and edge_sweep:
+        edge_sweep = False
+        n_iter *= g.num_edges()
+
     traditional = False
     if model == "blockmodel-traditional":
         model = "blockmodel"
         traditional = True
+
     pcount = libgraph_tool_generation.random_rewire(g._Graph__graph, model,
                                                     n_iter, not edge_sweep,
                                                     self_loops, parallel_edges,
@@ -1554,3 +1584,10 @@ def price_network(N, m=1, c=None, gamma=1, directed=True, seed_graph=None):
         g = seed_graph
     libgraph_tool_generation.price(g._Graph__graph, N, gamma, c, m, _get_rng())
     return g
+
+class Sampler(libgraph_tool_generation.Sampler):
+    def __init__(self, values, probs):
+        libgraph_tool_generation.Sampler.__init__(self, values, probs)
+
+    def sample(self):
+        return libgraph_tool_generation.Sampler.sample(self, _get_rng())

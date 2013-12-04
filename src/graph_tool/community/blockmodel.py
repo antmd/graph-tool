@@ -379,14 +379,9 @@ class BlockState(object):
                 S += model_entropy(self.B, N, E, directed=self.g.is_directed(), nr=self.wr.a) * E
 
             if self.deg_corr:
-                S_seq = 0
-                hist = [defaultdict(int) for r in range(self.B)]
-                for v in self.g.vertices():
-                    hist[self.b[v]][(v.in_degree(), v.out_degree())] += 1
-                for r in range(self.B):
-                    for k, v in hist[r].items():
-                        p = v / float(self.wr.a[r])
-                        S_seq -= p * log(p) * self.wr.a[r]
+                S_seq = libcommunity.deg_entropy(self.g._Graph__graph,
+                                                 _prop("v", self.g, self.b),
+                                                 self.B)
                 S += S_seq
 
         return S / E

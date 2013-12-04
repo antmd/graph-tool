@@ -19,6 +19,7 @@
 #include "graph_util.hh"
 #include "graph_filtering.hh"
 #include "graph_generation.hh"
+#include "sampler.hh"
 #include <boost/python.hpp>
 
 using namespace std;
@@ -109,4 +110,9 @@ BOOST_PYTHON_MODULE(libgraph_tool_generation)
     def("price", &price);
     def("complete", &complete);
     def("circular", &circular);
+
+    class_<Sampler<int, boost::mpl::false_>>("Sampler",
+                                             init<const vector<int>&, const vector<double>&>())
+        .def("sample", &Sampler<int, boost::mpl::false_>::sample<rng_t>,
+             return_value_policy<copy_const_reference>());
 }

@@ -33,7 +33,9 @@ class PythonFuncWrap
 public:
     PythonFuncWrap(boost::python::object o): _o(o) {}
 
-    double operator()(pair<size_t, size_t> deg1, pair<size_t, size_t> deg2)
+    typedef pair<size_t, size_t> deg_t;
+
+    double operator()(deg_t deg1, deg_t deg2)
         const
     {
         boost::python::object ret = _o(boost::python::make_tuple(deg1.first, deg1.second),
@@ -46,6 +48,25 @@ public:
     {
         boost::python::object ret = _o(boost::python::object(deg1), boost::python::object(deg2));
         return boost::python::extract<double>(ret);
+    }
+
+    template <class ProbMap>
+    void get_probs(ProbMap& probs) const
+    {
+        typedef typename ProbMap::key_type::first_type block_t;
+        if (PyObject_HasAttrString(_o.ptr(), "__getitem__"))
+        {
+            int N = boost::python::len(_o);
+            for (int i = 0; i < N; ++i)
+            {
+                block_t ks = boost::python::extract<block_t>(_o[i][0])();
+                block_t kt = boost::python::extract<block_t>(_o[i][1])();
+                double p = boost::python::extract<double>(_o[i][2])();
+                if (std::isnan(p) || std::isinf(p) || p <= 0)
+                    continue;
+                probs[make_pair(ks, kt)] += p;
+            }
+        }
     }
 
 private:
@@ -86,6 +107,22 @@ struct graph_rewire_block
 };
 
 
+struct graph_rewire_correlated
+{
+    template <class Graph, class EdgeIndexMap, class CorrProb, class BlockProp>
+    void operator()(Graph& g, EdgeIndexMap edge_index, CorrProb corr_prob,
+                    bool self_loops, bool parallel_edges,
+                    pair<size_t, bool> iter_sweep,
+                    std::tuple<bool, bool, bool> cache_verbose,
+                    size_t& pcount, rng_t& rng, BlockProp block_prop) const
+    {
+        graph_rewire<CorrelatedRewireStrategy>()
+            (g, edge_index, corr_prob, self_loops, parallel_edges, iter_sweep,
+             cache_verbose, pcount, rng, PropertyBlock<BlockProp>(block_prop));
+    }
+};
+
+
 size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
                      bool no_sweep, bool self_loops, bool parallel_edges,
                      bool alias, bool traditional, bool persist,
@@ -96,6 +133,7 @@ size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
     size_t pcount = 0;
 
     if (strat == "erdos")
+    {
         run_action<graph_tool::detail::never_reversed>()
             (gi, std::bind(graph_rewire<ErdosRewireStrategy>(),
                            placeholders::_1, gi.GetEdgeIndex(),
@@ -104,7 +142,9 @@ size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
                            make_pair(niter, no_sweep),
                            std::make_tuple(persist, cache, verbose),
                            std::ref(pcount), std::ref(rng)))();
+    }
     else if (strat == "uncorrelated")
+    {
         run_action<graph_tool::detail::never_reversed>()
             (gi, std::bind(graph_rewire<RandomRewireStrategy>(),
                            placeholders::_1, gi.GetEdgeIndex(), std::ref(corr),
@@ -112,15 +152,34 @@ size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
                            make_pair(niter, no_sweep),
                            std::make_tuple(persist, cache, verbose),
                            std::ref(pcount), std::ref(rng)))();
+    }
     else if (strat == "correlated")
-        run_action<graph_tool::detail::never_reversed>()
-            (gi, std::bind(graph_rewire<CorrelatedRewireStrategy>(),
-                           placeholders::_1, gi.GetEdgeIndex(), std::ref(corr),
-                           self_loops, parallel_edges,
-                           make_pair(niter, no_sweep),
-                           std::make_tuple(persist, cache, verbose),
-                           std::ref(pcount), std::ref(rng)))();
+    {
+        if (block.empty())
+        {
+            run_action<graph_tool::detail::never_reversed>()
+                (gi, std::bind(graph_rewire<CorrelatedRewireStrategy>(),
+                               placeholders::_1, gi.GetEdgeIndex(), std::ref(corr),
+                               self_loops, parallel_edges,
+                               make_pair(niter, no_sweep),
+                               std::make_tuple(persist, cache, verbose),
+                               std::ref(pcount), std::ref(rng)))();
+        }
+        else
+        {
+            run_action<graph_tool::detail::never_reversed>()
+                (gi, std::bind(graph_rewire_correlated(),
+                               placeholders::_1, gi.GetEdgeIndex(), std::ref(corr),
+                               self_loops, parallel_edges,
+                               make_pair(niter, no_sweep),
+                               std::make_tuple(persist, cache, verbose),
+                               std::ref(pcount), std::ref(rng),
+                               placeholders::_2),
+                 vertex_properties())(block);
+        }
+    }
     else if (strat == "probabilistic")
+    {
         run_action<>()
             (gi, std::bind(graph_rewire<ProbabilisticRewireStrategy>(),
                            placeholders::_1, gi.GetEdgeIndex(), std::ref(corr),
@@ -128,7 +187,9 @@ size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
                            make_pair(niter, no_sweep),
                            std::make_tuple(persist, cache, verbose),
                            std::ref(pcount), std::ref(rng)))();
+    }
     else if (strat == "blockmodel")
+    {
         run_action<>()
             (gi, std::bind(graph_rewire_block(alias, traditional),
                            placeholders::_1, gi.GetEdgeIndex(),
@@ -139,7 +200,10 @@ size_t random_rewire(GraphInterface& gi, string strat, size_t niter,
                            std::make_tuple(persist, cache, verbose),
                            std::ref(pcount), std::ref(rng)),
              vertex_properties())(block);
+    }
     else
+    {
         throw ValueException("invalid random rewire strategy: " + strat);
+    }
     return pcount;
 }

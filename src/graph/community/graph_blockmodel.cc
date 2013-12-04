@@ -800,6 +800,60 @@ void do_collect_vertex_marginals(GraphInterface& gi, boost::any ob,
          vertex_scalar_vector_properties())(op);
 }
 
+struct get_deg_entropy
+{
+    template <class Graph, class Vprop>
+    void operator()(Graph& g, Vprop b, size_t B, double& S) const
+    {
+#ifdef HAVE_SPARSEHASH
+        typedef dense_hash_map<pair<size_t,size_t>, int, boost::hash<pair<size_t,size_t>>> map_t;
+#else
+        typedef unordered_map<pair<size_t,size_t>, int, boost::hash<pair<size_t,size_t>>> map_t;
+#endif
+        vector<map_t> hist(B);
+        vector<int> total(B);
+
+#ifdef HAVE_SPARSEHASH
+        for (size_t r = 0; r < B; ++r)
+            hist[r].set_empty_key(make_pair(numeric_limits<size_t>::max(),
+                                            numeric_limits<size_t>::max()));
+#endif
+
+        typename graph_traits<Graph>::vertex_iterator v, v_end;
+        for (tie(v, v_end) = vertices(g); v != v_end; ++v)
+        {
+            hist[b[*v]][make_pair(in_degreeS()(*v, g), out_degree(*v, g))]++;
+            total[b[*v]]++;
+        }
+
+        S = 0;
+        for (size_t r = 0; r < B; ++r)
+        {
+            for (auto iter = hist[r].begin(); iter != hist[r].end(); ++iter)
+            {
+                double p = iter->second / double(total[r]);
+                S -= p * log(p) * total[r];
+            }
+        }
+    }
+};
+
+
+double do_get_deg_entropy(GraphInterface& gi, boost::any ob, size_t B)
+{
+    typedef property_map_type::apply<int32_t,
+                                     GraphInterface::vertex_index_map_t>::type
+        vmap_t;
+    vmap_t b = any_cast<vmap_t>(ob);
+
+    double S = 0;
+    run_action<>()
+        (gi, std::bind(get_deg_entropy(),
+                       placeholders::_1, b, B, std::ref(S)))();
+    return S;
+}
+
+
 vector<int32_t> get_vector(size_t n)
 {
     return vector<int32_t>(n);
@@ -862,6 +916,7 @@ void export_blockmodel()
 
     def("entropy", do_get_ent);
     def("entropy_dense", do_get_ent_dense);
+    def("deg_entropy", do_get_deg_entropy);
 
     def("edge_marginals", do_collect_edge_marginals);
     def("bethe_entropy", do_bethe_entropy);
