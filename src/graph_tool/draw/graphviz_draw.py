@@ -420,7 +420,10 @@ def graphviz_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
         else:
             vertices = g.vertices()
         for v in vertices:
-            n = libgv.agnode(gvg, str(int(v)).encode("utf8"))
+            if gv_new_api:
+                n = libgv.agnode(gvg, str(int(v)).encode("utf8"))
+            else:
+                n = libgv.agnode(gvg, str(int(v)).encode("utf8"), True)
 
             if type(vsize) == PropertyMap:
                 vw = vh = vsize[v]
@@ -467,9 +470,15 @@ def graphviz_draw(g, pos=None, size=(15, 15), pin=False, layout=None,
         else:
             edges = g.edges()
         for e in edges:
-            ge = libgv.agedge(gvg,
-                              libgv.agnode(gvg, str(int(e.source())).encode("utf8")),
-                              libgv.agnode(gvg, str(int(e.target())).encode("utf8")))
+            if gv_new_api:
+                ge = libgv.agedge(gvg,
+                                  libgv.agnode(gvg, str(int(e.source())).encode("utf8"), False),
+                                  libgv.agnode(gvg, str(int(e.target())).encode("utf8"), False),
+                                  str(g.edge_index[e]).encode("utf8"), True)
+            else:
+                ge = libgv.agedge(gvg,
+                                  libgv.agnode(gvg, str(int(e.source())).encode("utf8")),
+                                  libgv.agnode(gvg, str(int(e.target())).encode("utf8")))
             aset(ge, "arrowsize", "0.3")
             if g.is_directed():
                 aset(ge, "arrowhead", "vee")
