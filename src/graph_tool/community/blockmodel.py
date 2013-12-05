@@ -440,7 +440,8 @@ class BlockState(object):
         return dS / float(self.E)
 
     def get_matrix(self, reorder=False, niter=0, ret_order=False):
-        r"""Returns the block matrix.
+        r"""Returns the block matrix, which contains the number of edges between
+        each block pair.
 
         Parameters
         ----------
