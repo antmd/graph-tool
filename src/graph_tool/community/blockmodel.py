@@ -297,10 +297,10 @@ class BlockState(object):
 
         .. math::
 
-            \mathcal{L}_c = \mathcal{L}_t - N\sum_kp_k\ln p_k,
+            \mathcal{L}_c = \mathcal{L}_t - \sum_rn_r\sum_kp^r_k\ln p^r_k,
 
-        where :math:`p_k` is the fraction of nodes with degree :math:`p_k`, and
-        we have instead :math:`k \to (k^-, k^+)` for directed graphs.
+        where :math:`p^r_k` is the fraction of nodes in block $r$ with degree :math:`k`. For directed
+        graphs we have instead :math:`k \to (k^-, k^+)`.
 
         If the "dense" entropies are requested, they will be computed as
 
@@ -378,15 +378,15 @@ class BlockState(object):
             else:
                 S += model_entropy(self.B, N, E, directed=self.g.is_directed(), nr=self.wr.a) * E
 
-            if complete and self.deg_corr:
+            if self.deg_corr:
                 S_seq = 0
-                hist = defaultdict(int)
+                hist = [defaultdict(int) for r in range(self.B)]
                 for v in self.g.vertices():
-                    hist[(v.in_degree(), v.out_degree())] += 1
-                for k, v in hist.items():
-                    p = v / float(self.g.num_vertices())
-                    S_seq -= p * log(p)
-                S_seq *= self.g.num_vertices()
+                    hist[self.b[v]][(v.in_degree(), v.out_degree())] += 1
+                for r in range(self.B):
+                    for k, v in hist[r].items():
+                        p = v / float(self.wr.a[r])
+                        S_seq -= p * log(p) * self.wr.a[r]
                 S += S_seq
 
         return S / E
