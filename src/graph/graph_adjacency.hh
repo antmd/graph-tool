@@ -257,7 +257,7 @@ public:
     {
         if (keep)
         {
-            if(!_keep_epos)
+            if (!_keep_epos)
                 rebuild_epos();
         }
         else
