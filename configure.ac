@@ -319,11 +319,17 @@ fi
 
 dnl sparsehash
 if test "$USING_SPARSEHASH" = "yes"; then
-   [CPPFLAGS="${CPPFLAGS} -I/usr/include/sparsehash -I/usr/include/google"]
-   AC_CHECK_HEADER([dense_hash_set],
-	           [],
+   PKG_CHECK_MODULES(SPARSEHASH, [libsparsehash], AC_DEFINE([HAVE_SPARSEHASH], [1],
+                     [Using google's sparsehash]), [])
+   AC_SUBST(SPARSEHASH_CFLAGS)
+   [OLD_CXXFLAGS="${CXXFLAGS}"]
+   [OLD_CPPFLAGS="${CPPFLAGS}"]
+   [CXXFLAGS="${CXXFLAGS} ${SPARSEHASH_CFLAGS}"]
+   [CPPFLAGS="${CPPFLAGS} ${SPARSEHASH_CFLAGS}"]
+   AC_CHECK_HEADER([sparsehash/dense_hash_set], [],
                    [AC_MSG_ERROR([sparsehash headers not found])])
-   AC_DEFINE_UNQUOTED([HAVE_SPARSEHASH],"1", [Using google's sparsehash])
+   [CXXFLAGS="${OLD_CXXFLAGS}"]
+   [CPPFLAGS="${OLD_CPPFLAGS}"]
 fi
 
 dnl Checks for typedefs, structures, and compiler characteristics.

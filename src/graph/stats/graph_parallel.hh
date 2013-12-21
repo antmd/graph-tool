@@ -19,7 +19,7 @@
 #include <unordered_map>
 
 #ifdef HAVE_SPARSEHASH
-#include <dense_hash_map>
+#include <sparsehash/dense_hash_map>
 #endif
 
 #include "graph_util.hh"

@@ -28,8 +28,8 @@
 #include <tuple>
 
 #ifdef HAVE_SPARSEHASH
-#include <dense_hash_set>
-#include <dense_hash_map>
+#include <sparsehash/dense_hash_set>
+#include <sparsehash/dense_hash_map>
 #endif
 
 #include "../generation/sampler.hh"
