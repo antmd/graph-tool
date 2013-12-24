@@ -408,7 +408,7 @@ class PropertyMap(object):
 
     def __unregister_map(self):
         for g in [self.__g(), self.__base_g()]:
-            if g is not None:
+            if g is not None and id(self) in g._Graph__known_properties:
                 del g._Graph__known_properties[id(self)]
 
     def __del__(self):
@@ -2039,6 +2039,15 @@ class GraphView(Graph):
         return self.__base
     base = property(__get_base, doc="Base graph.")
 
+    # pickling support
+    def __getstate__(self):
+        return Graph.__getstate__(self)
+
+    def __setstate__(self, state):
+        g = Graph()
+        g.__setstate__(state)
+        self.__init__(g)
+
 
 def value_types():
     """Return a list of possible properties value types."""
@@ -2176,7 +2185,7 @@ Vector_string.__repr__ = lambda self: repr(list(self))
 
 # Global RNG
 
-_rng = libcore.get_rng(numpy.random.randint(0, sys.maxsize))
+_rng = libcore.get_rng((numpy.random.randint(0, sys.maxsize) + os.getpid()) % sys.maxsize)
 
 def seed_rng(seed):
     "Seed the random number generator used by graph-tool's algorithms."
