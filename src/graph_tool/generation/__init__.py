@@ -414,9 +414,11 @@ def random_graph(N, deg_sampler, directed=True,
         bm = None
 
     if random:
+        g.set_fast_edge_removal(True)
         random_rewire(g, parallel_edges=parallel_edges,
                       self_loops=self_loops, verbose=verbose,
                       block_membership=bm, **kwargs)
+        g.set_fast_edge_removal(False)
 
     if bm is None:
         return g
