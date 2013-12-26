@@ -219,7 +219,7 @@ class BlockState(object):
         directed, a pair of property maps is returned, with the number of
         out-edges :math:`e^+_r` and in-edges :math:`e^-_r`, respectively."""
         if self.bg.is_directed():
-            return self.mrp. self.mrm
+            return self.mrp, self.mrm
         else:
             return self.mrp
 
