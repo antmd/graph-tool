@@ -439,23 +439,45 @@ struct move_sweep_dispatch
 
     template <class Graph>
     void operator()(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
-                    Graph& g, boost::any& emat, boost::any sampler) const
+                    Graph& g, boost::any& emat, boost::any sampler,
+                    bool weighted) const
     {
         if (is_directed::apply<Graph>::type::value)
         {
-            dispatch(mrs, mrp, mrm, wr, b, g, emat, sampler, bgi.GetGraph());
+            dispatch(mrs, mrp, mrm, wr, b, g, emat, sampler, bgi.GetGraph(),
+                     weighted);
         }
         else
         {
             UndirectedAdaptor<GraphInterface::multigraph_t> ug(bgi.GetGraph());
-            dispatch(mrs, mrp, mrm, wr, b, g, emat, sampler, ug);
+            dispatch(mrs, mrp, mrm, wr, b, g, emat, sampler, ug, weighted);
         }
     }
 
-
     template <class Graph, class BGraph>
     void dispatch(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b, Graph& g,
-                  boost::any& aemat, boost::any asampler, BGraph& bg) const
+                  boost::any& aemat, boost::any asampler, BGraph& bg, bool weighted) const
+    {
+        if (weighted)
+        {
+            typedef typename property_map_type::apply<DynamicSampler<std::tuple<typename graph_traits<Graph>::edge_descriptor, bool> >,
+                                                      GraphInterface::vertex_index_map_t>::type vemap_t;
+            vemap_t egroups = any_cast<vemap_t>(oegroups);
+            dispatch(mrs, mrp, mrm, wr, b, g, aemat, asampler, bg, egroups);
+        }
+        else
+        {
+            typedef typename property_map_type::apply<vector<std::tuple<typename graph_traits<Graph>::edge_descriptor, bool> >,
+                                                      GraphInterface::vertex_index_map_t>::type vemap_t;
+            vemap_t egroups = any_cast<vemap_t>(oegroups);
+            dispatch(mrs, mrp, mrm, wr, b, g, aemat, asampler, bg, egroups);
+        }
+    }
+
+    template <class Graph, class BGraph, class Egroups>
+    void dispatch(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b, Graph& g,
+                  boost::any& aemat, boost::any asampler, BGraph& bg,
+                  Egroups egroups) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
@@ -463,9 +485,6 @@ struct move_sweep_dispatch
         size_t max_BE = is_directed::apply<Graph>::type::value ?
             B * B : (B * (B + 1)) / 2;
 
-        typedef typename property_map_type::apply<vector<std::tuple<typename graph_traits<Graph>::edge_descriptor, bool, size_t> >,
-                                                  GraphInterface::vertex_index_map_t>::type vemap_t;
-        vemap_t egroups = any_cast<vemap_t>(oegroups);
 
         size_t eidx = random_move ? 1 : max_edge_index;
 
@@ -480,8 +499,8 @@ struct move_sweep_dispatch
             typedef typename get_emat_t::apply<BGraph>::type emat_t;
             emat_t& emat = any_cast<emat_t&>(aemat);
 
-            //make sure the properties are _unchecked_, since otherwise it affects
-            //performance
+            // make sure the properties are _unchecked_, since otherwise it
+            // affects performance
 
             move_sweep(mrs.get_unchecked(max_BE),
                        mrp.get_unchecked(num_vertices(bg)),
@@ -531,7 +550,8 @@ boost::python::object do_move_sweep(GraphInterface& gi, GraphInterface& bgi,
                                     boost::any ovweight, boost::any oegroups,
                                     boost::any oesrcpos, boost::any oetgtpos,
                                     double beta, bool sequential, bool random_move,
-                                    double c, bool verbose, rng_t& rng)
+                                    double c, bool weighted, bool verbose,
+                                    rng_t& rng)
 {
     typedef property_map_type::apply<int32_t,
                                      GraphInterface::vertex_index_map_t>::type
@@ -539,7 +559,7 @@ boost::python::object do_move_sweep(GraphInterface& gi, GraphInterface& bgi,
     typedef property_map_type::apply<int32_t,
                                      GraphInterface::edge_index_map_t>::type
         emap_t;
-    typedef property_map_type::apply<vector<int32_t>,
+    typedef property_map_type::apply<int32_t,
                                      GraphInterface::edge_index_map_t>::type
         vemap_t;
     emap_t mrs = any_cast<emap_t>(omrs);
@@ -564,7 +584,7 @@ boost::python::object do_move_sweep(GraphInterface& gi, GraphInterface& bgi,
                         sequential, random_move, c, verbose,
                         gi.GetMaxEdgeIndex(), rng, S, nmoves, bgi),
                        mrs, mrp, mrm, wr, b, placeholders::_1,
-                       std::ref(emat), sampler))();
+                       std::ref(emat), sampler, weighted))();
     return boost::python::make_tuple(S, nmoves);
 }
 
@@ -681,10 +701,25 @@ boost::python::object do_merge_sweep(GraphInterface& bgi, boost::any& emat,
     return boost::python::make_tuple(S, nmoves);
 }
 
+
+struct build_egroups
+{
+    template <class Eprop, class Vprop, class VEprop, class Graph, class VertexIndex>
+    void operator()(Vprop b, boost::any& oegroups, VEprop esrcpos,
+                    VEprop etgtpos, Eprop eweight, Graph& g,
+                    VertexIndex vertex_index, bool weighted, bool empty) const
+    {
+        if (empty)
+            return;
+        egroups_manage::build(b, oegroups, esrcpos, etgtpos, eweight, g,
+                              vertex_index, weighted);
+    }
+};
+
 boost::any do_build_egroups(GraphInterface& gi, GraphInterface& bgi,
                             boost::any ob, boost::any oeweights,
                             boost::any oesrcpos, boost::any oetgtpos,
-                            bool empty)
+                            bool weighted, bool empty)
 {
     typedef property_map_type::apply<int32_t,
                                      GraphInterface::vertex_index_map_t>::type
@@ -692,7 +727,7 @@ boost::any do_build_egroups(GraphInterface& gi, GraphInterface& bgi,
     typedef property_map_type::apply<int32_t,
                                      GraphInterface::edge_index_map_t>::type
         emap_t;
-    typedef property_map_type::apply<vector<int32_t>,
+    typedef property_map_type::apply<int32_t,
                                      GraphInterface::edge_index_map_t>::type
         vemap_t;
     vmap_t b = any_cast<vmap_t>(ob);
@@ -707,7 +742,8 @@ boost::any do_build_egroups(GraphInterface& gi, GraphInterface& bgi,
                              esrcpos.get_unchecked(gi.GetMaxEdgeIndex()),
                              etgtpos.get_unchecked(gi.GetMaxEdgeIndex()),
                              eweights.get_unchecked(gi.GetMaxEdgeIndex()),
-                             placeholders::_1, bgi.GetVertexIndex(), empty))();
+                             placeholders::_1, bgi.GetVertexIndex(), weighted,
+                             empty))();
     return oegroups;
 }
 

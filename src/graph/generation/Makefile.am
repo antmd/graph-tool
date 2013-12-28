@@ -39,4 +39,5 @@ libgraph_tool_generation_la_include_HEADERS = \
     graph_geometric.hh \
     graph_complete.hh \
     graph_price.hh \
+    dynamic_sampler.hh \
     sampler.hh

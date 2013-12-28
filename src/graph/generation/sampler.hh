@@ -30,7 +30,7 @@ using namespace boost;
 // Discrete sampling via vose's alias method.
 
 // See http://www.keithschwarz.com/darts-dice-coins/ for a very clear
-// explanation,
+// explanation.
 
 template <class Value, class KeepReference = mpl::true_>
 class Sampler

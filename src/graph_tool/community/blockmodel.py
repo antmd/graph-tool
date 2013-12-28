@@ -178,15 +178,16 @@ class BlockState(object):
             self.emat = libcommunity.create_ehash(self.bg._Graph__graph)
 
     def __build_egroups(self, empty=False):
-        self.esrcpos = self.g.new_edge_property("vector<int>")
-        self.etgtpos = self.g.new_edge_property("vector<int>")
+        self.esrcpos = self.g.new_edge_property("int")
+        self.etgtpos = self.g.new_edge_property("int")
+        self.is_weighted = True if self.eweight.fa.max() > 1 else False
         self.egroups = libcommunity.build_egroups(self.g._Graph__graph,
                                                   self.bg._Graph__graph,
                                                   _prop("v", self.g, self.b),
                                                   _prop("e", self.g, self.eweight),
                                                   _prop("e", self.g, self.esrcpos),
                                                   _prop("e", self.g, self.etgtpos),
-                                                  empty)
+                                                  self.is_weighted, empty)
 
     def __build_nsampler(self):
         self.nsampler = libcommunity.init_neighbour_sampler(self.g._Graph__graph,
@@ -511,7 +512,7 @@ class BlockState(object):
 
                 state = greedy_shrink(state, B=Bi, nsweeps=niter,
                                       epsilon=1e-3, c=0,
-                                      nmerge_sweeps=niter, sequential=True)
+                                      nmerge_sweeps=niter)
 
                 for i in range(niter):
                     mcmc_sweep(state, c=0, beta=float("inf"))
@@ -895,7 +896,8 @@ def mcmc_sweep(state, beta=1., random_move=False, c=1., dense=False,
                                              _prop("e", state.g, state.esrcpos),
                                              _prop("e", state.g, state.etgtpos),
                                              float(beta), sequential, random_move,
-                                             c, verbose, _get_rng())
+                                             c, state.is_weighted, verbose,
+                                             _get_rng())
     finally:
         if random_move:
             state.egroups = None

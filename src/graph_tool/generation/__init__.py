@@ -1593,3 +1593,12 @@ class Sampler(libgraph_tool_generation.Sampler):
 
     def sample(self):
         return libgraph_tool_generation.Sampler.sample(self, _get_rng())
+
+class DynamicSampler(libgraph_tool_generation.DynamicSampler):
+    def __init__(self, values=None, probs=None):
+        if values == None:
+            values = probs = []
+        libgraph_tool_generation.DynamicSampler.__init__(self, values, probs)
+
+    def sample(self):
+        return libgraph_tool_generation.DynamicSampler.sample(self, _get_rng())
