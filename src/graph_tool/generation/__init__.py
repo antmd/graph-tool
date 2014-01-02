@@ -611,7 +611,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
        gt.graph_draw(g, pos=pos, output="rewire_orig.png", output_size=(300, 300))
 
     >>> gt.random_rewire(g, "correlated")
-    212
+    641
     >>> pos = gt.arf_layout(g)
     >>> gt.graph_draw(g, pos=pos, output="rewire_corr.pdf", output_size=(300, 300))
     <...>
@@ -622,7 +622,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
        gt.graph_draw(g, pos=pos, output="rewire_corr.png", output_size=(300, 300))
 
     >>> gt.random_rewire(g)
-    207
+    186
     >>> pos = gt.arf_layout(g)
     >>> gt.graph_draw(g, pos=pos, output="rewire_uncorr.pdf", output_size=(300, 300))
     <...>
@@ -633,7 +633,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
        gt.graph_draw(g, pos=pos, output="rewire_uncorr.png", output_size=(300, 300))
 
     >>> gt.random_rewire(g, "erdos")
-    21
+    13
     >>> pos = gt.arf_layout(g)
     >>> gt.graph_draw(g, pos=pos, output="rewire_erdos.pdf", output_size=(300, 300))
     <...>
@@ -664,17 +664,17 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label="Original")
     <...>
     >>> gt.random_rewire(g, "correlated")
-    212
+    230
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="*", label="Correlated")
     <...>
     >>> gt.random_rewire(g)
-    120
+    102
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label="Uncorrelated")
     <...>
     >>> gt.random_rewire(g, "erdos")
-    20
+    18
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label=r"Erd\H{o}s")
     <...>
@@ -720,7 +720,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
     ...          label=r"$\left<\text{i}\right>$ vs o")
     <...>
     >>> gt.random_rewire(g, "correlated")
-    4130
+    4185
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{o}\right>$ vs i, corr.")
@@ -730,7 +730,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
     ...          label=r"$\left<\text{i}\right>$ vs o, corr.")
     <...>
     >>> gt.random_rewire(g, "uncorrelated")
-    194
+    161
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{o}\right>$ vs i, uncorr.")

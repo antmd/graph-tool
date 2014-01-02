@@ -127,7 +127,7 @@ def similarity(g1, g2, label1=None, label2=None, norm=True):
     >>> gt.similarity(u, g)
     1.0
     >>> gt.random_rewire(u)
-    21
+    19
     >>> gt.similarity(u, g)
     0.03
     """
@@ -616,8 +616,8 @@ def topological_sort(g):
     >>> g.set_edge_filter(tree)
     >>> sort = gt.topological_sort(g)
     >>> print(sort)
-    [ 1 14  2  7 17  0  3  4  5  6  8  9 22 10 11 12 13 16 23 27 15 18 19 20 21
-     24 25 26 28 29]
+    [ 1  7 17  0  9  2  3  4  5  6  8 10 11 12 13 25 16 23 27 28 19 29 14 15 18
+     20 21 22 24 26]
 
     References
     ----------
@@ -725,9 +725,9 @@ def label_components(g, vprop=None, directed=None, attractors=False):
     >>> g = gt.random_graph(100, lambda: (poisson(2), poisson(2)))
     >>> comp, hist, is_attractor = gt.label_components(g, attractors=True)
     >>> print(comp.a)
-    [14 15 14 14 14  5 14 14 18 14 14  8 14 14 13 14 14 21 14 14  7 23 10 14 14
+    [14 15 14 14 14  5 14 14 18 14 14  8 14 14 13 14 14 21 14 14  6 23 10 14 14
      14 24  4 14 14  0 14 14 14 25 14 14  1 14 26 14 19  9 14 14  3 14 14 27 28
-     29 14 14  6 14 14 14 30 14 14 20 14  2 14 22 33 34 14 14 14 35 14 14 16 14
+     29 14 14  7 14 14 14 30 14 14 20 14  2 14 22 33 34 14 14 14 35 14 14 16 14
      11 36 37 14 14 31 14 14 17 14 14 14 14 14  0 14 38 39 32 14 12 14 40 14 14]
     >>> print(hist)
     [ 2  1  1  1  1  1  1  1  1  1  1  1  1  1 59  1  1  1  1  1  1  1  1  1  1
@@ -797,12 +797,12 @@ def label_largest_component(g, directed=None):
     >>> g = gt.random_graph(100, lambda: poisson(1), directed=False)
     >>> l = gt.label_largest_component(g)
     >>> print(l.a)
-    [0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 1 1 0 0 1 0 0 0 0 0 0 0
-     0 0 1 0 0 0 0 0 0 0 0 0 1 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0 1 0 0 0 0 0 0 0 0
-     0 0 1 0 0 1 0 0 0 0 0 0 0 1 0 0 1 0 1 0 0 0 1 1 1 0]
+    [0 1 0 0 1 1 0 0 0 0 0 0 0 0 0 0 0 0 1 0 1 0 1 0 0 0 0 0 0 0 0 0 0 0 0 1 0
+     0 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 1 0 1 0 0 0 0 1 1 0 0
+     0 0 0 0 1 0 0 0 1 0 0 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0]
     >>> u = gt.GraphView(g, vfilt=l)   # extract the largest component as a graph
     >>> print(u.num_vertices())
-    18
+    22
     """
 
     label = g.new_vertex_property("bool")
@@ -848,18 +848,18 @@ def label_out_component(g, root):
     >>> g = gt.random_graph(100, lambda: poisson(2.2), directed=False)
     >>> l = gt.label_out_component(g, g.vertex(2))
     >>> print(l.a)
-    [1 1 1 1 1 1 1 1 1 1 1 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 1 1 1 0
-     1 1 0 1 1 0 1 1 1 1 1 1 1 1 1 1 1 0 1 1 1 1 1 1 1 1 1 1 0 0 1 0 1 1 1 1 1
-     1 1 0 1 1 1 1 1 1 1 1 1 1 0 1 1 1 0 1 1 1 0 1 1 1 0]
+    [1 1 1 1 1 1 1 1 1 1 1 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 1 1 1 1
+     1 1 0 0 1 1 0 1 1 0 1 1 1 1 1 1 1 0 1 1 1 1 1 1 1 1 1 1 0 0 1 1 1 0 1 1 1
+     1 1 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 1 1 0 0 1 0 1 0]
 
     The in-component can be obtained by reversing the graph.
 
     >>> l = gt.label_out_component(gt.GraphView(g, reversed=True, directed=True),
     ...                            g.vertex(1))
     >>> print(l.a)
-    [0 1 1 1 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 1 0 0 0 0 0 0 0 0 0
-     0 1 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 1 0 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0
-     0 0 0 0 0 1 0 0 0 1 1 0 1 0 0 0 0 0 0 0 0 0 1 0 0 0]
+    [0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+     0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+     0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
     """
 
     label = g.new_vertex_property("bool")
@@ -931,17 +931,17 @@ def label_biconnected_components(g, eprop=None, vprop=None):
     >>> g = gt.random_graph(100, lambda: poisson(2), directed=False)
     >>> comp, art, hist = gt.label_biconnected_components(g)
     >>> print(comp.a)
-    [35 23 35 35 32 32 35 35  1 37 32 28 32 35 32  2 32 29 35 35 13 14 34 12 17
-     35 35 35 35 35  3 35 35 35 35 35 35 28 28 35 33 35 19 35 35 35 35  6 35 35
-     24 39 35 31 35 10  9 22 32 35  4 25 26 35 35  7 35 35 35 35 35 35 36 35 35
-     35 32 35  0 35 35 35 32 35 28 32 35 20 30 27 18 38 16  5 15 11 28 35  8 21]
+    [33 34 34 34 34 34  4 20 34 34 18 34 34 34 34 34 15 34 34 34 28 34 34 34 34
+     34 34 34 34 34 34 11 14 34 34 34  3 34 34 34 34 34 34 34 34 27 34 34  7 10
+     34 34 34 34 34 24 25 34  6 35 34 13 21 30 31 12  5 34  1 32 34 34 26 34 16
+     34 34 23 34 34 34 34 34 36 34 34 34 34 34 29 22 17  0  2  8 37 34 38  9 19]
     >>> print(art.a)
-    [1 0 0 0 0 0 0 0 0 1 0 0 1 0 0 1 0 1 0 0 1 1 0 0 1 0 0 0 0 0 1 0 0 1 0 0 0
-     0 1 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 1 0 0 1 0 1 0 0 1 1 0 0 0 0 0 1 0
-     1 0 1 1 0 0 0 0 1 0 0 1 0 1 1 1 0 0 0 0 0 0 0 1 0 0]
+    [1 0 1 1 0 1 0 0 1 0 0 0 1 0 0 0 0 1 0 0 0 0 0 1 1 0 1 0 1 1 1 0 0 1 0 1 0
+     1 1 0 0 0 1 0 1 0 1 0 0 0 0 0 1 1 0 0 0 0 0 0 0 0 0 1 0 0 1 0 0 0 0 0 1 1
+     1 0 0 0 0 0 0 1 0 0 0 0 0 1 0 1 0 0 0 1 0 0 0 0 0 0]
     >>> print(hist)
     [ 1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1
-      1  1  1  5  1  1  1 10  1  1 48  1  1  1  1]
+      1  1  1  1  1  1  1  1  1 62  1  1  1  1]
     """
 
     if vprop is None:

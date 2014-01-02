@@ -328,7 +328,7 @@ def nested_mcmc_sweep(state, beta=1., random_move=False, c=1., sequential=True,
        >>> state = gt.NestedBlockState(g, Bs=[10, 5, 3, 2, 1], deg_corr=True)
        >>> ret = gt.nested_mcmc_sweep(state)
        >>> print(ret)
-       [(-0.11881394061738723, 58), (-1.2855474804244876e-05, 1), (0.0, 0), (-0.003488958656098635, 1), (0.0, 0)]
+       [(-0.11881394061738723, 58), (0.0, 0), (0.0, 0), (-0.00108916046910437, 1), (0.0, 0)]
 
     References
     ----------
