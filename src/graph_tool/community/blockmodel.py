@@ -3,7 +3,7 @@
 #
 # graph_tool -- a general graph manipulation python module
 #
-# Copyright (C) 2006-2013 Tiago de Paula Peixoto <tiago@skewed.de>
+# Copyright (C) 2006-2014 Tiago de Paula Peixoto <tiago@skewed.de>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -601,9 +601,9 @@ def model_entropy(B, N, E, directed=False, nr=None):
     References
     ----------
 
-    .. [peixoto-parsimonious-2013] Tiago P. Peixoto, "Parsimonious module inference in large networks",
-       Phys. Rev. Lett. 110, 148701 (2013), :doi:`10.1103/PhysRevLett.110.148701`, :arxiv:`1212.4794`.
-    .. [peixoto-hierarchical-2013] Tiago P. Peixoto, "Hierarchical block structures and high-resolution
+    .. [peixoto-parsimonious-2014] Tiago P. Peixoto, "Parsimonious module inference in large networks",
+       Phys. Rev. Lett. 110, 148701 (2014), :doi:`10.1103/PhysRevLett.110.148701`, :arxiv:`1212.4794`.
+    .. [peixoto-hierarchical-2014] Tiago P. Peixoto, "Hierarchical block structures and high-resolution
        model selection in large networks ", :arxiv:`1310.4377`.
 
     """
@@ -647,8 +647,8 @@ def get_max_B(N, E, directed=False):
 
     References
     ----------
-    .. [peixoto-parsimonious-2013] Tiago P. Peixoto, "Parsimonious module inference in large networks",
-       Phys. Rev. Lett. 110, 148701 (2013), :doi:`10.1103/PhysRevLett.110.148701`, :arxiv:`1212.4794`.
+    .. [peixoto-parsimonious-2014] Tiago P. Peixoto, "Parsimonious module inference in large networks",
+       Phys. Rev. Lett. 110, 148701 (2014), :doi:`10.1103/PhysRevLett.110.148701`, :arxiv:`1212.4794`.
 
 
     """
@@ -698,8 +698,8 @@ def get_akc(B, I, N=float("inf"), directed=False):
 
     References
     ----------
-    .. [peixoto-parsimonious-2013] Tiago P. Peixoto, "Parsimonious module inference in large networks",
-       Phys. Rev. Lett. 110, 148701 (2013), :doi:`10.1103/PhysRevLett.110.148701`, :arxiv:`1212.4794`.
+    .. [peixoto-parsimonious-2014] Tiago P. Peixoto, "Parsimonious module inference in large networks",
+       Phys. Rev. Lett. 110, 148701 (2014), :doi:`10.1103/PhysRevLett.110.148701`, :arxiv:`1212.4794`.
 
     """
     if N != float("inf"):
@@ -798,7 +798,7 @@ def mcmc_sweep(state, beta=1., random_move=False, c=1., dense=False,
     the Markov chain by proposing membership moves :math:`r\to s` with
     probability :math:`p(r\to s|t) \propto e_{ts} + c`, where :math:`t` is the
     block label of a random neighbour of the vertex being moved. See
-    [peixoto-efficient-2013]_ for more details.
+    [peixoto-efficient-2014]_ for more details.
 
     This algorithm has a complexity of :math:`O(E)`, where :math:`E` is the
     number of edges in the network.
@@ -847,9 +847,9 @@ def mcmc_sweep(state, beta=1., random_move=False, c=1., dense=False,
     .. [peixoto-entropy-2012] Tiago P. Peixoto "Entropy of Stochastic Blockmodel
        Ensembles." Physical Review E 85, no. 5 (2012): 056122. :doi:`10.1103/PhysRevE.85.056122`,
        :arxiv:`1112.6028`.
-    .. [peixoto-parsimonious-2013] Tiago P. Peixoto, "Parsimonious module inference in large networks",
-       Phys. Rev. Lett. 110, 148701 (2013), :doi:`10.1103/PhysRevLett.110.148701`, :arxiv:`1212.4794`.
-    .. [peixoto-efficient-2013] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
+    .. [peixoto-parsimonious-2014] Tiago P. Peixoto, "Parsimonious module inference in large networks",
+       Phys. Rev. Lett. 110, 148701 (2014), :doi:`10.1103/PhysRevLett.110.148701`, :arxiv:`1212.4794`.
+    .. [peixoto-efficient-2014] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
        heuristic for the inference of stochastic block models", :arxiv:`1310.4378`.
     """
 
@@ -1115,7 +1115,7 @@ def multilevel_minimize(state, B, nsweeps=10, adaptive_sweeps=True, epsilon=0,
 
     This algorithm performs an agglomerative heuristic on the current block state,
     where blocks are progressively merged together, using repeated applications of
-    the :func:`mcmc_sweep` moves, at different scales. See [peixoto-efficient-2013]_
+    the :func:`mcmc_sweep` moves, at different scales. See [peixoto-efficient-2014]_
     for more details.
 
     This algorithm has a complexity of :math:`O(N\ln^2 N)`, where :math:`N` is the
@@ -1149,7 +1149,7 @@ def multilevel_minimize(state, B, nsweeps=10, adaptive_sweeps=True, epsilon=0,
      References
     ----------
 
-    .. [peixoto-efficient-2013] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
+    .. [peixoto-efficient-2014] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
        heuristic for the inference of stochastic block models", :arxiv:`1310.4378`.
     """
 
@@ -1614,7 +1614,7 @@ def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=F
     specific values of :math:`B` via :func:`mcmc_sweep` (with :math:`\beta = 1`
     and :math:`\beta\to\infty`), and minimizing :math:`\Sigma_{t/c}` via an
     one-dimensional Fibonacci search on :math:`B`. See
-    [peixoto-parsimonious-2013]_ for more details.
+    [peixoto-parsimonious-2014]_ for more details.
 
     This algorithm has a complexity of :math:`O(\tau N\ln^2 B_{\text{max}})`,
     where :math:`N` is the number of nodes in the network, :math:`\tau` is the
@@ -1663,9 +1663,9 @@ def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=F
     .. [peixoto-entropy-2012] Tiago P. Peixoto "Entropy of Stochastic Blockmodel
        Ensembles." Physical Review E 85, no. 5 (2012): 056122. :doi:`10.1103/PhysRevE.85.056122`,
        :arxiv:`1112.6028`.
-    .. [peixoto-parsimonious-2013] Tiago P. Peixoto, "Parsimonious module inference in large networks",
-       Phys. Rev. Lett. 110, 148701 (2013), :doi:`10.1103/PhysRevLett.110.148701`, :arxiv:`1212.4794`.
-    .. [peixoto-efficient-2013] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
+    .. [peixoto-parsimonious-2014] Tiago P. Peixoto, "Parsimonious module inference in large networks",
+       Phys. Rev. Lett. 110, 148701 (2014), :doi:`10.1103/PhysRevLett.110.148701`, :arxiv:`1212.4794`.
+    .. [peixoto-efficient-2014] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
        heuristic for the inference of stochastic block models", :arxiv:`1310.4378`.
 
     """

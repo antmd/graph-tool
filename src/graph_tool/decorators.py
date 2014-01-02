@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 #
-# Copyright (C) 2006-2013 Tiago de Paula Peixoto <tiago@skewed.de>
+# Copyright (C) 2006-2014 Tiago de Paula Peixoto <tiago@skewed.de>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@ Some useful decorators
 from __future__ import division, absolute_import, print_function
 
 __author__ = "Tiago de Paula Peixoto <tiago@skewed.de>"
-__copyright__ = "Copyright 2006-2013 Tiago de Paula Peixoto"
+__copyright__ = "Copyright 2006-2014 Tiago de Paula Peixoto"
 __license__ = "GPL version 3 or above"
 
 import inspect
