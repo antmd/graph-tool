@@ -318,18 +318,23 @@ if test "$USING_CAIRO" = "yes"; then
 fi
 
 dnl sparsehash
+[SPARSEHASH_PREFIX=sparsehash]
+AC_ARG_WITH([sparsehash-prefix], [AS_HELP_STRING([--with-sparsehash-prefix=prefix],
+		  		  [include directory prefix for sparsehash
+                      		  [default=sparsehash] ])],
+            [SPARSEHASH_PREFIX=$withval])
+
 if test "$USING_SPARSEHASH" = "yes"; then
    PKG_CHECK_MODULES(SPARSEHASH, [libsparsehash], AC_DEFINE([HAVE_SPARSEHASH], [1],
                      [Using google's sparsehash]), [])
+   [SPARSEHASH_CFLAGS="${SPARSEHASH_CFLAGS} -DSPARSEHASH_PREFIX=${SPARSEHASH_PREFIX}"]
    AC_SUBST(SPARSEHASH_CFLAGS)
-   [OLD_CXXFLAGS="${CXXFLAGS}"]
-   [OLD_CPPFLAGS="${CPPFLAGS}"]
+   AC_DEFINE_UNQUOTED([SPARSEHASH_INCLUDE(f)], [<${SPARSEHASH_PREFIX}/f>],
+                      [Sparsehash include macro])	
    [CXXFLAGS="${CXXFLAGS} ${SPARSEHASH_CFLAGS}"]
    [CPPFLAGS="${CPPFLAGS} ${SPARSEHASH_CFLAGS}"]
-   AC_CHECK_HEADER([sparsehash/dense_hash_set], [],
+   AC_CHECK_HEADER([${SPARSEHASH_PREFIX}/dense_hash_set], [],
                    [AC_MSG_ERROR([sparsehash headers not found])])
-   [CXXFLAGS="${OLD_CXXFLAGS}"]
-   [CPPFLAGS="${OLD_CPPFLAGS}"]
 fi
 
 dnl Checks for typedefs, structures, and compiler characteristics.

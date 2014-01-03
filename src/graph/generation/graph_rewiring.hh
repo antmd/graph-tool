@@ -33,7 +33,7 @@
 #include "random.hh"
 
 #ifdef HAVE_SPARSEHASH
-#include <sparsehash/dense_hash_map>
+#include SPARSEHASH_INCLUDE(dense_hash_map)
 #endif
 
 namespace graph_tool

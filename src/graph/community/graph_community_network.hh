@@ -21,7 +21,7 @@
 #include <unordered_map>
 
 #ifdef HAVE_SPARSEHASH
-#include <sparsehash/dense_hash_map>
+#include SPARSEHASH_INCLUDE(dense_hash_map)
 #endif
 
 #include <iostream>

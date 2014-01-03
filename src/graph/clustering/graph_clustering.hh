@@ -24,7 +24,7 @@
 #include <boost/mpl/if.hpp>
 
 #ifdef HAVE_SPARSEHASH
-#include <sparsehash/dense_hash_set>
+#include SPARSEHASH_INCLUDE(dense_hash_set)
 #endif
 
 #ifndef __clang__
