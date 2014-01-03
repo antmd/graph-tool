@@ -333,9 +333,9 @@ def nested_mcmc_sweep(state, beta=1., random_move=False, c=1., sequential=True,
     References
     ----------
 
-    .. [peixoto-efficient-2014] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
+    .. [peixoto-efficient-2013] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
        heuristic for the inference of stochastic block models", :arxiv:`1310.4378`.
-    .. [peixoto-hierarchical-2014] Tiago P. Peixoto, "Hierarchical block structures and high-resolution
+    .. [peixoto-hierarchical-2013] Tiago P. Peixoto, "Hierarchical block structures and high-resolution
        model selection in large networks ", :arxiv:`1310.4377`.
     """
 
@@ -576,9 +576,9 @@ def nested_tree_sweep(state, nsweeps=10, epsilon=0., r=2.,
     References
     ----------
 
-    .. [peixoto-efficient-2014] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
+    .. [peixoto-efficient-2013] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
        heuristic for the inference of stochastic block models", :arxiv:`1310.4378`.
-    .. [peixoto-hierarchical-2014] Tiago P. Peixoto, "Hierarchical block structures
+    .. [peixoto-hierarchical-2013] Tiago P. Peixoto, "Hierarchical block structures
        and high-resolution model selection in large networks ", :arxiv:`1310.4377`.
     """
 
@@ -811,9 +811,9 @@ def init_nested_state(g, Bs, deg_corr=True, dense=False,
     References
     ----------
 
-    .. [peixoto-efficient-2014] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
+    .. [peixoto-efficient-2013] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
        heuristic for the inference of stochastic block models", :arxiv:`1310.4378`.
-    .. [peixoto-hierarchical-2014] Tiago P. Peixoto, "Hierarchical block structures
+    .. [peixoto-hierarchical-2013] Tiago P. Peixoto, "Hierarchical block structures
        and high-resolution model selection in large networks ", :arxiv:`1310.4377`.
     """
 
@@ -999,7 +999,7 @@ def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, deg_corr=True,
         \mathcal{L}^l_t = \ln\left(\!\!{B_l\choose B_{l-1}}\!\!\right) + \ln B_{l-1}! - \sum_r \ln n_r^l!.
 
 
-    See [peixoto-hierarchical-2014]_ for details on the algorithm.
+    See [peixoto-hierarchical-2013]_ for details on the algorithm.
 
     This algorithm has a complexity of :math:`O(N \ln^2 N)`, where :math:`N`
     is the number of nodes in the network.
@@ -1037,9 +1037,9 @@ def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, deg_corr=True,
     References
     ----------
 
-    .. [peixoto-hierarchical-2014] Tiago P. Peixoto, "Hierarchical block structures and high-resolution
+    .. [peixoto-hierarchical-2013] Tiago P. Peixoto, "Hierarchical block structures and high-resolution
        model selection in large networks ", :arxiv:`1310.4377`.
-    .. [peixoto-efficient-2014] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
+    .. [peixoto-efficient-2013] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
        heuristic for the inference of stochastic block models", :arxiv:`1310.4378`.
     """
 

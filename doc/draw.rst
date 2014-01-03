@@ -1,4 +1,5 @@
 .. automodule:: graph_tool.draw
+   :no-members:
 
     Layout algorithms
     =================

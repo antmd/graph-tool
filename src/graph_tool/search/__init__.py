@@ -52,13 +52,14 @@ Examples
 In this module, most documentation examples will make use of the network
 :download:`search_example.xml <search_example.xml>`, shown below.
 
->>> gt.seed_rng(42)
 >>> g = gt.load_graph("search_example.xml")
->>> name = g.vertex_properties["name"]
->>> weight = g.edge_properties["weight"]
->>> pos = gt.graph_draw(g, vertex_text=name, vertex_font_size=12, vertex_shape="double_circle",
-...                     vertex_fill_color="#729fcf", vertex_pen_width=3,
-...                     edge_pen_width=weight, output="search_example.pdf")
+>>> name = g.vp["name"]
+>>> weight = g.ep["weight"]
+>>> pos = g.vp["pos"]
+>>> gt.graph_draw(g, pos, vertex_text=name, vertex_font_size=12, vertex_shape="double_circle",
+...               vertex_fill_color="#729fcf", vertex_pen_width=3,
+...               edge_pen_width=weight, output="search_example.pdf")
+<...>
 
 .. testcode::
    :hide:

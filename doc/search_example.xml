@@ -5,7 +5,8 @@
 
   <!-- property keys -->
   <key id="key0" for="node" attr.name="name" attr.type="string" />
-  <key id="key1" for="edge" attr.name="weight" attr.type="float" />
+  <key id="key1" for="node" attr.name="pos" attr.type="vector_float" />
+  <key id="key2" for="edge" attr.name="weight" attr.type="float" />
 
   <graph id="G" edgedefault="undirected" parse.nodeids="canonical" parse.edgeids="canonical" parse.order="nodesfirst">
 
@@ -14,86 +15,96 @@
    <!-- vertices -->
     <node id="n0">
       <data key="key0">Bob</data>
+      <data key="key1">-0x1.ef066a9bc7566p+8, -0x1.8cba14a4daf9ep+8</data>
     </node>
     <node id="n1">
       <data key="key0">Alice</data>
+      <data key="key1">-0x1.eff87ddcb5dcdp+8, -0x1.8be648e13bf73p+8</data>
     </node>
     <node id="n2">
       <data key="key0">Carol</data>
+      <data key="key1">-0x1.eec36defefc65p+8, -0x1.8bfb011626325p+8</data>
     </node>
     <node id="n3">
       <data key="key0">Carlos</data>
+      <data key="key1">-0x1.ef434147d196bp+8, -0x1.8bf303e0a8156p+8</data>
     </node>
     <node id="n4">
       <data key="key0">Chuck</data>
+      <data key="key1">-0x1.ee23a5c21581dp+8, -0x1.8c946519352c7p+8</data>
     </node>
     <node id="n5">
       <data key="key0">Dave</data>
+      <data key="key1">-0x1.f07f37873d595p+8, -0x1.8b75d14dbc907p+8</data>
     </node>
     <node id="n6">
       <data key="key0">Eve</data>
+      <data key="key1">-0x1.ee9849cf138ffp+8, -0x1.8c6143c2dad9p+8</data>
     </node>
     <node id="n7">
       <data key="key0">Isaac</data>
+      <data key="key1">-0x1.ee7057c39cfedp+8, -0x1.8cf90ebb37008p+8</data>
     </node>
     <node id="n8">
       <data key="key0">Oscar</data>
+      <data key="key1">-0x1.f0a22f1b03f88p+8, -0x1.8c165cbc20962p+8</data>
     </node>
     <node id="n9">
       <data key="key0">Imothep</data>
+      <data key="key1">-0x1.ee3d366d42ab8p+8, -0x1.8b9e54a9a27b3p+8</data>
     </node>
 
    <!-- edges -->
     <edge id="e0" source="n0" target="n6">
-      <data key="key1">0x1.9e7393907213cp+1</data>
+      <data key="key2">0x1.9e7393907213cp+1</data>
     </edge>
     <edge id="e1" source="n0" target="n4">
-      <data key="key1">0x1.015b0db294a3dp+2</data>
+      <data key="key2">0x1.015b0db294a3dp+2</data>
     </edge>
     <edge id="e2" source="n0" target="n3">
-      <data key="key1">0x1.12bcc343cdc2ap+2</data>
+      <data key="key2">0x1.12bcc343cdc2ap+2</data>
     </edge>
     <edge id="e3" source="n0" target="n7">
-      <data key="key1">0x1.ba3952afb7e9ep+1</data>
+      <data key="key2">0x1.ba3952afb7e9ep+1</data>
     </edge>
     <edge id="e4" source="n1" target="n8">
-      <data key="key1">0x1.0ff8065948f03p+1</data>
+      <data key="key2">0x1.0ff8065948f03p+1</data>
     </edge>
     <edge id="e5" source="n1" target="n5">
-      <data key="key1">0x1.a872068a0a4e5p+1</data>
+      <data key="key2">0x1.a872068a0a4e5p+1</data>
     </edge>
     <edge id="e6" source="n1" target="n3">
-      <data key="key1">0x1.2816bc78b034fp+2</data>
+      <data key="key2">0x1.2816bc78b034fp+2</data>
     </edge>
     <edge id="e7" source="n2" target="n6">
-      <data key="key1">0x1.82250c1278b54p+2</data>
+      <data key="key2">0x1.82250c1278b54p+2</data>
     </edge>
     <edge id="e8" source="n2" target="n9">
-      <data key="key1">0x1.8bb78dae3ee5ap+0</data>
+      <data key="key2">0x1.8bb78dae3ee5ap+0</data>
     </edge>
     <edge id="e9" source="n3" target="n6">
-      <data key="key1">0x1.587ad2707187fp+2</data>
+      <data key="key2">0x1.587ad2707187fp+2</data>
     </edge>
     <edge id="e10" source="n3" target="n9">
-      <data key="key1">0x1.7df6a3095905ep+2</data>
+      <data key="key2">0x1.7df6a3095905ep+2</data>
     </edge>
     <edge id="e11" source="n4" target="n6">
-      <data key="key1">0x1.62ac71123a64ap+0</data>
+      <data key="key2">0x1.62ac71123a64ap+0</data>
     </edge>
     <edge id="e12" source="n4" target="n7">
-      <data key="key1">0x1.2c156b7e6a49p+1</data>
+      <data key="key2">0x1.2c156b7e6a49p+1</data>
     </edge>
     <edge id="e13" source="n4" target="n9">
-      <data key="key1">0x1.543c16e43a9bfp+2</data>
+      <data key="key2">0x1.543c16e43a9bfp+2</data>
     </edge>
     <edge id="e14" source="n5" target="n8">
-      <data key="key1">0x1.5a4ab7454f0e2p+1</data>
+      <data key="key2">0x1.5a4ab7454f0e2p+1</data>
     </edge>
     <edge id="e15" source="n6" target="n7">
-      <data key="key1">0x1.841d9db6417f3p+1</data>
+      <data key="key2">0x1.841d9db6417f3p+1</data>
     </edge>
     <edge id="e16" source="n6" target="n9">
-      <data key="key1">0x1.20af02e97ed9ep+2</data>
+      <data key="key2">0x1.20af02e97ed9ep+2</data>
     </edge>
 
   </graph>

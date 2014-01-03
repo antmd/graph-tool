@@ -1019,8 +1019,7 @@ def transform_scale(M, scale):
     return np.sqrt(p[0] ** 2 + p[1] ** 2)
 
 def get_hierarchy_control_points(g, t, tpos, beta=0.8):
-    r"""Return the Bézier spline control points for the edges in ``g``, given
-    the hierarchical structure encoded in graph `t`.
+    r"""Return the Bézier spline control points for the edges in ``g``, given the hierarchical structure encoded in graph `t`.
 
     Parameters
     ----------
@@ -1030,7 +1029,7 @@ def get_hierarchy_control_points(g, t, tpos, beta=0.8):
         Directed graph containing the hierarchy of ``g``. It must be a directed
         tree with a single root. The direction of the edges point from the root
         to the leaves, and the vertices in ``t`` with index in the range
-        :math:`[0, N-1]`, with `:math:`N` being the number of vertices in ``g``,
+        :math:`[0, N-1]`, with :math:`N` being the number of vertices in ``g``,
         must correspond to the respective vertex in ``g``.
     tpos : :class:`~graph_tool.PropertyMap`
         Vector-valued vertex property map containing the x and y coordinates of
