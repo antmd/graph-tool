@@ -378,8 +378,6 @@ struct get_edge_community_property_norm
     }
 };
 
-
-
 } // graph_tool namespace
 
 #endif // GRAPH_COMMUNITY_NETWORK_HH

@@ -48,22 +48,11 @@ struct get_weighted_edge_property_dispatch
     }
 };
 
-
-struct get_edge_sum_dispatch
-{
-    template <class Graph, class CommunityGraph, class CommunityMap,
-              class Eprop>
-    void operator()(const Graph& g, CommunityGraph& cg, CommunityMap s_map,
-                    boost::any acs_map, Eprop eprop, boost::any aceprop,
-                    bool self_loops) const
-    {
-        typename CommunityMap::checked_t cs_map = boost::any_cast<typename CommunityMap::checked_t>(acs_map);
-        typename Eprop::checked_t ceprop = boost::any_cast<typename Eprop::checked_t>(aceprop);
-        get_edge_community_property_sum()(g, cg, s_map, cs_map.get_unchecked(num_vertices(cg)),
-                                          eprop, ceprop.get_unchecked(num_edges(cg)),
-                                          self_loops);
-    }
-};
+void sum_eprops(GraphInterface& gi, GraphInterface& cgi,
+                boost::any community_property,
+                boost::any condensed_community_property,
+                boost::any ceprop, boost::any eprop,
+                bool self_loops);
 
 void community_network_eavg(GraphInterface& gi, GraphInterface& cgi,
                             boost::any community_property,
@@ -108,26 +97,16 @@ void community_network_eavg(GraphInterface& gi, GraphInterface& cgi,
                 (eweight, eprop);
 
             // sum weighted values
-            run_action<graph_tool::detail::always_directed>()
-                (gi, std::bind(get_edge_sum_dispatch(),
-                               placeholders::_1, std::ref(cgi.GetGraph()),
-                               placeholders::_2,
-                               condensed_community_property, placeholders::_3, ceprop,
-                               self_loops),
-                 writable_vertex_properties(), eprops_t())
-                (community_property, temp);
+            sum_eprops(gi, cgi, community_property,
+                       condensed_community_property,
+                       ceprop, temp, self_loops);
         }
         else
         {
             // sum unweighted values
-            run_action<graph_tool::detail::always_directed>()
-                (gi, std::bind(get_edge_sum_dispatch(),
-                               placeholders::_1, std::ref(cgi.GetGraph()),
-                               placeholders::_2,
-                               condensed_community_property, placeholders::_3,
-                               ceprop, self_loops),
-                 writable_vertex_properties(), eprops_t())
-                (community_property, eprop);
+            sum_eprops(gi, cgi, community_property,
+                       condensed_community_property,
+                       ceprop, eprop, self_loops);
         }
 
         // norm summed values

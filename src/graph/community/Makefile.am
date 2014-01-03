@@ -20,7 +20,8 @@ libgraph_tool_community_la_SOURCES = \
     graph_community_network.cc \
     graph_community_network_edges.cc \
     graph_community_network_vavg.cc \
-    graph_community_network_eavg.cc
+    graph_community_network_eavg.cc \
+    graph_community_network_eavg_imp1.cc
 
 libgraph_tool_community_la_include_HEADERS = \
     graph_blockmodel.hh \
