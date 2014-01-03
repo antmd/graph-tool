@@ -144,7 +144,10 @@ inline double f_r(double C, double K, double p, const Pos& p1, const Pos& p2)
     double d = dist(p1, p2);
     if (d == 0)
         return 0;
-    return -C * pow(K, 1 + p) / pow(d, p);
+    if (round(p) == p)
+        return -C * power(K, int(1 + p)) / power(d, int(p));
+    else
+        return -C * pow(K, 1 + p) / pow(d, p);
 }
 
 template <class Pos>

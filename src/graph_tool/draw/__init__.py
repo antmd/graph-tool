@@ -507,7 +507,7 @@ def coarse_graph_stack(g, c, coarse_stack, eweight=None, vweight=None,
 
 def sfdp_layout(g, vweight=None, eweight=None, pin=None, groups=None, C=0.2,
                 K=None, p=2., theta=0.6, max_level=11, gamma=1., mu=0., mu_p=1.,
-                init_step=None, cooling_step=0.9, adaptive_cooling=True,
+                init_step=None, cooling_step=0.99, adaptive_cooling=True,
                 epsilon=1e-1, max_iter=0, pos=None, multilevel=None,
                 coarse_method="hybrid", mivs_thres=0.9, ec_thres=0.75,
                 coarse_stack=None, weighted_coarse=False, verbose=False):
@@ -549,7 +549,7 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, groups=None, C=0.2,
         connected component, or group assignment.
     init_step : float (optional, default: ``None``)
         Initial update step. If not provided, it will be chosen automatically.
-    cooling_step : float (optional, default: ``0.9``)
+    cooling_step : float (optional, default: ``0.99``)
         Cooling update step.
     adaptive_cooling : bool (optional, default: ``True``)
         Use an adaptive cooling scheme.
