@@ -507,8 +507,8 @@ def coarse_graph_stack(g, c, coarse_stack, eweight=None, vweight=None,
 
 def sfdp_layout(g, vweight=None, eweight=None, pin=None, groups=None, C=0.2,
                 K=None, p=2., theta=0.6, max_level=11, gamma=1., mu=0., mu_p=1.,
-                init_step=None, cooling_step=0.99, adaptive_cooling=True,
-                epsilon=1e-1, max_iter=0, pos=None, multilevel=None,
+                init_step=None, cooling_step=0.9, adaptive_cooling=True,
+                epsilon=1e-2, max_iter=0, pos=None, multilevel=None,
                 coarse_method="hybrid", mivs_thres=0.9, ec_thres=0.75,
                 coarse_stack=None, weighted_coarse=False, verbose=False):
     r"""Obtain the SFDP spring-block layout of the graph.
@@ -549,11 +549,11 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, groups=None, C=0.2,
         connected component, or group assignment.
     init_step : float (optional, default: ``None``)
         Initial update step. If not provided, it will be chosen automatically.
-    cooling_step : float (optional, default: ``0.99``)
+    cooling_step : float (optional, default: ``0.9``)
         Cooling update step.
     adaptive_cooling : bool (optional, default: ``True``)
         Use an adaptive cooling scheme.
-    epsilon : float (optional, default: ``0.1``)
+    epsilon : float (optional, default: ``0.01``)
         Relative convergence criterion.
     max_iter : int (optional, default: ``0``)
         Maximum number of iterations. If this value is ``0``, it runs until
