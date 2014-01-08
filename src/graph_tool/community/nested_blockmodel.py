@@ -186,6 +186,14 @@ class NestedBlockState(object):
                            complete=complete) + \
             partition_entropy(B=B, N=N, nr=nr) / bstate.E
 
+        if l == 0 and complete:
+            if bstate.deg_corr:
+                S_seq = libcommunity.deg_entropy(bstate.g._Graph__graph,
+                                                 _prop("v", bstate.g,
+                                                       bstate.b),
+                                                 bstate.B)
+                S += S_seq / bstate.E
+
         return S
 
     def entropy(self, complete=False, random=False, dense=False,
@@ -210,18 +218,6 @@ class NestedBlockState(object):
         S = 0
         for l in range(len(self.levels)):
             S += self.level_entropy(l, complete, random, dense, multigraph)
-        if complete:
-            if self.levels[0].deg_corr:
-                g = self.levels[0].g
-                S_seq = 0
-                hist = defaultdict(int)
-                for v in g.vertices():
-                    hist[(v.in_degree(), v.out_degree())] += 1
-                for k, v in hist.items():
-                    p = v / float(g.num_vertices())
-                    S_seq -= p * log(p)
-                S_seq *= g.num_vertices()
-                S += S_seq / self.levels[0].E
         return S
 
     def get_bstack(self):
