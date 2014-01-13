@@ -231,6 +231,8 @@ def _convert(prop, val):
     vtype = _python_type(prop.value_type())
     if type(vtype) is tuple:
         return [vtype[1](x) for x in val]
+    if vtype is object:
+        return val
     return vtype(val)
 
 

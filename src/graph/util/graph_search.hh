@@ -73,6 +73,8 @@ struct find_vertices
             nt = 1; // python is not thread-safe
         #endif
 
+        bool is_eq = range.first == range.second;
+
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i) schedule(static) if (N > 100) \
             num_threads(nt)
@@ -82,11 +84,12 @@ struct find_vertices
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
             value_type val = deg(v, g);
-            if (range.first <= val && val <= range.second)
+            if ((is_eq && (val == range.first)) ||
+                (!is_eq && (range.first <= val && val <= range.second)))
             {
                 PythonVertex pv(pg, v);
+                #pragma omp critical
                 {
-                    #pragma omp critical
                     ret.append(pv);
                 }
             }
@@ -115,6 +118,8 @@ struct find_edges
             nt = 1; // python is not thread-safe
         #endif
 
+        bool is_eq = range.first == range.second;
+
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i) schedule(static) if (N > 100) \
             num_threads(nt)
@@ -135,11 +140,12 @@ struct find_edges
                 }
 
                 value_type val = get(prop, *e);
-                if (range.first <= val && val <= range.second)
+                if ((is_eq && (val == range.first)) ||
+                    (!is_eq && (range.first <= val && val <= range.second)))
                 {
                     PythonEdge<Graph> pe(pg, *e);
+                    #pragma omp critical
                     {
-                        #pragma omp critical
                         ret.append(pe);
                     }
                 }
