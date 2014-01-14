@@ -507,7 +507,7 @@ def coarse_graph_stack(g, c, coarse_stack, eweight=None, vweight=None,
 
 def sfdp_layout(g, vweight=None, eweight=None, pin=None, groups=None, C=0.2,
                 K=None, p=2., theta=0.6, max_level=11, gamma=1., mu=0., mu_p=1.,
-                init_step=None, cooling_step=0.9, adaptive_cooling=True,
+                init_step=None, cooling_step=0.95, adaptive_cooling=True,
                 epsilon=1e-2, max_iter=0, pos=None, multilevel=None,
                 coarse_method="hybrid", mivs_thres=0.9, ec_thres=0.75,
                 coarse_stack=None, weighted_coarse=False, verbose=False):
@@ -549,7 +549,7 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, groups=None, C=0.2,
         connected component, or group assignment.
     init_step : float (optional, default: ``None``)
         Initial update step. If not provided, it will be chosen automatically.
-    cooling_step : float (optional, default: ``0.9``)
+    cooling_step : float (optional, default: ``0.95``)
         Cooling update step.
     adaptive_cooling : bool (optional, default: ``True``)
         Use an adaptive cooling scheme.
@@ -634,7 +634,7 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, groups=None, C=0.2,
         K = _avg_edge_distance(g, pos)
 
     if init_step is None:
-        init_step = 10 * max(_avg_edge_distance(g, pos), K)
+        init_step = 2 * max(_avg_edge_distance(g, pos), K)
 
     if multilevel is None:
         multilevel = g.num_vertices() > 1000
@@ -671,8 +671,8 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, groups=None, C=0.2,
                               max_iter=max_iter,
                               cooling_step=cooling_step,
                               adaptive_cooling=False,
-                              init_step=max(2 * K,
-                                            _avg_edge_distance(u, pos) / 10),
+                              # init_step=max(2 * K,
+                              #               _avg_edge_distance(u, pos)),
                               multilevel=False,
                               verbose=False)
             #graph_draw(u, pos)
@@ -699,7 +699,7 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, groups=None, C=0.2,
                                      (C, K, p, gamma, mu, mu_p, _prop("v", g, groups)),
                                      theta, init_step, cooling_step, max_level,
                                      epsilon, max_iter, not adaptive_cooling,
-                                     verbose)
+                                     verbose, _get_rng())
     return pos
 
 def radial_tree_layout(g, root, weighted=False, r=1.):

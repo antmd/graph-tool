@@ -33,7 +33,7 @@ void sfdp_layout(GraphInterface& g, boost::any pos, boost::any vweight,
                  boost::any eweight, boost::any pin, python::object spring_parms,
                  double theta, double init_step, double step_schedule,
                  size_t max_level, double epsilon, size_t max_iter,
-                 bool adaptive, bool verbose)
+                 bool adaptive, bool verbose, rng_t& rng)
 {
     typedef ConstantPropertyMap<int32_t,GraphInterface::vertex_t> vweight_map_t;
     typedef ConstantPropertyMap<int32_t,GraphInterface::edge_t> eweight_map_t;
@@ -68,12 +68,13 @@ void sfdp_layout(GraphInterface& g, boost::any pos, boost::any vweight,
     run_action<graph_tool::detail::never_directed>()
         (g,
          std::bind(get_sfdp_layout(C, K, p, theta, gamma, mu, mu_p, init_step,
-                              step_schedule, max_level, epsilon,
+                                   step_schedule, max_level, epsilon,
                                    max_iter, adaptive),
                    placeholders::_1, g.GetVertexIndex(), placeholders::_2,
                    placeholders::_3, placeholders::_4,
-              pin_map.get_unchecked(num_vertices(g.GetGraph())),
-              groups.get_unchecked(num_vertices(g.GetGraph())), verbose),
+                   pin_map.get_unchecked(num_vertices(g.GetGraph())),
+                   groups.get_unchecked(num_vertices(g.GetGraph())), verbose,
+                   std::ref(rng)),
          vertex_floating_vector_properties(), vertex_props_t(), edge_props_t())
         (pos, vweight, eweight);
 }

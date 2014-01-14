@@ -200,10 +200,10 @@ struct get_sfdp_layout
     bool simple;
 
     template <class Graph, class VertexIndex, class PosMap, class VertexWeightMap,
-              class EdgeWeightMap, class PinMap, class GroupMap>
+              class EdgeWeightMap, class PinMap, class GroupMap, class RNG>
     void operator()(Graph& g, VertexIndex vertex_index, PosMap pos,
                     VertexWeightMap vweight, EdgeWeightMap eweight, PinMap pin,
-                    GroupMap group, bool verbose) const
+                    GroupMap group, bool verbose, RNG& rng) const
     {
         typedef typename property_traits<PosMap>::value_type pos_t;
         typedef typename property_traits<PosMap>::value_type::value_type val_t;
@@ -215,6 +215,7 @@ struct get_sfdp_layout
 
         vector<pos_t> group_cm;
         vector<vweight_t> group_size;
+        vector<size_t> vertices;
 
         int i, N = num_vertices(g), HN=0;
         for (i = 0; i < N; ++i)
@@ -223,6 +224,8 @@ struct get_sfdp_layout
                 vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
+            if (!pin[v])
+                vertices.push_back(v);
             pos[v].resize(2, 0);
             size_t s = group[v];
 
@@ -280,21 +283,19 @@ struct get_sfdp_layout
                 qt.put_pos(pos[v], vweight[v]);
             }
 
+            std::shuffle(vertices.begin(), vertices.end(), rng);
+
             pos_t diff(2, 0), pos_u(2, 0), ftot(2, 0), cm(2, 0);
 
             size_t nmoves = 0;
+            N = vertices.size();
             #pragma omp parallel for default(shared) private(i)  \
                 firstprivate(Q, diff, pos_u, ftot, cm) \
                 reduction(+:E, delta, nmoves) schedule(static) if (N > 100)
             for (i = 0; i < N; ++i)
             {
                 typename graph_traits<Graph>::vertex_descriptor v =
-                    vertex(i, g);
-                if (v == graph_traits<Graph>::null_vertex())
-                    continue;
-
-                if (pin[v])
-                    continue;
+                    vertex(vertices[i], g);
 
                 ftot[0] = ftot[1] = 0;
 
@@ -357,8 +358,8 @@ struct get_sfdp_layout
                         target(*e, g);
                     if (u == v)
                         continue;
+                    #pragma omp critical
                     {
-                        #pragma omp critical
                         for (size_t l = 0; l < 2; ++l)
                             pos_u[l] = pos[u][l];
                     }
@@ -424,8 +425,8 @@ struct get_sfdp_layout
 
                 E += power(norm(ftot), 2);
 
+                #pragma omp critical
                 {
-                    #pragma omp critical
                     for (size_t l = 0; l < 2; ++l)
                     {
                         group_cm[group[v]][l] *= group_size[group[v]];
