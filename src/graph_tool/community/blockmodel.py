@@ -715,9 +715,8 @@ def get_akc(B, I, N=float("inf"), directed=False):
             ak /= 2
     return ak
 
-def mcmc_sweep(state, beta=1., random_move=False, c=1., dense=False,
-               multigraph=False, sequential=True, vertices=None,
-               verbose=False):
+def mcmc_sweep(state, beta=1., c=1., dense=False, multigraph=False,
+               sequential=True, vertices=None, verbose=False):
     r"""Performs a Markov chain Monte Carlo sweep on the network, to sample the block partition according to a probability :math:`\propto e^{-\beta \mathcal{S}_{t/c}}`, where :math:`\mathcal{S}_{t/c}` is the blockmodel entropy.
 
     Parameters
@@ -726,11 +725,6 @@ def mcmc_sweep(state, beta=1., random_move=False, c=1., dense=False,
         The block state.
     beta : ``float`` (optional, default: `1.0`)
         The inverse temperature parameter :math:`\beta`.
-    random_move : ``bool`` (optional, default: ``False``)
-        If ``True``, the proposed moves will attempt to place the vertices in
-        fully randomly-chosen blocks. If ``False``, the proposed moves will be
-        chosen with a probability depending on the membership of the neighbours
-        and the currently-inferred block structure.
     c : ``float`` (optional, default: ``1.0``)
         This parameter specifies how often fully random moves are attempted,
         instead of more likely moves based on the inferred block partition.
@@ -867,6 +861,8 @@ def mcmc_sweep(state, beta=1., random_move=False, c=1., dense=False,
         vertices.a = state.g.vertex_index.copy("int").fa
         state.sweep_vertices = vertices
 
+    random_move = c == float("inf")
+
     if random_move:
         state._BlockState__build_egroups(empty=True)
     elif state.egroups is None:
@@ -985,8 +981,8 @@ def greedy_shrink(state, B, nsweeps=10, adaptive_sweeps=True, nmerge_sweeps=None
                             adaptive_sweeps=adaptive_sweeps,
                             epsilon=epsilon, r=r, greedy=greedy,
                             anneal=anneal, c=c, dense=dense,
-                            multigraph=multigraph, random_move=random_move,
-                            sequential=sequential, verbose=verbose)
+                            multigraph=multigraph, sequential=sequential,
+                            verbose=verbose)
 
     bm = bg_state.b
     libcommunity.vector_map(state.b.a, bm.a)
@@ -1013,9 +1009,8 @@ class MinimizeState(object):
 
 def multilevel_minimize(state, B, nsweeps=10, adaptive_sweeps=True, epsilon=0,
                         anneal=(1., 1.), r=2., nmerge_sweeps=10, greedy=True,
-                        random_move=False, c=1., dense=False, multigraph=False,
-                        sequential=True, checkpoint=None,
-                        minimize_state=None, verbose=False):
+                        c=1., dense=False, multigraph=False, sequential=True,
+                        checkpoint=None, minimize_state=None, verbose=False):
     r"""Performs an agglomerative heuristic, which progressively merges blocks together (while allowing individual node moves) to achieve a good partition in ``B`` blocks.
 
     Parameters
@@ -1049,11 +1044,6 @@ def multilevel_minimize(state, B, nsweeps=10, adaptive_sweeps=True, epsilon=0,
         If ``True``, the value of ``beta`` of the MCMC steps are kept at
         infinity for all steps. Otherwise they change according to the ``anneal``
         parameter.
-    random_move : ``bool`` (optional, default: ``False``)
-        If ``True``, the proposed moves will attempt to place the vertices in
-        fully randomly-chosen blocks. If ``False``, the proposed moves will be
-        chosen with a probability depending on the membership of the neighbours
-        and the currently-inferred block structure.
     c : ``float`` (optional, default: ``1.0``)
         This parameter specifies how often fully random moves are attempted,
         instead of more likely moves based on the inferred block partition.
@@ -1220,8 +1210,7 @@ def multilevel_minimize(state, B, nsweeps=10, adaptive_sweeps=True, epsilon=0,
                     beta = float("inf")
                 delta, nmoves = mcmc_sweep(state, beta=beta, c=c,
                                            dense=dense, multigraph=multigraph,
-                                           sequential=sequential,
-                                           random_move=random_move)
+                                           sequential=sequential)
                 S += delta
                 niter += 1
                 checkpoint_state[Bi]["S"] = S
@@ -1268,8 +1257,7 @@ def multilevel_minimize(state, B, nsweeps=10, adaptive_sweeps=True, epsilon=0,
 
                 delta, nmoves = mcmc_sweep(state, beta=beta, c=c,
                                            dense=dense, multigraph=multigraph,
-                                           sequential=sequential,
-                                           random_move=random_move)
+                                           sequential=sequential)
                 S += delta
                 niter += 1
                 total_nmoves += nmoves
@@ -1313,8 +1301,7 @@ def multilevel_minimize(state, B, nsweeps=10, adaptive_sweeps=True, epsilon=0,
             while count <= nsweeps:
                 delta, nmoves = mcmc_sweep(state, beta=float("inf"), c=c,
                                            dense=dense, multigraph=multigraph,
-                                           sequential=sequential,
-                                           random_move=random_move)
+                                           sequential=sequential)
                 S += delta
                 niter += 1
                 total_nmoves += nmoves
@@ -1368,7 +1355,7 @@ def get_state_dl(state, dense, nested_dl, clabel=None):
     return dl
 
 
-def get_b_dl(g, vweight, eweight, B, nsweeps, adaptive_sweeps, c, random_move,
+def get_b_dl(g, vweight, eweight, B, nsweeps, adaptive_sweeps, c,
              sequential, shrink, r, anneal, greedy, epsilon, nmerge_sweeps, clabel,
              deg_corr, dense, sparse_heuristic, checkpoint, minimize_state,
              max_BE, nested_dl,  verbose):
@@ -1428,8 +1415,7 @@ def get_b_dl(g, vweight, eweight, B, nsweeps, adaptive_sweeps, c, random_move,
                                 adaptive_sweeps=adaptive_sweeps,
                                 epsilon=epsilon, r=r, greedy=greedy,
                                 nmerge_sweeps=nmerge_sweeps, anneal=anneal,
-                                c=c, random_move=random_move,
-                                dense=dense and not sparse_heuristic,
+                                c=c, dense=dense and not sparse_heuristic,
                                 multigraph=dense,
                                 sequential=sequential,
                                 minimize_state=minimize_state,
@@ -1468,7 +1454,7 @@ def is_fibo(x):
     return fibo(fibo_n_floor(x)) == x
 
 def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=False,
-                           sparse_heuristic=False, random_move=False, c=0, nsweeps=100,
+                           sparse_heuristic=False, c=0, nsweeps=100,
                            adaptive_sweeps=True, epsilon=0., anneal=(1., 1.),
                            greedy_cooling=True, sequential=True, r=2,
                            nmerge_sweeps=10, max_B=None, min_B=1, mid_B=None,
@@ -1496,11 +1482,6 @@ def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=F
         If ``True``, the sparse entropy will be used to find the best partition,
         but the dense entropy will be used to compare different partitions. This
         has an effect only if ``dense == True``.
-    random_move : ``bool`` (optional, default: ``False``)
-        If ``True``, the proposed moves will attempt to place the vertices in
-        fully randomly-chosen blocks. If ``False``, the proposed moves will be
-        chosen with a probability depending on the membership of the neighbours
-        and the currently-inferred block structure.
     c : ``float`` (optional, default: ``1.0``)
         This parameter specifies how often fully random moves are attempted,
         instead of more likely moves based on the inferred block partition.
@@ -1716,7 +1697,6 @@ def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=F
                                         anneal=anneal, c=c,
                                         dense=dense and not sparse_heuristic,
                                         multigraph=dense,
-                                        random_move=random_move,
                                         sequential=sequential,
                                         nmerge_sweeps=nmerge_sweeps,
                                         epsilon=epsilon,
@@ -1746,7 +1726,7 @@ def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=F
 
 
     args = dict(g=g, vweight=vweight, eweight=eweight, nsweeps=nsweeps,
-                adaptive_sweeps=adaptive_sweeps, c=c, random_move=random_move,
+                adaptive_sweeps=adaptive_sweeps, c=c,
                 sequential=sequential, shrink=shrink, r=r, anneal=anneal,
                 greedy=greedy, epsilon=epsilon, nmerge_sweeps=nmerge_sweeps,
                 clabel=clabel, deg_corr=deg_corr, dense=dense,

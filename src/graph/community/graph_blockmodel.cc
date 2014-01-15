@@ -709,10 +709,8 @@ struct build_egroups
                     VEprop etgtpos, Eprop eweight, Graph& g,
                     VertexIndex vertex_index, bool weighted, bool empty) const
     {
-        if (empty)
-            return;
         egroups_manage::build(b, oegroups, esrcpos, etgtpos, eweight, g,
-                              vertex_index, weighted);
+                              vertex_index, weighted, empty);
     }
 };
 

@@ -265,8 +265,7 @@ class NestedBlockState(object):
         return b
 
 
-def nested_mcmc_sweep(state, beta=1., random_move=False, c=1., sequential=True,
-                      verbose=False):
+def nested_mcmc_sweep(state, beta=1., c=1., sequential=True, verbose=False):
     r"""Performs a Markov chain Monte Carlo sweep on all levels of the hierarchy.
 
     Parameters
@@ -275,11 +274,6 @@ def nested_mcmc_sweep(state, beta=1., random_move=False, c=1., sequential=True,
         The nested block state.
     beta : `float` (optional, default: `1.0`)
         The inverse temperature parameter :math:`\beta`.
-    random_move : ``bool`` (optional, default: ``False``)
-        If ``True``, the proposed moves will attempt to place the vertices in
-        fully randomly-chosen blocks. If ``False``, the proposed moves will be
-        chosen with a probability depending on the membership of the neighbours
-        and the currently-inferred block structure.
     c : ``float`` (optional, default: ``1.0``)
         This parameter specifies how often fully random moves are attempted,
         instead of more likely moves based on the inferred block partition.
@@ -341,8 +335,7 @@ def nested_mcmc_sweep(state, beta=1., random_move=False, c=1., sequential=True,
             print("Level:", l, "N:", bstate.N, "B:", bstate.B)
         ret = mcmc_sweep(bstate, beta=beta, c=c, dense = l > 0,
                          multigraph = l > 0,
-                         sequential=sequential,
-                         random_move=random_move, verbose=verbose)
+                         sequential=sequential, verbose=verbose)
         if l + 1 < len(state.levels):
             state._NestedBlockState__rebuild_level(l + 1)
         rets.append(ret)
@@ -350,9 +343,9 @@ def nested_mcmc_sweep(state, beta=1., random_move=False, c=1., sequential=True,
 
 
 def replace_level(l, state, nsweeps=10, nmerge_sweeps=10, r=2,
-                  c=0, epsilon=0., sequential=True, random_move=False,
-                  dense=False, sparse_thresh=100, verbose=False,
-                  checkpoint=None, minimize_state=None):
+                  c=0, epsilon=0., sequential=True, dense=False,
+                  sparse_thresh=100, verbose=False, checkpoint=None,
+                  minimize_state=None):
     bstate = state.levels[l]
     g = bstate.g
 
@@ -376,7 +369,7 @@ def replace_level(l, state, nsweeps=10, nmerge_sweeps=10, r=2,
 
     res = minimize_blockmodel_dl(g, eweight=bstate.eweight,
                                  deg_corr=bstate.deg_corr, nsweeps=nsweeps,
-                                 c=c, random_move=random_move,
+                                 c=c,
                                  sequential=sequential,
                                  r=r,
                                  adaptive_sweeps=True, greedy_cooling=True,
@@ -477,8 +470,7 @@ class NestedMinimizeState(object):
         self.minimize_state = MinimizeState()
 
 def nested_tree_sweep(state, nsweeps=10, epsilon=0., r=2.,
-                      nmerge_sweeps=10, random_move=False,
-                      c=0, dense=False, sequential=True,
+                      nmerge_sweeps=10, c=0, dense=False, sequential=True,
                       sparse_thresh=100, checkpoint=None,
                       minimize_state=None, verbose=False):
     r"""Performs one greedy sweep in the entire hierarchy tree, attempting to
@@ -500,11 +492,6 @@ def nested_tree_sweep(state, nsweeps=10, epsilon=0., r=2.,
     nmerge_sweeps : `int` (optional, default: `10`)
         The number of merge sweeps done, where in each sweep a better merge
         candidate is searched for every block.
-    random_move : ``bool`` (optional, default: ``False``)
-        If ``True``, the proposed moves will attempt to place the vertices in
-        fully randomly-chosen blocks. If ``False``, the proposed moves will be
-        chosen with a probability depending on the membership of the neighbours
-        and the currently-inferred block structure.
     c : ``float`` (optional, default: ``1.0``)
         This parameter specifies how often fully random moves are attempted,
         instead of more likely moves based on the inferred block partition.
@@ -584,7 +571,7 @@ def nested_tree_sweep(state, nsweeps=10, epsilon=0., r=2.,
     mstate.sync(state)
 
     args = dict(state=state, nsweeps=nsweeps, nmerge_sweeps=nmerge_sweeps, r=r,
-                c=c, epsilon=epsilon, sequential=sequential, random_move=random_move,
+                c=c, epsilon=epsilon, sequential=sequential,
                 dense=dense, sparse_thresh=sparse_thresh,
                 checkpoint=checkpoint, minimize_state=minimize_state)
 
@@ -703,7 +690,7 @@ def nested_tree_sweep(state, nsweeps=10, epsilon=0., r=2.,
 def init_nested_state(g, Bs, deg_corr=True, dense=False,
                       eweight=None, vweight=None,
                       nsweeps=10, epsilon=0., r=2,
-                      nmerge_sweeps=10, random_move=False,
+                      nmerge_sweeps=10,
                       c=0, sequential=True,
                       sparse_thresh=100, checkpoint=None,
                       minimize_state=None, max_BE=1000,
@@ -737,11 +724,6 @@ def init_nested_state(g, Bs, deg_corr=True, dense=False,
     nmerge_sweeps : `int` (optional, default: `10`)
         The number of merge sweeps done, where in each sweep a better merge
         candidate is searched for every block.
-    random_move : ``bool`` (optional, default: ``False``)
-        If ``True``, the proposed moves will attempt to place the vertices in
-        fully randomly-chosen blocks. If ``False``, the proposed moves will be
-        chosen with a probability depending on the membership of the neighbours
-        and the currently-inferred block structure.
     c : ``float`` (optional, default: ``0.``)
         This parameter specifies how often fully random moves are attempted,
         instead of more likely moves based on the inferred block partition.
@@ -847,7 +829,6 @@ def init_nested_state(g, Bs, deg_corr=True, dense=False,
                                          greedy=True, c=c,
                                          dense=(l > 0 and g.num_vertices() < sparse_thresh) or dense,
                                          multigraph=l > 0 or dense,
-                                         random_move=random_move,
                                          sequential=sequential, verbose=verbose,
                                          checkpoint=chkp,
                                          minimize_state=minimize_state.minimize_state)
@@ -868,7 +849,7 @@ def init_nested_state(g, Bs, deg_corr=True, dense=False,
 
 def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, deg_corr=True,
                                   dense=False, eweight=None, vweight=None,
-                                  nsweeps=10, epsilon=0., random_move=False, c=0,
+                                  nsweeps=10, epsilon=0., c=0,
                                   nmerge_sweeps=10, r=2, sparse_thresh=100,
                                   sequential=True, verbose=False,
                                   checkpoint=None, minimize_state=None):
@@ -900,11 +881,6 @@ def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, deg_corr=True,
         The number of sweeps necessary for the local minimum will
         be estimated to be enough so that no more than ``epsilon * N`` nodes
         changes their states in the last ``nsweeps`` sweeps.
-    random_move : ``bool`` (optional, default: ``False``)
-        If ``True``, the proposed moves will attempt to place the vertices in
-        fully randomly-chosen blocks. If ``False``, the proposed moves will be
-        chosen with a probability depending on the membership of the neighbours
-        and the currently-inferred block structure.
     c : ``float`` (optional, default: ``0.``)
         This parameter specifies how often fully random moves are attempted,
         instead of more likely moves based on the inferred block partition.

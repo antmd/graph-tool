@@ -995,7 +995,7 @@ struct egroups_manage
     template <class Eprop, class Vprop, class VEprop, class Graph, class VertexIndex>
     static void build(Vprop b, boost::any& oegroups, VEprop esrcpos,
                       VEprop etgtpos, Eprop eweight, Graph& g,
-                      VertexIndex vertex_index, bool weighted)
+                      VertexIndex vertex_index, bool weighted, bool empty)
     {
         if (weighted)
         {
@@ -1004,6 +1004,8 @@ struct egroups_manage
                                                       VertexIndex>::type vemap_t;
             vemap_t egroups_checked(vertex_index);
             oegroups = egroups_checked;
+            if (empty)
+                return;
             build_dispatch(b, egroups_checked.get_unchecked(num_vertices(g)),
                            esrcpos, etgtpos, eweight, g, vertex_index,
                            mpl::true_());
@@ -1015,6 +1017,8 @@ struct egroups_manage
                                                       VertexIndex>::type vemap_t;
             vemap_t egroups_checked(vertex_index);
             oegroups = egroups_checked;
+            if (empty)
+                return;
             build_dispatch(b, egroups_checked.get_unchecked(num_vertices(g)),
                            esrcpos, etgtpos, eweight, g, vertex_index,
                            mpl::true_());
