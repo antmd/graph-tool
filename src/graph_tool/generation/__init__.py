@@ -1529,12 +1529,12 @@ def price_network(N, m=1, c=None, gamma=1, directed=True, seed_graph=None):
        gt.seed_rng(42)
 
     >>> g = gt.price_network(20000)
-    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, epsilon=1e-2, cooling_step=0.95),
+    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, cooling_step=0.99),
     ...               vertex_fill_color=g.vertex_index, vertex_size=2,
     ...               edge_pen_width=1, output="price-network.png")
     <...>
     >>> g = gt.price_network(20000, c=0.1)
-    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, epsilon=1e-2, cooling_step=0.95),
+    >>> gt.graph_draw(g, pos=gt.sfdp_layout(g, cooling_step=0.99),
     ...               vertex_fill_color=g.vertex_index, vertex_size=2,
     ...               edge_pen_width=1, output="price-network-broader.png")
     <...>

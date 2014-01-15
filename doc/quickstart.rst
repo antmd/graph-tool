@@ -521,7 +521,8 @@ use the :func:`~graph_tool.draw.graph_draw` function.
    g = load_graph("price.xml.gz")
    age = g.vertex_properties["age"]
 
-   graph_draw(g, output_size=(1000, 1000), vertex_color=age,
+   pos = sfdp_layout(g, cooling_step=0.99)
+   graph_draw(g, pos, output_size=(1000, 1000), vertex_color=age,
               vertex_fill_color=age, vertex_size=1, edge_pen_width=1.2,
               output="price.png")
 
