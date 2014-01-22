@@ -616,7 +616,7 @@ struct merge_sweep_dispatch
     template <class Graph, class Eprop, class Vprop>
     void operator()(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
                     Vprop clabel, Graph& bg, boost::any& aemat,
-                    boost::any asampler) const
+                    boost::any asampler, boost::any ansampler) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
@@ -627,6 +627,7 @@ struct merge_sweep_dispatch
                                                   vindex_map_t>::type::unchecked_t
             sampler_map_t;
         sampler_map_t sampler = any_cast<sampler_map_t>(asampler);
+        sampler_map_t nsampler = any_cast<sampler_map_t>(ansampler);
 
         try
         {
@@ -645,7 +646,7 @@ struct merge_sweep_dispatch
                         b.get_unchecked(num_vertices(bg)),
                         clabel.get_unchecked(num_vertices(bg)),
                         deg_corr, dense, multigraph,
-                        bg, emat, sampler, nmerges, nsweeps,
+                        bg, emat, sampler, nsampler, nmerges, nsweeps,
                         random_moves, verbose, rng, S, nmoves);
         }
         catch (bad_any_cast&)
@@ -659,7 +660,7 @@ struct merge_sweep_dispatch
                         b.get_unchecked(num_vertices(bg)),
                         clabel.get_unchecked(num_vertices(bg)),
                         deg_corr, dense, multigraph, bg, emat, sampler,
-                        nmerges, nsweeps, random_moves, verbose,
+                        nsampler, nmerges, nsweeps, random_moves, verbose,
                         rng, S, nmoves);
         }
     }
@@ -668,11 +669,13 @@ struct merge_sweep_dispatch
 
 
 boost::python::object do_merge_sweep(GraphInterface& bgi, boost::any& emat,
-                                     boost::any sampler, boost::any omrs,
-                                     boost::any omrp, boost::any omrm, boost::any owr,
-                                     boost::any ob, boost::any oclabel, bool deg_corr,
-                                     bool dense, bool multigraph, size_t nsweeps,
-                                     size_t nmerges, bool random_moves, bool verbose,
+                                     boost::any sampler, boost::any nsampler,
+                                     boost::any omrs, boost::any omrp,
+                                     boost::any omrm, boost::any owr,
+                                     boost::any ob, boost::any oclabel,
+                                     bool deg_corr, bool dense, bool multigraph,
+                                     size_t nsweeps, size_t nmerges,
+                                     bool random_moves, bool verbose,
                                      rng_t& rng)
 {
     typedef property_map_type::apply<int32_t,
@@ -697,7 +700,7 @@ boost::python::object do_merge_sweep(GraphInterface& bgi, boost::any& emat,
                                random_moves, verbose,
                                bgi.GetGraph().get_last_index(), rng, S, nmoves),
                         mrs, mrp, mrm, wr, b, clabel, placeholders::_1,
-                        std::ref(emat), sampler))();
+                        std::ref(emat), sampler, nsampler))();
     return boost::python::make_tuple(S, nmoves);
 }
 
@@ -745,7 +748,8 @@ boost::any do_build_egroups(GraphInterface& gi, GraphInterface& bgi,
     return oegroups;
 }
 
-boost::any do_init_neighbour_sampler(GraphInterface& gi, boost::any oeweights)
+boost::any do_init_neighbour_sampler(GraphInterface& gi, boost::any oeweights,
+                                     bool self_loops)
 {
     typedef property_map_type::apply<int32_t,
                                      GraphInterface::edge_index_map_t>::type
@@ -755,7 +759,7 @@ boost::any do_init_neighbour_sampler(GraphInterface& gi, boost::any oeweights)
     boost::any osampler;
     run_action<graph_tool::detail::all_graph_views, boost::mpl::true_>()
         (gi, std::bind(init_neighbour_sampler(), placeholders::_1, eweights,
-                       std::ref(osampler)))();
+                       self_loops, std::ref(osampler)))();
     return osampler;
 }
 

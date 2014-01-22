@@ -1406,7 +1406,8 @@ void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
 
 
 template <class Vertex, class Graph, class Eprop, class SMap>
-void build_neighbour_sampler(Vertex v, SMap sampler, Eprop eweight, Graph& g)
+void build_neighbour_sampler(Vertex v, SMap sampler, Eprop eweight,
+                             bool self_loops, Graph& g)
 {
     vector<Vertex> neighbours;
     vector<double> probs;
@@ -1420,10 +1421,18 @@ void build_neighbour_sampler(Vertex v, SMap sampler, Eprop eweight, Graph& g)
         Vertex u = target(*e, g);
         if (is_directed::apply<Graph>::type::value && u == v)
             u = source(*e, g);
+        if (!self_loops && u == v)
+            continue;
         neighbours.push_back(u);
         probs.push_back(eweight[*e]); // Self-loops will be added twice, and
                                       // hence will be sampled with probability
                                       // 2 * eweight[e]
+    }
+
+    if (probs.empty())
+    {
+        neighbours.push_back(v);
+        probs.push_back(1.);
     }
 
     sampler[v] = Sampler<Vertex, mpl::false_>(neighbours, probs);
@@ -1432,7 +1441,7 @@ void build_neighbour_sampler(Vertex v, SMap sampler, Eprop eweight, Graph& g)
 struct init_neighbour_sampler
 {
     template <class Graph, class Eprop>
-    void operator()(Graph& g, Eprop eweight, boost::any& asampler) const
+    void operator()(Graph& g, Eprop eweight, bool self_loops, boost::any& asampler) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
@@ -1451,7 +1460,7 @@ struct init_neighbour_sampler
             vertex_t v = vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
-            build_neighbour_sampler(v, sampler, eweight, g);
+            build_neighbour_sampler(v, sampler, eweight, self_loops, g);
         }
     }
 };
@@ -1551,6 +1560,7 @@ template <class BGraph, class Eprop, class Vprop, class EMat, class SamplerMap,
 void merge_sweep(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
                  Vprop clabel, bool deg_corr, bool dense, bool multigraph,
                  BGraph& bg, EMat& emat, SamplerMap neighbour_sampler,
+                 SamplerMap second_neighbour_sampler,
                  size_t nmerges, size_t nsweeps, bool random_moves,
                  bool verbose, RNG& rng, double& S, size_t& nmoves)
 {
@@ -1590,7 +1600,7 @@ void merge_sweep(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
             else
             {
                 vertex_t t = neighbour_sampler[r].sample(rng);
-                s = neighbour_sampler[t].sample(rng);
+                s = second_neighbour_sampler[t].sample(rng);
             }
 
             if (s == r)
@@ -1718,10 +1728,8 @@ void merge_sweep(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
         for (i = 0; i < N; ++i)
         {
             vertex_t r = vertex(i, bg);
-            if (total_degreeS()(r, bg) > 0)
-                build_neighbour_sampler(r, neighbour_sampler, mrs, bg);
-            else
-                neighbour_sampler[r] = Sampler<vertex_t, mpl::false_>();
+            build_neighbour_sampler(r, neighbour_sampler, mrs, false, bg);
+            build_neighbour_sampler(r, second_neighbour_sampler, mrs, true, bg);
         }
     }
 }

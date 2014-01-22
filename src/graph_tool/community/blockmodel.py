@@ -161,6 +161,7 @@ class BlockState(object):
 
         # used by merge_sweep()
         self.bnsampler = None
+        self.bnnsampler = None
 
         libcommunity.init_safelog(int(2 * max(self.E, self.N)))
         libcommunity.init_xlogx(int(2 * max(self.E, self.N)))
@@ -191,10 +192,15 @@ class BlockState(object):
 
     def __build_nsampler(self):
         self.nsampler = libcommunity.init_neighbour_sampler(self.g._Graph__graph,
-                                                            _prop("e", self.g, self.eweight))
+                                                            _prop("e", self.g, self.eweight),
+                                                            True)
     def __build_bnsampler(self):
         self.bnsampler = libcommunity.init_neighbour_sampler(self.bg._Graph__graph,
-                                                             _prop("e", self.bg, self.mrs))
+                                                             _prop("e", self.bg, self.mrs),
+                                                             False)
+        self.bnnsampler = libcommunity.init_neighbour_sampler(self.bg._Graph__graph,
+                                                              _prop("e", self.bg, self.mrs),
+                                                              True)
 
     def __cleanup_bg(self):
         emask = self.bg.new_edge_property("bool")
@@ -872,6 +878,7 @@ def mcmc_sweep(state, beta=1., c=1., dense=False, multigraph=False,
         state._BlockState__build_nsampler()
 
     state.bnsampler = None
+    state.bnnsampler = None
 
     try:
         dS, nmoves = libcommunity.move_sweep(state.g._Graph__graph,
@@ -906,7 +913,7 @@ def merge_sweep(state, bm, nmerges, nsweeps=10, dense=False, multigraph=False,
     if state.B == 1:
         return 0., 0
 
-    if state.bnsampler is None:
+    if state.bnsampler is None or state.bnnsampler is None:
         state._BlockState__build_bnsampler()
 
     state.egroups = None
@@ -915,6 +922,7 @@ def merge_sweep(state, bm, nmerges, nsweeps=10, dense=False, multigraph=False,
     dS, nmoves = libcommunity.merge_sweep(state.bg._Graph__graph,
                                           state._BlockState__get_emat(),
                                           state.bnsampler,
+                                          state.bnnsampler,
                                           _prop("e", state.bg, state.mrs),
                                           _prop("v", state.bg, state.mrp),
                                           _prop("v", state.bg, state.mrm),
