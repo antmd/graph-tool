@@ -776,18 +776,19 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
        no. 1: 016107 (2011) :doi:`10.1103/PhysRevE.83.016107` :arxiv:`1008.3926`
 
     """
-    if not parallel_edges:
-        p = label_parallel_edges(g)
-        if p.a.max() != 0:
-            raise ValueError("Parallel edge detected. Can't rewire " +
-                             "graph without parallel edges if it " +
-                             "already contains parallel edges!")
-    if not self_loops:
-        l = label_self_loops(g)
-        if l.a.max() != 0:
-            raise ValueError("Self-loop detected. Can't rewire graph " +
-                             "without self-loops if it already contains" +
-                             " self-loops!")
+    # if not parallel_edges:
+    #     p = label_parallel_edges(g)
+    #     if p.a.max() != 0:
+    #         raise ValueError("Parallel edge detected. Can't rewire " +
+    #                          "graph without parallel edges if it " +
+    #                          "already contains parallel edges!")
+
+    # if not self_loops:
+    #     l = label_self_loops(g)
+    #     if l.a.max() != 0:
+    #         raise ValueError("Self-loop detected. Can't rewire graph " +
+    #                          "without self-loops if it already contains" +
+    #                          " self-loops!")
 
     if (vertex_corr is not None and not g.is_directed()) and "blockmodel" not in model:
         corr = lambda i, j: vertex_corr(i[1], j[1])

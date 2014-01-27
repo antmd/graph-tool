@@ -66,15 +66,53 @@ target(const pair<size_t, bool>& e,
 }
 
 
+template <class Nmap, class Graph>
+void add_count(size_t s, size_t t, Nmap& nvmap, Graph& g)
+{
+    if (!is_directed::apply<Graph>::type::value && s > t)
+        std::swap(s, t);
+    auto& nmap = nvmap[s];
+    nmap[t]++;
+}
+
+template <class Nmap, class Graph>
+void remove_count(size_t s, size_t t, Nmap& nvmap, Graph& g)
+{
+    if (!is_directed::apply<Graph>::type::value && s > t)
+        std::swap(s, t);
+    auto& nmap = nvmap[s];
+    auto iter = nmap.find(t);
+    iter->second--;
+    if (iter->second == 0)
+        nmap.erase(iter);
+}
+
+template <class Nmap, class Graph>
+size_t get_count(size_t s, size_t t, Nmap& nvmap, Graph& g)
+{
+    if (!is_directed::apply<Graph>::type::value && s > t)
+        std::swap(s, t);
+    auto& nmap = nvmap[s];
+    auto iter = nmap.find(t);
+    if (iter == nmap.end())
+        return 0;
+    return iter->second;
+    // if (s != t)
+    //     return iter->second;
+    // else
+    //     return iter->second / 2;
+}
+
 // this functor will swap the source of the edge e with the source of edge se
 // and the target of edge e with the target of te
 struct swap_edge
 {
-    template <class Graph>
+    template <class Nmap, class Graph>
     static bool
     parallel_check_target (const pair<size_t, bool>& e,
                            const pair<size_t, bool>& te,
                            vector<typename graph_traits<Graph>::edge_descriptor>& edges,
+                           Nmap& nmap,
                            const Graph &g)
     {
         // We want to check that if we swap the target of 'e' with the target of
@@ -91,11 +129,11 @@ struct swap_edge
             nt = target(te, edges, g),        // new target
             te_s = source(te, edges, g);      // target edge source
 
-        if (is_adjacent(s,  nt, g))
+        if (get_count(s,  nt, nmap, g) > 0)
             return true; // e would clash with an existing edge
-        if (is_adjacent(te_s, t, g))
+        if (get_count(te_s, t, nmap, g) > 0)
             return true; // te would clash with an existing edge
-        return false; // the coast is clear - hooray!
+        return false; // no parallel edges
     }
 
     template <class Graph>
@@ -277,7 +315,7 @@ struct graph_rewire
             random_edge_iter;
 
         RewireStrategy<Graph, EdgeIndexMap, CorrProb, BlockDeg>
-            rewire(g, edge_index, edges, corr_prob, bd, cache, rng);
+            rewire(g, edge_index, edges, corr_prob, bd, cache, rng, parallel_edges);
 
         size_t niter;
         bool no_sweep;
@@ -344,7 +382,7 @@ public:
 
     ErdosRewireStrategy(Graph& g, EdgeIndexMap edge_index,
                         vector<edge_t>& edges, CorrProb, BlockDeg,
-                        bool, rng_t& rng)
+                        bool, rng_t& rng, bool parallel_edges)
         : _g(g), _edge_index(edge_index), _edges(edges),
           _vertices(HardNumVertices()(g)), _rng(rng)
     {
@@ -390,6 +428,7 @@ private:
 };
 
 
+
 // this is the mother class for edge-based rewire strategies
 // it contains the common loop for finding edges to swap, so different
 // strategies need only to specify where to sample the edges from.
@@ -403,8 +442,25 @@ public:
     typedef typename EdgeIndexMap::value_type index_t;
 
     RewireStrategyBase(Graph& g, EdgeIndexMap edge_index, vector<edge_t>& edges,
-                       rng_t& rng)
-        : _g(g), _edge_index(edge_index), _edges(edges),  _rng(rng) {}
+                       rng_t& rng, bool parallel_edges)
+        : _g(g), _edge_index(edge_index), _edges(edges), _rng(rng),
+          _nmap(get(vertex_index, g), num_vertices(g))
+    {
+        if (!parallel_edges)
+        {
+            typename graph_traits<Graph>::vertex_iterator v, v_end;
+            for (tie(v, v_end) = boost::vertices(g); v != v_end; ++v)
+            {
+    #ifdef HAVE_SPARSEHASH
+                _nmap[*v].set_empty_key(get_null_key<size_t>()());
+                _nmap[*v].set_deleted_key(get_null_key<size_t>()() - 1);
+    #endif
+            }
+
+            for (size_t i = 0; i < edges.size(); ++i)
+                add_count(source(edges[i], g), target(edges[i], g), _nmap, g);
+        }
+    }
 
     bool operator()(size_t ei, bool self_loops, bool parallel_edges)
     {
@@ -416,7 +472,7 @@ public:
         pair<size_t, bool> e = make_pair(ei, false);
 
         // rewire target
-        pair<size_t, bool> et = self.get_target_edge(e);
+        pair<size_t, bool> et = self.get_target_edge(e, parallel_edges);
 
         if (!self_loops) // reject self-loops if not allowed
         {
@@ -428,7 +484,7 @@ public:
         // reject parallel edges if not allowed
         if (!parallel_edges && (et.first != e.first))
         {
-            if (swap_edge::parallel_check_target(e, et, _edges, _g))
+            if (swap_edge::parallel_check_target(e, et, _edges, _nmap, _g))
                 return false;
         }
 
@@ -437,10 +493,22 @@ public:
             self.update_edge(e.first, false);
             self.update_edge(et.first, false);
 
+            if (!parallel_edges)
+            {
+                remove_count(source(e, _edges, _g), target(e, _edges, _g), _nmap, _g);
+                remove_count(source(et, _edges, _g), target(et, _edges, _g), _nmap, _g);
+            }
+
             swap_edge::swap_target(e, et, _edges, _g);
 
             self.update_edge(e.first, true);
             self.update_edge(et.first, true);
+
+            if (!parallel_edges)
+            {
+                add_count(source(e, _edges, _g), target(e, _edges, _g), _nmap, _g);
+                add_count(source(et, _edges, _g), target(et, _edges, _g), _nmap, _g);
+            }
         }
         else
         {
@@ -455,6 +523,16 @@ protected:
     EdgeIndexMap _edge_index;
     vector<edge_t>& _edges;
     rng_t& _rng;
+
+#ifdef HAVE_SPARSEHASH
+        typedef google::dense_hash_map<size_t, size_t> nmapv_t;
+#else
+        typedef unordered_map<size_t, size_t> nmapv_t;
+#endif
+    typedef typename property_map_type::apply<nmapv_t,
+                                              typename property_map<Graph, vertex_index_t>::type>
+        ::type::unchecked_t nmap_t;
+    nmap_t _nmap;
 };
 
 // this will rewire the edges so that the combined (in, out) degree distribution
@@ -483,10 +561,10 @@ public:
 
     RandomRewireStrategy(Graph& g, EdgeIndexMap edge_index,
                          vector<edge_t>& edges, CorrProb, BlockDeg,
-                         bool, rng_t& rng)
-        : base_t(g, edge_index, edges, rng), _g(g) {}
+                         bool, rng_t& rng, bool parallel_edges)
+        : base_t(g, edge_index, edges, rng, parallel_edges), _g(g) {}
 
-    pair<size_t,bool> get_target_edge(pair<size_t,bool>& e)
+    pair<size_t,bool> get_target_edge(pair<size_t,bool>& e, bool parallel_edges)
     {
         std::uniform_int_distribution<> sample(0, base_t::_edges.size() - 1);
         pair<size_t, bool> et = make_pair(sample(base_t::_rng), false);
@@ -530,8 +608,8 @@ public:
 
     CorrelatedRewireStrategy(Graph& g, EdgeIndexMap edge_index,
                              vector<edge_t>& edges, CorrProb, BlockDeg blockdeg,
-                             bool, rng_t& rng)
-        : base_t(g, edge_index, edges, rng), _blockdeg(blockdeg), _g(g)
+                             bool, rng_t& rng, bool parallel_edges)
+        : base_t(g, edge_index, edges, rng, parallel_edges), _blockdeg(blockdeg), _g(g)
     {
 #ifdef HAVE_SPARSEHASH
         _edges_by_target.set_empty_key(get_null_key<deg_t>()());
@@ -557,7 +635,7 @@ public:
         }
     }
 
-    pair<size_t,bool> get_target_edge(pair<size_t, bool>& e)
+    pair<size_t,bool> get_target_edge(pair<size_t, bool>& e, bool parallel_edge)
     {
         if (!is_directed::apply<Graph>::type::value)
         {
@@ -629,8 +707,9 @@ public:
 
     ProbabilisticRewireStrategy(Graph& g, EdgeIndexMap edge_index,
                                 vector<edge_t>& edges, CorrProb corr_prob,
-                                BlockDeg blockdeg, bool cache, rng_t& rng)
-        : base_t(g, edge_index, edges, rng), _g(g), _corr_prob(corr_prob),
+                                BlockDeg blockdeg, bool cache, rng_t& rng,
+                                bool parallel_edges)
+        : base_t(g, edge_index, edges, rng, parallel_edges), _g(g), _corr_prob(corr_prob),
           _blockdeg(blockdeg)
     {
 #ifdef HAVE_SPARSEHASH
@@ -689,7 +768,8 @@ public:
         return _blockdeg.get_block(v, g);
     }
 
-    pair<size_t, bool> get_target_edge(pair<size_t, bool>& e)
+    pair<size_t, bool> get_target_edge(pair<size_t, bool>& e,
+                                       bool parallel_edges)
     {
         if (!is_directed::apply<Graph>::type::value)
         {
@@ -709,6 +789,10 @@ public:
             std::bernoulli_distribution coin(0.5);
             ep.second = coin(base_t::_rng);
         }
+
+        if (source(e, base_t::_edges, _g) == source(ep, base_t::_edges, _g) ||
+            target(e, base_t::_edges, _g) == target(ep, base_t::_edges, _g))
+            return ep; // rewiring is a no-op
 
         deg_t ep_s_deg = get_deg(source(ep, base_t::_edges, _g), _g);
         deg_t ep_t_deg = get_deg(target(ep, base_t::_edges, _g), _g);
@@ -775,9 +859,10 @@ public:
 
     AliasProbabilisticRewireStrategy(Graph& g, EdgeIndexMap edge_index,
                                      vector<edge_t>& edges, CorrProb corr_prob,
-                                     BlockDeg blockdeg, bool, rng_t& rng)
-        : base_t(g, edge_index, edges, rng), _g(g), _corr_prob(corr_prob),
-          _blockdeg(blockdeg)
+                                     BlockDeg blockdeg, bool, rng_t& rng,
+                                     bool parallel_edges)
+        : base_t(g, edge_index, edges, rng, parallel_edges), _g(g),
+          _corr_prob(corr_prob), _blockdeg(blockdeg)
     {
 
 #ifdef HAVE_SPARSEHASH
@@ -853,7 +938,6 @@ public:
                     else
                         er = max(_in_edges[items[i]].size(),
                                  numeric_limits<double>::min());
-                    //ps[items[i]] = exp(log(probs[i]) - log(sum) - log(er));
                     ps[items[i]] = exp(log(probs[i]) - log(sum) - log(er));
                 }
             }
@@ -933,7 +1017,8 @@ public:
         return _blockdeg.get_block(v, g);
     }
 
-    pair<size_t, bool> get_target_edge(pair<size_t, bool>& e)
+    pair<size_t, bool> get_target_edge(pair<size_t, bool>& e,
+                                       bool parallel_edges)
     {
         if (!is_directed::apply<Graph>::type::value)
         {
@@ -952,6 +1037,9 @@ public:
             throw GraphException("Block label without defined connection probability!");
 
         deg_t nt = iter->second->sample(base_t::_rng);
+
+        if (_in_edges[nt].empty() && _out_edges[nt].empty())
+            return e; // reject
 
         pair<size_t, bool> ep;
         std::bernoulli_distribution coin(_in_edges[nt].size() /
@@ -976,16 +1064,17 @@ public:
             ep = make_pair(epi, true);
         }
 
+        if (source(e, base_t::_edges, _g) == source(ep, base_t::_edges, _g) ||
+            target(e, base_t::_edges, _g) == target(ep, base_t::_edges, _g))
+            return ep; // rewiring is a no-op
+
         vertex_t ep_s = source(ep, base_t::_edges, _g);
         vertex_t ep_t = target(ep, base_t::_edges, _g);
-
-        if (t == ep_t)
-            return e; // reject
 
         deg_t ep_s_deg = get_deg(ep_s, _g);
         deg_t ep_t_deg = get_deg(ep_t, _g);
 
-        assert(ep_t_deg == nt);
+        //assert(ep_t_deg == nt);
 
         double pi = get_prob(s_deg, t_deg) + get_prob(ep_s_deg, ep_t_deg);
         double pf = get_prob(s_deg, ep_t_deg) + get_prob(ep_s_deg, t_deg);
@@ -1144,7 +1233,8 @@ public:
 
     TradBlockRewireStrategy(Graph& g, EdgeIndexMap edge_index,
                             vector<edge_t>& edges, CorrProb corr_prob,
-                            BlockDeg blockdeg, bool, rng_t& rng)
+                            BlockDeg blockdeg, bool, rng_t& rng,
+                            bool parallel_edges)
 
         : _g(g), _edge_index(edge_index), _edges(edges), _corr_prob(corr_prob),
           _blockdeg(blockdeg), _rng(rng), _sampler(nullptr)
@@ -1210,19 +1300,29 @@ public:
 
     bool operator()(size_t ei, bool self_loops, bool parallel_edges)
     {
-        const pair<deg_t, deg_t>& deg = _sampler->sample(_rng);
-
-        vector<vertex_t>& svs = _vertices[deg.first];
-        vector<vertex_t>& tvs = _vertices[deg.second];
-        std::uniform_int_distribution<size_t> s_sample(0, svs.size() - 1);
-        std::uniform_int_distribution<size_t> t_sample(0, tvs.size() - 1);
-
         typename graph_traits<Graph>::vertex_descriptor s, t;
-        s = svs[s_sample(_rng)];
-        t = tvs[t_sample(_rng)];
+
+        while (true)
+        {
+            const pair<deg_t, deg_t>& deg = _sampler->sample(_rng);
+
+            vector<vertex_t>& svs = _vertices[deg.first];
+            vector<vertex_t>& tvs = _vertices[deg.second];
+
+            if (svs.empty() || tvs.empty())
+                continue;
+
+            std::uniform_int_distribution<size_t> s_sample(0, svs.size() - 1);
+            std::uniform_int_distribution<size_t> t_sample(0, tvs.size() - 1);
+
+            s = svs[s_sample(_rng)];
+            t = tvs[t_sample(_rng)];
+
+            break;
+        }
 
         // reject self-loops if not allowed
-        if(!self_loops && s == t)
+        if (!self_loops && s == t)
             return false;
 
         // reject parallel edges if not allowed
