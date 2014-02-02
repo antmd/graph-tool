@@ -1017,7 +1017,7 @@ class MinimizeState(object):
 
 def multilevel_minimize(state, B, nsweeps=10, adaptive_sweeps=True, epsilon=0,
                         anneal=(1., 1.), r=2., nmerge_sweeps=10, greedy=True,
-                        c=1., dense=False, multigraph=False, sequential=True,
+                        c=0., dense=False, multigraph=False, sequential=True,
                         checkpoint=None, minimize_state=None, verbose=False):
     r"""Performs an agglomerative heuristic, which progressively merges blocks together (while allowing individual node moves) to achieve a good partition in ``B`` blocks.
 
@@ -1052,7 +1052,7 @@ def multilevel_minimize(state, B, nsweeps=10, adaptive_sweeps=True, epsilon=0,
         If ``True``, the value of ``beta`` of the MCMC steps are kept at
         infinity for all steps. Otherwise they change according to the ``anneal``
         parameter.
-    c : ``float`` (optional, default: ``1.0``)
+    c : ``float`` (optional, default: ``0.0``)
         This parameter specifies how often fully random moves are attempted,
         instead of more likely moves based on the inferred block partition.
         For ``c == 0``, no fully random moves are attempted, and for ``c == inf``
