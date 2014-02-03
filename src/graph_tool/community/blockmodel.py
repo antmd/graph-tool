@@ -217,7 +217,8 @@ class BlockState(object):
         return self.bg
 
     def get_ers(self):
-        r"""Returns the edge property map of the block graph which contains the :math:`e_{rs}` matrix entries."""
+        r"""Returns the edge property map of the block graph which contains the :math:`e_{rs}` matrix entries.
+        For undirected graphs, the diagonal values (self-loops) contain :math:`e_{rr}/2`."""
         return self.mrs
 
     def get_er(self):
@@ -233,17 +234,6 @@ class BlockState(object):
     def get_nr(self):
         r"""Returns the vertex property map of the block graph which contains the block sizes :math:`n_r`."""
         return self.wr
-
-    def get_eweight(self):
-        r"""Returns the block edge counts associated with the block matrix
-        :math:`e_{rs}`. For directed graphs it is identical to :math:`e_{rs}`,
-        but for undirected graphs it is identical except for the diagonal, which
-        is :math:`e_{rr}/2`."""
-        eweight = self.mrs.copy()
-        if not self.g.is_directed():
-            sl = label_self_loops(self.bg, mark_only=True)
-            eweight.a[sl.a > 0] /= 2
-        return eweight
 
     def entropy(self, complete=False, random=False, dl=False, dense=False,
                 multigraph=False):
