@@ -99,21 +99,22 @@ struct do_propagate_pos
         unordered_map<c_t, pos_t, boost::hash<c_t> >
             cmap(num_vertices(*cg));
 
-        typename graph_traits<Graph>::vertex_iterator vi, vi_end;
-        for(tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
+        typename graph_traits<CoarseGraph>::vertex_iterator vi, vi_end;
+        for(tie(vi, vi_end) = vertices(*cg); vi != vi_end; ++vi)
         {
-            typename graph_traits<Graph>::vertex_descriptor v = *vi;
+            typename graph_traits<CoarseGraph>::vertex_descriptor v = *vi;
             cmap[cvmap[v]] = cpos[v];
-            pos[v].resize(2, 0);
         }
 
-        for(tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
+        typename graph_traits<Graph>::vertex_iterator gvi, gvi_end;
+        for(tie(gvi, gvi_end) = vertices(g); gvi != gvi_end; ++gvi)
         {
-            typename graph_traits<Graph>::vertex_descriptor v = *vi;
+            typename graph_traits<Graph>::vertex_descriptor v = *gvi;
             pos[v] = cmap[vmap[v]];
 
             if (delta > 0)
             {
+                pos[v].resize(2, 0);
                 for (size_t j = 0; j < pos[v].size(); ++j)
                     pos[v][j] += noise(rng);
             }

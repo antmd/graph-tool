@@ -375,6 +375,7 @@ def _propagate_pos(g, cg, c, cc, cpos, delta, mivs):
                                        _prop("v", cg, cpos),
                                        delta if mivs is None else 0,
                                        _get_rng())
+
     if mivs is not None:
         g = g.base
         u = GraphView(g, directed=False)

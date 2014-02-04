@@ -224,7 +224,7 @@ struct get_sfdp_layout
                 vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
-            if (!pin[v])
+            if (pin[v] == 0)
                 vertices.push_back(v);
             pos[v].resize(2, 0);
             size_t s = group[v];
@@ -261,9 +261,6 @@ struct get_sfdp_layout
         val_t step = init_step;
         size_t progress = 0;
 
-        vector<std::reference_wrapper<QuadTree<pos_t, vweight_t> > > Q;
-        Q.reserve(max_level * 2);
-
         while (delta > epsilon * K && (max_iter == 0 || n_iter < max_iter))
         {
             delta = 0;
@@ -285,22 +282,19 @@ struct get_sfdp_layout
 
             std::shuffle(vertices.begin(), vertices.end(), rng);
 
-            pos_t diff(2, 0), pos_u(2, 0), ftot(2, 0), cm(2, 0);
-
             size_t nmoves = 0;
             N = vertices.size();
             #pragma omp parallel for default(shared) private(i)  \
-                firstprivate(Q, diff, pos_u, ftot, cm) \
                 reduction(+:E, delta, nmoves) schedule(static) if (N > 100)
             for (i = 0; i < N; ++i)
             {
                 typename graph_traits<Graph>::vertex_descriptor v =
                     vertex(vertices[i], g);
 
-                ftot[0] = ftot[1] = 0;
+                pos_t diff(2, 0), pos_u(2, 0), ftot(2, 0), cm(2, 0);
 
                 // global repulsive forces
-                Q.clear();
+                vector<std::reference_wrapper<QuadTree<pos_t, vweight_t> > > Q;
                 Q.push_back(std::ref(qt));
                 while (!Q.empty())
                 {
