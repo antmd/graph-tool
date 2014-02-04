@@ -482,7 +482,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
         If ``True``, each iteration will perform an entire "sweep" over the
         edges, where each edge is visited once in random order, and a edge swap
         is attempted.
-    parallel : bool (optional, default: ``False``)
+    parallel_edges : bool (optional, default: ``False``)
         If ``True``, parallel edges are allowed.
     self_loops : bool (optional, default: ``False``)
         If ``True``, self-loops are allowed.
