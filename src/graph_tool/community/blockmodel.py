@@ -788,7 +788,7 @@ def mcmc_sweep(state, beta=1., c=1., dense=False, multigraph=False,
     the Markov chain by proposing membership moves :math:`r\to s` with
     probability :math:`p(r\to s|t) \propto e_{ts} + c`, where :math:`t` is the
     block label of a random neighbour of the vertex being moved. See
-    [peixoto-efficient-2013]_ for more details.
+    [peixoto-efficient-2014]_ for more details.
 
     This algorithm has a complexity of :math:`O(E)`, where :math:`E` is the
     number of edges in the network.
@@ -839,8 +839,9 @@ def mcmc_sweep(state, beta=1., c=1., dense=False, multigraph=False,
        :arxiv:`1112.6028`.
     .. [peixoto-parsimonious-2013] Tiago P. Peixoto, "Parsimonious module inference in large networks",
        Phys. Rev. Lett. 110, 148701 (2013), :doi:`10.1103/PhysRevLett.110.148701`, :arxiv:`1212.4794`.
-    .. [peixoto-efficient-2013] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
-       heuristic for the inference of stochastic block models", :arxiv:`1310.4378`.
+    .. [peixoto-efficient-2014] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
+       heuristic for the inference of stochastic block models", Phys. Rev. E 89, 012804 (2014),
+       :doi:`10.1103/PhysRevE.89.012804`, :arxiv:`1310.4378`.
     """
 
     if state.B == 1:
@@ -1101,7 +1102,7 @@ def multilevel_minimize(state, B, nsweeps=10, adaptive_sweeps=True, epsilon=0,
 
     This algorithm performs an agglomerative heuristic on the current block state,
     where blocks are progressively merged together, using repeated applications of
-    the :func:`mcmc_sweep` moves, at different scales. See [peixoto-efficient-2013]_
+    the :func:`mcmc_sweep` moves, at different scales. See [peixoto-efficient-2014]_
     for more details.
 
     This algorithm has a complexity of :math:`O(N\ln^2 N)`, where :math:`N` is the
@@ -1135,8 +1136,9 @@ def multilevel_minimize(state, B, nsweeps=10, adaptive_sweeps=True, epsilon=0,
      References
     ----------
 
-    .. [peixoto-efficient-2013] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
-       heuristic for the inference of stochastic block models", :arxiv:`1310.4378`.
+    .. [peixoto-efficient-2014] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
+       heuristic for the inference of stochastic block models", Phys. Rev. E 89, 012804 (2014),
+       :doi:`10.1103/PhysRevE.89.012804`, :arxiv:`1310.4378`.
     """
 
     if minimize_state is None:
@@ -1642,9 +1644,9 @@ def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=F
        :arxiv:`1112.6028`.
     .. [peixoto-parsimonious-2013] Tiago P. Peixoto, "Parsimonious module inference in large networks",
        Phys. Rev. Lett. 110, 148701 (2013), :doi:`10.1103/PhysRevLett.110.148701`, :arxiv:`1212.4794`.
-    .. [peixoto-efficient-2013] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
-       heuristic for the inference of stochastic block models", :arxiv:`1310.4378`.
-
+    .. [peixoto-efficient-2014] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
+       heuristic for the inference of stochastic block models", Phys. Rev. E 89, 012804 (2014),
+       :doi:`10.1103/PhysRevE.89.012804`, :arxiv:`1310.4378`.
     """
 
     if max_B is None:

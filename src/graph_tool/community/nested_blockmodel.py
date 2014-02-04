@@ -323,8 +323,9 @@ def nested_mcmc_sweep(state, beta=1., c=1., sequential=True, verbose=False):
     References
     ----------
 
-    .. [peixoto-efficient-2013] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
-       heuristic for the inference of stochastic block models", :arxiv:`1310.4378`.
+    .. [peixoto-efficient-2014] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
+       heuristic for the inference of stochastic block models", Phys. Rev. E 89, 012804 (2014),
+       :doi:`10.1103/PhysRevE.89.012804`, :arxiv:`1310.4378`.
     .. [peixoto-hierarchical-2013] Tiago P. Peixoto, "Hierarchical block structures and high-resolution
        model selection in large networks ", :arxiv:`1310.4377`.
     """
@@ -559,8 +560,9 @@ def nested_tree_sweep(state, nsweeps=10, epsilon=0., r=2.,
     References
     ----------
 
-    .. [peixoto-efficient-2013] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
-       heuristic for the inference of stochastic block models", :arxiv:`1310.4378`.
+    .. [peixoto-efficient-2014] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
+       heuristic for the inference of stochastic block models", Phys. Rev. E 89, 012804 (2014),
+       :doi:`10.1103/PhysRevE.89.012804`, :arxiv:`1310.4378`.
     .. [peixoto-hierarchical-2013] Tiago P. Peixoto, "Hierarchical block structures
        and high-resolution model selection in large networks ", :arxiv:`1310.4377`.
     """
@@ -789,8 +791,9 @@ def init_nested_state(g, Bs, deg_corr=True, dense=False,
     References
     ----------
 
-    .. [peixoto-efficient-2013] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
-       heuristic for the inference of stochastic block models", :arxiv:`1310.4378`.
+    .. [peixoto-efficient-2014] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
+       heuristic for the inference of stochastic block models", Phys. Rev. E 89, 012804 (2014),
+       :doi:`10.1103/PhysRevE.89.012804`, :arxiv:`1310.4378`.
     .. [peixoto-hierarchical-2013] Tiago P. Peixoto, "Hierarchical block structures
        and high-resolution model selection in large networks ", :arxiv:`1310.4377`.
     """
@@ -1011,8 +1014,9 @@ def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, deg_corr=True,
 
     .. [peixoto-hierarchical-2013] Tiago P. Peixoto, "Hierarchical block structures and high-resolution
        model selection in large networks ", :arxiv:`1310.4377`.
-    .. [peixoto-efficient-2013] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
-       heuristic for the inference of stochastic block models", :arxiv:`1310.4378`.
+    .. [peixoto-efficient-2014] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
+       heuristic for the inference of stochastic block models", Phys. Rev. E 89, 012804 (2014),
+       :doi:`10.1103/PhysRevE.89.012804`, :arxiv:`1310.4378`.
     """
 
 
