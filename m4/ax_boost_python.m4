@@ -82,11 +82,16 @@ if test "$ac_cv_boost_python" = "yes"; then
      ax_python_lib=$with_boost_python
      ax_boost_python_lib=boost_python-$with_boost_python
    fi])
+  pyver=`$PYTHON -c "import sys; ver = sys.version.split()[[0]].split('.'); print(''.join(ver[[:2]]))"`
   for ax_lib in $ax_python_lib $ax_boost_python_lib boost_python boost_python-mt; do
     AC_CHECK_LIB($ax_lib, exit, [BOOST_PYTHON_LIB=$ax_lib break])
     ax_lib_alt=${ax_lib}-py$PYTHON_VERSION
     AC_CHECK_LIB($ax_lib_alt, exit, [BOOST_PYTHON_LIB=$ax_lib_alt break])
     ax_lib_alt=${ax_lib}-$PYTHON_VERSION
+    AC_CHECK_LIB($ax_lib_alt, exit, [BOOST_PYTHON_LIB=$ax_lib_alt break])
+    ax_lib_alt=${ax_lib}-py$pyver
+    AC_CHECK_LIB($ax_lib_alt, exit, [BOOST_PYTHON_LIB=$ax_lib_alt break])
+    ax_lib_alt=${ax_lib}-$pyver
     AC_CHECK_LIB($ax_lib_alt, exit, [BOOST_PYTHON_LIB=$ax_lib_alt break])
   done
   AC_SUBST(BOOST_PYTHON_LIB)

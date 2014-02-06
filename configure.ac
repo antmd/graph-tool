@@ -91,10 +91,10 @@ AC_MSG_CHECKING(whether to enable optimizations...)
 AC_ARG_ENABLE([optimization], [AS_HELP_STRING([--disable-optimization],[disable optimization [default=enabled] ])],
         if test $enableval = no; then
            [AC_MSG_RESULT(no)]
-	else
+    else
            [CXXFLAGS="${CXXFLAGS} -O3"]
-	   [AC_MSG_RESULT(yes)]
-	fi
+       [AC_MSG_RESULT(yes)]
+    fi
         ,
         [CXXFLAGS="${CXXFLAGS} -O3"]
         [AC_MSG_RESULT(yes)]
@@ -105,10 +105,10 @@ AC_MSG_CHECKING(whether to enable symbol visibility manipulation...)
 AC_ARG_ENABLE([visibility], [AS_HELP_STRING([--disable-visibility],[disable symbol visibility manipulation [default=enabled] ])],
         if test $enableval = yes; then
            [CXXFLAGS="${CXXFLAGS} -fvisibility=default -fvisibility-inlines-hidden"]
-	   [AC_MSG_RESULT(yes)]
-	else
+       [AC_MSG_RESULT(yes)]
+    else
            [AC_MSG_RESULT(no)]
-	fi
+    fi
         ,
         [CXXFLAGS="${CXXFLAGS} -fvisibility=default -fvisibility-inlines-hidden"]
         [AC_MSG_RESULT(yes)]
@@ -139,9 +139,9 @@ AC_ARG_ENABLE([openmp], [AS_HELP_STRING([--enable-openmp],[enable openmp [defaul
            [CXXFLAGS="${CXXFLAGS} -fopenmp"]
            [OPENMP_LDFLAGS=" -lgomp "]
         else
-	   [USING_OPENMP=no]
-	   [CXXFLAGS="${CXXFLAGS} -Wno-unknown-pragmas"]
-           [AC_MSG_RESULT(no)]	
+       [USING_OPENMP=no]
+       [CXXFLAGS="${CXXFLAGS} -Wno-unknown-pragmas"]
+           [AC_MSG_RESULT(no)]    
         fi
         ,
         [CXXFLAGS="${CXXFLAGS} -Wno-unknown-pragmas"]
@@ -154,19 +154,6 @@ AC_MSG_CHECKING(whether to enable cairo drawing...)
 AC_ARG_ENABLE([cairo], [AS_HELP_STRING([--disable-cairo],[disable cairo drawing [default=enabled] ])],
         if test $enableval = no; then
            [USING_CAIRO=no]
-           [AC_MSG_RESULT(no)]
-        else
-           [AC_MSG_RESULT(yes)]
-        fi
-        ,
-        [AC_MSG_RESULT(yes)]
-        )
-
-[USING_SPARSEHASH=yes]
-AC_MSG_CHECKING(whether to enable sparsehash...)
-AC_ARG_ENABLE([sparsehash], [AS_HELP_STRING([--disable-sparsehash],[disable use of google's sparsehash [default=enabled] ])],
-        if test $enableval = no; then
-           [USING_SPARSEHASH=no]
            [AC_MSG_RESULT(no)]
         else
            [AC_MSG_RESULT(yes)]
@@ -209,8 +196,8 @@ AC_PYTHON_DEVEL([== '${PYTHON_FULL_VERSION}'])
 # default directory for submodules
 [MOD_DIR="${PYTHON_SITE_PKG}"]
 AC_ARG_WITH([python-module-path], [AS_HELP_STRING([--with-python-module-path=DIR],
-		  		  [directory where python module will be installed
-                      		  [default=auto-detected] ])],
+                    [directory where python module will be installed
+                                [default=auto-detected] ])],
             MOD_DIR=$withval)
 echo "graph-tool will be installed at: ${MOD_DIR}"
 
@@ -253,9 +240,9 @@ AC_MSG_CHECKING(whether to cgal debbuging with valgrind...)
 AC_ARG_ENABLE([cgal-valgrind], [AS_HELP_STRING([--enable-cgal-valgrind],[enable CGAL valgrind debugging [default=disabled] ])],
         if test $enableval = yes; then
            [AC_MSG_RESULT(yes)]
-	   [CGAL_FLAGS="${CGAL_FLAGS} -DCGAL_DISABLE_ROUNDING_MATH_CHECK=ON"]
+       [CGAL_FLAGS="${CGAL_FLAGS} -DCGAL_DISABLE_ROUNDING_MATH_CHECK=ON"]
         else
-           [AC_MSG_RESULT(no)]	
+           [AC_MSG_RESULT(no)]    
         fi
         ,
         [AC_MSG_RESULT(no)]
@@ -311,8 +298,8 @@ if test "$USING_CAIRO" = "yes"; then
    [OLD_CPPFLAGS="${CPPFLAGS}"]
    [CXXFLAGS="${CXXFLAGS} ${CAIROMM_CFLAGS}"]
    [CPPFLAGS="${CPPFLAGS} ${CAIROMM_CFLAGS}"]
-   AC_CHECK_HEADER([pycairo/pycairo.h], [],	
-        	   [AC_MSG_ERROR([pycairo headers not found])])
+   AC_CHECK_HEADER([pycairo/pycairo.h], [],    
+               [AC_MSG_ERROR([pycairo headers not found])])
    [CXXFLAGS="${OLD_CXXFLAGS}"]
    [CPPFLAGS="${OLD_CPPFLAGS}"]
 fi
@@ -320,17 +307,32 @@ fi
 dnl sparsehash
 [SPARSEHASH_PREFIX=sparsehash]
 AC_ARG_WITH([sparsehash-prefix], [AS_HELP_STRING([--with-sparsehash-prefix=prefix],
-		  		  [include directory prefix for sparsehash
-                      		  [default=sparsehash] ])],
+                    [include directory prefix for sparsehash
+                                [default=sparsehash] ])],
             [SPARSEHASH_PREFIX=$withval])
 
+[USING_SPARSEHASH=yes]
+AC_MSG_CHECKING(whether to enable sparsehash...)
+AC_ARG_ENABLE([sparsehash], [AS_HELP_STRING([--disable-sparsehash],[disable use of google's sparsehash [default=enabled] ])],
+        if test $enableval = no; then
+           [USING_SPARSEHASH=no]
+           [AC_MSG_RESULT(no)]
+        else
+           [AC_MSG_RESULT(yes)]
+        fi
+        ,
+        [AC_MSG_RESULT(yes)]
+        )
+
 if test "$USING_SPARSEHASH" = "yes"; then
-   PKG_CHECK_MODULES(SPARSEHASH, [libsparsehash], AC_DEFINE([HAVE_SPARSEHASH], [1],
-                     [Using google's sparsehash]), [])
+   PKG_CHECK_MODULES(SPARSEHASH, [libsparsehash],
+                     AC_DEFINE([HAVE_SPARSEHASH], [1], [Using google's sparsehash]),
+                     [AC_MSG_RESULT([not found by pkgconfig, trying default...])])
+
    [SPARSEHASH_CFLAGS="${SPARSEHASH_CFLAGS} -DSPARSEHASH_PREFIX=${SPARSEHASH_PREFIX}"]
    AC_SUBST(SPARSEHASH_CFLAGS)
    AC_DEFINE_UNQUOTED([SPARSEHASH_INCLUDE(f)], [<${SPARSEHASH_PREFIX}/f>],
-                      [Sparsehash include macro])	
+                      [Sparsehash include macro])
    [CXXFLAGS="${CXXFLAGS} ${SPARSEHASH_CFLAGS}"]
    [CPPFLAGS="${CPPFLAGS} ${SPARSEHASH_CFLAGS}"]
    AC_CHECK_HEADER([${SPARSEHASH_PREFIX}/dense_hash_set], [],
