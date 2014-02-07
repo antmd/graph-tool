@@ -1288,8 +1288,8 @@ def multilevel_minimize(state, B, nsweeps=10, adaptive_sweeps=True, epsilon=0,
             if verbose:
                 if not greedy_step:
                     print("... performed %d sweeps with %d vertex moves" % (niter, total_nmoves))
-                print(u"Performing sweeps for beta = ∞, B=%d (N=%d)..." % \
-                       (Bi, state.g.num_vertices()))
+                print("Performing sweeps for beta = ∞, B=%d (N=%d)..." % \
+                      (Bi, state.g.num_vertices()))
 
             if not greedy_step:
                 checkpoint_state[Bi]["greedy_step"] = True
