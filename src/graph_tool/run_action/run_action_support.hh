@@ -40,7 +40,7 @@ struct prop_bind_t
     template <class Value>
     struct as
     {
-        typedef typename mpl::if_<is_same<Value,bool>,
+        typedef typename mpl::if_<std::is_same<Value,bool>,
                                   uint8_t, Value>::type val_t;
         typedef typename property_map_type::apply<val_t,IndexMap>::type type;
     };
