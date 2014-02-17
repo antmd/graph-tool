@@ -541,9 +541,13 @@ class PropertyMap(object):
             if g.get_vertex_filter()[0] is not None:
                 filt = (g.new_edge_property("bool"), filt[1])
                 u = GraphView(g, directed=True, skip_properties=True)
-                libcore.mark_edges(u._Graph__graph, _prop("e", g, filt[0]))
+                libcore.mark_edges(u._Graph__graph, _prop("e", u, filt[0]))
                 if filt[1]:
                     filt[0].a = 1 - filt[0].a
+            elif g._get_max_edge_index() != g.num_edges():
+                filt = (g.new_edge_property("bool"), False)
+                u = GraphView(g, directed=True, skip_properties=True)
+                libcore.mark_edges(u._Graph__graph, _prop("e", u, filt[0]))
         if get:
             if a is None:
                 return a
