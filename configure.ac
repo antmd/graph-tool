@@ -63,7 +63,7 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
     [CXXFLAGS="${old_cxxflags} -std=gnu++0x"])
 
 dnl set template depth
-[CXXFLAGS="${CXXFLAGS} -ftemplate-depth-150"]
+[CXXFLAGS="${CXXFLAGS} -ftemplate-depth-250"]
 
 dnl disable deprecation warning, to silence some harmless BGL-related warnings
 [CXXFLAGS="${CXXFLAGS} -Wno-deprecated -Wno-unknown-pragmas"]

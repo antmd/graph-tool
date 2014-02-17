@@ -432,7 +432,7 @@ def random_graph(N, deg_sampler, directed=True,
 def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
                   parallel_edges=False, self_loops=False, vertex_corr=None,
                   block_membership=None, alias=True, cache_probs=True,
-                  persist=False, ret_fail=False, verbose=False):
+                  persist=False, pin=None, ret_fail=False, verbose=False):
     r"""
 
     Shuffle the graph in-place, following a variety of possible statistical
@@ -544,6 +544,10 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
         some probabilistic models, and should be sufficiently fast for sparse
         graphs, but otherwise it may result in many repeated attempts for
         certain corner-cases in which edges are difficult to swap.
+    pin : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        Edge property map which, if provided, specifies which edges are allowed
+        to be rewired. Edges for which the property value is ``1`` (or ``True``)
+        will be left unmodified in the graph.
     verbose : bool (optional, default: ``False``)
         If ``True``, verbose information is displayed.
 
@@ -807,11 +811,19 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
         model = "blockmodel"
         traditional = True
 
+    if pin is None:
+        pin = g.new_edge_property("bool")
+
+    if pin.value_type() != "bool":
+        pin = pin.copy(value_type="bool")
+
     pcount = libgraph_tool_generation.random_rewire(g._Graph__graph, model,
                                                     n_iter, not edge_sweep,
                                                     self_loops, parallel_edges,
                                                     alias, traditional, persist,
-                                                    corr, _prop("v", g, block_membership),
+                                                    corr,
+                                                    _prop("e", g, pin),
+                                                    _prop("v", g, block_membership),
                                                     cache_probs,
                                                     _get_rng(), verbose)
     return pcount

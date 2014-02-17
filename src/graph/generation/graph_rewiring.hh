@@ -288,9 +288,9 @@ struct graph_rewire
 {
 
     template <class Graph, class EdgeIndexMap, class CorrProb,
-              class BlockDeg>
+              class BlockDeg, class PinMap>
     void operator()(Graph& g, EdgeIndexMap edge_index, CorrProb corr_prob,
-                    bool self_loops, bool parallel_edges,
+                    PinMap pin, bool self_loops, bool parallel_edges,
                     pair<size_t, bool> iter_sweep,
                     std::tuple<bool, bool, bool> cache_verbose,
                     size_t& pcount, rng_t& rng, BlockDeg bd)
@@ -306,6 +306,8 @@ struct graph_rewire
         typename graph_traits<Graph>::edge_iterator e, e_end;
         for (tie(e, e_end) = boost::edges(g); e != e_end; ++e)
         {
+            if (pin[*e])
+                continue;
             edges.push_back(*e);
             edge_pos.push_back(edge_pos.size());
         }
@@ -357,15 +359,15 @@ struct graph_rewire
             cout << endl;
     }
 
-    template <class Graph, class EdgeIndexMap, class CorrProb>
+    template <class Graph, class EdgeIndexMap, class CorrProb, class PinMap>
     void operator()(Graph& g, EdgeIndexMap edge_index, CorrProb corr_prob,
-                    bool self_loops, bool parallel_edges,
+                    PinMap pin, bool self_loops, bool parallel_edges,
                     pair<size_t, bool> iter_sweep,
                     std::tuple<bool, bool, bool> cache_verbose,
                     size_t& pcount, rng_t& rng)
         const
     {
-        operator()(g, edge_index, corr_prob, self_loops, parallel_edges,
+        operator()(g, edge_index, corr_prob, pin, self_loops, parallel_edges,
                    iter_sweep, cache_verbose, pcount, rng, DegreeBlock());
     }
 };
