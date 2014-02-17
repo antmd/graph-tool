@@ -88,12 +88,12 @@ class BlockState(object):
         self.g = g
         if eweight is None:
             eweight = g.new_edge_property("int")
-            eweight.a = 1
+            eweight.fa = 1
         elif eweight.value_type() != "int32_t":
             eweight = eweight.copy(value_type="int32_t")
         if vweight is None:
             vweight = g.new_vertex_property("int")
-            vweight.a = 1
+            vweight.fa = 1
         elif vweight.value_type() != "int32_t":
             vweight = vweight.copy(value_type="int32_t")
         self.eweight = eweight
