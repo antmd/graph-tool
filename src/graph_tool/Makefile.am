@@ -64,7 +64,8 @@ graph_tool_centralitydir = $(MOD_DIR)/centrality
 graph_tool_community_PYTHON = \
     community/__init__.py \
     community/blockmodel.py \
-    community/nested_blockmodel.py
+    community/nested_blockmodel.py \
+    community/overlap_blockmodel.py
 graph_tool_communitydir = $(MOD_DIR)/community
 
 graph_tool_draw_PYTHON = \

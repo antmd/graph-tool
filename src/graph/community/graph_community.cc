@@ -121,6 +121,7 @@ void community_network_eavg(GraphInterface& gi, GraphInterface& cgi,
 
 
 extern void export_blockmodel();
+extern void export_blockmodel_overlap();
 
 BOOST_PYTHON_MODULE(libgraph_tool_community)
 {
@@ -131,4 +132,5 @@ BOOST_PYTHON_MODULE(libgraph_tool_community)
     def("community_network_eavg", &community_network_eavg);
 
     export_blockmodel();
+    export_blockmodel_overlap();
 }

@@ -25,6 +25,7 @@ if sys.version_info < (3,):
 
 from .. import _degree, _prop, Graph, GraphView, libcore, _get_rng, PropertyMap
 from .. stats import label_self_loops
+from .. spectral import adjacency
 import random
 from numpy import *
 import numpy
@@ -37,6 +38,7 @@ import heapq
 from .. dl_import import dl_import
 dl_import("from . import libgraph_tool_community as libcommunity")
 
+__test__ = False
 
 def get_block_graph(g, B, b, vcount, ecount):
     cg, br, vcount, ecount = condensation_graph(g, b,
@@ -60,9 +62,9 @@ class BlockState(object):
     g : :class:`~graph_tool.Graph`
         Graph to be modelled.
     eweight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
-        Edge weights (i.e. multiplicity).
+        Edge multiplicities (for multigraphs or block graphs).
     vweight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
-        Vertex weights (i.e. multiplicity).
+        Vertex multiplicities (for block graphs).
     b : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         Initial block labels on the vertices. If not supplied, it will be
         randomly sampled.
@@ -71,9 +73,8 @@ class BlockState(object):
         parameter ``b``, or set to the maximum possible value according to the
         minimum description length.
     clabel : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
-        This parameter provides a constraint label, such that vertices with
-        different labels will not be allowed to belong to the same block. If not given,
-        all labels will be assumed to be the same.
+        Constraint labels on the vertices. If supplied, vertices with different
+        label values will not be clustered in the same group.
     deg_corr : ``bool`` (optional, default: ``True``)
         If ``True``, the degree-corrected version of the blockmodel ensemble will
         be assumed, otherwise the traditional variant will be used.
@@ -84,8 +85,10 @@ class BlockState(object):
     """
 
     def __init__(self, g, eweight=None, vweight=None, b=None,
-                 B=None, clabel=None, deg_corr=True, max_BE=1000):
-        self.g = g
+                 B=None, clabel=None, deg_corr=True,
+                 max_BE=1000, **kwargs):
+
+        # initialize weights to unity, if necessary
         if eweight is None:
             eweight = g.new_edge_property("int")
             eweight.fa = 1
@@ -96,37 +99,58 @@ class BlockState(object):
             vweight.fa = 1
         elif vweight.value_type() != "int32_t":
             vweight = vweight.copy(value_type="int32_t")
-        self.eweight = eweight
-        self.vweight = vweight
+        self.eweight = g.own_property(eweight)
+        self.vweight = g.own_property(vweight)
+
+        self.is_weighted = True if self.eweight.fa.max() > 1 else False
+
+        # configure the main graph and block model parameters
+        self.g = g
 
         self.E = int(self.eweight.fa.sum())
         self.N = int(self.vweight.fa.sum())
 
         self.deg_corr = deg_corr
 
+        # ensure we have at most as many blocks as nodes
+        if B is not None:
+            B = min(B, self.g.num_vertices())
+
         if b is None:
+            # create a random partition into B blocks.
             if B is None:
                 B = get_max_B(self.N, self.E, directed=g.is_directed())
-            ba = random.randint(0, B, g.num_vertices())
+            B = min(B, self.g.num_vertices())
+            ba = random.randint(0, B, self.g.num_vertices())
             ba[:B] = arange(B)        # avoid empty blocks
-            random.shuffle(ba)
+            if B < self.g.num_vertices():
+                random.shuffle(ba)
             b = g.new_vertex_property("int")
             b.fa = ba
             self.b = b
         else:
+            # if a partition is available, we will incorporate it.
+            if isinstance(b, numpy.ndarray):
+                self.b = g.new_vertex_property("int")
+                self.b.fa = b
+            else:
+                self.b = b = g.own_property(b.copy(value_type="int"))
             if B is None:
-                B = int(b.fa.max()) + 1
-            self.b = b = b.copy(value_type="int32_t")
+                B = int(self.b.fa.max()) + 1
 
-        if b.fa.max() >= B:
+        # if B > self.N:
+        #     raise ValueError("B > N!")
+
+        if self.b.fa.max() >= B:
             raise ValueError("Maximum value of b is larger or equal to B!")
 
         # Construct block-graph
-        self.bg = get_block_graph(g, B, b, vweight, eweight)
+        self.bg = get_block_graph(g, B, self.b, self.vweight, self.eweight)
         self.bg.set_fast_edge_removal()
 
         self.mrs = self.bg.ep["count"]
         self.wr = self.bg.vp["count"]
+
         del self.bg.ep["count"]
         del self.bg.vp["count"]
 
@@ -141,31 +165,131 @@ class BlockState(object):
         self.vertices.a = arange(B)
         self.B = B
 
-        self.clabel = clabel
-        if self.clabel is None:
+        if clabel is not None:
+            if isinstance(clabel, PropertyMap):
+                self.clabel = clabel
+            else:
+                self.clabel = self.g.new_vertex_property("int")
+                self.clabel.a = clabel
+        else:
             self.clabel = self.g.new_vertex_property("int")
-
-        self.bclabel = self.bg.new_vertex_property("int")
-        libcommunity.vector_rmap(self.b.a, self.bclabel.a)
-        libcommunity.vector_map(self.bclabel.a, self.clabel.a)
 
         self.emat = None
         if max_BE is None:
             max_BE = 1000
         self.max_BE = max_BE
 
+        self.overlap = False
+
         # used by mcmc_sweep()
         self.egroups = None
         self.nsampler = None
         self.sweep_vertices = None
+        self.overlap_stats = libcommunity.overlap_stats()
+        self.partition_stats = libcommunity.partition_stats()
 
-        # used by merge_sweep()
-        self.bnsampler = None
-        self.bnnsampler = None
-
-        libcommunity.init_safelog(int(2 * max(self.E, self.N)))
-        libcommunity.init_xlogx(int(2 * max(self.E, self.N)))
+        # computation cache
+        libcommunity.init_safelog(int(5 * max(self.E, self.N)))
+        libcommunity.init_xlogx(int(5 * max(self.E, self.N)))
         libcommunity.init_lgamma(int(3 * max(self.E, self.N)))
+
+    def __repr__(self):
+        return "<BlockState object with %d blocks,%s for graph %s, at 0x%x>" % \
+            (self.B, " degree corrected," if self.deg_corr else "", str(self.g),
+             id(self))
+
+
+    def __init_partition_stats(self, empty=True):
+        if not empty:
+            self.partition_stats = libcommunity.init_partition_stats(self.g._Graph__graph,
+                                                                     _prop("v", self.g, self.b),
+                                                                     _prop("e", self.g, self.eweight),
+                                                                     self.N, self.B)
+        else:
+            self.partition_stats = libcommunity.partition_stats()
+
+
+
+    def copy(self, b=None, B=None, deg_corr=None, clabel=None, overlap=False):
+        r"""Copies the block state. The parameters override the state properties, and
+         have the same meaning as in the constructor. If ``overlap=True`` an
+         instance of :class:`~graph_tool.community.OverlapBlockState` is
+         returned."""
+
+        if not overlap:
+            state = BlockState(self.g,
+                               eweight=self.eweight,
+                               vweight=self.vweight,
+                               b=self.b.copy() if b is None else b,
+                               B=(self.B if b is None else None) if B is None else B,
+                               clabel=self.clabel if clabel is None else clabel,
+                               deg_corr=self.deg_corr if deg_corr is None else deg_corr,
+                               max_BE=self.max_BE)
+        else:
+            state = OverlapBlockState(self.g,
+                                      b=b if b is not None else self.b,
+                                      B=(self.B if b is None else None) if B is None else B,
+                                      clabel=self.clabel if clabel is None else clabel,
+                                      deg_corr=self.deg_corr if deg_corr is None else deg_corr,
+                                      max_BE=self.max_BE)
+
+        if not state.__check_clabel():
+            b = state.b.a + state.clabel.a * state.B
+            continuous_map(b)
+            state = state.copy(b=b)
+
+            if __test__:
+                assert state.__check_clabel()
+
+        return state
+
+
+    def __getstate__(self):
+        state = dict(g=self.g,
+                     eweight=self.eweight,
+                     vweight=self.vweight,
+                     b=self.b,
+                     B=self.B,
+                     clabel=self.clabel,
+                     deg_corr=self.deg_corr,
+                     max_BE=self.max_BE)
+        return state
+
+    def __setstate__(self, state):
+        self.__init__(**state)
+        return state
+
+    def get_block_state(self, b=None, vweight=False, deg_corr=False, overlap=False):
+        r"""Returns a :class:`~graph_tool.community.BlockState`` corresponding to the
+        block graph. The parameters have the same meaning as the in the constructor."""
+
+
+        state = BlockState(self.bg, eweight=self.mrs,
+                           vweight=self.wr if vweight else None,
+                           b=self.bg.vertex_index.copy("int") if b is None else b,
+                           clabel=self.get_bclabel(),
+                           deg_corr=deg_corr,
+                           max_BE=self.max_BE)
+        if overlap:
+            state = state.copy(overlap=True)
+        n_map = self.b.copy()
+        return state, n_map
+
+    def get_bclabel(self):
+        r"""Returns a :class:`~graph_tool.PropertyMap`` corresponding to constraint
+        labels for the block graph."""
+
+        bclabel = self.bg.new_vertex_property("int")
+        reverse_map(self.b, bclabel)
+        pmap(bclabel, self.clabel)
+        return bclabel
+
+    def __check_clabel(self):
+        b = self.b.a + self.clabel.a * self.B
+        continuous_map(b)
+        b2 = self.b.copy()
+        continuous_map(b2.a)
+        return (b == b2.a).all()
 
     def __get_emat(self):
         if self.emat is None:
@@ -181,7 +305,7 @@ class BlockState(object):
     def __build_egroups(self, empty=False):
         self.esrcpos = self.g.new_edge_property("int")
         self.etgtpos = self.g.new_edge_property("int")
-        self.is_weighted = True if self.eweight.fa.max() > 1 else False
+
         self.egroups = libcommunity.build_egroups(self.g._Graph__graph,
                                                   self.bg._Graph__graph,
                                                   _prop("v", self.g, self.b),
@@ -190,23 +314,17 @@ class BlockState(object):
                                                   _prop("e", self.g, self.etgtpos),
                                                   self.is_weighted, empty)
 
-    def __build_nsampler(self):
+    def __build_nsampler(self, empty=False):
         self.nsampler = libcommunity.init_neighbour_sampler(self.g._Graph__graph,
                                                             _prop("e", self.g, self.eweight),
-                                                            True)
-    def __build_bnsampler(self):
-        self.bnsampler = libcommunity.init_neighbour_sampler(self.bg._Graph__graph,
-                                                             _prop("e", self.bg, self.mrs),
-                                                             False)
-        self.bnnsampler = libcommunity.init_neighbour_sampler(self.bg._Graph__graph,
-                                                              _prop("e", self.bg, self.mrs),
-                                                              True)
+                                                            True, empty)
 
     def __cleanup_bg(self):
         emask = self.bg.new_edge_property("bool")
         emask.a = self.mrs.a[:len(emask.a)] > 0
         self.bg.set_edge_filter(emask)
         self.bg.purge_edges()
+        self.emat = None
 
     def get_blocks(self):
         r"""Returns the property map which contains the block labels for each vertex."""
@@ -235,29 +353,33 @@ class BlockState(object):
         r"""Returns the vertex property map of the block graph which contains the block sizes :math:`n_r`."""
         return self.wr
 
-    def entropy(self, complete=False, random=False, dl=False, dense=False,
-                multigraph=False):
-        r"""Calculate the entropy per edge associated with the current block partition.
+    def entropy(self, complete=True, dl=False, partition_dl=False, dense=False,
+                multigraph=True, norm=True, dl_ent=False, **kwargs):
+        r"""Calculate the entropy associated with the current block partition.
 
         Parameters
         ----------
         complete : ``bool`` (optional, default: ``False``)
             If ``True``, the complete entropy will be returned, including constant
             terms not relevant to the block partition.
-        random : ``bool`` (optional, default: ``False``)
-            If ``True``, the entropy entropy corresponding to an equivalent random
-            graph (i.e. no block partition) will be returned.
         dl : ``bool`` (optional, default: ``False``)
             If ``True``, the full description length will be returned.
+        partition_dl : ``bool`` (optional, default: ``False``)
+            If ``True``, and ``dl == True`` only the partition description
+            length will be considered.
         dense : ``bool`` (optional, default: ``False``)
             If ``True``, the "dense" variant of the entropy will be computed.
         multigraph : ``bool`` (optional, default: ``False``)
-            If ``True``, the multigraph entropy will be used. Only has an effect
-            if ``dense == True``.
+            If ``True``, the multigraph entropy will be used.
+        norm : ``bool`` (optional, default: ``True``)
+            If ``True``, the entropy will be "normalized" by dividing by the
+            number of edges.
+        dl_ent : ``bool`` (optional, default: ``False``)
+            If ``True``, the description length of the degree sequence will be
+            approximated by its entropy.
 
         Notes
         -----
-
         For the traditional blockmodel (``deg_corr == False``), the entropy is
         given by
 
@@ -271,7 +393,6 @@ class BlockState(object):
         of half-edges for the undirected case when :math:`r=s`), and :math:`n_r`
         is the number of vertices in block :math:`r` .
 
-
         For the degree-corrected variant with "hard" degree constraints the
         equivalent expressions are
 
@@ -282,24 +403,52 @@ class BlockState(object):
 
         where :math:`e_r = \sum_se_{rs}` is the number of half-edges incident on
         block :math:`r`, and :math:`e^+_r = \sum_se_{rs}` and :math:`e^-_r =
-        \sum_se_{sr}` are the number of out- and in-edges adjacent to block
+        \sum_se_{sr}` are the numbers of out- and in-edges adjacent to block
         :math:`r`, respectively.
 
-        If ``complete == False`` only the last term of the equations above will
-        be returned. If ``random == True`` it will be assumed that :math:`B=1`
-        despite the actual :math:`e_{rs}` matrix.  If ``dl == True``, the
-        description length :math:`\mathcal{L}_t` of the model will be returned
-        as well, as described in :func:`model_entropy`. Note that for the
-        degree-corrected version the description length is
+        If ``dense == False`` and ``multigraph == True``, the entropy used will
+        be of the "Poisson" model, with the additional term:
 
         .. math::
 
-            \mathcal{L}_c = \mathcal{L}_t - \sum_rn_r\sum_kp^r_k\ln p^r_k,
+            {\mathcal{S}_{cm}^{(d)}} = \mathcal{S}_c^{(d)} + \sum_{i>j} \ln A_{ij}! + \sum_i \ln A_{ii}!!
 
-        where :math:`p^r_k` is the fraction of nodes in block $r$ with degree :math:`k`. For directed
-        graphs we have instead :math:`k \to (k^-, k^+)`.
 
-        If the "dense" entropies are requested, they will be computed as
+        If ``dl == True``, the description length :math:`\mathcal{L}_t` of the
+        model will be returned as well, as described in
+        :func:`model_entropy`. Note that for the degree-corrected version the
+        description length is
+
+        .. math::
+
+            \mathcal{L}_c = \mathcal{L}_t + \sum_r\min\left(\mathcal{L}^{(1)}_r, \mathcal{L}^{(2)}_r\right),
+
+        with
+
+        .. math::
+
+              \mathcal{L}^{(1)}_r &= \ln{\left(\!\!{n_r \choose e_r}\!\!\right)}, \\
+              \mathcal{L}^{(2)}_r &= \ln\Xi_r + \ln n_r! - \sum_k \ln n^r_k!,
+
+        and :math:`\ln\Xi_r \simeq 2\sqrt{\zeta(2)e_r}`, where :math:`\zeta(x)`
+        is the `Riemann zeta function
+        <https://en.wikipedia.org/wiki/Riemann_zeta_function>`_, and
+        :math:`n^r_k` is the number of nodes in block :math:`r` with degree
+        :math:`k`. For directed graphs we have instead :math:`k \to (k^-, k^+)`,
+        and :math:`\ln\Xi_r \to \ln\Xi^+_r + \ln\Xi^-_r` with :math:`\ln\Xi_r^+
+        \simeq 2\sqrt{\zeta(2)e^+_r}` and :math:`\ln\Xi_r^- \simeq
+        2\sqrt{\zeta(2)e^-_r}`.
+
+        If ``dl_ent=True`` is passed, this will be approximated instead by
+
+        .. math::
+
+            \mathcal{L}_c \simeq \mathcal{L}_t - \sum_rn_r\sum_kp^r_k\ln p^r_k,
+
+        where :math:`p^r_k = n^r_k / n_r`.
+
+        If the "dense" entropies are requested (``dense=True``), they will be
+        computed as
 
         .. math::
 
@@ -313,140 +462,115 @@ class BlockState(object):
             \mathcal{S}_m  &= \sum_{r>s} \ln{\textstyle \left(\!\!{n_rn_s \choose e_{rs}}\!\!\right)} + \sum_r \ln{\textstyle \left(\!\!{\left(\!{n_r\choose 2}\!\right)\choose e_{rr}/2}\!\!\right)}\\
             \mathcal{S}^d_m  &= \sum_{rs} \ln{\textstyle \left(\!\!{n_rn_s \choose e_{rs}}\!\!\right)},
 
-        for multigraphs (i.e. ``multigraph == True``).
+        for multigraphs (i.e. ``multigraph == True``). A dense entropy for the
+        degree-corrected model is not available, and if requested will return a
+        :exc:`NotImplementedError`.
 
-        Note that in all cases the value returned corresponds to the entropy `per edge`,
-        i.e. :math:`(\mathcal{S}_{t/c}\; [\,+\, \mathcal{L}_{t/c}])/ E`.
+        If ``complete == False`` constants in the above equations which do not
+        depend on the partition of the nodes will be omitted.
 
+        Note that in all cases if ``norm==True`` the value returned corresponds
+        to the entropy `per edge`, i.e. :math:`(\mathcal{S}_{t/c}\; [\,+\,\mathcal{L}_{t/c}])/ E`.
         """
+
+        xi_fast = kwargs.get("xi_fast", False)
+        dl_deg_alt = kwargs.get("dl_deg_alt", True)
 
         E = self.E
         N = self.N
 
         if dense:
-            if random:
-                bg = get_block_graph(self.bg, 1,
-                                     self.bg.new_vertex_property("int"),
-                                     self.wr, self.mrs)
-                S = libcommunity.entropy_dense(bg._Graph__graph,
-                                               _prop("e", bg, bg.ep["count"]),
-                                               _prop("v", bg, bg.vp["count"]),
-                                               multigraph)
-            else:
-                S = libcommunity.entropy_dense(self.bg._Graph__graph,
-                                               _prop("e", self.bg, self.mrs),
-                                               _prop("v", self.bg, self.wr),
-                                               multigraph)
-        else:
             if self.deg_corr:
-                if self.g.is_directed():
-                    S_rand = E * log(E)
-                else:
-                    S_rand = E * log(2 * E)
-            else:
-                ak = E / float(N) if self.g.is_directed() else  2 * E / float(N)
-                S_rand = E * log (N / ak)
+                raise NotImplementedError('A degree-corrected "dense" entropy is not yet implemented')
 
-            if random:
-                S = S_rand
-            else:
-                S = libcommunity.entropy(self.bg._Graph__graph,
-                                         _prop("e", self.bg, self.mrs),
-                                         _prop("v", self.bg, self.mrp),
-                                         _prop("v", self.bg, self.mrm),
-                                         _prop("v", self.bg, self.wr),
-                                         self.deg_corr)
+            S = libcommunity.entropy_dense(self.bg._Graph__graph,
+                                           _prop("e", self.bg, self.mrs),
+                                           _prop("v", self.bg, self.wr),
+                                           multigraph)
+        else:
+            S = libcommunity.entropy(self.bg._Graph__graph,
+                                     _prop("e", self.bg, self.mrs),
+                                     _prop("v", self.bg, self.mrp),
+                                     _prop("v", self.bg, self.mrm),
+                                     _prop("v", self.bg, self.wr),
+                                     self.deg_corr)
 
+            if __test__:
+                assert not isnan(S) and not isinf(S), "invalid entropy %g (%s) " % (S, str(dict(complete=complete,
+                                                                                                random=random, dl=dl,
+                                                                                                partition_dl=partition_dl,
+                                                                                                dense=dense, multigraph=multigraph,
+                                                                                                norm=norm)))
             if complete:
                 if self.deg_corr:
                     S -= E
-                    for v in self.g.vertices():
-                        S -= scipy.special.gammaln(v.out_degree() + 1)
-                        if self.g.is_directed():
-                            S -= scipy.special.gammaln(v.in_degree() + 1)
+                    S += libcommunity.deg_entropy_term(self.g._Graph__graph,
+                                                       libcore.any(),
+                                                       self.overlap_stats,
+                                                       self.N)
                 else:
                     S += E
-            else:
-                S -= S_rand
 
+                if multigraph:
+                    S += libcommunity.entropy_parallel(self.g._Graph__graph,
+                                                       _prop("e", self.g, self.eweight))
+
+                if __test__:
+                    assert not isnan(S) and not isinf(S), "invalid entropy %g (%s) " % (S, str(dict(complete=complete,
+                                                                                                    random=random, dl=dl,
+                                                                                                    partition_dl=partition_dl,
+                                                                                                    dense=dense, multigraph=multigraph,
+                                                                                                    norm=norm)))
         if dl:
-            if random:
-                S += model_entropy(1, N, E, directed=self.g.is_directed()) * E
+            if partition_dl:
+                if self.partition_stats.is_enabled():
+                    S += self.partition_stats.get_partition_dl()
+                else:
+                    self.__init_partition_stats(empty=False)
+                    S += self.partition_stats.get_partition_dl()
+                    self.__init_partition_stats(empty=True)
+
+                if __test__:
+                    assert not isnan(S) and not isinf(S), "invalid entropy %g (%s) " % (S, str(dict(complete=complete,
+                                                                                                    random=random, dl=dl,
+                                                                                                    partition_dl=partition_dl,
+                                                                                                    dense=dense, multigraph=multigraph,
+                                                                                                    norm=norm)))
             else:
                 S += model_entropy(self.B, N, E, directed=self.g.is_directed(), nr=self.wr.a) * E
 
             if self.deg_corr:
-                S_seq = libcommunity.deg_entropy(self.g._Graph__graph,
-                                                 _prop("v", self.g, self.b),
-                                                 self.B)
+                if self.partition_stats.is_enabled():
+                    S_seq = self.partition_stats.get_deg_dl(dl_ent, dl_deg_alt, xi_fast)
+                else:
+                    self.__init_partition_stats(empty=False)
+                    S_seq = self.partition_stats.get_deg_dl(dl_ent, dl_deg_alt, xi_fast)
+                    self.__init_partition_stats(empty=True)
+
                 S += S_seq
 
-        return S / E
+                if __test__:
+                    assert not isnan(S_seq) and not isinf(S_seq), "invalid entropy %g (%s) " % (S_seq, str(dict(complete=complete,
+                                                                                                                random=random, dl=dl,
+                                                                                                                partition_dl=partition_dl,
+                                                                                                                dense=dense, multigraph=multigraph,
+                                                                                                                norm=norm)))
 
-    def remove_vertex(self, v):
-        r"""Remove vertex ``v`` from its current block."""
-        libcommunity.remove_vertex(self.g._Graph__graph,
-                                   self.bg._Graph__graph,
-                                   int(v),
-                                   _prop("e", self.bg, self.mrs),
-                                   _prop("v", self.bg, self.mrp),
-                                   _prop("v", self.bg, self.mrm),
-                                   _prop("v", self.bg, self.wr),
-                                   _prop("v", self.g, self.b))
-        self.egroups = None
-        self.nb_list = None
-        self.nb_count = None
+        if __test__:
+            assert not isnan(S) and not isinf(S), "invalid entropy %g (%s) " % (S, str(dict(complete=complete,
+                                                                                            random=random, dl=dl,
+                                                                                            partition_dl=partition_dl,
+                                                                                            dense=dense, multigraph=multigraph,
+                                                                                            norm=norm)))
 
+        if norm:
+            return S / E
+        else:
+            return S
 
-    def add_vertex(self, v, r):
-        r"""Add vertex ``v`` to block ``r``."""
-        libcommunity.add_vertex(v.get_graph()._Graph__graph,
-                                self.bg._Graph__graph,
-                                int(v), int(r),
-                                _prop("e", self.bg, self.mrs),
-                                _prop("v", self.bg, self.mrp),
-                                _prop("v", self.bg, self.mrm),
-                                _prop("v", self.bg, self.wr),
-                                _prop("v", self.g, self.b))
-        self.egroups = None
-        self.nb_list = None
-        self.nb_count = None
-
-    def move_vertex(self, v, nr):
-        r"""Move vertex ``v`` to block ``nr``, and return the entropy difference."""
-        dS = libcommunity.move_vertex(self.g._Graph__graph,
-                                      self.bg._Graph__graph,
-                                      self.__get_emat(),
-                                      int(v), int(nr),
-                                      _prop("e", self.bg, self.mrs),
-                                      _prop("v", self.bg, self.mrp),
-                                      _prop("v", self.bg, self.mrm),
-                                      _prop("v", self.bg, self.wr),
-                                      _prop("v", self.g, self.b),
-                                      self.deg_corr,
-                                      _prop("e", self.bg, self.eweight),
-                                      _prop("v", self.bg, self.vweight))
-        self.egroups = None
-        self.nb_list = None
-        self.nb_count = None
-        return dS / float(self.E)
-
-    def get_matrix(self, reorder=False, niter=0, ret_order=False):
-        r"""Returns the block matrix, which contains the number of edges between
-        each block pair.
-
-        Parameters
-        ----------
-        reorder : ``bool`` (optional, default: ``False``)
-            If ``True``, the matrix is reordered so that blocks which are
-            'similar' are close together.
-        niter : ``int`` (optional, default: `0`)
-            Number of iterations performed to obtain the best ordering. If
-            ``niter == 0`` it will automatically determined. Only has effect
-            if ``reorder == True``.
-        ret_order : ``bool`` (optional, default: ``False``)
-            If ``True``, the vertex ordering is returned. Only has effect if
-            ``reorder == True``.
+    def get_matrix(self):
+        r"""Returns the block matrix (as a sparse :class:`~scipy.sparse.csr_matrix`),
+        which contains the number of edges between each block pair.
 
         Examples
         --------
@@ -463,10 +587,10 @@ class BlockState(object):
            >>> state = gt.BlockState(g, B=5, deg_corr=True)
            >>> for i in range(1000):
            ...     ds, nmoves = gt.mcmc_sweep(state)
-           >>> m = state.get_matrix(reorder=True)
+           >>> m = state.get_matrix()
            >>> figure()
            <...>
-           >>> matshow(m)
+           >>> matshow(m.todense())
            <...>
            >>> savefig("bloc_mat.pdf")
 
@@ -480,80 +604,8 @@ class BlockState(object):
            A  5x5 block matrix.
 
        """
-        B = self.B
-        vmap = {}
-        for r in range(len(self.vertices)):
-            vmap[self.vertices[r]] = r
 
-        if reorder:
-            if niter == 0:
-                niter = 10
-
-            states = []
-
-            label = None
-            states = [self]
-            Bi = self.B // 2
-
-            while Bi > 1:
-
-                state = BlockState(states[-1].bg,
-                                   b=states[-1].bg.vertex_index.copy("int"),
-                                   B=states[-1].bg.num_vertices(),
-                                   clabel=states[-1].bclabel,
-                                   vweight=states[-1].wr,
-                                   eweight=states[-1].mrs,
-                                   deg_corr=states[-1].deg_corr,
-                                   max_BE=states[-1].max_BE)
-
-                state = greedy_shrink(state, B=Bi, nsweeps=niter,
-                                      epsilon=1e-3, c=0,
-                                      nmerge_sweeps=niter)
-
-                for i in range(niter):
-                    mcmc_sweep(state, c=0, beta=float("inf"))
-
-                states.append(state)
-
-                Bi //= 2
-
-                if Bi < self.bclabel.a.max() + 1:
-                    break
-
-            vorder = list(range(len(states[-1].vertices)))
-            for state in reversed(states[1:]):
-                norder = [[] for i in range(state.B)]
-                for v in state.g.vertices():
-                    pos = vorder.index(state.b[v])
-                    norder[pos].append(int(v))
-                vorder = [item for sublist in norder for item in sublist]
-        else:
-            vorder = self.vertices
-
-        order_map = zeros(B, dtype="int")
-        for i, v in enumerate(vorder):
-            order_map[vmap[v]] = i
-
-        m = zeros((B, B))
-        rmap = {}
-        for e in self.bg.edges():
-            r, s = vmap[int(e.source())], vmap[int(e.target())]
-            r = order_map[r]
-            s = order_map[s]
-            rmap[r] = int(e.source())
-            rmap[s] = int(e.target())
-            m[r, s] = self.mrs[e]
-            if not self.bg.is_directed():
-                m[s, r] = m[r, s]
-
-        for r in range(B):
-            if r not in rmap:
-                rmap[r] = r
-
-        if ret_order:
-            return m, rmap
-        else:
-            return m
+        return adjacency(self.bg, weight=self.mrs)
 
 
 def model_entropy(B, N, E, directed=False, nr=None):
@@ -616,7 +668,7 @@ def Sdl(B, S, N, E, directed=False):
     return S + model_entropy(B, N, E, directed)
 
 def lbinom(n, k):
-    return scipy.special.gammaln(n + 1) - scipy.special.gammaln(n - k + 1) - scipy.special.gammaln(k + 1)
+    return scipy.special.gammaln(float(n + 1)) - scipy.special.gammaln(float(n - k + 1)) - scipy.special.gammaln(float(k + 1))
 
 def partition_entropy(B, N, nr=None):
     if nr is None:
@@ -712,13 +764,15 @@ def get_akc(B, I, N=float("inf"), directed=False):
             ak /= 2
     return ak
 
-def mcmc_sweep(state, beta=1., c=1., dense=False, multigraph=False,
-               sequential=True, vertices=None, verbose=False):
+def mcmc_sweep(state, beta=1., c=1., dl=False, dense=False, multigraph=False,
+               node_coherent=False, nmerges=0, nmerge_sweeps=1, merge_map=None,
+               coherent_merge=False, sequential=True, parallel=False,
+               vertices=None, verbose=False, **kwargs):
     r"""Performs a Markov chain Monte Carlo sweep on the network, to sample the block partition according to a probability :math:`\propto e^{-\beta \mathcal{S}_{t/c}}`, where :math:`\mathcal{S}_{t/c}` is the blockmodel entropy.
 
     Parameters
     ----------
-    state : :class:`~graph_tool.community.BlockState`
+    state : :class:`~graph_tool.community.BlockState` or :class:`~graph_tool.community.OverlapBlockState`
         The block state.
     beta : ``float`` (optional, default: `1.0`)
         The inverse temperature parameter :math:`\beta`.
@@ -727,16 +781,33 @@ def mcmc_sweep(state, beta=1., c=1., dense=False, multigraph=False,
         instead of more likely moves based on the inferred block partition.
         For ``c == 0``, no fully random moves are attempted, and for ``c == inf``
         they are always attempted.
+    dl : ``bool`` (optional, default: ``False``)
+        If ``True``, the change in the whole description length will be
+        considered after each vertex move, not only the entropy.
     dense : ``bool`` (optional, default: ``False``)
         If ``True``, the "dense" variant of the entropy will be computed.
     multigraph : ``bool`` (optional, default: ``False``)
         If ``True``, the multigraph entropy will be used. Only has an effect
         if ``dense == True``.
+    node_coherent : ``bool`` (optional, default: ``False``)
+        If ``True``, and if the ``state`` is an instance of
+        :class:`~graph_tool.community.OverlapBlockState`, then all half-edges
+        incident on the same node are moved simultaneously.
     sequential : ``bool`` (optional, default: ``True``)
         If ``True``, the move attempts on the vertices are done in sequential
         random order. Otherwise a total of `N` moves attempts are made, where
         `N` is the number of vertices, where each vertex can be selected with
         equal probability.
+    parallel : ``bool`` (optional, default: ``False``)
+        If ``True``, the updates are performed in parallel (multiple
+        threads).
+
+        .. warning::
+
+            If this is used, the Markov Chain is not guaranteed to be sampled with
+            the correct probabilities. This is better used in conjunction with
+            ``beta=float('inf')``, where this is not an issue.
+
     vertices : ``list of ints`` (optional, default: ``None``)
         A list of vertices which will be attempted to be moved. If ``None``, all
         vertices will be attempted.
@@ -852,7 +923,7 @@ def mcmc_sweep(state, beta=1., c=1., dense=False, multigraph=False,
         vlist = libcommunity.get_vector(len(vertices))
         vlist.a = vertices
         vertices = vlist
-        state.sweep_vertices = vertices
+        #state.sweep_vertices = vertices
 
     if state.sweep_vertices is None:
         vertices = libcommunity.get_vector(state.g.num_vertices())
@@ -861,161 +932,394 @@ def mcmc_sweep(state, beta=1., c=1., dense=False, multigraph=False,
 
     random_move = c == float("inf")
 
-    if random_move:
+    if random_move or nmerges > 0:
         state._BlockState__build_egroups(empty=True)
     elif state.egroups is None:
         state._BlockState__build_egroups(empty=False)
 
-    if state.nsampler is None:
-        state._BlockState__build_nsampler()
+    bclabel = state.get_bclabel()
 
-    state.bnsampler = None
-    state.bnnsampler = None
+    if nmerges == 0:
+        nmerge_sweeps = 1
+        if state.nsampler is None:
+            state._BlockState__build_nsampler(empty=state.overlap)
+        nsampler = state.nsampler
+        ncavity_sampler = state.nsampler
+        merge_map = state.g.new_vertex_property("int")
+    else:
+        if kwargs.get("unweighted_merge", False):
+            emask = state.mrs
+        else:
+            emask = state.mrs.copy()
+            emask.a = emask.a > 0
+
+        nsampler = libcommunity.init_neighbour_sampler(state.bg._Graph__graph,
+                                                       _prop("e", state.bg, emask),
+                                                       True, False)
+        ncavity_sampler = libcommunity.init_neighbour_sampler(state.bg._Graph__graph,
+                                                              _prop("e", state.bg, emask),
+                                                              False, False)
+        beta = float("inf")
+
+        if merge_map is None:
+            merge_map = state.g.vertex_index.copy("int")
+
+    if dl and not state.partition_stats.is_enabled():
+        if state.overlap:
+            state._OverlapBlockState__init_partition_stats(empty=False)
+        else:
+            state._BlockState__init_partition_stats(empty=False)
+
+    if not dl and state.partition_stats.is_enabled():
+        if state.overlap:
+            state._OverlapBlockState__init_partition_stats(empty=True)
+        else:
+            state._BlockState__init_partition_stats(empty=True)
+
+    if __test__:
+        assert state._BlockState__check_clabel(), "clabel already invalid!"
+        S = state.entropy(dense=dense, multigraph=multigraph, complete=False, dl=dl, dl_deg_alt=False, xi_fast=True)
+        assert not (isinf(S) or isnan(S)), "invalid entropy before sweep: %g" % S
 
     try:
-        dS, nmoves = libcommunity.move_sweep(state.g._Graph__graph,
-                                             state.bg._Graph__graph,
-                                             state._BlockState__get_emat(),
-                                             state.nsampler,
-                                             _prop("e", state.bg, state.mrs),
-                                             _prop("v", state.bg, state.mrp),
-                                             _prop("v", state.bg, state.mrm),
-                                             _prop("v", state.bg, state.wr),
-                                             _prop("v", state.g, state.b),
-                                             _prop("v", state.bg, state.bclabel),
-                                             state.sweep_vertices,
-                                             state.deg_corr, dense, multigraph,
-                                             _prop("e", state.g, state.eweight),
-                                             _prop("v", state.g, state.vweight),
-                                             state.egroups,
-                                             _prop("e", state.g, state.esrcpos),
-                                             _prop("e", state.g, state.etgtpos),
-                                             float(beta), sequential, random_move,
-                                             c, state.is_weighted, verbose,
-                                             _get_rng())
+        if not state.overlap:
+            dS, nmoves = libcommunity.move_sweep(state.g._Graph__graph,
+                                                 state.bg._Graph__graph,
+                                                 state._BlockState__get_emat(),
+                                                 nsampler, ncavity_sampler,
+                                                 _prop("e", state.bg, state.mrs),
+                                                 _prop("v", state.bg, state.mrp),
+                                                 _prop("v", state.bg, state.mrm),
+                                                 _prop("v", state.bg, state.wr),
+                                                 _prop("v", state.g, state.b),
+                                                 _prop("v", state.bg, bclabel),
+                                                 state.sweep_vertices,
+                                                 state.deg_corr, dense, multigraph,
+                                                 _prop("e", state.g, state.eweight),
+                                                 _prop("v", state.g, state.vweight),
+                                                 state.egroups,
+                                                 _prop("e", state.g, state.esrcpos),
+                                                 _prop("e", state.g, state.etgtpos),
+                                                 float(beta), sequential,
+                                                 parallel, random_move,
+                                                 c, state.is_weighted,
+                                                 nmerges, nmerge_sweeps,
+                                                 _prop("v", state.g, merge_map),
+                                                 state.partition_stats,
+                                                 verbose, _get_rng())
+        else:
+            dS, nmoves = libcommunity.move_sweep_overlap(state.g._Graph__graph,
+                                                         state.bg._Graph__graph,
+                                                         state._BlockState__get_emat(),
+                                                         nsampler,
+                                                         ncavity_sampler,
+                                                         _prop("e", state.bg, state.mrs),
+                                                         _prop("v", state.bg, state.mrp),
+                                                         _prop("v", state.bg, state.mrm),
+                                                         _prop("v", state.bg, state.wr),
+                                                         _prop("v", state.g, state.b),
+                                                         _prop("v", state.bg, bclabel),
+                                                         state.sweep_vertices,
+                                                         state.deg_corr, dense, multigraph,
+                                                         multigraph,
+                                                         _prop("e", state.g, state.eweight),
+                                                         _prop("v", state.g, state.vweight),
+                                                         state.egroups,
+                                                         _prop("e", state.g, state.esrcpos),
+                                                         _prop("e", state.g, state.etgtpos),
+                                                         float(beta),
+                                                         sequential, parallel,
+                                                         random_move, float(c),
+                                                         ((nmerges == 0 and node_coherent) or
+                                                          (nmerges > 0 and coherent_merge)),
+                                                         state.is_weighted,
+                                                         nmerges, nmerge_sweeps,
+                                                         _prop("v", state.g, merge_map),
+                                                         state.overlap_stats,
+                                                         state.partition_stats,
+                                                         verbose, _get_rng())
+
     finally:
         if random_move:
             state.egroups = None
-    return dS / state.E, nmoves
+        if nmerges > 0:
+            state.nsampler = None
+            state.egroups = None
 
-
-def merge_sweep(state, bm, nmerges, nsweeps=10, dense=False, multigraph=False,
-                random_moves=False, verbose=False):
-
-    if state.B == 1:
-        return 0., 0
-
-    if state.bnsampler is None or state.bnnsampler is None:
-        state._BlockState__build_bnsampler()
-
-    state.egroups = None
-    state.nsampler = None
-
-    dS, nmoves = libcommunity.merge_sweep(state.bg._Graph__graph,
-                                          state._BlockState__get_emat(),
-                                          state.bnsampler,
-                                          state.bnnsampler,
-                                          _prop("e", state.bg, state.mrs),
-                                          _prop("v", state.bg, state.mrp),
-                                          _prop("v", state.bg, state.mrm),
-                                          _prop("v", state.bg, state.wr),
-                                          _prop("v", state.bg, bm),
-                                          _prop("v", state.bg, state.bclabel),
-                                          state.deg_corr, dense, multigraph,
-                                          nsweeps, nmerges, random_moves,
-                                          verbose, _get_rng())
+    if __test__:
+        assert state._BlockState__check_clabel(), "clabel invalidated!"
+        assert not (isinf(dS) or isnan(dS)), "invalid after sweep: %g" % dS
+        S2 = state.entropy(dense=dense, multigraph=multigraph, complete=False, dl=dl, dl_deg_alt=False, xi_fast=True)
+        c_dS = S2 - S
+        if not abs(dS / state.E - c_dS) < 1e-6:
+            print(dS / state.E, c_dS, nmoves, state.overlap, dense, multigraph, state.deg_corr, state.is_weighted, node_coherent)
+        assert abs(dS / state.E - c_dS) < 1e-6, "invalid delta S (%g, %g)" % (dS / state.E, c_dS)
 
     return dS / state.E, nmoves
 
 
-def greedy_shrink(state, B, nsweeps=10, adaptive_sweeps=True, nmerge_sweeps=None,
-                  epsilon=0, r=2, greedy=True, anneal=(1, 1), c=1, dense=False,
-                  multigraph=False, random_move=False, verbose=False,
-                  sequential=True):
+def pmap(prop, value_map):
+    """Maps all the values of `prop` to the values given by `value_map`, which
+    is indexed by the values of `prop`."""
+    if isinstance(prop, PropertyMap):
+        prop = prop.a
+    if isinstance(value_map, PropertyMap):
+        value_map = value_map.a
+    if prop.max() >= len(value_map):
+        raise ValueError("value map is not large enough!")
+    libcommunity.vector_map(prop, value_map)
+
+def reverse_map(prop, value_map):
+    """Modify `value_map` such that the positions indexed by the values in `prop`
+    correspond to their index in `prop`."""
+    if isinstance(prop, PropertyMap):
+        prop = prop.a
+    if isinstance(value_map, PropertyMap):
+        value_map = value_map.a
+    if prop.max() >= len(value_map):
+        raise ValueError("value map is not large enough!")
+    libcommunity.vector_rmap(prop, value_map)
+
+def continuous_map(prop):
+    """Remap the values of ``prop`` in the continuous range :math:`[0, N-1]`."""
+    if isinstance(prop, PropertyMap):
+        prop = prop.a
+    if prop.max() < len(prop):
+        rmap = -ones(len(prop), dtype=prop.dtype)
+        libcommunity.vector_map(prop, rmap)
+    else:
+        libcommunity.vector_continuous_map(prop)
+
+def greedy_shrink(state, B, **kwargs):
     if B > state.B:
         raise ValueError("Cannot shrink to a larger size!")
 
-    if nmerge_sweeps is None:
-        nmerge_sweeps = max((2 * state.g.num_edges()) // state.g.num_vertices(), 1)
+    kwargs = kwargs.copy()
+    if kwargs.get("nmerge_sweeps", None) is None:
+        kwargs["nmerge_sweeps"] = max((2 * state.g.num_edges()) // state.g.num_vertices(), 1)
 
-    nmerged = 0
+    verbose = kwargs.get("verbose", False)
 
-    state = BlockState(state.g, b=state.b, B=state.B,
-                       clabel=state.clabel, vweight=state.vweight,
-                       eweight=state.eweight, deg_corr=state.deg_corr,
-                       max_BE=state.max_BE)
+    orig_state = state
+    state = state.copy(B=state.B)
 
-    cg = state.bg.copy()
-    cg_vweight = cg.own_property(state.wr.copy())
-    cg_eweight = cg.own_property(state.mrs.copy())
-    cg_clabel = cg.own_property(state.bclabel.copy())
+    # merge according to indirect neighbourhood; we put all group-nodes in their
+    # own groups, and merge/move them until the desired size is reached
+    curr_B = (state.wr.a > 0).sum()
+    assert curr_B >= B, "shrinking to a larger size ?! (%d, %d)" % (curr_B, B)
 
-    # merge according to indirect neighbourhood
-    bm = state.bg.vertex_index.copy("int")
-    random = random_move
-    while nmerged < state.B - B:
-        dS, nmoves = merge_sweep(state, bm, nmerges=state.B - B - nmerged,
-                                 nsweeps=nmerge_sweeps, random_moves=random)
-        nmerged += nmoves
+    random = kwargs.get("random_move", False)
+    old_state = state
+    if not state.overlap:
+        state, n_map = state.get_block_state(vweight=True, deg_corr=state.deg_corr)
+        unilevel_minimize(state, **kwargs)
+    merge_map = state.g.vertex_index.copy("int")
+
+    unweighted = False
+    kwargs["c"] = 0 if not random else float("inf")
+    kwargs["dl"] = False
+    while curr_B > B:
+        dS, nmoves = mcmc_sweep(state, beta=float("inf"),
+                                nmerges=curr_B - B,
+                                merge_map=merge_map,
+                                unweighted_merge=unweighted,
+                                **kwargs)
+
+        #assert nmoves == curr_B - (state.wr.a > 0).sum()
+        curr_B = (state.wr.a > 0).sum()
+
         if verbose:
-            print("merging", dS, nmoves, nmerged)
+            print("merging, B=%d" % curr_B, "left:", curr_B - B,
+                  "(%g, %d%s%s)" % (dS, nmoves, ", random" if random else "",
+                                    ", unweighted" if unweighted else ""))
+
         if nmoves == 0:
-            random = True
-            if verbose:
-                print("can't merge... switching to random")
+            if not unweighted:
+                unweighted = True
+            else:
+                kwargs["c"] = float("inf")
+                random = True
 
-    # Merged block-level state
-    bmap = -ones(len(bm.a), dtype=bm.a.dtype)
-    libcommunity.vector_map(bm.a, bmap)
+    #assert curr_B == (state.wr.a > 0).sum()
 
-    bm = cg.own_property(bm)
-    bg_state = BlockState(cg, b=bm, B=B, clabel=cg_clabel,
-                          vweight=cg_vweight, eweight=cg_eweight,
-                          deg_corr=state.deg_corr, max_BE=state.max_BE)
+    if not state.overlap:
+        unilevel_minimize(state, **kwargs)  # block level moves
+        pmap(merge_map, state.b)
+        pmap(n_map, merge_map)
+        continuous_map(n_map)
+        state = orig_state.copy(b=n_map, B=B)
+    else:
+        pmap(merge_map, state.b)
+        continuous_map(merge_map)
+        state = orig_state.copy(b=merge_map, B=B)
 
-    if bg_state.g.num_vertices() != state.g.num_vertices() and nsweeps > 0:
-        # Perform block-level moves
-        if verbose:
-            print("Performing block-level moves...")
-        multilevel_minimize(bg_state, B=B, nsweeps=nsweeps,
-                            adaptive_sweeps=adaptive_sweeps,
-                            epsilon=epsilon, r=r, greedy=greedy,
-                            anneal=anneal, c=c, dense=dense,
-                            multigraph=multigraph, sequential=sequential,
-                            verbose=verbose)
 
-    bm = bg_state.b
-    libcommunity.vector_map(state.b.a, bm.a)
+    if __test__:
+        assert state._BlockState__check_clabel(), "clabel already invalidated!"
+        assert curr_B == (state.wr.a > 0).sum()
+        curr_B = (state.wr.a > 0).sum()
+        assert state.B == curr_B
+        assert state.B == B
 
-    state = BlockState(state.g, b=state.b, B=B, clabel=state.clabel,
-                       vweight=state.vweight, eweight=state.eweight,
-                       deg_corr=state.deg_corr, max_BE=state.max_BE)
     return state
 
 
 class MinimizeState(object):
     r"""This object stores information regarding the current entropy minimization
     state, so that the algorithms can resume previously started runs.
-    This object can be saved to disk via the  :mod:`pickle` interface."""
+    This object can be saved to disk via the :mod:`pickle` interface."""
 
     def __init__(self):
         self.b_cache = {}
         self.checkpoint_state = defaultdict(dict)
+        self.init = True
 
     def clear(self):
+        r"""Clear state."""
         self.b_cache.clear()
         self.checkpoint_state.clear()
+
+def unilevel_minimize(state, nsweeps=10, adaptive_sweeps=True, epsilon=0,
+                      anneal=(1., 1.), greedy=True, c=0., dl=False, dense=False,
+                      multigraph=True, sequential=True, parallel=False,
+                      verbose=False, **kwargs):
+    kwargs = kwargs.copy()
+    kwargs.update(dict(c=c, dl=dl, dense=dense, multigraph=multigraph,
+                       sequential=sequential, parallel=parallel))
+
+    t_dS, t_nmoves = 0, 0
+
+    S = state.entropy()
+
+    if not adaptive_sweeps:
+        ntotal = nsweeps if greedy else 2 * nsweeps
+        if verbose:
+            print("Performing %d sweeps for B=%d..." % (ntotal, state.B))
+
+        for i in range(ntotal):
+            if i < niter:
+                continue
+            if i < nsweeps and not greedy:
+                beta = anneal[0]
+            else:
+                beta = float("inf")
+
+            delta, nmoves = mcmc_sweep(state, beta=beta, **kwargs)
+
+            S += delta
+            t_dS += delta
+            t_nmoves += nmoves
+            niter += 1
+    else:
+        # adaptive mode
+        min_dl = S
+        max_dl = S
+        count = 0
+        bump = False
+        beta =  anneal[0]
+        last_min = min_dl
+        greedy_step = greedy
+        total_nmoves = 0
+
+        if verbose and not greedy:
+            print("Performing sweeps for beta = %g, B=%d (N=%d)..." % \
+                   (beta, state.B, state.g.num_vertices()))
+
+        eps = 1e-8
+        niter = 0
+        while True:
+            if greedy_step:
+                break
+            if count > nsweeps:
+                if not bump:
+                    min_dl = max_dl = S
+                    bump = True
+                    count = 0
+                else:
+                    if anneal[1] <= 1 or min_dl == last_min:
+                        break
+                    else:
+                        beta *= anneal[1]
+                        count = 0
+                        last_min = min_dl
+                        if verbose:
+                            print("Performing sweeps for beta = %g, B=%d (N=%d)..." % \
+                                   (beta, state.B, state.g.num_vertices()))
+
+            delta, nmoves = mcmc_sweep(state, beta=beta, **kwargs)
+
+            if state.overlap and beta == float("inf"):
+                ds, nm = mcmc_sweep(state, beta=beta, node_coherent=True, **kwargs)
+                delta += ds
+                nmoves += nm
+
+            S += delta
+            niter += 1
+            total_nmoves += nmoves
+
+            t_dS += delta
+            t_nmoves += nmoves
+
+            if S > max_dl + eps:
+                max_dl = S
+                count = 0
+            elif S < min_dl - eps:
+                min_dl = S
+                count = 0
+            else:
+                count += 1
+
+        if verbose:
+            if not greedy_step:
+                print("... performed %d sweeps with %d vertex moves" % (niter, total_nmoves))
+            print("Performing sweeps for beta = ∞, B=%d (N=%d)..." % \
+                  (state.B, state.g.num_vertices()))
+
+        if not greedy_step:
+            min_dl = S
+            count = 0
+
+        niter = 0
+        total_nmoves = 0
+        while count <= nsweeps:
+            delta, nmoves = mcmc_sweep(state, beta=float("inf"), **kwargs)
+
+            if state.overlap:
+                ds, nm = mcmc_sweep(state, beta=float("inf"), node_coherent=True, **kwargs)
+                delta += ds
+                nmoves += nm
+
+            S += delta
+            niter += 1
+            total_nmoves += nmoves
+
+            t_dS += delta
+            t_nmoves += nmoves
+
+            if abs(delta) > eps and nmoves / state.g.num_vertices() > epsilon:
+                min_dl = S
+                count = 0
+            else:
+                count += 1
+
+        if verbose:
+            print("... performed %d sweeps with %d vertex moves" % (niter, total_nmoves))
+
+        bi = state.b
+
+    return t_dS, t_nmoves
 
 
 def multilevel_minimize(state, B, nsweeps=10, adaptive_sweeps=True, epsilon=0,
                         anneal=(1., 1.), r=2., nmerge_sweeps=10, greedy=True,
-                        c=0., dense=False, multigraph=False, sequential=True,
-                        checkpoint=None, minimize_state=None, verbose=False):
+                        c=0., dl=False, dense=False, multigraph=True,
+                        sequential=True, parallel=False, checkpoint=None,
+                        minimize_state=None, verbose=False, **kwargs):
     r"""Performs an agglomerative heuristic, which progressively merges blocks together (while allowing individual node moves) to achieve a good partition in ``B`` blocks.
 
     Parameters
     ----------
-    state : :class:`~graph_tool.community.BlockState`
+    state : :class:`~graph_tool.community.BlockState` or :class:`~graph_tool.community.OverlapBlockState`
         The block state.
     B : ``int``
         The desired number of blocks.
@@ -1049,6 +1353,9 @@ def multilevel_minimize(state, B, nsweeps=10, adaptive_sweeps=True, epsilon=0,
         instead of more likely moves based on the inferred block partition.
         For ``c == 0``, no fully random moves are attempted, and for ``c == inf``
         they are always attempted.
+    dl : ``bool`` (optional, default: ``False``)
+        If ``True``, the change in the whole description length will be
+        considered after each vertex move, not only the entropy.
     dense : ``bool`` (optional, default: ``False``)
         If ``True``, the "dense" variant of the entropy will be computed.
     multigraph : ``bool`` (optional, default: ``False``)
@@ -1059,6 +1366,9 @@ def multilevel_minimize(state, B, nsweeps=10, adaptive_sweeps=True, epsilon=0,
         random order. Otherwise a total of `N` moves attempts are made, where
         `N` is the number of vertices, where each vertex can be selected with
         equal probability.
+    parallel : ``bool`` (optional, default: ``False``)
+        If ``True``, the updates are performed in parallel (multiple
+        threads).
     vertices: ``list of ints`` (optional, default: ``None``)
         A list of vertices which will be attempted to be moved. If ``None``, all
         vertices will be attempted.
@@ -1142,241 +1452,158 @@ def multilevel_minimize(state, B, nsweeps=10, adaptive_sweeps=True, epsilon=0,
        :doi:`10.1103/PhysRevE.89.012804`, :arxiv:`1310.4378`.
     """
 
+    nonoverlap_compare = kwargs.get("nonoverlap_compare", False)
+
     if minimize_state is None:
         minimize_state = MinimizeState()
     b_cache = minimize_state.b_cache
     checkpoint_state = minimize_state.checkpoint_state
 
-    # some trivial boundary conditions
+    nkwargs = dict(nsweeps=nsweeps, epsilon=epsilon, c=c,
+                   dl=dl, dense=dense, multigraph=multigraph,
+                   nmerge_sweeps=nmerge_sweeps,
+                   sequential=sequential, parallel=parallel)
+    kwargs = copy.copy(kwargs)
+    kwargs.update(nkwargs)
+
+    orig_state = state
+
+    if __test__:
+        assert state._BlockState__check_clabel(), "orig clabel already invalidated!"
+
+    # some simple boundary conditions
     if B == 1:
+        if state.clabel.fa.max() > 0:
+            raise ValueError("Cannot shrink to B = 1 without invalidating constraints")
         bi = state.g.new_vertex_property("int")
-        state = BlockState(state.g, vweight=state.vweight, eweight=state.eweight,
-                           b=bi, clabel=state.clabel, deg_corr=state.deg_corr,
-                           max_BE=state.max_BE)
+        state = state.copy(b=bi)
         return state
     if B == state.g.num_vertices():
-        bi = state.g.new_vertex_property("int")
-        bi.fa = range(state.g.num_vertices())
-        state = BlockState(state.g, vweight=state.vweight, eweight=state.eweight,
-                           B=state.g.num_vertices(), b=bi,
-                           clabel=state.clabel, deg_corr=state.deg_corr,
-                           max_BE=state.max_BE)
+        bi = state.g.vertex_index.copy("int")
+        state = state.copy(b=bi)
         return state
 
     Bi = state.B
     while True:
+        # keep reducing B by a factor of "r", until desired size is reached
         Bi = max(int(round(Bi / r)), B)
         if Bi == state.B and Bi > B:
             Bi -= 1
 
+        # check cache for previous results
         if b_cache is not None and Bi in b_cache:
-            bi = state.g.new_vertex_property("int")
-            bi.fa = b_cache[Bi][1]
-            state = BlockState(state.g, B=Bi, b=bi,
-                               vweight=state.vweight, eweight=state.eweight,
-                               clabel=state.clabel, deg_corr=state.deg_corr,
-                               max_BE=state.max_BE)
+            if __test__:
+                assert (state.clabel.a == b_cache[Bi][1].clabel.a).all(), "wrong clabel in cache"
+                assert state._BlockState__check_clabel(), "clabel already invalidated before cache"
+                assert b_cache[Bi][1]._BlockState__check_clabel(), "clabel already invalidated after cache"
+            state = b_cache[Bi][1].copy()
 
+        if __test__:
+            assert state._BlockState__check_clabel(), "clabel already invalidated!"
+
+        # if necessary, shrink state
         if Bi < state.B:
             if verbose:
                 print("Shrinking:", state.B, "->", Bi)
-            state = greedy_shrink(state, B=Bi, nsweeps=nsweeps, epsilon=epsilon, c=c,
-                                  dense=dense, multigraph=multigraph,
-                                  nmerge_sweeps=nmerge_sweeps, sequential=sequential,
-                                  verbose=verbose)
 
-        if "S" in checkpoint_state[Bi]:
-            S = checkpoint_state[Bi]["S"]
-            niter = checkpoint_state[Bi]["niter"]
-        else:
-            S = state.entropy(dl=True)
-            checkpoint_state[Bi]["S"] = S
-            niter = 0
-            checkpoint_state[Bi]["niter"] = niter
+            state = greedy_shrink(state, B=Bi, verbose=verbose, **kwargs)
 
-        if b_cache is not None and Bi not in b_cache:
-            b_cache[Bi] = [float("inf"), array(state.b.fa), None]
+            if __test__:
+                assert state._BlockState__check_clabel(), "clabel invalidated after shrink"
 
-        if not adaptive_sweeps:
-            ntotal = nsweeps if greedy else 2 * nsweeps
+        dS, nmoves = unilevel_minimize(state, checkpoint=checkpoint, verbose=verbose, **kwargs)
+
+        if __test__:
+            assert state._BlockState__check_clabel(), "clabel invalidated after unilevel minimize!"
+
+        if state.overlap and state.deg_corr and nonoverlap_compare:
             if verbose:
-                print("Performing %d sweeps for B=%d..." % (ntotal, Bi))
+                print("Attempting nonoverlapping minimize...")
+            nstate = state.copy(b=state.get_nonoverlap_blocks(), overlap=False)
+            assert nstate.B <= nstate.N
+            nstate = multilevel_minimize(nstate, B=Bi, verbose=verbose, **kwargs)
+            nstate = nstate.copy(overlap=True, clabel=state.clabel.a)
+            unilevel_minimize(nstate, **kwargs)
 
-            for i in range(ntotal):
-                if i < niter:
-                    continue
-                if i < nsweeps and not greedy:
-                    beta = anneal[0]
-                else:
-                    beta = float("inf")
-                delta, nmoves = mcmc_sweep(state, beta=beta, c=c,
-                                           dense=dense, multigraph=multigraph,
-                                           sequential=sequential)
-                S += delta
-                niter += 1
-                checkpoint_state[Bi]["S"] = S
-                checkpoint_state[Bi]["niter"] = niter
-                if b_cache is not None:
-                    b_cache[Bi][1] = array(state.b.fa)
-                if checkpoint is not None:
-                    checkpoint(state, S, delta, nmoves, minimize_state)
-        else:
-            # adaptive mode
-            min_dl = checkpoint_state[Bi].get("min_dl", S)
-            max_dl = checkpoint_state[Bi].get("max_dl", S)
-            count = checkpoint_state[Bi].get("count", 0)
-            bump = checkpoint_state[Bi].get("bump", False)
-            beta =  checkpoint_state[Bi].get("beta", anneal[0])
-            last_min = checkpoint_state[Bi].get("last_min", min_dl)
-            greedy_step = checkpoint_state[Bi].get("greedy_step", greedy)
-            total_nmoves = checkpoint_state[Bi].get("total_nmoves", 0)
+            if nstate.B > Bi:
+                nstate = multilevel_minimize(nstate, B=Bi, verbose=verbose,
+                                             nonoverlap_compare=False, **kwargs)
 
-            if verbose and not greedy:
-                print("Performing sweeps for beta = %g, B=%d (N=%d)..." % \
-                       (beta, Bi, state.g.num_vertices()))
+            if nstate.entropy(dense=dense, multigraph=multigraph) < state.entropy(dense=dense, multigraph=multigraph):
+                if verbose:
+                    print("Nonoverlapping minimize improved.")
+                state = nstate
 
-            eps = 1e-8
-            niter = 0
-            while True:
-                if greedy_step:
-                    break
-                if count > nsweeps:
-                    if not bump:
-                        min_dl = max_dl = S
-                        bump = True
-                        count = 0
-                    else:
-                        if anneal[1] <= 1 or min_dl == last_min:
-                            break
-                        else:
-                            beta *= anneal[1]
-                            count = 0
-                            last_min = min_dl
-                            if verbose:
-                                print("Performing sweeps for beta = %g, B=%d (N=%d)..." % \
-                                       (beta, Bi, state.g.num_vertices()))
+                if __test__:
+                    assert state._BlockState__check_clabel(), "clabel invalidated after nonoverlap compare!"
 
-                delta, nmoves = mcmc_sweep(state, beta=beta, c=c,
-                                           dense=dense, multigraph=multigraph,
-                                           sequential=sequential)
-                S += delta
-                niter += 1
-                total_nmoves += nmoves
-
-                if S > max_dl + eps:
-                    max_dl = S
-                    count = 0
-                elif S < min_dl - eps:
-                    min_dl = S
-                    count = 0
-                else:
-                    count += 1
-
-                checkpoint_state[B]["S"] = S
-                checkpoint_state[B]["niter"] = niter
-                checkpoint_state[B]["min_dl"] = min_dl
-                checkpoint_state[B]["max_dl"] = max_dl
-                checkpoint_state[B]["count"] = count
-                checkpoint_state[B]["bump"] = bump
-                checkpoint_state[B]["total_nmoves"] = total_nmoves
-
-                if b_cache is not None:
-                    b_cache[Bi][0] = float("inf")
-                    b_cache[Bi][1] = array(state.b.fa)
-                if checkpoint is not None:
-                    checkpoint(state, S, delta, nmoves, minimize_state)
-
-            if verbose:
-                if not greedy_step:
-                    print("... performed %d sweeps with %d vertex moves" % (niter, total_nmoves))
-                print("Performing sweeps for beta = ∞, B=%d (N=%d)..." % \
-                      (Bi, state.g.num_vertices()))
-
-            if not greedy_step:
-                checkpoint_state[Bi]["greedy_step"] = True
-                min_dl = S
-                count = 0
-
-            niter = 0
-            total_nmoves = 0
-            while count <= nsweeps:
-                delta, nmoves = mcmc_sweep(state, beta=float("inf"), c=c,
-                                           dense=dense, multigraph=multigraph,
-                                           sequential=sequential)
-                S += delta
-                niter += 1
-                total_nmoves += nmoves
-
-                # if verbose:
-                #     print("Moved:", delta, nmoves,
-                #           nmoves / state.g.num_vertices(),
-                #           epsilon, count)
-
-                #if nmoves > epsilon * state.g.num_vertices():
-                if abs(delta) > eps and nmoves / state.g.num_vertices() > epsilon:
-                    min_dl = S
-                    count = 0
-                else:
-                    count += 1
-                checkpoint_state[Bi]["S"] = S
-                checkpoint_state[Bi]["min_dl"] = min_dl
-                checkpoint_state[Bi]["count"] = count
-                checkpoint_state[B]["total_nmoves"] = total_nmoves
-                if b_cache is not None:
-                    b_cache[Bi][1] = array(state.b.fa)
-                if checkpoint is not None:
-                    checkpoint(state, S, delta, nmoves, minimize_state)
-
-            if verbose:
-                print("... performed %d sweeps with %d vertex moves" % (niter, total_nmoves))
-
-            bi = state.b
-            if Bi == B:
-                break
+        if Bi == B:
+            break
 
     return state
 
-def get_state_dl(state, dense, nested_dl, clabel=None):
+def get_b_dl(state, dense, multigraph, nested_dl, complete=False,
+             nested_overlap=False, dl_ent=False):
     if not nested_dl:
-        dl = state.entropy(dense=dense, multigraph=dense, dl=True)
+        dl = state.entropy(dense=dense, multigraph=multigraph, dl=True,
+                           complete=complete, dl_ent=dl_ent)
     else:
-        dl = state.entropy(dense=dense, multigraph=dense, dl=False) + \
-             partition_entropy(B=state.B, N=state.N, nr=state.wr.a) / state.E
-        if clabel is None:
-            bclabel = state.bclabel
-        else:
-            bclabel = state.bg.new_vertex_property("int")
-            libcommunity.vector_rmap(state.b.a, bclabel.a)
-            libcommunity.vector_map(bclabel.a, clabel.a)
+        dl = state.entropy(dense=dense, multigraph=multigraph, dl=True,
+                           partition_dl=True, complete=complete,
+                           dl_ent=dl_ent)
 
-        bstate = BlockState(state.bg, b=bclabel, eweight=state.mrs,
-                            deg_corr=False)
-        dl += bstate.entropy(dl=False, dense=True, multigraph=True) + \
-              partition_entropy(B=bstate.B, N=bstate.N, nr=bstate.wr.a) / state.E
+        bclabel = state.get_bclabel()
+
+        bstate = state.get_block_state(b=bclabel, overlap=nested_overlap)[0]
+
+        dl += bstate.entropy(dl=True, partition_dl=True, dense=True,
+                             multigraph=True, dl_ent=dl_ent)
     return dl
 
 
-def get_b_dl(g, vweight, eweight, B, nsweeps, adaptive_sweeps, c,
-             sequential, shrink, r, anneal, greedy, epsilon, nmerge_sweeps, clabel,
-             deg_corr, dense, sparse_heuristic, checkpoint, minimize_state,
-             max_BE, nested_dl,  verbose):
+def get_state_dl(B, minimize_state, checkpoint, sparse_heuristic, **kwargs):
     bs = minimize_state.b_cache
     checkpoint_state = minimize_state.checkpoint_state
     previous = None
+    verbose = kwargs.get("verbose", False)
+
     if B in bs and checkpoint_state[B].get("done", False):
         # A previous finished result is available. Use that and keep going.
         if verbose:
             print("(using previous finished result for B=%d)" % B)
+        if __test__:
+            dl = get_b_dl(bs[B][1],
+                          kwargs.get("dense", False),
+                          kwargs.get("multigraph", False),
+                          kwargs.get("nested_dl", False),
+                          kwargs.get("complete", False),
+                          kwargs.get("nested_overlap", False),
+                          kwargs.get("dl_ent", False))
+            assert abs(dl - bs[B][0]) < 1e-8, "inconsistent DL values! (%g, %g, overlap: %s)" % (dl, bs[B][0], str(bs[B][1].overlap))
         return bs[B][0]
     elif B in bs:
         # A previous unfinished result is available. Use that as the starting point.
         if verbose:
             print("(starting from previous result for B=%d)" % B)
-        b = g.new_vertex_property("int")
-        b.fa = bs[B][1]
-        state = BlockState(g, b=b, B=B, vweight=vweight, eweight=eweight,
-                           clabel=clabel, deg_corr=deg_corr, max_BE=max_BE)
         previous = bs[B]
+        state = previous[1].copy()
+
+        if __test__:
+            assert state._BlockState__check_clabel(), "previous clabel already invalidated!"
+            dl = get_b_dl(state, kwargs.get("dense", False),
+                          kwargs.get("multigraph", False),
+                          kwargs.get("nested_dl", False),
+                          kwargs.get("complete", False),
+                          kwargs.get("nested_overlap", False),
+                          kwargs.get("dl_ent", False))
+            assert abs(dl - bs[B][0]) < 1e-8, "inconsistent DL values! (%g, %g)" % (dl, bs[B][0])
+            dl = get_b_dl(previous[1], kwargs.get("dense", False),
+                          kwargs.get("multigraph", False),
+                          kwargs.get("nested_dl", False),
+                          kwargs.get("complete", False),
+                          kwargs.get("nested_overlap", False),
+                          kwargs.get("dl_ent", False))
+            assert abs(dl - previous[0]) < 1e-8, "inconsistent DL values! (%g, %g) (!?)" % (dl, previous[0])
     else:
         # No previous result is available.
         bs_keys = [k for k in bs.keys() if type(k) != str]
@@ -1384,58 +1611,67 @@ def get_b_dl(g, vweight, eweight, B, nsweeps, adaptive_sweeps, c,
         for Bi in bs_keys:
             if Bi > B and Bi < B_sup:
                 B_sup = Bi
-        if B_sup == B or not shrink:
+        if B_sup == B or not kwargs["shrink"]:
             # Start from scratch.
-            bi = g.new_vertex_property("int")
-            bi.fa = range(g.num_vertices())
-            state = BlockState(g, B=g.num_vertices(), b=bi,
-                               vweight=vweight,
-                               eweight=eweight, clabel=clabel,
-                               deg_corr=deg_corr, max_BE=max_BE)
+            raise RuntimeError("should not happen!")
         else:
             # Start from result with B_sup > B, and shrink it.
-            if verbose:
+            if kwargs.get("verbose", False):
                 print("(shrinking from B=%d to B=%d)" % (B_sup, B))
-            b = g.new_vertex_property("int")
-            b.fa = bs[B_sup][1]
-
-            if B > 1:
-                state = BlockState(g, B=B_sup, b=b, vweight=vweight, eweight=eweight,
-                                   clabel=clabel, deg_corr=deg_corr,
-                                   max_BE=max_BE)
-            else:
-                bi = g.new_vertex_property("int")
-                bi.fa = range(g.num_vertices())
-                state = BlockState(g, B=g.num_vertices(), b=bi,
-                                   vweight=vweight,
-                                   eweight=eweight, clabel=clabel,
-                                   deg_corr=deg_corr, max_BE=max_BE)
+            state = bs[B_sup][1].copy()
+        if __test__:
+            assert state._BlockState__check_clabel(), "larger B clabel already invalidated!"
 
     # perform the actual minimization
-    state = multilevel_minimize(state, B, nsweeps=nsweeps,
-                                adaptive_sweeps=adaptive_sweeps,
-                                epsilon=epsilon, r=r, greedy=greedy,
-                                nmerge_sweeps=nmerge_sweeps, anneal=anneal,
-                                c=c, dense=dense and not sparse_heuristic,
-                                multigraph=dense,
-                                sequential=sequential,
-                                minimize_state=minimize_state,
-                                checkpoint=checkpoint,
-                                verbose=verbose)
-    dl = get_state_dl(state, dense, nested_dl)
+    args = kwargs.copy()
+    args["minimize_state"] = minimize_state
+    if sparse_heuristic:
+        args["dense"] = False
+        args["multigraph"] = False
+    #args["verbose"] = False
+
+    state = multilevel_minimize(state, B, checkpoint=checkpoint, **args)
+
+    if __test__:
+        assert state._BlockState__check_clabel(), "clabel invalidated after minimize"
+        assert state.B == B
+
+    dl = get_b_dl(state, kwargs.get("dense", False),
+                  kwargs.get("multigraph", False),
+                  kwargs.get("nested_dl", False),
+                  kwargs.get("complete", False),
+                  kwargs.get("nested_overlap", False),
+                  kwargs.get("dl_ent", False))
+
+
+    if __test__:
+        assert state._BlockState__check_clabel(), "clabel invalidated after minimize (?!)"
 
     if previous is None or dl < previous[0]:
         # the current result improved the previous one
-        bs[B] = [dl, array(state.b.fa)]
-        if verbose:
+        bs[B] = [dl, state]
+        if kwargs.get("verbose", False):
             print("(using new result for B=%d with L=%g)" % (B, dl))
+
     else:
         # the previous result is better than the current one
-        if verbose:
+        if kwargs.get("verbose", False):
             print("(kept old result for B=%d with L=%g [vs L=%g])" % (B, previous[0], dl))
         dl = previous[0]
+
+        if __test__:
+            tdl = get_b_dl(previous[1], kwargs.get("dense", False),
+                           kwargs.get("multigraph", False),
+                           kwargs.get("nested_dl", False),
+                           kwargs.get("complete", False),
+                           kwargs.get("nested_overlap", False),
+                           kwargs.get("dl_ent", False))
+            assert abs(dl - tdl) < 1e-8, "inconsistent DL values! (%g, %g)" % (dl, tdl)
+
+
     checkpoint_state[B]["done"] = True
-    assert(not isinf(dl))
+    if __test__:
+        assert not isinf(dl)
     return dl
 
 def fibo(n):
@@ -1454,14 +1690,17 @@ def get_mid(a, b):
 def is_fibo(x):
     return fibo(fibo_n_floor(x)) == x
 
-def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=False,
-                           sparse_heuristic=False, c=0, nsweeps=100,
-                           adaptive_sweeps=True, epsilon=0., anneal=(1., 1.),
-                           greedy_cooling=True, sequential=True, r=2,
-                           nmerge_sweeps=10, max_B=None, min_B=1, mid_B=None,
-                           clabel=None, checkpoint=None, minimize_state=None,
-                           exhaustive=False, max_BE=None, nested_dl=False,
-                           verbose=False):
+
+def minimize_blockmodel_dl(g, deg_corr=True, overlap=False,
+                           nonoverlap_init=False, dl=True, multigraph=True,
+                           dense=False, sparse_heuristic=False, eweight=None,
+                           vweight=None, clabel=None, c=0, nsweeps=100,
+                           adaptive_sweeps=True, epsilon=1e-3, anneal=(1., 1.),
+                           greedy_cooling=True, sequential=True, parallel=False,
+                           r=2, nmerge_sweeps=10, max_B=None, min_B=None,
+                           mid_B=None, checkpoint=None, minimize_state=None,
+                           exhaustive=False, init_states=None, max_BE=None,
+                           verbose=False, **kwargs):
     r"""Find the block partition of an unspecified size which minimizes the description
     length of the network, according to the stochastic blockmodel ensemble which
     best describes it.
@@ -1469,20 +1708,33 @@ def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=F
     Parameters
     ----------
     g : :class:`~graph_tool.Graph`
-        Graph being used.
-    eweight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
-        Edge weights (i.e. multiplicity).
-    vweight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
-        Vertex weights (i.e. multiplicity).
+        Graph to be modelled.
     deg_corr : ``bool`` (optional, default: ``True``)
         If ``True``, the degree-corrected version of the blockmodel ensemble will
         be assumed, otherwise the traditional variant will be used.
+    overlap : ``bool`` (optional, default: ``False``)
+        If ``True``, the mixed-membership version of the blockmodel will be used.
+    nonoverlap_init : ``bool`` (optional, default: ``False``)
+        If ``True``, and `´overlap==True``, the minimization starts by first
+        fitting the non-overlapping model, and using that as a starting state.
+    dl : ``bool`` (optional, default: ``True``)
+        If ``True``, the change in the whole description length will be
+        considered after each vertex move, not only the entropy.
+    multigraph : ``bool`` (optional, default: ``False``)
+        If ``True``, the multigraph entropy will be used.
     dense : ``bool`` (optional, default: ``False``)
         If ``True``, the "dense" variant of the entropy will be computed.
     sparse_heuristic : ``bool`` (optional, default: ``False``)
         If ``True``, the sparse entropy will be used to find the best partition,
         but the dense entropy will be used to compare different partitions. This
         has an effect only if ``dense == True``.
+    eweight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        Edge multiplicities (for multigraphs or block graphs).
+    vweight : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        Vertex multiplicities (for block graphs).
+    clabel : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        Constraint labels on the vertices. If supplied, vertices with different
+        label values will not be clustered in the same group.
     c : ``float`` (optional, default: ``1.0``)
         This parameter specifies how often fully random moves are attempted,
         instead of more likely moves based on the inferred block partition.
@@ -1495,7 +1747,7 @@ def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=F
         If ``True``, the number of sweeps necessary for the local minimum will
         be estimated to be enough so that no more than ``epsilon * N`` nodes
         changes their states in the last ``nsweeps`` sweeps.
-    epsilon : ``float`` (optional, default: ``0``)
+    epsilon : ``float`` (optional, default: ``1e-3``)
         Converge criterion for ``adaptive_sweeps``.
     anneal : pair of ``floats`` (optional, default: ``(1., 1.)``)
         The first value specifies the starting value for  ``beta`` of the MCMC
@@ -1511,6 +1763,9 @@ def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=F
         random order. Otherwise a total of `N` moves attempts are made, where
         `N` is the number of vertices, where each vertex can be selected with
         equal probability.
+    parallel : ``bool`` (optional, default: ``False``)
+        If ``True``, the updates are performed in parallel (multiple
+        threads).
     r : ``float`` (optional, default: ``2.``)
         Agglomeration ratio for the merging steps. Each merge step will attempt
         to find the best partition into :math:`B_{i-1} / r` blocks, where
@@ -1526,9 +1781,6 @@ def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=F
     mid_B : ``int`` (optional, default: ``None``)
         Middle of the range which brackets the minimum. If not supplied, will be
         automatically determined.
-    clabel : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
-        Constraint labels on the vertices, such that vertices with different
-        labels cannot belong to the same block.
     checkpoint : function (optional, default: ``None``)
         If provided, this function will be called after each call to
         :func:`mcmc_sweep`. This can be used to store the current state, so it
@@ -1560,6 +1812,9 @@ def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=F
     exhaustive : ``bool`` (optional, default: ``False``)
         If ``True``, the best value of ``B`` will be found by testing all possible
         values, instead of performing a bisection search.
+    init_states : ``list`` of :class:`~graph_tool.community.BlockState` or :class:`~graph_tool.community.OverlapBlockState` (optional, default: ``None``)
+        If provided, this list of block states will be used when performing the
+        minimization.
     max_BE : ``int`` (optional, default: ``1000``)
         If the number of blocks exceeds this number, a sparse representation of
         the block graph is used, which is slightly less efficient, but uses less
@@ -1569,10 +1824,8 @@ def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=F
 
     Returns
     -------
-    b : :class:`~graph_tool.PropertyMap`
-       Vertex property map with the best block partition.
-    min_dl : ``float``
-       Minimum value of the description length (in `nats <http://en.wikipedia.org/wiki/Nat_%28information%29>`_ per edge).
+    state : :class:`~graph_tool.community.BlockState` or :class:`~graph_tool.community.OverlapBlockState`
+       The block state containing the best model fit.
 
     Notes
     -----
@@ -1585,16 +1838,17 @@ def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=F
        \Sigma_{t/c} = \mathcal{S}_{t/c} + \mathcal{L}_{t/c},
 
     where :math:`\mathcal{S}_{t/c}` is the blockmodel entropy (as described in
-    the docstring of :func:`mcmc_sweep` and :meth:`BlockState.entropy`) and
-    :math:`\mathcal{L}_{t/c}` is the information necessary to describe the model
-    (as described in the docstring of :func:`model_entropy` and
-    :meth:`BlockState.entropy`).
+    the docstring of :func:`mcmc_sweep`, :meth:`BlockState.entropy`
+    :meth:`OverlapBlockState.entropy`) and :math:`\mathcal{L}_{t/c}` is the
+    information necessary to describe the model (as described in the docstring
+    of :func:`model_entropy`, :meth:`BlockState.entropy` and
+    :meth:`OverlapBlockState.entropy`).
 
     The algorithm works by minimizing the entropy :math:`\mathcal{S}_{t/c}` for
     specific values of :math:`B` via :func:`mcmc_sweep` (with :math:`\beta = 1`
     and :math:`\beta\to\infty`), and minimizing :math:`\Sigma_{t/c}` via an
     one-dimensional Fibonacci search on :math:`B`. See
-    [peixoto-parsimonious-2013]_ for more details.
+    [peixoto-parsimonious-2013]_ and [peixoto-efficient-2014]_ for more details.
 
     This algorithm has a complexity of :math:`O(\tau N\ln^2 B_{\text{max}})`,
     where :math:`N` is the number of nodes in the network, :math:`\tau` is the
@@ -1614,7 +1868,8 @@ def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=F
     .. doctest:: mdl
 
        >>> g = gt.collection.data["polbooks"]
-       >>> b, mdl = gt.minimize_blockmodel_dl(g)
+       >>> state = gt.minimize_blockmodel_dl(g)
+       >>> b = state.b
        >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=b, vertex_shape=b, output="polbooks_blocks_mdl.pdf")
        <...>
 
@@ -1627,6 +1882,38 @@ def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=F
 
        Block partition of a political books network, which minimizes the description
        length of the network according to the degree-corrected stochastic blockmodel.
+
+
+    .. testsetup:: mdl_overlap
+
+       gt.seed_rng(42)
+       np.random.seed(42)
+
+    .. doctest:: mdl_overlap
+
+       >>> g = gt.collection.data["polbooks"]
+       >>> state = gt.minimize_blockmodel_dl(g, overlap=True)
+       >>> bv, *rest, bc = state.get_overlap_blocks()
+       >>> eg = gt.get_block_edge_gradient(g, state.get_edge_blocks())
+       >>> gt.graph_draw(g, g.vp["pos"], vertex_pie_fractions=bc,
+       ...               vertex_pie_colors=bv, vertex_shape="pie",
+       ...               edge_gradient=eg,
+       ...               output="polbooks_overlap_blocks_mdl.pdf")
+       <...>
+
+    .. testcleanup:: mdl_overlap
+
+       gt.graph_draw(g, g.vp["pos"], vertex_pie_fractions=bc,
+                     vertex_pie_colors=bv, vertex_shape="pie",
+                     edge_gradient=eg,
+                     output="polbooks_overlap_blocks_mdl.png")
+
+    .. figure:: polbooks_overlap_blocks_mdl.*
+       :align: center
+
+       Overlapping partition of a political books network, which minimizes the
+       description length of the network according to the overlapping
+       degree-corrected stochastic blockmodel.
 
     References
     ----------
@@ -1650,6 +1937,61 @@ def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=F
        :doi:`10.1103/PhysRevE.89.012804`, :arxiv:`1310.4378`.
     """
 
+    nested_dl = kwargs.get("nested_dl", False)
+    nested_overlap = kwargs.get("nested_overlap", False)
+    nonoverlap_compare = kwargs.get("nonoverlap_compare", False)
+    dl_ent = kwargs.get("dl_ent", False)
+
+    if minimize_state is None:
+        minimize_state = MinimizeState()
+
+    if overlap and nonoverlap_init and minimize_state.init:
+        if verbose:
+            print("Non-overlapping initialization...")
+        state = minimize_blockmodel_dl(g=g, eweight=eweight, vweight=vweight,
+                                       deg_corr=deg_corr, dl=dl, dense=dense,
+                                       multigraph=multigraph,
+                                       sparse_heuristic=sparse_heuristic, c=c,
+                                       nsweeps=nsweeps,
+                                       adaptive_sweeps=adaptive_sweeps,
+                                       epsilon=epsilon, anneal=anneal,
+                                       greedy_cooling=greedy_cooling,
+                                       sequential=sequential, parallel=parallel,
+                                       r=r, nmerge_sweeps=nmerge_sweeps,
+                                       max_B=max_B, min_B=min_B, mid_B=mid_B,
+                                       clabel=None, checkpoint=checkpoint,
+                                       minimize_state=minimize_state,
+                                       exhaustive=exhaustive, max_BE=max_BE,
+                                       nested_dl=nested_dl, overlap=False,
+                                       init_states=None, dl_ent=dl_ent,
+                                       verbose=verbose)
+        state = state.copy(overlap=True, clabel=clabel)
+        unilevel_minimize(state, nsweeps=nsweeps, epsilon=epsilon, c=c, dl=dl,
+                          nmerge_sweeps=nmerge_sweeps, sequential=sequential)
+        max_B = state.B
+        init_states = [state]
+
+        minimize_state.clear()
+        minimize_state.init = False
+
+        if min_B is None:
+            min_B = state.clabel.a.max() + 1
+
+        if verbose:
+            print("Overlapping minimization starting from B=", max_B)
+
+    if min_B is None:
+        if clabel is None:
+            min_B = 1
+        elif isinstance(clabel, PropertyMap):
+            min_B = clabel.fa.max() + 1
+        else:
+            min_B = clabel.max() + 1
+    elif clabel is not None:
+        C = clabel.fa.max() + 1 if isinstance(clabel, PropertyMap) else clabel.max() + 1
+        if C > min_B:
+            raise ValueError("value of min_B=%d is not consistent with the enforced constraints of size %d" % (min_B, C))
+
     if max_B is None:
         if dense:
             max_B = max(g.num_vertices(), 1)
@@ -1657,57 +1999,94 @@ def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=F
             max_B = get_max_B(g.num_vertices(), g.num_edges(), g.is_directed())
         if verbose:
             print("max_B:", max_B)
-    if min_B is None:
-        min_B = 1
 
     if mid_B is None:
         mid_B = get_mid(min_B, max_B)
 
+    B_lims = (min_B, max_B)
+
     greedy = greedy_cooling
     shrink = True
-
-    if minimize_state is None:
-        minimize_state = MinimizeState()
 
     b_cache = minimize_state.b_cache
     checkpoint_state = minimize_state.checkpoint_state
 
+    kwargs = dict(nsweeps=nsweeps, adaptive_sweeps=adaptive_sweeps, c=c,
+                  sequential=sequential, parallel=parallel, shrink=shrink, r=r,
+                  anneal=anneal, greedy=greedy, epsilon=epsilon,
+                  nmerge_sweeps=nmerge_sweeps, deg_corr=deg_corr, dense=dense,
+                  multigraph=multigraph, dl=dl,
+                  sparse_heuristic=sparse_heuristic, checkpoint=checkpoint,
+                  minimize_state=minimize_state, nested_dl=nested_dl,
+                  nested_overlap=nested_overlap,
+                  nonoverlap_compare=nonoverlap_compare, dl_ent=dl_ent,
+                  verbose=verbose)
+
+    if init_states is not None:
+        for state in init_states:
+            dl = get_b_dl(state, kwargs.get("dense", False),
+                          kwargs.get("multigraph", False),
+                          kwargs.get("nested_dl", False),
+                          kwargs.get("complete", False),
+                          kwargs.get("nested_overlap", False),
+                          kwargs.get("dl_ent", False))
+            b_cache[state.B] = [dl, state]
+
+    B_init = True
+    for Bi, bstate in b_cache.items():
+        if Bi >= max_B:
+            B_init = False
+
+    if B_init:
+        if overlap:
+            state = OverlapBlockState(g, B=2 * g.num_edges(), deg_corr=deg_corr,
+                                      vweight=vweight, eweight=eweight,
+                                      clabel=clabel if not overlap else None, max_BE=max_BE)
+        else:
+            state = BlockState(g, B=g.num_vertices(), deg_corr=deg_corr,
+                               vweight=vweight, eweight=eweight,
+                               clabel=clabel if not overlap else None, max_BE=max_BE)
+
+            if __test__:
+                assert state._BlockState__check_clabel(), "clabel invalid at copying!"
+
+        if __test__:
+            assert state._BlockState__check_clabel(), "clabel invalid at creation!"
+
+        dl = get_b_dl(state, kwargs.get("dense", False),
+                      kwargs.get("multigraph", False),
+                      kwargs.get("nested_dl", False),
+                      kwargs.get("complete", False),
+                      kwargs.get("nested_overlap", False),
+                      kwargs.get("dl_ent", False))
+        b_cache[state.B] = [dl, state]
+
     if exhaustive:
         if max_B not in b_cache:
-            bi = g.new_vertex_property("int")
-            bi.fa = range(g.num_vertices())
-            state = BlockState(g, B=g.num_vertices(), b=bi,
-                               vweight=vweight, eweight=eweight,
-                               clabel=clabel, deg_corr=deg_corr,
-                               max_BE=max_BE)
+            Bi = max(b_cache.keys())
+            state = b_cache[Bi][1]
+            state = multilevel_minimize(state, B=max_B, **kwargs)
 
         for B in reversed(range(min_B, max_B + 1)):
             if B in b_cache:
-                bi = g.new_vertex_property("int")
-                bi.fa = b_cache[B][1]
-                state = BlockState(g, b=bi, vweight=vweight, eweight=eweight,
-                                   clabel=clabel, deg_corr=deg_corr,
-                                   max_BE=max_BE)
-
+                state = b_cache[B][1]
                 if checkpoint_state[B].get("done", False):
                     continue
 
-            state = multilevel_minimize(state, B, nsweeps=nsweeps,
-                                        adaptive_sweeps=adaptive_sweeps,
-                                        r=r, greedy=greedy,
-                                        anneal=anneal, c=c,
-                                        dense=dense and not sparse_heuristic,
-                                        multigraph=dense,
-                                        sequential=sequential,
-                                        nmerge_sweeps=nmerge_sweeps,
-                                        epsilon=epsilon,
-                                        checkpoint=checkpoint,
-                                        minimize_state=checkpoint_state,
-                                        verbose=verbose)
+            args = kwargs.copy()
+            if sparse_heuristic:
+                args["dense"] = False
 
-            dl = get_state_dl(state, dense, nested_dl)
+            state = multilevel_minimize(state, B, **args)
 
-            b_cache[B] = [dl, array(state.b.fa)]
+            dl = get_b_dl(state, kwargs.get("dense", False),
+                          kwargs.get("multigraph", False),
+                          kwargs.get("nested_dl", False),
+                          kwargs.get("complete", False),
+                          kwargs.get("nested_overlap", False),
+                          kwargs.get("dl_ent", False))
+
+            b_cache[B] = [dl, state]
 
             if verbose:
                 print("Result for B=%d: L=%g" % (B, dl))
@@ -1720,33 +2099,40 @@ def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=F
                 best_B = Bi
         if verbose:
             print("Best result: B=%d, L=%g" % (best_B, min_dl))
-        b = g.new_vertex_property("int")
-        b.fa = b_cache[best_B][1]
 
-        return b, b_cache[best_B][0]
+        return b_cache[best_B][1]
 
 
-    args = dict(g=g, vweight=vweight, eweight=eweight, nsweeps=nsweeps,
-                adaptive_sweeps=adaptive_sweeps, c=c,
-                sequential=sequential, shrink=shrink, r=r, anneal=anneal,
-                greedy=greedy, epsilon=epsilon, nmerge_sweeps=nmerge_sweeps,
-                clabel=clabel, deg_corr=deg_corr, dense=dense,
-                sparse_heuristic=sparse_heuristic, checkpoint=checkpoint,
-                minimize_state=minimize_state, max_BE=max_BE,
-                nested_dl=nested_dl, verbose=verbose)
+    def cleanup_cache(b_cache, B_min, B_max):
+        best_B = None
+        min_dl = float("inf")
+        for Bi in b_cache.keys():
+            if b_cache[Bi][0] <= min_dl:
+                min_dl = b_cache[Bi][0]
+                best_B = Bi
 
+        del_Bs = []
+
+        for Bi in b_cache.keys():
+            if (Bi < B_min or Bi > B_max) and Bi != best_B:
+                del_Bs.append(Bi)
+
+        for Bi in del_Bs:
+            del b_cache[Bi]
 
     # Initial bracketing
     while True:
-        f_max = get_b_dl(B=max_B, **args)
-        f_mid = get_b_dl(B=mid_B, **args)
-        f_min = get_b_dl(B=min_B, **args)
+        f_max = get_state_dl(B=max_B, **kwargs)
+        f_mid = get_state_dl(B=mid_B, **kwargs)
+        f_min = get_state_dl(B=min_B, **kwargs)
 
         if verbose:
             print("Current bracket:", (min_B, mid_B, max_B), (f_min, f_mid, f_max))
 
         if checkpoint is not None:
              checkpoint(None, 0, 0, 0, minimize_state)
+
+        cleanup_cache(b_cache, min_B, max_B)
 
         if f_max > f_mid > f_min:
             max_B = mid_B
@@ -1764,28 +2150,28 @@ def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=F
         else:
             x = get_mid(min_B, mid_B)
 
-        f_x = get_b_dl(B=x, **args)
-        f_mid = get_b_dl(B=mid_B, **args)
+        f_x = get_state_dl(B=x, **kwargs)
+        f_mid = get_state_dl(B=mid_B, **kwargs)
 
         if verbose:
             print("Current bracket:",
-                  (min_B, mid_B, max_B), (get_b_dl(B=min_B, **args), f_mid,
-                                          get_b_dl(B=max_B, **args)))
+                  (min_B, mid_B, max_B), (get_state_dl(B=min_B, **kwargs), f_mid,
+                                          get_state_dl(B=max_B, **kwargs)))
             print("Bisect at", x, "with L=%g" % f_x)
 
         if max_B - mid_B <= 1:
             min_dl = float(inf)
             best_B = None
             for Bi in b_cache.keys():
+                if Bi < B_lims[0] or Bi > B_lims[1]:
+                    continue
                 if b_cache[Bi][0] <= min_dl:
                     min_dl = b_cache[Bi][0]
                     best_B = Bi
             if verbose:
                 print("Best result: B=%d, L=%g" % (best_B, min_dl))
-            b = g.new_vertex_property("int")
-            b.fa = b_cache[best_B][1]
 
-            return b, b_cache[best_B][0]
+            return b_cache[best_B][1]
 
         if checkpoint is not None:
             checkpoint(None, 0, 0, 0, minimize_state)
@@ -1802,6 +2188,9 @@ def minimize_blockmodel_dl(g, eweight=None, vweight=None, deg_corr=True, dense=F
                 max_B = x
             else:
                 min_B = x
+
+        cleanup_cache(b_cache, min_B, max_B)
+
 
 
 def collect_edge_marginals(state, p=None):
@@ -1847,7 +2236,7 @@ def collect_edge_marginals(state, p=None):
        ...     ds, nmoves = gt.mcmc_sweep(state)
        ...     pe = gt.collect_edge_marginals(state, pe)
        >>> gt.bethe_entropy(state, pe)[0]
-       17.443089842818125
+       17.609773262509986
     """
 
     if p is None:
@@ -1899,7 +2288,7 @@ def collect_vertex_marginals(state, p=None):
        ...     ds, nmoves = gt.mcmc_sweep(state)
        ...     pv = gt.collect_vertex_marginals(state, pv)
        >>> gt.mf_entropy(state, pv)
-       19.94955528942717
+       20.117550557730116
        >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_shape="pie", vertex_pie_fractions=pv, output="polbooks_blocks_soft_B4.pdf")
        <...>
 
@@ -2121,12 +2510,12 @@ def condensation_graph(g, prop, vweight=None, eweight=None, avprops=None,
                      output="polbooks_blocks_B5_cond.png")
 
     .. figure:: polbooks_blocks_B5.*
-       :align: left
+       :align: center
 
        Block partition of a political books network with :math:`B=5`.
 
     .. figure:: polbooks_blocks_B5_cond.*
-       :align: right
+       :align: center
 
        Condensation graph of the obtained block partition.
 
@@ -2200,3 +2589,5 @@ def condensation_graph(g, prop, vweight=None, eweight=None, avprops=None,
                                         aep,
                                         self_loops)
     return gp, cprop, vcount, ecount, r_avp, r_aep
+
+from . overlap_blockmodel import *

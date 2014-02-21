@@ -133,10 +133,9 @@ struct get_community_network_edges
         typedef std::unordered_map<cvertex_t, cedge_t> ecomms_t;
 #endif
 
-        unchecked_vector_property_map<ecomms_t,
-                                      typename property_map<CommunityGraph, vertex_index_t>::type>
-            comm_edges(get(vertex_index_t(), cg),
-                       num_vertices(cg));
+        auto index_map = get(vertex_index_t(), cg);
+        unchecked_vector_property_map<ecomms_t, decltype(index_map)>
+            comm_edges(index_map, num_vertices(cg));
 
         typename graph_traits<CommunityGraph>::vertex_iterator v, v_end;
         for (tie(v, v_end) = vertices(cg); v != v_end; ++v)

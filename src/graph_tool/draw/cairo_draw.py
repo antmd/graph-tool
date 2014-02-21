@@ -1156,7 +1156,8 @@ def get_hierarchy_control_points(g, t, tpos, beta=0.8):
        >>> g = gt.collection.data["netscience"]
        >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(g))
        >>> g.purge_vertices()
-       >>> bstack, mdl = gt.minimize_nested_blockmodel_dl(g, deg_corr=True)
+       >>> state = gt.minimize_nested_blockmodel_dl(g, deg_corr=True)
+       >>> bstack = state.get_bstack()
        >>> t = gt.get_hierarchy_tree(bstack)[0]
        >>> tpos = pos = gt.radial_tree_layout(t, t.vertex(t.num_vertices() - 1), weighted=True)
        >>> cts = gt.get_hierarchy_control_points(g, t, tpos)

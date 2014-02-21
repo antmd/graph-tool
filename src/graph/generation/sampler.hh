@@ -92,6 +92,8 @@ public:
             return _items[_alias[i]];
     }
 
+    size_t size() const { return _items.size(); }
+
 private:
 
     typedef typename mpl::if_<KeepReference,
@@ -104,6 +106,14 @@ private:
     vector<size_t> _large;
 };
 
+// uniform sampling from containers
+
+template <class Container, class RNG>
+typename Container::value_type& uniform_sample(Container& v, RNG& rng)
+{
+    std::uniform_int_distribution<size_t> i_rand(0, v.size() - 1);
+    return v[i_rand(rng)];
+}
 
 
 } // namespace graph_tool

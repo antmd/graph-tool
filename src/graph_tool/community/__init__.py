@@ -40,6 +40,7 @@ Summary
 
    minimize_blockmodel_dl
    BlockState
+   OverlapBlockState
    mcmc_sweep
    MinimizeState
    multilevel_minimize
@@ -51,6 +52,7 @@ Summary
    get_max_B
    get_akc
    condensation_graph
+   get_block_edge_gradient
 
 Hierarchical models
 ===================
@@ -112,6 +114,7 @@ __all__ = ["minimize_blockmodel_dl",
            "get_max_B",
            "get_akc",
            "condensation_graph",
+           "OverlapBlockState",
            "minimize_nested_blockmodel_dl",
            "NestedBlockState",
            "NestedMinimizeState",
@@ -119,6 +122,7 @@ __all__ = ["minimize_blockmodel_dl",
            "nested_mcmc_sweep",
            "nested_tree_sweep",
            "get_hierarchy_tree",
+           "get_block_edge_gradient",
            "community_structure",
            "modularity"]
 
@@ -126,14 +130,30 @@ from . blockmodel import minimize_blockmodel_dl, BlockState, mcmc_sweep, \
     multilevel_minimize, model_entropy, get_max_B, get_akc, condensation_graph, \
     collect_edge_marginals, collect_vertex_marginals, bethe_entropy, mf_entropy, MinimizeState
 
+from . overlap_blockmodel import OverlapBlockState, get_block_edge_gradient
+
 from . nested_blockmodel import NestedBlockState, NestedMinimizeState, init_nested_state, \
     nested_mcmc_sweep, nested_tree_sweep, minimize_nested_blockmodel_dl, get_hierarchy_tree
 
 def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
                         spins=None, weight=None, t_range=(100.0, 0.01),
                         verbose=False, history_file=None):
-    r"""
-    Obtain the community structure for the given graph, using a Potts model approach.
+    r"""Obtain the community structure for the given graph, using a Potts model
+    approach, which is a generalization of modularity maximization).
+
+    .. warning::
+
+       **The use of this function is discouraged.** Although community detection
+       based on modularity maximization is very common, it is very
+       problematic. It will find high-scoring partitions where there is none
+       [guimera-modularity-2004]_, and at the same will not find actual
+       structure in large graphs [fortunato-resolution-2007]_. Furthermore, in
+       many empirical networks, the partitions found in this way are largely
+       meaningless [good-performance-2010]_.
+
+       Instead, use the methods based on statistical inference
+       (i.e. :func:`~graph_tool.community.minimize_blockmodel_dl` and
+       :func:`~graph_tool.community.minimize_nested_blockmodel_dl`).
 
     Parameters
     ----------
@@ -226,8 +246,7 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
     >>> seed(42)
     >>> g = gt.load_graph("community.xml")
     >>> pos = g.vertex_properties["pos"]
-    >>> spins = gt.community_structure(g, 10000, 20, t_range=(5, 0.1),
-    ...                                history_file="community-history1")
+    >>> spins = gt.community_structure(g, 10000, 20, t_range=(5, 0.1))
     >>> gt.graph_draw(g, pos=pos, vertex_fill_color=spins, output_size=(420, 420), output="comm1.pdf")
     <...>
 
@@ -236,8 +255,7 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
 
        gt.graph_draw(g, pos=pos, vertex_fill_color=spins, output_size=(420, 420), output="comm1.png")
 
-    >>> spins = gt.community_structure(g, 10000, 40, t_range=(5, 0.1),
-    ...                                gamma=2.5, history_file="community-history2")
+    >>> spins = gt.community_structure(g, 10000, 40, t_range=(5, 0.1), gamma=2.5)
     >>> gt.graph_draw(g, pos=pos, vertex_fill_color=spins, output_size=(420, 420), output="comm2.pdf")
     <...>
 
@@ -246,51 +264,31 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
 
        gt.graph_draw(g, pos=pos, vertex_fill_color=spins, output_size=(420, 420), output="comm2.png")
 
-    >>> figure(figsize=(6, 4))
-    <...>
-    >>> xlabel("iterations")
-    <...>
-    >>> ylabel("number of communities")
-    <...>
-    >>> a = loadtxt("community-history1").transpose()
-    >>> plot(a[0], a[2])
-    [...]
-    >>> savefig("comm1-hist.pdf")
+    .. figure:: comm1.*
+       :align: center
 
-    .. testcode::
-       :hide:
-
-       savefig("comm1-hist.png")
-
-    >>> clf()
-    >>> xlabel("iterations")
-    <...>
-    >>> ylabel("number of communities")
-    <...>
-    >>> a = loadtxt("community-history2").transpose()
-    >>> plot(a[0], a[2])
-    [...]
-    >>> savefig("comm2-hist.pdf")
-
-    .. testcode::
-       :hide:
-
-       savefig("comm2-hist.png")
+       The community structure with :math:`\gamma=1`.
 
 
-    The community structure with :math:`\gamma=1`:
+    .. figure:: comm2.*
+       :align: center
 
-    .. image:: comm1.*
-    .. image:: comm1-hist.*
-
-    The community structure with :math:`\gamma=2.5`:
-
-    .. image:: comm2.*
-    .. image:: comm2-hist.*
-
+       The community structure with :math:`\gamma=2.5`.
 
     References
     ----------
+
+    .. [guimera-modularity-2004] Roger Guimerà, Marta Sales-Pardo, and Luís
+       A. Nunes Amaral, "Modularity from fluctuations in random graphs and
+       complex networks", Phys. Rev. E 70, 025101(R) (2004),
+       :doi:`10.1103/PhysRevE.70.025101`
+    .. [fortunato-resolution-2007] Santo Fortunato and Marc Barthélemy,
+       "Resolution limit in community detection", Proc. Natl. Acad. Sci. USA
+       104(1): 36–41 (2007), :doi:`10.1073/pnas.0605965104`
+    .. [good-performance-2010] Benjamin H. Good, Yves-Alexandre de Montjoye, and
+       Aaron Clauset, "Performance of modularity maximization in practical
+       contexts", Phys. Rev. E 81, 046106 (2010),
+       :doi:`10.1103/PhysRevE.81.046106`
     .. [reichard-statistical-2006] Joerg Reichardt and Stefan Bornholdt,
        "Statistical Mechanics of Community Detection", Phys. Rev. E 74
        016110 (2006), :doi:`10.1103/PhysRevE.74.016110`, :arxiv:`cond-mat/0603718`

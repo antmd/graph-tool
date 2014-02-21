@@ -704,6 +704,8 @@ class PropertyMap(object):
 
     def __getstate__(self):
         g = self.get_graph()
+        if g is None:
+            raise ValueError("cannot pickle orphaned property map")
         value_type = self.value_type()
         key_type = self.key_type()
         if not self.is_writable():

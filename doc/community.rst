@@ -4,6 +4,7 @@
 
     .. autofunction:: minimize_blockmodel_dl
     .. autoclass:: BlockState
+    .. autoclass:: OverlapBlockState
     .. autofunction:: mcmc_sweep
     .. autoclass:: MinimizeState
     .. autofunction:: multilevel_minimize
@@ -22,5 +23,6 @@
     .. autofunction:: nested_mcmc_sweep
     .. autofunction:: nested_tree_sweep
     .. autofunction:: get_hierarchy_tree
+    .. autofunction:: get_block_edge_gradient
     .. autofunction:: community_structure
     .. autofunction:: modularity
