@@ -8,7 +8,7 @@ libgraph_tool_spectraldir = $(MOD_DIR)/spectral
 
 libgraph_tool_spectral_LTLIBRARIES = libgraph_tool_spectral.la
 
-libgraph_tool_spectral_la_includedir = $(MOD_DIR)/include
+libgraph_tool_spectral_la_includedir = $(MOD_DIR)/include/spectral
 
 libgraph_tool_spectral_la_LIBADD = $(MOD_LIBADD)
 

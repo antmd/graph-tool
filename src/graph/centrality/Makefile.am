@@ -8,7 +8,7 @@ libgraph_tool_centralitydir = $(MOD_DIR)/centrality
 
 libgraph_tool_centrality_LTLIBRARIES = libgraph_tool_centrality.la
 
-libgraph_tool_centrality_la_includedir = $(MOD_DIR)/include
+libgraph_tool_centrality_la_includedir = $(MOD_DIR)/include/centrality
 
 libgraph_tool_centrality_la_LIBADD = $(MOD_LIBADD)
 

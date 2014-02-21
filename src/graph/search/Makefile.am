@@ -8,7 +8,7 @@ libgraph_tool_searchdir = $(MOD_DIR)/search
 
 libgraph_tool_search_LTLIBRARIES = libgraph_tool_search.la
 
-libgraph_tool_search_la_includedir = $(MOD_DIR)/include
+libgraph_tool_search_la_includedir = $(MOD_DIR)/include/search
 
 libgraph_tool_search_la_LIBADD = $(MOD_LIBADD)
 

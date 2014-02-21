@@ -8,7 +8,7 @@ libgraph_tool_utildir = $(MOD_DIR)/util
 
 libgraph_tool_util_LTLIBRARIES = libgraph_tool_util.la
 
-libgraph_tool_util_la_includedir = $(MOD_DIR)/include
+libgraph_tool_util_la_includedir = $(MOD_DIR)/include/util
 
 libgraph_tool_util_la_LIBADD = $(MOD_LIBADD)
 

@@ -8,7 +8,7 @@ libgraph_tool_flowdir = $(MOD_DIR)/flow
 
 libgraph_tool_flow_LTLIBRARIES = libgraph_tool_flow.la
 
-libgraph_tool_flow_la_includedir = $(MOD_DIR)/include
+libgraph_tool_flow_la_includedir = $(MOD_DIR)/include/flow
 
 libgraph_tool_flow_la_LIBADD = $(MOD_LIBADD)
 

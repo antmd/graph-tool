@@ -8,7 +8,7 @@ libgraph_tool_clusteringdir = $(MOD_DIR)/clustering
 
 libgraph_tool_clustering_LTLIBRARIES = libgraph_tool_clustering.la
 
-libgraph_tool_clustering_la_includedir = $(MOD_DIR)/include
+libgraph_tool_clustering_la_includedir = $(MOD_DIR)/include/clustering
 
 libgraph_tool_clustering_la_LIBADD = $(MOD_LIBADD)
 

@@ -8,7 +8,7 @@ libgraph_tool_communitydir = $(MOD_DIR)/community
 
 libgraph_tool_community_LTLIBRARIES = libgraph_tool_community.la
 
-libgraph_tool_community_la_includedir = $(MOD_DIR)/include
+libgraph_tool_community_la_includedir = $(MOD_DIR)/include/community
 
 libgraph_tool_community_la_LIBADD = $(MOD_LIBADD)
 

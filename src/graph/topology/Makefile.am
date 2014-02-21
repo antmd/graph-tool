@@ -8,7 +8,7 @@ libgraph_tool_topologydir = $(MOD_DIR)/topology
 
 libgraph_tool_topology_LTLIBRARIES = libgraph_tool_topology.la
 
-libgraph_tool_topology_la_includedir = $(MOD_DIR)/include
+libgraph_tool_topology_la_includedir = $(MOD_DIR)/include/topology
 
 libgraph_tool_topology_la_LIBADD = $(MOD_LIBADD)
 

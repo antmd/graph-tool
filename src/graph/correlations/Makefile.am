@@ -7,7 +7,7 @@ libgraph_tool_correlationsdir = $(MOD_DIR)/correlations
 
 libgraph_tool_correlations_LTLIBRARIES = libgraph_tool_correlations.la
 
-libgraph_tool_correlations_la_includedir = $(MOD_DIR)/include
+libgraph_tool_correlations_la_includedir = $(MOD_DIR)/include/correlations
 
 libgraph_tool_correlations_la_LIBADD = $(MOD_LIBADD)
 

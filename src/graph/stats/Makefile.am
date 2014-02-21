@@ -8,7 +8,7 @@ libgraph_tool_statsdir = $(MOD_DIR)/stats
 
 libgraph_tool_stats_LTLIBRARIES = libgraph_tool_stats.la
 
-libgraph_tool_stats_la_includedir = $(MOD_DIR)/include
+libgraph_tool_stats_la_includedir = $(MOD_DIR)/include/stats
 
 libgraph_tool_stats_la_SOURCES = \
     graph_histograms.cc \
