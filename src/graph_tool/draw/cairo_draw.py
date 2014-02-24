@@ -38,6 +38,7 @@ try:
     import matplotlib.cm
     import matplotlib.colors
     from matplotlib.cbook import flatten
+    default_cm = matplotlib.cm.jet
 except ImportError:
     msg = "Error importing matplotlib module. Graph drawing will not work."
     warnings.filterwarnings("always", msg, ImportWarning)
@@ -210,11 +211,23 @@ def _convert(attr, val, cmap):
         if isinstance(val, PropertyMap):
             if val.value_type() in ["vector<double>", "vector<long double>"]:
                 return val
+            if val.value_type() in ["vector<int32_t>", "vector<int32_t>", "vector<bool>"]:
+                g = val.get_graph()
+                new_val = g.new_vertex_property("vector<double>")
+                rg = [float("inf"), -float("inf")]
+                for v in g.vertices():
+                    for x in val[v]:
+                        rg = [min(x, rg[0]), max(x, rg[0])]
+                if rg[0] == rg[1]:
+                    rg[1] = 1
+                for v in g.vertices():
+                    new_val[v] = flatten([default_cm((x - rg[0]) / (rg[1] - rg[0])) for x in val[v]])
+                return new_val
             if val.value_type() == "vector<string>":
                 g = val.get_graph()
                 new_val = g.new_vertex_property("vector<double>")
                 for v in g.vertices():
-                    new_val[v] = [matplotlib.colors.ColorConverter().to_rgba(x) for x in val[v]]
+                    new_val[v] = flatten([matplotlib.colors.ColorConverter().to_rgba(x) for x in val[v]])
                 return new_val
             if val.value_type() == "python::object":
                 try:

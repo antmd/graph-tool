@@ -303,7 +303,7 @@ struct Converter
         }
     };
 
-    // color
+    // color_t
     template <class T2>
     struct specific_convert<color_t, vector<T2> >
     {
@@ -316,6 +316,26 @@ struct Converter
         }
     };
 
+    // vector<color_t>
+    template <class T2>
+    struct specific_convert<vector<color_t>, vector<T2> >
+    {
+        specific_convert<double, T2> c;
+        vector<color_t> operator()(const vector<T2>& cv) const
+        {
+            if (cv.size() < 4)
+                throw bad_lexical_cast();
+            vector<color_t> color;
+            for (size_t i = 0; i < cv.size() / 4; ++i)
+            {
+                if (4 * i + 3 >= cv.size())
+                    throw bad_lexical_cast();
+                color.push_back(std::make_tuple(c(cv[4*i]), c(cv[4*i + 1]),
+                                                c(cv[4*i + 2]), c(cv[4*i + 3])));
+            }
+            return color;
+        }
+    };
 
     // vertex_shape_t
     template <class T2>
