@@ -211,13 +211,14 @@ def _convert(attr, val, cmap):
         if isinstance(val, PropertyMap):
             if val.value_type() in ["vector<double>", "vector<long double>"]:
                 return val
-            if val.value_type() in ["vector<int32_t>", "vector<int32_t>", "vector<bool>"]:
+            if val.value_type() in ["vector<int32_t>", "vector<int64_t>", "vector<bool>"]:
                 g = val.get_graph()
                 new_val = g.new_vertex_property("vector<double>")
                 rg = [float("inf"), -float("inf")]
                 for v in g.vertices():
                     for x in val[v]:
-                        rg = [min(x, rg[0]), max(x, rg[0])]
+                        rg[0] = min(x, rg[0])
+                        rg[1] = max(x, rg[1])
                 if rg[0] == rg[1]:
                     rg[1] = 1
                 for v in g.vertices():
@@ -365,8 +366,8 @@ def parse_props(prefix, args):
 
 
 def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
-               nodesfirst=False, vcmap=matplotlib.cm.jet,
-               ecmap=matplotlib.cm.jet, loop_angle=float("nan"),
+               nodesfirst=False, vcmap=default_cm,
+               ecmap=default_cm, loop_angle=float("nan"),
                parallel_distance=None, fit_view=False, **kwargs):
     r"""
     Draw a graph to a :mod:`cairo` context.
@@ -824,6 +825,14 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                                            bg_color)
 
     if output is None:
+        for p, val in vprops.items():
+            if isinstance(val, PropertyMap):
+                vprops[p] = _convert(vertex_attrs.__dict__[p], val,
+                                     kwargs.get("vcmap", default_cm))
+        for p, val in eprops.items():
+            if isinstance(val, PropertyMap):
+                eprops[p] = _convert(edge_attrs.__dict__[p], val,
+                                     kwargs.get("ecmap", default_cm))
         return interactive_window(g, pos, vprops, eprops, vorder, eorder,
                                   nodesfirst, **kwargs)
     else:
