@@ -464,7 +464,7 @@ template <class Vertex>
 inline std::pair<typename adj_list<Vertex>::edge_descriptor, bool>
 edge(Vertex s, Vertex t, const adj_list<Vertex>& g)
 {
-    const typename adj_list<Vertex>::edge_list_t& oes = g._out_edges[s];
+    const auto& oes = g._out_edges[s];
     for (size_t i = 0; i < oes.size(); ++i)
         if (oes[i].first == t)
             return std::make_pair(std::make_tuple(s, t, oes[i].second), true);
@@ -548,11 +548,11 @@ inline void clear_vertex(Vertex v, adj_list<Vertex>& g)
 {
     if (!g._keep_epos)
     {
-        typename adj_list<Vertex>::edge_list_t& oes = g._out_edges[v];
+        auto& oes = g._out_edges[v];
         for (size_t i = 0; i < oes.size(); ++i)
         {
             Vertex t = oes[i].first;
-            typename adj_list<Vertex>::edge_list_t& ies = g._in_edges[t];
+            auto& ies = g._in_edges[t];
             for (size_t j = 0; j < ies.size(); ++j)
             {
                 if (ies[j].first == v)
@@ -565,11 +565,11 @@ inline void clear_vertex(Vertex v, adj_list<Vertex>& g)
         g._n_edges -= oes.size();
         oes.clear();
 
-        typename adj_list<Vertex>::edge_list_t& ies = g._in_edges[v];
-        for (size_t i = 0; i < oes.size(); ++i)
+        auto& ies = g._in_edges[v];
+        for (size_t i = 0; i < ies.size(); ++i)
         {
             Vertex s = ies[i].first;
-            typename adj_list<Vertex>::edge_list_t& oes = g._out_edges[s];
+            auto& oes = g._out_edges[s];
             for (size_t j = 0; j < oes.size(); ++j)
             {
                 if (oes[j].first == v)
@@ -589,8 +589,8 @@ inline void clear_vertex(Vertex v, adj_list<Vertex>& g)
         {
             Vertex t = oes[i].first;
             size_t idx = oes[i].second;
-            typename adj_list<Vertex>::edge_list_t& ies = g._in_edges[t];
-            const std::pair<int32_t, int32_t>& pos = g._epos[idx];
+            auto& ies = g._in_edges[t];
+            const auto& pos = g._epos[idx];
 
             g._epos[ies.back().second].second = pos.second;
             ies[pos.second] = ies.back();
@@ -605,8 +605,8 @@ inline void clear_vertex(Vertex v, adj_list<Vertex>& g)
         {
             Vertex s = ies[i].first;
             size_t idx = ies[i].second;
-            typename adj_list<Vertex>::edge_list_t& oes = g._out_edges[s];
-            const std::pair<int32_t, int32_t>& pos = g._epos[idx];
+            auto& oes = g._out_edges[s];
+            const auto& pos = g._epos[idx];
 
             g._epos[oes.back().second].first = pos.first;
             oes[pos.first] = oes.back();
@@ -627,18 +627,24 @@ inline void remove_vertex(Vertex v, adj_list<Vertex>& g)
     g._in_edges.erase(g._in_edges.begin() + v);
 
     int i, N = g._out_edges.size();
-    #pragma omp parallel for default(shared) private(i)
+    #pragma omp parallel for default(shared) private(i) \
+        schedule(static) if (N > 100)
     for (i = 0; i < N; ++i)
     {
-        for (size_t j = 0; j < g._out_edges[i].size(); ++j)
+        auto& oes = g._out_edges[i];
+        for (size_t j = 0; j < oes.size(); ++j)
         {
-            if (g._out_edges[i][j].first > v)
-                g._out_edges[i][j].first--;
+            auto& oe = oes[j];
+            if (oe.first > v)
+                oe.first--;
         }
-        for (size_t j = 0; j < g._in_edges[i].size(); ++j)
+
+        auto& ies = g._in_edges[i];
+        for (size_t j = 0; j < ies.size(); ++j)
         {
-            if (g._in_edges[i][j].first > v)
-                g._in_edges[i][j].first--;
+            auto& ie = ies[j];
+            if (ie.first > v)
+                ie.first--;
         }
     }
 }
@@ -657,31 +663,41 @@ inline void remove_vertex_fast(Vertex v, adj_list<Vertex>& g)
 
         for (size_t i = 0; i < g._out_edges[v].size(); ++i)
         {
-            Vertex u = g._out_edges[v][i].first;
+            auto& eu = g._out_edges[v][i];
+            Vertex u = eu.first;
             if (u == back)
             {
-                g._out_edges[v][i].first = v;
+                eu.first = v;
             }
             else
             {
-                for (size_t j = 0; j < g._in_edges[u].size(); ++j)
-                    if (g._in_edges[u][j].first == back)
-                        g._in_edges[u][j].first = v;
+                auto& ies = g._in_edges[u];
+                for (size_t j = 0; j < ies.size(); ++j)
+                {
+                    auto& e = ies[j];
+                    if (e.first == back)
+                        e.first = v;
+                }
             }
         }
 
         for (size_t i = 0; i < g._in_edges[v].size(); ++i)
         {
-            Vertex u = g._in_edges[v][i].first;
+            auto& eu = g._in_edges[v][i];
+            Vertex u = eu.first;
             if (u == back)
             {
-                g._out_edges[v][i].first = v;
+                eu.first = v;
             }
             else
             {
-                for (size_t j = 0; j < g._out_edges[u].size(); ++j)
-                    if (g._out_edges[u][j].first == back)
-                        g._out_edges[u][j].first = v;
+                auto& oes = g._out_edges[u];
+                for (size_t j = 0; j < oes.size(); ++j)
+                {
+                    auto& e = oes[j];
+                    if (e.first == back)
+                        e.first = v;
+                }
             }
         }
     }
@@ -726,7 +742,7 @@ inline void remove_edge(Vertex s, Vertex t,
 {
     if (!g._keep_epos)
     {
-        typename adj_list<Vertex>::edge_list_t& oes = g._out_edges[s];
+        auto& oes = g._out_edges[s];
         for (size_t i = 0; i < oes.size(); ++i)
         {
             if (t == oes[i].first)
@@ -737,7 +753,7 @@ inline void remove_edge(Vertex s, Vertex t,
             }
         }
 
-        typename adj_list<Vertex>::edge_list_t& ies = g._in_edges[t];
+        auto& ies = g._in_edges[t];
         for (size_t i = 0; i < ies.size(); ++i)
         {
             if (s == ies[i].first)
@@ -757,8 +773,8 @@ inline void remove_edge(const typename adj_list<Vertex>::edge_descriptor& e,
     Vertex s = get<0>(e);
     Vertex t = get<1>(e);
     Vertex idx = get<2>(e);
-    typename adj_list<Vertex>::edge_list_t& oes = g._out_edges[s];
-    typename adj_list<Vertex>::edge_list_t& ies = g._in_edges[t];
+    auto& oes = g._out_edges[s];
+    auto& ies = g._in_edges[t];
 
     bool found = false;
     if (!g._keep_epos) // O(k_s + k_t)
@@ -787,7 +803,7 @@ inline void remove_edge(const typename adj_list<Vertex>::edge_descriptor& e,
     {
         if (idx < g._epos.size())
         {
-            const std::pair<int32_t, int32_t>& pos = g._epos[idx];
+            const auto& pos = g._epos[idx];
 
             g._epos[oes.back().second].first = pos.first;
             oes[pos.first] = oes.back();
