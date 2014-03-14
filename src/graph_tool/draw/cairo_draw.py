@@ -45,11 +45,17 @@ except ImportError:
     warnings.warn(msg, ImportWarning)
     raise
 
+try:
+    import IPython.display
+except ImporError:
+    pass
+
 import numpy as np
 import gzip
 import bz2
 import zipfile
 import copy
+import io
 from collections import defaultdict
 
 from .. import GraphView, PropertyMap, ungroup_vector_property,\
@@ -517,7 +523,7 @@ def auto_colors(g, bg, pos, back):
 
 def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                nodesfirst=False, output_size=(600, 600), fit_view=True,
-               output=None, fmt="auto", **kwargs):
+               inline=False, output=None, fmt="auto", **kwargs):
     r"""Draw a graph to screen or to a file using :mod:`cairo`.
 
     Parameters
@@ -546,6 +552,9 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         (pixels for the screen, points for PDF, etc).
     fit_view : bool (optional, default: ``True``)
         If ``True``, the layout will be scaled to fit the entire display area.
+    inline : bool (optional, default: ``False``)
+        If ``True`` and an `IPython notebook <http://ipython.org/notebook>`_  is
+        being used, an inline version of the drawing will be returned.
     output : string or file object (optional, default: ``None``)
         Output file name (or object). If not given, the graph will be displayed via
         :func:`interactive_window`.
@@ -776,7 +785,7 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
 
     if pos is None:
         if (g.num_vertices() > 2 and output is None and
-            kwargs.get("update_layout", True)):
+            not inline and kwargs.get("update_layout", True)):
             L = np.sqrt(g.num_vertices())
             pos = random_layout(g, [L, L])
             if g.num_vertices() > 1000:
@@ -823,6 +832,11 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                                            vprops.get("text_position",
                                                       _vdefaults["text_position"]),
                                            bg_color)
+
+    if inline:
+        if fmt == "auto":
+            fmt = "png"
+        output = io.BytesIO()
 
     if output is None:
         for p, val in vprops.items():
@@ -887,10 +901,21 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
 
         cairo_draw(g, pos, cr, vprops, eprops, vorder, eorder,
                    nodesfirst, **kwargs)
-        del cr
-
         if fmt == "png":
             srf.write_to_png(out)
+
+        del cr
+        del srf
+
+        if inline:
+            img = None
+            if fmt == "png":
+                img = IPython.display.Image(data=out.getvalue())
+            if fmt == "svg":
+                img = IPython.display.SVG(data=out.getvalue())
+            if img is None:
+                raise ValueError("Invalid format for inline drawing: " + fmt)
+            return img
         return pos
 
 
