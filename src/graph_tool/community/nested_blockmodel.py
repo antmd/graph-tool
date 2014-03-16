@@ -436,8 +436,8 @@ class NestedMinimizeState(object):
     def clear(self):
         self.minimize_state.clear()
         self.l = -1
-        self.bs.clear()
-        self.done.clear()
+        del self.bs[:]
+        del self.done[:]
 
     def sync(self, state):
         if len(self.bs) == 0:
