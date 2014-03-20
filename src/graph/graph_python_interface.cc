@@ -376,6 +376,57 @@ do_get_edge_index(GraphInterface& g)
         (g.GetEdgeIndex());
 }
 
+
+template <class ValueList>
+struct add_edge_list
+{
+    template <class Graph>
+    void operator()(Graph& g, python::object aedge_list, bool& found) const
+    {
+        boost::mpl::for_each<ValueList>(std::bind(dispatch(), std::ref(g),
+                                                  std::ref(aedge_list),
+                                                  std::ref(found), placeholders::_1));
+    }
+
+    struct dispatch
+    {
+        template <class Graph, class Value>
+        void operator()(Graph& g, python::object& aedge_list, bool& found, Value) const
+        {
+            try
+            {
+                boost::multi_array_ref<Value, 2> edge_list = get_array<Value, 2>(aedge_list);
+
+                if (edge_list.shape()[1] < 2)
+                    throw GraphException("Second dimension in edge list must be of size (at least) two");
+
+                for (size_t i = 0; i < edge_list.shape()[0]; ++i)
+                {
+                    size_t s = edge_list[i][0];
+                    size_t t = edge_list[i][1];
+                    while (s >= num_vertices(g) || t >= num_vertices(g))
+                        add_vertex(g);
+                    add_edge(vertex(s, g), vertex(t, g), g);
+                }
+                found = true;
+            }
+            catch (invalid_numpy_conversion& e) {}
+        }
+    };
+};
+
+void do_add_edge_list(GraphInterface& gi, python::object aedge_list)
+{
+    typedef mpl::vector<bool, uint8_t, uint32_t, int16_t, int32_t, int64_t, uint64_t,
+                        unsigned long int, double, long double> vals_t;
+    bool found = false;
+    run_action<>()(gi, std::bind(add_edge_list<vals_t>(), placeholders::_1, aedge_list,
+                                 std::ref(found)))();
+    if (!found)
+        throw GraphException("Invalid type for edge list; must be two-dimensional with a scalar type");
+}
+
+
 } // namespace graph_tool
 
 // register everything
@@ -426,6 +477,7 @@ void export_python_interface()
     def("add_edge", graph_tool::add_edge);
     def("remove_vertex", graph_tool::remove_vertex);
     def("remove_edge", graph_tool::remove_edge);
+    def("add_edge_list", graph_tool::do_add_edge_list);
 
     def("get_vertex_index", get_vertex_index);
     def("get_edge_index", do_get_edge_index);

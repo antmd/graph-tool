@@ -46,6 +46,7 @@
 
     .. automethod:: add_edge
     .. automethod:: remove_edge
+    .. automethod:: add_edge_list
 
     .. automethod:: set_fast_edge_removal
     .. automethod:: get_fast_edge_removal

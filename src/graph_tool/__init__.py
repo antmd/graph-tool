@@ -1374,6 +1374,17 @@ class Graph(object):
         self.__check_perms("del_edge")
         return libcore.remove_edge(self.__graph, edge)
 
+    def add_edge_list(self, edge_list):
+        """Add a list of edges to the graph, given by ``edge_list``, which can
+        be a list of ``(source, target)`` pairs where both ``source`` and
+        ``target`` are vertex indexes, or a :class:`~numpy.ndarray` of shape
+        ``(E,2)``, where ``E`` is the number of edges, and each line specifies a 
+        ``(source, target)`` pair. If the list references vertices which do not
+        exist in the graph, they will be created."""
+        self.__check_perms("add_edge")
+        edges = numpy.asarray(edge_list)
+        libcore.add_edge_list(self.__graph, edges)
+
     def set_fast_edge_removal(self, fast=True):
         r"""If ``fast == True`` the fast :math:`O(1)` removal of edges will be
         enabled. This requires an additional data structure of size :math:`O(E)`
