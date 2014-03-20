@@ -169,6 +169,18 @@ def open_file(name, mode="r"):
     fmt = os.path.splitext(name)[1].replace(".", "")
     return out, fmt
 
+def get_file_fmt(name):
+    name = os.path.expanduser(name)
+    base, ext = os.path.splitext(name)
+    if ext == ".gz":
+        name = base
+    elif ext == ".bz2":
+        name = base
+    elif ext == ".zip":
+        name = base
+    fmt = os.path.splitext(name)[1].replace(".", "")
+    return fmt
+
 
 def surface_from_prop(surface):
     if isinstance(surface, PropertyMap):
@@ -835,7 +847,11 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
 
     if inline:
         if fmt == "auto":
-            fmt = "png"
+            if output is None:
+                fmt = "png"
+            else:
+                fmt = get_file_fmt(output)
+        output_file = output
         output = io.BytesIO()
 
     if output is None:
@@ -915,6 +931,15 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                 img = IPython.display.SVG(data=out.getvalue())
             if img is None:
                 raise ValueError("Invalid format for inline drawing: " + fmt)
+
+            if output_file is not None:
+                if isinstance(output_file, str):
+                    ofile, auto_fmt = open_file(output_file, mode="wb")
+                else:
+                    ofile = output_file
+                ofile.write(out.getvalue())
+                if isinstance(output_file, str):
+                    ofile.close()
             return img
         return pos
 
