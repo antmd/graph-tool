@@ -39,6 +39,7 @@ try:
     import matplotlib.colors
     from matplotlib.cbook import flatten
     default_cm = matplotlib.cm.jet
+    is_draw_inline = 'inline' in matplotlib.get_backend()
 except ImportError:
     msg = "Error importing matplotlib module. Graph drawing will not work."
     warnings.filterwarnings("always", msg, ImportWarning)
@@ -535,7 +536,7 @@ def auto_colors(g, bg, pos, back):
 
 def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                nodesfirst=False, output_size=(600, 600), fit_view=True,
-               inline=False, output=None, fmt="auto", **kwargs):
+               inline=is_draw_inline, output=None, fmt="auto", **kwargs):
     r"""Draw a graph to screen or to a file using :mod:`cairo`.
 
     Parameters
