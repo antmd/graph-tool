@@ -939,7 +939,6 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                 inl_srf.write_to_png(inl_out)
                 del inl_srf
                 img = IPython.display.Image(data=inl_out.getvalue())
-            del srf
             if output_file is not None:
                 if isinstance(output_file, str):
                     ofile, auto_fmt = open_file(output_file, mode="wb")
@@ -948,7 +947,7 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                 ofile.write(out.getvalue())
                 if isinstance(output_file, str):
                     ofile.close()
-            return img
+            IPython.display.display(img)
         del srf
         return pos
 
