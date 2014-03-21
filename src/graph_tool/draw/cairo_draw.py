@@ -921,7 +921,6 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
             srf.write_to_png(out)
 
         del cr
-        del srf
 
         if inline:
             img = None
@@ -930,8 +929,17 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
             if fmt == "svg":
                 img = IPython.display.SVG(data=out.getvalue())
             if img is None:
-                raise ValueError("Invalid format for inline drawing: " + fmt)
-
+                inl_out = io.BytesIO()
+                inl_srf = cairo.ImageSurface(cairo.FORMAT_ARGB32,
+                                           output_size[0],
+                                           output_size[1])
+                inl_cr = cairo.Context(inl_srf)
+                inl_cr.set_source_surface(srf, 0, 0)
+                inl_cr.paint()
+                inl_srf.write_to_png(inl_out)
+                del inl_srf
+                img = IPython.display.Image(data=inl_out.getvalue())
+            del srf
             if output_file is not None:
                 if isinstance(output_file, str):
                     ofile, auto_fmt = open_file(output_file, mode="wb")
@@ -941,6 +949,7 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                 if isinstance(output_file, str):
                     ofile.close()
             return img
+        del srf
         return pos
 
 
