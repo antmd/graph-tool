@@ -931,8 +931,8 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
             if img is None:
                 inl_out = io.BytesIO()
                 inl_srf = cairo.ImageSurface(cairo.FORMAT_ARGB32,
-                                           output_size[0],
-                                           output_size[1])
+                                             output_size[0],
+                                             output_size[1])
                 inl_cr = cairo.Context(inl_srf)
                 inl_cr.set_source_surface(srf, 0, 0)
                 inl_cr.paint()
