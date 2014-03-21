@@ -940,6 +940,7 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                 inl_srf.write_to_png(inl_out)
                 del inl_srf
                 img = IPython.display.Image(data=inl_out.getvalue())
+            srf.finish()
             if output_file is not None:
                 if isinstance(output_file, str):
                     ofile, auto_fmt = open_file(output_file, mode="wb")
