@@ -599,8 +599,9 @@ def model_entropy(B, N, E, directed=False, nr=None):
 
     .. [peixoto-parsimonious-2013] Tiago P. Peixoto, "Parsimonious module inference in large networks",
        Phys. Rev. Lett. 110, 148701 (2013), :doi:`10.1103/PhysRevLett.110.148701`, :arxiv:`1212.4794`.
-    .. [peixoto-hierarchical-2013] Tiago P. Peixoto, "Hierarchical block structures and high-resolution
-       model selection in large networks ", :arxiv:`1310.4377`.
+    .. [peixoto-hierarchical-2014] Tiago P. Peixoto, "Hierarchical block structures and high-resolution
+       model selection in large networks ", Phys. Rev. X 4, 011047 (2014), :doi:`10.1103/PhysRevX.4.011047`,
+       :arxiv:`1310.4377`.
 
     """
 

@@ -197,7 +197,9 @@ intersphinx_mapping = {'python': ('http://docs.python.org', None),
                        'numpy': ('http://docs.scipy.org/doc/numpy', None),
                        'scipy': ('http://docs.scipy.org/doc/scipy/reference', None),
                        'matplotlib': ('http://matplotlib.sourceforge.net', None),
-                       'cairo': ('http://www.cairographics.org/documentation/pycairo/3/', None)}
+                       'cairo': ('http://www.cairographics.org/documentation/pycairo/3/', None),
+                       'ipython': ('http://ipython.org/ipython-doc/stable/', None),
+                       'panda': ('http://pandas.pydata.org/pandas-docs/stable/', None)}
 
 extlinks = {'ticket': ('http://graph-tool.skewed.de/tickets/ticket/%s',
                        'ticket '),
