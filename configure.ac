@@ -116,18 +116,18 @@ AC_ARG_ENABLE([visibility], [AS_HELP_STRING([--disable-visibility],[disable symb
 
 
 [NO_GRAPH_FILTERING=no]
-AC_MSG_CHECKING(whether to enable graph filtering...)
-AC_ARG_ENABLE([graph-filtering], [AS_HELP_STRING([--disable-graph-filtering],[disable graph filtering [default=enabled] ])],
-        if test $enableval = no; then
-           [AC_DEFINE([NO_GRAPH_FILTERING], 1, [disable graph filtering])]
-           [NO_GRAPH_FILTERING=yes]
-           [AC_MSG_RESULT(no)]
-        else
-           [AC_MSG_RESULT(yes)]
-        fi
-        ,
-        [AC_MSG_RESULT(yes)]
-        )
+# AC_MSG_CHECKING(whether to enable graph filtering...)
+# AC_ARG_ENABLE([graph-filtering], [AS_HELP_STRING([--disable-graph-filtering],[disable graph filtering [default=enabled] ])],
+#         if test $enableval = no; then
+#            [AC_DEFINE([NO_GRAPH_FILTERING], 1, [disable graph filtering])]
+#            [NO_GRAPH_FILTERING=yes]
+#            [AC_MSG_RESULT(no)]
+#         else
+#            [AC_MSG_RESULT(yes)]
+#         fi
+#         ,
+#         [AC_MSG_RESULT(yes)]
+#         )
 
 [USING_OPENMP=yes]
 [OPENMP_LDFLAGS=""]
