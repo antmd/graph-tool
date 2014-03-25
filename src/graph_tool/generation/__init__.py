@@ -913,11 +913,12 @@ def graph_union(g1, g2, intersection=None, props=None, include=False):
        to vertex indexes belonging to `g2`. Negative values mean no mapping
        exists, and thus both vertices in `g1` and `g2` will be present in the
        union graph.
-    props : list of tuples of :class:`~graph_tool.PropertyMap` (optional, default: ``[]``)
+    props : list of tuples of :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
        Each element in this list must be a tuple of two PropertyMap objects. The
        first element must be a property of `g1`, and the second of `g2`. If either
        value is ``None``, an empty map is created. The values of the property
-       maps are propagated into the union graph, and returned.
+       maps are propagated into the union graph, and returned. If this value is
+       ``None`` all internal property maps are propagated.
     include : bool (optional, default: ``False``)
        If true, graph `g2` is inserted into `g1` which is modified. If false, a
        new graph is created, and both graphs remain unmodified.
@@ -977,8 +978,23 @@ def graph_union(g1, g2, intersection=None, props=None, include=False):
     .. image:: graph_union2.*
 
     """
-    if props == None:
+    pnames = None
+    if props is None:
         props = []
+        pnames = []
+        for (k, name), p1 in g1.properties.items():
+            if k == 'g':
+                continue
+            p2 = g2.properties.get((k, name), None)
+            props.append((p1, p2))
+            pnames.append(name)
+        for (k, name), p2 in g2.properties.items():
+            if k == 'g' or (k, name) in g1.properties:
+                continue
+            props.append((None, p2))
+            pnames.append(name)
+        gprops = [[(name, g1.properties[('g', name)]) for name in g1.graph_properties.keys()],
+                  [(name, g2.properties[('g', name)]) for name in g2.graph_properties.keys()]]
     if not include:
         g1 = GraphView(g1, skip_properties=True)
         p1s = []
@@ -1066,6 +1082,17 @@ def graph_union(g1, g2, intersection=None, props=None, include=False):
                                       _prop(p1.key_type(), g1, p1),
                                       _prop(p2.key_type(), g2, p2))
         n_props.append(p1)
+
+    if pnames is not None:
+        for name, p in zip(pnames, n_props):
+            g1.properties[(p.key_type(), name)] = p
+        if not include:
+            for name, p in gprops[0]:
+                g1.graph_properties[name] = p.copy()
+        for name, p in gprops[1]:
+            if name not in g1.graph_properties:
+                g1.graph_properties[name] = p.copy()
+        n_props = []
 
     if len(n_props) > 0:
         return g1, n_props
