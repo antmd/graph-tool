@@ -48,7 +48,7 @@ except ImportError:
 
 try:
     import IPython.display
-except ImporError:
+except ImportError:
     pass
 
 import numpy as np
