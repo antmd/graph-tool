@@ -5,7 +5,7 @@ m4_define(graph_tool_version_major, 2)
 m4_define(graph_tool_version_minor, 2)
 m4_define(graph_tool_version_micro, 31dev)
 
-AC_INIT([graph-tool],[graph_tool_version_major().graph_tool_version_minor().graph_tool_version_micro()],[http://graph-tool.skewed.de])
+AC_INIT([graph-tool],[graph_tool_version_major().graph_tool_version_minor().graph_tool_version_micro()],[http://graph-tool.skewed.de/tickets], [graph-tool], [http://graph-tool.skewed.de])
 
 GRAPH_TOOL_VERSION_MAJOR=graph_tool_version_major()
 GRAPH_TOOL_VERSION_MINOR=graph_tool_version_minor()
