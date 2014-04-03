@@ -36,15 +36,20 @@ using namespace std;
 
 typedef boost::mpl::map<
     boost::mpl::pair<bool, boost::mpl::int_<NPY_BOOL> >,
-    boost::mpl::pair<uint8_t, boost::mpl::int_<NPY_BYTE> >,
-    boost::mpl::pair<uint32_t, boost::mpl::int_<NPY_UINT32> >,
+    boost::mpl::pair<int8_t, boost::mpl::int_<NPY_INT8> >,
+    boost::mpl::pair<uint8_t, boost::mpl::int_<NPY_UINT8> >,
     boost::mpl::pair<int16_t, boost::mpl::int_<NPY_INT16> >,
+    boost::mpl::pair<uint16_t, boost::mpl::int_<NPY_UINT16> >,
     boost::mpl::pair<int32_t, boost::mpl::int_<NPY_INT32> >,
+    boost::mpl::pair<uint32_t, boost::mpl::int_<NPY_UINT32> >,
     boost::mpl::pair<int64_t, boost::mpl::int_<NPY_INT64> >,
     boost::mpl::pair<uint64_t, boost::mpl::int_<NPY_UINT64> >,
-    boost::mpl::pair<unsigned long int, boost::mpl::int_<NPY_ULONG> >,
+    boost::mpl::pair<float, boost::mpl::int_<NPY_FLOAT> >,
     boost::mpl::pair<double, boost::mpl::int_<NPY_DOUBLE> >,
-    boost::mpl::pair<long double, boost::mpl::int_<NPY_LONGDOUBLE> >
+    boost::mpl::pair<long double, boost::mpl::int_<NPY_LONGDOUBLE> >,
+    boost::mpl::pair<std::complex<float>, boost::mpl::int_<NPY_CFLOAT> >,
+    boost::mpl::pair<std::complex<double>, boost::mpl::int_<NPY_CDOUBLE> >,
+    boost::mpl::pair<std::complex<long double>, boost::mpl::int_<NPY_CLONGDOUBLE> > 
     > numpy_types;
 
 template <class ValueType>
