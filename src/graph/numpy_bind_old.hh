@@ -124,6 +124,22 @@ boost::python::object wrap_multi_array_not_owned(boost::multi_array<ValueType,Di
 
 // get multi_array_ref from numpy ndarrays
 
+template <class ValueType, size_t dim>
+class numpy_multi_array: public boost::multi_array_ref<ValueType,dim>
+{
+    typedef boost::multi_array_ref<ValueType,dim> base_t;
+public:
+    template <class ExtentList, class StrideList>
+    explicit numpy_multi_array(typename base_t::element* data,
+                               const ExtentList& sizes,
+                               const StrideList& strides)
+        :base_t(data, sizes)
+    {
+        for (int i = 0; i < dim; ++i)
+            base_t::stride_list_[i] = strides[i];
+    }
+};
+
 struct invalid_numpy_conversion:
     public std::exception
 {
@@ -158,11 +174,13 @@ boost::multi_array_ref<ValueType,dim> get_array(boost::python::object points)
     vector<size_t> shape(pa->nd);
     for (int i = 0; i < pa->nd; ++i)
         shape[i] = pa->dimensions[i];
-    if ((pa->flags ^ NPY_C_CONTIGUOUS) != 0)
-        return boost::multi_array_ref<ValueType,dim>((ValueType *) pa->data, shape);
-    else
-        return boost::multi_array_ref<ValueType,dim>((ValueType *) pa->data, shape,
-                                                     boost::fortran_storage_order());
+
+    vector<size_t> stride(dim);
+    for (size_t i = 0; i < dim; ++i)
+        stride[i] = pa->strides[i] / sizeof(ValueType);
+
+    return numpy_multi_array<ValueType,dim>((ValueType *) pa->data,
+                                            shape, stride);
 }
 
 #endif // NUMPY_BIND_OLD_HH
