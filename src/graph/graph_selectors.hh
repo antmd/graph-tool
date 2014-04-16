@@ -421,6 +421,80 @@ struct in_or_out_edge_iteratorS
     }
 };
 
+// range adaptors
+
+template <class Iter>
+class IterRange
+{
+public:
+    IterRange(const std::pair<Iter, Iter>& range): _range(range) {}
+    const Iter& begin() { return _range.first; }
+    const Iter& end() { return _range.second; }
+private:
+    std::pair<Iter, Iter> _range;
+};
+
+template <class Iter>
+IterRange<Iter> mk_range(const std::pair<Iter, Iter>& range)
+{
+    return IterRange<Iter>(range);
+}
+
+template <class Graph>
+IterRange<typename boost::graph_traits<Graph>::vertex_iterator>
+vertices_range(const Graph& g)
+{
+    return mk_range(vertices(g));
+}
+
+template <class Graph>
+IterRange<typename boost::graph_traits<Graph>::edge_iterator>
+edges_range(const Graph& g)
+{
+    return mk_range(edges(g));
+}
+
+template <class Graph>
+IterRange<typename boost::graph_traits<Graph>::adjacency_iterator>
+adjacency_range(typename boost::graph_traits<Graph>::vertex_descriptor v,
+                const Graph& g)
+{
+    return mk_range(adjacency(v, g));
+}
+
+template <class Graph>
+IterRange<typename out_edge_iteratorS<Graph>::type>
+out_edges_range(typename out_edge_iteratorS<Graph>::vertex_descriptor v,
+                const Graph& g)
+{
+    return mk_range(out_edge_iteratorS<Graph>::get_edges(v, g));
+}
+
+template <class Graph>
+IterRange<typename in_edge_iteratorS<Graph>::type>
+in_edges_range(typename in_edge_iteratorS<Graph>::vertex_descriptor v,
+               const Graph& g)
+{
+    return mk_range(in_edge_iteratorS<Graph>::get_edges(v, g));
+}
+
+template <class Graph>
+IterRange<typename all_edges_iteratorS<Graph>::type>
+all_edges_range(typename all_edges_iteratorS<Graph>::vertex_descriptor v,
+                const Graph& g)
+{
+    return mk_range(all_edges_iteratorS<Graph>::get_edges(v, g));
+}
+
+template <class Graph>
+IterRange<typename in_or_out_edge_iteratorS<Graph>::type>
+in_or_out_edges_range(typename in_or_out_edge_iteratorS<Graph>::vertex_descriptor v,
+                      const Graph& g)
+{
+    return mk_range(in_or_out_edge_iteratorS<Graph>::get_edges(v, g));
+}
+
+
 // useful type lists
 
 typedef boost::mpl::vector<in_degreeS, out_degreeS, total_degreeS>
