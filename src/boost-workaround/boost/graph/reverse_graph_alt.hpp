@@ -233,7 +233,9 @@ edge(const typename graph_traits<BidirectionalGraph>::vertex_descriptor u,
      const typename graph_traits<BidirectionalGraph>::vertex_descriptor v,
      const reverse_graph<BidirectionalGraph,GRef>& g)
 {
-    return edge(v, u, g.m_g);
+    typedef typename reverse_graph<BidirectionalGraph>::edge_descriptor e_t;
+    auto e = edge(v, u, g.m_g);
+    return make_pair(e_t(e.first), e.second);
 }
 
 template <class BidirectionalGraph, class GRef>
