@@ -562,6 +562,17 @@ inline void remove_vertex
 }
 
 //==============================================================================
+// remove_vertex_fast(u,g)
+//==============================================================================
+template <class Graph>
+inline void remove_vertex_fast
+    (typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor u,
+     UndirectedAdaptor<Graph>& g)
+{
+    remove_vertex_fast(u, g.OriginalGraph());
+}
+
+//==============================================================================
 // add_edge(u,v,g)
 //==============================================================================
 template <class Graph>

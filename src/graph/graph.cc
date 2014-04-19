@@ -79,15 +79,38 @@ size_t GraphInterface::GetNumberOfEdges()
     return n;
 }
 
+struct clear_vertices
+{
+    template <class Graph>
+    void operator()(Graph& g) const
+    {
+        int N = num_vertices(g);
+        for (int i = N - 1; i >= 0; --i)
+        {
+            auto v = vertex(i, g);
+            if (v == graph_traits<Graph>::null_vertex())
+                continue;
+            remove_vertex(v, g);
+        }
+    }
+};
+
 void GraphInterface::Clear()
 {
-    *_mg = multigraph_t();
+    run_action<>()(*this, std::bind(clear_vertices(), placeholders::_1))();
 }
+
+struct clear_edges
+{
+    template <class Graph>
+    void operator()(Graph& g) const
+    {
+        for (auto v : vertices_range(g))
+            clear_vertex(v, g);
+    }
+};
 
 void GraphInterface::ClearEdges()
 {
-    graph_traits<multigraph_t>::vertex_iterator v, v_end;
-    for (tie(v, v_end) = vertices(*_mg); v != v_end; ++v)
-        clear_vertex(*v, *_mg);
-    _mg->reindex_edges();
+    run_action<>()(*this, std::bind(clear_edges(), placeholders::_1))();
 }

@@ -39,6 +39,8 @@
 #include <functional>
 #include <random>
 
+#include "graph_selectors.hh"
+
 namespace graph_tool
 {
 
@@ -225,7 +227,12 @@ clear_vertex(typename boost::graph_traits
              <filtered_graph<Graph,EdgePredicate,VertexPredicate>>::vertex_descriptor v,
              filtered_graph<Graph,EdgePredicate,VertexPredicate>& g)
 {
-    return clear_vertex(v, const_cast<Graph&>(g.m_g));
+    typedef typename boost::graph_traits<filtered_graph<Graph,EdgePredicate,VertexPredicate>>::edge_descriptor e_t;
+    std::vector<e_t> e_list;
+    for (auto e : graph_tool::all_edges_range(v, g))
+        e_list.push_back(e);
+    for (auto& e : e_list)
+        remove_edge(e, g);
 }
 
 //==============================================================================
@@ -271,15 +278,62 @@ void remove_edge(typename boost::graph_traits
 }
 
 //==============================================================================
+//remove_vertex(v, filtered_graph<G>)
+//==============================================================================
+template <class Graph, class EdgePredicate, class VertexPredicate>
+inline
+void remove_vertex(typename boost::graph_traits
+                     <filtered_graph<Graph,EdgePredicate,
+                                     VertexPredicate>>::vertex_descriptor v,
+                 filtered_graph<Graph,EdgePredicate,VertexPredicate>& g)
+{
+    return remove_vertex(v,const_cast<Graph&>(g.m_g));
+}
+
+//==============================================================================
+//remove_vertex_fast(v, filtered_graph<G>)
+//==============================================================================
+template <class Graph, class EdgePredicate, class VertexPredicate>
+inline
+void remove_vertex_fast(typename boost::graph_traits
+                        <filtered_graph<Graph,EdgePredicate,
+                                        VertexPredicate>>::vertex_descriptor v,
+                        filtered_graph<Graph,EdgePredicate,VertexPredicate>& g)
+{
+    return remove_vertex_fast(v,const_cast<Graph&>(g.m_g));
+}
+
+//==============================================================================
 //remove_edge(e, reverse_graph<G>)
 //==============================================================================
 template <class Graph>
 inline
-void remove_edge
-(typename boost::graph_traits<reverse_graph<Graph>>::edge_descriptor e,
- reverse_graph<Graph>& g)
+void remove_edge(typename boost::graph_traits<reverse_graph<Graph>>::edge_descriptor e,
+                 reverse_graph<Graph>& g)
 {
     return remove_edge(e,const_cast<Graph&>(g.m_g));
+}
+
+//==============================================================================
+//remove_vertex(v, reverse_graph<G>)
+//==============================================================================
+template <class Graph>
+inline
+void remove_vertex(typename boost::graph_traits<reverse_graph<Graph>>::vertex_descriptor v,
+                   reverse_graph<Graph>& g)
+{
+    return remove_vertex(v,const_cast<Graph&>(g.m_g));
+}
+
+//==============================================================================
+//remove_vertex_fast(v, reverse_graph<G>)
+//==============================================================================
+template <class Graph>
+inline
+void remove_vertex_fast(typename boost::graph_traits<reverse_graph<Graph>>::vertex_descriptor v,
+                        reverse_graph<Graph>& g)
+{
+    return remove_vertex_fast(v,const_cast<Graph&>(g.m_g));
 }
 
 //==============================================================================
@@ -287,9 +341,8 @@ void remove_edge
 //==============================================================================
 template <class Graph>
 inline
-void clear_vertex
-(typename boost::graph_traits<reverse_graph<Graph>>::vertex_descriptor v,
- reverse_graph<Graph>& g)
+void clear_vertex(typename boost::graph_traits<reverse_graph<Graph>>::vertex_descriptor v,
+                  reverse_graph<Graph>& g)
 {
     return clear_vertex(v,const_cast<Graph&>(g.m_g));
 }
