@@ -347,7 +347,7 @@ def boykov_kolmogorov_max_flow(g, source, target, capacity, residual=None):
                                    _prop("e", g, residual))
     return residual
 
-def min_st_cut(g, source, residual):
+def min_st_cut(g, source, capacity, residual):
     r"""
     Get the minimum source-target cut, given the residual capacity of the edges.
 
@@ -357,13 +357,13 @@ def min_st_cut(g, source, residual):
         Graph to be used.
     source : Vertex
         The source vertex.
+    capacity : :class:`~graph_tool.PropertyMap`
+        Edge property map with the edge capacities.
     residual : :class:`~graph_tool.PropertyMap`
-        Edge property map where the residual capacity is stored.
+        Edge property map with the residual capacities (capacity - flow).
 
     Returns
     -------
-    min_cut : float
-        The value of the minimum cut.
     partition : :class:`~graph_tool.PropertyMap`
         Boolean-valued vertex property map with the cut partition. Vertices with
         value `True` belong to the source side of the cut.
@@ -372,38 +372,42 @@ def min_st_cut(g, source, residual):
     -----
 
     The source-side of the cut set is obtained by following all vertices which
-    are reachable from the source via edges with nonzero residual capacity.
+    are reachable from the source in the residual graph (i.e. via edges
+    with nonzero residual capacity, and reversed edges with nonzero flow).
 
     This algorithm runs in :math:`O(V+E)` time.
 
     Examples
     --------
-    >>> g = gt.load_graph("flow-example.xml.gz")
-    >>> cap = g.edge_properties["cap"]
-    >>> src, tgt = g.vertex(0), g.vertex(1)
+    >>> g = gt.load_graph("mincut-st-example.xml.gz")
+    >>> cap = g.edge_properties["weight"]
+    >>> src, tgt = g.vertex(0), g.vertex(7)
     >>> res = gt.boykov_kolmogorov_max_flow(g, src, tgt, cap)
-    >>> mc, part = gt.min_st_cut(g, src, res)
+    >>> part = gt.min_st_cut(g, src, cap, res)
+    >>> mc = sum([cap[e] - res[e] for e in g.edges() if part[e.source()] != part[e.target()]])
     >>> print(mc)
-    14.331937627198545
+    3
     >>> pos = g.vertex_properties["pos"]
     >>> res.a = cap.a - res.a  # the actual flow
-    >>> gt.graph_draw(g, pos=pos, edge_pen_width=gt.prop_to_size(res, mi=0, ma=3, power=1),
-    ...               vertex_fill_color=part, output="example-min-st-cut.pdf")
+    >>> gt.graph_draw(g, pos=pos, edge_pen_width=gt.prop_to_size(cap, mi=3, ma=10, power=1),
+    ...               edge_text=res, vertex_fill_color=part, vertex_text=g.vertex_index,
+    ...               vertex_font_size=18, edge_font_size=18, output="example-min-st-cut.pdf")
     <...>
 
     .. testcode::
        :hide:
 
-       gt.graph_draw(g, pos=pos, edge_pen_width=gt.prop_to_size(res, mi=0, ma=3, power=1), vertex_fill_color=part,
-                     output="example-min-st-cut.png")
+       gt.graph_draw(g, pos=pos, edge_pen_width=gt.prop_to_size(cap, mi=3, ma=10, power=1),
+                     edge_text=res, vertex_fill_color=part, vertex_text=g.vertex_index,
+                     vertex_font_size=18, edge_font_size=18, output="example-min-st-cut.png")
 
     .. figure:: example-min-st-cut.*
         :align: center
 
         Edge flows obtained with the Boykov-Kolmogorov algorithm. The source and
-        target are on the lower left and upper right corners, respectively. The
-        edge flows are represented by the edge width. Vertices of the same color
-        are on the same side of a minimum cut.
+        target are labeled ``0`` and ``7``, respectively. The edge capacities are
+        represented by the edge width, and the maximum flow by the edge labels.
+        Vertices of the same color are on the same side the minimum cut.
 
     References
     ----------
@@ -411,13 +415,22 @@ def min_st_cut(g, source, residual):
     """
     if not g.is_directed():
         raise ValueError("The graph provided must be directed!")
+    augment = g.new_edge_property("bool")
+    libgraph_tool_flow.residual_graph(g._Graph__graph,
+                                      _prop("e", g, capacity),
+                                      _prop("e", g, residual),
+                                      _prop("e", g, augment))
     em = g.new_edge_property("bool")
-    em.a = residual.a[:len(em.a)] > 0
+    em.a = (residual.a[:len(em.a)] > 0) + augment.a
     u = GraphView(g, efilt=em)
     part = label_out_component(u, source)
-    g.own_property(part)
-    mc = sum(residual[e] for e in source.out_edges())
-    return mc, part
+    part = g.own_property(part)
+
+    # cleanup augmented edges
+    u = GraphView(g, efilt=augment)
+    u.clear_edges()
+
+    return part
 
 
 def min_cut(g, weight):

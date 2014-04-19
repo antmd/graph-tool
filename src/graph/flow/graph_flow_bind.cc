@@ -26,6 +26,8 @@ void kolmogorov_max_flow(GraphInterface& gi, size_t src, size_t sink,
                          boost::any capacity, boost::any res);
 bool max_cardinality_matching(GraphInterface& gi, boost::any match);
 double min_cut(GraphInterface& gi, boost::any weight, boost::any part_map);
+void get_residual_graph(GraphInterface& gi, boost::any capacity, boost::any res,
+                        boost::any oaugment);
 
 #include <boost/python.hpp>
 using namespace boost::python;
@@ -37,4 +39,5 @@ BOOST_PYTHON_MODULE(libgraph_tool_flow)
     def("kolmogorov_max_flow", &kolmogorov_max_flow);
     def("max_cardinality_matching", &max_cardinality_matching);
     def("min_cut", &min_cut);
+    def("residual_graph", &get_residual_graph);
 }
