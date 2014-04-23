@@ -456,10 +456,10 @@ edges_range(const Graph& g)
 
 template <class Graph>
 IterRange<typename boost::graph_traits<Graph>::adjacency_iterator>
-adjacency_range(typename boost::graph_traits<Graph>::vertex_descriptor v,
-                const Graph& g)
+adjacent_vertices_range(typename boost::graph_traits<Graph>::vertex_descriptor v,
+                        const Graph& g)
 {
-    return mk_range(adjacency(v, g));
+    return mk_range(adjacent_vertices(v, g));
 }
 
 template <class Graph>
