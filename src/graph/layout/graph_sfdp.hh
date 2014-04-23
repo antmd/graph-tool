@@ -288,8 +288,7 @@ struct get_sfdp_layout
                 reduction(+:E, delta, nmoves) schedule(static) if (N > 100)
             for (i = 0; i < N; ++i)
             {
-                typename graph_traits<Graph>::vertex_descriptor v =
-                    vertex(vertices[i], g);
+                auto v = vertex(vertices[i], g);
 
                 pos_t diff(2, 0), pos_u(2, 0), ftot(2, 0), cm(2, 0);
 
@@ -298,13 +297,12 @@ struct get_sfdp_layout
                 Q.push_back(std::ref(qt));
                 while (!Q.empty())
                 {
-                    QuadTree<pos_t, vweight_t>& q = Q.back();
+                    auto& q = Q.back().get();
                     Q.pop_back();
 
                     if (q.max_level() == 0)
                     {
-                        vector<std::tuple<pos_t,vweight_t> >& dleafs =
-                            q.get_dense_leafs();
+                        auto& dleafs = q.get_dense_leafs();
                         for(size_t j = 0; j < dleafs.size(); ++j)
                         {
                             val_t d = get_diff(get<0>(dleafs[j]), pos[v],
@@ -326,7 +324,7 @@ struct get_sfdp_layout
                         {
                             for(size_t j = 0; j < 4; ++j)
                             {
-                                QuadTree<pos_t, vweight_t>& leaf = q.get_leaf(j);
+                                auto& leaf = q.get_leaf(j);
                                 if (leaf.get_count() > 0)
                                     Q.push_back(std::ref(leaf));
                             }
@@ -345,21 +343,18 @@ struct get_sfdp_layout
                 }
 
                 // local attractive forces
-                typename graph_traits<Graph>::out_edge_iterator e, e_end;
-                for (tie(e,e_end) = out_edges(v, g); e != e_end; ++e)
+                for (auto e : out_edges_range(v, g))
                 {
-                    typename graph_traits<Graph>::vertex_descriptor u =
-                        target(*e, g);
+                    auto u = target(e, g);
                     if (u == v)
                         continue;
                     #pragma omp critical
                     {
-                        for (size_t l = 0; l < 2; ++l)
-                            pos_u[l] = pos[u][l];
+                        pos_u = pos[u];
                     }
                     get_diff(pos_u, pos[v], diff);
                     val_t f = f_a(K, pos_u, pos[v]);
-                    f *= get(eweight, *e) * get(vweight, u) * get(vweight, v);
+                    f *= get(eweight, e) * get(vweight, u) * get(vweight, v);
                     for (size_t l = 0; l < 2; ++l)
                         ftot[l] += f * diff[l];
                 }

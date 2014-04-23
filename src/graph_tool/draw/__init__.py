@@ -392,7 +392,7 @@ def _propagate_pos(g, cg, c, cc, cpos, delta, mivs):
 def _avg_edge_distance(g, pos):
     libgraph_tool_layout.sanitize_pos(g._Graph__graph, _prop("v", g, pos))
     ad = libgraph_tool_layout.avg_dist(g._Graph__graph, _prop("v", g, pos))
-    if numpy.isnan(ad):
+    if numpy.isnan(ad) or ad == 0:
         ad = 1.
     return ad
 

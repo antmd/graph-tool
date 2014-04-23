@@ -99,17 +99,12 @@ struct do_propagate_pos
         unordered_map<c_t, pos_t, boost::hash<c_t> >
             cmap(num_vertices(*cg));
 
-        typename graph_traits<CoarseGraph>::vertex_iterator vi, vi_end;
-        for(tie(vi, vi_end) = vertices(*cg); vi != vi_end; ++vi)
-        {
-            typename graph_traits<CoarseGraph>::vertex_descriptor v = *vi;
-            cmap[cvmap[v]] = cpos[v];
-        }
 
-        typename graph_traits<Graph>::vertex_iterator gvi, gvi_end;
-        for(tie(gvi, gvi_end) = vertices(g); gvi != gvi_end; ++gvi)
+        for (auto v : vertices_range(*cg))
+            cmap[cvmap[v]] = cpos[v];
+
+        for (auto v : vertices_range(g))
         {
-            typename graph_traits<Graph>::vertex_descriptor v = *gvi;
             pos[v] = cmap[vmap[v]];
 
             if (delta > 0)
@@ -162,23 +157,21 @@ struct do_propagate_pos_mivs
 
         uniform_real_distribution<val_t> noise(-delta, delta);
 
-        typename graph_traits<Graph>::vertex_iterator vi, vi_end;
-        for(tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi)
+        for (auto v : vertices_range(g))
         {
-            typename graph_traits<Graph>::vertex_descriptor v = *vi;
             if (mivs[v])
                 continue;
             pos[v].resize(2);
             pos[v][0] = pos[v][1] = 0;
             size_t count = 0;
-            typename graph_traits<Graph>::adjacency_iterator a, a_end;
-            for(tie(a, a_end) = adjacent_vertices(v, g); a != a_end; ++a)
+
+            for (auto a : adjacent_vertices_range(v, g))
             {
-                if (!mivs[*a])
+                if (!mivs[a])
                     continue;
-                pos[*a].resize(2, 0);
+                pos[a].resize(2, 0);
                 for (size_t j = 0; j < pos[v].size(); ++j)
-                    pos[v][j] += pos[*a][j];
+                    pos[v][j] += pos[a][j];
                 ++count;
             }
 
@@ -232,14 +225,14 @@ struct do_avg_dist
                 vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
-            typename graph_traits<Graph>::adjacency_iterator a, a_end;
-            for(tie(a, a_end) = adjacent_vertices(v, g); a != a_end; ++a)
+            for (auto a : adjacent_vertices_range(v, g))
             {
-                d += dist(pos[v], pos[*a]);
+                d += dist(pos[v], pos[a]);
                 count++;
             }
         }
-        d /= count;
+        if (count > 0)
+            d /= count;
         ad = d;
     }
 };
