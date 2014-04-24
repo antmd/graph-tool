@@ -208,8 +208,8 @@ def pagerank(g, damping=0.85, pers=None, weight=None, prop=None, epsilon=1e-6,
         max_iter = 0
     if prop == None:
         prop = g.new_vertex_property("double")
-        N = len(prop.a)
-        prop.a = pers.a[:N] if pers is not None else 1. / g.num_vertices()
+        N = len(prop.fa)
+        prop.fa = pers.fa[:N] if pers is not None else 1. / g.num_vertices()
     ic = libgraph_tool_centrality.\
             get_pagerank(g._Graph__graph, _prop("v", g, prop),
                          _prop("v", g, pers), _prop("e", g, weight),
@@ -614,7 +614,7 @@ def eigenvector(g, weight=None, vprop=None, epsilon=1e-6, max_iter=None):
 
     if vprop is None:
         vprop = g.new_vertex_property("double")
-        vprop.a = 1. / g.num_vertices()
+        vprop.fa = 1. / g.num_vertices()
     if max_iter is None:
         max_iter = 0
     ee = libgraph_tool_centrality.\
