@@ -56,16 +56,14 @@ struct get_transition
                     multi_array_ref<int32_t,1>& j) const
     {
         int pos = 0;
-        typename graph_traits<Graph>::vertex_iterator v, v_end;
-        for(tie(v, v_end) = vertices(g); v != v_end; ++v)
+        for (auto v: vertices_range(g))
         {
-            double k = sum_degree(g, *v, weight, out_edge_iteratorS<Graph>());
-            typename graph_traits<Graph>::out_edge_iterator e, e_end;
-            for(tie(e, e_end) = out_edges(*v, g); e != e_end; ++e)
+            double k = sum_degree(g, v, weight, out_edge_iteratorS<Graph>());
+            for (auto e: out_edges_range(v, g))
             {
-                data[pos] = 1. / k;
-                i[pos] = get(index, source(*e, g));
-                j[pos] = get(index, target(*e, g));
+                data[pos] = weight[e] / k;
+                i[pos] = get(index, source(e, g));
+                j[pos] = get(index, target(e, g));
                 ++pos;
             }
         }
