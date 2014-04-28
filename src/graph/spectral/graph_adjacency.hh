@@ -35,19 +35,18 @@ struct get_adjacency
                     multi_array_ref<int,1>& j) const
     {
         int pos = 0;
-        typename graph_traits<Graph>::edge_iterator e, e_end;
-        for(tie(e, e_end) = edges(g); e != e_end; ++e)
+        for (const auto& e : edges_range(g))
         {
-            data[pos] = get(weight, *e);
-            i[pos] = get(index, target(*e, g));
-            j[pos] = get(index, source(*e, g));
+            data[pos] = get(weight, e);
+            i[pos] = get(index, target(e, g));
+            j[pos] = get(index, source(e, g));
 
             ++pos;
             if (!is_directed::apply<Graph>::type::value)
             {
-                data[pos] = get(weight, *e);
-                i[pos] = get(index, source(*e, g));
-                j[pos] = get(index, target(*e, g));
+                data[pos] = get(weight, e);
+                i[pos] = get(index, source(e, g));
+                j[pos] = get(index, target(e, g));
                 ++pos;
             }
         }

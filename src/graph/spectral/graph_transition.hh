@@ -59,7 +59,7 @@ struct get_transition
         for (auto v: vertices_range(g))
         {
             double k = sum_degree(g, v, weight, out_edge_iteratorS<Graph>());
-            for (auto e: out_edges_range(v, g))
+            for (const auto& e: out_edges_range(v, g))
             {
                 data[pos] = weight[e] / k;
                 i[pos] = get(index, source(e, g));

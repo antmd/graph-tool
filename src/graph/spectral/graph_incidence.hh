@@ -35,29 +35,24 @@ struct get_incidence
                     multi_array_ref<int32_t,1>& j) const
     {
         int pos = 0;
-        typename graph_traits<Graph>::vertex_iterator v, v_end;
-        for(tie(v, v_end) = vertices(g); v != v_end; ++v)
+        for (auto v : vertices_range(g))
         {
-
-            typename graph_traits<Graph>::out_edge_iterator e, e_end;
-            for(tie(e, e_end) = out_edges(*v, g); e != e_end; ++e)
+            for (const auto& e : out_edges_range(v, g))
             {
                 if (is_directed::apply<Graph>::type::value)
                     data[pos] = -1;
                 else
                     data[pos] = 1;
-                i[pos] = get(vindex, *v);
-                j[pos] = get(eindex, *e);
+                i[pos] = get(vindex, v);
+                j[pos] = get(eindex, e);
                 ++pos;
             }
 
-            typename in_edge_iteratorS<Graph>::type ie, ie_end;
-            for(tie(ie, ie_end) = in_edge_iteratorS<Graph>::get_edges(*v, g);
-                ie != ie_end; ++ie)
+            for (const auto& e : in_edges_range(v, g))
             {
                 data[pos] = 1;
-                i[pos] = get(vindex, *v);
-                j[pos] = get(eindex, *ie);
+                i[pos] = get(vindex, v);
+                j[pos] = get(eindex, e);
                 ++pos;
             }
         }

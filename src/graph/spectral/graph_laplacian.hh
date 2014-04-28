@@ -78,43 +78,41 @@ struct get_laplacian
                     multi_array_ref<int32_t,1>& j) const
     {
         int pos = 0;
-        typename graph_traits<Graph>::edge_iterator e, e_end;
-        for(tie(e, e_end) = edges(g); e != e_end; ++e)
+        for (const auto& e : edges_range(g))
         {
-            if (source(*e, g) == target(*e, g))
+            if (source(e, g) == target(e, g))
                 continue;
 
-            data[pos] = -get(weight, *e);
-            i[pos] = get(index, target(*e, g));
-            j[pos] = get(index, source(*e, g));
+            data[pos] = -get(weight, e);
+            i[pos] = get(index, target(e, g));
+            j[pos] = get(index, source(e, g));
 
             ++pos;
             if (!is_directed::apply<Graph>::type::value)
             {
-                data[pos] = -get(weight, *e);
-                i[pos] = get(index, source(*e, g));
-                j[pos] = get(index, target(*e, g));
+                data[pos] = -get(weight, e);
+                i[pos] = get(index, source(e, g));
+                j[pos] = get(index, target(e, g));
                 ++pos;
             }
         }
 
-        typename graph_traits<Graph>::vertex_iterator v, v_end;
-        for(tie(v, v_end) = vertices(g); v != v_end; ++v)
+        for (auto v : vertices_range(g))
         {
             double k = 0;
             switch (deg)
             {
             case OUT_DEG:
-                k = sum_degree(g, *v, weight, out_edge_iteratorS<Graph>());
+                k = sum_degree(g, v, weight, out_edge_iteratorS<Graph>());
                 break;
             case IN_DEG:
-                k = sum_degree(g, *v, weight, in_edge_iteratorS<Graph>());
+                k = sum_degree(g, v, weight, in_edge_iteratorS<Graph>());
                 break;
             case TOTAL_DEG:
-                k = sum_degree(g, *v, weight, all_edges_iteratorS<Graph>());
+                k = sum_degree(g, v, weight, all_edges_iteratorS<Graph>());
             }
             data[pos] = k;
-            i[pos] = j[pos] = get(index, *v);
+            i[pos] = j[pos] = get(index, v);
             ++pos;
         }
 
@@ -132,52 +130,50 @@ struct get_norm_laplacian
                     multi_array_ref<int32_t,1>& j) const
     {
         int pos = 0;
-        typename graph_traits<Graph>::vertex_iterator v, v_end;
-        for(tie(v, v_end) = vertices(g); v != v_end; ++v)
+        for (auto v : vertices_range(g))
         {
             double ks = 0;
             switch (deg)
             {
             case OUT_DEG:
-                ks = sum_degree(g, *v, weight, out_edge_iteratorS<Graph>());
+                ks = sum_degree(g, v, weight, out_edge_iteratorS<Graph>());
                 break;
             case IN_DEG:
-                ks = sum_degree(g, *v, weight, in_edge_iteratorS<Graph>());
+                ks = sum_degree(g, v, weight, in_edge_iteratorS<Graph>());
                 break;
             case TOTAL_DEG:
-                ks = sum_degree(g, *v, weight, all_edges_iteratorS<Graph>());
+                ks = sum_degree(g, v, weight, all_edges_iteratorS<Graph>());
             }
 
-            typename graph_traits<Graph>::out_edge_iterator e, e_end;
-            for(tie(e, e_end) = out_edges(*v, g); e != e_end; ++e)
+            for(const auto& e : out_edges_range(v, g))
             {
-                if (source(*e, g) == target(*e, g))
+                if (source(e, g) == target(e, g))
                     continue;
                 double kt = 0;
 
                 switch (deg)
                 {
                 case OUT_DEG:
-                    kt = sum_degree(g, target(*e, g), weight, out_edge_iteratorS<Graph>());
+                    kt = sum_degree(g, target(e, g), weight, out_edge_iteratorS<Graph>());
                     break;
                 case IN_DEG:
-                    kt = sum_degree(g, target(*e, g), weight, in_edge_iteratorS<Graph>());
+                    kt = sum_degree(g, target(e, g), weight, in_edge_iteratorS<Graph>());
                     break;
                 case TOTAL_DEG:
-                    kt = sum_degree(g, target(*e, g), weight, all_edges_iteratorS<Graph>());
+                    kt = sum_degree(g, target(e, g), weight, all_edges_iteratorS<Graph>());
                 }
 
                 if (ks * kt > 0)
-                    data[pos] = -get(weight, *e) / sqrt(ks * kt);
-                i[pos] = get(index, target(*e, g));
-                j[pos] = get(index, source(*e, g));
+                    data[pos] = -get(weight, e) / sqrt(ks * kt);
+                i[pos] = get(index, target(e, g));
+                j[pos] = get(index, source(e, g));
 
                 ++pos;
             }
 
             if (ks > 0)
                 data[pos] = 1;
-            i[pos] = j[pos] = get(index, *v);
+            i[pos] = j[pos] = get(index, v);
             ++pos;
         }
 
