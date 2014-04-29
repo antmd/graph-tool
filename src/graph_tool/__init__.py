@@ -1107,10 +1107,14 @@ class Graph(object):
                 eprops = []
                 ef_pos = vf_pos = None
                 for k, m in gv.vertex_properties.items():
+                    if not m.is_writable():
+                        m = m.copy("int32_t")
                     if not vprune and m is vfilt:
                         vf_pos = len(vprops)
                     vprops.append([_prop("v", gv, m), libcore.any()])
                 for k, m in gv.edge_properties.items():
+                    if not m.is_writable():
+                        m = m.copy("int32_t")
                     if not eprune and  m is efilt:
                         ef_pos = len(eprops)
                     eprops.append([_prop("e", gv, m), libcore.any()])
@@ -1133,21 +1137,21 @@ class Graph(object):
                                                       _prop("v", gv, vorder))
 
                 # Put the copied properties in the internal dictionary
-                for i, (k, m) in enumerate(g.vertex_properties.items()):
-                    pmap = new_vertex_property(m.value_type(),
+                for i, (k, m) in enumerate(gv.vertex_properties.items()):
+                    pmap = new_vertex_property(m.value_type() if m.is_writable() else "int32_t",
                                                self.__graph.GetVertexIndex(),
                                                vprops[i][1])
                     self.vertex_properties[k] = PropertyMap(pmap, self, "v")
 
-                for i, (k, m) in enumerate(g.edge_properties.items()):
-                    pmap = new_edge_property(m.value_type(),
+                for i, (k, m) in enumerate(gv.edge_properties.items()):
+                    pmap = new_edge_property(m.value_type() if m.is_writable() else "int32_t",
                                              self.__graph.GetEdgeIndex(),
                                              eprops[i][1])
                     self.edge_properties[k] = PropertyMap(pmap, self, "e")
 
-                for k, v in g.graph_properties.items():
+                for k, v in gv.graph_properties.items():
                     new_p = self.new_graph_property(v.value_type())
-                    new_p[self] = v[g]
+                    new_p[self] = v[gv]
                     self.graph_properties[k] = new_p
 
                 if vf_pos is not None:
