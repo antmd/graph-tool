@@ -1855,6 +1855,7 @@ class Graph(object):
             self.set_vertex_filter(None)
             for pmap in self.__known_properties.values():
                 if (pmap() is not None and pmap().key_type() == "v" and
+                    pmap().is_writable() and
                     pmap() not in [self.vertex_index, self.edge_index]):
                     self.__graph.ReIndexVertexProperty(pmap()._PropertyMap__map.get_map(),
                                                        _prop("v", self, old_indexes))
