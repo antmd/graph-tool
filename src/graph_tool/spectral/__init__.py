@@ -134,13 +134,19 @@ def adjacency(g, weight=None, index=None):
             index = g.vertex_index
 
     E = g.num_edges() if g.is_directed() else 2 * g.num_edges()
+
     data = numpy.zeros(E, dtype="double")
     i = numpy.zeros(E, dtype="int32")
     j = numpy.zeros(E, dtype="int32")
 
     libgraph_tool_spectral.adjacency(g._Graph__graph, _prop("v", g, index),
                                      _prop("e", g, weight), data, i, j)
-    V = max(g.num_vertices(), max(i.max() + 1, j.max() + 1))
+
+    if E > 0:
+        V = max(g.num_vertices(), max(i.max() + 1, j.max() + 1))
+    else:
+        V = g.num_vertices()
+
     m = scipy.sparse.coo_matrix((data, (i,j)), shape=(V, V))
     m = m.tocsr()
     return m
@@ -274,6 +280,7 @@ def laplacian(g, deg="total", normalized=False, weight=None, index=None):
     E = g.num_edges() - nself
     if not g.is_directed():
         E *= 2
+
     N = E + g.num_vertices()
     data = numpy.zeros(N, dtype="double")
     i = numpy.zeros(N, dtype="int32")
@@ -285,7 +292,11 @@ def laplacian(g, deg="total", normalized=False, weight=None, index=None):
     else:
         libgraph_tool_spectral.laplacian(g._Graph__graph, _prop("v", g, index),
                                          _prop("e", g, weight), deg, data, i, j)
-    V = max(g.num_vertices(), max(i.max() + 1, j.max() + 1))
+    if E > 0:
+        V = max(g.num_vertices(), max(i.max() + 1, j.max() + 1))
+    else:
+        V = g.num_vertices()
+
     m = scipy.sparse.coo_matrix((data, (i, j)), shape=(V, V))
     m = m.tocsr()
     return m
@@ -370,6 +381,10 @@ def incidence(g, vindex=None, eindex=None):
             eindex = g.edge_index
 
     E = g.num_edges()
+
+    if E == 0:
+        raise ValueError("Cannot construct incidence matrix for a graph with no edges.")
+
     data = numpy.zeros(2 * E, dtype="double")
     i = numpy.zeros(2 * E, dtype="int32")
     j = numpy.zeros(2 * E, dtype="int32")
@@ -463,7 +478,11 @@ def transition(g, weight=None, index=None):
 
     libgraph_tool_spectral.transition(g._Graph__graph, _prop("v", g, index),
                                       _prop("e", g, weight), data, i, j)
-    V = max(g.num_vertices(), max(i.max() + 1, j.max() + 1))
+
+    if E > 0:
+        V = max(g.num_vertices(), max(i.max() + 1, j.max() + 1))
+    else:
+        V = g.num_vertices()
     m = scipy.sparse.coo_matrix((data, (i,j)), shape=(V, V))
     m = m.tocsr()
     return m
