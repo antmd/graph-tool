@@ -222,6 +222,11 @@ def subgraph_isomorphism(sub, g, max_n=0, vertex_label=None, edge_label=None,
 
     Notes
     -----
+    Here "subgraph" does not mean "node-induced subgraph", i.e. there may exist
+    an edge in the matched subgraph in `g` that does not exist in `sub`. For
+    node-induced subgraph isomorphism, see the :func:`+graph_tool.clustering.motifs`
+    function.
+
     The algorithm used is described in [ullmann-algorithm-1976]_. It has a
     worse-case complexity of :math:`O(N_g^{N_{sub}})`, but for random graphs it
     typically has a complexity of :math:`O(N_g^\gamma)` with :math:`\gamma`

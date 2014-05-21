@@ -286,9 +286,9 @@ def extended_clustering(g, props=None, max_depth=3, undirected=False):
 
 def motifs(g, k, p=1.0, motif_list=None, return_maps=False):
     r"""
-    Count the occurrence of k-size subgraphs (motifs). A tuple with two lists is
-    returned: the list of motifs found, and the list with their respective
-    counts.
+    Count the occurrence of k-size node-induced subgraphs (motifs). A tuple with
+    two lists is returned: the list of motifs found, and the list with their
+    respective counts.
 
     Parameters
     ----------
@@ -358,6 +358,7 @@ def motifs(g, k, p=1.0, motif_list=None, return_maps=False):
        motifs", IEEE/ACM Transactions on Computational Biology and
        Bioinformatics (TCBB), Volume 3, Issue 4, Pages 347-359, 2006.
        :doi:`10.1109/TCBB.2006.51`
+    .. [induced-subgraph-isomorphism] http://en.wikipedia.org/wiki/Induced_subgraph_isomorphism_problem
     """
 
     sub_list = []
