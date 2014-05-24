@@ -38,7 +38,7 @@
 #else
 #   include <boost/property_map.hpp>
 #endif
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <vector>
 
 namespace boost {
@@ -136,7 +136,7 @@ protected:
     // store pointer to data, because if copy of property map resizes
     // the vector, the pointer to data will be invalidated.
     // I wonder if class 'pmap_ref' is simply needed.
-    shared_ptr< std::vector<T> > store;
+    std::shared_ptr< std::vector<T> > store;
     IndexMap index;
 };
 
