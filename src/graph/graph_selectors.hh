@@ -435,12 +435,14 @@ private:
 };
 
 template <class Iter>
+inline __attribute__((always_inline))
 IterRange<Iter> mk_range(const std::pair<Iter, Iter>& range)
 {
     return IterRange<Iter>(range);
 }
 
 template <class Graph>
+inline __attribute__((always_inline))
 IterRange<typename boost::graph_traits<Graph>::vertex_iterator>
 vertices_range(const Graph& g)
 {
@@ -448,6 +450,7 @@ vertices_range(const Graph& g)
 }
 
 template <class Graph>
+inline __attribute__((always_inline))
 IterRange<typename boost::graph_traits<Graph>::edge_iterator>
 edges_range(const Graph& g)
 {
@@ -455,6 +458,7 @@ edges_range(const Graph& g)
 }
 
 template <class Graph>
+inline __attribute__((always_inline))
 IterRange<typename boost::graph_traits<Graph>::adjacency_iterator>
 adjacent_vertices_range(typename boost::graph_traits<Graph>::vertex_descriptor v,
                         const Graph& g)
@@ -463,6 +467,7 @@ adjacent_vertices_range(typename boost::graph_traits<Graph>::vertex_descriptor v
 }
 
 template <class Graph>
+inline __attribute__((always_inline))
 IterRange<typename out_edge_iteratorS<Graph>::type>
 out_edges_range(typename out_edge_iteratorS<Graph>::vertex_descriptor v,
                 const Graph& g)
@@ -471,6 +476,7 @@ out_edges_range(typename out_edge_iteratorS<Graph>::vertex_descriptor v,
 }
 
 template <class Graph>
+inline __attribute__((always_inline))
 IterRange<typename in_edge_iteratorS<Graph>::type>
 in_edges_range(typename in_edge_iteratorS<Graph>::vertex_descriptor v,
                const Graph& g)
@@ -479,6 +485,7 @@ in_edges_range(typename in_edge_iteratorS<Graph>::vertex_descriptor v,
 }
 
 template <class Graph>
+inline __attribute__((always_inline))
 IterRange<typename all_edges_iteratorS<Graph>::type>
 all_edges_range(typename all_edges_iteratorS<Graph>::vertex_descriptor v,
                 const Graph& g)
@@ -487,6 +494,7 @@ all_edges_range(typename all_edges_iteratorS<Graph>::vertex_descriptor v,
 }
 
 template <class Graph>
+inline __attribute__((always_inline))
 IterRange<typename in_or_out_edge_iteratorS<Graph>::type>
 in_or_out_edges_range(typename in_or_out_edge_iteratorS<Graph>::vertex_descriptor v,
                       const Graph& g)
