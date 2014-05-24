@@ -154,7 +154,7 @@ public:
                                const StrideList& strides)
         :base_t(data, sizes)
     {
-        for (int i = 0; i < dim; ++i)
+        for (size_t i = 0; i < dim; ++i)
             base_t::stride_list_[i] = strides[i];
     }
 };
@@ -191,7 +191,7 @@ boost::multi_array_ref<ValueType,dim> get_array(boost::python::object points)
     }
 
     vector<size_t> shape(dim);
-    for (int i = 0; i < dim; ++i)
+    for (size_t i = 0; i < dim; ++i)
         shape[i] =  PyArray_DIMS(pa)[i];
 
     vector<size_t> stride(dim);

@@ -99,7 +99,7 @@ struct do_get_radial
                     vertex_t w = target(*e, g);
                     new_layer.push_back(w);
 
-                    if (layers.size() - 1 == level[w])
+                    if (int(layers.size()) - 1 == level[w])
                         last = false;
                 }
                 if (out_degree(v, g) == 0)
