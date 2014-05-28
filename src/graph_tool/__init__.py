@@ -706,6 +706,58 @@ class PropertyMap(object):
         p.fa = a
         return p
 
+    def __getstate__(self):
+        g = self.get_graph()
+        value_type = self.value_type()
+        key_type = self.key_type()
+        if not self.is_writable():
+            vals = None
+        else:
+            u = GraphView(g, skip_vfilt=True, skip_efilt=True)
+            if key_type == "v":
+                vals = [_convert(self, self[v]) for v in u.vertices()]
+            elif key_type == "e":
+                vals = [_convert(self, self[e]) for e in u.edges()]
+            else:
+                vals = _convert(self, self[g])
+
+        state = dict(g=g, value_type=value_type,
+                     key_type=key_type, vals=vals,
+                     is_vindex=self is g.vertex_index,
+                     is_eindex=self is g.edge_index)
+
+        return state
+
+    def __setstate__(self, state):
+        g = state["g"]
+        key_type = state["key_type"]
+        value_type = state["value_type"]
+        vals = state["vals"]
+
+        if state["is_vindex"]:
+            pmap = g.vertex_index
+        elif state["is_eindex"]:
+            pmap = g.edge_index
+        else:
+            u = GraphView(g, skip_vfilt=True, skip_efilt=True)
+            if key_type == "v":
+                pmap = g.new_vertex_property(value_type)
+                for i, v in enumerate(u.vertices()):
+                    pmap[v] = vals[i]
+            elif key_type == "e":
+                pmap = g.new_edge_property(value_type)
+                for i, e in enumerate(u.edges()):
+                    pmap[e] = vals[i]
+            else:
+                pmap = g.new_graph_property(value_type)
+                pmap[g] = vals
+
+        self.__map = pmap.__map
+        self.__g = pmap.__g
+        self.__base_g = pmap.__base_g
+        self.__key_type = key_type
+        self.__register_map()
+
 
 def _check_prop_writable(prop, name=None):
     if not prop.is_writable():
