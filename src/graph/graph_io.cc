@@ -94,11 +94,7 @@ public:
     std::streamsize read(char* s, std::streamsize n)
     {
         boost::python::object pbuf = _file.attr("read")(n);
-#if (PY_MAJOR_VERSION >= 3)
-        string buf = boost::python::extract<string>(pbuf.attr("decode")("utf-8"));
-#else
         string buf = boost::python::extract<string>(pbuf);
-#endif
         for (size_t i = 0; i < buf.size(); ++i)
             s[i] = buf[i];
         return buf.size();
@@ -107,8 +103,15 @@ public:
     std::streamsize write(const char* s, std::streamsize n)
     {
         string buf(s, s+n);
-        boost::python::object pbuf(buf);
-        _file.attr("write")(pbuf.attr("encode")("utf-8"));
+#if (PY_MAJOR_VERSION >= 3)
+        // in python 3 we need to construct a 'bytes' instance
+        PyObject* bytes = PyBytes_FromStringAndSize(s, n);
+        boost::python::handle<> x(bytes);
+        boost::python::object pbuf(x);
+#else
+        boost::python::str pbuf(buf);
+#endif
+        _file.attr("write")(pbuf);
         return n;
     }
 

@@ -109,7 +109,7 @@ import gzip
 import weakref
 import copy
 
-from io import BytesIO
+from io import BytesIO, StringIO
 from .decorators import _wraps, _require, _attrs, _limit_args
 from inspect import ismethod
 
@@ -1982,7 +1982,7 @@ class Graph(object):
     def __getstate__(self):
         state = dict()
         sio = BytesIO()
-        stream = gzip.GzipFile(fileobj=sio, mode="wb")
+        stream = gzip.open(sio, mode="wb")
         self.save(stream, "xml")
         stream.close()
         state["blob"] = sio.getvalue()
@@ -1993,7 +1993,7 @@ class Graph(object):
         blob = state["blob"]
         if blob != "":
             sio = BytesIO(blob)
-            stream = gzip.GzipFile(fileobj=sio, mode="rb")
+            stream = gzip.open(sio, mode="rb")
             self.load(stream, "xml")
 
 
