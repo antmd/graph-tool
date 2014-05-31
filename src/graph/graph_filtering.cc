@@ -16,7 +16,7 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "graph_filtering.hh"
-#include <boost/python/type_id.hpp>
+#include <cxxabi.h>
 
 using namespace graph_tool;
 using namespace graph_tool::detail;
@@ -29,6 +29,15 @@ bool graph_tool::graph_filtering_enabled()
 #else
     return false;
 #endif
+}
+
+string name_demangle(string name)
+{
+    int status = 0;
+    char *realname = abi::__cxa_demangle(name.c_str(), 0, 0, &status);
+    string ret(realname);
+    free(realname);
+    return ret;
 }
 
 // Whenever no implementation is called, the following exception is thrown
@@ -48,14 +57,12 @@ const char * graph_tool::ActionNotFound::what () const throw ()
         "instructions at " PACKAGE_BUGREPORT ". What follows is debug "
         "information.\n\n";
 
-    error += "Graph view: " + string(gcc_demangle(_graph_view.type().name()))
-        + "\n\n";
-
-    error += "Action: " + string(gcc_demangle(_action.name())) + "\n\n";
+    error += "Graph view: " + name_demangle(_graph_view.type().name()) + "\n\n";
+    error += "Action: " + name_demangle(_action.name()) + "\n\n";
     for (size_t i = 0; i < _args.size(); ++i)
     {
         error += "Arg " + lexical_cast<string>(i+1) + ": " +
-            string(gcc_demangle(_args[i]->name())) + "\n\n";
+            name_demangle(_args[i]->name()) + "\n\n";
     }
     return error.c_str();
 }

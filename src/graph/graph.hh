@@ -48,8 +48,7 @@ namespace detail
 {
 // Generic graph_action functor. See graph_filtering.hh for details.
 template <class Action, class GraphViews, class Wrap = boost::mpl::false_,
-          class TR1=boost::mpl::vector<>, class TR2=boost::mpl::vector<>,
-          class TR3=boost::mpl::vector<>, class TR4=boost::mpl::vector<> >
+          class... TRS>
 struct graph_action;
 }
 

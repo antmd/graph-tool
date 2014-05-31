@@ -50,7 +50,7 @@ get_vertex_combined_correlation_histogram(GraphInterface& gi,
                                                                   ret_bins),
                    scalar_selectors(), scalar_selectors(),
                    boost::mpl::vector<dummy_weight>())
-        (degree_selector(deg1), degree_selector(deg2),
+        (any(degree_selector(deg1)), any(degree_selector(deg2)),
          boost::any(dummy_weight()));
 
     return boost::python::make_tuple(hist, ret_bins);

@@ -558,23 +558,16 @@ struct action_wrap
     Type& uncheck(Type& a, DoWrap) const { return a; }
 
     void operator()() const {};
+
     template <class T1> void operator()(T1* a1) const
     { _a(*a1); }
-    template <class T1, class T2>
-    void operator()(T1* a1, T2& a2) const
-    { _a(*a1, uncheck(a2, Wrap())); }
-    template <class T1, class T2, class T3>
-    void operator()(T1* a1, T2& a2, T3& a3) const
-    { _a(*a1, uncheck(a2, Wrap()), uncheck(a3, Wrap())); }
-    template <class T1, class T2, class T3, class T4>
-    void operator()(T1* a1, T2& a2, T3& a3, T4& a4)
-        const
-    { _a(*a1, uncheck(a2, Wrap()), uncheck(a3, Wrap()),
-         uncheck(a4, Wrap())); }
-    template <class T1, class T2, class T3, class T4, class T5>
-    void operator()(T1* a1, T2& a2, T3& a3, T4& a4, T5& a5) const
-    { _a(*a1, uncheck(a2, Wrap()), uncheck(a3, Wrap()),
-         uncheck(a4, Wrap()), uncheck(a5, Wrap())); }
+
+    template <class T1, class... Ts>
+    void operator()(T1* a1, Ts&&... as) const
+    {
+        _a(*a1, uncheck(std::forward<Ts>(as), Wrap())...);
+
+    }
 
     Action _a;
     reference_wrapper<GraphInterface> _g;
@@ -583,8 +576,7 @@ struct action_wrap
 
 // this functor encapsulates another functor Action, which takes a pointer to a
 // graph view as first argument
-template <class Action, class GraphViews, class Wrap, class TR1, class TR2,
-          class TR3, class TR4 >
+template <class Action, class GraphViews, class Wrap, class... TRS>
 struct graph_action
 {
     struct graph_view_pointers:
@@ -594,79 +586,17 @@ struct graph_action
         : _g(g), _a(a, g, num_vertices(*g._mg),
                     max(g._mg->get_last_index(), size_t(1))) {}
 
-    void operator()() const
+    template <class... Args>
+    void operator()(Args&&... args) const
     {
         bool found = false;
         boost::any gview = _g.GetGraphView();
-        boost::mpl::for_each<graph_view_pointers>
-            (boost::mpl::select_types(_a, found, gview));
+        boost::mpl::nested_for_each<graph_view_pointers,TRS...>
+            (boost::mpl::select_types(_a, found, gview, std::forward<Args>(args)...));
         if (!found)
         {
-            throw ActionNotFound(gview, typeid(Action),
-                                 vector<const std::type_info*>());
-        }
-    }
-
-    void operator()(boost::any a1) const
-    {
-        bool found = false;
-        boost::any gview = _g.GetGraphView();
-        boost::mpl::nested_for_each<graph_view_pointers,TR1>()
-            (boost::mpl::select_types(_a, found, gview, a1));
-        if (!found)
-        {
-            vector<const std::type_info*> args;
-            args.push_back(&a1.type());
-            throw ActionNotFound(gview, typeid(Action), args);
-        }
-    }
-
-    void operator()(boost::any a1, boost::any a2) const
-    {
-        bool found = false;
-        boost::any gview = _g.GetGraphView();
-        boost::mpl::nested_for_each<graph_view_pointers,TR1,TR2>()
-            (boost::mpl::select_types(_a, found, gview, a1, a2));
-        if (!found)
-        {
-            vector<const std::type_info*> args;
-            args.push_back(&a1.type());
-            args.push_back(&a2.type());
-            throw ActionNotFound(gview, typeid(Action), args);
-        }
-    }
-
-    void operator()(boost::any a1, boost::any a2, boost::any a3) const
-    {
-        bool found = false;
-        boost::any gview = _g.GetGraphView();
-        boost::mpl::nested_for_each<graph_view_pointers,TR1,TR2,TR3>()
-            (boost::mpl::select_types(_a, found, gview, a1, a2, a3));
-        if (!found)
-        {
-            vector<const std::type_info*> args;
-            args.push_back(&a1.type());
-            args.push_back(&a2.type());
-            args.push_back(&a3.type());
-            throw ActionNotFound(gview, typeid(Action), args);
-        }
-    }
-
-    void operator()(boost::any a1, boost::any a2, boost::any a3,
-                    boost::any a4) const
-    {
-        bool found = false;
-        boost::any gview = _g.GetGraphView();
-        boost::mpl::nested_for_each<graph_view_pointers,TR1,TR2,TR3,TR4>()
-            (boost::mpl::select_types(_a, found, gview, a1, a2, a3, a4));
-        if (!found)
-        {
-            vector<const std::type_info*> args;
-            args.push_back(&a1.type());
-            args.push_back(&a2.type());
-            args.push_back(&a3.type());
-            args.push_back(&a4.type());
-            throw ActionNotFound(gview, typeid(Action), args);
+            vector<const std::type_info*> args_t = {(&(args).type())...};
+            throw ActionNotFound(gview, typeid(Action), args_t);
         }
     }
 
@@ -680,39 +610,11 @@ struct graph_action
 template <class GraphViews = detail::all_graph_views, class Wrap = boost::mpl::false_>
 struct run_action
 {
-    template <class Action>
-    detail::graph_action<Action,GraphViews,Wrap>
-    operator()(GraphInterface &g, Action a)
+    template <class Action, class... TRS>
+    detail::graph_action<Action,GraphViews,Wrap,TRS...>
+    operator()(GraphInterface &g, Action&& a, TRS...)
     {
-        return detail::graph_action<Action,GraphViews,Wrap>(g, a);
-    }
-
-    template <class Action, class TR1>
-    detail::graph_action<Action,GraphViews,Wrap,TR1>
-    operator()(GraphInterface &g, Action a, TR1)
-    {
-        return detail::graph_action<Action,GraphViews,Wrap,TR1>(g, a);
-    }
-
-    template <class Action, class TR1, class TR2>
-    detail::graph_action<Action,GraphViews,Wrap,TR1,TR2>
-    operator()(GraphInterface &g, Action a, TR1, TR2)
-    {
-        return detail::graph_action<Action,GraphViews,Wrap,TR1,TR2>(g, a);
-    }
-
-    template <class Action, class TR1, class TR2, class TR3>
-    detail::graph_action<Action,GraphViews,Wrap,TR1,TR2,TR3>
-    operator()(GraphInterface &g, Action a, TR1, TR2, TR3)
-    {
-        return detail::graph_action<Action,GraphViews,Wrap,TR1,TR2,TR3>(g, a);
-    }
-
-    template <class Action, class TR1, class TR2, class TR3, class TR4>
-    detail::graph_action<Action,GraphViews,Wrap,TR1,TR2,TR3,TR4>
-    operator()(GraphInterface &g, Action a, TR1, TR2, TR3, TR4)
-    {
-        return detail::graph_action<Action,GraphViews,Wrap,TR1,TR2,TR3,TR4>(g, a);
+        return detail::graph_action<Action,GraphViews,Wrap,TRS...>(g, std::forward<Action>(a));
     }
 };
 
