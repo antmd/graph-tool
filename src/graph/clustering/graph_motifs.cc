@@ -141,7 +141,7 @@ void get_motifs(GraphInterface& g, size_t k, boost::python::list subgraph_list,
             GraphInterface sub;
             sub.SetDirected(g.GetDirected());
             typedef graph_tool::detail::get_all_graph_views::apply
-                <graph_tool::detail::scalar_pairs,
+                <graph_tool::detail::filt_scalar_type,
                  boost::mpl::bool_<false>, boost::mpl::bool_<false>,
                  boost::mpl::bool_<false>, boost::mpl::bool_<true>,
                  boost::mpl::bool_<true> >::type gviews;

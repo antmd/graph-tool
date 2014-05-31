@@ -178,8 +178,7 @@ void get_dists(GraphInterface& gi, size_t source, int tgt, boost::any dist_map,
             (gi, std::bind(do_bfs_search(), placeholders::_1, source, target, gi.GetVertexIndex(),
                            placeholders::_2, pmap.get_unchecked(num_vertices(gi.GetGraph())),
                            max_dist),
-             writable_vertex_scalar_properties(),
-             mpl::vector<pred_map_t>())
+             writable_vertex_scalar_properties())
             (dist_map);
     }
     else

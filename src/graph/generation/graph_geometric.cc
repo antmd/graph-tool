@@ -28,7 +28,7 @@ using namespace graph_tool;
 
 
 typedef graph_tool::detail::get_all_graph_views
-    ::apply<graph_tool::detail::scalar_pairs, mpl::bool_<false>,
+    ::apply<graph_tool::detail::filt_scalar_type, mpl::bool_<false>,
             mpl::bool_<true>,mpl::bool_<false>,
             mpl::bool_<true>,mpl::bool_<true> >::type graph_views;
 

@@ -142,6 +142,9 @@ check_filtered(const Graph &g, const EdgeFilter& edge_filter,
 
     if (e_active)
     {
+        if (!v_active)
+            throw GraphException("Edge filter is active but vertex filter is not. This is a bug.");
+
         if (max_eindex > 0)
             edge_filter.reserve(max_eindex);
         if (v_active)
@@ -170,6 +173,9 @@ check_filtered(const Graph &g, const EdgeFilter& edge_filter,
     {
         if (v_active)
         {
+            if (!e_active)
+                throw GraphException("Vertex filter is active but edge filter is not. This is a bug.");
+
             if (num_vertices(g) > 0)
                 vertex_filter.reserve(num_vertices(g));
             typedef filtered_graph<Graph, keep_all,

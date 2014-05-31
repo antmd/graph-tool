@@ -67,16 +67,14 @@ namespace graph_tool
 //
 //    - The original directed multigraph
 //
-//    - Filtered graphs, based on MaskFilter below. This amounts to a
-//      filtered_graph for every combination of filtered and unfiltered vertex
-//      or edge, i.e., 3.
+//    - Filtered graphs, based on MaskFilter below
 //
 //    - A reversed view of each directed graph (original + filtered)
 //
 //    - An undirected view of each directed (unreversed) graph (original +
 //      filtered)
 //
-// The total number of graph views is then: 3 * 4 = 12
+// The total number of graph views is then: 1 + 1 + 2 + 2 = 6
 //
 // The specific specialization can be called at run time (and generated at
 // compile time) with the run_action() function, which takes as arguments the
@@ -147,11 +145,11 @@ public:
         : _filtered_property(filtered_property), _invert(invert) {}
 
     template <class Descriptor>
-    __attribute__((always_inline)) inline bool operator() (Descriptor d) const
+    __attribute__((always_inline)) inline bool operator() (Descriptor&& d) const
     {
         // ignore if masked
 
-        return get(_filtered_property, d) ^ _invert;
+        return get(_filtered_property, std::forward<Descriptor>(d)) ^ _invert;
 
         // TODO: This is a critical section. It will be called for every vertex
         //       or edge in the graph, every time they're iterated
@@ -170,6 +168,7 @@ private:
 //
 // We need to generate a type sequence with all the filtered graph views, which
 // will be called all_graph_views.
+
 
 // metafunction class to get the correct filter predicate
 template <class Property>
@@ -232,81 +231,6 @@ struct graph_reverse
     };
 };
 
-// this wraps an unary metafunction class Bind into a unary metafunction,
-// i.e., it is an identity operation. I'm not sure why it's necessary, but
-// using pure unary bind expressions below didn't work for me, and this
-// fixed it.
-template <class Bind>
-struct bind_wrap1
-{
-    template <class T1> struct apply
-    { typedef typename Bind::template apply<T1>::type type; };
-};
-
-// metafunction which returns a mpl::vector containing all the pair combinations
-// of two given type sequences
-struct get_all_pairs
-{
-    struct make_pair
-    {
-        template <class T1, class T2>
-        struct apply
-        {
-            typedef boost::mpl::pair<T1,T2> type;
-        };
-    };
-
-    template <class TR1, class TR2>
-    struct apply
-    {
-        struct get_second_types
-        {
-            template <class T1>
-            struct apply
-            {
-                typedef typename boost::mpl::transform<
-                    TR2,
-                    bind_wrap1<
-                        boost::mpl::bind2<make_pair, T1, boost::mpl::_1>
-                    > >::type type;
-            };
-        };
-
-        typedef typename boost::mpl::transform<
-            TR1,
-            get_second_types,
-            boost::mpl::back_inserter<boost::mpl::vector<> >
-            >::type pair_combinations; // nested sequence (vector of vectors) of
-                                       // pair combinations
-
-        // joins two sequences
-        struct join
-        {
-            template <class Seq1, class Seq2>
-            struct apply
-            {
-                typedef typename boost::mpl::copy<
-                    Seq2,
-                    boost::mpl::back_inserter<Seq1>
-                    >::type type;
-            };
-        };
-
-        // flattens a nested sequence
-        template<class Sequence>
-        struct flatten
-        {
-            typedef typename boost::mpl::fold<
-                Sequence,
-                typename boost::mpl::clear<Sequence>::type,
-                join
-                >::type type;
-        };
-
-        // the complete list of combinations
-        typedef typename flatten<pair_combinations>::type type;
-    };
-};
 
 // metafunction class to get the correct property map type
 template <class Scalar, class IndexMap>
@@ -326,31 +250,18 @@ struct get_property_map_type<boost::keep_all, IndexMap>
 // used in the property maps
 struct get_graph_filtered
 {
-    template <class TypePair>
+    template <class Scalar>
     struct apply
     {
-        typedef typename TypePair::first edge_scalar;
-        typedef typename TypePair::second vertex_scalar;
-
         // if the 'scalar' is the index map itself, use simply that, otherwise
         // get the specific property map
-        typedef typename boost::mpl::if_<
-            is_same<edge_scalar,
-                    GraphInterface::edge_index_map_t>,
-            GraphInterface::edge_index_map_t,
-            typename get_property_map_type<
-                edge_scalar,
-                GraphInterface::edge_index_map_t>::type
-            >::type edge_property_map;
+        typedef typename get_property_map_type<
+            Scalar,
+            GraphInterface::edge_index_map_t>::type edge_property_map;
 
-        typedef typename boost::mpl::if_<
-            is_same<vertex_scalar,
-                    GraphInterface::vertex_index_map_t>,
-            GraphInterface::vertex_index_map_t,
-            typename get_property_map_type<
-                vertex_scalar,
-                GraphInterface::vertex_index_map_t>::type
-            >::type vertex_property_map;
+        typedef typename get_property_map_type<
+            Scalar,
+            GraphInterface::vertex_index_map_t>::type vertex_property_map;
 
         typedef typename graph_filter::apply<GraphInterface::multigraph_t,
                                              edge_property_map,
@@ -361,7 +272,7 @@ struct get_graph_filtered
 // this metafunction returns all the possible graph views
 struct get_all_graph_views
 {
-    template <class TypePairs,
+    template <class FiltType,
               class AlwaysDirected = boost::mpl::bool_<false>,
               class NeverDirected = boost::mpl::bool_<false>,
               class AlwaysReversed = boost::mpl::bool_<false>,
@@ -371,11 +282,11 @@ struct get_all_graph_views
     {
         // filtered graphs
         struct filtered_graphs:
-            boost::mpl::if_
-            <NeverFiltered,
-             boost::mpl::vector<GraphInterface::multigraph_t>,
-             typename boost::mpl::transform<TypePairs,
-                                            get_graph_filtered>::type>::type {};
+            boost::mpl::if_<NeverFiltered,
+                            boost::mpl::vector<GraphInterface::multigraph_t>,
+                            boost::mpl::vector<GraphInterface::multigraph_t,
+                                               typename get_graph_filtered::apply<FiltType>::type>
+                            >::type {};
 
         // filtered + reversed graphs
         struct reversed_graphs:
@@ -445,59 +356,43 @@ struct split
 
 
 
-// all scalar types plus edge and vertex index property (we actually only use
-// bool)
-
-#ifndef NO_GRAPH_FILTERING
-struct edge_scalars:
-        boost::mpl::vector<boost::keep_all, uint8_t> {};
-struct vertex_scalars:
-        boost::mpl::vector<boost::keep_all, uint8_t> {};
-#else
-struct edge_scalars:
-        boost::mpl::vector<boost::keep_all> {};
-struct vertex_scalars:
-        boost::mpl::vector<boost::keep_all> {};
-#endif
-
-// all scalar pairs
-struct scalar_pairs: get_all_pairs::apply<edge_scalars,vertex_scalars>::type {};
+typedef uint8_t filt_scalar_type;
 
 // finally, this type should hold all the possible graph views
 struct all_graph_views:
-    get_all_graph_views::apply<scalar_pairs>::type {};
+    get_all_graph_views::apply<filt_scalar_type>::type {};
 
 // restricted graph views
 struct always_directed:
-    get_all_graph_views::apply<scalar_pairs,boost::mpl::bool_<true> >::type {};
+    get_all_graph_views::apply<filt_scalar_type,boost::mpl::bool_<true> >::type {};
 
 struct never_directed:
-    get_all_graph_views::apply<scalar_pairs,boost::mpl::bool_<false>,
+    get_all_graph_views::apply<filt_scalar_type,boost::mpl::bool_<false>,
                                boost::mpl::bool_<true> >::type {};
 
 struct always_reversed:
-    get_all_graph_views::apply<scalar_pairs,boost::mpl::bool_<true>,
+    get_all_graph_views::apply<filt_scalar_type,boost::mpl::bool_<true>,
                                boost::mpl::bool_<false>,boost::mpl::bool_<true> >::type {};
 
 struct never_reversed:
-    get_all_graph_views::apply<scalar_pairs,boost::mpl::bool_<false>,
+    get_all_graph_views::apply<filt_scalar_type,boost::mpl::bool_<false>,
                                boost::mpl::bool_<false>,boost::mpl::bool_<false>,
                                boost::mpl::bool_<true> >::type {};
 
 struct always_directed_never_reversed:
-    get_all_graph_views::apply<scalar_pairs,boost::mpl::bool_<true>,
+    get_all_graph_views::apply<filt_scalar_type,boost::mpl::bool_<true>,
                                boost::mpl::bool_<false>,boost::mpl::bool_<false>,
                                boost::mpl::bool_<true> >::type {};
 
 struct never_filtered:
-    get_all_graph_views::apply<scalar_pairs,boost::mpl::bool_<false>,
+    get_all_graph_views::apply<filt_scalar_type,boost::mpl::bool_<false>,
                                boost::mpl::bool_<false>,boost::mpl::bool_<false>,
                                boost::mpl::bool_<false>,boost::mpl::bool_<true> >::type {};
 
 // sanity check
 typedef boost::mpl::size<all_graph_views>::type n_views;
 #ifndef NO_GRAPH_FILTERING
-BOOST_MPL_ASSERT_RELATION(n_views::value, == , boost::mpl::int_<12>::value);
+BOOST_MPL_ASSERT_RELATION(n_views::value, == , boost::mpl::int_<6>::value);
 #else
 BOOST_MPL_ASSERT_RELATION(n_views::value, == , boost::mpl::int_<3>::value);
 #endif

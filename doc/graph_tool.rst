@@ -141,10 +141,12 @@
        reversible. They are also very cheap, and have an :math:`O(1)`
        complexity.
 
+    .. automethod:: set_filters
     .. automethod:: set_vertex_filter
     .. automethod:: get_vertex_filter
     .. automethod:: set_edge_filter
     .. automethod:: get_edge_filter
+    .. automethod:: clear_filters
 
     .. warning::
 

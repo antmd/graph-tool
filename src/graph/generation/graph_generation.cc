@@ -53,7 +53,7 @@ void generate_graph(GraphInterface& gi, size_t N, boost::python::object deg_samp
                     rng_t& rng, bool verbose, bool verify)
 {
     typedef graph_tool::detail::get_all_graph_views::apply<
-    graph_tool::detail::scalar_pairs, boost::mpl::bool_<false>,
+    graph_tool::detail::filt_scalar_type, boost::mpl::bool_<false>,
         boost::mpl::bool_<false>, boost::mpl::bool_<false>,
         boost::mpl::bool_<true>, boost::mpl::bool_<true> >::type graph_views;
 
