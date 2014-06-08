@@ -13,14 +13,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+
+#include "graph_python_interface.hh"
+
 #include "graph.hh"
 #include "graph_filtering.hh"
 #include "graph_properties.hh"
 #include "graph_selectors.hh"
 
 #include "graph_similarity.hh"
-
-#include <boost/python.hpp>
 
 using namespace std;
 using namespace boost;
@@ -45,11 +46,26 @@ size_t similarity(GraphInterface& gi1, GraphInterface& gi2, boost::any label1,
         (gi1, std::bind(get_similarity(), placeholders::_1, placeholders::_2,
                         placeholders::_3, label2, std::ref(s)),
          get_pointers::apply<graph_tool::detail::all_graph_views>::type(),
-         vertex_scalar_properties())(gi2.GetGraphView(), label1);
+         writable_vertex_properties())
+        (gi2.GetGraphView(), label1);
+    return s;
+}
+
+size_t similarity_fast(GraphInterface& gi1, GraphInterface& gi2, boost::any label1,
+                       boost::any label2)
+{
+    size_t s = 0;
+    run_action<graph_tool::detail::all_graph_views, boost::mpl::true_>()
+        (gi1, std::bind(get_similarity_fast(), placeholders::_1, placeholders::_2,
+                        placeholders::_3, label2, std::ref(s)),
+         get_pointers::apply<graph_tool::detail::all_graph_views>::type(),
+         vertex_integer_properties())
+        (gi2.GetGraphView(), label1);
     return s;
 }
 
 void export_similarity()
 {
     python::def("similarity", &similarity);
+    python::def("similarity_fast", &similarity_fast);
 };

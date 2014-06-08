@@ -18,20 +18,21 @@
 
 #include <unordered_set>
 
+
 namespace graph_tool
 {
 using namespace std;
 using namespace boost;
 
 
-template <class Keys, class Set>
-size_t intersection_size(Keys& ks, Set& s1, Set& s2)
+template <class Keys, class Set1, class Set2>
+size_t intersection_size(Keys& ks, Set1& s1, Set2& s2)
 {
     size_t s = 0;
-    for (typeof(ks.begin()) k = ks.begin(); k != ks.end(); ++k)
+    for (auto k : ks)
     {
-        int c1 = s1.count(*k);
-        int c2 = s2.count(*k);
+        int c1 = s1.count(k);
+        int c2 = s2.count(k);
         s += max(c1, c2) - abs(c1 - c2);
     }
     return s;
@@ -42,51 +43,111 @@ struct get_similarity
 {
     template <class Graph1, class Graph2, class LabelMap>
     void operator()(const Graph1& g1, const Graph2* g2p, LabelMap l1,
-                    any l2a, size_t& s) const
+                    boost::any al2, size_t& s) const
     {
-        LabelMap l2 = any_cast<LabelMap>(l2a);
         const Graph2& g2 = *g2p;
+
+        LabelMap l2 = boost::any_cast<typename LabelMap::checked_t>(al2).get_unchecked(num_vertices(g2));
 
         typedef typename property_traits<LabelMap>::value_type label_t;
 
-        std::unordered_map<label_t, typename graph_traits<Graph1>::vertex_descriptor>
+        std::unordered_map<label_t, typename graph_traits<Graph1>::vertex_descriptor,
+                           boost::hash<label_t>>
             lmap1;
-        std::unordered_map<label_t, typename graph_traits<Graph2>::vertex_descriptor>
+        std::unordered_map<label_t, typename graph_traits<Graph2>::vertex_descriptor,
+                           boost::hash<label_t>>
             lmap2;
 
-        typename graph_traits<Graph1>::vertex_iterator v1, v1_end;
-        for (tie(v1, v1_end) = vertices(g1); v1 != v1_end; ++v1)
-            lmap1[get(l1, *v1)] = *v1;
-        typename graph_traits<Graph2>::vertex_iterator v2, v2_end;
-        for (tie(v2, v2_end) = vertices(g2); v2 != v2_end; ++v2)
-            lmap2[get(l2, *v2)] = *v2;
+        for (auto v : vertices_range(g1))
+            lmap1[get(l1, v)] = v;
+        for (auto v : vertices_range(g2))
+            lmap2[get(l2, v)] = v;
 
         s = 0;
-        for (typeof(lmap1.begin()) li = lmap1.begin(); li != lmap1.end(); ++li)
+        for (auto& lv1 : lmap1)
         {
-            typename graph_traits<Graph1>::vertex_descriptor v1 = li->second;
+            auto v1 = lv1.second;
 
-            typeof(lmap2.begin()) li2 = lmap2.find(li->first);
+            auto li2 = lmap2.find(lv1.first);
             if (li2 == lmap2.end())
                 continue;
-            typename graph_traits<Graph2>::vertex_descriptor v2 = li2->second;
+            auto v2 = li2->second;
+
+            std::unordered_set<label_t, boost::hash<label_t>> keys;
+            std::unordered_multiset<label_t, boost::hash<label_t>> adj1;
+            std::unordered_multiset<label_t, boost::hash<label_t>> adj2;
+
+            for (auto a1 : adjacent_vertices_range(v1, g1))
+            {
+                adj1.insert(get(l1, a1));
+                keys.insert(get(l1, a1));
+            }
+
+            for (auto a2 : adjacent_vertices_range(v2, g2))
+            {
+                adj2.insert(get(l2, a2));
+                keys.insert(get(l2, a2));
+            }
+
+            s += intersection_size(keys, adj1, adj2);
+        }
+    }
+};
+
+struct get_similarity_fast
+{
+    template <class Graph1, class Graph2, class LabelMap>
+    void operator()(const Graph1& g1, const Graph2* g2p, LabelMap l1,
+                    boost::any al2, size_t& s) const
+    {
+        const Graph2& g2 = *g2p;
+
+        LabelMap l2 = boost::any_cast<LabelMap>(al2);
+
+        typedef typename property_traits<LabelMap>::value_type label_t;
+
+        vector<typename graph_traits<Graph1>::vertex_descriptor> lmap1;
+        vector<typename graph_traits<Graph1>::vertex_descriptor> lmap2;
+
+        for (auto v : vertices_range(g1))
+        {
+            size_t i = get(l1, v);
+            if (lmap1.size() <= i)
+                lmap1.resize(i + 1);
+            lmap1[i] = v;
+        }
+
+        for (auto v : vertices_range(g2))
+        {
+            size_t i = get(l2, v);
+            if (lmap2.size() <= i)
+                lmap2.resize(i + 1);
+            lmap2[i] = v;
+        }
+
+        s = 0;
+
+        int i, N = lmap1.size();
+        #pragma omp parallel for default(shared) private(i) schedule(static) if (N > 100)
+        for (i = 0; i < N; ++i)
+        {
+            auto v1 = lmap1[i];
+            auto v2 = lmap2[i];
 
             std::unordered_set<label_t> keys;
             std::unordered_multiset<label_t> adj1;
             std::unordered_multiset<label_t> adj2;
 
-            typename graph_traits<Graph1>::adjacency_iterator a1, a1_end;
-            for(tie(a1, a1_end) = adjacent_vertices(v1, g1); a1 != a1_end; ++a1)
+            for (auto a1 : adjacent_vertices_range(v1, g1))
             {
-                adj1.insert(get(l1, *a1));
-                keys.insert(get(l1, *a1));
+                adj1.insert(get(l1, a1));
+                keys.insert(get(l1, a1));
             }
 
-            typename graph_traits<Graph2>::adjacency_iterator a2, a2_end;
-            for(tie(a2, a2_end) = adjacent_vertices(v2, g2); a2 != a2_end; ++a2)
+            for (auto a2 : adjacent_vertices_range(v2, g2))
             {
-                adj2.insert(get(l2, *a2));
-                keys.insert(get(l2, *a2));
+                adj2.insert(get(l2, a2));
+                keys.insert(get(l2, a2));
             }
 
             s += intersection_size(keys, adj1, adj2);
