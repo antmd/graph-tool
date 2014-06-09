@@ -118,7 +118,9 @@ __all__ = ["Graph", "GraphView", "Vertex", "Edge", "Vector_bool",
            "Vector_long_double", "Vector_string", "value_types", "load_graph",
            "PropertyMap", "group_vector_property", "ungroup_vector_property",
            "infect_vertex_property", "edge_difference", "seed_rng", "show_config",
-           "PropertyArray", "__author__", "__copyright__", "__URL__",
+           "PropertyArray", "openmp_enabled", "openmp_get_num_threads",
+           "openmp_set_num_threads", "openmp_get_schedule",
+           "openmp_set_schedule", "__author__", "__copyright__", "__URL__",
            "__version__"]
 
 # this is rather pointless, but it works around a sphinx bug
@@ -2348,3 +2350,30 @@ def seed_rng(seed):
 def _get_rng():
     global _rng
     return _rng
+
+# OpenMP Setup
+
+def openmp_enabled():
+    """Return `True` if OpenMP was enabled during compilation."""
+    return libcore.openmp_enabled()
+
+def openmp_get_num_threads():
+    """Return the number of OpenMP threads."""
+    return libcore.openmp_get_num_threads()
+
+def openmp_set_num_threads(n):
+    """Set the number of OpenMP threads."""
+    return libcore.openmp_set_num_threads(n)
+
+def openmp_get_schedule():
+    """Return the runtime OpenMP schedule and chunk size. The schedule can by
+    any of: `"static"`, `"dynamic"`, `"guided"`, `"auto"`."""
+    return libcore.openmp_get_schedule()
+
+def openmp_set_schedule(schedule, chunk=0):
+    """Set the runtime OpenMP schedule and chunk size. The schedule can by
+    any of: `"static"`, `"dynamic"`, `"guided"`, `"auto"`."""
+    return libcore.openmp_set_schedule(schedule, chunk)
+
+if openmp_enabled() and os.environ.get("OMP_SCHEDULE") is None:
+    openmp_set_schedule("static", 0)

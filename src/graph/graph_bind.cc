@@ -60,6 +60,7 @@ struct LibInfo
     }
 };
 
+
 template <class ValueType>
 struct vector_from_list
 {
@@ -373,15 +374,6 @@ string get_graph_type(GraphInterface& g)
     return name;
 }
 
-bool openmp_enabled()
-{
-#ifdef USING_OPENMP
-    return true;
-#else
-    return false;
-#endif
-}
-
 // numpy array interface weirdness
 void* do_import_array()
 {
@@ -400,6 +392,8 @@ void edge_difference(GraphInterface& gi, boost::any prop,
 void mark_edges(GraphInterface& gi, boost::any prop);
 
 void export_python_interface();
+
+void export_openmp();
 
 BOOST_PYTHON_MODULE(libgraph_tool_core)
 {
@@ -426,7 +420,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
         .def("empty", &boost::any::empty);
 
     def("graph_filtering_enabled", &graph_filtering_enabled);
-    def("openmp_enabled", &openmp_enabled);
+    export_openmp();
 
     boost::mpl::for_each<boost::mpl::push_back<scalar_types,string>::type>(export_vector_types());
 

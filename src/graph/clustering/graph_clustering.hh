@@ -107,7 +107,7 @@ struct get_global_clustering
         int i, N = num_vertices(g);
 
         #pragma omp parallel for default(shared) private(i,temp) \
-            schedule(static) if (N > 100) reduction(+:triangles, n)
+            schedule(runtime) if (N > 100) reduction(+:triangles, n)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -125,7 +125,7 @@ struct get_global_clustering
         double cerr = 0.0;
 
         #pragma omp parallel for default(shared) private(i,temp) \
-            schedule(static) if (N > 100) reduction(+:cerr)
+            schedule(runtime) if (N > 100) reduction(+:cerr)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -151,7 +151,7 @@ struct set_clustering_to_property
         typename get_undirected_graph<Graph>::type ug(g);
         int i, N = num_vertices(g);
 
-        #pragma omp parallel for default(shared) private(i) schedule(static) if (N > 100)
+        #pragma omp parallel for default(shared) private(i) schedule(runtime) if (N > 100)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);

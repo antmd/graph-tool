@@ -264,7 +264,7 @@ struct do_mark_edges
     {
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i)     \
-                schedule(static) if (N > 100)
+                schedule(runtime) if (N > 100)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);

@@ -285,7 +285,7 @@ struct get_sfdp_layout
             size_t nmoves = 0;
             N = vertices.size();
             #pragma omp parallel for default(shared) private(i)  \
-                reduction(+:E, delta, nmoves) schedule(static) if (N > 100)
+                reduction(+:E, delta, nmoves) schedule(runtime) if (N > 100)
             for (i = 0; i < N; ++i)
             {
                 auto v = vertex(vertices[i], g);

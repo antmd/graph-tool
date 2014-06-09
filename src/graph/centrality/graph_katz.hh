@@ -57,7 +57,7 @@ struct get_katz
         while (delta >= epsilon)
         {
             #pragma omp parallel for default(shared) private(i) \
-                schedule(static) if (N > 100)
+                schedule(runtime) if (N > 100)
             for (i = 0; i < N; ++i)
             {
                 typename graph_traits<Graph>::vertex_descriptor v =
@@ -81,7 +81,7 @@ struct get_katz
 
             delta = 0;
             #pragma omp parallel for default(shared) private(i) \
-                schedule(static) if (N > 100) reduction(+:delta)
+                schedule(runtime) if (N > 100) reduction(+:delta)
             for (i = 0; i < N; ++i)
             {
                 typename graph_traits<Graph>::vertex_descriptor v =
@@ -100,7 +100,7 @@ struct get_katz
         if (iter % 2 != 0)
         {
             #pragma omp parallel for default(shared) private(i)     \
-                schedule(static) if (N > 100)
+                schedule(runtime) if (N > 100)
             for (i = 0; i < N; ++i)
             {
                 typename graph_traits<Graph>::vertex_descriptor v =

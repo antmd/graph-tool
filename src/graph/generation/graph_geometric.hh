@@ -135,7 +135,7 @@ struct get_geometric
 
         int i;
         #pragma omp parallel for default(shared) private(i, box) \
-            schedule(static) if (N > 100)
+            schedule(runtime) if (N > 100)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);

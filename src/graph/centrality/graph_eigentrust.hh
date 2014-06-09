@@ -49,7 +49,7 @@ struct get_eigentrust
 
             int i, N = num_vertices(g);
             #pragma omp parallel for default(shared) private(i)  \
-                schedule(static) if (N > 100)
+                schedule(runtime) if (N > 100)
             for (i = 0; i < N; ++i)
             {
                 typename graph_traits<Graph>::vertex_descriptor v =
@@ -73,7 +73,7 @@ struct get_eigentrust
             c_sum.reserve(num_vertices(g));
             int i, N = num_vertices(g);
             #pragma omp parallel for default(shared) private(i)     \
-                schedule(static) if (N > 100)
+                schedule(runtime) if (N > 100)
             for (i = 0; i < N; ++i)
             {
                 typename graph_traits<Graph>::vertex_descriptor v =
@@ -91,7 +91,7 @@ struct get_eigentrust
         // init inferred trust t
         int i, N = num_vertices(g), V = HardNumVertices()(g);
         #pragma omp parallel for default(shared) private(i)     \
-                schedule(static) if (N > 100)
+                schedule(runtime) if (N > 100)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -106,7 +106,7 @@ struct get_eigentrust
         {
             delta = 0;
             #pragma omp parallel for default(shared) private(i)     \
-                schedule(static) if (N > 100) reduction(+:delta)
+                schedule(runtime) if (N > 100) reduction(+:delta)
             for (i = 0; i < N; ++i)
             {
                 typename graph_traits<Graph>::vertex_descriptor v =
@@ -138,7 +138,7 @@ struct get_eigentrust
         if (iter % 2 != 0)
         {
             #pragma omp parallel for default(shared) private(i)     \
-                schedule(static) if (N > 100)
+                schedule(runtime) if (N > 100)
             for (i = 0; i < N; ++i)
             {
                 typename graph_traits<Graph>::vertex_descriptor v =

@@ -147,7 +147,7 @@ bool refine_check(const Graph1& sub, const Graph2& g, matrix_t& M, size_t count,
     matrix_t M_temp(num_vertices(sub));
 
     int k = 0, N = num_vertices(sub);
-    #pragma omp parallel for default(shared) private(k) schedule(static) if (N > 100)
+    #pragma omp parallel for default(shared) private(k) schedule(runtime) if (N > 100)
     for (k = 0; k < int(count); ++k)
         M_temp[k] = M[k];
 
@@ -156,7 +156,7 @@ bool refine_check(const Graph1& sub, const Graph2& g, matrix_t& M, size_t count,
     {
         n_mod = 0;
         bool abort = false;
-        #pragma omp parallel for default(shared) private(k) schedule(static) if (N > 100) \
+        #pragma omp parallel for default(shared) private(k) schedule(runtime) if (N > 100) \
             reduction(+:n_mod)
         for (k = count; k < N; ++k)
         {
@@ -305,7 +305,7 @@ void subgraph_isomorphism(const Graph1& sub, const Graph2& g,
 
     bool abort = false;
     int i, N = num_vertices(sub);
-    #pragma omp parallel for default(shared) private(i) schedule(static) if (N > 100)
+    #pragma omp parallel for default(shared) private(i) schedule(runtime) if (N > 100)
     for (i = 0; i < N; ++i)
     {
         if (vertex(i, sub) == graph_traits<Graph1>::null_vertex() || abort)

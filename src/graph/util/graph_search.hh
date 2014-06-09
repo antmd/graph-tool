@@ -76,7 +76,7 @@ struct find_vertices
         bool is_eq = range.first == range.second;
 
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(static) if (N > 100) \
+        #pragma omp parallel for default(shared) private(i) schedule(runtime) if (N > 100) \
             num_threads(nt)
         for (i = 0; i < N; ++i)
         {
@@ -121,7 +121,7 @@ struct find_edges
         bool is_eq = range.first == range.second;
 
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(static) if (N > 100) \
+        #pragma omp parallel for default(shared) private(i) schedule(runtime) if (N > 100) \
             num_threads(nt)
         for (i = 0; i < N; ++i)
         {

@@ -34,7 +34,7 @@ struct get_reciprocity
 
         int i, NV = num_vertices(g);
         #pragma omp parallel for default(shared) private(i) reduction(+:L,Lbd) \
-            schedule(static) if (NV > 100)
+            schedule(runtime) if (NV > 100)
         for (i = 0; i < NV; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);

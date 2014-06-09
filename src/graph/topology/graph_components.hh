@@ -194,7 +194,7 @@ struct label_attractors
     {
         typedef typename property_traits<CompMap>::value_type c_type;
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(static) if (N > 100)
+        #pragma omp parallel for default(shared) private(i) schedule(runtime) if (N > 100)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v =

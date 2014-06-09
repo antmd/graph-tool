@@ -88,7 +88,7 @@ struct get_sampled_distance_histogram
         typename hist_t::point_t point;
         get_vertex_dists_t get_vertex_dists;
         #pragma omp parallel for default(shared) private(i,point) \
-            firstprivate(s_hist) schedule(static) if (num_vertices(g) * n_samples > 100)
+            firstprivate(s_hist) schedule(runtime) if (num_vertices(g) * n_samples > 100)
         for (i = 0; i < int(n_samples); ++i)
         {
             vertex_t v;
