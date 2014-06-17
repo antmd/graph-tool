@@ -42,7 +42,7 @@ size_t openmp_get_num_threads()
 #ifdef USING_OPENMP
     return omp_get_max_threads();
 #else
-    throw GraphException("OpenMP was not enabled during compilation")
+    throw GraphException("OpenMP was not enabled during compilation");
 #endif
 }
 
@@ -51,7 +51,7 @@ void openmp_set_num_threads(int n)
 #ifdef USING_OPENMP
     omp_set_num_threads(n);
 #else
-    throw GraphException("OpenMP was not enabled during compilation")
+    throw GraphException("OpenMP was not enabled during compilation");
 #endif
 }
 
@@ -82,7 +82,7 @@ python::tuple openmp_get_schedule()
 
     return python::make_tuple(skind, chunk);
 #else
-    throw GraphException("OpenMP was not enabled during compilation")
+    throw GraphException("OpenMP was not enabled during compilation");
 #endif
 }
 
@@ -102,7 +102,7 @@ void openmp_set_schedule(string skind, int chunk)
         throw GraphException("Unknown schedule type: " + skind);
     omp_set_schedule(kind, chunk);
 #else
-    throw GraphException("OpenMP was not enabled during compilation")
+    throw GraphException("OpenMP was not enabled during compilation");
 #endif
 }
 
