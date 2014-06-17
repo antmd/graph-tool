@@ -1737,9 +1737,9 @@ class Graph(object):
     @_limit_args({"deg": ["in", "out", "total"]})
     def degree_property_map(self, deg, weight=None):
         """Create and return a vertex property map containing the degree type
-        given by ``deg``. If provided, ``weight`` should be an edge
-        :class:`~graph_tool.PropertyMap` containing the edge weights which
-        should be summed."""
+        given by ``deg``, which can be any of ``"in"``, ``"out"``, or ``"total"``.
+        If provided, ``weight`` should be an edge :class:`~graph_tool.PropertyMap`
+        containing the edge weights which should be summed."""
         pmap = self.__graph.DegreeMap(deg, _prop("e", self, weight))
         return PropertyMap(pmap, self, "v")
 
