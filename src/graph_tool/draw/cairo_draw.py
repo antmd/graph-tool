@@ -241,7 +241,7 @@ def _convert(attr, val, cmap):
                 if rg[0] == rg[1]:
                     rg[1] = 1
                 for v in g.vertices():
-                    new_val[v] = flatten([default_cm((x - rg[0]) / (rg[1] - rg[0])) for x in val[v]])
+                    new_val[v] = flatten([cmap((x - rg[0]) / (rg[1] - rg[0])) for x in val[v]])
                 return new_val
             if val.value_type() == "vector<string>":
                 g = val.get_graph()
