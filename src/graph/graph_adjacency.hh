@@ -134,7 +134,26 @@ class adj_list
 public:
     struct graph_tag {};
     typedef Vertex vertex_t;
-    typedef std::tuple<vertex_t, vertex_t, vertex_t, bool> edge_descriptor;
+
+    struct edge_descriptor
+    {
+        edge_descriptor() {};
+        edge_descriptor(vertex_t s, vertex_t t, vertex_t idx, bool inv)
+            : s(s), t(t), idx(idx), inv(inv) {}
+
+        bool operator==(const edge_descriptor& other) const
+        {
+            return idx == other.idx;
+        }
+        bool operator!=(const edge_descriptor& other) const
+        {
+            return idx != other.idx;
+        }
+
+        vertex_t s, t, idx;
+        bool inv;
+    };
+
     typedef std::vector<std::pair<vertex_t, vertex_t> > edge_list_t;
     typedef typename integer_range<Vertex>::iterator vertex_iterator;
 
@@ -158,7 +177,7 @@ public:
         vertex_t _src;
         typedef edge_descriptor result_type;
         edge_descriptor operator()(const std::pair<vertex_t, vertex_t>& v) const
-        { return std::make_tuple(_src, v.first, v.second, false); }
+        { return edge_descriptor(_src, v.first, v.second, false); }
     };
 
     struct make_in_edge
@@ -168,7 +187,7 @@ public:
         vertex_t _tgt;
         typedef edge_descriptor result_type;
         edge_descriptor operator()(const std::pair<vertex_t, vertex_t>& v) const
-        { return std::make_tuple(v.first, _tgt, v.second, false); }
+        { return edge_descriptor(v.first, _tgt, v.second, false); }
     };
 
     typedef transform_random_access_iterator<make_out_edge, typename edge_list_t::const_iterator>
@@ -223,7 +242,7 @@ public:
 
         edge_descriptor dereference() const
         {
-            return std::make_tuple(vertex_t(_vi - _vi_begin),
+            return edge_descriptor(vertex_t(_vi - _vi_begin),
                                    _ei->first, _ei->second, false);
         }
 
@@ -464,14 +483,15 @@ template <class Vertex>
 inline std::pair<typename adj_list<Vertex>::edge_descriptor, bool>
 edge(Vertex s, Vertex t, const adj_list<Vertex>& g)
 {
+    typedef typename adj_list<Vertex>::edge_descriptor edge_descriptor;
     const auto& oes = g._out_edges[s];
     for (size_t i = 0; i < oes.size(); ++i)
         if (oes[i].first == t)
-            return std::make_pair(std::make_tuple(s, t, oes[i].second,
+            return std::make_pair(edge_descriptor(s, t, oes[i].second,
                                                   false),
                                   true);
     Vertex v = graph_traits<adj_list<Vertex> >::null_vertex();
-    return std::make_pair(std::make_tuple(v, v, v, false), false);
+    return std::make_pair(edge_descriptor(v, v, v, false), false);
 }
 
 template <class Vertex>
@@ -735,7 +755,8 @@ add_edge(Vertex s, Vertex t, adj_list<Vertex>& g)
         g._epos[idx].second = g._in_edges[t].size() - 1;
     }
 
-    return std::make_pair(std::make_tuple(s, t, idx, false), true);
+    typedef typename adj_list<Vertex>::edge_descriptor edge_descriptor;
+    return std::make_pair(edge_descriptor(s, t, idx, false), true);
 }
 
 template <class Vertex>
@@ -772,9 +793,9 @@ template <class Vertex>
 inline void remove_edge(const typename adj_list<Vertex>::edge_descriptor& e,
                         adj_list<Vertex>& g)
 {
-    Vertex s = get<0>(e);
-    Vertex t = get<1>(e);
-    Vertex idx = get<2>(e);
+    auto& s = e.s;
+    auto& t = e.t;
+    auto& idx = e.idx;
     auto& oes = g._out_edges[s];
     auto& ies = g._in_edges[t];
 
@@ -831,15 +852,14 @@ template <class Vertex>
 inline Vertex source(const typename adj_list<Vertex>::edge_descriptor& e,
                      const adj_list<Vertex>&)
 {
-    return get<0>(e);
+    return e.s;
 }
 
 template <class Vertex>
 inline Vertex target(const typename adj_list<Vertex>::edge_descriptor& e,
                      const adj_list<Vertex>&)
 {
-    return get<1>(e);
-
+    return e.t;
 }
 
 //========================================================================
@@ -880,7 +900,7 @@ struct get_edge_index
     template <class Vertex>
     size_t operator()(const typename adj_list<Vertex>::edge_descriptor& e) const
     {
-        return get<2>(e);
+        return e.idx;
     }
 };
 
@@ -894,7 +914,7 @@ public:
     typedef Vertex value_type;
     typedef boost::readable_property_map_tag category;
 
-    reference operator[](const key_type& k) const {return get<2>(k);}
+    reference operator[](const key_type& k) const {return k.idx;}
 };
 
 template <class Vertex>

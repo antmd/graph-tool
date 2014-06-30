@@ -188,7 +188,7 @@ class joined_edge_iterator
         else
         {
             e = *_pos1;
-            get<3>(e) = true;
+            e.inv = true;
         }
         return e;
     }
@@ -271,7 +271,7 @@ inline typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor
 source(const typename graph_traits<UndirectedAdaptor<Graph> >::edge_descriptor& e,
        const UndirectedAdaptor<Graph>& g)
 {
-    if (get<3>(e))
+    if (e.inv)
         return target(e, g.OriginalGraph());
     else
         return source(e, g.OriginalGraph());
@@ -285,7 +285,7 @@ inline typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor
 target(const typename graph_traits<UndirectedAdaptor<Graph> >::edge_descriptor& e,
        const UndirectedAdaptor<Graph>& g)
 {
-    if (get<3>(e))
+    if (e.inv)
         return source(e, g.OriginalGraph());
     else
         return target(e, g.OriginalGraph());
@@ -343,7 +343,7 @@ edge(typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor u,
     if (!res.second)
     {
         res = edge(v, u, g.OriginalGraph());
-        get<3>(res.first) = true;
+        res.first.inv = true;
     }
 
     return res;
