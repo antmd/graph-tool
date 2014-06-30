@@ -43,13 +43,11 @@ struct get_line_graph
 
         typename LGVertexIndex::checked_t vertex_map = vmap.get_checked();
 
-        typename graph_traits<Graph>::edge_iterator e, e_end;
-        for (tie(e, e_end) = edges(g); e != e_end; ++e)
+        for (auto e : edges_range(g))
         {
-            typename graph_traits<LineGraph>::vertex_descriptor v;
-            v = add_vertex(line_graph);
-            edge_to_vertex_map[*e] = v;
-            vertex_map[v] = edge_index[*e];
+            auto v = add_vertex(line_graph);
+            edge_to_vertex_map[e] = v;
+            vertex_map[v] = edge_index[e];
         }
 
         typedef typename property_map<LineGraph,edge_index_t>::type
@@ -58,41 +56,36 @@ struct get_line_graph
 
         if (boost::is_directed(g))
         {
-            typename graph_traits<Graph>::vertex_iterator v, v_end;
-            for (tie(v, v_end) = vertices(g); v != v_end; ++v)
+            for (auto v : vertices_range(g))
             {
-                typename graph_traits<Graph>::out_edge_iterator e1, e2, e1_end,
-                    e2_end;;
-                for (tie(e1, e1_end) = out_edges(*v, g); e1 != e1_end; ++e1)
+                for (auto e1 : out_edges_range(v, g))
                 {
-                    for (tie(e2, e2_end) = out_edges(target(*e1, g), g);
-                         e2 != e2_end; ++e2)
+                    for (auto e2 : out_edges_range(target(e1, g), g))
                     {
-                        typename graph_traits<LineGraph>::edge_descriptor
-                            new_edge;
-                        new_edge = add_edge(edge_to_vertex_map[*e1],
-                                            edge_to_vertex_map[*e2],
-                                            line_graph).first;
+                        add_edge(edge_to_vertex_map[e1],
+                                 edge_to_vertex_map[e2],
+                                 line_graph);
                     }
                 }
             }
         }
         else
         {
-            typename graph_traits<Graph>::vertex_iterator v, v_end;
-            for (tie(v, v_end) = vertices(g); v != v_end; ++v)
+            for (auto v : vertices_range(g))
             {
                 typename graph_traits<Graph>::out_edge_iterator e1, e2, e_end;
-                for (tie(e1, e_end) = out_edges(*v, g); e1 != e_end; ++e1)
+                for (tie(e1, e_end) = out_edges(v, g); e1 != e_end; ++e1)
+                {
                     for (e2 = e1; e2 != e_end; ++e2)
+                    {
                         if (*e1 != *e2)
                         {
-                            typename graph_traits<LineGraph>::edge_descriptor
-                                new_edge;
-                            new_edge = add_edge(edge_to_vertex_map[*e1],
-                                                edge_to_vertex_map[*e2],
-                                                line_graph).first;
+                            add_edge(edge_to_vertex_map[*e1],
+                                     edge_to_vertex_map[*e2],
+                                     line_graph).first;
                         }
+                    }
+                }
             }
         }
     }
