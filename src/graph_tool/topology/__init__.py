@@ -1466,6 +1466,9 @@ def is_bipartite(g, partition=False):
     g = GraphView(g, directed=False)
     is_bi = libgraph_tool_topology.is_bipartite(g._Graph__graph,
                                                 _prop("v", g, part))
+    if not is_bi and part is not None:
+        part.a = 0
+
     if partition:
         return is_bi, part
     else:
