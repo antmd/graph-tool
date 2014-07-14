@@ -46,16 +46,20 @@ public:
     }
 
     template <class Graph>
+    void examine_vertex(typename graph_traits<Graph>::vertex_descriptor v,
+                        Graph&)
+    {
+        if ( _dist_map[v] > _max_dist)
+            throw stop_search();
+    }
+
+    template <class Graph>
     void discover_vertex(typename graph_traits<Graph>::vertex_descriptor v,
                          Graph&)
     {
         if (size_t(_pred[v]) == v)
             return;
-        size_t dist = _dist_map[_pred[v]] + 1;
-        if (dist > _max_dist)
-            throw stop_search();
-        _dist_map[v] = dist;
-
+        _dist_map[v] = _dist_map[_pred[v]] + 1;
         if (v == _target)
             throw stop_search();
     }
@@ -77,16 +81,19 @@ public:
                     typename property_traits<DistMap>::value_type max_dist, size_t target)
         : _dist_map(dist_map), _max_dist(max_dist), _target(target) {}
 
+
+    template <class Graph>
+    void examine_vertex(typename graph_traits<Graph>::vertex_descriptor u,
+                        Graph&)
+    {
+        if (_dist_map[u] > _max_dist)
+            throw stop_search();
+    }
+
     template <class Graph>
     void discover_vertex(typename graph_traits<Graph>::vertex_descriptor u,
                          Graph&)
     {
-        if (_dist_map[u] > _max_dist)
-        {
-            typedef typename property_traits<DistMap>::value_type d_type;
-            _dist_map[u] = numeric_limits<d_type>::max();
-            throw stop_search();
-        }
         if (u == _target)
             throw stop_search();
     }
@@ -110,7 +117,7 @@ struct do_bfs_search
             max_dist : numeric_limits<dist_t>::max();
 
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i)
+        #pragma omp parallel for default(shared) private(i) schedule(runtime) if (N > 100)
         for (i = 0; i < N; ++i)
             dist_map[i] = numeric_limits<dist_t>::max();
         dist_map[source] = 0;
@@ -143,7 +150,7 @@ struct do_djk_search
             max_dist : numeric_limits<dist_t>::max();
 
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i)
+        #pragma omp parallel for default(shared) private(i) schedule(runtime) if (N > 100)
         for (i = 0; i < N; ++i)
             dist_map[i] = numeric_limits<dist_t>::max();
         dist_map[source] = 0;
