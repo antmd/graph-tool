@@ -398,7 +398,10 @@ def motifs(g, k, p=1.0, motif_list=None, return_maps=False):
         temp.append(mg)
     sub_list = temp
 
-    list_hist = list(zip(sub_list, hist))
+    if return_maps:
+        list_hist = list(zip(sub_list, hist, vertex_maps))
+    else:
+        list_hist = list(zip(sub_list, hist))
     # sort according to in-degree sequence
     list_hist.sort(key=lambda x: sorted([v.in_degree() for v in x[0].vertices()]))
 
@@ -412,6 +415,7 @@ def motifs(g, k, p=1.0, motif_list=None, return_maps=False):
     hist = [x[1] for x in list_hist]
 
     if return_maps:
+        vertex_maps = [x[2] for x in list_hist]
         for i, vlist in enumerate(vertex_maps):
             sub = sub_list[i]
             vertex_maps[i] = [PropertyMap(vm, sub, "v") for vm in vlist]
