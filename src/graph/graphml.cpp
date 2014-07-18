@@ -35,8 +35,11 @@ class graphml_reader
 {
 public:
     graphml_reader(mutate_graph& g, bool integer_vertices, bool store_ids)
-        : m_g(g), m_canonical_vertices(false),
-          m_integer_vertices(integer_vertices), m_store_ids(store_ids) { }
+        : m_g(g),
+          m_canonical_vertices(false),
+          m_canonical_edges(false),
+          m_integer_vertices(integer_vertices),
+          m_store_ids(store_ids) { }
 
     void run(std::istream& in)
     {

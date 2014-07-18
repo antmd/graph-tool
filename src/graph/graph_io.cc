@@ -314,11 +314,12 @@ void build_stream
 }
 
 
-boost::python::tuple GraphInterface::ReadFromFile(string file, boost::python::object pfile,
-                                           string format,
-                                           boost::python::list ignore_vp,
-                                           boost::python::list ignore_ep,
-                                           boost::python::list ignore_gp)
+boost::python::tuple GraphInterface::ReadFromFile(string file,
+                                                  boost::python::object pfile,
+                                                  string format,
+                                                  boost::python::list ignore_vp,
+                                                  boost::python::list ignore_ep,
+                                                  boost::python::list ignore_gp)
 {
     if (format != "dot" && format != "xml" && format != "gml")
         throw ValueException("error reading from file '" + file +
@@ -345,7 +346,7 @@ boost::python::tuple GraphInterface::ReadFromFile(string file, boost::python::ob
 
         if (format == "dot")
             _directed = read_graphviz(stream, *_mg, dp, "vertex_name", true,
-                                     ivp, iep, igp);
+                                      ivp, iep, igp);
         else if (format == "xml")
             _directed = read_graphml(stream, *_mg, dp, true, true, true,
                                      ivp, iep, igp);
