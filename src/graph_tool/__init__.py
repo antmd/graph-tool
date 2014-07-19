@@ -1747,7 +1747,7 @@ class Graph(object):
     # ==============
     def __get_file_format(self, file_name):
         fmt = None
-        for f in ["xml", "dot", "gml"]:
+        for f in ["graphml", "xml", "dot", "gml"]:
             names = ["." + f, ".%s.gz" % f, ".%s.bz2" % f]
             for name in names:
                 if file_name.endswith(name):
@@ -1761,11 +1761,19 @@ class Graph(object):
              ignore_gp=None):
         """Load graph from ``file_name`` (which can be either a string or a
         file-like object). The format is guessed from ``file_name``, or can be
-        specified by ``fmt``, which can be either "xml", "dot" or "gml".
+        specified by ``fmt``, which can be either "graphml", "xml", "dot" or "gml".
+        (Note that "graphml" and "xml" are synonyms).
 
         If provided, the parameters ``ignore_vp``, ``ignore_ep`` and
         ``ignore_gp``, should contain a list of property names (vertex, edge or
         graph, respectively) which should be ignored when reading the file.
+
+        .. warning::
+
+           The only file format which is capable of perfectly preserving the
+           internal property maps is "graphml". Because of this, its use should
+           be preferred over the other formats whenever possible.
+
         """
 
         if type(file_name) == str:
@@ -1773,6 +1781,8 @@ class Graph(object):
         if fmt == 'auto' and isinstance(file_name, str):
             fmt = self.__get_file_format(file_name)
         elif fmt == "auto":
+            fmt = "xml"
+        if fmt == "graphml":
             fmt = "xml"
         if ignore_vp is None:
             ignore_vp = []
@@ -1811,7 +1821,16 @@ class Graph(object):
     def save(self, file_name, fmt="auto"):
         """Save graph to ``file_name`` (which can be either a string or a
         file-like object). The format is guessed from the ``file_name``, or can
-        be specified by ``fmt``, which can be either "xml", "dot" or "gml". """
+        be specified by ``fmt``, which can be either "graphml", "xml", "dot" or "gml".
+        (Note that "graphml" and "xml" are synonyms).
+
+        .. warning::
+
+           The only file format which is capable of perfectly preserving the
+           internal property maps is "graphml". Because of this, its use should
+           be preferred over the other formats whenever possible.
+
+        """
 
         u = GraphView(self, reversed=self.is_reversed(), skip_vfilt=True,
                       skip_efilt=True)
@@ -1834,6 +1853,8 @@ class Graph(object):
         if fmt == 'auto' and isinstance(file_name, str):
             fmt = self.__get_file_format(file_name)
         elif fmt == "auto":
+            fmt = "xml"
+        if fmt == "graphml":
             fmt = "xml"
         props = [(name[1], prop._PropertyMap__map) for name, prop in \
                  self.__properties.items()]
@@ -2084,11 +2105,19 @@ def load_graph(file_name, fmt="auto", ignore_vp=None, ignore_ep=None,
     Load a graph from ``file_name`` (which can be either a string or a file-like object).
 
     The format is guessed from ``file_name``, or can be specified by
-    ``fmt``, which can be either "xml", "dot" or "gml".
+    ``fmt``, which can be either "graphml", "xml", "dot" or "gml".
+    (Note that "graphml" and "xml" are synonyms).
 
     If provided, the parameters ``ignore_vp``, ``ignore_ep`` and
     ``ignore_gp``, should contain a list of property names (vertex, edge or
     graph, respectively) which should be ignored when reading the file.
+
+    .. warning::
+
+       The only file format which is capable of perfectly preserving the
+       internal property maps is "graphml". Because of this, its use should
+       be preferred over the other formats whenever possible.
+
     """
     g = Graph()
     g.load(file_name, fmt, ignore_vp, ignore_ep, ignore_gp)
