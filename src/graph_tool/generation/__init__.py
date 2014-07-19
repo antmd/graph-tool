@@ -1021,7 +1021,7 @@ def graph_union(g1, g2, intersection=None, props=None, include=False):
         emask, emask_flip = g1.get_edge_filter()
         emask_flipped = False
         if emask is not None and not emask_flip:
-            emask.a = not emask.a
+            emask.a = numpy.logical_not(emask.a)
             emask_flipped = True
             g1.set_edge_filter(emask, True)
 
@@ -1051,12 +1051,12 @@ def graph_union(g1, g2, intersection=None, props=None, include=False):
     if include:
         emask, emask_flip = g1.get_edge_filter()
         if emask is not None and emask_flipped:
-            emask.a = not emask.a
+            emask.a = numpy.logical_not(emask.a)
             g1.set_edge_filter(emask, False)
 
         vmask, vmask_flip = g1.get_vertex_filter()
         if vmask is not None and vmask_flipped:
-            vmask.a = not vmask.a
+            vmask.a = numpy.logical_not(vmask.a)
             g1.set_vertex_filter(vmask, False)
 
     n_props = []
