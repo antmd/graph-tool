@@ -137,7 +137,10 @@ public:
 
     struct edge_descriptor
     {
-        edge_descriptor() {};
+        edge_descriptor()
+            : s(std::numeric_limits<vertex_t>::max()),
+              t(std::numeric_limits<vertex_t>::max()),
+              idx(std::numeric_limits<vertex_t>::max()), inv(false) {};
         edge_descriptor(vertex_t s, vertex_t t, vertex_t idx, bool inv)
             : s(s), t(t), idx(idx), inv(inv) {}
 
