@@ -19,5 +19,6 @@
 
 rng_t get_rng(size_t seed)
 {
-    return rng_t(static_cast<rng_t::result_type>(seed));
+    std::seed_seq seq{seed, seed + 1, seed + 2, seed + 3, seed + 4};
+    return rng_t(seq);
 }
