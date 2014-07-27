@@ -810,7 +810,7 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
             pos = sfdp_layout(g)
     else:
         _check_prop_vector(pos, name="pos", floating=True)
-        if output is None:
+        if output is None and not inline:
             if "layout_K" not in kwargs:
                 kwargs["layout_K"] = _avg_edge_distance(g, pos)
             if "update_layout" not in kwargs:
@@ -918,6 +918,7 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
 
         cairo_draw(g, pos, cr, vprops, eprops, vorder, eorder,
                    nodesfirst, **kwargs)
+
         if fmt == "png":
             srf.write_to_png(out)
 
