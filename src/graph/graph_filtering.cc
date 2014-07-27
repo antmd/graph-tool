@@ -147,48 +147,22 @@ check_filtered(const Graph &g, const EdgeFilter& edge_filter,
 
         if (max_eindex > 0)
             edge_filter.reserve(max_eindex);
-        if (v_active)
-        {
-            if (num_vertices(g) > 0)
-                vertex_filter.reserve(num_vertices(g));
-            typedef filtered_graph<Graph, MaskFilter<EdgeFilter>,
-                                   MaskFilter<VertexFilter> > fg_t;
-            fg_t init(g, e_filter, v_filter);
-            fg_t& fg = retrieve_graph(graph_views, init);
-            fg.m_edge_pred = e_filter;
-            fg.m_vertex_pred = v_filter;
-            return check_directed(fg, reverse, directed, graph_views);
-        }
-        else
-        {
-            typedef filtered_graph<Graph, MaskFilter<EdgeFilter>,
-                                   keep_all> fg_t;
-            fg_t init(g, e_filter, keep_all());
-            fg_t& fg = retrieve_graph(graph_views, init);
-            fg.m_edge_pred = e_filter;
-            return check_directed(fg, reverse, directed, graph_views);
-        }
+        if (num_vertices(g) > 0)
+            vertex_filter.reserve(num_vertices(g));
+        typedef filtered_graph<Graph, MaskFilter<EdgeFilter>,
+                               MaskFilter<VertexFilter> > fg_t;
+        fg_t init(g, e_filter, v_filter);
+        fg_t& fg = retrieve_graph(graph_views, init);
+        fg.m_edge_pred = e_filter;
+        fg.m_vertex_pred = v_filter;
+        return check_directed(fg, reverse, directed, graph_views);
     }
     else
     {
         if (v_active)
-        {
-            if (!e_active)
-                throw GraphException("Vertex filter is active but edge filter is not. This is a bug.");
+            throw GraphException("Vertex filter is active but edge filter is not. This is a bug.");
 
-            if (num_vertices(g) > 0)
-                vertex_filter.reserve(num_vertices(g));
-            typedef filtered_graph<Graph, keep_all,
-                                   MaskFilter<VertexFilter> > fg_t;
-            fg_t init(g, keep_all(), v_filter);
-            fg_t& fg = retrieve_graph(graph_views, init);
-            fg.m_vertex_pred = v_filter;
-            return check_directed(fg, reverse, directed, graph_views);
-        }
-        else
-        {
-            return check_directed(g, reverse, directed, graph_views);
-        }
+        return check_directed(g, reverse, directed, graph_views);
     }
 #else
     return check_directed(g, reverse, directed, graph_views);
@@ -306,6 +280,8 @@ void GraphInterface::SetVertexFilterProperty(boost::any property, bool invert)
     }
     catch(bad_any_cast&)
     {
+        if (!property.empty())
+            throw GraphException("Invalid vertex filter property!");
         _vertex_filter_active = false;
     }
 }
@@ -325,6 +301,8 @@ void GraphInterface::SetEdgeFilterProperty(boost::any property, bool invert)
     }
     catch(bad_any_cast&)
     {
+        if (!property.empty())
+            throw GraphException("Invalid edge filter property!");
         _edge_filter_active = false;
     }
 }

@@ -1183,7 +1183,7 @@ class Graph(object):
                 for k, m in gv.edge_properties.items():
                     if not m.is_writable():
                         m = m.copy("int32_t")
-                    if not eprune and  m is efilt:
+                    if not eprune and m is efilt:
                         ef_pos = len(eprops)
                     eprops.append([_prop("e", gv, m), libcore.any()])
                 if not vprune and vf_pos is None and vfilt is not None:
@@ -1232,12 +1232,12 @@ class Graph(object):
                     vpmap = new_vertex_property("bool",
                                                 self.__graph.GetVertexIndex(),
                                                 vprops[vf_pos][1])
-                    vpmap = PropertyMap(pmap, self, "v")
+                    vpmap = PropertyMap(vpmap, self, "v")
                 if ef_pos is not None:
                     epmap = new_edge_property("bool",
                                               self.__graph.GetEdgeIndex(),
                                               eprops[ef_pos][1])
-                    epmap = PropertyMap(pmap, self, "e")
+                    epmap = PropertyMap(epmap, self, "e")
                 self.set_filters(epmap, vpmap,
                                  inverted_edges=g.get_edge_filter()[1],
                                  inverted_vertices=g.get_vertex_filter()[1])
