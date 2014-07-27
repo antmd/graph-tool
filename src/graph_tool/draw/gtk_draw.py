@@ -423,8 +423,8 @@ class GraphWidget(Gtk.DrawingArea):
             self.regenerate_surface(lazy=False)
             self.geometry = geometry
 
-        ul = self.pos_to_device((0, 0), surface=True)
-        lr = self.pos_to_device(self.base_geometry, surface=True)
+        ul = self.pos_to_device((0, 0), surface=True, cr=cr)
+        lr = self.pos_to_device(self.base_geometry, surface=True, cr=cr)
 
         if (ul[0] > 0 or lr[0] < geometry[0] or
             ul[1] > 0 or lr[1] < geometry[1]):
@@ -521,8 +521,9 @@ class GraphWidget(Gtk.DrawingArea):
 
     def pos_to_device(self, pos, dist=False, surface=False, cr=None):
         """Convert a position from the graph space to the widget space."""
+        ox, oy = self.get_window().get_position()
         if cr is None:
-            cr = Gdk.cairo_create(self.get_root_window())
+            cr = self.get_window().cairo_create()
             if surface:
                 cr.set_matrix(self.smatrix)
             else:
@@ -530,12 +531,14 @@ class GraphWidget(Gtk.DrawingArea):
         if dist:
             return cr.user_to_device_distance(pos[0], pos[1])
         else:
-            return cr.user_to_device(pos[0], pos[1])
+            x, y = cr.user_to_device(pos[0], pos[1])
+            return (x - ox, y - oy)
 
     def pos_from_device(self, pos, dist=False, surface=False, cr=None):
         """Convert a position from the widget space to the device space."""
+        ox, oy = self.get_window().get_position()
         if cr is None:
-            cr = Gdk.cairo_create(self.get_root_window())
+            cr = self.get_window().cairo_create()
             if surface:
                 cr.set_matrix(self.smatrix)
             else:
@@ -543,7 +546,7 @@ class GraphWidget(Gtk.DrawingArea):
         if dist:
             return cr.device_to_user_distance(pos[0], pos[1])
         else:
-            return cr.device_to_user(pos[0], pos[1])
+            return cr.device_to_user(pos[0] + ox, pos[1] + oy)
 
     def apply_transform(self):
         r"""Apply current transform matrix to vertex coordinates."""
@@ -564,6 +567,7 @@ class GraphWidget(Gtk.DrawingArea):
     def fit_to_window(self, ink=False, g=None):
         r"""Fit graph to window."""
         geometry = [self.get_allocated_width(), self.get_allocated_height()]
+        ox, oy = self.get_window().get_position()
         if g is None:
             g = self.g
         pos = g.own_property(self.pos)
@@ -579,7 +583,7 @@ class GraphWidget(Gtk.DrawingArea):
                                                    _vdefaults["font_size"]),
                                    cr)
         m = cairo.Matrix()
-        m.translate(offset[0], offset[1])
+        m.translate(offset[0] + ox, offset[1] + oy)
         m.scale(zoom, zoom)
         self.tmatrix = self.tmatrix * self.smatrix * m
         self.smatrix = cairo.Matrix()
