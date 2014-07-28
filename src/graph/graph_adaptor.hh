@@ -99,16 +99,19 @@ struct get_iterator_category
 };
 
 
-template <class Graph>
+template <class Graph, class Inverted = mpl::false_>
 class joined_edge_iterator
-    : public boost::iterator_facade<joined_edge_iterator<Graph>,
+    : public boost::iterator_facade<joined_edge_iterator<Graph, Inverted>,
                                     typename graph_traits<Graph>::edge_descriptor,
                                     typename get_iterator_category<Graph>::type,
                                     typename graph_traits<Graph>::edge_descriptor>
 {
  public:
-    typedef typename graph_traits<Graph>::in_edge_iterator iter1_t;
-    typedef typename graph_traits<Graph>::out_edge_iterator iter2_t;
+    typedef typename graph_traits<Graph>::in_edge_iterator in_iter_t;
+    typedef typename graph_traits<Graph>::out_edge_iterator out_iter_t;
+
+    typedef typename mpl::if_<Inverted, out_iter_t, in_iter_t>::type iter1_t;
+    typedef typename mpl::if_<Inverted, in_iter_t, out_iter_t>::type iter2_t;
 
     joined_edge_iterator() {}
     explicit joined_edge_iterator(const std::pair<iter1_t, iter1_t>& range1,
@@ -228,8 +231,8 @@ struct graph_traits<UndirectedAdaptor<Graph> > {
     typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
 
     typedef typename get_undirected_adjacency_iterator<Graph>::type adjacency_iterator;
-    typedef joined_edge_iterator<Graph> out_edge_iterator;
-    typedef typename graph_traits<Graph>::in_edge_iterator in_edge_iterator;
+    typedef joined_edge_iterator<Graph, mpl::false_> out_edge_iterator;
+    typedef joined_edge_iterator<Graph, mpl::true_> in_edge_iterator;
     typedef typename graph_traits<Graph>::vertex_iterator vertex_iterator;
     typedef typename graph_traits<Graph>::edge_iterator edge_iterator;
 
@@ -369,6 +372,25 @@ out_edges(typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor u,
 }
 
 //==============================================================================
+// in_edges(u,g)
+//==============================================================================
+template <class Graph>
+inline __attribute__((always_inline))
+std::pair<typename graph_traits<UndirectedAdaptor<Graph> >::in_edge_iterator,
+          typename graph_traits<UndirectedAdaptor<Graph> >::in_edge_iterator >
+in_edges(typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor u,
+         const UndirectedAdaptor<Graph>& g)
+{
+    auto range1 = out_edges(u, g.OriginalGraph());
+    auto range2 = in_edges(u, g.OriginalGraph());
+
+    joined_edge_iterator<Graph, mpl::true_> begin(range1, range2, range1.first, range2.first);
+    joined_edge_iterator<Graph, mpl::true_> end(range1, range2, range1.second, range2.second);
+
+    return std::make_pair(begin, end);
+}
+
+//==============================================================================
 // adjacent_vertices(u,g)
 //==============================================================================
 template <class Graph>
@@ -418,7 +440,19 @@ typename graph_traits<UndirectedAdaptor<Graph> >::degree_size_type
 out_degree(typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor u,
            const UndirectedAdaptor<Graph>& g)
 {
-    return (out_degree(u, g.OriginalGraph()) + in_degree(u,g.OriginalGraph()));
+    return (out_degree(u, g.OriginalGraph()) + in_degree(u, g.OriginalGraph()));
+}
+
+//==============================================================================
+// in_degree(u,g)
+//==============================================================================
+template <class Graph>
+inline __attribute__((always_inline))
+typename graph_traits<UndirectedAdaptor<Graph> >::degree_size_type
+in_degree(typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor u,
+          const UndirectedAdaptor<Graph>& g)
+{
+    return out_degree(u, g);
 }
 
 //==============================================================================
@@ -564,6 +598,28 @@ void remove_out_edge_if(typename graph_traits<UndirectedAdaptor<Graph> >::vertex
         iter_t;
     std::pair<iter_t, iter_t> edge_range;
     edge_range = out_edges(v,g);
+    for(iter_t iter = edge_range.first; iter != edge_range.second; ++iter)
+        if (predicate(*iter))
+            removed_edges.push_front(*iter);
+
+    for(typeof(removed_edges.begin()) iter = removed_edges.begin();
+        iter != removed_edges.end(); ++iter)
+        remove_edge(*iter,g);
+}
+
+//==============================================================================
+// remove_in_edge_if(v,predicate,g)
+//==============================================================================
+template <class Graph, class Predicate>
+inline __attribute__((always_inline))
+void remove_in_edge_if(typename graph_traits<UndirectedAdaptor<Graph> >::vertex_descriptor v,
+                       Predicate predicate, UndirectedAdaptor<Graph>& g)
+{
+    std::list<typename UndirectedAdaptor<Graph>::EdgeDescriptor> removed_edges;
+    typedef typename graph_traits<UndirectedAdaptor<Graph> >::in_edge_iterator
+        iter_t;
+    std::pair<iter_t, iter_t> edge_range;
+    edge_range = in_edges(v,g);
     for(iter_t iter = edge_range.first; iter != edge_range.second; ++iter)
         if (predicate(*iter))
             removed_edges.push_front(*iter);
