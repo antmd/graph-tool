@@ -152,6 +152,10 @@ public:
         {
             return idx != other.idx;
         }
+        bool operator<(const edge_descriptor& other) const
+        {
+            return idx < other.idx;
+        }
 
         vertex_t s, t, idx;
         bool inv;

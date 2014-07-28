@@ -198,7 +198,7 @@ def isomorphism(g1, g2, isomap=False):
 
 
 def subgraph_isomorphism(sub, g, max_n=0, vertex_label=None, edge_label=None,
-                         random=False):
+                         induced=False, subgraph=True):
     r"""Obtain all subgraph isomorphisms of `sub` in `g` (or at most `max_n` subgraphs, if `max_n > 0`).
 
 
@@ -219,9 +219,11 @@ def subgraph_isomorphism(sub, g, max_n=0, vertex_label=None, edge_label=None,
         If provided, this should be a pair of :class:`~graph_tool.PropertyMap`
         objects, belonging to `sub` and `g` (in this order), which specify edge labels
         which should match, in addition to the topological isomorphism.
-    random : bool (optional, default: False)
-        If `True`, the vertices of `g` are indexed in random order before
-        the search.
+    induced : bool (optional, default: False)
+        If `True`, only node-induced subgraphs are found.
+    subgraph : bool (optional, default: True)
+        If `False`, all non-subgraph isomorphisms between `sub` and `g` are
+        found.
 
     Returns
     -------
@@ -229,45 +231,30 @@ def subgraph_isomorphism(sub, g, max_n=0, vertex_label=None, edge_label=None,
         List containing vertex property map objects which indicate different
         isomorphism mappings. The property maps vertices in `sub` to the
         corresponding vertex index in `g`.
-    edge_maps : list of :class:`~graph_tool.PropertyMap` objects
-        List containing edge property map objects which indicate different
-        isomorphism mappings. The property maps edges in `sub` to the
-        corresponding edge index in `g`.
 
     Notes
     -----
-    Here "subgraph" does not mean "node-induced subgraph", i.e. there may exist
-    an edge in the matched subgraph in `g` that does not exist in `sub`. For
-    node-induced subgraph isomorphism, see the :func:`+graph_tool.clustering.motifs`
-    function.
-
-    The algorithm used is described in [ullmann-algorithm-1976]_. It has a
-    worse-case complexity of :math:`O(N_g^{N_{sub}})`, but for random graphs it
-    typically has a complexity of :math:`O(N_g^\gamma)` with :math:`\gamma`
-    depending sub-linearly on the size of `sub`.
+    The implementation is based on the VF2 algorithm, introduced by Cordella et al.
+    [cordella-improved-2001]_ [cordella-subgraph-2004]_. The spatial complexity
+    is of order :math:`O(V)`, where :math:`V` is the (maximum) number of vertices
+    of the two graphs. Time complexity is :math:`O(V^2)` in the best case and
+    :math:`O(V!\times V)` in the worst case.
 
     Examples
     --------
-    .. testcode::
-       :hide:
-
-       import numpy.random
-       numpy.random.seed(44)
-       gt.seed_rng(44)
-
     >>> from numpy.random import poisson
-    >>> g = gt.random_graph(30, lambda: (poisson(6.1), poisson(6.1)))
-    >>> sub = gt.random_graph(10, lambda: (poisson(1.9), poisson(1.9)))
-    >>> vm, em = gt.subgraph_isomorphism(sub, g)
+    >>> g = gt.complete_graph(30)
+    >>> sub = gt.complete_graph(10)
+    >>> vm = gt.subgraph_isomorphism(sub, g, max_n=100)
     >>> print(len(vm))
-    35
+    100
     >>> for i in range(len(vm)):
     ...   g.set_vertex_filter(None)
     ...   g.set_edge_filter(None)
-    ...   vmask, emask = gt.mark_subgraph(g, sub, vm[i], em[i])
+    ...   vmask, emask = gt.mark_subgraph(g, sub, vm[i])
     ...   g.set_vertex_filter(vmask)
     ...   g.set_edge_filter(emask)
-    ...   assert(gt.isomorphism(g, sub))
+    ...   assert gt.isomorphism(g, sub)
     >>> g.set_vertex_filter(None)
     >>> g.set_edge_filter(None)
     >>> ewidth = g.copy_property(emask, value_type="double")
@@ -296,8 +283,15 @@ def subgraph_isomorphism(sub, g, max_n=0, vertex_label=None, edge_label=None,
 
     References
     ----------
-    .. [ullmann-algorithm-1976] Ullmann, J. R., "An algorithm for subgraph
-       isomorphism", Journal of the ACM 23 (1): 31-42, 1976, :doi:`10.1145/321921.321925`
+    .. [cordella-improved-2001] L. P. Cordella, P. Foggia, C. Sansone, and M. Vento,
+       "An improved algorithm for matching large graphs.", 3rd IAPR-TC15 Workshop
+       on Graph-based Representations in Pattern Recognition, pp. 149-159, Cuen, 2001.
+       http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.101.5342
+    .. [cordella-subgraph-2004] L. P. Cordella, P. Foggia, C. Sansone, and M. Vento,
+       "A (Sub)Graph Isomorphism Algorithm for Matching Large Graphs.",
+       IEEE Trans. Pattern Anal. Mach. Intell., vol. 26, no. 10, pp. 1367-1372, 2004. 
+       :doi:`10.1109/TPAMI.2004.75`
+    .. [boost-subgraph-iso] http://www.boost.org/libs/graph/doc/vf2_sub_graph_iso.html
     .. [subgraph-isormophism-wikipedia] http://en.wikipedia.org/wiki/Subgraph_isomorphism_problem
 
     """
@@ -307,30 +301,30 @@ def subgraph_isomorphism(sub, g, max_n=0, vertex_label=None, edge_label=None,
         vertex_label = (None, None)
     elif vertex_label[0].value_type() != vertex_label[1].value_type():
         raise ValueError("Both vertex label property maps must be of the same type!")
+    elif vertex_label[0].value_type() != "int32_t":
+        vertex_label = perfect_prop_hash(vertex_label, htype="int32_t")
+
     if edge_label is None:
         edge_label = (None, None)
     elif edge_label[0].value_type() != edge_label[1].value_type():
         raise ValueError("Both edge label property maps must be of the same type!")
+    elif edge_label[0].value_type() != "int32_t":
+        edge_label = perfect_prop_hash(edge_label, htype="int32_t")
+
     vmaps = []
-    emaps = []
-    if random:
-        rng = _get_rng()
-    else:
-        rng = libcore.rng_t()
     libgraph_tool_topology.\
            subgraph_isomorphism(sub._Graph__graph, g._Graph__graph,
                                 _prop("v", sub, vertex_label[0]),
                                 _prop("v", g, vertex_label[1]),
                                 _prop("e", sub, edge_label[0]),
                                 _prop("e", g, edge_label[1]),
-                                vmaps, emaps, max_n, rng)
+                                vmaps, max_n, induced, not subgraph)
     for i in range(len(vmaps)):
         vmaps[i] = PropertyMap(vmaps[i], sub, "v")
-        emaps[i] = PropertyMap(emaps[i], sub, "e")
-    return vmaps, emaps
+    return vmaps
 
 
-def mark_subgraph(g, sub, vmap, emap, vmask=None, emask=None):
+def mark_subgraph(g, sub, vmap, vmask=None, emask=None):
     r"""
     Mark a given subgraph `sub` on the graph `g`.
 
@@ -353,11 +347,12 @@ def mark_subgraph(g, sub, vmap, emap, vmask=None, emask=None):
     for v in sub.vertices():
         w = g.vertex(vmap[v])
         vmask[w] = True
+        us = set([g.vertex(vmap[x]) for x in v.out_neighbours()])
+
         for ew in w.out_edges():
-            for ev in v.out_edges():
-                if emap[ev] == g.edge_index[ew]:
-                    emask[ew] = True
-                    break
+            if ew.target() in us:
+                emask[ew] = True
+
     return vmask, emask
 
 

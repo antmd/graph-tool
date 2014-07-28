@@ -37,8 +37,8 @@ void maximal_planar(GraphInterface& gi);
 void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
                           boost::any vertex_label1, boost::any vertex_label2,
                           boost::any edge_label1, boost::any edge_label2,
-                          python::list vmapping, python::list emapping,
-                          size_t n_max, rng_t& rng);
+                          python::list vmapping, size_t max_n, bool induced,
+                          bool iso);
 double reciprocity(GraphInterface& gi);
 size_t sequential_coloring(GraphInterface& gi, boost::any order,
                            boost::any color);

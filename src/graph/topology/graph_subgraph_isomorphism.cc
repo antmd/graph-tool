@@ -22,330 +22,160 @@
 
 #include "random.hh"
 
-#include <graph_subgraph_isomorphism.hh>
+#include <boost/graph/vf2_sub_graph_iso.hpp>
 
 #include <unordered_map>
 
 using namespace graph_tool;
 using namespace boost;
 
-template <class Graph1, class Graph2, class Label1, class Label2>
-class PropLabelling
+template <class Graph1, class Graph2, class VertexMap>
+struct get_match
 {
-public:
-    PropLabelling(const Graph1& g1, const Graph2& g2,
-                  Label1 label1, Label2 label2)
-        : _g1(g1), _g2(g2), _label1(label1), _label2(label2) {}
+    get_match(const Graph1& sub, const Graph2& g, vector<VertexMap>& vmaps,
+              size_t max_n) : _sub(sub), _g(g), _vmaps(vmaps), _max_n(max_n)
+    {}
 
-    typedef typename property_traits<Label1>::value_type value_type1;
-    typedef typename property_traits<Label2>::value_type value_type2;
-
-    bool operator()(typename graph_traits<Graph1>::vertex_descriptor v1,
-                    typename graph_traits<Graph2>::vertex_descriptor v2) const
+    template <class CorrespondenceMap1To2,
+              class CorrespondenceMap2To1>
+    bool operator()(const CorrespondenceMap1To2& f,
+                    const CorrespondenceMap2To1&)
     {
-        if (in_degreeS()(v2, _g2) < in_degreeS()(v1, _g1) ||
-            out_degree(v2, _g2) < out_degree(v1, _g1))
+        VertexMap c_vmap(get(vertex_index, _sub));
+        auto vmap = c_vmap.get_unchecked(num_vertices(_sub));
+        for (auto v : vertices_range(_sub))
+        {
+            auto w = f[v];
+            if (w == graph_traits<Graph2>::null_vertex())
+                return true;
+            vmap[v] = w;
+        }
+        _vmaps.push_back(c_vmap);
+        if (_max_n > 0 && _vmaps.size() >= _max_n)
             return false;
-        return _label1[v1] == _label2[v2];
+        return true;
     }
 
-    bool operator()(typename graph_traits<Graph1>::edge_descriptor e1,
-                    typename graph_traits<Graph2>::edge_descriptor e2) const
-    {
-        return _label1[e1] == _label2[e2];
-    }
+    const Graph1& _sub;
+    const Graph2& _g;
 
-private:
-    const Graph1& _g1;
-    const Graph2& _g2;
-    Label1 _label1;
-    Label2 _label2;
+    vector<VertexMap>& _vmaps;
+    size_t _max_n;
 };
+
 
 struct get_subgraphs
 {
     template <class Graph1, class Graph2, class VertexLabel,
-              class EdgeLabel>
+              class EdgeLabel, class VertexMap>
     void operator()(const Graph1& sub, const Graph2* g,
-                    VertexLabel vertex_label1, boost::any vertex_label2,
-                    EdgeLabel edge_label1, boost::any edge_label2,
-                    vector<vector<pair<size_t, size_t> > >& F,
-                    vector<size_t>& vlist, pair<std::reference_wrapper<rng_t>,size_t> sn) const
+                    VertexLabel vertex_label1, boost::any avertex_label2,
+                    EdgeLabel edge_label1, boost::any aedge_label2,
+                    vector<VertexMap>& vmaps, size_t max_n, bool induced,
+                    bool iso) const
     {
-        typedef PropLabelling<Graph1,Graph2,VertexLabel,VertexLabel>
-            vlabelling_t;
-        typedef PropLabelling<Graph1,Graph2,EdgeLabel,EdgeLabel>
-            elabelling_t;
-        rng_t& rng = sn.first;
-        size_t max_n = sn.second;
+        VertexLabel vertex_label2 = any_cast<VertexLabel>(avertex_label2);
+        EdgeLabel edge_label2 = any_cast<EdgeLabel>(aedge_label2);
 
-        vlist.resize(num_vertices(*g));
-        int i, N = num_vertices(*g);
-        for (i = 0; i < N; ++i)
-            vlist[i] = i;
-        for (i = 0; i < N - 1; ++i)
+        get_match<Graph1, Graph2, VertexMap> matcher(sub, *g, vmaps, max_n);
+
+        typedef typename graph_traits<Graph1>::vertex_descriptor vertex_t;
+        vector<vertex_t> vorder;
+        std::copy(vertices(sub).first, vertices(sub).second, std::back_inserter(vorder));
+        auto cmp = [&](vertex_t u, vertex_t v) -> bool
+            {return make_pair(in_degree(u, sub), out_degree(u, sub)) <
+                    make_pair(in_degree(v, sub), out_degree(v, sub));};
+        std::sort(vorder.begin(), vorder.end(), cmp);
+
+        for (auto v : vertices_range(sub))
+            for (auto e = in_edges(v, sub); e.first != e.second; ++e.first)
+                assert(target(*e.first, sub) == v);
+
+        if (iso)
         {
-            uniform_int_distribution<> random(i, N - 1);
-            swap(vlist[i], vlist[random(rng)]);
+            vf2_graph_iso(sub, *g, matcher, vorder,
+                          edges_equivalent(make_property_map_equivalent(edge_label1, edge_label2)).
+                          vertices_equivalent(make_property_map_equivalent(vertex_label1, vertex_label2)));
         }
-
-        subgraph_isomorphism
-            (sub, *g, vlabelling_t(sub, *g, vertex_label1,
-                                   any_cast<VertexLabel>(vertex_label2)),
-             elabelling_t(sub, *g, edge_label1,
-                          any_cast<EdgeLabel>(edge_label2)), F, vlist, max_n);
-    }
-};
-
-struct get_mapping
-{
-    template <class Graph1, class Graph2, class EdgeLabel, class VertexMap,
-              class EdgeMap, class EdgeIndexMap>
-    void operator()(const Graph1& sub, const Graph2* g, EdgeLabel edge_label1,
-                    boost::any edge_label2, vector<pair<size_t, size_t> >& F,
-                    VertexMap vmapping, EdgeMap emapping,
-                    EdgeIndexMap edge_index2, vector<size_t>& vlist) const
-    {
-        typedef typename graph_traits<Graph1>::edge_descriptor edge1_t;
-        typedef typename graph_traits<Graph2>::edge_descriptor edge2_t;
-        typedef PropLabelling<Graph1,Graph2,EdgeLabel,EdgeLabel>
-            elabelling_t;
-        elabelling_t edge_labelling(sub, *g, edge_label1,
-                                    any_cast<EdgeLabel>(edge_label2));
-        int i, N = F.size();
-        #pragma omp parallel for default(shared) private(i) schedule(runtime) if (N > 100)
-        for (i = 0; i < N; ++i)
+        else
         {
-            if (vertex(i, sub) == graph_traits<Graph1>::null_vertex())
-                continue;
-            vmapping[vertex(F[i].first, sub)] = vertex(vlist[F[i].second], *g);
-            typename graph_traits<Graph1>::out_edge_iterator e, e_end;
-            for (tie(e, e_end) = out_edges(vertex(i, sub), sub); e != e_end;
-                 ++e)
+            if (induced)
             {
-                bool found = false;
-                typename graph_traits<Graph2>::out_edge_iterator e2, e2_end;
-                for (tie(e2, e2_end) =
-                         out_edges(vertex(vlist[F[i].second], *g), *g);
-                     e2 != e2_end; ++e2)
-                {
-                    if (target(edge2_t(*e2), *g) ==
-                        vertex(vlist[F[target(*e, sub)].second], *g) &&
-                        edge_labelling(*e, *e2))
-                    {
-                        emapping[*e] = edge_index2[*e2];
-                        found = true;
-                    }
-                }
-                if (!found)
-                    throw GraphException("edge not found... "
-                                         "can't be isomorphism!!! "
-                                         "This is a bug.");
+                vf2_subgraph_iso(sub, *g, matcher, vorder,
+                                 edges_equivalent(make_property_map_equivalent(edge_label1, edge_label2)).
+                                 vertices_equivalent(make_property_map_equivalent(vertex_label1, vertex_label2)));
+            }
+            else
+            {
+                vf2_subgraph_iso(sub, *g, matcher, vorder,
+                                 edges_equivalent(make_property_map_equivalent(edge_label1, edge_label2)).
+                                 vertices_equivalent(make_property_map_equivalent(vertex_label1, vertex_label2)));
             }
         }
     }
+
 };
-
-struct directed_graph_view_pointers:
-    mpl::transform<graph_tool::detail::always_directed,
-                   mpl::quote1<std::add_pointer> >::type {};
-
-struct undirected_graph_view_pointers:
-    mpl::transform<graph_tool::detail::never_directed,
-                   mpl::quote1<std::add_pointer> >::type {};
-
-struct vertex_label_mapping
-{
-    template <class Graph, class VertexMap, class VertexLabel>
-    void operator()(const Graph& g, VertexMap vmap, VertexLabel vlabel,
-                    boost::any& vlist) const
-    {
-        typedef typename property_traits<VertexMap>::value_type value_t;
-        unordered_map<value_t, int32_t> values;
-        if (!vlist.empty())
-            values = boost::any_cast<unordered_map<value_t, int32_t> >(vlist);
-
-        typename graph_traits<Graph>::vertex_iterator v, v_end;
-        for (tie(v, v_end) = vertices(g); v != v_end; ++v)
-        {
-            const value_t& val = vmap[*v];
-            if (values.find(val) == values.end())
-                values[val] = values.size();
-            vlabel[*v] = values[val];
-        }
-        vlist = values;
-    }
-};
-
-struct edge_label_mapping
-{
-    template <class Graph, class EdgeMap, class EdgeLabel>
-    void operator()(const Graph& g, EdgeMap emap, EdgeLabel elabel,
-                    boost::any& vlist) const
-    {
-        typedef typename property_traits<EdgeMap>::value_type value_t;
-        unordered_map<value_t, int32_t> values;
-        if (!vlist.empty())
-            values = boost::any_cast<unordered_map<value_t, int32_t> >(vlist);
-
-        typename graph_traits<Graph>::edge_iterator e, e_end;
-        for (tie(e, e_end) = edges(g); e != e_end; ++e)
-        {
-            const value_t& val = emap[*e];
-            if (values.find(val) == values.end())
-                values[val] = values.size();
-            elabel[*e] = values[val];
-        }
-        vlist = values;
-    }
-};
-
-// typedef mpl::push_back<vertex_properties,
-//                        ConstantPropertyMap<bool,GraphInterface::vertex_t> >
-//     ::type vertex_props_t;
-
-// typedef mpl::push_back<edge_properties,
-//                        ConstantPropertyMap<bool,GraphInterface::edge_t> >
-//     ::type edge_props_t;
-
-typedef property_map_type::apply<int32_t, GraphInterface::vertex_index_map_t>::type vlabel_t;
-typedef mpl::vector<vlabel_t, ConstantPropertyMap<bool,GraphInterface::vertex_t> > vertex_props_t;
-
-typedef property_map_type::apply<int32_t, GraphInterface::edge_index_map_t>::type elabel_t;
-typedef mpl::vector<elabel_t, ConstantPropertyMap<bool,GraphInterface::edge_t> > edge_props_t;
 
 void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
                           boost::any vertex_label1, boost::any vertex_label2,
                           boost::any edge_label1, boost::any edge_label2,
-                          python::list vmapping, python::list emapping,
-                          size_t max_n, rng_t& rng)
+                          python::list vmapping, size_t max_n, bool induced,
+                          bool iso)
 {
+    // typedef mpl::push_back<vertex_properties,
+    //                        ConstantPropertyMap<bool,GraphInterface::vertex_t> >
+    //     ::type vertex_props_t;
+
+    // typedef mpl::push_back<edge_properties,
+    //                        ConstantPropertyMap<bool,GraphInterface::edge_t> >
+    //     ::type edge_props_t;
+
+    typedef property_map_type::apply<int32_t, GraphInterface::vertex_index_map_t>::type vlabel_t;
+    typedef mpl::vector<vlabel_t, ConstantPropertyMap<bool,GraphInterface::vertex_t> > vertex_props_t;
+
+    typedef property_map_type::apply<int32_t, GraphInterface::edge_index_map_t>::type elabel_t;
+    typedef mpl::vector<elabel_t, ConstantPropertyMap<bool,GraphInterface::edge_t> > edge_props_t;
+
+
     if (gi1.GetDirected() != gi2.GetDirected())
         return;
 
-    if (belongs<vertex_props_t>()(vertex_label1))
+    if (vertex_label1.empty() || vertex_label2.empty())
     {
+        vertex_label1 = vertex_label2 =
+            ConstantPropertyMap<bool,GraphInterface::vertex_t>(true);
+    }
+    else
+    {
+        vertex_label1 = any_cast<vlabel_t>(vertex_label1).get_unchecked(num_vertices(gi1.GetGraph()));
         vertex_label2 = any_cast<vlabel_t>(vertex_label2).get_unchecked(num_vertices(gi2.GetGraph()));
     }
-    else
-    {
-        if (vertex_label1.empty())
-        {
-            vertex_label1 = vertex_label2 =
-                ConstantPropertyMap<bool,GraphInterface::vertex_t>(true);
-        }
-        else
-        {
-            boost::any vlist;
-            vlabel_t vlabel1(gi1.GetVertexIndex());
-            run_action<>()(gi1, std::bind(vertex_label_mapping(),
-                                          placeholders::_1, placeholders::_2,
-                                          vlabel1, std::ref(vlist)),
-                           vertex_properties())
-                (vertex_label1);
-            vertex_label1 = vlabel1;
 
-            vlabel_t vlabel2(gi2.GetVertexIndex());
-            run_action<>()(gi2, std::bind(vertex_label_mapping(),
-                                          placeholders::_1, placeholders::_2,
-                                          vlabel2, std::ref(vlist)),
-                           vertex_properties())
-                (vertex_label2);
-            vertex_label2 = vlabel2.get_unchecked(num_vertices(gi2.GetGraph()));
-        }
-    }
-
-    if (belongs<edge_props_t>()(edge_label1))
+    if (edge_label1.empty() || edge_label2.empty())
     {
-        edge_label2 = any_cast<elabel_t>(edge_label2).get_unchecked(gi2.GetGraph().get_last_index());
+        edge_label1 = edge_label2 =
+            ConstantPropertyMap<bool,GraphInterface::edge_t>(true);
     }
     else
     {
-        if (edge_label1.empty())
-        {
-            edge_label1 = edge_label2 =
-                ConstantPropertyMap<bool,GraphInterface::edge_t>(true);
-        }
-        else
-        {
-            boost::any vlist;
-            elabel_t elabel1(gi1.GetEdgeIndex());
-            run_action<>()(gi1, std::bind(edge_label_mapping(),
-                                          placeholders::_1, placeholders::_2,
-                                          elabel1, std::ref(vlist)),
-                           edge_properties())
-                (edge_label1);
-            edge_label1 = elabel1;
-
-            elabel_t elabel2(gi2.GetEdgeIndex());
-            run_action<>()(gi2, std::bind(edge_label_mapping(),
-                                          placeholders::_1, placeholders::_2,
-                                          elabel2, std::ref(vlist)),
-                           edge_properties())
-                (edge_label2);
-            edge_label2 = elabel2.get_unchecked(num_edges(gi2.GetGraph()));
-        }
+        edge_label1 = any_cast<vlabel_t>(edge_label1).get_unchecked(gi1.GetMaxEdgeIndex());
+        edge_label2 = any_cast<vlabel_t>(edge_label2).get_unchecked(gi2.GetMaxEdgeIndex());
     }
 
-    vector<vector<pair<size_t,size_t> > > F;
-    vector<size_t> vlist;
+    vector<vlabel_t> vmaps;
 
-    if (gi1.GetDirected())
-    {
-        run_action<graph_tool::detail::always_directed>()
-            (gi1, std::bind(get_subgraphs(), placeholders::_1, placeholders::_2,
-                            placeholders::_3, vertex_label2, placeholders::_4,
-                            edge_label2, std::ref(F), std::ref(vlist),
-                            make_pair(std::ref(rng), max_n)),
-             directed_graph_view_pointers(), vertex_props_t(),
-             edge_props_t())
-            (gi2.GetGraphView(), vertex_label1,  edge_label1);
-    }
-    else
-    {
-        run_action<graph_tool::detail::never_directed>()
-            (gi1, std::bind(get_subgraphs(), placeholders::_1, placeholders::_2,
-                            placeholders::_3, vertex_label2, placeholders::_4,
-                            edge_label2, std::ref(F), std::ref(vlist),
-                            make_pair(std::ref(rng), max_n)),
-             undirected_graph_view_pointers(), vertex_props_t(),
-             edge_props_t())
-            (gi2.GetGraphView(), vertex_label1, edge_label1);
-    }
+    typedef mpl::transform<graph_tool::detail::all_graph_views,
+                           mpl::quote1<std::add_pointer> >::type graph_view_pointers;
 
-    for (size_t i = 0; i < F.size(); ++i)
-    {
-        typedef property_map_type
-            ::apply<int64_t, GraphInterface::vertex_index_map_t>::type
-            vmap_t;
-        typedef property_map_type
-            ::apply<int64_t, GraphInterface::edge_index_map_t>::type
-            emap_t;
-        vmap_t::unchecked_t vm(gi1.GetVertexIndex(), gi1.GetNumberOfVertices());
-        emap_t::unchecked_t ep(gi1.GetEdgeIndex(), gi1.GetMaxEdgeIndex()+1);
-        if (gi1.GetDirected())
-        {
-            run_action<graph_tool::detail::always_directed>()
-                (gi1, std::bind(get_mapping(),
-                                 placeholders::_1, placeholders::_2,
-                                 placeholders::_3, edge_label2,
-                                 std::ref(F[i]), std::ref(vm), std::ref(ep),
-                                 gi2.GetEdgeIndex(), std::ref(vlist)),
-                 directed_graph_view_pointers(), edge_props_t())
-                (gi2.GetGraphView(), edge_label1);
-        }
-        else
-        {
-            run_action<graph_tool::detail::never_directed>()
-                (gi1, std::bind(get_mapping(),
-                                placeholders::_1, placeholders::_2,
-                                placeholders::_3, edge_label2,
-                                std::ref(F[i]), std::ref(vm), std::ref(ep),
-                                gi2.GetEdgeIndex(), std::ref(vlist)),
-                                undirected_graph_view_pointers(), edge_props_t())
-                (gi2.GetGraphView(), edge_label1);
-        }
-        vmapping.append(PythonPropertyMap<vmap_t>(vm.get_checked()));
-        emapping.append(PythonPropertyMap<emap_t>(ep.get_checked()));
-    }
+    run_action<>()
+        (gi1, std::bind(get_subgraphs(), placeholders::_1, placeholders::_2,
+                        placeholders::_3, vertex_label2, placeholders::_4,
+                        edge_label2, std::ref(vmaps), max_n, induced, iso),
+         graph_view_pointers(), vertex_props_t(),
+         edge_props_t())
+        (gi2.GetGraphView(), vertex_label1, edge_label1);
+
+
+    for (auto& vmap: vmaps)
+        vmapping.append(PythonPropertyMap<vlabel_t>(vmap));
 }
