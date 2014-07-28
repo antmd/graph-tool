@@ -282,3 +282,82 @@ void mark_edges(GraphInterface& gi, boost::any prop)
     run_action<graph_tool::detail::always_directed>()(gi, bind<void>(do_mark_edges(), _1, _2),
                                                       writable_edge_scalar_properties())(prop);
 }
+
+
+struct do_perfect_vhash
+{
+    template <class Graph, class VertexPropertyMap, class HashProp>
+    void operator()(Graph& g, VertexPropertyMap prop, HashProp hprop,
+                    boost::any& adict) const
+    {
+        typedef typename property_traits<VertexPropertyMap>::value_type val_t;
+        typedef typename property_traits<HashProp>::value_type hash_t;
+        typedef unordered_map<val_t, hash_t, boost::hash<val_t>> dict_t;
+
+        if (adict.empty())
+            adict = dict_t();
+
+        dict_t& dict = any_cast<dict_t&>(adict);
+
+        for (auto v : vertices_range(g))
+        {
+            auto val = prop[v];
+            auto iter = dict.find(val);
+            hash_t h;
+            if (iter == dict.end())
+                h = dict[val] = dict.size() - 1;
+            else
+                h = iter->second;
+            hprop[v] = h;
+        }
+    }
+};
+
+void perfect_vhash(GraphInterface& gi, boost::any prop, boost::any hprop,
+                   boost::any& dict)
+{
+    run_action<graph_tool::detail::always_directed>()
+        (gi, std::bind<void>(do_perfect_vhash(), std::placeholders::_1,
+         std::placeholders::_2, std::placeholders::_3, std::ref(dict)),
+         vertex_properties(), writable_vertex_scalar_properties())
+        (prop, hprop);
+}
+
+struct do_perfect_ehash
+{
+    template <class Graph, class EdgePropertyMap, class HashProp>
+    void operator()(Graph& g, EdgePropertyMap prop, HashProp hprop,
+                    boost::any& adict) const
+    {
+        typedef typename property_traits<EdgePropertyMap>::value_type val_t;
+        typedef typename property_traits<HashProp>::value_type hash_t;
+        typedef unordered_map<val_t, hash_t, boost::hash<val_t>> dict_t;
+
+        if (adict.empty())
+            adict = dict_t();
+
+        dict_t& dict = any_cast<dict_t&>(adict);
+
+        for (auto e : edges_range(g))
+        {
+            auto val = prop[e];
+            auto iter = dict.find(val);
+            hash_t h;
+            if (iter == dict.end())
+                h = dict[val] = dict.size() - 1;
+            else
+                h = iter->second;
+            hprop[e] = h;
+        }
+    }
+};
+
+void perfect_ehash(GraphInterface& gi, boost::any prop, boost::any hprop,
+                   boost::any& dict)
+{
+    run_action<graph_tool::detail::always_directed>()
+        (gi, std::bind<void>(do_perfect_ehash(), std::placeholders::_1,
+         std::placeholders::_2, std::placeholders::_3, std::ref(dict)),
+         edge_properties(), writable_edge_scalar_properties())
+        (prop, hprop);
+}

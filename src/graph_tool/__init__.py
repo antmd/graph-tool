@@ -39,6 +39,7 @@ Summary
    ungroup_vector_property
    infect_vertex_property
    edge_difference
+   perfect_prop_hash
    value_types
    show_config
 
@@ -117,9 +118,9 @@ __all__ = ["Graph", "GraphView", "Vertex", "Edge", "Vector_bool",
            "Vector_int16_t", "Vector_int32_t", "Vector_int64_t", "Vector_double",
            "Vector_long_double", "Vector_string", "value_types", "load_graph",
            "PropertyMap", "group_vector_property", "ungroup_vector_property",
-           "infect_vertex_property", "edge_difference", "seed_rng", "show_config",
-           "PropertyArray", "openmp_enabled", "openmp_get_num_threads",
-           "openmp_set_num_threads", "openmp_get_schedule",
+           "infect_vertex_property", "edge_difference", "perfect_prop_hash",
+           "seed_rng", "show_config", "PropertyArray", "openmp_enabled",
+           "openmp_get_num_threads", "openmp_set_num_threads", "openmp_get_schedule",
            "openmp_set_schedule", "__author__", "__copyright__", "__URL__",
            "__version__"]
 
@@ -1024,6 +1025,41 @@ def edge_difference(g, prop, ediff=None):
                             _prop("e", g, ediff))
     return ediff
 
+@_limit_args({"htype": ["int8_t", "int32_t", "int64_t"]})
+def perfect_prop_hash(props, htype="int32_t"):
+    """Given a list of property maps `props` of the same type, a derived list of
+    property maps with integral type `htype` is retured, where each value is
+    replaced by a perfect (i.e. unique) hash value.
+
+    .. note::
+       The hash value is deterministic, but it will not be necessarily the same
+       for different values of `props`.
+    """
+
+    val_types = set([p.value_type() for p in props])
+    if len(val_types) > 1:
+        raise ValueError("All properties must have the same value type")
+    hprops = [p.get_graph().new_property(p.key_type(), htype) for p in props]
+
+    eprops = [p for p in props if p.key_type() == "e"]
+    heprops = [p for p in hprops if p.key_type() == "e"]
+
+    vprops = [p for p in props if p.key_type() == "v"]
+    hvprops = [p for p in hprops if p.key_type() == "v"]
+
+    hdict = libcore.any()
+
+    for eprop, heprop in zip(eprops, heprops):
+        g = eprop.get_graph()
+        libcore.perfect_ehash(g._Graph__graph, _prop('e', g, eprop),
+                              _prop('e', g, heprop), hdict)
+
+    for vprop, hvprop in zip(vprops, hvprops):
+        g = vprop.get_graph()
+        libcore.perfect_vhash(g._Graph__graph, _prop('v', g, vprop),
+                              _prop('v', g, hvprop), hdict)
+
+    return hprops
 
 class PropertyDict(dict):
     """Wrapper for the dict of vertex, graph or edge properties, which sets the

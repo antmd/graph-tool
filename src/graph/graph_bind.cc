@@ -391,6 +391,13 @@ void edge_difference(GraphInterface& gi, boost::any prop,
                      boost::any eprop);
 void mark_edges(GraphInterface& gi, boost::any prop);
 
+void perfect_ehash(GraphInterface& gi, boost::any prop, boost::any hprop,
+                   boost::any& dict);
+
+void perfect_vhash(GraphInterface& gi, boost::any prop, boost::any hprop,
+                   boost::any& dict);
+
+
 void export_python_interface();
 
 void export_openmp();
@@ -505,6 +512,8 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
     def("infect_vertex_property", &infect_vertex_property);
     def("edge_difference", &edge_difference);
     def("mark_edges", &mark_edges);
+    def("perfect_ehash", &perfect_ehash);
+    def("perfect_vhash", &perfect_vhash);
 
     class_<LibInfo>("mod_info")
         .add_property("name", &LibInfo::GetName)
