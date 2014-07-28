@@ -381,7 +381,8 @@ struct adj_list_traversal_tag
     : public vertex_list_graph_tag,
       public edge_list_graph_tag,
       public adjacency_graph_tag,
-      public bidirectional_graph_tag { };
+      public bidirectional_graph_tag,
+      public adjacency_matrix_tag {};
 
 template <class Vertex>
 struct graph_traits<adj_list<Vertex> >
