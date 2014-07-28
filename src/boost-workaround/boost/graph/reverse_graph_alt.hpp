@@ -88,8 +88,8 @@ class reverse_graph {
     typedef transform_iterator<detail::reverse_graph_edge_descriptor_maker<typename Traits::edge_descriptor>, typename Traits::out_edge_iterator> in_edge_iterator;
 
     // AdjacencyGraph requirements
-  typedef typename adjacency_iterator_generator<Self,
-    vertex_descriptor, out_edge_iterator>::type adjacency_iterator;
+    typedef typename adjacency_iterator_generator<Self,
+                                                  vertex_descriptor, out_edge_iterator>::type adjacency_iterator;
 
     // VertexListGraph requirements
     typedef typename Traits::vertex_iterator vertex_iterator;
@@ -235,7 +235,7 @@ edge(const typename graph_traits<BidirectionalGraph>::vertex_descriptor u,
 {
     typedef typename reverse_graph<BidirectionalGraph>::edge_descriptor e_t;
     auto e = edge(v, u, g.m_g);
-    return make_pair(e_t(e.first), e.second);
+    return std::make_pair(e_t(e.first), e.second);
 }
 
 template <class BidirectionalGraph, class GRef>
@@ -268,6 +268,15 @@ in_degree(const typename graph_traits<BidirectionalGraph>::vertex_descriptor u,
 {
     return out_degree(u, g.m_g);
 }
+
+template <class BidirectionalGraph, class GRef>
+inline typename graph_traits<BidirectionalGraph>::degree_size_type
+degree(const typename graph_traits<BidirectionalGraph>::vertex_descriptor u,
+       const reverse_graph<BidirectionalGraph,GRef>& g)
+{
+    return degree(u, g.m_g);
+}
+
 
 template <class Edge, class BidirectionalGraph, class GRef>
 inline typename graph_traits<BidirectionalGraph>::vertex_descriptor
