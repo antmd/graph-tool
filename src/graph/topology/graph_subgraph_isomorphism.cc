@@ -87,10 +87,6 @@ struct get_subgraphs
                     make_pair(in_degree(v, sub), out_degree(v, sub));};
         std::sort(vorder.begin(), vorder.end(), cmp);
 
-        for (auto v : vertices_range(sub))
-            for (auto e = in_edges(v, sub); e.first != e.second; ++e.first)
-                assert(target(*e.first, sub) == v);
-
         if (iso)
         {
             vf2_graph_iso(sub, *g, matcher, vorder,
