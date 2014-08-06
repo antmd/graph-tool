@@ -67,20 +67,19 @@ template <class Descriptor, class Iterator>
 class PythonIterator
 {
 public:
-    PythonIterator(const boost::python::object& g, std::pair<Iterator,Iterator> e)
-        : _g(g), _e(e) {}
+    PythonIterator(const boost::python::object& g,
+                   std::pair<Iterator,Iterator> e)
+        : _wg(g), _g(g()), _e(e) {}
     Descriptor Next()
     {
         if (_e.first == _e.second)
             boost::python::objects::stop_iteration_error();
-        if (_g() == boost::python::object())
-            throw GraphException("The corresponding graph object has been"
-                                 " deleted during iteration!");
-        Descriptor e(_g, *_e.first);
+        Descriptor e(_wg, *_e.first);
         ++_e.first;
         return e;
     }
 private:
+    boost::python::object _wg;
     boost::python::object _g;
     std::pair<Iterator,Iterator> _e;
 };
@@ -96,9 +95,7 @@ class PythonVertex
 public:
     PythonVertex(const boost::python::object& g, GraphInterface::vertex_t v):
         _g(g), _v(v), _valid(true)
-    {
-        CheckValid();
-    }
+    {}
 
     bool IsValid() const
     {
@@ -232,22 +229,16 @@ public:
 
     size_t GetIndex() const
     {
-        CheckValid();
-        GraphInterface& gi = boost::python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
-        return gi._vertex_index[_v];
+        return _v;
     }
 
     bool operator==(const PythonVertex& other) const
     {
-        CheckValid();
-        other.CheckValid();
         return other._v == _v;
     }
 
     bool operator!=(const PythonVertex& other) const
     {
-        CheckValid();
-        other.CheckValid();
         return other._v != _v;
     }
 
@@ -269,20 +260,26 @@ public:
     PythonEdge(const boost::python::object& g, edge_descriptor e)
         : _g(g), _e(e), _valid(true)
     {
-        CheckValid();
     }
 
     bool IsValid() const
     {
-        if (_g().ptr() == Py_None || !_valid)
+        boost::python::object g = _g();
+        if (g.ptr() == Py_None || !_valid)
             return false;
-        GraphInterface& gi = boost::python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
+        GraphInterface& gi = boost::python::extract<GraphInterface&>(g.attr("_Graph__graph"));
         GraphInterface::edge_t e(_e);
-        bool valid = PythonVertex(_g, source(e, *gi._mg)).IsValid() &&
-            PythonVertex(_g, target(e, *gi._mg)).IsValid();
 
-        if (valid)
-            valid = gi.GetEdgeIndex()[e] <= gi.GetMaxEdgeIndex();
+        typename GraphInterface::multigraph_t::vertex_t s, t;
+        s = source(e, *gi._mg);
+        t = target(e, *gi._mg);
+
+        bool valid = ((s != boost::graph_traits<GraphInterface::multigraph_t>::null_vertex()) &&
+                      (s < num_vertices(*gi._mg)) &&
+                      (t != boost::graph_traits<GraphInterface::multigraph_t>::null_vertex()) &&
+                      (t < num_vertices(*gi._mg)) &&
+                      gi.GetEdgeIndex()[e] <= gi.GetMaxEdgeIndex());
+
         return valid;
     }
 
@@ -368,15 +365,11 @@ public:
 
     bool operator==(const PythonEdge& other) const
     {
-        CheckValid();
-        other.CheckValid();
         return other._e == _e;
     }
 
     bool operator!=(const PythonEdge& other) const
     {
-        CheckValid();
-        other.CheckValid();
         return other._e != _e;
     }
 
