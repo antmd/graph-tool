@@ -898,7 +898,8 @@ def line_graph(g):
     return lg, vertex_map
 
 
-def graph_union(g1, g2, intersection=None, props=None, include=False):
+def graph_union(g1, g2, intersection=None, props=None, include=False,
+                internal_props=False):
     """Return the union of graphs g1 and g2, composed of all edges and vertices
     of g1 and g2, without overlap.
 
@@ -917,11 +918,13 @@ def graph_union(g1, g2, intersection=None, props=None, include=False):
        Each element in this list must be a tuple of two PropertyMap objects. The
        first element must be a property of `g1`, and the second of `g2`. If either
        value is ``None``, an empty map is created. The values of the property
-       maps are propagated into the union graph, and returned. If this value is
-       ``None`` all internal property maps are propagated.
+       maps are propagated into the union graph, and returned.
     include : bool (optional, default: ``False``)
-       If true, graph `g2` is inserted into `g1` which is modified. If false, a
+       If ``True``, graph `g2` is inserted into `g1` which is modified. If false, a
        new graph is created, and both graphs remain unmodified.
+    internal_props : bool (optional, default: ``False``)
+       If ``True``, all internal property maps are propagated, in addition
+       to ``props``.
 
     Returns
     -------
@@ -981,6 +984,7 @@ def graph_union(g1, g2, intersection=None, props=None, include=False):
     pnames = None
     if props is None:
         props = []
+    if internal_props:
         pnames = []
         for (k, name), p1 in g1.properties.items():
             if k == 'g':
