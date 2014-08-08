@@ -1352,6 +1352,8 @@ class Graph(object):
             v = libcore.get_vertex(weakref.ref(self), int(i))
         finally:
             self.set_vertex_filter(vfilt[0], vfilt[1])
+        if vfilt[0] is not None and vfilt[0][v] == vfilt[1]:
+            return None
         return v
 
     def edge(self, s, t, all_edges=False):
@@ -1364,8 +1366,13 @@ class Graph(object):
         """
         s = self.vertex(int(s))
         t = self.vertex(int(t))
+        if s is None or t is None:
+            return None
+        efilt = self.get_edge_filter()
         edges = []
         for e in s.out_edges():
+            if efilt[0] is not None and efilt[0][e] == efilt[1]:
+                continue
             if e.target() == t:
                 if not all_edges:
                     return e
