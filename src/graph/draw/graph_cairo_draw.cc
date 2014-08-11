@@ -1268,8 +1268,11 @@ void draw_vertices(Graph&, pair<VertexIterator,VertexIterator> v_range,
     for(VertexIterator v = v_range.first; v != v_range.second; ++v)
     {
         pos_t pos;
-        pos.first = pos_map[*v][0];
-        pos.second = pos_map[*v][1];
+        if (pos_map[*v].size() >= 2)
+        {
+            pos.first = pos_map[*v][0];
+            pos.second = pos_map[*v][1];
+        }
         VertexShape<vertex_t> vs(pos, AttrDict<vertex_t>(*v, attrs, defaults));
         vs.draw(cr);
     }
@@ -1289,10 +1292,16 @@ void draw_edges(Graph& g, pair<EdgeIterator, EdgeIterator> e_range,
         t = target(*e, g);
 
         pos_t spos, tpos;
-        spos.first = pos_map[s][0];
-        spos.second = pos_map[s][1];
-        tpos.first = pos_map[t][0];
-        tpos.second = pos_map[t][1];
+        if (pos_map[s].size() >= 2)
+        {
+            spos.first = pos_map[s][0];
+            spos.second = pos_map[s][1];
+        }
+        if (pos_map[t].size() >= 2)
+        {
+            tpos.first = pos_map[t][0];
+            tpos.second = pos_map[t][1];
+        }
         VertexShape<vertex_t> ss(spos, AttrDict<vertex_t>(s, vattrs, vdefaults));
         VertexShape<vertex_t> ts(tpos, AttrDict<vertex_t>(t, vattrs, vdefaults));
 
