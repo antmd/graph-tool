@@ -133,9 +133,9 @@ class GraphWidget(Gtk.DrawingArea):
     ----------
     g : :class:`~graph_tool.Graph`
         Graph to be drawn.
-    pos : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+    pos : :class:`~graph_tool.PropertyMap`
         Vector-valued vertex property map containing the x and y coordinates of
-        the vertices. If not given, it will be computed using :func:`sfdp_layout`.
+        the vertices.
     vprops : dict (optional, default: ``None``)
         Dictionary with the vertex properties. Individual properties may also be
         given via the ``vertex_<prop-name>`` parameters, where ``<prop-name>`` is
@@ -853,9 +853,9 @@ class GraphWindow(Gtk.Window):
     ----------
     g : :class:`~graph_tool.Graph`
         Graph to be drawn.
-    pos : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+    pos : :class:`~graph_tool.PropertyMap`
         Vector-valued vertex property map containing the x and y coordinates of
-        the vertices. If not given, it will be computed using :func:`sfdp_layout`.
+        the vertices.
     geometry : tuple
         Widget geometry.
     vprops : dict (optional, default: ``None``)
