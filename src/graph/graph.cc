@@ -52,26 +52,25 @@ GraphInterface::~GraphInterface()
 
 // this will get the number of vertices, either the "soft" O(1) way, or the hard
 // O(V) way, which is necessary if the graph is filtered
-size_t GraphInterface::GetNumberOfVertices()
+size_t GraphInterface::GetNumberOfVertices(bool filtered)
 {
     size_t n = 0;
-    if (IsVertexFilterActive())
+    if (filtered && IsVertexFilterActive())
         run_action<>()(*this, lambda::var(n) =
                        lambda::bind<size_t>(HardNumVertices(),lambda::_1))();
     else
-        run_action<>()(*this, lambda::var(n) =
-                       lambda::bind<size_t>(SoftNumVertices(),lambda::_1))();
+        n = num_vertices(*_mg);
     return n;
 }
 
 // this will get the number of edges, either the "soft" O(E) way, or the hard
 // O(E) way, which is necessary if the graph is filtered. Both cases are of
 // linear complexity, since num_edges() is O(E) in Boost's adjacency_list
-size_t GraphInterface::GetNumberOfEdges()
+size_t GraphInterface::GetNumberOfEdges(bool filtered)
 {
     using namespace boost::lambda;
     size_t n = 0;
-    if (IsEdgeFilterActive() || IsVertexFilterActive())
+    if (filtered && (IsEdgeFilterActive() || IsVertexFilterActive()))
         run_action<>()(*this, lambda::var(n) =
                        lambda::bind<size_t>(HardNumEdges(),lambda::_1))();
     else

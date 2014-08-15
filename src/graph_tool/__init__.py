@@ -493,22 +493,17 @@ class PropertyMap(object):
         """
         a = self._get_data()
         if a is None:
-            return None
+            raise ValueError("Cannot get array for value type: " + self.value_type())
         return PropertyArray(a, prop_map=self)
 
     def _get_data(self):
         g = self.get_graph()
         if g is None:
-            return None
-        if g.get_edge_filter() is not None or g.get_vertex_filter() is not None:
-            u = GraphView(g, skip_properties=True, skip_efilt=True,
-                          skip_vfilt=True)
-        else:
-            u = g
+            raise ValueError("Cannot get array for an orphaned property map")
         if self.__key_type == 'v':
-            n = u.num_vertices()
+            n = g._Graph__graph.GetNumberOfVertices(False)
         elif self.__key_type == 'e':
-            n = max(u.max_edge_index, 1)
+            n = g.max_edge_index
         else:
             n = 1
         a = self.__map.get_array(n)
@@ -516,8 +511,6 @@ class PropertyMap(object):
 
     def __set_array(self, v):
         a = self.get_array()
-        if a is None:
-            return
         a[:] = v
 
     a = property(get_array, __set_array,
@@ -2109,7 +2102,7 @@ class Graph(object):
             If the vertices are being filtered, this operation is
             :math:`O(N)`. Otherwise it is :math:`O(1)`.
         """
-        return self.__graph.GetNumberOfVertices()
+        return self.__graph.GetNumberOfVertices(True)
 
     def num_edges(self):
         """Get the number of edges.
@@ -2119,7 +2112,7 @@ class Graph(object):
             If the edges are being filtered, this operation is
             :math:`O(E)`. Otherwise it is :math:`O(1)`.
         """
-        return self.__graph.GetNumberOfEdges()
+        return self.__graph.GetNumberOfEdges(True)
 
     # Pickling support
     # ================

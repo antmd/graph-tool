@@ -78,8 +78,8 @@ public:
     // Basic manipulation
     //
 
-    size_t GetNumberOfVertices();
-    size_t GetNumberOfEdges();
+    size_t GetNumberOfVertices(bool filtered = true);
+    size_t GetNumberOfEdges(bool filtered = true);
     void SetDirected(bool directed) {_directed = directed;}
     bool GetDirected() {return _directed;}
     void SetReversed(bool reversed) {_reversed = reversed;}
