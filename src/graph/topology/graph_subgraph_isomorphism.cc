@@ -103,9 +103,9 @@ struct get_subgraphs
             }
             else
             {
-                vf2_subgraph_iso(sub, *g, matcher, vorder,
-                                 edges_equivalent(make_property_map_equivalent(edge_label1, edge_label2)).
-                                 vertices_equivalent(make_property_map_equivalent(vertex_label1, vertex_label2)));
+                vf2_subgraph_mono(sub, *g, matcher, vorder,
+                                  edges_equivalent(make_property_map_equivalent(edge_label1, edge_label2)).
+                                  vertices_equivalent(make_property_map_equivalent(vertex_label1, vertex_label2)));
             }
         }
     }
