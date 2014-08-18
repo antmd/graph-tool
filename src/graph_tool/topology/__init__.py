@@ -67,7 +67,7 @@ dl_import("from . import libgraph_tool_topology")
 
 from .. import _prop, Vector_int32_t, _check_prop_writable, \
      _check_prop_scalar, _check_prop_vector, Graph, PropertyMap, GraphView,\
-     libcore, _get_rng, _degree
+     libcore, _get_rng, _degree, perfect_prop_hash
 import random, sys, numpy
 __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
            "max_cardinality_matching", "max_independent_vertex_set",
