@@ -210,7 +210,7 @@ echo "==========================="
 
 
 dnl boost
-AX_BOOST_BASE([[1.38.0]])
+AX_BOOST_BASE([[1.53.0]])
 AX_BOOST_PYTHON
 if test "$BOOST_PYTHON_LIB" = ""; then
    AC_MSG_ERROR([No usable boost::python found])
