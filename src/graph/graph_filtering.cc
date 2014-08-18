@@ -53,7 +53,7 @@ const char * graph_tool::ActionNotFound::what () const throw ()
 
     string error =
         "No static implementation was found for the desired routine. "
-        "This is a graph_tool bug. :-( Please follow but report "
+        "This is a graph_tool bug. :-( Please follow bug report "
         "instructions at " PACKAGE_BUGREPORT ". What follows is debug "
         "information.\n\n";
 
