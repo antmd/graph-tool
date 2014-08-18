@@ -126,11 +126,17 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
     //                        ConstantPropertyMap<bool,GraphInterface::edge_t> >
     //     ::type edge_props_t;
 
-    typedef property_map_type::apply<int32_t, GraphInterface::vertex_index_map_t>::type vlabel_t;
-    typedef mpl::vector<vlabel_t, ConstantPropertyMap<bool,GraphInterface::vertex_t> > vertex_props_t;
+    typedef property_map_type::apply<int32_t,
+                                     GraphInterface::vertex_index_map_t>::type vlabel_t;
+    typedef mpl::vector<typename vlabel_t::unchecked_t,
+                        ConstantPropertyMap<bool,
+                                            GraphInterface::vertex_t> > vertex_props_t;
 
-    typedef property_map_type::apply<int32_t, GraphInterface::edge_index_map_t>::type elabel_t;
-    typedef mpl::vector<elabel_t, ConstantPropertyMap<bool,GraphInterface::edge_t> > edge_props_t;
+    typedef property_map_type::apply<int32_t,
+                                     GraphInterface::edge_index_map_t>::type elabel_t;
+    typedef mpl::vector<typename elabel_t::unchecked_t,
+                        ConstantPropertyMap<bool,
+                                            GraphInterface::edge_t> > edge_props_t;
 
 
     if (gi1.GetDirected() != gi2.GetDirected())
@@ -154,8 +160,8 @@ void subgraph_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
     }
     else
     {
-        edge_label1 = any_cast<vlabel_t>(edge_label1).get_unchecked(gi1.GetMaxEdgeIndex());
-        edge_label2 = any_cast<vlabel_t>(edge_label2).get_unchecked(gi2.GetMaxEdgeIndex());
+        edge_label1 = any_cast<elabel_t>(edge_label1).get_unchecked(gi1.GetMaxEdgeIndex());
+        edge_label2 = any_cast<elabel_t>(edge_label2).get_unchecked(gi2.GetMaxEdgeIndex());
     }
 
     vector<vlabel_t> vmaps;
