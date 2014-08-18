@@ -1044,11 +1044,13 @@ def perfect_prop_hash(props, htype="int32_t"):
 
     for eprop, heprop in zip(eprops, heprops):
         g = eprop.get_graph()
+        g = GraphView(g, directed=True, skip_properties=True)
         libcore.perfect_ehash(g._Graph__graph, _prop('e', g, eprop),
                               _prop('e', g, heprop), hdict)
 
     for vprop, hvprop in zip(vprops, hvprops):
         g = vprop.get_graph()
+        g = GraphView(g, directed=True, skip_properties=True)
         libcore.perfect_vhash(g._Graph__graph, _prop('v', g, vprop),
                               _prop('v', g, hvprop), hdict)
 
