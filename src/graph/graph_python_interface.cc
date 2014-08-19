@@ -393,6 +393,8 @@ struct add_edge_list
         template <class Graph, class Value>
         void operator()(Graph& g, python::object& aedge_list, bool& found, Value) const
         {
+            if (found)
+                return;
             try
             {
                 boost::multi_array_ref<Value, 2> edge_list = get_array<Value, 2>(aedge_list);

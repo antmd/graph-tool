@@ -164,7 +164,7 @@ struct invalid_numpy_conversion:
 {
     string _error;
 public:
-    invalid_numpy_conversion(const string& error) {_error = error;}
+    invalid_numpy_conversion(const string& error) :_error(error) {}
     ~invalid_numpy_conversion() throw () {}
     const char * what () const throw () {return _error.c_str();}
 };
@@ -180,7 +180,7 @@ boost::multi_array_ref<ValueType,dim> get_array(boost::python::object points)
     if (boost::mpl::at<numpy_types,ValueType>::type::value != PyArray_DESCR(pa)->type_num)
     {
         using boost::python::detail::gcc_demangle;
-        boost::python::handle<> x((PyObject*) PyArray_DESCR(pa)->typeobj);
+        boost::python::handle<> x(boost::python::borrowed((PyObject*) PyArray_DESCR(pa)->typeobj));
         boost::python::object dtype(x);
         string type_name = boost::python::extract<string>(boost::python::str(dtype));
         string error = "invalid array value type: " + type_name;

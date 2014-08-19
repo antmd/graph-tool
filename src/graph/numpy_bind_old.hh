@@ -166,7 +166,7 @@ boost::multi_array_ref<ValueType,dim> get_array(boost::python::object points)
     if (boost::mpl::at<numpy_types,ValueType>::type::value != pa->descr->type_num)
     {
         using boost::python::detail::gcc_demangle;
-        boost::python::handle<> x((PyObject*)  pa->descr->typeobj);
+        boost::python::handle<> x(boost::python::borrowed((PyObject*)  pa->descr->typeobj));
         boost::python::object dtype(x);
         string type_name = boost::python::extract<string>(boost::python::str(dtype));
         string error = "invalid array value type: " + type_name;
