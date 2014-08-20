@@ -646,10 +646,10 @@ class PropertyMap(object):
             if len(a) == 1:
                 a = a[0]
             return numpy.array(a)
-        a = self.fa
-        if a is not None:
-            return numpy.array(a)
-        else:
+
+        try:
+            return numpy.array(self.fa)
+        except ValueError:
             p = ungroup_vector_property(self, pos)
             return numpy.array([x.a for x in p])
 
