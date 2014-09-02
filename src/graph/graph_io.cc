@@ -385,6 +385,7 @@ boost::python::tuple GraphInterface::ReadFromFile(string file,
         if (format == "gt")
         {
             vector<pair<string, boost::any>> agprops, avprops, aeprops;
+            stream.exceptions(ios_base::badbit | ios_base::failbit | ios_base::eofbit);
             _directed = read_graph(stream, *_mg, agprops, avprops, aeprops, igp,
                                    ivp, iep);
             for (auto& p : agprops)

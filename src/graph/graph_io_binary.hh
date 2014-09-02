@@ -64,11 +64,20 @@ void write(std::ostream& s, const std::vector<T>& v)
     s.write((char *)v.data(), sizeof(T) * v.size());
 };
 
+
 void write(std::ostream& s, const std::string& v)
 {
     uint64_t size = v.size();
     write(s, size);
     s.write((char *)v.data(), v.size());
+};
+
+void write(std::ostream& s, const std::vector<std::string>& v)
+{
+    uint64_t size = v.size();
+    write(s, size);
+    for (auto& x : v)
+        write(s, x);
 };
 
 void write(std::ostream& s, const boost::python::object& v)
@@ -119,6 +128,18 @@ void read(std::istream& s, std::string& v)
     read<BE>(s, size);
     v.resize(size);
     s.read(&v[0], v.size());
+};
+
+
+template <bool BE>
+void read(std::istream& s, std::vector<std::string>& v)
+{
+    uint64_t size = 0;
+    read<BE>(s, size);
+    v.resize(size);
+
+    for (auto& x : v)
+        read<BE>(s, x);
 };
 
 template <bool BE>
@@ -187,7 +208,11 @@ void read_adjacency_dispatch(Graph& g, size_t N, std::istream& s)
         std::vector<Vint> us;
         read<BE>(s, us);
         for (vertex_t u : us)
+        {
+            if (u >= N)
+                throw IOException("error reading graph: vertex index not in range");
             add_edge(v, u, g);
+        }
     }
 }
 
