@@ -2137,7 +2137,7 @@ class Graph(object):
         state = dict()
         sio = BytesIO()
         stream = gzip.open(sio, mode="wb")
-        self.save(stream, "xml")
+        self.save(stream, "gt")
         stream.close()
         state["blob"] = sio.getvalue()
         return state
@@ -2148,7 +2148,7 @@ class Graph(object):
         if blob != "":
             sio = BytesIO(blob)
             stream = gzip.open(sio, mode="rb")
-            self.load(stream, "xml")
+            self.load(stream, "gt")
 
 
 def load_graph(file_name, fmt="auto", ignore_vp=None, ignore_ep=None,
