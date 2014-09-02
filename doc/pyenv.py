@@ -2,7 +2,7 @@ from matplotlib import rc
 from matplotlib import rcParams
 
 font_size=14
-rcParams["backend"] = "Qt4Agg"
+rcParams["backend"] = "Cairo"
 rcParams["figure.figsize"] = (6,6)
 rcParams["font.family"] = "Serif"
 rcParams["font.serif"] = ["Palatino"]
