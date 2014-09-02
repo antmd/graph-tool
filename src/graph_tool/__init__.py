@@ -2146,9 +2146,14 @@ class Graph(object):
         self.__init__()
         blob = state["blob"]
         if blob != "":
-            sio = BytesIO(blob)
-            stream = gzip.open(sio, mode="rb")
-            self.load(stream, "gt")
+            try:
+                sio = BytesIO(blob)
+                stream = gzip.open(sio, mode="rb")
+                self.load(stream, "gt")
+            except OSError:
+                sio = BytesIO(blob)
+                stream = gzip.open(sio, mode="rb")
+                self.load(stream, "xml")
 
 
 def load_graph(file_name, fmt="auto", ignore_vp=None, ignore_ep=None,
