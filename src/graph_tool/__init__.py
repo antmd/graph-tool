@@ -1786,7 +1786,7 @@ class Graph(object):
     def __get_file_format(self, file_name):
         fmt = None
         for f in ["gt", "graphml", "xml", "dot", "gml"]:
-            names = ["." + f, ".%s.gz" % f, ".%s.bz2" % f]
+            names = ["." + f, ".%s.gz" % f, ".%s.bz2" % f, ".%s.xz" % f]
             for name in names:
                 if file_name.endswith(name):
                     fmt = f
@@ -1819,7 +1819,13 @@ class Graph(object):
         if fmt == 'auto' and isinstance(file_name, str):
             fmt = self.__get_file_format(file_name)
         elif fmt == "auto":
-            fmt = "xml"
+            fmt = "gt"
+        if isinstance(file_name, str) and file_name.endswith(".xz"):
+            try:
+                import lzma
+                file_name = lzma.open(file_name, mode="rb")
+            except ImportError:
+                raise ValueError("lzma compression is only available in Python >= 3.3")
         if fmt == "graphml":
             fmt = "xml"
         if ignore_vp is None:
@@ -1891,9 +1897,17 @@ class Graph(object):
         if fmt == 'auto' and isinstance(file_name, str):
             fmt = self.__get_file_format(file_name)
         elif fmt == "auto":
-            fmt = "xml"
+            fmt = "gt"
         if fmt == "graphml":
             fmt = "xml"
+
+        if isinstance(file_name, str) and file_name.endswith(".xz"):
+            try:
+                import lzma
+                file_name = lzma.open(file_name, mode="wb")
+            except ImportError:
+                raise ValueError("lzma compression is only available in Python >= 3.3")
+
         props = [(name[1], prop._PropertyMap__map) for name, prop in \
                  self.__properties.items()]
 
