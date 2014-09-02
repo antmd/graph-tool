@@ -452,48 +452,6 @@ istream& operator>>(istream& in, vector<string>& vec);
 
 } // std namespace
 
-//
-// Python IO streams (minimal access to c++ streams)
-//
-
-class OStream
-{
-public:
-    OStream(std::ostream& s): _s(s) {}
-
-    void Write(const std::string& s, size_t n)
-    {
-        _s.write(s.c_str(), long(n));
-    }
-
-    void Flush()
-    {
-        _s.flush();
-    }
-
-private:
-    std::ostream& _s;
-};
-
-class IStream
-{
-public:
-    IStream(std::istream& s): _s(s) {}
-
-    std::string Read(size_t n)
-    {
-        char* buf = new char[n];
-        _s.read(buf, long(n));
-        std::string ret(buf, buf+_s.gcount());
-        delete buf;
-        return ret;
-    }
-
-private:
-    std::istream& _s;
-};
-
-
 // This will iterate over a random permutation of a random access sequence, by
 // swapping the values of the sequence as it iterates
 template <class RandomAccessIterator, class RNG,

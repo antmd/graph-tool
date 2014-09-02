@@ -106,9 +106,9 @@ bool read_graphviz(const std::string& str,
                    MutableGraph& graph, boost::dynamic_properties& dp,
                    std::string const& node_id = "node_id",
                    bool ignore_directedness = false,
-                   std::set<std::string> ignore_vp = std::set<std::string>(),
-                   std::set<std::string> ignore_ep = std::set<std::string>(),
-                   std::set<std::string> ignore_gp = std::set<std::string>()) {
+                   const std::unordered_set<std::string>& ignore_vp = std::unordered_set<std::string>(),
+                   const std::unordered_set<std::string>& ignore_ep = std::unordered_set<std::string>(),
+                   const std::unordered_set<std::string>& ignore_gp = std::unordered_set<std::string>()) {
   boost::detail::graph::mutate_graph_impl<MutableGraph> mg(graph, dp, node_id,
                                                            ignore_vp, ignore_ep,
                                                            ignore_gp);
@@ -120,9 +120,9 @@ bool read_graphviz(InputIter begin, InputIter end,
                    MutableGraph& graph, boost::dynamic_properties& dp,
                    std::string const& node_id = "node_id",
                    bool ignore_directedness = false,
-                   std::set<std::string> ignore_vp = std::set<std::string>(),
-                   std::set<std::string> ignore_ep = std::set<std::string>(),
-                   std::set<std::string> ignore_gp = std::set<std::string>()) {
+                   const std::unordered_set<std::string>& ignore_vp = std::unordered_set<std::string>(),
+                   const std::unordered_set<std::string>& ignore_ep = std::unordered_set<std::string>(),
+                   const std::unordered_set<std::string>& ignore_gp = std::unordered_set<std::string>()) {
    return read_graphviz(std::string(begin, end), graph, dp, node_id,
                         ignore_directedness, ignore_vp, ignore_ep, ignore_gp);
 }

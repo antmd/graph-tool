@@ -46,6 +46,7 @@ libgraph_tool_core_la_include_HEADERS = \
     graph_adaptor.hh \
     graph_exceptions.hh \
     graph_filtering.hh \
+    graph_io_binary.hh \
     graph_properties.hh \
     graph_properties_group.hh \
     graph_python_interface.hh \

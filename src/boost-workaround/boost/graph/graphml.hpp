@@ -24,11 +24,19 @@
 #include <boost/mpl/for_each.hpp>
 #include <boost/python/object.hpp>
 #include <boost/bind.hpp>
+#include <string>
 #include <exception>
 #include <set>
+#include <unordered_set>
 
 namespace boost
 {
+
+// Base64 Encoding
+
+std::string base64_encode(const std::string& s);
+std::string base64_decode(const std::string& s);
+
 
 /////////////////////////////////////////////////////////////////////////////
 // Graph reader exceptions
@@ -86,9 +94,9 @@ class mutate_graph_impl : public mutate_graph
 public:
     mutate_graph_impl(MutableGraph& g, dynamic_properties& dp,
                       bool ignore_directedness,
-                      std::set<std::string> ignore_vp,
-                      std::set<std::string> ignore_ep,
-                      std::set<std::string> ignore_gp)
+                      std::unordered_set<std::string> ignore_vp,
+                      std::unordered_set<std::string> ignore_ep,
+                      std::unordered_set<std::string> ignore_gp)
         : m_g(g), m_dp(dp), m_ignore_directedness(ignore_directedness),
           m_is_directed(false), m_ignore_vp(ignore_vp),
           m_ignore_ep(ignore_ep), m_ignore_gp(ignore_gp) { }
@@ -232,7 +240,15 @@ public:
                 }
                 else
                 {
-                    put(m_name, m_dp, m_key, lexical_cast<Value>(m_value));
+                    if (is_same<Value, boost::python::object>::value)
+                    {
+                        std::string val = base64_decode(m_value);
+                        put(m_name, m_dp, m_key, lexical_cast<Value>(val));
+                    }
+                    else
+                    {
+                        put(m_name, m_dp, m_key, lexical_cast<Value>(m_value));
+                    }
                 }
                 m_type_found = true;
             }
@@ -252,9 +268,9 @@ protected:
     dynamic_properties& m_dp;
     bool m_ignore_directedness;
     bool m_is_directed;
-    std::set<std::string> m_ignore_vp;
-    std::set<std::string> m_ignore_ep;
-    std::set<std::string> m_ignore_gp;
+    std::unordered_set<std::string> m_ignore_vp;
+    std::unordered_set<std::string> m_ignore_ep;
+    std::unordered_set<std::string> m_ignore_gp;
     typedef mpl::vector<uint8_t, int16_t, int32_t, int64_t, double, long double,
                         std::vector<uint8_t>, std::vector<int32_t>,
                         std::vector<int64_t>, std::vector<double>,
@@ -278,9 +294,9 @@ template<typename MutableGraph>
 bool
 read_graphml(std::istream& in, MutableGraph& g, dynamic_properties& dp,
              bool store_ids, bool integer_vertices, bool ignore_directedness,
-             std::set<std::string> ignore_vp = std::set<std::string>(),
-             std::set<std::string> ignore_ep = std::set<std::string>(),
-             std::set<std::string> ignore_gp = std::set<std::string>())
+             std::unordered_set<std::string> ignore_vp = std::unordered_set<std::string>(),
+             std::unordered_set<std::string> ignore_ep = std::unordered_set<std::string>(),
+             std::unordered_set<std::string> ignore_gp = std::unordered_set<std::string>())
 {
     mutate_graph_impl<MutableGraph> mg(g, dp, ignore_directedness, ignore_vp,
                                        ignore_ep, ignore_gp);
@@ -319,6 +335,8 @@ struct get_string
         if (v != 0)
         {
             sval = lexical_cast<std::string>(*v);
+            if (is_same<ValueType, boost::python::object>::value)
+                sval = base64_encode(sval);
         }
     }
 };

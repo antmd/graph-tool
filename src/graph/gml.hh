@@ -70,9 +70,9 @@ class gml_state
 {
 public:
     gml_state(Graph& g, dynamic_properties& dp,
-              std::set<std::string> ignore_vp = std::set<std::string>(),
-              std::set<std::string> ignore_ep = std::set<std::string>(),
-              std::set<std::string> ignore_gp = std::set<std::string>())
+              const std::unordered_set<std::string>& ignore_vp = std::unordered_set<std::string>(),
+              const std::unordered_set<std::string>& ignore_ep = std::unordered_set<std::string>(),
+              const std::unordered_set<std::string>& ignore_gp = std::unordered_set<std::string>())
         : _g(g), _dp(dp), _directed(false), _ignore_vp(ignore_vp),
           _ignore_ep(ignore_ep), _ignore_gp(ignore_gp) {}
 
@@ -227,9 +227,9 @@ private:
     typedef std::unordered_map<std::string, val_t> prop_list_t;
     vector<pair<std::string,  prop_list_t> > _stack;
 
-    std::set<std::string> _ignore_vp;
-    std::set<std::string> _ignore_ep;
-    std::set<std::string> _ignore_gp;
+    const std::unordered_set<std::string>& _ignore_vp;
+    const std::unordered_set<std::string>& _ignore_ep;
+    const std::unordered_set<std::string>& _ignore_gp;
 };
 
 
@@ -237,9 +237,9 @@ template <class Iterator, class Graph, class Skipper>
 struct gml : spirit::qi::grammar<Iterator, void(), Skipper>
 {
     gml(Graph& g, dynamic_properties& dp,
-        std::set<std::string> ignore_vp = std::set<std::string>(),
-        std::set<std::string> ignore_ep = std::set<std::string>(),
-        std::set<std::string> ignore_gp = std::set<std::string>())
+        const std::unordered_set<std::string>& ignore_vp = std::unordered_set<std::string>(),
+        const std::unordered_set<std::string>& ignore_ep = std::unordered_set<std::string>(),
+        const std::unordered_set<std::string>& ignore_gp = std::unordered_set<std::string>())
         : gml::base_type(start), _state(g, dp, ignore_vp, ignore_ep, ignore_gp)
     {
         using namespace spirit;
@@ -276,9 +276,9 @@ struct gml : spirit::qi::grammar<Iterator, void(), Skipper>
 template <class Iterator, class Graph, class Skipper>
 bool parse_grammar(Iterator begin, Iterator end, Graph& g,
                    dynamic_properties& dp, Skipper skip,
-                   std::set<std::string> ignore_vp = std::set<std::string>(),
-                   std::set<std::string> ignore_ep = std::set<std::string>(),
-                   std::set<std::string> ignore_gp = std::set<std::string>())
+                   const std::unordered_set<std::string>& ignore_vp = std::unordered_set<std::string>(),
+                   const std::unordered_set<std::string>& ignore_ep = std::unordered_set<std::string>(),
+                   const std::unordered_set<std::string>& ignore_gp = std::unordered_set<std::string>())
 {
     using namespace spirit;
     gml<spirit::istream_iterator, Graph, Skipper> parser(g, dp, ignore_vp,
@@ -292,9 +292,9 @@ bool parse_grammar(Iterator begin, Iterator end, Graph& g,
 
 template <class Graph>
 bool read_gml(istream& in, Graph& g, dynamic_properties& dp,
-              std::set<std::string> ignore_vp = std::set<std::string>(),
-              std::set<std::string> ignore_ep = std::set<std::string>(),
-              std::set<std::string> ignore_gp = std::set<std::string>())
+              const std::unordered_set<std::string>& ignore_vp = std::unordered_set<std::string>(),
+              const std::unordered_set<std::string>& ignore_ep = std::unordered_set<std::string>(),
+              const std::unordered_set<std::string>& ignore_gp = std::unordered_set<std::string>())
 {
     using namespace spirit;
 

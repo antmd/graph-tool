@@ -555,6 +555,57 @@ boost::python::object new_property(const string& type, IndexMap index_map,
     return prop;
 }
 
+//
+// Python IO streams (minimal access to c++ streams)
+//
+
+class OStream
+{
+public:
+    OStream(std::ostream& s): _s(s) {}
+
+    void Write(const std::string& s, size_t n)
+    {
+        _s.write(s.c_str(), long(n));
+    }
+
+    void Flush()
+    {
+        _s.flush();
+    }
+
+private:
+    std::ostream& _s;
+};
+
+class IStream
+{
+public:
+    IStream(std::istream& s): _s(s) {}
+
+    boost::python::object Read(size_t n)
+    {
+        std::string buf;
+        buf.resize(n);
+        _s.read(&buf[0], n);
+        buf.resize(_s.gcount());
+
+#if (PY_MAJOR_VERSION >= 3)
+        // in python 3 we need to construct a 'bytes' instance
+        PyObject* bytes = PyBytes_FromStringAndSize(&buf[0], buf.size());
+        boost::python::handle<> x(bytes);
+        boost::python::object pbuf(x);
+#else
+        boost::python::str pbuf(buf);
+#endif
+        return pbuf;
+    }
+
+private:
+    std::istream& _s;
+};
+
+
 } //graph_tool namespace
 
 #endif

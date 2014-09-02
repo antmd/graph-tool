@@ -81,6 +81,8 @@ python::object lexical_cast<python::object,string>(const string& ps)
 }
 }
 
+#include "graph_io_binary.hh"
+
 // the following source & sink provide iostream access to python file-like
 // objects
 
@@ -146,10 +148,35 @@ struct get_python_property
                   .base()));
         } catch (bad_cast&) {}
     }
+
+    template <class ValueType, class IndexMap>
+    void operator()(ValueType, IndexMap, boost::any& map,
+                    boost::python::object& pmap) const
+    {
+        typedef typename property_map_type::apply<ValueType, IndexMap>::type
+            map_t;
+        try
+        {
+            PythonPropertyMap<map_t> opmap(any_cast<map_t>(map));
+            pmap = boost::python::object(opmap);
+        }
+        catch (bad_any_cast&) {}
+    }
+
 };
 
 template <class IndexMap>
 boost::python::object find_property_map(dynamic_property_map& map, IndexMap)
+{
+    boost::python::object pmap;
+    boost::mpl::for_each<value_types>(std::bind(get_python_property(),
+                                                std::placeholders::_1, IndexMap(), std::ref(map),
+                                                std::ref(pmap)));
+    return pmap;
+}
+
+template <class IndexMap>
+boost::python::object find_property_map(boost::any& map, IndexMap)
 {
     boost::python::object pmap;
     boost::mpl::for_each<value_types>(std::bind(get_python_property(),
@@ -284,9 +311,9 @@ struct graph_traits<FakeUndirGraph<Graph> >
 // ReadFromFile(file, pfile, format)
 //==============================================================================
 
-void build_stream
-    (boost::iostreams::filtering_stream<boost::iostreams::input>& stream,
-     const string& file,  boost::python::object& pfile, std::ifstream& file_stream)
+void build_stream(boost::iostreams::filtering_stream<boost::iostreams::input>& stream,
+                  const string& file, boost::python::object& pfile,
+                  std::ifstream& file_stream)
 {
     stream.reset();
     if (file == "-")
@@ -321,7 +348,7 @@ boost::python::tuple GraphInterface::ReadFromFile(string file,
                                                   boost::python::list ignore_ep,
                                                   boost::python::list ignore_gp)
 {
-    if (format != "dot" && format != "xml" && format != "gml")
+    if (format != "gt" && format != "dot" && format != "xml" && format != "gml")
         throw ValueException("error reading from file '" + file +
                              "': requested invalid format '" + format + "'");
     try
@@ -331,7 +358,7 @@ boost::python::tuple GraphInterface::ReadFromFile(string file,
         std::ifstream file_stream;
         build_stream(stream, file, pfile, file_stream);
 
-        set<string> ivp, iep, igp;
+        std::unordered_set<std::string> ivp, iep, igp;
         for (int i = 0; i < len(ignore_vp); ++i)
             ivp.insert(boost::python::extract<string>(ignore_vp[i]));
         for (int i = 0; i < len(ignore_ep); ++i)
@@ -353,18 +380,34 @@ boost::python::tuple GraphInterface::ReadFromFile(string file,
         else if (format == "gml")
             _directed = read_gml(stream, *_mg, dp, ivp, iep, igp);
 
+
         boost::python::dict vprops, eprops, gprops;
-        for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)
+        if (format == "gt")
         {
-            if (iter->second->key() == typeid(vertex_t))
-                vprops[iter->first] = find_property_map(*iter->second,
-                                                       _vertex_index);
-            else if (iter->second->key() == typeid(edge_t))
-                eprops[iter->first] = find_property_map(*iter->second,
-                                                       _edge_index);
-            else
-                gprops[iter->first] = find_property_map(*iter->second,
-                                                        _graph_index);
+            vector<pair<string, boost::any>> agprops, avprops, aeprops;
+            _directed = read_graph(stream, *_mg, agprops, avprops, aeprops, igp,
+                                   ivp, iep);
+            for (auto& p : agprops)
+                gprops[p.first] = find_property_map(p.second, _graph_index);
+            for (auto& p : avprops)
+                vprops[p.first] = find_property_map(p.second, _vertex_index);
+            for (auto& p : aeprops)
+                eprops[p.first] = find_property_map(p.second, _edge_index);
+        }
+        else
+        {
+            for(typeof(dp.begin()) iter = dp.begin(); iter != dp.end(); ++iter)
+            {
+                if (iter->second->key() == typeid(vertex_t))
+                    vprops[iter->first] = find_property_map(*iter->second,
+                                                            _vertex_index);
+                else if (iter->second->key() == typeid(edge_t))
+                    eprops[iter->first] = find_property_map(*iter->second,
+                                                            _edge_index);
+                else
+                    gprops[iter->first] = find_property_map(*iter->second,
+                                                            _graph_index);
+            }
         }
         return boost::python::make_tuple(vprops, eprops, gprops);
     }
@@ -439,6 +482,18 @@ struct write_to_file_fake_undir: public write_to_file
     }
 };
 
+struct write_to_binary_file
+{
+    template <class Graph, class IndexMap>
+    void operator()(ostream& stream, Graph& g, IndexMap index_map, size_t N,
+                    bool directed, vector<pair<string, boost::any >> & gprops,
+                    vector<pair<string, boost::any >> & vprops,
+                    vector<pair<string, boost::any >> & eprops) const
+    {
+        write_graph(g, index_map, N, directed, gprops, vprops, eprops, stream);
+    }
+};
+
 struct generate_index
 {
     template <class Graph, class IndexMap>
@@ -454,7 +509,7 @@ struct generate_index
 void GraphInterface::WriteToFile(string file, boost::python::object pfile,
                                  string format, boost::python::list props)
 {
-    if (format != "xml" && format != "dot" && format != "gml")
+    if (format != "gt" && format != "xml" && format != "dot" && format != "gml")
         throw ValueException("error writing to file '" + file +
                              "': requested invalid format '" + format + "'");
     try
@@ -484,57 +539,112 @@ void GraphInterface::WriteToFile(string file, boost::python::object pfile,
         }
         stream.exceptions(ios_base::badbit | ios_base::failbit);
 
-        dynamic_properties dp;
-        for (int i = 0; i < len(props); ++i)
+        if (format == "gt")
         {
-            dynamic_property_map* pmap =
-                any_cast<dynamic_property_map*>
-                (boost::python::extract<boost::any>
-                 (props[i][1].attr("get_dynamic_map")()));
-            dp.insert(boost::python::extract<string>(props[i][0]),
-                      DP_SMART_PTR<dynamic_property_map>(pmap));
-        }
+            typedef property_map_types::apply<value_types,
+                                              GraphInterface::graph_index_map_t>::type
+                graph_properties;
 
-        if (IsVertexFilterActive())
-        {
-            // vertex indexes must be between the [0, HardNumVertices(g)] range
-            typedef std::unordered_map<vertex_t, size_t>  map_t;
-            map_t vertex_to_index;
-            associative_property_map<map_t> index_map(vertex_to_index);
-            run_action<>()(*this, boost::bind<void>(generate_index(),
-                                                    _1, index_map))();
-            if (format == "dot")
-                graphviz_insert_index(dp, index_map);
+            vector<pair<string, boost::any>> agprops, avprops, aeprops;
+            for (int i = 0; i < python::len(props); ++i)
+            {
+                string name = python::extract<string>(props[i][0])();
+                boost::any p = python::extract<boost::any>(props[i][1].attr("get_map")())();
+                if (belongs<graph_properties>()(p))
+                    agprops.push_back(make_pair(name, p));
+                if (belongs<vertex_properties>()(p))
+                    avprops.push_back(make_pair(name, p));
+                if (belongs<edge_properties>()(p))
+                    aeprops.push_back(make_pair(name, p));
+            }
 
-            if (GetDirected())
-                run_action<detail::always_directed>()
-                    (*this, boost::bind<void>(write_to_file(),
-                                              boost::ref(stream), _1,
-                                              index_map, boost::ref(dp),
-                                              format))();
+            bool directed = _directed;
+            _directed = true;
+
+            if (IsVertexFilterActive())
+            {
+                // vertex indexes must be between the [0, HardNumVertices(g)] range
+                vector_property_map<size_t> index_map(_vertex_index);
+                run_action<>()(*this, std::bind(generate_index(),
+                                                std::placeholders::_1,
+                                                index_map))();
+                run_action<>()(*this, std::bind(write_to_binary_file(),
+                                                std::ref(stream),
+                                                std::placeholders::_1,
+                                                index_map,
+                                                GetNumberOfVertices(),
+                                                directed,
+                                                std::ref(agprops),
+                                                std::ref(avprops),
+                                                std::ref(aeprops)))();
+            }
             else
-                run_action<detail::never_directed>()
-                    (*this,boost::bind<void>(write_to_file_fake_undir(),
-                                             boost::ref(stream), _1, index_map,
-                                             boost::ref(dp), format))();
+            {
+                run_action<>()(*this, std::bind(write_to_binary_file(),
+                                                std::ref(stream),
+                                                std::placeholders::_1,
+                                                _vertex_index,
+                                                GetNumberOfVertices(),
+                                                directed,
+                                                std::ref(agprops),
+                                                std::ref(avprops),
+                                                std::ref(aeprops)))();
+            }
+
+            _directed = directed;
         }
         else
         {
-            if (format == "dot")
-                graphviz_insert_index(dp, _vertex_index);
+            dynamic_properties dp;
+            for (int i = 0; i < len(props); ++i)
+            {
+                dynamic_property_map* pmap =
+                    any_cast<dynamic_property_map*>
+                    (boost::python::extract<boost::any>
+                     (props[i][1].attr("get_dynamic_map")()));
+                dp.insert(boost::python::extract<string>(props[i][0]),
+                          DP_SMART_PTR<dynamic_property_map>(pmap));
+            }
 
-            if (GetDirected())
-                run_action<detail::always_directed>()
-                    (*this, boost::bind<void>(write_to_file(),
-                                              boost::ref(stream), _1,
-                                              _vertex_index,  boost::ref(dp),
-                                              format))();
+            if (IsVertexFilterActive())
+            {
+                // vertex indexes must be between the [0, HardNumVertices(g)] range
+                vector_property_map<size_t> index_map(_vertex_index);
+                run_action<>()(*this, boost::bind<void>(generate_index(),
+                                                        _1, index_map))();
+                if (format == "dot")
+                    graphviz_insert_index(dp, index_map);
+
+                if (GetDirected())
+                    run_action<detail::always_directed>()
+                        (*this, boost::bind<void>(write_to_file(),
+                                                  boost::ref(stream), _1,
+                                                  index_map, boost::ref(dp),
+                                                  format))();
+                else
+                    run_action<detail::never_directed>()
+                        (*this,boost::bind<void>(write_to_file_fake_undir(),
+                                                 boost::ref(stream), _1, index_map,
+                                                 boost::ref(dp), format))();
+            }
             else
-                run_action<detail::never_directed>()
-                    (*this,boost::bind<void>(write_to_file_fake_undir(),
-                                             boost::ref(stream), _1,
-                                             _vertex_index, boost::ref(dp),
-                                             format))();
+            {
+                if (format == "dot")
+                    graphviz_insert_index(dp, _vertex_index);
+
+                if (GetDirected())
+                    run_action<detail::always_directed>()
+                        (*this, boost::bind<void>(write_to_file(),
+                                                  boost::ref(stream), _1,
+                                                  _vertex_index,  boost::ref(dp),
+                                                  format))();
+                else
+                    run_action<detail::never_directed>()
+                        (*this,boost::bind<void>(write_to_file_fake_undir(),
+                                                 boost::ref(stream), _1,
+                                                 _vertex_index, boost::ref(dp),
+                                                 format))();
+            }
         }
         stream.reset();
     }

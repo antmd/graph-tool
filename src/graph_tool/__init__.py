@@ -1785,7 +1785,7 @@ class Graph(object):
     # ==============
     def __get_file_format(self, file_name):
         fmt = None
-        for f in ["graphml", "xml", "dot", "gml"]:
+        for f in ["gt", "graphml", "xml", "dot", "gml"]:
             names = ["." + f, ".%s.gz" % f, ".%s.bz2" % f]
             for name in names:
                 if file_name.endswith(name):
@@ -1797,9 +1797,9 @@ class Graph(object):
 
     def load(self, file_name, fmt="auto", ignore_vp=None, ignore_ep=None,
              ignore_gp=None):
-        """Load graph from ``file_name`` (which can be either a string or a
-        file-like object). The format is guessed from ``file_name``, or can be
-        specified by ``fmt``, which can be either "graphml", "xml", "dot" or "gml".
+        """Load graph from ``file_name`` (which can be either a string or a file-like
+        object). The format is guessed from ``file_name``, or can be specified
+        by ``fmt``, which can be either "gt", "graphml", "xml", "dot" or "gml".
         (Note that "graphml" and "xml" are synonyms).
 
         If provided, the parameters ``ignore_vp``, ``ignore_ep`` and
@@ -1808,9 +1808,9 @@ class Graph(object):
 
         .. warning::
 
-           The only file format which is capable of perfectly preserving the
-           internal property maps is "graphml". Because of this, its use should
-           be preferred over the other formats whenever possible.
+           The only file formats which are capable of perfectly preserving the
+           internal property maps are "gt" and "graphml". Because of this,
+           they should be preferred over the other formats whenever possible.
 
         """
 
@@ -1857,16 +1857,16 @@ class Graph(object):
 
 
     def save(self, file_name, fmt="auto"):
-        """Save graph to ``file_name`` (which can be either a string or a
-        file-like object). The format is guessed from the ``file_name``, or can
-        be specified by ``fmt``, which can be either "graphml", "xml", "dot" or "gml".
-        (Note that "graphml" and "xml" are synonyms).
+        """Save graph to ``file_name`` (which can be either a string or a file-like
+        object). The format is guessed from the ``file_name``, or can be
+        specified by ``fmt``, which can be either "gt", "graphml", "xml", "dot"
+        or "gml".  (Note that "graphml" and "xml" are synonyms).
 
         .. warning::
 
-           The only file format which is capable of perfectly preserving the
-           internal property maps is "graphml". Because of this, its use should
-           be preferred over the other formats whenever possible.
+           The only file formats which are capable of perfectly preserving the
+           internal property maps are "gt" and "graphml". Because of this,
+           they should be preferred over the other formats whenever possible.
 
         """
 
@@ -2139,12 +2139,11 @@ class Graph(object):
 
 def load_graph(file_name, fmt="auto", ignore_vp=None, ignore_ep=None,
                ignore_gp=None):
-    """
-    Load a graph from ``file_name`` (which can be either a string or a file-like object).
+    """Load a graph from ``file_name`` (which can be either a string or a file-like object).
 
-    The format is guessed from ``file_name``, or can be specified by
-    ``fmt``, which can be either "graphml", "xml", "dot" or "gml".
-    (Note that "graphml" and "xml" are synonyms).
+    The format is guessed from ``file_name``, or can be specified by ``fmt``,
+    which can be either "gt", "graphml", "xml", "dot" or "gml".  (Note that
+    "graphml" and "xml" are synonyms).
 
     If provided, the parameters ``ignore_vp``, ``ignore_ep`` and
     ``ignore_gp``, should contain a list of property names (vertex, edge or
@@ -2152,9 +2151,9 @@ def load_graph(file_name, fmt="auto", ignore_vp=None, ignore_ep=None,
 
     .. warning::
 
-       The only file format which is capable of perfectly preserving the
-       internal property maps is "graphml". Because of this, its use should
-       be preferred over the other formats whenever possible.
+       The only file formats which are capable of perfectly preserving the
+       internal property maps are "gt" and "graphml". Because of this,
+       they should be preferred over the other formats whenever possible.
 
     """
     g = Graph()

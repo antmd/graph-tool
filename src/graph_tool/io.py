@@ -30,13 +30,14 @@ from . import libgraph_tool_core
 # object...
 
 
-def IStream_read(self, n=None):
-    if n == None:
-        data = ""
-        new_data = None
-        while new_data != "":
-            new_data = self.Read(1)
-            data += new_data
+def IStream_read(self, n=None, buflen=1048576):
+    if n is None:
+        data = b""
+        while True:
+            buf = self.Read(buflen)
+            data += buf
+            if len(buf) < buflen:
+                break
         return data
     else:
         return self.Read(n)
@@ -44,7 +45,7 @@ def IStream_read(self, n=None):
 
 def IStream_readline(self, n=None):
     c = None
-    line = ""
+    line = b""
     while c != "" and c != "\n" and len(line) < n:
         c = self.Read(1)
         line += c
@@ -53,8 +54,6 @@ def IStream_readline(self, n=None):
 
 def OStream_write(self, s):
     data = s
-    if not isinstance(data, str) and isinstance(data, bytes):
-        data = data.decode('utf-8')
     self.Write(data, len(s))
 
 libgraph_tool_core.IStream.read = IStream_read
@@ -66,11 +65,11 @@ libgraph_tool_core.OStream.write = OStream_write
 def pickler(stream, obj):
     sstream = BytesIO()
     pickle.dump(obj, sstream, -1)
-    stream.write(base64.b64encode(sstream.getvalue()))
+    stream.write(sstream.getvalue())
 
 def unpickler(stream):
-    data = stream.read().encode('utf-8')
-    sstream = BytesIO(base64.b64decode(data))
+    data = stream.read()
+    sstream = BytesIO(data)
     return pickle.load(sstream)
 
 libgraph_tool_core.set_pickler(pickler)

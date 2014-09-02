@@ -13,6 +13,7 @@
 #include <boost/config.hpp>
 #include <string>
 #include <map>
+#include <unordered_set>
 #include <iostream>
 #include <fstream>
 #include <stdio.h> // for FILE
@@ -724,9 +725,9 @@ class mutate_graph_impl : public mutate_graph
  public:
   mutate_graph_impl(MutableGraph& graph, dynamic_properties& dp,
                     std::string node_id_prop,
-                    std::set<std::string> ignore_vp,
-                    std::set<std::string> ignore_ep,
-                    std::set<std::string> ignore_gp)
+                    const std::unordered_set<std::string>& ignore_vp,
+                    const std::unordered_set<std::string>& ignore_ep,
+                    const std::unordered_set<std::string>& ignore_gp)
     : graph_(graph), dp_(dp), node_id_prop_(node_id_prop),
       m_ignore_vp(ignore_vp), m_ignore_ep(ignore_ep),
       m_ignore_gp(ignore_gp) { }
@@ -799,9 +800,9 @@ class mutate_graph_impl : public mutate_graph
   std::string node_id_prop_;
   std::map<node_t, bgl_vertex_t> bgl_nodes;
   std::map<edge_t, bgl_edge_t> bgl_edges;
-  std::set<std::string> m_ignore_vp;
-  std::set<std::string> m_ignore_ep;
-  std::set<std::string> m_ignore_gp;
+  const std::unordered_set<std::string>& m_ignore_vp;
+  const std::unordered_set<std::string>& m_ignore_ep;
+  const std::unordered_set<std::string>& m_ignore_gp;
 };
 
 BOOST_GRAPH_DECL
@@ -815,17 +816,17 @@ bool read_graphviz(std::istream& in, MutableGraph& graph,
                    dynamic_properties& dp,
                    std::string const& node_id = "node_id",
                    bool ignore_directedness = false,
-                   std::set<std::string> ignore_vp = std::set<std::string>(),
-                   std::set<std::string> ignore_ep = std::set<std::string>(),
-                   std::set<std::string> ignore_gp = std::set<std::string>())
+                   const std::unordered_set<std::string>& ignore_vp = std::unordered_set<std::string>(),
+                   const std::unordered_set<std::string>& ignore_ep = std::unordered_set<std::string>(),
+                   const std::unordered_set<std::string>& ignore_gp = std::unordered_set<std::string>())
 {
   std::string data;
   in >> std::noskipws;
   std::copy(std::istream_iterator<char>(in),
             std::istream_iterator<char>(),
             std::back_inserter(data));
-  return read_graphviz(data,graph,dp,node_id,ignore_directedness,ignore_vp,
-                       ignore_ep,ignore_gp);
+  return read_graphviz(data, graph, dp, node_id, ignore_directedness, ignore_vp,
+                       ignore_ep, ignore_gp);
 }
 
 } // namespace boost
