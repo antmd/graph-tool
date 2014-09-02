@@ -141,20 +141,14 @@ def similarity(g1, g2, label1=None, label2=None, norm=True):
             label2 = label2.copy(label1.value_type())
         except ValueError:
             label1 = label1.copy(label2.value_type())
-    try:
-        _check_prop_scalar(label1, floating=False)
-        _check_prop_scalar(label2, floating=False)
-        if label1.fa is not None and label1.fa.max() >= g1.num_vertices():
-            raise ValueError()
-        if label2.fa is not None and label2.fa.max() >= g2.num_vertices():
-            raise ValueError()
-        s = libgraph_tool_topology.\
-               similarity_fast(g1._Graph__graph, g2._Graph__graph,
-                               _prop("v", g1, label1), _prop("v", g2, label2))
-    except ValueError:
+    if label1.is_writable() or label2.is_writable():
         s = libgraph_tool_topology.\
                similarity(g1._Graph__graph, g2._Graph__graph,
                           _prop("v", g1, label1), _prop("v", g2, label2))
+    else:
+        s = libgraph_tool_topology.\
+               similarity_fast(g1._Graph__graph, g2._Graph__graph,
+                               _prop("v", g1, label1), _prop("v", g2, label2))
     if not g1.is_directed() or not g2.is_directed():
         s /= 2
     if norm:
