@@ -1978,6 +1978,9 @@ class Graph(object):
         ``False`` are kept. If the supplied property is ``None``, the filter is
         replaced by an uniform filter allowing all vertices."""
 
+        if prop is not None and prop.value_type() != "bool":
+            raise ValueError("filter property map must have 'bool' type")
+
         vfilt = prop
         efilt = None
 
@@ -2007,6 +2010,9 @@ class Graph(object):
         option is supplied with value ``True``, only the edges with value ``False``
         are kept. If the supplied property is ``None``, the filter is
         replaced by an uniform filter allowing all edges."""
+
+        if prop is not None and prop.value_type() != "bool":
+            raise ValueError("filter property map must have 'bool' type")
 
         efilt = prop
         vfilt = None
