@@ -68,7 +68,9 @@ dl_import("from . import libgraph_tool_topology")
 from .. import _prop, Vector_int32_t, _check_prop_writable, \
      _check_prop_scalar, _check_prop_vector, Graph, PropertyMap, GraphView,\
      libcore, _get_rng, _degree, perfect_prop_hash
+from .. stats import label_self_loops
 import random, sys, numpy
+
 __all__ = ["isomorphism", "subgraph_isomorphism", "mark_subgraph",
            "max_cardinality_matching", "max_independent_vertex_set",
            "min_spanning_tree", "random_spanning_tree", "dominator_tree",
@@ -156,11 +158,33 @@ def similarity(g1, g2, label1=None, label2=None, norm=True):
     return s
 
 
-def isomorphism(g1, g2, isomap=False):
+def isomorphism(g1, g2, vertex_inv1=None, vertex_inv2=None, isomap=False):
     r"""Check whether two graphs are isomorphic.
 
-    If `isomap` is True, a vertex :class:`~graph_tool.PropertyMap` with the
-    isomorphism mapping is returned as well.
+    Parameters
+    ----------
+    g1 : :class:`~graph_tool.Graph`
+        First graph.
+    g2 : :class:`~graph_tool.Graph`
+        Second graph.
+    vertex_inv1 : :class:`~graph_tool.PropertyMap` (optional, default: `None`)
+        Vertex invariant of the first graph. Only vertices with with the same
+        invariants are considered in the isomorphism.
+    vertex_inv2 : :class:`~graph_tool.PropertyMap` (optional, default: `None`)
+        Vertex invariant of the second graph. Only vertices with with the same
+        invariants are considered in the isomorphism.
+    isomap : ``bool`` (optional, default: ``False``)
+        If ``True``, a vertex :class:`~graph_tool.PropertyMap` with the
+        isomorphism mapping is returned as well.
+
+    Returns
+    -------
+    is_isomorphism : ``bool``
+        ``True`` if both graphs are isomorphic, otherwise ``False``.
+    isomap : :class:`~graph_tool.PropertyMap`
+         Isomorphism mapping corresponding to a property map belonging to the
+         first graph which maps its vertices to their corresponding vertices of
+         the second graph.
 
     Examples
     --------
@@ -182,8 +206,34 @@ def isomorphism(g1, g2, isomap=False):
 
     """
     imap = g1.new_vertex_property("int32_t")
+    if vertex_inv1 is None:
+        vertex_inv1 = g1.degree_property_map("total").copy("int64_t")
+    else:
+        vertex_inv1 = vertex_inv1.copy("int64_t")
+        d = g1.degree_property_map("total")
+        vertex_inv1.fa += (vertex_inv1.fa.max() + 1) * d.a
+    if vertex_inv2 is None:
+        vertex_inv2 = g2.degree_property_map("total").copy("int64_t")
+    else:
+        vertex_inv2 = vertex_inv2.copy("int64_t")
+        d = g2.degree_property_map("total")
+        vertex_inv2.fa += (vertex_inv2.fa.max() + 1) * d.a
+
+    inv_max = max(vertex_inv1.fa.max(),vertex_inv2.fa.max()) + 1
+
+    l1 = label_self_loops(g1, mark_only=True)
+    if l1.fa.max() > 0:
+        g1 = GraphView(g1, efilt=1 - l1.fa)
+
+    l2 = label_self_loops(g2, mark_only=True)
+    if l2.fa.max() > 0:
+        g2 = GraphView(g2, efilt=1 - l2.fa)
+
     iso = libgraph_tool_topology.\
            check_isomorphism(g1._Graph__graph, g2._Graph__graph,
+                             _prop("v", g1, vertex_inv1),
+                             _prop("v", g2, vertex_inv2),
+                             inv_max,
                              _prop("v", g1, imap))
     if isomap:
         return iso, imap

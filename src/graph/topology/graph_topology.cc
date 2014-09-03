@@ -24,7 +24,8 @@ using namespace boost::python;
 using namespace graph_tool;
 
 bool check_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
-                       boost::any iso_map);
+                       boost::any ainv_map1, boost::any ainv_map2,
+                       int64_t max_inv, boost::any aiso_map);
 void get_kruskal_spanning_tree(GraphInterface& gi, boost::any weight_map,
                                boost::any tree_map);
 void get_prim_spanning_tree(GraphInterface& gi, size_t root,

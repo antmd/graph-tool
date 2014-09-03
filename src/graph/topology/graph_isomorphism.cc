@@ -25,14 +25,46 @@ using namespace boost;
 
 struct check_iso
 {
-    template <class Graph1, class Graph2, class IsoMap, class VertexIndexMap>
-    void operator()(Graph1& g1, Graph2* g2, IsoMap map, VertexIndexMap index1,
+
+    template <class Graph1, class Graph2, class IsoMap, class InvMap,
+              class VertexIndexMap>
+    void operator()(Graph1& g1, Graph2* g2, InvMap cinv_map1, InvMap cinv_map2,
+                    int64_t max_inv, IsoMap map, VertexIndexMap index1,
                     VertexIndexMap index2, bool& result) const
     {
-        result = isomorphism(g1, *g2, isomorphism_map(map).
+        auto inv_map1 = cinv_map1.get_unchecked(num_vertices(g1));
+        auto inv_map2 = cinv_map2.get_unchecked(num_vertices(*g2));
+
+        vinv_t<decltype(inv_map1)> vinv1(inv_map1, max_inv);
+        vinv_t<decltype(inv_map2)> vinv2(inv_map2, max_inv);
+
+        result = isomorphism(g1, *g2,
+                             isomorphism_map(map.get_unchecked(num_vertices(g1))).
+                             vertex_invariant1(vinv1).
+                             vertex_invariant2(vinv2).
                              vertex_index1_map(index1).
                              vertex_index2_map(index2));
     }
+
+    template <class Prop>
+    struct vinv_t
+    {
+        vinv_t(Prop& prop, int64_t max)
+            : _prop(prop), _max(max) {}
+        Prop& _prop;
+        int64_t _max;
+
+        template <class Vertex>
+        int64_t operator()(Vertex v) const
+        {
+            return _prop[v];
+        };
+
+        int64_t max() const { return _max; }
+
+        typedef int64_t result_type;
+        typedef size_t argument_type;
+    };
 };
 
 struct directed_graph_view_pointers:
@@ -49,9 +81,21 @@ typedef property_map_types::apply<integer_types,
     vertex_props_t;
 
 bool check_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
-                       boost::any iso_map)
+                       boost::any ainv_map1, boost::any ainv_map2,
+                       int64_t max_inv, boost::any aiso_map)
 {
     bool result;
+
+    typedef property_map_type::apply<int32_t,
+                                     GraphInterface::vertex_index_map_t>::type
+        iso_map_t;
+    auto iso_map = any_cast<iso_map_t>(aiso_map);
+
+    typedef property_map_type::apply<int64_t,
+                                     GraphInterface::vertex_index_map_t>::type
+        inv_map_t;
+    auto inv_map1 = any_cast<inv_map_t>(ainv_map1);
+    auto inv_map2 = any_cast<inv_map_t>(ainv_map2);
 
     if (gi1.GetDirected() != gi2.GetDirected())
         return false;
@@ -60,20 +104,22 @@ bool check_isomorphism(GraphInterface& gi1, GraphInterface& gi2,
         run_action<graph_tool::detail::always_directed>()
             (gi1, std::bind(check_iso(),
                             placeholders::_1, placeholders::_2,
-                            placeholders::_3, gi1.GetVertexIndex(),
+                            inv_map1, inv_map2, max_inv, iso_map,
+                            gi1.GetVertexIndex(),
                             gi2.GetVertexIndex(), std::ref(result)),
-             directed_graph_view_pointers(), vertex_props_t())
-            (gi2.GetGraphView(), iso_map);
+             directed_graph_view_pointers())
+            (gi2.GetGraphView());
     }
     else
     {
         run_action<graph_tool::detail::never_directed>()
             (gi1, std::bind(check_iso(),
-                            placeholders::_1, placeholders::_2, placeholders::_3,
+                            placeholders::_1, placeholders::_2,
+                            inv_map1, inv_map2, max_inv, iso_map,
                             gi1.GetVertexIndex(),
                             gi2.GetVertexIndex(), std::ref(result)),
-             undirected_graph_view_pointers(), vertex_props_t())
-            (gi2.GetGraphView(), iso_map);
+             undirected_graph_view_pointers())
+            (gi2.GetGraphView());
     }
 
     return result;
