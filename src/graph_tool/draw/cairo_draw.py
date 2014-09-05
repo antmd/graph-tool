@@ -38,7 +38,20 @@ try:
     import matplotlib.cm
     import matplotlib.colors
     from matplotlib.cbook import flatten
-    default_cm = matplotlib.cm.jet
+    default_clrs = [(0.5529411764705883, 0.8274509803921568, 0.7803921568627451, 1.0),
+                    #(1.0, 1.0, 0.7019607843137254, 1.0),
+                    (0.7450980392156863, 0.7294117647058823, 0.8549019607843137, 1.0),
+                    (0.984313725490196, 0.5019607843137255, 0.4470588235294118, 1.0),
+                    (0.5019607843137255, 0.6941176470588235, 0.8274509803921568, 1.0),
+                    (0.9921568627450981, 0.7058823529411765, 0.3843137254901961, 1.0),
+                    (0.7019607843137254, 0.8705882352941177, 0.4117647058823529, 1.0),
+                    (0.9882352941176471, 0.803921568627451, 0.8980392156862745, 1.0),
+                    (0.8509803921568627, 0.8509803921568627, 0.8509803921568627, 1.0),
+                    (0.7372549019607844, 0.5019607843137255, 0.7411764705882353, 1.0),
+                    (0.8, 0.9215686274509803, 0.7725490196078432, 1.0),
+                    (1.0, 0.9294117647058824, 0.43529411764705883, 1.0)]
+    default_cm = matplotlib.colors.LinearSegmentedColormap.from_list("Set3",
+                                                                     default_clrs)
     is_draw_inline = 'inline' in matplotlib.get_backend()
 except ImportError:
     msg = "Error importing matplotlib module. Graph drawing will not work."
@@ -100,7 +113,7 @@ _vdefaults = {
     "font_size": 12.,
     "surface": None,
     "pie_fractions": [0.75, 0.25],
-    "pie_colors": ('b', 'g', 'r', 'c', 'm', 'y', 'k')
+    "pie_colors": default_clrs # ('b', 'g', 'r', 'c', 'm', 'y', 'k')
     }
 
 _edefaults = {
@@ -414,9 +427,9 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
         If provided, defines the relative order in which the edges are drawn.
     nodesfirst : bool (optional, default: ``False``)
         If ``True``, the vertices are drawn first, otherwise the edges are.
-    vcmap : :class:`matplotlib.colors.Colormap` (default: :class:`matplotlib.cm.jet`)
+    vcmap : :class:`matplotlib.colors.Colormap` (optional, default: :class:`default_cm`)
         Vertex color map.
-    ecmap : :class:`matplotlib.colors.Colormap` (default: :class:`matplotlib.cm.jet`)
+    ecmap : :class:`matplotlib.colors.Colormap` (optional, default: :class:`default_cm`)
         Edge color map.
     loop_angle : float or :class:`~graph_tool.PropertyMap` (optional, default: ``nan``)
         Angle used to draw self-loops. If ``nan`` is given, they will be placed
