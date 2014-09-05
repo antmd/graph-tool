@@ -283,12 +283,14 @@ descriptions = {
 
 def get_data_path(name):
     r"""Return the full path of the corresponding dataset."""
-    return base_dir + "/" + name + ".xml.gz"
+    return base_dir + "/" + name + ".gt.gz"
 
 class LazyDataDict(dict):
     def __getitem__(self, k):
         if k not in self:
             fname = get_data_path(k)
+            if not os.path.exists(fname):
+                raise KeyError(k)
             g = load_graph(fname)
             dict.__setitem__(self, k, g)
             return g

@@ -24,25 +24,25 @@ graph_tool_generationdir = $(MOD_DIR)/generation
 graph_tool_collection_PYTHON = \
     collection/__init__.py
 graph_tool_collection_DATA = \
-    collection/adjnoun.xml.gz \
-    collection/as-22july06.xml.gz \
-    collection/astro-ph.xml.gz \
-    collection/celegansneural.xml.gz \
-    collection/cond-mat-2003.xml.gz \
-    collection/cond-mat-2005.xml.gz \
-    collection/cond-mat.xml.gz \
-    collection/dolphins.xml.gz \
-    collection/football.xml.gz \
-    collection/hep-th.xml.gz \
-    collection/karate.xml.gz \
-    collection/lesmis.xml.gz \
-    collection/netscience.xml.gz \
-    collection/polblogs.xml.gz \
-    collection/polbooks.xml.gz \
-    collection/power.xml.gz \
-    collection/pgp-strong-2009.xml.gz \
-    collection/serengeti-foodweb.xml.gz \
-    collection/email-Enron.xml.gz
+    collection/adjnoun.gt.gz \
+    collection/as-22july06.gt.gz \
+    collection/astro-ph.gt.gz \
+    collection/celegansneural.gt.gz \
+    collection/cond-mat-2003.gt.gz \
+    collection/cond-mat-2005.gt.gz \
+    collection/cond-mat.gt.gz \
+    collection/dolphins.gt.gz \
+    collection/football.gt.gz \
+    collection/hep-th.gt.gz \
+    collection/karate.gt.gz \
+    collection/lesmis.gt.gz \
+    collection/netscience.gt.gz \
+    collection/polblogs.gt.gz \
+    collection/polbooks.gt.gz \
+    collection/power.gt.gz \
+    collection/pgp-strong-2009.gt.gz \
+    collection/serengeti-foodweb.gt.gz \
+    collection/email-Enron.gt.gz
 graph_tool_collectiondir = $(MOD_DIR)/collection
 
 graph_tool_correlations_PYTHON = \
