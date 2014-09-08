@@ -366,8 +366,8 @@ accessed by vertex or edge descriptors, or the graph itself, as such:
     vprop_vint = g.new_vertex_property("vector<int>")         # Vector of ints
     vprop_vint[g.vertex(40)] = [1, 3, 42, 54]
     
-    eprop_dict = g.new_edge_property("object")                # Arbitrary python object. In this case, a dictionary.
-    eprop_dict[g.edges().next()] = {"foo": "bar", "gnu": 42}
+    eprop_dict = g.new_edge_property("object")                # Arbitrary python object.
+    eprop_dict[g.edges().next()] = {"foo": "bar", "gnu": 42}  # In this case, a dict.
 
     gprop_bool = g.new_edge_property("bool")                  # Boolean
     gprop_bool[g] = True
@@ -434,15 +434,23 @@ Graphs can be saved and loaded in four formats: `graphml
 <http://graphml.graphdrawing.org/>`_, `dot
 <http://www.graphviz.org/doc/info/lang.html>`_, `gml
 <http://www.fim.uni-passau.de/en/fim/faculty/chairs/theoretische-informatik/projects.html>`_
-and a custom binary format ``gt``. The binary format ``gt`` and
-``graphml`` are the preferred formats, since they are by far the most
-complete. The ``dot`` and ``gml`` formats are fully supported, but since
-they contain no precise type information, all properties are read as
-strings (or also as double, in the case of ``gml``), and must be
-converted by hand. Therefore you should always use either ``gt`` or
-``graphml``, since it performs an exact bit-for-bit representation of
-all supported :ref:`sec_property_maps`, except when interfacing with
-other software, or existing data, which uses ``dot`` or ``gml``.
+and a custom binary format ``gt`` (see :ref:`sec_gt_format`). 
+
+.. warning::
+
+    The binary format ``gt`` and ``graphml`` are the preferred formats,
+    since they are by far the most complete. Both these formats are
+    equally complete, but the ``gt`` format is faster and requires less
+    storage.
+
+    The ``dot`` and ``gml`` formats are fully supported, but since they
+    contain no precise type information, all properties are read as
+    strings (or also as double, in the case of ``gml``), and must be
+    converted by hand to the desired type. Therefore you should always
+    use either ``gt`` or ``graphml``, since they implement an exact
+    bit-for-bit representation of all supported :ref:`sec_property_maps`
+    types, except when interfacing with other software, or existing
+    data, which uses ``dot`` or ``gml``.
 
 A graph can be saved or loaded to a file with the :attr:`~graph_tool.Graph.save`
 and :attr:`~graph_tool.Graph.load` methods, which take either a file name or a

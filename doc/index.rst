@@ -8,6 +8,7 @@ Contents:
    :glob:
 
    quickstart
+   gt_format
    demos/index
    modules
 
