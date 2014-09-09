@@ -517,12 +517,8 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
 
 def color_contrast(color):
     c = np.asarray(color)
-    for i in range(3):
-        if color[i] >= 0.5:
-            c[i] = 0
-        else:
-            c[i] = 1
-    if sum(c[0:3]) > 1:
+    y = c[0] * .299 + c[1] * .587 + c[2] * .114
+    if y < .5:
         c[:3] = 1
     else:
         c[:3] = 0
