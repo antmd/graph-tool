@@ -94,8 +94,8 @@ from .. draw import sfdp_layout, random_layout, _avg_edge_distance, \
 
 _vdefaults = {
     "shape": "circle",
-    "color": [0, 0, 0, 1],
-    "fill_color": [0.640625, 0, 0, 0.9],
+    "color": (0.6, 0.6, 0.6, 0.8),
+    "fill_color": (0.6470588235294118, 0.058823529411764705, 0.08235294117647059, 0.8),
     "size": 5,
     "aspect": 1.,
     "anchor": 1,
@@ -118,7 +118,7 @@ _vdefaults = {
     }
 
 _edefaults = {
-    "color": [0.1796875, 0.203125, 0.2109375, 0.8],
+    "color": (0.1796875, 0.203125, 0.2109375, 0.8),
     "pen_width": 1,
     "start_marker": "none",
     "mid_marker": "none",
@@ -129,7 +129,7 @@ _edefaults = {
     "gradient": [],
     "dash_style": [],
     "text": "",
-    "text_color": [0., 0., 0., 1.],
+    "text_color": (0., 0., 0., 1.),
     "text_distance": 5,
     "text_parallel": True,
     "font_family": "serif",
