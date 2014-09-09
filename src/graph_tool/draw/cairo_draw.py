@@ -34,6 +34,7 @@ except ImportError:
     warnings.warn(msg, ImportWarning)
     raise
 
+default_cm = None
 try:
     import matplotlib.cm
     import matplotlib.colors
@@ -297,14 +298,14 @@ def _convert(attr, val, cmap):
                 return val
             if val.value_type() in ["int32_t", "int64_t", "double",
                                     "long double", "unsigned long", "bool"]:
-                if val.fa is None:
+                try:
+                    vrange = [val.fa.min(), val.fa.max()]
+                except ValueError:
                     vrange = val[val.get_graph().vertex(0)]
                     vrange = [vrange, vrange]
                     for v in val.get_graph().vertices():
                         vrange[0] = min(vrange[0], val[v])
                         vrange[1] = max(vrange[1], val[v])
-                else:
-                    vrange = [val.fa.min(), val.fa.max()]
                 cnorm = matplotlib.colors.Normalize(vmin=vrange[0],
                                                     vmax=vrange[1])
                 if val.key_type() == "v":

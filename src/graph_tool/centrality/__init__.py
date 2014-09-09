@@ -138,6 +138,10 @@ def pagerank(g, damping=0.85, pers=None, weight=None, prop=None, epsilon=1e-6,
     Examples
     --------
 
+    .. testsetup:: pagerank
+
+       import matplotlib
+
     .. doctest:: pagerank
 
        >>> g = gt.collection.data["polblogs"]
@@ -145,7 +149,8 @@ def pagerank(g, damping=0.85, pers=None, weight=None, prop=None, epsilon=1e-6,
        >>> pr = gt.pagerank(g)
        >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=pr,
        ...               vertex_size=gt.prop_to_size(pr, mi=5, ma=15),
-       ...               vorder=pr, output="polblogs_pr.pdf")
+       ...               vorder=pr, vcmap=matplotlib.cm.gist_heat,
+       ...               output="polblogs_pr.pdf")
        <...>
 
     .. testcode:: pagerank
@@ -153,7 +158,8 @@ def pagerank(g, damping=0.85, pers=None, weight=None, prop=None, epsilon=1e-6,
 
        gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=pr,
                      vertex_size=gt.prop_to_size(pr, mi=5, ma=15),
-                     vorder=pr, output="polblogs_pr.png")
+                     vorder=pr, vcmap=matplotlib.cm.gist_heat,
+                     output="polblogs_pr.png")
 
 
     .. figure:: polblogs_pr.*
@@ -172,7 +178,8 @@ def pagerank(g, damping=0.85, pers=None, weight=None, prop=None, epsilon=1e-6,
        >>> pr = gt.pagerank(g, pers=p)
        >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=pr,
        ...               vertex_size=gt.prop_to_size(pr, mi=5, ma=15),
-       ...               vorder=pr, output="polblogs_pr_pers.pdf")
+       ...               vorder=pr, vcmap=matplotlib.cm.gist_heat,
+       ...               output="polblogs_pr_pers.pdf")
        <...>
 
     .. testcode:: pagerank
@@ -180,6 +187,7 @@ def pagerank(g, damping=0.85, pers=None, weight=None, prop=None, epsilon=1e-6,
 
        gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=pr,
                      vertex_size=gt.prop_to_size(pr, mi=5, ma=15),
+                     vcmap=matplotlib.cm.gist_heat,
                      vorder=pr, output="polblogs_pr_pers.png")
 
 
@@ -275,6 +283,10 @@ def betweenness(g, vprop=None, eprop=None, weight=None, norm=True):
     Examples
     --------
 
+    .. testsetup:: betweenness
+
+       import matplotlib
+
     .. doctest:: betweenness
 
        >>> g = gt.collection.data["polblogs"]
@@ -283,6 +295,7 @@ def betweenness(g, vprop=None, eprop=None, weight=None, norm=True):
        >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=vp,
        ...               vertex_size=gt.prop_to_size(vp, mi=5, ma=15),
        ...               edge_pen_width=gt.prop_to_size(ep, mi=0.5, ma=5),
+       ...               vcmap=matplotlib.cm.gist_heat,
        ...               vorder=vp, output="polblogs_betweenness.pdf")
        <...>
 
@@ -292,6 +305,7 @@ def betweenness(g, vprop=None, eprop=None, weight=None, norm=True):
        gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=vp,
                      vertex_size=gt.prop_to_size(vp, mi=5, ma=15),
                      edge_pen_width=gt.prop_to_size(ep, mi=0.5, ma=5),
+                     vcmap=matplotlib.cm.gist_heat,
                      vorder=vp, output="polblogs_betweenness.png")
 
 
@@ -392,6 +406,10 @@ def closeness(g, weight=None, source=None, vprop=None, norm=True, harmonic=False
     Examples
     --------
 
+    .. testsetup:: closeness
+
+       import matplotlib
+
     .. doctest:: closeness
 
        >>> g = gt.collection.data["polblogs"]
@@ -399,6 +417,7 @@ def closeness(g, weight=None, source=None, vprop=None, norm=True, harmonic=False
        >>> c = gt.closeness(g)
        >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=c,
        ...               vertex_size=gt.prop_to_size(c, mi=5, ma=15),
+       ...               vcmap=matplotlib.cm.gist_heat,
        ...               vorder=c, output="polblogs_closeness.pdf")
        <...>
 
@@ -407,6 +426,7 @@ def closeness(g, weight=None, source=None, vprop=None, norm=True, harmonic=False
 
        gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=c,
                      vertex_size=gt.prop_to_size(c, mi=5, ma=15),
+                     vcmap=matplotlib.cm.gist_heat,
                      vorder=c, output="polblogs_closeness.png")
 
 
@@ -566,9 +586,11 @@ def eigenvector(g, weight=None, vprop=None, epsilon=1e-6, max_iter=None):
 
     Examples
     --------
+
     .. testsetup:: eigenvector
 
        np.random.seed(42)
+       import matplotlib
 
     .. doctest:: eigenvector
 
@@ -581,6 +603,7 @@ def eigenvector(g, weight=None, vprop=None, epsilon=1e-6, max_iter=None):
        729.229595705175
        >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=x,
        ...               vertex_size=gt.prop_to_size(x, mi=5, ma=15),
+       ...               vcmap=matplotlib.cm.gist_heat,
        ...               vorder=x, output="polblogs_eigenvector.pdf")
        <...>
 
@@ -589,6 +612,7 @@ def eigenvector(g, weight=None, vprop=None, epsilon=1e-6, max_iter=None):
 
        gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=x,
                      vertex_size=gt.prop_to_size(x, mi=5, ma=15),
+                     vcmap=matplotlib.cm.gist_heat,
                      vorder=x, output="polblogs_eigenvector.png")
 
 
@@ -689,6 +713,7 @@ def katz(g, alpha=0.01, beta=None, weight=None, vprop=None, epsilon=1e-6,
     .. testsetup:: katz
 
        np.random.seed(42)
+       import matplotlib
 
     .. doctest:: katz
 
@@ -699,6 +724,7 @@ def katz(g, alpha=0.01, beta=None, weight=None, vprop=None, epsilon=1e-6,
        >>> x = gt.katz(g, weight=w)
        >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=x,
        ...               vertex_size=gt.prop_to_size(x, mi=5, ma=15),
+       ...               vcmap=matplotlib.cm.gist_heat,
        ...               vorder=x, output="polblogs_katz.pdf")
        <...>
 
@@ -707,6 +733,7 @@ def katz(g, alpha=0.01, beta=None, weight=None, vprop=None, epsilon=1e-6,
 
        gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=x,
                      vertex_size=gt.prop_to_size(x, mi=5, ma=15),
+                     vcmap=matplotlib.cm.gist_heat,
                      vorder=x, output="polblogs_katz.png")
 
 
@@ -806,6 +833,10 @@ def hits(g, weight=None, xprop=None, yprop=None, epsilon=1e-6, max_iter=None):
     Examples
     --------
 
+    .. testsetup:: hits
+
+       import matplotlib
+
     .. doctest:: hits
 
        >>> g = gt.collection.data["polblogs"]
@@ -813,10 +844,12 @@ def hits(g, weight=None, xprop=None, yprop=None, epsilon=1e-6, max_iter=None):
        >>> ee, x, y = gt.hits(g)
        >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=x,
        ...               vertex_size=gt.prop_to_size(x, mi=5, ma=15),
+       ...               vcmap=matplotlib.cm.gist_heat,
        ...               vorder=x, output="polblogs_hits_auths.pdf")
        <...>
        >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=y,
        ...               vertex_size=gt.prop_to_size(y, mi=5, ma=15),
+       ...               vcmap=matplotlib.cm.gist_heat,
        ...               vorder=y, output="polblogs_hits_hubs.pdf")
        <...>
 
@@ -825,20 +858,22 @@ def hits(g, weight=None, xprop=None, yprop=None, epsilon=1e-6, max_iter=None):
 
        gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=x,
                      vertex_size=gt.prop_to_size(x, mi=5, ma=15),
+                     vcmap=matplotlib.cm.gist_heat,
                      vorder=x, output="polblogs_hits_auths.png")
        gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=y,
                      vertex_size=gt.prop_to_size(y, mi=5, ma=15),
+                     vcmap=matplotlib.cm.gist_heat,
                      vorder=y, output="polblogs_hits_hubs.png")
 
 
     .. figure:: polblogs_hits_auths.*
-       :align: left
+       :align: center
 
        HITS authority values of the a political blogs network of
        [adamic-polblogs]_.
 
     .. figure:: polblogs_hits_hubs.*
-       :align: right
+       :align: center
 
        HITS hub values of the a political blogs network of [adamic-polblogs]_.
 
@@ -928,6 +963,7 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epsilon=1e-6, max_iter=0,
     .. testsetup:: eigentrust
 
        np.random.seed(42)
+       import matplotlib
 
     .. doctest:: eigentrust
 
@@ -938,6 +974,7 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epsilon=1e-6, max_iter=0,
        >>> t = gt.eigentrust(g, w)
        >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=t,
        ...               vertex_size=gt.prop_to_size(t, mi=5, ma=15),
+       ...               vcmap=matplotlib.cm.gist_heat,
        ...               vorder=t, output="polblogs_eigentrust.pdf")
        <...>
 
@@ -946,6 +983,7 @@ def eigentrust(g, trust_map, vprop=None, norm=False, epsilon=1e-6, max_iter=0,
 
        gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=t,
                      vertex_size=gt.prop_to_size(t, mi=5, ma=15),
+                     vcmap=matplotlib.cm.gist_heat,
                      vorder=t, output="polblogs_eigentrust.png")
 
 
@@ -1055,6 +1093,7 @@ def trust_transitivity(g, trust_map, source=None, target=None, vprop=None):
     .. testsetup:: trust_transitivity
 
        np.random.seed(42)
+       import matplotlib
 
     .. doctest:: trust_transitivity
 
@@ -1068,6 +1107,7 @@ def trust_transitivity(g, trust_map, source=None, target=None, vprop=None):
        >>> t = gt.trust_transitivity(g, w, source=g.vertex(42))
        >>> gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=t,
        ...               vertex_size=gt.prop_to_size(t, mi=5, ma=15),
+       ...               vcmap=matplotlib.cm.gist_heat,
        ...               vorder=t, output="polblogs_trust_transitivity.pdf")
        <...>
 
@@ -1076,6 +1116,7 @@ def trust_transitivity(g, trust_map, source=None, target=None, vprop=None):
 
        gt.graph_draw(g, pos=g.vp["pos"], vertex_fill_color=t,
                      vertex_size=gt.prop_to_size(t, mi=5, ma=15),
+                     vcmap=matplotlib.cm.gist_heat,
                      vorder=t, output="polblogs_trust_transitivity.png")
 
 

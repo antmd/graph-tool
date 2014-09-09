@@ -81,11 +81,10 @@ from .. dl_import import dl_import
 dl_import("from . import libgraph_tool_layout")
 
 
-__all__ = ["graph_draw", "graphviz_draw",
-           "fruchterman_reingold_layout",
-           "arf_layout", "sfdp_layout", "random_layout",
-           "radial_tree_layout",
-           "cairo_draw", "prop_to_size", "get_hierarchy_control_points"]
+__all__ = ["graph_draw", "graphviz_draw", "fruchterman_reingold_layout",
+           "arf_layout", "sfdp_layout", "random_layout", "radial_tree_layout",
+           "cairo_draw", "prop_to_size", "get_hierarchy_control_points",
+           "default_cm"]
 
 
 def random_layout(g, shape=None, pos=None, dim=2):
@@ -767,7 +766,7 @@ def radial_tree_layout(g, root, weighted=False, r=1.):
     return g.own_property(pos)
 
 try:
-    from .cairo_draw import graph_draw, cairo_draw, get_hierarchy_control_points
+    from .cairo_draw import graph_draw, cairo_draw, get_hierarchy_control_points, default_cm
 except ImportError:
     pass
 
@@ -791,7 +790,7 @@ def prop_to_size(prop, mi=0, ma=5, log=False, power=0.5):
 
         y = mi + (ma - mi) \left(\frac{x_i - min(x)} {max(x) - min(x)}\right)^\text{power}
 
-    If `log=True`, the natural logarithm of the property values are used instead.
+    If `log=True`, the natural logarithm of the property values is used instead.
 
     """
     prop = prop.copy(value_type="double")
