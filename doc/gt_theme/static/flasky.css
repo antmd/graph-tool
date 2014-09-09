@@ -13,6 +13,8 @@
 
 /* webfonts */
 @import url("//fonts.googleapis.com/css?family=Droid+Serif:400,400italic,700,700italic|Droid+Sans+Mono");
+
+@import url("./font-awesome-4.2.0/css/font-awesome.css");
  
 /* -- page layout ----------------------------------------------------------- */
 body {
@@ -26,6 +28,7 @@ body {
 
 div.document {
     background: #fafafa;
+    margin-bottom: 40px;
 }
 
 div.documentwrapper {
@@ -46,6 +49,7 @@ div.body {
     color: #333333;
     padding: 0 30px 30px 30px;
     min-height: 34em;
+    max-width: 60em;
 }
 
 img.floatingflask {
@@ -56,7 +60,7 @@ img.floatingflask {
 div.footer {
     position: absolute;
     right: 0;
-    margin-top: -70px;
+    margin-top: -60px;
     text-align: right;
     color: #888;
     padding: 10px;
@@ -197,19 +201,29 @@ div.body p, div.body dd, div.body li {
 
 div.admonition {
     background: #fafafa;
-    margin: 20px -30px;
-    padding: 10px 30px;
-    border-top: 1px solid #ccc;
-    border-bottom: 1px solid #ccc;
+    /*margin: 20px -30px;*/
+    padding: 0px 12px 12px 12px; 
+    /* line-height: 24px; */
+    margin-bottom: 24px;
+    margin-top: 12px;
+    /* padding: 10px 30px; */
+    /* border-top: 1px solid #ccc; */
+    /* border-bottom: 1px solid #ccc; */
 }
 
 div.admonition p.admonition-title {
     font-family: 'Droid Serif', serif;
     font-weight: normal;
     font-size: 24px;
-    margin: 0 0 10px 0;
-    padding: 0;
+    /* margin: 0 0 10px 0; */
+    /* padding: 0; */
     line-height: 1;
+
+    display: block;
+    color: #FFF;
+    margin: -12px -12px 12px;
+    padding: 6px 12px;
+
 }
 
 div.admonition p.last {
@@ -225,9 +239,13 @@ dt:target, .highlight {
 }
 
 div.note {
-    background-color: #eee;
-    border: 1px solid #ccc;
+    background: none repeat scroll 0% 0% #E7F2FA;
 }
+
+div.note p.first.admonition-title {
+    background: none repeat scroll 0% 0% #6AB0DE;
+}
+
  
 div.seealso {
     background-color: #ffc;
@@ -239,16 +257,33 @@ div.topic {
 }
  
 div.warning {
-    background-color: #ffe4e4;
-    border: 1px solid #f66;
+    background: none repeat scroll 0% 0% #FFEDCC;
 }
  
-p.admonition-title {
-    display: inline;
+div.warning p.first.admonition-title {
+    background: none repeat scroll 0% 0% #F0B37E;
 }
+
+/* p.admonition-title { */
+/*     display: inline; */
+/* } */
  
-p.admonition-title:after {
-    content: ":";
+/* p.admonition-title:after { */
+/*     content: ":"; */
+/* } */
+
+p.admonition-title:before {
+    content: "\f06a ";
+    margin-right: 6px;
+    font-family: "FontAwesome";
+}
+
+div.seealso p.first.admonition-title {
+    color: inherit;
+}
+
+div.seealso p.admonition-title:before {
+    content: none;
 }
 
 pre, tt {
@@ -321,14 +356,13 @@ dl dd {
 }
 
 dl.function, dl.class, dl.exception {
-    border-top-style: solid;
-    border-top-width: 5px;
-    padding-top: 1em;
+    border-top: 3px solid #6AB0DE;
+    /* padding-top: 1em; */
     clear: both;
 }
 
 dl.function dt, dl.class dt, dl.exception dt{
-    background-color: #EFEFEF;
+    background-color: #E7F2FA;
 }
 
 dl.docutils dt {
@@ -367,3 +401,34 @@ tt.xref, a tt {
 /* a:hover tt { */
 /*     background: #EEE; */
 /* } */
+
+.toctree-wrapper ul
+{
+    list-style-type: none;
+}
+ 
+ul li.toctree-l1 {
+    text-indent: -1.4em;
+}
+
+ul li.toctree-l1:before {
+    font-family: "FontAwesome";
+    content: "\f101";
+    float: left;
+    width: 1em;
+}
+
+ul li ul li.toctree-l2:before {
+    font-family: "FontAwesome";
+    content: "\f105";
+    float: left;
+    width: 1em;
+}
+
+ul li ul li ul li.toctree-l3:before {
+    font-family: "FontAwesome";
+    content: "\f0da";
+    float: left;
+    width: 1em;
+}
+

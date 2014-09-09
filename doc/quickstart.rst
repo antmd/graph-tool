@@ -530,16 +530,16 @@ use the :func:`~graph_tool.draw.graph_draw` function.
    g = load_graph("price.xml.gz")
    age = g.vertex_properties["age"]
 
-   pos = sfdp_layout(g, cooling_step=0.99)
-   graph_draw(g, pos, output_size=(1000, 1000), vertex_color=age,
+   pos = sfdp_layout(g)
+   graph_draw(g, pos, output_size=(1000, 1000), vertex_color=[1,1,1,0],
               vertex_fill_color=age, vertex_size=1, edge_pen_width=1.2,
-              output="price.png")
+              vcmap=matplotlib.cm.gist_heat_r, output="price.png")
 
 .. figure:: price.*
    :align: center
 
    A Price network with :math:`10^5` nodes. The vertex colors represent
-   the age of the vertex, from older (red) to newer (blue).
+   the age of the vertex, from older (red) to newer (black).
 
 .. _sec_graph_filtering:
 

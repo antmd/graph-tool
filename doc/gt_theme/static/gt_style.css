@@ -1,8 +1,9 @@
 @import url("flasky.css");
 
 table.docutils {
-    margin-left:1em; 
+    margin-left:1em;
     margin-right:1em;
+    border: 0px;
 }
 
 table.docutils td {
@@ -17,9 +18,28 @@ table.docutils.field-list {
 }
 
 table.docutils td.field-body  {
-    border-left: 1px solid #BBBBBB !important;
+    border-left: 2px solid #E7F2FA !important;
     border-collapse: separate !important;
     padding-left: 1em;
+}
+
+table.docutils tbody tr:nth-child(odd) {
+    background-color:#EFEFEF
+}
+
+table.docutils.field-list tbody tr:nth-child(odd) {
+
+    background-color: inherit;
+}
+
+table.docutils.citation tbody tr:nth-child(odd) {
+
+    background-color: inherit;
+}
+
+table.docutils td, table.docutils tr, table.docutils th {
+    border: 0px;
+    padding-left: 0.5em;
 }
 
 table.docutils.citation
@@ -27,6 +47,7 @@ table.docutils.citation
     margin-left: 0; 
     margin-right: 0;
 }
+
 
 /* stupid workaround to hide ugly c++ signature stuff from sphinx*/
 /* dl.function dl.docutils dl.last { */
@@ -61,6 +82,10 @@ p.rubric {
    clear: both;
 }
 
+table.docutils {
+    box-shadow: none;
+}
+
 table.docutils td {
     padding-left: 0.5em;
 }
@@ -69,6 +94,10 @@ table.citation td, table.citation th, table.citation {
     -moz-box-shadow: None;
     border: 0px;
     padding: 0.25em 0.7em;
+}
+
+table.citation td.label {
+    width: 8em;
 }
 
 .container.sec-title {
@@ -81,16 +110,16 @@ table.citation td, table.citation th, table.citation {
     padding-bottom: 0.2em;
 }
 
-div.admonition {
-    margin-left: auto;
-    margin-right: auto;
-    padding-left: 1em;
-    width: 80%;
-}
+/* div.admonition { */
+/*     margin-left: auto; */
+/*     margin-right: auto; */
+/*     padding-left: 1em; */
+/*     width: 80%; */
+/* } */
 
-div.admonition p.admonition-title + p {
-    margin-top: 0.5em;
-}
+/* div.admonition p.admonition-title + p { */
+/*     margin-top: 0.5em; */
+/* } */
 
 div.seealso {
     margin-left: 0;
@@ -111,5 +140,6 @@ dl pre {
 pre {
     margin-left: 0;
     padding-left: 1em;
+    margin-right: 0px;
 }
 

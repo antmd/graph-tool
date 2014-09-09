@@ -218,7 +218,8 @@ def random_graph(N, deg_sampler, directed=True,
     >>>
     >>> hist = gt.combined_corr_hist(g, "in", "out")
     >>>
-    >>> clf()
+    >>> figure()
+    <...>
     >>> imshow(hist[0].T, interpolation="nearest", origin="lower")
     <...>
     >>> colorbar()
@@ -260,7 +261,8 @@ def random_graph(N, deg_sampler, directed=True,
 
     Lets plot the average degree correlations to check.
 
-    >>> clf()
+    >>> figure(8, 5)
+    <...>
     >>> axes([0.1,0.15,0.63,0.8])
     <...>
     >>> corr = gt.avg_neighbour_corr(g, "in", "in")
@@ -659,7 +661,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
 
     We can try with larger graphs to get better statistics, as follows.
 
-    >>> figure()
+    >>> figure(8, 5)
     <...>
     >>> g = gt.random_graph(30000, lambda: sample_k(20), model="probabilistic",
     ...                     vertex_corr=lambda i, j: exp(abs(i-j)), directed=False,
@@ -711,7 +713,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
     ...                     model="probabilistic",
     ...                     vertex_corr=lambda a, b: (p.pmf(a[0], b[1]) * p.pmf(a[1], 20 - b[0])),
     ...                     n_iter=100)
-    >>> figure()
+    >>> figure(8, 5)
     <...>
     >>> axes([0.1,0.15,0.6,0.8])
     <...>
