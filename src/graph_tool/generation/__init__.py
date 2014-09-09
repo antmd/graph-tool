@@ -193,7 +193,7 @@ def random_graph(N, deg_sampler, directed=True,
     ...                     vertex_corr=lambda i, k: 1.0 / (1 + abs(i - k)), directed=False,
     ...                     n_iter=100)
     >>> gt.scalar_assortativity(g, "out")
-    (0.6321636468713748, 0.01082292099309249)
+    (0.6377260889137862, 0.010604512511127259)
 
     The following samples an in,out-degree pair from the joint distribution:
 
@@ -228,6 +228,7 @@ def random_graph(N, deg_sampler, directed=True,
     <...>
     >>> ylabel("out-degree")
     <...>
+    >>> tight_layout()
     >>> savefig("combined-deg-hist.pdf")
 
     .. testcode::
@@ -261,9 +262,7 @@ def random_graph(N, deg_sampler, directed=True,
 
     Lets plot the average degree correlations to check.
 
-    >>> figure(8, 5)
-    <...>
-    >>> axes([0.1,0.15,0.63,0.8])
+    >>> figure()
     <...>
     >>> corr = gt.avg_neighbour_corr(g, "in", "in")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
@@ -281,12 +280,13 @@ def random_graph(N, deg_sampler, directed=True,
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{out}\right>$ vs out")
     <...>
-    >>> legend(bbox_to_anchor=(1.01, 0.5), loc="center left", borderaxespad=0.)
+    >>> legend(loc="lower right", borderaxespad=0., framealpha=0.8)
     <...>
     >>> xlabel("Source degree")
     <...>
     >>> ylabel("Average target degree")
     <...>
+    >>> tight_layout()
     >>> savefig("deg-corr-dir.pdf")
 
     .. testcode::
@@ -617,7 +617,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
        gt.graph_draw(g, pos=pos, output="rewire_orig.png", output_size=(300, 300))
 
     >>> gt.random_rewire(g, "correlated")
-    641
+    601
     >>> pos = gt.arf_layout(g)
     >>> gt.graph_draw(g, pos=pos, output="rewire_corr.pdf", output_size=(300, 300))
     <...>
@@ -628,7 +628,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
        gt.graph_draw(g, pos=pos, output="rewire_corr.png", output_size=(300, 300))
 
     >>> gt.random_rewire(g)
-    186
+    215
     >>> pos = gt.arf_layout(g)
     >>> gt.graph_draw(g, pos=pos, output="rewire_uncorr.pdf", output_size=(300, 300))
     <...>
@@ -639,7 +639,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
        gt.graph_draw(g, pos=pos, output="rewire_uncorr.png", output_size=(300, 300))
 
     >>> gt.random_rewire(g, "erdos")
-    13
+    16
     >>> pos = gt.arf_layout(g)
     >>> gt.graph_draw(g, pos=pos, output="rewire_erdos.pdf", output_size=(300, 300))
     <...>
@@ -661,7 +661,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
 
     We can try with larger graphs to get better statistics, as follows.
 
-    >>> figure(8, 5)
+    >>> figure()
     <...>
     >>> g = gt.random_graph(30000, lambda: sample_k(20), model="probabilistic",
     ...                     vertex_corr=lambda i, j: exp(abs(i-j)), directed=False,
@@ -670,17 +670,17 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label="Original")
     <...>
     >>> gt.random_rewire(g, "correlated")
-    230
+    252
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="*", label="Correlated")
     <...>
     >>> gt.random_rewire(g)
-    102
+    92
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label="Uncorrelated")
     <...>
     >>> gt.random_rewire(g, "erdos")
-    18
+    9
     >>> corr = gt.avg_neighbour_corr(g, "out", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-", label=r"Erd\H{o}s")
     <...>
@@ -690,6 +690,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
     <...>
     >>> legend(loc="best")
     <...>
+    >>> tight_layout()
     >>> savefig("shuffled-stats.pdf")
 
     .. testcode::
@@ -713,9 +714,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
     ...                     model="probabilistic",
     ...                     vertex_corr=lambda a, b: (p.pmf(a[0], b[1]) * p.pmf(a[1], 20 - b[0])),
     ...                     n_iter=100)
-    >>> figure(8, 5)
-    <...>
-    >>> axes([0.1,0.15,0.6,0.8])
+    >>> figure()
     <...>
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
@@ -726,7 +725,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
     ...          label=r"$\left<\text{i}\right>$ vs o")
     <...>
     >>> gt.random_rewire(g, "correlated")
-    4185
+    4199
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{o}\right>$ vs i, corr.")
@@ -736,7 +735,7 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
     ...          label=r"$\left<\text{i}\right>$ vs o, corr.")
     <...>
     >>> gt.random_rewire(g, "uncorrelated")
-    161
+    193
     >>> corr = gt.avg_neighbour_corr(g, "in", "out")
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{o}\right>$ vs i, uncorr.")
@@ -745,12 +744,13 @@ def random_rewire(g, model="uncorrelated", n_iter=1, edge_sweep=True,
     >>> errorbar(corr[2][:-1], corr[0], yerr=corr[1], fmt="o-",
     ...          label=r"$\left<\text{i}\right>$ vs o, uncorr.")
     <...>
-    >>> legend(bbox_to_anchor=(1.01, 0.5), loc="center left", borderaxespad=0.)
+    >>> legend(loc="lower right", borderaxespad=0., framealpha=0.8)
     <...>
     >>> xlabel("Source degree")
     <...>
     >>> ylabel("Average target degree")
     <...>
+    >>> tight_layout()
     >>> savefig("shuffled-deg-corr-dir.pdf")
 
     .. testcode::
@@ -865,30 +865,25 @@ def line_graph(g):
 
     >>> g = gt.collection.data["lesmis"]
     >>> lg, vmap = gt.line_graph(g)
-    >>> gt.graph_draw(g, pos=g.vp["pos"], output="lesmis.pdf")
-    <...>
-    >>> pos = gt.graph_draw(lg, output="lesmis-lg.pdf")
+    >>> pos = gt.graph_draw(lg, output_size=(300, 300), output="lesmis-lg.pdf")
 
     .. testcode::
        :hide:
 
-       gt.graph_draw(g, pos=g.vp["pos"], output="lesmis.png")
-       pos = gt.graph_draw(lg, pos=pos, output="lesmis-lg.png")
+       gt.graph_draw(lg, pos=pos, output_size=(300, 300), output="lesmis-lg.png")
 
 
-    .. figure:: lesmis.png
-       :align: left
-
-       Coappearances of characters in Victor Hugo's novel "Les Miserables".
 
     .. figure:: lesmis-lg.png
-       :align: right
+       :align: center
 
-       Line graph of the coappearance network on the left.
+       Line graph of the coappearance of characters in Victor Hugo's novel "Les
+       Misérables".
 
     References
     ----------
     .. [line-wiki] http://en.wikipedia.org/wiki/Line_graph
+
     """
     lg = Graph(directed=g.is_directed())
 

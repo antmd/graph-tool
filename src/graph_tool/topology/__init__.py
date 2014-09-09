@@ -129,9 +129,9 @@ def similarity(g1, g2, label1=None, label2=None, norm=True):
     >>> gt.similarity(u, g)
     1.0
     >>> gt.random_rewire(u)
-    19
+    24
     >>> gt.similarity(u, g)
-    0.03
+    0.04666666666666667
     """
 
     if label1 is None:
@@ -624,10 +624,9 @@ def dominator_tree(g, root, dom_map=None):
     >>> root = [v for v in g.vertices() if v.in_degree() == 0]
     >>> dom = gt.dominator_tree(g, root[0])
     >>> print(dom.a)
-    [ 0  0  0  0  0  0 62  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
-      0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
-      0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
-      0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0]
+    [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+     0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+     0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
 
     References
     ----------
@@ -674,8 +673,8 @@ def topological_sort(g):
     >>> g.set_edge_filter(tree)
     >>> sort = gt.topological_sort(g)
     >>> print(sort)
-    [ 1  7 17  0  9  2  3  4  5  6  8 10 11 12 13 25 16 23 27 28 19 29 14 15 18
-     20 21 22 24 26]
+    [ 8  7  0  1 25  2  3 13 12 19  4  5  6  9 10 11 14 15 16 17 18 20 21 22 24
+     23 26 27 28 29]
 
     References
     ----------
@@ -783,18 +782,18 @@ def label_components(g, vprop=None, directed=None, attractors=False):
     >>> g = gt.random_graph(100, lambda: (poisson(2), poisson(2)))
     >>> comp, hist, is_attractor = gt.label_components(g, attractors=True)
     >>> print(comp.a)
-    [14 15 14 14 14  5 14 14 18 14 14  8 14 14 13 14 14 21 14 14  6 23 10 14 14
-     14 24  4 14 14  0 14 14 14 25 14 14  1 14 26 14 19  9 14 14  3 14 14 27 28
-     29 14 14  7 14 14 14 30 14 14 20 14  2 14 22 33 34 14 14 14 35 14 14 16 14
-     11 36 37 14 14 31 14 14 17 14 14 14 14 14  0 14 38 39 32 14 12 14 40 14 14]
+    [13 13 13 13 14 12 13 15 16 13 17 19 13 13 13 20 13 13 13 10 13 13 22 13 13
+      4 13 13  2 23 13 13 24 13 13 26 27 13 13 13 13  0 13 13  3 13 13 13 28  1
+      6 13 13 13 13  5 13 13 13 13 13 13 13  9 13 11 13 29 13 13 13 13 18 13 30
+     31 13 13 32 13 33 34 35 13 13 21 13 25  8 36 13 13 13 13 13 37 13 13  7 13]
     >>> print(hist)
-    [ 2  1  1  1  1  1  1  1  1  1  1  1  1  1 59  1  1  1  1  1  1  1  1  1  1
-      1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1]
+    [ 1  1  1  1  1  1  1  1  1  1  1  1  1 63  1  1  1  1  1  1  1  1  1  1  1
+      1  1  1  1  1  1  1  1  1  1  1  1  1]
     >>> print(is_attractor)
-    [ True  True  True False False False  True  True False False False False
-      True  True False False False False False False False False  True False
-     False False False False False False False False False False False False
-     False False False False False]
+    [ True False  True  True  True False False  True False  True  True  True
+      True False  True False False False False False False False False False
+     False False False False False False False False False  True False  True
+     False False]
     """
 
     if vprop is None:
@@ -855,12 +854,12 @@ def label_largest_component(g, directed=None):
     >>> g = gt.random_graph(100, lambda: poisson(1), directed=False)
     >>> l = gt.label_largest_component(g)
     >>> print(l.a)
-    [0 1 0 0 1 1 0 0 0 0 0 0 0 0 0 0 0 0 1 0 1 0 1 0 0 0 0 0 0 0 0 0 0 0 0 1 0
-     0 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 1 0 1 0 0 0 0 1 1 0 0
-     0 0 0 0 1 0 0 0 1 0 0 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0]
+    [0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 1 0 0 1 0 0 0 1 0 0 0 0 0 0 0
+     1 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0 0 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0
+     0 0 1 0 0 0 0 0 0 0 0 1 0 0 0 1 1 0 0 0 0 1 0 0 1 0]
     >>> u = gt.GraphView(g, vfilt=l)   # extract the largest component as a graph
     >>> print(u.num_vertices())
-    22
+    18
     """
 
     label = g.new_vertex_property("bool")
@@ -903,18 +902,18 @@ def label_out_component(g, root):
     >>> g = gt.random_graph(100, lambda: poisson(2.2), directed=False)
     >>> l = gt.label_out_component(g, g.vertex(2))
     >>> print(l.a)
-    [1 1 1 1 1 1 1 1 1 1 1 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 1 1 1 1
-     1 1 0 0 1 1 0 1 1 0 1 1 1 1 1 1 1 0 1 1 1 1 1 1 1 1 1 1 0 0 1 1 1 0 1 1 1
-     1 1 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 1 1 0 0 1 0 1 0]
+    [1 1 1 1 1 1 1 0 1 1 1 0 1 1 0 1 1 1 0 1 1 0 1 1 1 1 1 1 1 1 0 0 0 1 1 1 1
+     1 1 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 1 1 1 1 1 1 1 1 1 1 0 0 1 1 1 1 1 0 0
+     1 1 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 1 1 1 0 1 1 1 0]
 
     The in-component can be obtained by reversing the graph.
 
     >>> l = gt.label_out_component(gt.GraphView(g, reversed=True, directed=True),
     ...                            g.vertex(1))
     >>> print(l.a)
-    [0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-     0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-     0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+    [0 1 1 1 1 0 1 0 0 0 0 0 0 0 0 0 1 1 0 0 1 0 0 1 1 0 0 0 1 1 0 0 0 0 1 0 1
+     1 0 0 0 0 0 0 0 1 0 0 0 1 0 1 0 1 0 1 1 1 1 0 0 0 1 1 0 0 0 0 0 0 0 1 0 0
+     1 0 0 0 0 1 1 1 0 0 1 1 0 0 0 1 1 0 1 1 0 0 1 0 1 0]
     """
 
     label = g.new_vertex_property("bool")
@@ -986,17 +985,18 @@ def label_biconnected_components(g, eprop=None, vprop=None):
     >>> g = gt.random_graph(100, lambda: poisson(2), directed=False)
     >>> comp, art, hist = gt.label_biconnected_components(g)
     >>> print(comp.a)
-    [33 34 34 34 34 34  4 20 34 34 18 34 34 34 34 34 15 34 34 34 28 34 34 34 34
-     34 34 34 34 34 34 11 14 34 34 34  3 34 34 34 34 34 34 34 34 27 34 34  7 10
-     34 34 34 34 34 24 25 34  6 35 34 13 21 30 31 12  5 34  1 32 34 34 26 34 16
-     34 34 23 34 34 34 34 34 36 34 34 34 34 34 29 22 17  0  2  8 37 34 38  9 19]
+    [31 42 41 41 41 21  2 41 41 19 41 33 41 41 12 41 40 41 41 41 41 41 41  8 41
+     10 41 32 28 30 41 41 41  5 41 41 41 41 39 38 41 41 41 41 45 44 41 41 22 41
+     41 41  0 41 41 41 41 41 41 41 41  7 13 41 20 41 41 41 41 34  9 41 41  4 43
+     18 41 41 15 29  1 41 41 41 41  6 41 25 23 35 16 24 37 11  3 36 17 26 27 14
+     41]
     >>> print(art.a)
-    [1 0 1 1 0 1 0 0 1 0 0 0 1 0 0 0 0 1 0 0 0 0 0 1 1 0 1 0 1 1 1 0 0 1 0 1 0
-     1 1 0 0 0 1 0 1 0 1 0 0 0 0 0 1 1 0 0 0 0 0 0 0 0 0 1 0 0 1 0 0 0 0 0 1 1
-     1 0 0 0 0 0 0 1 0 0 0 0 0 1 0 1 0 0 0 1 0 0 0 0 0 0]
+    [1 0 1 1 0 1 0 0 0 1 0 0 1 0 0 1 0 1 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 1 1 0 0
+     1 1 0 0 1 0 0 0 1 1 0 0 0 1 0 1 0 1 0 0 1 0 0 0 0 1 1 0 1 0 0 0 0 0 0 1 1
+     1 0 0 0 0 0 0 1 1 0 0 0 1 0 1 1 0 0 0 1 0 0 0 1 0 0]
     >>> print(hist)
     [ 1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1
-      1  1  1  1  1  1  1  1  1 62  1  1  1  1]
+      1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1 56  1  1  1  1]
     """
 
     if vprop is None:
@@ -1165,43 +1165,43 @@ def shortest_distance(g, source=None, target=None, weights=None, max_dist=None,
     >>> g = gt.random_graph(100, lambda: (poisson(3), poisson(3)))
     >>> dist = gt.shortest_distance(g, source=g.vertex(0))
     >>> print(dist.a)
-    [         0          6          3          6 2147483647 2147483647
-              6          5          2          4          5          6
-              6          3          7          5          4          4
-              3          4          2          4          3          3
-              4          4          6          6          4          1
-              5          2          4          5          3          5
-              6          5          4          5 2147483647          9
-              4          4          4          6          3          4
-              6          6          3          2          4          4
-              5          4          5          8          6          6
-              5          5          4          5          6          3
-              4          3          5          5 2147483647 2147483647
-              5          5          8          3          7          4
-              5          2          7          5          2          5
-              5          5          7          7          4          3
-              6          5          5          4          5          5
-              4          4          6          5]
-
+    [         0          1          5          4 2147483647          4
+              9          5          8          5          7          6
+              3          5          6          8          3          3
+              5          6 2147483647          1          4          5
+              5          2          5          7          4          5
+              5          5          4          4          5          2
+              5 2147483647          5          2 2147483647          6
+              5          6          6          2          5          4
+              3          6          5          4          4          5
+              3          3          5          5          1          5
+              4          6          3          4          3          3
+              7          5          5          4 2147483647 2147483647
+              2          5          3          5          5          6
+              3          5          6          6          5          4
+              5          3          6          3          4 2147483647
+              4          6          4          4          4          4
+              6          5          4          4]
+    >>>
     >>> dist = gt.shortest_distance(g)
     >>> print(dist[g.vertex(0)].a)
-    [         0          6          3          6 2147483647 2147483647
-              6          5          2          4          5          6
-              6          3          7          5          4          4
-              3          4          2          4          3          3
-              4          4          6          6          4          1
-              5          2          4          5          3          5
-              6          5          4          5 2147483647          9
-              4          4          4          6          3          4
-              6          6          3          2          4          4
-              5          4          5          8          6          6
-              5          5          4          5          6          3
-              4          3          5          5 2147483647 2147483647
-              5          5          8          3          7          4
-              5          2          7          5          2          5
-              5          5          7          7          4          3
-              6          5          5          4          5          5
-              4          4          6          5]
+    [         0          1          5          4 2147483647          4
+              9          5          8          5          7          6
+              3          5          6          8          3          3
+              5          6 2147483647          1          4          5
+              5          2          5          7          4          5
+              5          5          4          4          5          2
+              5 2147483647          5          2 2147483647          6
+              5          6          6          2          5          4
+              3          6          5          4          4          5
+              3          3          5          5          1          5
+              4          6          3          4          3          3
+              7          5          5          4 2147483647 2147483647
+              2          5          3          5          5          6
+              3          5          6          6          5          4
+              5          3          6          3          4 2147483647
+              4          6          4          4          4          4
+              6          5          4          4]
 
     References
     ----------
@@ -1316,9 +1316,9 @@ def shortest_path(g, source, target, weights=None, pred_map=None):
     >>> g = gt.random_graph(300, lambda: (poisson(4), poisson(4)))
     >>> vlist, elist = gt.shortest_path(g, g.vertex(10), g.vertex(11))
     >>> print([str(v) for v in vlist])
-    ['10', '131', '184', '265', '223', '11']
+    ['10', '11']
     >>> print([str(e) for e in elist])
-    ['(10, 131)', '(131, 184)', '(184, 265)', '(265, 223)', '(223, 11)']
+    ['(10, 11)']
 
     References
     ----------
@@ -1421,9 +1421,9 @@ def pseudo_diameter(g, source=None, weights=None):
     >>> g = gt.random_graph(300, lambda: (poisson(3), poisson(3)))
     >>> dist, ends = gt.pseudo_diameter(g)
     >>> print(dist)
-    9.0
+    10.0
     >>> print(int(ends[0]), int(ends[1]))
-    0 140
+    0 165
 
     References
     ----------
@@ -1565,7 +1565,7 @@ def is_planar(g, embedding=False, kuratowski=False):
     >>> print(p)
     True
     >>> print(list(embed_order[g.vertex(0)]))
-    [0, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
     >>> g = gt.random_graph(100, lambda: 4, directed=False)
     >>> p, kur = gt.is_planar(g, kuratowski=True)
     >>> print(p)
@@ -1779,7 +1779,7 @@ def max_cardinality_matching(g, heuristic=False, weight=None, minimize=True,
     .. figure:: max_card_match.*
         :align: center
 
-        Edges belonging to the matching are in red.
+        Edges belonging to the matching are in yellow.
 
     References
     ----------
@@ -1856,7 +1856,7 @@ def max_independent_vertex_set(g, high_deg=False, mivs=None):
     .. figure:: mivs.*
         :align: center
 
-        Vertices belonging to the set are in red.
+        Vertices belonging to the set are in yellow.
 
     References
     ----------
@@ -1958,10 +1958,10 @@ def tsp_tour(g, src, weight=None):
     >>> g = gt.lattice([10, 10])
     >>> tour = gt.tsp_tour(g, g.vertex(0))
     >>> print(tour)
-    [ 0  1  2 11 12 21 22 31 32 41 42 51 52 61 62 71 72 81 82 83 73 63 53 43 33
-     23 13  3  4  5  6  7  8  9 19 29 39 49 59 69 79 89 14 24 34 44 54 64 74 84
-     91 92 93 94 95 85 75 65 55 45 35 25 15 16 17 18 27 28 37 38 47 48 57 58 67
-     68 77 78 87 88 97 98 99 26 36 46 56 66 76 86 96 10 20 30 40 50 60 70 80 90
+    [ 0  1  2 11 12 21 22 31 32 41 42 51 52 61 62 71 72 81 82 83 73 84 74 85 75
+     86 76 87 77 88 78 68 58 67 57 66 56 65 55 64 54 63 53 43 33 23 13  3  4  5
+      6  7  8 89 79 69 59 49 39 48 38 47 37 46 36 45 35 44 34 24 14 25 15 26 16
+     27 17 28 18 29 19  9 91 92 93 94 95 96 97 98 99 10 20 30 40 50 60 70 80 90
       0]
 
     References

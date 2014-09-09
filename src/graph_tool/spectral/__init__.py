@@ -102,7 +102,7 @@ def adjacency(g, weight=None, index=None):
 
     >>> figure(figsize=(8, 2))
     <...>
-    >>> scatter(real(ew), imag(ew), c=abs(ew))
+    >>> scatter(real(ew), imag(ew), c=sqrt(abs(ew)), linewidths=0, alpha=0.6)
     <...>
     >>> xlabel(r"$\operatorname{Re}(\lambda)$")
     <...>
@@ -220,7 +220,7 @@ def laplacian(g, deg="total", normalized=False, weight=None, index=None):
 
     >>> figure(figsize=(8, 2))
     <...>
-    >>> scatter(real(ew), imag(ew), c=abs(ew))
+    >>> scatter(real(ew), imag(ew), c=sqrt(abs(ew)), linewidths=0, alpha=0.6)
     <...>
     >>> xlabel(r"$\operatorname{Re}(\lambda)$")
     <...>
@@ -244,7 +244,7 @@ def laplacian(g, deg="total", normalized=False, weight=None, index=None):
 
     >>> figure(figsize=(8, 2))
     <...>
-    >>> scatter(real(ew), imag(ew), c=abs(ew))
+    >>> scatter(real(ew), imag(ew), c=sqrt(abs(ew)), linewidths=0, alpha=0.6)
     <...>
     >>> xlabel(r"$\operatorname{Re}(\lambda)$")
     <...>
@@ -359,7 +359,7 @@ def incidence(g, vindex=None, eindex=None):
      ..., 
      [ 0.  0. -1. ...,  0.  0.  0.]
      [ 0.  0.  0. ...,  0.  0.  0.]
-     [ 0.  0.  0. ...,  1.  0.  0.]]
+     [ 0.  0.  0. ...,  0.  0.  0.]]
 
     References
     ----------
@@ -440,7 +440,7 @@ def transition(g, weight=None, index=None):
 
     >>> figure(figsize=(8, 2))
     <...>
-    >>> scatter(real(ew), imag(ew), c=abs(ew))
+    >>> scatter(real(ew), imag(ew), c=sqrt(abs(ew)), linewidths=0, alpha=0.6)
     <...>
     >>> xlabel(r"$\operatorname{Re}(\lambda)$")
     <...>
@@ -537,7 +537,7 @@ def modularity_matrix(g, weight=None, index=None):
 
     >>> figure(figsize=(8, 2))
     <...>
-    >>> scatter(real(ew), imag(ew), c=abs(ew))
+    >>> scatter(real(ew), imag(ew), c=sqrt(abs(ew)), linewidths=0, alpha=0.6)
     <...>
     >>> xlabel(r"$\operatorname{Re}(\lambda)$")
     <...>
