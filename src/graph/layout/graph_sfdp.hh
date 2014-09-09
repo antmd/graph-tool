@@ -45,6 +45,8 @@ public:
         :_ll(ll), _ur(ur), _cm(2, 0), _count(0),
          _max_level(max_level)
     {
+        _w = sqrt(power(_ur[0] - _ll[0], 2) +
+                  power(_ur[1] - _ll[1], 2));
     }
 
     QuadTree& get_leaf(size_t i)
@@ -104,10 +106,9 @@ public:
             cm[i] = _cm[i] / _count;
     }
 
-    double get_w()
+    double get_w() const
     {
-        return sqrt(power(_ur[0] - _ll[0], 2) +
-                    power(_ur[1] - _ll[1], 2));
+        return _w;
     }
 
     Weight get_count()
@@ -127,6 +128,7 @@ private:
     Pos _cm;
     Weight _count;
     int _max_level;
+    double _w;
 };
 
 template <class Pos>
@@ -284,7 +286,8 @@ struct get_sfdp_layout
 
             size_t nmoves = 0;
             N = vertices.size();
-            #pragma omp parallel for default(shared) private(i)  \
+            vector<std::reference_wrapper<QuadTree<pos_t, vweight_t>>> Q;
+            #pragma omp parallel for default(shared) private(i, Q) \
                 reduction(+:E, delta, nmoves) schedule(runtime) if (N > 100)
             for (i = 0; i < N; ++i)
             {
@@ -293,7 +296,6 @@ struct get_sfdp_layout
                 pos_t diff(2, 0), pos_u(2, 0), ftot(2, 0), cm(2, 0);
 
                 // global repulsive forces
-                vector<std::reference_wrapper<QuadTree<pos_t, vweight_t> > > Q;
                 Q.push_back(std::ref(qt));
                 while (!Q.empty())
                 {
