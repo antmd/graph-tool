@@ -36,6 +36,8 @@ except ImportError:
 
 default_cm = None
 try:
+    import matplotlib.artist
+    import matplotlib.backends.backend_cairo
     import matplotlib.cm
     import matplotlib.colors
     from matplotlib.cbook import flatten
@@ -546,7 +548,7 @@ def auto_colors(g, bg, pos, back):
 
 def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                nodesfirst=False, output_size=(600, 600), fit_view=True,
-               inline=is_draw_inline, output=None, fmt="auto", **kwargs):
+               inline=is_draw_inline, mplfig=None, output=None, fmt="auto", **kwargs):
     r"""Draw a graph to screen or to a file using :mod:`cairo`.
 
     Parameters
@@ -578,6 +580,9 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
     inline : bool (optional, default: ``False``)
         If ``True`` and an `IPython notebook <http://ipython.org/notebook>`_  is
         being used, an inline version of the drawing will be returned.
+    mplfig : matplotlib object (optional, default: ``None``)
+        The ``mplfig`` needs an artists attribute. This can for example be a
+        mpl Figure or Axes. Only the cairo backend is supported, use switch_backend('cairo').
     output : string or file object (optional, default: ``None``)
         Output file name (or object). If not given, the graph will be displayed via
         :func:`interactive_window`.
@@ -855,6 +860,11 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                                            vprops.get("text_position",
                                                       _vdefaults["text_position"]),
                                            bg_color)
+
+    if mplfig:
+        mplfig.artists.append(GraphToolArtist(g, pos, vprops, eprops, vorder, eorder,
+                nodesfirst, **kwargs))
+        return
 
     if inline:
         if fmt == "auto":
@@ -1225,3 +1235,30 @@ def gen_surface(name):
         Gdk.cairo_set_source_pixbuf(cr, pixbuf, 0, 0)
         cr.paint()
         return surface
+
+# matplotlib
+# ==========
+
+class GraphToolArtist(matplotlib.artist.Artist):
+    """Matplotlib artist class that draws graph_tool graphs.
+
+    Only Cairo-based backends are supported.
+    """
+
+    def __init__(self, g, pos, vprops, eprops, vorder, eorder,
+                nodesfirst, **kwargs):
+        matplotlib.artist.Artist.__init__(self)
+        self.g = g
+        self.pos = pos
+        self.vprops = vprops
+        self.eprops = eprops
+        self.vorder = vorder
+        self.eorder = eorder
+        self.nodesfirst = nodesfirst
+        self.kwargs = kwargs
+
+    def draw(self, renderer):
+        if not isinstance(renderer, matplotlib.backends.backend_cairo.RendererCairo):
+            raise NotImplementedError("graph plotting is supported only on Cairo backends")
+        cairo_draw(self.g, self.pos, renderer.gc.ctx, self.vprops, self.eprops, self.vorder, self.eorder,
+                self.nodesfirst, self.kwargs)
