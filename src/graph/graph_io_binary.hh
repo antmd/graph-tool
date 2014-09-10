@@ -52,7 +52,7 @@ void byte_swap(T& p)
 template <typename T>
 void write(std::ostream& s, T v)
 {
-    s.write((char*)&v, sizeof(T));
+    s.write(reinterpret_cast<const char*>(&v), sizeof(T));
 };
 
 
@@ -61,7 +61,7 @@ void write(std::ostream& s, const std::vector<T>& v)
 {
     uint64_t size = v.size();
     write(s, size);
-    s.write((char *)v.data(), sizeof(T) * v.size());
+    s.write(reinterpret_cast<const char*>(v.data()), sizeof(T) * v.size());
 };
 
 
@@ -69,7 +69,7 @@ void write(std::ostream& s, const std::string& v)
 {
     uint64_t size = v.size();
     write(s, size);
-    s.write((char *)v.data(), v.size());
+    s.write(reinterpret_cast<const char*>(v.data()), v.size());
 };
 
 void write(std::ostream& s, const std::vector<std::string>& v)
@@ -90,7 +90,7 @@ void write(std::ostream& s, const boost::python::object& v)
 template <bool BE, typename T>
 void read(std::istream& s, T& v)
 {
-    s.read((char*)&v, sizeof(T));
+    s.read(reinterpret_cast<char*>(&v), sizeof(T));
     byte_swap<BE>(v);
 };
 
@@ -107,7 +107,7 @@ void read(std::istream& s, std::vector<T>& v)
     read<BE>(s, size);
     v.resize(size);
 
-    s.read((char*)v.data(), sizeof(T) * v.size());
+    s.read(reinterpret_cast<char*>(v.data()), sizeof(T) * v.size());
 
     for (auto& x : v)
         byte_swap<BE>(x);
