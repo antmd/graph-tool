@@ -56,6 +56,7 @@ typedef boost::mpl::map<
     boost::mpl::pair<uint32_t, boost::mpl::int_<NPY_UINT32> >,
     boost::mpl::pair<int64_t, boost::mpl::int_<NPY_INT64> >,
     boost::mpl::pair<uint64_t, boost::mpl::int_<NPY_UINT64> >,
+    boost::mpl::pair<unsigned long, boost::mpl::int_<NPY_ULONG> >,
     boost::mpl::pair<float, boost::mpl::int_<NPY_FLOAT> >,
     boost::mpl::pair<double, boost::mpl::int_<NPY_DOUBLE> >,
     boost::mpl::pair<long double, boost::mpl::int_<NPY_LONGDOUBLE> >,
