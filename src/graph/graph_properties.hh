@@ -593,7 +593,7 @@ public:
     typedef boost::readable_property_map_tag category;
 
     ConstantPropertyMap(const value_type& c): _c(c) {}
-    ConstantPropertyMap(){}
+    ConstantPropertyMap(): _c(value_type()) {}
 
     const value_type& operator[](const key_type&) const { return _c; }
 
