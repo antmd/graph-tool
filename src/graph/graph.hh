@@ -164,8 +164,7 @@ public:
 private:
 
     // Generic graph_action functor. See graph_filtering.hh for details.
-    template <class Action, class GraphViews, class Wrap, class TR1, class TR2,
-              class TR3, class TR4>
+    template <class Action, class GraphViews, class Wrap, class... TRS>
     friend struct detail::graph_action;
 
     // python interface

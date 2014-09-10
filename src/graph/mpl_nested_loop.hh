@@ -88,7 +88,7 @@ struct inner_loop
     template <class T>
     void operator()(T) const
     {
-        nested_for_each_imp<TRS...>(_a.join<T>());
+        nested_for_each_imp<TRS...>(_a.template join<T>());
     }
 
     Action _a;

@@ -562,12 +562,12 @@ public:
         return get(k);
     }
 
-    const reference operator[](const key_type& k) const
+    reference operator[](const key_type& k) const
     {
         return get(k);
     }
 
-    const reference get(const key_type& k) const
+    reference get(const key_type& k) const
     {
         typename Container::iterator val;
         val = _base_map->find(k);

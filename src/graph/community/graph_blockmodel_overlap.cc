@@ -796,7 +796,7 @@ struct get_augmented_overlap
 
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
-        unordered_map<std::tuple<int, int>, size_t, boost::hash<std::tuple<int, int>>> idx_map;
+        unordered_map<std::tuple<int, int>, size_t> idx_map;
         vector<std::tuple<int, int>> idx_rmap;
         size_t pos = 0;
 
@@ -851,7 +851,7 @@ struct get_overlap_split
     template <class Graph, class VVProp, class VProp>
     void operator()(Graph& g, VVProp bv, VProp b) const
     {
-        unordered_map<vector<int>, size_t, boost::hash<vector<int>>> bvset;
+        unordered_map<vector<int>, size_t> bvset;
 
         for (auto v : vertices_range(g))
         {

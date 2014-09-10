@@ -22,6 +22,7 @@
 #include <iostream>
 #include <queue>
 #include <boost/math/special_functions/zeta.hpp>
+#include <boost/functional/hash.hpp>
 
 #include "config.h"
 #include <unordered_set>
@@ -40,6 +41,33 @@
 #include <omp.h>
 #endif
 
+namespace std
+{
+template <class T1, class T2>
+struct hash<std::tuple<T1, T2>>
+{
+    size_t operator()(std::tuple<T1, T2> const& v) const
+    {
+        std::size_t seed = 0;
+        boost::hash_combine(seed, std::get<0>(v));
+        boost::hash_combine(seed, std::get<1>(v));
+        return seed;
+    }
+};
+
+template <class T1, class T2, class T3>
+struct hash<std::tuple<T1, T2, T3>>
+{
+    size_t operator()(std::tuple<T1, T2, T3> const& v) const
+    {
+        std::size_t seed = 0;
+        boost::hash_combine(seed, std::get<0>(v));
+        boost::hash_combine(seed, std::get<1>(v));
+        boost::hash_combine(seed, std::get<2>(v));
+        return seed;
+    }
+};
+}
 
 double spence(double);
 
@@ -389,9 +417,9 @@ class partition_stats_t
 public:
 
 #ifdef HAVE_SPARSEHASH
-    typedef dense_hash_map<pair<size_t,size_t>, int, boost::hash<pair<size_t,size_t>>> map_t;
+    typedef dense_hash_map<pair<size_t,size_t>, int> map_t;
 #else
-    typedef unordered_map<pair<size_t,size_t>, int, boost::hash<pair<size_t,size_t>>> map_t;
+    typedef unordered_map<pair<size_t,size_t>, int> map_t;
 #endif
 
     partition_stats_t() : _enabled(false) {}
@@ -1816,11 +1844,10 @@ struct merge_cmp_less
     }
 };
 
-class overlap_stats_t;
-
 //A single Monte Carlo Markov chain sweep
 template <class Graph, class BGraph, class EMprop, class Eprop, class Vprop,
-          class EMat, class EVprop, class VEprop, class SamplerMap, class RNG>
+          class EMat, class EVprop, class VEprop, class SamplerMap, class OStats,
+          class RNG>
 void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
                 Vprop clabel, vector<int>& vlist, bool deg_corr, bool dense,
                 bool multigraph, double beta, Eprop eweight, Vprop vweight,
@@ -1829,11 +1856,10 @@ void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
                 SamplerMap cavity_neighbour_sampler, bool sequential,
                 bool parallel, bool random_move, double c, size_t nmerges,
                 size_t ntries, Vprop merge_map,
-                partition_stats_t& partition_stats, bool verbose,
-                RNG& rng, double& S, size_t& nmoves)
+                partition_stats_t& partition_stats, bool verbose, RNG& rng,
+                double& S, size_t& nmoves, OStats overlap_stats)
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-    overlap_stats_t overlap_stats;
 
     size_t B = num_vertices(bg);
 

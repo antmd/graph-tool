@@ -15,7 +15,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-
 #define BOOST_PYTHON_MAX_ARITY 40
 #include <boost/python.hpp>
 #include <cmath>
@@ -41,6 +40,8 @@
 
 using namespace boost;
 using namespace graph_tool;
+
+
 
 // ====================
 // Entropy calculation
@@ -321,7 +322,8 @@ struct move_sweep_dispatch
                        cavity_sampler, sequential, parallel, random_move, c,
                        nmerges, ntries,
                        merge_map.get_unchecked(num_vertices(g)),
-                       partition_stats, verbose, rng, S, nmoves);
+                       partition_stats, verbose, rng, S, nmoves,
+                       overlap_stats_t());
         }
         catch (bad_any_cast&)
         {
@@ -342,7 +344,8 @@ struct move_sweep_dispatch
                        cavity_sampler, sequential, parallel, random_move, c,
                        nmerges, ntries,
                        merge_map.get_unchecked(num_vertices(g)),
-                       partition_stats, verbose, rng, S, nmoves);
+                       partition_stats, verbose, rng, S, nmoves,
+                       overlap_stats_t());
         }
     }
 };

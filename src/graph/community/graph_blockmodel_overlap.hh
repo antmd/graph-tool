@@ -232,12 +232,12 @@ public:
         typedef std::tuple<size_t, size_t, size_t> key_t; // u, r, s
 
 #ifdef HAVE_SPARSEHASH
-        dense_hash_map<key_t, int, boost::hash<key_t>> out_us;
+        dense_hash_map<key_t, int> out_us;
         out_us.set_empty_key(key_t(numeric_limits<size_t>::max(),
                                    numeric_limits<size_t>::max(),
                                    numeric_limits<size_t>::max()));
 #else
-        unordered_map<key_t, int, boost::hash<key_t>> out_us;
+        unordered_map<key_t, int> out_us;
 #endif
 
         for (auto u : _parallel_bundles[m])
@@ -344,27 +344,19 @@ struct overlap_partition_stats_t
     typedef vector<int> bv_t;
 
 #ifdef HAVE_SPARSEHASH
-    typedef dense_hash_map<bv_t, size_t,
-                           boost::hash<bv_t>> bhist_t;
-    typedef dense_hash_map<cdeg_t, size_t,
-                           boost::hash<cdeg_t>> cdeg_hist_t;
+    typedef dense_hash_map<bv_t, size_t> bhist_t;
+    typedef dense_hash_map<cdeg_t, size_t> cdeg_hist_t;
 
-    typedef dense_hash_map<bv_t, cdeg_hist_t,
-                           boost::hash<bv_t>> deg_hist_t;
+    typedef dense_hash_map<bv_t, cdeg_hist_t> deg_hist_t;
 
-    typedef dense_hash_map<bv_t, vector<size_t>,
-                           boost::hash<bv_t>> ebhist_t;
+    typedef dense_hash_map<bv_t, vector<size_t>> ebhist_t;
 #else
-    typedef unordered_map<bv_t, size_t,
-                          boost::hash<bv_t>> bhist_t;
-    typedef unordered_map<cdeg_t, size_t,
-                          boost::hash<cdeg_t>> cdeg_hist_t;
+    typedef unordered_map<bv_t, size_t> bhist_t;
+    typedef unordered_map<cdeg_t, size_t> cdeg_hist_t;
 
-    typedef unordered_map<bv_t, cdeg_hist_t,
-                          boost::hash<bv_t>> deg_hist_t;
+    typedef unordered_map<bv_t, cdeg_hist_t> deg_hist_t;
 
-    typedef unordered_map<bv_t, vector<size_t>,
-                          boost::hash<bv_t>> ebhist_t;
+    typedef unordered_map<bv_t, vector<size_t>> ebhist_t;
 #endif
 
     typedef unordered_map<int, int> dmap_t;
@@ -538,8 +530,7 @@ struct overlap_partition_stats_t
             }
 
             // unordered_map<size_t,
-            //               unordered_map<deg_t, size_t,
-            //                             boost::hash<deg_t>>> bdeg_hist;
+            //               unordered_map<deg_t, size_t>> bdeg_hist;
 
             // for (auto& bv_h : _deg_hist)
             // {
@@ -639,8 +630,7 @@ struct overlap_partition_stats_t
             //const double z2 = boost::math::zeta(2);
 
             // unordered_map<size_t,
-            //               unordered_map<deg_t, size_t,
-            //                             boost::hash<deg_t>>> bdeg_hist;
+            //               unordered_map<deg_t, size_t>>> bdeg_hist;
 
             // for (auto& bv_h : _deg_hist)
             // {
@@ -1220,7 +1210,7 @@ struct entropy_parallel_edges_overlap
             auto& he = overlap_stats.get_half_edges(i);
 
             typedef std::tuple<size_t, size_t, size_t> key_t; // u, r, s
-            unordered_map<key_t, int, boost::hash<key_t>> out_us;
+            unordered_map<key_t, int> out_us;
             for (auto u : he)
             {
                 if (visited[u])
