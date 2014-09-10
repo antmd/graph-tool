@@ -259,7 +259,7 @@ struct graph_range_traits
 {
     typedef GraphInterface::graph_index_map_t index_map_t;
     template <class Graph>
-    static index_map_t get_index_map(Graph& g) { return index_map_t(); }
+    static index_map_t get_index_map(Graph& g) { return index_map_t(0); }
 
     struct graph_range
     {
