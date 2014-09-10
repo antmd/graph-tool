@@ -33,7 +33,7 @@ const uint8_t _version = 1;
 
 // deal with endianness
 
-constexpr bool is_bigendian()
+inline bool is_bigendian()
 {
     // from: http://esr.ibiblio.org/?p=5095
     return (*(uint16_t *)"\0\xff" < 0x100);
