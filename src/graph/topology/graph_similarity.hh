@@ -125,11 +125,11 @@ struct get_similarity_fast
             lmap2[i] = v;
         }
 
-        s = 0;
+        size_t ss = 0;
 
         int i, N = lmap1.size();
         #pragma omp parallel for default(shared) private(i) schedule(runtime) \
-            reduction(+:s) if (N > 100)
+            reduction(+:ss) if (N > 100)
         for (i = 0; i < N; ++i)
         {
             auto v1 = lmap1[i];
@@ -151,8 +151,10 @@ struct get_similarity_fast
                 keys.insert(get(l2, a2));
             }
 
-            s += intersection_size(keys, adj1, adj2);
+            ss += intersection_size(keys, adj1, adj2);
         }
+
+        s = ss;
     }
 };
 
