@@ -43,30 +43,46 @@
 
 namespace std
 {
-template <class T1, class T2>
-struct hash<std::tuple<T1, T2>>
+
+template <size_t pos, class... T>
+struct tuple_combine
 {
-    size_t operator()(std::tuple<T1, T2> const& v) const
+    void operator()(size_t& seed, const std::tuple<T...>& v) const
+    {
+        boost::hash_combine(seed, std::get<pos-1>(v));
+        tuple_combine<pos-1, T...>()(seed, v);
+    }
+};
+
+template <class... T>
+struct tuple_combine<0, T...>
+{
+    void operator()(size_t& seed, const std::tuple<T...>& v) const {}
+};
+
+template <class... T>
+struct hash<std::tuple<T...>>
+{
+    size_t operator()(std::tuple<T...> const& v) const
     {
         std::size_t seed = 0;
-        boost::hash_combine(seed, std::get<0>(v));
-        boost::hash_combine(seed, std::get<1>(v));
+        tuple_combine<sizeof...(T), T...>()(seed, v);
         return seed;
     }
 };
 
-template <class T1, class T2, class T3>
-struct hash<std::tuple<T1, T2, T3>>
+template <class T1, class T2>
+struct hash<std::pair<T1, T2>>
 {
-    size_t operator()(std::tuple<T1, T2, T3> const& v) const
+    size_t operator()(std::pair<T1, T2> const& v) const
     {
         std::size_t seed = 0;
-        boost::hash_combine(seed, std::get<0>(v));
-        boost::hash_combine(seed, std::get<1>(v));
-        boost::hash_combine(seed, std::get<2>(v));
+        boost::hash_combine(seed, v.first);
+        boost::hash_combine(seed, v.second);
         return seed;
     }
 };
+
 }
 
 double spence(double);
@@ -417,7 +433,7 @@ class partition_stats_t
 public:
 
 #ifdef HAVE_SPARSEHASH
-    typedef dense_hash_map<pair<size_t,size_t>, int> map_t;
+    typedef dense_hash_map<pair<size_t,size_t>, int, std::hash<pair<size_t,size_t>>> map_t;
 #else
     typedef unordered_map<pair<size_t,size_t>, int> map_t;
 #endif
