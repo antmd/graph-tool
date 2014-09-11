@@ -49,7 +49,8 @@ public:
     void examine_vertex(typename graph_traits<Graph>::vertex_descriptor v,
                         Graph&)
     {
-        if ( _dist_map[v] > _max_dist)
+        typedef typename property_traits<DistMap>::value_type val_t;
+        if ( _dist_map[v] > val_t(_max_dist))
             throw stop_search();
     }
 
