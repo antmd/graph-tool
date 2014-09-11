@@ -11,6 +11,7 @@ Contents:
    gt_format
    demos/index
    modules
+   faq
 
 Indexes and tables
 ==================
