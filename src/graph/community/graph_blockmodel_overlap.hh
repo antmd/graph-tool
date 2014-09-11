@@ -232,7 +232,7 @@ public:
         typedef std::tuple<size_t, size_t, size_t> key_t; // u, r, s
 
 #ifdef HAVE_SPARSEHASH
-        dense_hash_map<key_t, int> out_us;
+        dense_hash_map<key_t, int, std::hash<key_t>> out_us;
         out_us.set_empty_key(key_t(numeric_limits<size_t>::max(),
                                    numeric_limits<size_t>::max(),
                                    numeric_limits<size_t>::max()));
@@ -344,15 +344,15 @@ struct overlap_partition_stats_t
     typedef vector<int> bv_t;
 
 #ifdef HAVE_SPARSEHASH
-    typedef dense_hash_map<bv_t, size_t> bhist_t;
-    typedef dense_hash_map<cdeg_t, size_t> cdeg_hist_t;
+    typedef dense_hash_map<bv_t, size_t, std::hash<bv_t>> bhist_t;
+    typedef dense_hash_map<cdeg_t, size_t, std::hash<cdeg_t>> cdeg_hist_t;
 
-    typedef dense_hash_map<bv_t, cdeg_hist_t> deg_hist_t;
+    typedef dense_hash_map<bv_t, cdeg_hist_t, std::hash<bv_t>> deg_hist_t;
 
-    typedef dense_hash_map<bv_t, vector<size_t>> ebhist_t;
+    typedef dense_hash_map<bv_t, vector<size_t>, std::hash<bv_t>> ebhist_t;
 #else
     typedef unordered_map<bv_t, size_t> bhist_t;
-    typedef unordered_map<cdeg_t, size_t> cdeg_hist_t;
+    typedef unordered_map<cdeg_t, size_t, std::hash<cdeg_t>> cdeg_hist_t;
 
     typedef unordered_map<bv_t, cdeg_hist_t> deg_hist_t;
 

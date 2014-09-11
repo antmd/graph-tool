@@ -41,49 +41,6 @@
 #include <omp.h>
 #endif
 
-namespace std
-{
-
-template <size_t pos, class... T>
-struct tuple_combine
-{
-    void operator()(size_t& seed, const std::tuple<T...>& v) const
-    {
-        boost::hash_combine(seed, std::get<pos-1>(v));
-        tuple_combine<pos-1, T...>()(seed, v);
-    }
-};
-
-template <class... T>
-struct tuple_combine<0, T...>
-{
-    void operator()(size_t& seed, const std::tuple<T...>& v) const {}
-};
-
-template <class... T>
-struct hash<std::tuple<T...>>
-{
-    size_t operator()(std::tuple<T...> const& v) const
-    {
-        std::size_t seed = 0;
-        tuple_combine<sizeof...(T), T...>()(seed, v);
-        return seed;
-    }
-};
-
-template <class T1, class T2>
-struct hash<std::pair<T1, T2>>
-{
-    size_t operator()(std::pair<T1, T2> const& v) const
-    {
-        std::size_t seed = 0;
-        boost::hash_combine(seed, v.first);
-        boost::hash_combine(seed, v.second);
-        return seed;
-    }
-};
-
-}
 
 double spence(double);
 

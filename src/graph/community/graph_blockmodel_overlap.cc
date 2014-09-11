@@ -31,6 +31,7 @@
 #include "graph.hh"
 #include "graph_selectors.hh"
 #include "graph_properties.hh"
+#include "graph_util.hh"
 
 #include "random.hh"
 

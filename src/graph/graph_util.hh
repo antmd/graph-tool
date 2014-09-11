@@ -509,18 +509,66 @@ private:
 
 
 //
-// Vector hash function
+// Useful hash<> specializations
 //
 
 namespace std
 {
+
+template <class Val>
+void _hash_combine(size_t& seed, const Val& hash)
+{
+    seed ^= std::hash<Val>()(hash) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
+
+template <size_t pos, class... T>
+struct tuple_combine
+{
+    void operator()(size_t& seed, const std::tuple<T...>& v) const
+    {
+        std::_hash_combine(seed, std::get<pos-1>(v));
+        tuple_combine<pos-1, T...>()(seed, v);
+    }
+};
+
+template <class... T>
+struct tuple_combine<0, T...>
+{
+    void operator()(size_t& seed, const std::tuple<T...>& v) const {}
+};
+
+template <class... T>
+struct hash<std::tuple<T...>>
+{
+    size_t operator()(std::tuple<T...> const& v) const
+    {
+        std::size_t seed = 0;
+        tuple_combine<sizeof...(T), T...>()(seed, v);
+        return seed;
+    }
+};
+
+template <class T1, class T2>
+struct hash<std::pair<T1, T2>>
+{
+    size_t operator()(std::pair<T1, T2> const& v) const
+    {
+        std::size_t seed = 0;
+        std::_hash_combine(seed, v.first);
+        std::_hash_combine(seed, v.second);
+        return seed;
+    }
+};
 
 template <class Value>
 struct hash<vector<Value>>
 {
     size_t operator()(const vector<Value>& v) const
     {
-        return boost::hash_range(v.begin(), v.end());
+        size_t seed = 0;
+        for (const auto& x : v)
+            std::_hash_combine(seed, x);
+        return seed;
     }
 };
 
