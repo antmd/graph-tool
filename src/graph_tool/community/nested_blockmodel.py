@@ -517,6 +517,9 @@ def nested_mcmc_sweep(state, beta=1., c=1., dl=False, sequential=True, verbose=F
     .. [peixoto-hierarchical-2014] Tiago P. Peixoto, "Hierarchical block structures and high-resolution
        model selection in large networks ", Phys. Rev. X 4, 011047 (2014), :doi:`10.1103/PhysRevX.4.011047`,
        :arxiv:`1310.4377`.
+    .. [peixoto-model-2014] Tiago P. Peixoto, "Model selection and hypothesis
+       testing for large-scale network models with overlapping groups",
+       :arxiv:`1409.3059`.
     """
 
     rets = []
@@ -835,6 +838,9 @@ def nested_tree_sweep(state, min_B=None, max_B=None, max_b=None, nsweeps=10,
     .. [peixoto-hierarchical-2014] Tiago P. Peixoto, "Hierarchical block structures and high-resolution
        model selection in large networks ", Phys. Rev. X 4, 011047 (2014), :doi:`10.1103/PhysRevX.4.011047`,
        :arxiv:`1310.4377`.
+    .. [peixoto-model-2014] Tiago P. Peixoto, "Model selection and hypothesis
+       testing for large-scale network models with overlapping groups",
+       :arxiv:`1409.3059`.
     """
 
     dl_ent = kwargs.get("dl_ent", False)
@@ -1095,6 +1101,9 @@ def init_nested_state(g, Bs, deg_corr=True, overlap=False, dl=False, dense=False
     .. [peixoto-hierarchical-2014] Tiago P. Peixoto, "Hierarchical block structures and high-resolution
        model selection in large networks ", Phys. Rev. X 4, 011047 (2014), :doi:`10.1103/PhysRevX.4.011047`,
        :arxiv:`1310.4377`.
+    .. [peixoto-model-2014] Tiago P. Peixoto, "Model selection and hypothesis
+       testing for large-scale network models with overlapping groups",
+       :arxiv:`1409.3059`.
     """
 
     dl_ent = kwargs.get("dl_ent", False)
@@ -1407,6 +1416,9 @@ def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, min_B=None, max_B=None,
     .. [peixoto-efficient-2014] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
        heuristic for the inference of stochastic block models", Phys. Rev. E 89, 012804 (2014),
        :doi:`10.1103/PhysRevE.89.012804`, :arxiv:`1310.4378`.
+    .. [peixoto-model-2014] Tiago P. Peixoto, "Model selection and hypothesis
+       testing for large-scale network models with overlapping groups",
+       :arxiv:`1409.3059`.
     """
 
     dl_ent = kwargs.get("dl_ent", False)

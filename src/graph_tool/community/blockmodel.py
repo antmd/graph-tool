@@ -914,6 +914,9 @@ def mcmc_sweep(state, beta=1., c=1., dl=False, dense=False, multigraph=False,
     .. [peixoto-efficient-2014] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
        heuristic for the inference of stochastic block models", Phys. Rev. E 89, 012804 (2014),
        :doi:`10.1103/PhysRevE.89.012804`, :arxiv:`1310.4378`.
+    .. [peixoto-model-2014] Tiago P. Peixoto, "Model selection and hypothesis
+       testing for large-scale network models with overlapping groups",
+       :arxiv:`1409.3059`.
     """
 
     if state.B == 1:
@@ -1935,6 +1938,9 @@ def minimize_blockmodel_dl(g, deg_corr=True, overlap=False,
     .. [peixoto-efficient-2014] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
        heuristic for the inference of stochastic block models", Phys. Rev. E 89, 012804 (2014),
        :doi:`10.1103/PhysRevE.89.012804`, :arxiv:`1310.4378`.
+    .. [peixoto-model-2014] Tiago P. Peixoto, "Model selection and hypothesis
+       testing for large-scale network models with overlapping groups",
+       :arxiv:`1409.3059`.
     """
 
     nested_dl = kwargs.get("nested_dl", False)
