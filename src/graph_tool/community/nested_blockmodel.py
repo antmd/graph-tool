@@ -105,12 +105,13 @@ class NestedBlockState(object):
                                               clabel=self.clabel,
                                               max_BE=max_BE)
                     self.clabel = state.clabel.copy()
+                    state.clabel.a = 0
                 else:
                     state = BlockState(g, B=Bl, b=bl,
                                        eweight=ecount,
                                        vweight=vcount,
                                        deg_corr=deg_corr != False,
-                                       clabel=self.clabel,
+                                       #clabel=self.clabel,
                                        max_BE=max_BE)
             else:
                 state = self.levels[-1].get_block_state(b=bl,
@@ -121,9 +122,9 @@ class NestedBlockState(object):
 
             self.levels.append(state)
 
-        for l in range(len(self.levels) - 1):
-            clabel = self.__project_partition(l, l+1)
-            self.levels[l].clabel = clabel
+        # for l in range(len(self.levels) - 1):
+        #     clabel = self.__project_partition(l, l+1)
+        #     self.levels[l].clabel = clabel
 
 
     def copy(self, deg_corr=None, overlap=None, clabel=None):
@@ -181,6 +182,8 @@ class NestedBlockState(object):
 
     def __consistency_check(self, op, l):
 
+        print("consistency check after", op, "at level", l)
+
         for j in range(len(self.levels)):
 
             c_state = self.levels[j].copy()
@@ -234,6 +237,19 @@ class NestedBlockState(object):
             assert self.levels[j].B == self.levels[j+1].N, "inconsistency  at level %d after %s of level %d, different sizes" % (j + 1, op, l)
 
 
+            # verify hierarchy / clabel consistency
+            clabel = self.__project_partition(0, j)
+            self.levels[0].clabel.a = self.clabel.a
+            assert self.levels[0]._BlockState__check_clabel(),  "inconsistency at level %d after %s of level %d, clabel invalidated" % (j + 1, op, l)
+            self.levels[0].clabel.a = 0
+
+            # verify hierarchy consistency
+            clabel = self.__project_partition(j, j + 1)
+            self.levels[0].clabel.a = self.clabel.a
+            assert self.levels[0]._BlockState__check_clabel(),  "inconsistency at level %d after %s of level %d, partition not compatible with upper level" % (j + 1, op, l)
+            self.levels[0].clabel.a = 0
+
+
     def __rebuild_level(self, l, b, clabel=None):
         r"""Replace level ``l`` given the new partition ``b``, and the
         projected upper level partition clabel."""
@@ -258,8 +274,11 @@ class NestedBlockState(object):
             self.levels.append(None)
         self.levels[l + 1] = bstate
 
-        if l + 1 < len(self.levels) - 1:
-            self.levels[l + 1].clabel = self.__project_partition(l + 1, l + 2)
+        self.levels[l].clabel.a = 0
+        self.levels[l + 1].clabel.a = 0
+
+        # if l + 1 < len(self.levels) - 1:
+        #     self.levels[l + 1].clabel = self.__project_partition(l + 1, l + 2)
 
 
         if l + 1 < len(self.levels) - 1:
@@ -322,10 +341,11 @@ class NestedBlockState(object):
             self.__consistency_check("delete", l)
 
     def __duplicate_level(self, l):
+        assert l > 0, "attempted to duplicate level 0"
         if not self.levels[l].overlap:
             bstate = self.levels[l].copy(b=self.levels[l].g.vertex_index.copy("int"))
         else:
-            bstate = self.levels[l].copy(b=self.levels[l].node_index)
+            bstate = self.levels[l].copy(b=arange(self.levels[l].g.num_vertices()))
         self.levels.insert(l, bstate)
 
         if __test__:
@@ -433,7 +453,7 @@ class NestedBlockState(object):
         r"""Project the partition at level ``l`` onto the lowest level, and return the
         corresponding :class:`~graph_tool.community.BlockState` (or
         :class:`~graph_tool.community.OverlapBlockState`).  """
-        if self.overlap != "full" or True:  ### HERE !! ###
+        if self.overlap != "full":
             clabel = b = self.levels[l].b.copy()
             while l - 1 >= 0:
                 clabel = b
@@ -442,7 +462,7 @@ class NestedBlockState(object):
                 l -= 1
         else:
             b = self.levels[l].b.copy()
-        state = self.levels[0].copy(b=b)
+        state = self.levels[0].copy(b=b.a)
         return state
 
     def print_summary(self):
@@ -526,10 +546,27 @@ def nested_mcmc_sweep(state, beta=1., c=1., dl=False, sequential=True, verbose=F
     for l, bstate in enumerate(state.levels):
         if verbose:
             print("Level:", l, "N:", bstate.N, "B:", bstate.B)
+
+        # constraint partitions not to invalidate upper layers
+        if l < len(state.levels) - 1:
+            clabel = state._NestedBlockState__project_partition(l, l + 1)
+        else:
+            clabel = bstate.g.new_vertex_property("int")
+
+        # propagate externally imposed clabel at the bottom
+        cclabel = state._NestedBlockState__propagate_clabel(l)
+        cclabel.a += clabel.a * (cclabel.a.max() + 1)
+        continuous_map(cclabel)
+
+        bstate.clabel = cclabel
+
         ret = mcmc_sweep(bstate, beta=beta, c=c, dl=dl,
                          dense = l > 0 and state.deg_corr != "full",
                          multigraph = l > 0,
                          sequential=sequential, verbose=verbose)
+
+        bstate.clable.a = 0
+
         rets.append(ret)
     return rets
 
@@ -542,6 +579,9 @@ def replace_level(l, state, min_B=None, max_B=None, max_b=None, nsweeps=10,
     groups. This may change not only the state at level l, but also the one at
     level l + 1, which needs to be 'rebuilt' because of the label changes at
     level l."""
+
+    if __test__:
+        state._NestedBlockState__consistency_check("(before) replace level", l)
 
     bstate = state.levels[l]
     g = bstate.g
@@ -564,15 +604,17 @@ def replace_level(l, state, min_B=None, max_B=None, max_b=None, nsweeps=10,
     else:
         clabel = bstate.g.new_vertex_property("int")
 
-    assert min_B <= max_B, (min_B, max_B, bstate.B, state.clabel.a.max() + 1, clabel.a.max() + 1, l)
+    assert min_B <= max_B, (min_B, max_B, bstate.B, bstate.N, g.num_vertices(), state.clabel.a.max() + 1, clabel.a.max() + 1, l)
 
     # propagate externally imposed clabel at the bottom
     cclabel = state._NestedBlockState__propagate_clabel(l)
+    assert cclabel.a.max() <= state.clabel.a.max(),  (cclabel.a.max(), state.clabel.a.max())
     cclabel.a += clabel.a * (cclabel.a.max() + 1)
     continuous_map(cclabel)
+
     min_B = max(min_B, cclabel.a.max() + 1)
 
-    assert min_B <= max_B, (min_B, max_B, bstate.B, cclabel.a.max() + 1, state.clabel.a.max() + 1, clabel.a.max() + 1, l)
+    assert min_B <= max_B, (min_B, max_B, bstate.B, bstate.N, g.num_vertices(), cclabel.a.max() + 1, state.clabel.a.max() + 1, clabel.a.max() + 1, l)
 
     if __test__:
         assert bstate._BlockState__check_clabel(), "invalid clabel before minimize!"
@@ -590,7 +632,9 @@ def replace_level(l, state, min_B=None, max_B=None, max_b=None, nsweeps=10,
         assert clabel.a.max() + 1 <= min_B
 
     if l == 0 and max_b is not None:
-        istate = state.levels[0].copy(b=max_b, clabel=clabel.a)
+        istate = state.levels[0].copy(b=max_b.copy(),
+                                      clabel=cclabel.a if state.overlap else cclabel)
+        assert istate._BlockState__check_clabel(), "invalid clabel!"
         if istate.B > max_B:
             istate = multilevel_minimize(istate, B=max_B, nsweeps=nsweeps,
                                          nmerge_sweeps=nmerge_sweeps, c=c,
@@ -626,16 +670,16 @@ def replace_level(l, state, min_B=None, max_B=None, max_b=None, nsweeps=10,
                                  init_states=init_states,
                                  verbose=verbose=="full",
                                  ##exaustive=g.num_vertices() <= 100,
-                                 minimize_state=minimize_state.minimize_state,
+                                 #minimize_state=minimize_state.minimize_state, >>>>>> HERE <<<<<
                                  checkpoint=checkpoint,
                                  dl_ent=dl_ent)
-    #res.clabel = clabel.copy()
-    b = res.b
 
     if __test__:
-        assert (res.clabel.a == cclabel.a).all()
+        assert (res.clabel.a == cclabel.a).all(), (res.clabel.a, cclabel.a)
         assert res._BlockState__check_clabel(), "invalid clabel after minimize!"
-        assert min_B <= b.a.max() + 1 and b.a.max() + 1 <= max_B, "%d %d %d" % (b.a.max() + 1, min_B, max_B)
+
+    res.clabel.a = 0
+    b = res.b
 
     Sf = get_b_dl(res,
                   dense=(l > 0 and state.deg_corr != "full") or dense,
@@ -663,6 +707,9 @@ def replace_level(l, state, min_B=None, max_B=None, max_b=None, nsweeps=10,
             print(" [kept, rejected (%d, %g) vs (%d, %g)]" % (res.B, Sf_rej, bstate.B, Sb))
         else:
             print()
+
+    if __test__:
+        state._NestedBlockState__consistency_check("replace level", l)
 
     dS = Sf - Sb
     return dS, kept
@@ -891,6 +938,7 @@ def nested_tree_sweep(state, min_B=None, max_B=None, max_b=None, nsweeps=10,
         if __test__:
             if kept:
                 assert abs(state.entropy(dl_ent=dl_ent) - Si) < 1e-6, "inconsistent replace at level %d (%g, %g)" % (l, state.entropy(), Si)
+            state._NestedBlockState__consistency_check("replace level", l)
 
         # delete level
         if (kept and l > 0 and l < len(state.levels) - 1 and
@@ -921,7 +969,7 @@ def nested_tree_sweep(state, min_B=None, max_B=None, max_b=None, nsweeps=10,
             if __test__:
                 if kept:
                     assert abs(state.entropy(dl_ent=dl_ent) - Si) < 1e-6, "inconsistent delete at level %d (%g, %g)" % (l, state.entropy(), Si)
-                    state._NestedBlockState__consistency_check("delete complete", l)
+                state._NestedBlockState__consistency_check("delete complete", l)
 
         # insert new level (duplicate and replace)
         if kept and l > 0:
@@ -1135,14 +1183,14 @@ def init_nested_state(g, Bs, deg_corr=True, overlap=False, dl=False, dense=False
                                                vweight=vweight,
                                                eweight=ecount,
                                                deg_corr=deg_corr != False,
-                                               clabel=clabel,
+                                               #clabel=clabel,
                                                max_BE=max_BE)
                 else:
                     bstate = BlockState(bg, B=bg.num_vertices(), #b=bg.vertex_index.copy("int"),
                                         vweight=vweight,
                                         eweight=ecount,
                                         deg_corr=deg_corr != False,
-                                        clabel=clabel,
+                                        #clabel=clabel,
                                         max_BE=max_BE)
             else:
                 bstate = state.levels[l-1].get_block_state(b=ba,

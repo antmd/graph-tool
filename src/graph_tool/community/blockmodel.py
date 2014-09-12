@@ -198,6 +198,8 @@ class BlockState(object):
         libcommunity.init_lgamma(int(3 * max(self.E, self.N)))
 
     def __del__(self):
+        if BlockState is not None:
+            return
         BlockState._state_ref_count -= 1
         if BlockState._state_ref_count == 0:
             libcommunity.clear_safelog()
@@ -1977,7 +1979,8 @@ def minimize_blockmodel_dl(g, deg_corr=True, overlap=False,
                                        sequential=sequential, parallel=parallel,
                                        r=r, nmerge_sweeps=nmerge_sweeps,
                                        max_B=max_B, min_B=min_B, mid_B=mid_B,
-                                       clabel=None, checkpoint=checkpoint,
+                                       clabel=clabel if isinstance(clabel, PropertyMap) else None,
+                                       checkpoint=checkpoint,
                                        minimize_state=minimize_state,
                                        exhaustive=exhaustive, max_BE=max_BE,
                                        nested_dl=nested_dl, overlap=False,
@@ -2059,11 +2062,11 @@ def minimize_blockmodel_dl(g, deg_corr=True, overlap=False,
         if overlap:
             state = OverlapBlockState(g, B=2 * g.num_edges(), deg_corr=deg_corr,
                                       vweight=vweight, eweight=eweight,
-                                      clabel=clabel if not overlap else None, max_BE=max_BE)
+                                      clabel=clabel, max_BE=max_BE)
         else:
             state = BlockState(g, B=g.num_vertices(), deg_corr=deg_corr,
-                               vweight=vweight, eweight=eweight,
-                               clabel=clabel if not overlap else None, max_BE=max_BE)
+                               vweight=vweight, eweight=eweight, clabel=clabel,
+                               max_BE=max_BE)
 
             if __test__:
                 assert state._BlockState__check_clabel(), "clabel invalid at copying!"

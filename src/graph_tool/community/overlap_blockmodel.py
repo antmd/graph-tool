@@ -232,7 +232,8 @@ class OverlapBlockState(BlockState):
         libcommunity.init_lgamma(int(3 * max(self.E, self.N)))
 
     def __del__(self):
-        BlockState.__del__(self)
+        if BlockState is not None:
+            BlockState.__del__(self)
 
     def __repr__(self):
         return "<OverlapBlockState object with %d blocks,%s for graph %s, at 0x%x>" % \

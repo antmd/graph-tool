@@ -649,7 +649,6 @@ void vector_continuous_map(boost::python::object ovals)
     multi_array_ref<int32_t,1> vals = get_array<int32_t,1>(ovals);
     unordered_map<int32_t, size_t> map;
 
-
     for (size_t i = 0; i < vals.size(); ++i)
     {
         int32_t v = vals[i];
