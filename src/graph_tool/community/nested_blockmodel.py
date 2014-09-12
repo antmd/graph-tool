@@ -538,7 +538,7 @@ def replace_level(l, state, min_B=None, max_B=None, max_b=None, nsweeps=10,
                   dl=False, dense=False, multigraph=True, sparse_thresh=100,
                   verbose=False, checkpoint=None, minimize_state=None,
                   dl_ent=False):
-    """Replaces level l with another state with a possibly different number of
+    r"""Replaces level l with another state with a possibly different number of
     groups. This may change not only the state at level l, but also the one at
     level l + 1, which needs to be 'rebuilt' because of the label changes at
     level l."""
@@ -556,20 +556,23 @@ def replace_level(l, state, min_B=None, max_B=None, max_b=None, nsweeps=10,
     if l > 0 or max_B is None:
         max_B = bstate.N
 
+    min_B = max(min_B, state.clabel.a.max() + 1)
+
+    # constraint partitions not to invalidate upper layers
     if l < len(state.levels) - 1:
         clabel = state._NestedBlockState__project_partition(l, l + 1)
     else:
         clabel = bstate.g.new_vertex_property("int")
 
-    assert min_B <= max_B, (min_B, max_B, bstate.B, state.clabel.a.max() + 1, clabel.a.max() + 1)
+    assert min_B <= max_B, (min_B, max_B, bstate.B, state.clabel.a.max() + 1, clabel.a.max() + 1, l)
 
-    # propagate externally imposed clabels
+    # propagate externally imposed clabel at the bottom
     cclabel = state._NestedBlockState__propagate_clabel(l)
     cclabel.a += clabel.a * (cclabel.a.max() + 1)
     continuous_map(cclabel)
     min_B = max(min_B, cclabel.a.max() + 1)
 
-    assert min_B <= max_B, (min_B, max_B, bstate.B, state.clabel.a.max() + 1, clabel.a.max() + 1)
+    assert min_B <= max_B, (min_B, max_B, bstate.B, cclabel.a.max() + 1, state.clabel.a.max() + 1, clabel.a.max() + 1, l)
 
     if __test__:
         assert bstate._BlockState__check_clabel(), "invalid clabel before minimize!"
@@ -607,7 +610,8 @@ def replace_level(l, state, min_B=None, max_B=None, max_b=None, nsweeps=10,
                                  c=c, r=r, sequential=sequential,
                                  adaptive_sweeps=True, greedy_cooling=True,
                                  epsilon=epsilon,
-                                 max_B=max_B, min_B=min_B,
+                                 max_B=max_B,
+                                 min_B=min_B,
                                  clabel=cclabel if not bstate.overlap else cclabel.a,
                                  max_BE=bstate.max_BE,
                                  dl=dl,
@@ -625,11 +629,11 @@ def replace_level(l, state, min_B=None, max_B=None, max_b=None, nsweeps=10,
                                  minimize_state=minimize_state.minimize_state,
                                  checkpoint=checkpoint,
                                  dl_ent=dl_ent)
-    res.clabel = clabel.copy()
+    #res.clabel = clabel.copy()
     b = res.b
 
     if __test__:
-        assert (res.clabel.a == clabel.a).all()
+        assert (res.clabel.a == cclabel.a).all()
         assert res._BlockState__check_clabel(), "invalid clabel after minimize!"
         assert min_B <= b.a.max() + 1 and b.a.max() + 1 <= max_B, "%d %d %d" % (b.a.max() + 1, min_B, max_B)
 
@@ -1429,7 +1433,8 @@ def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, min_B=None, max_B=None,
     if overlap and nonoverlap_init and minimize_state.init and bs is None:
         if verbose:
             print("Non-overlapping initialization...")
-        state = minimize_nested_blockmodel_dl(g, Bs=Bs, bs=bs, min_B=min_B,
+        state = minimize_nested_blockmodel_dl(g, Bs=Bs, bs=bs,
+                                              min_B=min_B,
                                               max_B=max_B,
                                               deg_corr=deg_corr, overlap=False,
                                               dl=dl, dense=dense,
@@ -1459,6 +1464,7 @@ def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, min_B=None, max_B=None,
                               sequential=sequential)
             bs = [s.b.a for s in state.levels]
             bs[0] = bstate.b.a
+
         else:
             bstates = [bstate.copy(overlap=True) for bstate in state.levels]
             bs = [s.b.a for s in bstates]
