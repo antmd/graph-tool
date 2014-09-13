@@ -84,9 +84,13 @@ class BlockState(object):
         memory,
     """
 
+    _state_ref_count = 0
+
     def __init__(self, g, eweight=None, vweight=None, b=None,
                  B=None, clabel=None, deg_corr=True,
                  max_BE=1000, **kwargs):
+
+        BlockState._state_ref_count += 1
 
         # initialize weights to unity, if necessary
         if eweight is None:
@@ -192,6 +196,14 @@ class BlockState(object):
         libcommunity.init_safelog(int(5 * max(self.E, self.N)))
         libcommunity.init_xlogx(int(5 * max(self.E, self.N)))
         libcommunity.init_lgamma(int(3 * max(self.E, self.N)))
+
+    def __del__(self):
+        BlockState._state_ref_count -= 1
+        if BlockState._state_ref_count == 0:
+            libcommunity.clear_safelog()
+            libcommunity.clear_xlogx()
+            libcommunity.clear_lgamma()
+
 
     def __repr__(self):
         return "<BlockState object with %d blocks,%s for graph %s, at 0x%x>" % \

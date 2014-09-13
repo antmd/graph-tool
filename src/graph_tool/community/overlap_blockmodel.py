@@ -68,6 +68,8 @@ class OverlapBlockState(BlockState):
     def __init__(self, g, b=None, B=None, clabel=None, deg_corr=True,
                  max_BE=1000, **kwargs):
 
+        BlockState._state_ref_count += 1
+
         # determine if there is a base graph, and overlapping structure
         self.base_g = kwargs.get("base_g", None)
 
@@ -220,6 +222,9 @@ class OverlapBlockState(BlockState):
         libcommunity.init_safelog(int(5 * max(self.E, self.N)))
         libcommunity.init_xlogx(int(5 * max(self.E, self.N)))
         libcommunity.init_lgamma(int(3 * max(self.E, self.N)))
+
+    def __del__(self):
+        BlockState.__del__(self)
 
     def __repr__(self):
         return "<OverlapBlockState object with %d blocks,%s for graph %s, at 0x%x>" % \
