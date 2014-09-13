@@ -46,9 +46,16 @@ class OverlapBlockState(BlockState):
     ----------
     g : :class:`~graph_tool.Graph`
         Graph to be modelled.
-    b : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
-        Initial block labels on the vertices. If not supplied, it will be
-        randomly sampled.
+    b : :class:`~graph_tool.PropertyMap` or :class:`numpy.ndarray` (optional, default: ``None``)
+        Initial block labels on the vertices or half-edges. If not supplied, it
+        will be randomly sampled.
+        If the value passed is a vertex property map, it will be assumed to be a
+        non-overlapping partition of the vertices. If it is an edge property
+        map, it should contain a vector for each edge, with the block labels at
+        each end point (sorted according to their vertex index, in the case of
+        undirected graphs, otherwise from source to target). If the value is an
+        :class:`numpy.ndarray`, it will be assumed to correspond directly to a
+        partition of the list of half-edges.
     B : ``int`` (optional, default: ``None``)
         Number of blocks. If not supplied it will be either obtained from the
         parameter ``b``, or set to the maximum possible value according to the
@@ -140,8 +147,9 @@ class OverlapBlockState(BlockState):
             self.b = b
         else:
             # if a partition is available, we will incorporate it.
-            # in the overlapping case, this must correspond to the partition of
-            # the *half-edges*
+            # in the overlapping case
+            # at this point, *b* must correspond to the partition of
+            # *half-edges*
             if isinstance(b, numpy.ndarray):
                 self.b = g.new_vertex_property("int")
                 self.b.fa = b
