@@ -53,10 +53,12 @@ struct get_eigenvector
 
         t_type norm = 0;
         t_type delta = epsilon + 1;
+        t_type prev_delta = delta + 1;
         size_t iter = 0;
         int i, N = num_vertices(g);
         while (delta >= epsilon)
         {
+            prev_delta = delta;
             norm = 0;
             #pragma omp parallel for default(shared) private(i) \
                 schedule(runtime) if (N > 100) reduction(+:norm)
@@ -98,7 +100,9 @@ struct get_eigenvector
             swap(c_temp, c);
 
             ++iter;
-            if (max_iter > 0 && iter== max_iter)
+            if (max_iter > 0 && iter == max_iter)
+                break;
+            if (max_iter == 0 && delta > prev_delta && iter > 100)
                 break;
         }
 
