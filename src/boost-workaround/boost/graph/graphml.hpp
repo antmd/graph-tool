@@ -233,22 +233,26 @@ public:
             if (m_value_type ==
                 m_type_names[mpl::find<ValueVector,Value>::type::pos::value])
             {
+                std::string val = m_value;
+                if (m_value_type == "boolean")
+                {
+                    if (val == "true" || val == "True")
+                        val = "1";
+                    if (val == "false" || val == "False")
+                        val = "0";
+                }
+
                 if (is_same<Value,uint8_t>::value) // chars are stored as ints
                 {
-                    int v = lexical_cast<int>(m_value);
+                    int v = lexical_cast<int>(val);
                     put(m_name, m_dp, m_key, uint8_t(v));
                 }
                 else
                 {
                     if (is_same<Value, boost::python::object>::value)
-                    {
-                        std::string val = base64_decode(m_value);
-                        put(m_name, m_dp, m_key, lexical_cast<Value>(val));
-                    }
-                    else
-                    {
-                        put(m_name, m_dp, m_key, lexical_cast<Value>(m_value));
-                    }
+                        val = base64_decode(m_value);
+
+                    put(m_name, m_dp, m_key, lexical_cast<Value>(val));
                 }
                 m_type_found = true;
             }
