@@ -198,14 +198,14 @@ class BlockState(object):
         libcommunity.init_lgamma(int(3 * max(self.E, self.N)))
 
     def __del__(self):
-        if BlockState is not None:
-            return
-        BlockState._state_ref_count -= 1
-        if BlockState._state_ref_count == 0:
-            libcommunity.clear_safelog()
-            libcommunity.clear_xlogx()
-            libcommunity.clear_lgamma()
-
+        try:
+            BlockState._state_ref_count -= 1
+            if BlockState._state_ref_count == 0:
+                libcommunity.clear_safelog()
+                libcommunity.clear_xlogx()
+                libcommunity.clear_lgamma()
+        except (ValueError, AttributeError):
+            pass
 
     def __repr__(self):
         return "<BlockState object with %d blocks,%s for graph %s, at 0x%x>" % \
@@ -1469,8 +1469,6 @@ def multilevel_minimize(state, B, nsweeps=10, adaptive_sweeps=True, epsilon=0,
        :doi:`10.1103/PhysRevE.89.012804`, :arxiv:`1310.4378`.
     """
 
-    nonoverlap_compare = kwargs.get("nonoverlap_compare", False)
-
     if minimize_state is None:
         minimize_state = MinimizeState()
     b_cache = minimize_state.b_cache
@@ -1482,6 +1480,11 @@ def multilevel_minimize(state, B, nsweeps=10, adaptive_sweeps=True, epsilon=0,
                    sequential=sequential, parallel=parallel)
     kwargs = copy.copy(kwargs)
     kwargs.update(nkwargs)
+
+    nonoverlap_compare = kwargs.get("nonoverlap_compare", False)
+    if "nonoverlap_compare" in kwargs:
+        del kwargs["nonoverlap_compare"]
+    assert not nonoverlap_compare, "don't do this"
 
     orig_state = state
 
