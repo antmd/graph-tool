@@ -89,15 +89,11 @@ public:
     {
         if (_dist_map[u] > _max_dist)
             throw stop_search();
-    }
 
-    template <class Graph>
-    void discover_vertex(typename graph_traits<Graph>::vertex_descriptor u,
-                         Graph&)
-    {
         if (u == _target)
             throw stop_search();
     }
+
 
 private:
     DistMap _dist_map;
