@@ -444,6 +444,8 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
         If ``True``, the layout will be scaled to fit the entire clip region.
         If a float value is given, it will be interpreted as ``True``, and in
         addition the viewport will be scaled out by that factor.
+    bg_color : str or sequence (optional, default: ``None``)
+        Background color. The default is transparent.
     vertex_* : :class:`~graph_tool.PropertyMap` or arbitrary types (optional, default: ``None``)
         Parameters following the pattern ``vertex_<prop-name>`` specify the
         vertex property with name ``<prop-name>``, as an alternative to the
@@ -590,6 +592,8 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         Output file format. Possible values are ``"auto"``, ``"ps"``, ``"pdf"``,
         ``"svg"``, and ``"png"``. If the value is ``"auto"``, the format is
         guessed from the ``output`` parameter.
+    bg_color : str or sequence (optional, default: ``None``)
+        Background color. The default is transparent.
     vertex_* : :class:`~graph_tool.PropertyMap` or arbitrary types (optional, default: ``None``)
         Parameters following the pattern ``vertex_<prop-name>`` specify the
         vertex property with name ``<prop-name>``, as an alternative to the
