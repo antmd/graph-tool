@@ -582,9 +582,11 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
     inline : bool (optional, default: ``False``)
         If ``True`` and an `IPython notebook <http://ipython.org/notebook>`_  is
         being used, an inline version of the drawing will be returned.
-    mplfig : matplotlib object (optional, default: ``None``)
-        The ``mplfig`` needs an artists attribute. This can for example be a
-        mpl Figure or Axes. Only the cairo backend is supported, use switch_backend('cairo').
+    mplfig : :mod:`matplotlib` container object (optional, default: ``None``)
+        The ``mplfig`` object needs to have an ``artists`` attribute. This can
+        for example be a :class:`matplotlib.figure.Figure` or
+        :class:`matplotlib.axes.Axes`. Only the cairo backend is supported; use
+        ``switch_backend('cairo')``.
     output : string or file object (optional, default: ``None``)
         Output file name (or object). If not given, the graph will be displayed via
         :func:`interactive_window`.
@@ -866,9 +868,28 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                                            bg_color)
 
     if mplfig:
-        mplfig.artists.append(GraphToolArtist(g, pos, vprops, eprops, vorder, eorder,
-                nodesfirst, **kwargs))
-        return
+        ax = None
+        if isinstance(mplfig, matplotlib.figure.Figure):
+            ctr = ax = mplfig.gca()
+        elif isinstance(mplfig, matplotlib.axes.Axes):
+            ctr = ax = mplfig
+        else:
+            ctr = mplfig
+
+        artist = GraphArtist(g, pos, vprops, eprops, vorder, eorder, nodesfirst,
+                             ax, **kwargs)
+        ctr.artists.append(artist)
+
+        if fit_view and ax is not None:
+            x, y = ungroup_vector_property(pos, [0, 1])
+            l, r = x.a.min(), x.a.max()
+            b, t = y.a.min(), y.a.max()
+            w = r - l
+            h = t - b
+            ax.set_xlim(l - w * .1, r + w * .1)
+            ax.set_ylim(b - h * .1, t + h * .1)
+
+        return pos
 
     if inline:
         if fmt == "auto":
@@ -1243,14 +1264,18 @@ def gen_surface(name):
 # matplotlib
 # ==========
 
-class GraphToolArtist(matplotlib.artist.Artist):
-    """Matplotlib artist class that draws graph_tool graphs.
+class GraphArtist(matplotlib.artist.Artist):
+    """:class:`matplotlib.artist.Artist` specialization that draws
+       :class:`graph_tool.Graph` instances.
 
-    Only Cairo-based backends are supported.
+    .. warning::
+
+        Only Cairo-based backends are supported.
+
     """
 
     def __init__(self, g, pos, vprops, eprops, vorder, eorder,
-                nodesfirst, **kwargs):
+                nodesfirst, ax=None, **kwargs):
         matplotlib.artist.Artist.__init__(self)
         self.g = g
         self.pos = pos
@@ -1259,10 +1284,28 @@ class GraphToolArtist(matplotlib.artist.Artist):
         self.vorder = vorder
         self.eorder = eorder
         self.nodesfirst = nodesfirst
+        self.ax = ax
         self.kwargs = kwargs
 
     def draw(self, renderer):
         if not isinstance(renderer, matplotlib.backends.backend_cairo.RendererCairo):
             raise NotImplementedError("graph plotting is supported only on Cairo backends")
-        cairo_draw(self.g, self.pos, renderer.gc.ctx, self.vprops, self.eprops, self.vorder, self.eorder,
-                self.nodesfirst, self.kwargs)
+
+        ctx = renderer.gc.ctx
+        ctx.save()
+
+        if self.ax is not None:
+            m = self.ax.transData.get_affine().get_matrix()
+            m = cairo.Matrix(m[0,0], m[1, 0], m[0, 1], m[1, 1], m[0, 2], m[1,2])
+            ctx.set_matrix(m)
+
+            l, r = self.ax.get_xlim()
+            b, t = self.ax.get_ylim()
+            ctx.rectangle(l, b, r-l, t-b)
+            ctx.clip()
+
+
+        cairo_draw(self.g, self.pos, ctx, self.vprops, self.eprops,
+                   self.vorder, self.eorder, self.nodesfirst, self.kwargs)
+
+        ctx.restore()
