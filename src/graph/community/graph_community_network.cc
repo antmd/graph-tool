@@ -84,15 +84,14 @@ void community_network_edges(GraphInterface& gi, GraphInterface& cgi,
                              boost::any community_property,
                              boost::any condensed_community_property,
                              boost::any edge_count, boost::any eweight,
-                             bool self_loops);
+                             bool self_loops, bool parallel_edges);
 
 void community_network(GraphInterface& gi, GraphInterface& cgi,
                        boost::any community_property,
                        boost::any condensed_community_property,
-                       boost::any vertex_count,
-                       boost::any edge_count, boost::any vweight,
-                       boost::any eweight,
-                       bool self_loops)
+                       boost::any vertex_count, boost::any edge_count,
+                       boost::any vweight, boost::any eweight, bool self_loops,
+                       bool parallel_edges)
 {
     typedef boost::mpl::push_back<writable_vertex_scalar_properties, no_vweight_map_t>::type
         vweight_properties;
@@ -110,5 +109,5 @@ void community_network(GraphInterface& gi, GraphInterface& cgi,
 
     community_network_edges(gi, cgi, community_property,
                             condensed_community_property, edge_count,
-                            eweight, self_loops);
+                            eweight, self_loops, parallel_edges);
 }

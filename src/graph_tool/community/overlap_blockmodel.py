@@ -35,7 +35,7 @@ from .. dl_import import dl_import
 dl_import("from . import libgraph_tool_community as libcommunity")
 
 from . blockmodel import *
-from . blockmodel import __test__
+from . blockmodel import _bm_test
 
 class OverlapBlockState(BlockState):
     r"""This class encapsulates the overlapping block state of a given graph.
@@ -85,6 +85,7 @@ class OverlapBlockState(BlockState):
         node_in_degs = kwargs.get("node_in_degs", None)
         node_out_degs = kwargs.get("node_out_degs", None)
         half_edges = kwargs.get("half_edges", None)
+        eindex = kwargs.get("eindex", None)
 
         if node_index is not None and self.base_g is None:
             raise ValueError("Must specify base graph if node_index is specified...")
@@ -95,11 +96,11 @@ class OverlapBlockState(BlockState):
             self.base_g = g
 
             # substitute provided graph by its half-edge graph
-            g, b, node_index, half_edges = half_edge_graph(g, b, B)
+            g, b, node_index, half_edges, eindex = half_edge_graph(g, b, B)
 
         # create half edges set if absent
-        if node_index is not None and half_edges is None:
-            half_edges = self.base_g.new_vertex_property("vector<int>")
+        if half_edges is None:
+            half_edges = self.base_g.new_vertex_property("vector<int64_t>")
             libcommunity.get_nodeset_overlap(g._Graph__graph,
                                              _prop("v", g, node_index),
                                              _prop("v", self.base_g, half_edges))
@@ -107,10 +108,7 @@ class OverlapBlockState(BlockState):
         self.overlap = True
         self.node_index = node_index
         self.half_edges = half_edges
-        if self.node_index is None:
-            self.node_index = g.new_vertex_property("int")
-        if self.half_edges is None:
-            self.half_edges = g.new_vertex_property("vector<int>")
+        self.eindex = eindex
 
         # configure the main graph and block model parameters
         self.g = g
@@ -129,9 +127,9 @@ class OverlapBlockState(BlockState):
         self.vweight = vweight
         self.is_weighted = False
 
-        # ensure we have at most as many blocks as nodes
-        if B is not None:
-            B = min(B, self.g.num_vertices())
+        # # ensure we have at most as many blocks as nodes
+        # if B is not None:
+        #     B = min(B, self.g.num_vertices())
 
         if b is None:
             # create a random partition into B blocks.
@@ -195,16 +193,17 @@ class OverlapBlockState(BlockState):
                                     _prop("v", self.base_g, bv),
                                     _prop("v", self.bg, self.wr))
 
+        NN = GraphView(self.base_g, skip_vfilt=True).num_vertices()
         self.overlap_stats = libcommunity.init_overlap_stats(self.g._Graph__graph,
                                                              _prop("v", self.g, self.b),
                                                              _prop("v", self.g, self.half_edges),
                                                              _prop("v", self.g, self.node_index),
-                                                             self.B)
+                                                             NN, self.B)
 
         if clabel is not None:
             if isinstance(clabel, PropertyMap):
                 # if clabel is a property map, we will assume it constraints the *nodes*
-                if __test__:
+                if _bm_test():
                     assert len(clabel.a) < self.g.num_vertices()
                 self.clabel = self.node_index.copy()
                 pmap(self.clabel, clabel)
@@ -225,6 +224,7 @@ class OverlapBlockState(BlockState):
         self.nsampler = None
         self.sweep_vertices = None
         self.partition_stats = libcommunity.overlap_partition_stats()
+        self.edges_dl = False
 
         # computation cache
         libcommunity.init_safelog(int(5 * max(self.E, self.N)))
@@ -242,12 +242,13 @@ class OverlapBlockState(BlockState):
             (self.B, " degree corrected," if self.deg_corr else "",
              str(self.base_g), id(self))
 
-    def __init_partition_stats(self, empty=True):
+    def __init_partition_stats(self, empty=True, edges_dl=False):
+        self.edges_dl = edges_dl
         if not empty:
             self.partition_stats = libcommunity.init_overlap_partition_stats(self.g._Graph__graph,
                                                                              _prop("v", self.g, self.b),
                                                                              _prop("e", self.g, self.eweight),
-                                                                             self.N, self.B,
+                                                                             self.N, self.B, edges_dl,
                                                                              self.overlap_stats)
         else:
             self.partition_stats = libcommunity.overlap_partition_stats()
@@ -269,6 +270,7 @@ class OverlapBlockState(BlockState):
                                       base_g=self.base_g,
                                       half_edges=self.half_edges,
                                       node_index=self.node_index,
+                                      eindex=self.eindex,
                                       max_BE=self.max_BE)
         else:
             state = BlockState(self.base_g,
@@ -283,7 +285,7 @@ class OverlapBlockState(BlockState):
             continuous_map(b)
             state = state.copy(b=b)
 
-            if __test__:
+            if _bm_test():
                 assert state._BlockState__check_clabel()
 
         return state
@@ -299,6 +301,7 @@ class OverlapBlockState(BlockState):
                      base_g=self.base_g,
                      half_edges=self.half_edges,
                      node_index=self.node_index,
+                     eindex=self.eindex,
                      max_BE=self.max_BE)
         return state
 
@@ -307,7 +310,7 @@ class OverlapBlockState(BlockState):
         return state
 
     def get_block_state(self, b=None, vweight=False, overlap=False,
-                        deg_corr=False):
+                        deg_corr=False, **kwargs):
         r"""Returns a :class:`~graph_tool.community.BlockState`` (or
         :class:`~graph_tool.community.OverlapBlockState`` if ``overlap==True``)
         corresponding to the block graph. The parameters have the same meaning
@@ -340,8 +343,9 @@ class OverlapBlockState(BlockState):
                                       clabel=self.clabel,
                                       base_g=bg,
                                       node_index=self.b,
+                                      eindex=self.eindex,
                                       max_BE=self.max_BE)
-            n_map = self.g.vertex_index.copy("int")
+            n_map = self.g.vertex_index.copy("int64_t")
         return state, n_map
 
     def get_edge_blocks(self):
@@ -398,16 +402,22 @@ class OverlapBlockState(BlockState):
                                        _prop("v", self.base_g, b))
         return b
 
-    # def get_overlap_projection(self):
-    #     b = self.b.copy()
-    #     libcommunity.get_overlap_proj(self.g._Graph__graph,
-    #                                   self.bg._Graph__graph,
-    #                                   _prop("e", self.bg, self.mrs),
-    #                                   _prop("v", self.g, b))
-    #     return b
+    def get_majority_blocks(self):
+        r"""Returns a scalar-valued vertex property map with the majority block
+        membership of each node."""
 
-    def entropy(self, complete=True, dl=False, partition_dl=False,
-                multigraph=True, norm=True, dl_ent=False, **kwargs):
+        bv = self.get_overlap_blocks()
+        bv, bc = bv[0], bv[-1]
+        b = self.base_g.new_vertex_property("int")
+        libcommunity.get_maj_overlap(self.base_g._Graph__graph,
+                                     _prop("v", self.base_g, bv),
+                                     _prop("v", self.base_g, bc),
+                                     _prop("v", self.base_g, b))
+        return b
+
+    def entropy(self, complete=True, dl=False, partition_dl=True, edges_dl=True,
+                degree_dl=True, multigraph=True, norm=False, dl_ent=False,
+                **kwargs):
         r"""Calculate the entropy associated with the current overlapping partition.
 
         Parameters
@@ -417,8 +427,14 @@ class OverlapBlockState(BlockState):
             terms not relevant to the block partition.
         dl : ``bool`` (optional, default: ``False``)
             If ``True``, the full description length will be returned.
-        partition_dl : ``bool`` (optional, default: ``False``)
-            If ``True``, and ``dl == True`` only the partition description
+        partition_dl : ``bool`` (optional, default: ``True``)
+            If ``True``, and ``dl == True`` the partition description length
+            will be considered.
+        edges_dl : ``bool`` (optional, default: ``True``)
+            If ``True``, and ``dl == True`` the edge matrix description length
+            will be considered.
+        degree_dl : ``bool`` (optional, default: ``True``)
+            If ``True``, and ``dl == True`` the degree sequence description
             length will be considered.
         multigraph : ``bool`` (optional, default: ``False``)
             If ``True``, the multigraph entropy will be used. Only has an effect
@@ -540,13 +556,16 @@ class OverlapBlockState(BlockState):
         dl_deg_alt = kwargs.get("dl_deg_alt", True)  # compare the two deg encodings
         dense = kwargs.get("dense", False)
 
+        N = self.base_g.num_vertices()
+        E = self.E
+
         if dense:
             raise NotImplementedError("Dense entropy for overlapping model not yet implemented")
 
             S = libcommunity.entropy_dense(self.bg._Graph__graph,
-                                           _prop("e", self.bg, self.mrs),
-                                           _prop("v", self.bg, self.wr),
-                                           multigraph)
+                                            _prop("e", self.bg, self.mrs),
+                                            _prop("v", self.bg, self.wr),
+                                            multigraph)
         else:
             S = libcommunity.entropy(self.bg._Graph__graph,
                                      _prop("e", self.bg, self.mrs),
@@ -554,12 +573,6 @@ class OverlapBlockState(BlockState):
                                      _prop("v", self.bg, self.mrm),
                                      _prop("v", self.bg, self.wr),
                                      self.deg_corr)
-
-            if complete:
-                if self.deg_corr:
-                    S -= self.E
-                else:
-                    S += self.E
 
             if multigraph:
                 S += libcommunity.overlap_parallel_entropy(self.g._Graph__graph,
@@ -571,27 +584,30 @@ class OverlapBlockState(BlockState):
                                                    _prop("v", self.g, self.b),
                                                    self.overlap_stats,
                                                    self.N)
+            if self.deg_corr:
+                S -= E
+            else:
+                S += E
 
-        if __test__:
+        if _bm_test():
             assert not isnan(S) and not isinf(S), "invalid entropy %g (%s) " % (S, str(dict(complete=complete,
                                                                                             random=random, dl=dl,
                                                                                             partition_dl=partition_dl,
                                                                                             dense=dense, multigraph=multigraph,
                                                                                             norm=norm)))
         if dl:
-            N = self.base_g.num_vertices()
-            E = self.E
-            if not partition_dl:
-                S += model_entropy(self.B, N, E, directed=self.g.is_directed(),
-                                   nr=self.wr.a) * E - partition_entropy(self.B, N, self.wr.a)
-                if __test__:
+            if edges_dl:
+                actual_B = (self.wr.a > 0).sum()
+                S += model_entropy(actual_B, N, E, directed=self.g.is_directed(),
+                                   nr=False)
+                if _bm_test():
                     assert not isnan(S) and not isinf(S), "invalid entropy %g (%s) " % (S, str(dict(complete=complete,
                                                                                                     random=random, dl=dl,
                                                                                                     partition_dl=partition_dl,
                                                                                                     dense=dense, multigraph=multigraph,
                                                                                                     norm=norm)))
 
-            if self.deg_corr:
+            if self.deg_corr and degree_dl:
                 if self.partition_stats.is_enabled():
                     S += self.partition_stats.get_deg_dl(dl_ent, dl_deg_alt, xi_fast)
                 else:
@@ -599,20 +615,21 @@ class OverlapBlockState(BlockState):
                     S += self.partition_stats.get_deg_dl(dl_ent, dl_deg_alt, xi_fast)
                     self.__init_partition_stats(empty=True)
 
-                if __test__:
+                if _bm_test():
                     assert not isnan(S) and not isinf(S), "invalid entropy %g (%s) " % (S, str(dict(complete=complete,
                                                                                                     random=random, dl=dl,
                                                                                                     partition_dl=partition_dl,
                                                                                                     dense=dense, multigraph=multigraph,
                                                                                                     norm=norm)))
-            if self.partition_stats.is_enabled():
-                S += self.partition_stats.get_partition_dl()
-            else:
-                self.__init_partition_stats(empty=False)
-                S += self.partition_stats.get_partition_dl()
-                self.__init_partition_stats(empty=True)
+            if partition_dl:
+                if self.partition_stats.is_enabled():
+                    S += self.partition_stats.get_partition_dl()
+                else:
+                    self.__init_partition_stats(empty=False)
+                    S += self.partition_stats.get_partition_dl()
+                    self.__init_partition_stats(empty=True)
 
-        if __test__:
+        if _bm_test():
             assert not isnan(S) and not isinf(S), "invalid entropy %g (%s) " % (S, str(dict(complete=complete,
                                                                                             random=random, dl=dl,
                                                                                             partition_dl=partition_dl,
@@ -669,9 +686,10 @@ def half_edge_graph(g, b=None, B=None):
         raise ValueError("Maximum value of b is larger or equal to B!")
 
     eg = Graph(directed=g.is_directed())
-    node_index = eg.new_vertex_property("int")
-    half_edges = g.new_vertex_property("vector<int>")
+    node_index = eg.new_vertex_property("int64_t")
+    half_edges = g.new_vertex_property("vector<int64_t>")
     be = eg.new_vertex_property("int")
+    eindex = eg.new_edge_property("int64_t")
 
     # create half-edge graph
     libcommunity.get_eg_overlap(g._Graph__graph,
@@ -679,12 +697,13 @@ def half_edge_graph(g, b=None, B=None):
                                 _prop("e", g, b),
                                 _prop("v", eg, be),
                                 _prop("v", eg, node_index),
-                                _prop("v", g, half_edges))
+                                _prop("v", g, half_edges),
+                                _prop("e", eg, eindex))
 
     if b_array is not None:
         be.a = b_array
 
-    return eg, be, node_index, half_edges
+    return eg, be, node_index, half_edges, eindex
 
 def augmented_graph(g, b, node_index, eweight=None):
     r"""Generates an augmented graph from the half-edge graph ``g`` partitioned

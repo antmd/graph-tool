@@ -54,6 +54,20 @@ using google::dense_hash_map;
 
 using namespace boost;
 
+template <class Key>
+class IdentityArrayPropertyMap
+    : public boost::put_get_helper<Key, IdentityArrayPropertyMap<Key>>
+{
+public:
+    typedef std::array<Key, 1> value_type;
+    typedef value_type reference;
+    typedef Key key_type;
+    typedef boost::readable_property_map_tag category;
+
+    inline __attribute__((always_inline))
+    const value_type operator[](const key_type& c) const { return {c}; }
+};
+
 // ====================
 // Entropy calculation
 // ====================
@@ -88,7 +102,7 @@ __attribute__((always_inline))
 inline double xlogx(size_t x)
 {
     if (x >= __xlogx_cache.size())
-        cout << x << " " << __xlogx_cache.size();
+        cout << x << " " << __xlogx_cache.size() << endl;
     assert(x < __xlogx_cache.size());
     return __xlogx_cache[x];
 }
@@ -101,43 +115,7 @@ inline double lgamma_fast(size_t x)
     return __lgamma_cache[x];
 }
 
-template <class Type>
-Type poisson_entropy(Type l, Type epsilon=1e-8)
-{
-    if (l == 0)
-        return 0;
-
-    Type S = l * (1 - log(l));
-    Type delta = 1 + epsilon;
-    Type ll = log(l);
-    int k = 2;
-
-    Type x = 0;
-    while (delta > epsilon)
-    {
-        Type old = x;
-        x += exp(k * ll + log(lgamma(k + 1)) - lgamma(k + 1));
-        k++;
-        delta = abs(x - old);
-    }
-
-    S += exp(-l + log(x));
-    return S;
-}
-
-template <class Type>
-inline Type lpoisson(Type l, int k)
-{
-    if (l == 0)
-        return (k == 0) ? 0 : -numeric_limits<Type>::infinity();
-    return -l + k * log(l) - lgamma(k + 1);
-}
-
-template <class Type>
-inline Type poisson(Type l, int k)
-{
-    return exp(lpoisson(l, k));
-}
+// polylogarithm and degree-distribution description length (xi)
 
 template <class Type>
 Type polylog(int n, Type z, Type epsilon=1e-6)
@@ -202,9 +180,8 @@ double get_xi_fast(NType N, EType E)
     return 2 * sqrt(z2 * E);
 }
 
-//
-// Sparse entropy
-//
+// Sparse entropy terms
+// ====================
 
 // "edge" term of the entropy
 template <class Graph>
@@ -252,6 +229,8 @@ struct entropy
     }
 };
 
+// Parallel edges
+// ==============
 
 template <class Vertex, class List, class Graph, class GetNode>
 double get_parallel_neighbours_entropy(Vertex v, List& us, Graph& g,
@@ -302,9 +281,8 @@ struct entropy_parallel_edges
 };
 
 
-//
 // Dense entropy
-//
+// =============
 
 __attribute__((always_inline))
 inline double lbinom(double N, double k)
@@ -349,7 +327,7 @@ inline double eterm_dense(size_t r, size_t s, int ers, double wr_r,
 
     double S;
     if (multigraph)
-        S = lbinom(nrns + ers - 1, ers);
+        S = lbinom(nrns + ers - 1, ers); // do not use lbinom_fast!
     else
         S = lbinom(nrns, ers);
     return S;
@@ -370,9 +348,9 @@ struct entropy_dense
     }
 };
 
-// ===============================
+// ===============
 // Partition stats
-// ===============================
+// ===============
 
 class partition_stats_t
 {
@@ -387,8 +365,10 @@ public:
     partition_stats_t() : _enabled(false) {}
 
     template <class Graph, class Vprop, class Eprop>
-    partition_stats_t(Graph& g, Vprop b, Eprop eweight, size_t N, size_t B)
-        : _enabled(true), _N(N), _B(B), _hist(B), _total(B), _ep(B), _em(B)
+    partition_stats_t(Graph& g, Vprop b, Eprop eweight, size_t N, size_t B,
+                      bool edges_dl)
+        : _enabled(true), _N(N), _E(0), _B(B), _hist(B), _total(B), _ep(B),
+          _em(B), _edges_dl(edges_dl)
     {
 
 #ifdef HAVE_SPARSEHASH
@@ -404,17 +384,28 @@ public:
         for (auto v : vertices_range(g))
         {
             auto r = b[v];
-            _hist[r][make_pair(in_degreeS()(v, g), out_degree(v, g))]++;
+            size_t kin = in_degreeS()(v, g, eweight);
+            size_t kout = out_degreeS()(v, g, eweight);
+            _hist[r][make_pair(kin, kout)]++;
             _total[r]++;
-            _em[r] += in_degreeS()(v, g);
-            _ep[r] += out_degreeS()(v, g);
+            _em[r] += kin;
+            _ep[r] += kout;
+            _E += kout;
         }
+
+        if (!is_directed::apply<Graph>::type::value)
+            _E /= 2;
+
+        _actual_B = 0;
+        for (size_t r = 0; r < B; ++r)
+            if (_total[r] > 0)
+                _actual_B++;
     }
 
     double get_partition_dl()
     {
         double S = 0;
-        S += lbinom(_B + _N - 1, _N);
+        S += lbinom(_actual_B + _N - 1, _N);
         S += lgamma(_N + 1);
         for (auto nr : _total)
             S -= lgamma(nr + 1);
@@ -470,8 +461,7 @@ public:
     }
 
     template <class Graph, class OStats>
-    double get_delta_dl(size_t v, size_t r, size_t nr, bool deg_corr, OStats&,
-                        Graph& g)
+    double get_delta_dl(size_t v, size_t r, size_t nr, OStats& os, Graph&)
     {
         if (r == nr)
             return 0;
@@ -480,52 +470,88 @@ public:
         S_b += -lgamma_fast(_total[r] + 1) - lgamma_fast(_total[nr] + 1);
         S_a += -lgamma_fast(_total[r]    ) - lgamma_fast(_total[nr] + 2);
 
-        if (deg_corr)
+        int dB = 0;
+        if (_total[r] == 1)
+            dB--;
+        if (_total[nr] == 0)
+            dB++;
+
+        if (dB != 0)
         {
-            int kin = in_degreeS()(v, g);
-            int kout = out_degreeS()(v, g);
+            S_b += lbinom(_actual_B + _N - 1, _N);
+            S_a += lbinom(_actual_B + dB + _N - 1, _N);
 
-            auto get_Se = [&](size_t s, int delta, int kin, int kout) -> double
+            if (_edges_dl)
+            {
+                auto get_x = [](size_t B) -> size_t
                 {
-                    double S = 0;
-                    S += get_xi_fast(_total[s] + delta, _em[s] + kin);
-                    S += get_xi_fast(_total[s] + delta, _ep[s] + kout);
-                    return S;
+                    if (is_directed::apply<Graph>::type::value)
+                        return B * B;
+                    else
+                        return (B * (B + 1)) / 2;
                 };
 
-            S_b += get_Se(r,  0,    0,     0) + get_Se(nr, 0,   0,    0);
-            S_a += get_Se(r, -1, -kin, -kout) + get_Se(nr, 1, kin, kout);
-
-            auto get_Sr = [&](size_t s, int delta) -> double
-                {
-                    return lgamma_fast(_total[s] + delta + 1);
-                };
-
-            S_b += get_Sr(r,  0) + get_Sr(nr, 0);
-            S_a += get_Sr(r, -1) + get_Sr(nr, 1);
-
-
-            auto get_Sk = [&](size_t s, pair<size_t, size_t>& deg, int delta) -> double
-                {
-                    size_t nd = 0;
-                    auto iter = _hist[s].find(deg);
-                    if (iter != _hist[s].end())
-                        nd = iter->second;
-
-                    return -lgamma_fast(nd + delta + 1);
-                };
-
-            auto deg = make_pair(size_t(kin), size_t(kout));
-            S_b += get_Sk(r, deg,  0) + get_Sk(nr, deg, 0);
-            S_a += get_Sk(r, deg, -1) + get_Sk(nr, deg, 1);
+                S_b += lbinom(get_x(_actual_B) + _E - 1, _E);
+                S_a += lbinom(get_x(_actual_B + dB) + _E - 1, _E);
+            }
         }
 
         return S_a - S_b;
     }
 
+    template <class Graph, class EWeight, class OStats>
+    double get_delta_deg_dl(size_t v, size_t r, size_t nr, EWeight& eweight,
+                            OStats&, Graph& g)
+    {
+        if (r == nr)
+            return 0;
+
+        double S_b = 0, S_a = 0;
+
+        int kin = in_degreeS()(v, g, eweight);
+        int kout = out_degreeS()(v, g, eweight);
+
+        auto get_Se = [&](size_t s, int delta, int kin, int kout) -> double
+            {
+                double S = 0;
+                S += get_xi_fast(_total[s] + delta, _em[s] + kin);
+                S += get_xi_fast(_total[s] + delta, _ep[s] + kout);
+                return S;
+            };
+
+        S_b += get_Se(r,  0,    0,     0) + get_Se(nr, 0,   0,    0);
+        S_a += get_Se(r, -1, -kin, -kout) + get_Se(nr, 1, kin, kout);
+
+        auto get_Sr = [&](size_t s, int delta) -> double
+            {
+                return lgamma_fast(_total[s] + delta + 1);
+            };
+
+        S_b += get_Sr(r,  0) + get_Sr(nr, 0);
+        S_a += get_Sr(r, -1) + get_Sr(nr, 1);
+
+
+        auto get_Sk = [&](size_t s, pair<size_t, size_t>& deg, int delta) -> double
+            {
+                size_t nd = 0;
+                auto iter = _hist[s].find(deg);
+                if (iter != _hist[s].end())
+                    nd = iter->second;
+
+                return -lgamma_fast(nd + delta + 1);
+            };
+
+        auto deg = make_pair(size_t(kin), size_t(kout));
+        S_b += get_Sk(r, deg,  0) + get_Sk(nr, deg, 0);
+        S_a += get_Sk(r, deg, -1) + get_Sk(nr, deg, 1);
+
+        return S_a - S_b;
+    }
+
     template <class Graph, class OStats>
-    void move_vertex(size_t v, size_t r, size_t nr,
-                     bool deg_corr, OStats& overlap_stats, Graph& g)
+    void move_vertex(size_t v, size_t r, size_t nr, bool deg_corr,
+                     OStats& overlap_stats, Graph& g, size_t kin = 0,
+                     size_t kout = 0)
     {
         if (r == nr)
             return;
@@ -533,9 +559,19 @@ public:
         _total[r]--;
         _total[nr]++;
 
+        if (_total[r] == 0)
+            _actual_B--;
+        if (_total[nr] == 1)
+            _actual_B++;
+
         if (deg_corr)
         {
-            auto deg = make_pair(in_degreeS()(v, g), out_degree(v, g));
+            if (kin + kout == 0)
+            {
+                kin = in_degreeS()(v, g);
+                kout = out_degreeS()(v, g);
+            }
+            auto deg = make_pair(kin, kout);
             auto iter = _hist[r].find(deg);
             iter->second--;
             if (iter->second == 0)
@@ -549,16 +585,19 @@ public:
     }
 
     bool is_enabled() { return _enabled; }
+    void set_enabled(bool enabled) { _enabled = enabled; }
 
 private:
     bool _enabled;
     size_t _N;
+    size_t _E;
     size_t _B;
+    size_t _actual_B;
     vector<map_t> _hist;
     vector<int> _total;
     vector<int> _ep;
     vector<int> _em;
-
+    bool _edges_dl;
 };
 
 // ===============================
@@ -655,7 +694,7 @@ struct get_ehash_t
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
 #ifdef HAVE_SPARSEHASH
-        typedef dense_hash_map<vertex_t, edge_t> map_t;
+        typedef dense_hash_map<vertex_t, edge_t, std::hash<vertex_t>> map_t;
 #else
         typedef unordered_map<vertex_t, edge_t> map_t;
 #endif
@@ -671,6 +710,7 @@ get_me(typename graph_traits<Graph>::vertex_descriptor r,
        typename graph_traits<Graph>::vertex_descriptor s,
        const typename get_ehash_t::apply<Graph>::type& ehash, const Graph& bg)
 {
+    assert(r < ehash.size());
     const auto& map = ehash[r];
     auto iter = map.find(s);
     if (iter == map.end())
@@ -687,6 +727,8 @@ put_me(typename graph_traits<Graph>::vertex_descriptor r,
        typename get_ehash_t::apply<Graph>::type& ehash,
        const Graph& bg)
 {
+    typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
+    assert(r < ehash.size());
     ehash[r][s] = e;
     if (!is_directed::apply<Graph>::type::value)
         ehash[s][r] = e;
@@ -701,6 +743,7 @@ remove_me(typename graph_traits<Graph>::vertex_descriptor r,
           typename get_ehash_t::apply<Graph>::type& ehash, Graph& bg,
           bool delete_edge=true)
 {
+    assert(r < ehash.size());
     ehash[r].erase(s);
     if (!is_directed::apply<Graph>::type::value)
         ehash[s].erase(r);
@@ -723,13 +766,17 @@ struct create_ehash
         for (auto v : vertices_range(g))
         {
             emat[v].set_empty_key(numeric_limits<vertex_t>::max());
-            emat[v].set_deleted_key(num_vertices(g));
+            emat[v].set_deleted_key(numeric_limits<vertex_t>::max() - 1);
         }
 #endif
 
         for (auto e : edges_range(g))
             put_me(source(e, g), target(e, g), e, emat, g);
 
+#ifdef HAVE_SPARSEHASH
+        for (auto v : vertices_range(g))
+            emat[v].resize(0);
+#endif
         oemap = emat;
     }
 };
@@ -782,41 +829,53 @@ template <class Graph, class BGraph, class Eprop, class Vprop, class EWprop,
           class NPolicy = standard_neighbours_policy>
 void remove_vertex(size_t v, Eprop& mrs, Vprop& mrp, Vprop& mrm, Vprop& wr,
                    Vprop& b, const EWprop& eweight, const VWprop& vweight,
-                   Graph& g, BGraph& bg, EMat& emat,
-                   OStats& overlap_stats,
+                   Graph& g, BGraph& bg, EMat& emat, OStats& overlap_stats,
                    const NPolicy& npolicy = NPolicy())
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
     vertex_t r = b[v];
 
-    int self_count = 0;
+    int self_weight = 0;
     for (auto e : npolicy.get_out_edges(v, g))
     {
         vertex_t u = target(e, g);
-        if (u == v && !is_directed::apply<Graph>::type::value)
-        {
-            ++self_count;
-            if (self_count % 2 == 0)
-                continue;
-        }
-
         vertex_t s = b[u];
 
         // if (!emat[r][s].second)
         //     throw GraphException("no edge? " + lexical_cast<string>(r) +
         //                          " " + lexical_cast<string>(s));
 
-        typename graph_traits<BGraph>::edge_descriptor me =
-            get_me(r, s, emat, bg).first;
+        auto me = get_me(r, s, emat, bg).first;
 
         size_t ew = eweight[e];
-        mrs[me] -= ew;
+        if (u == v && !is_directed::apply<Graph>::type::value)
+        {
+            self_weight += ew;
+        }
+        else
+        {
+            mrs[me] -= ew;
 
-        mrp[r] -= ew;
-        mrm[s] -= ew;
+            assert(mrs[me] >= 0);
 
+            mrp[r] -= ew;
+            mrm[s] -= ew;
+
+            if (mrs[me] == 0)
+                remove_me(r, s, me, emat, bg);
+        }
+    }
+
+    if (self_weight > 0)
+    {
+        assert(self_weight % 2 == 0);
+        auto me = get_me(r, r, emat, bg).first;
+        mrs[me] -= self_weight / 2;
+        mrp[r] -= self_weight / 2;
+        mrm[r] -= self_weight / 2;
+        assert(mrs[me] >= 0);
         if (mrs[me] == 0)
-            remove_me(r, s, me, emat, bg);
+            remove_me(r, r, me, emat, bg);
     }
 
     for (auto e : npolicy.get_in_edges(v, g))
@@ -849,7 +908,7 @@ void remove_vertex(size_t v, Eprop& mrs, Vprop& mrp, Vprop& mrm, Vprop& wr,
     }
     else
     {
-        overlap_stats.remove_half_edge(v, r, g);
+        overlap_stats.remove_half_edge(v, r, b, g);
         wr[r] = overlap_stats.get_block_size(r);
     }
 }
@@ -865,16 +924,10 @@ void add_vertex(size_t v, size_t r, Eprop& mrs, Vprop& mrp, Vprop& mrm,
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
-    int self_count = 0;
+    int self_weight = 0;
     for (auto e : npolicy.get_out_edges(v, g))
     {
         vertex_t u = target(e, g);
-        if (u == v && !is_directed::apply<Graph>::type::value )
-        {
-            ++self_count;
-            if (self_count % 2 == 0)
-                continue;
-        }
         vertex_t s;
 
         if (u != v)
@@ -884,8 +937,7 @@ void add_vertex(size_t v, size_t r, Eprop& mrs, Vprop& mrp, Vprop& mrm,
 
         typename graph_traits<BGraph>::edge_descriptor me;
 
-        pair<typename graph_traits<BGraph>::edge_descriptor, bool> mep =
-                get_me(r, s, emat, bg);
+        auto mep = get_me(r, s, emat, bg);
 
         if (!mep.second)
         {
@@ -897,10 +949,26 @@ void add_vertex(size_t v, size_t r, Eprop& mrs, Vprop& mrp, Vprop& mrm,
 
         size_t ew = eweight[e];
 
-        mrs[me] += ew;
+        if (u == v && !is_directed::apply<Graph>::type::value)
+        {
+            self_weight += ew;
+        }
+        else
+        {
+            mrs[me] += ew;
+            mrp[r] += ew;
+            mrm[s] += ew;
+        }
+    }
 
-        mrp[r] += ew;
-        mrm[s] += ew;
+    if (self_weight > 0)
+    {
+        assert(self_weight % 2 == 0);
+        auto me = get_me(r, r, emat, bg).first;
+        mrs[me] += self_weight / 2;
+        mrp[r] += self_weight / 2;
+        mrm[r] += self_weight / 2;
+        assert(mrs[me] >= 0);
     }
 
     for (auto e : npolicy.get_in_edges(v, g))
@@ -938,7 +1006,7 @@ void add_vertex(size_t v, size_t r, Eprop& mrs, Vprop& mrp, Vprop& mrm,
     }
     else
     {
-        overlap_stats.add_half_edge(v, r, g);
+        overlap_stats.add_half_edge(v, r, b, g);
         wr[r] = overlap_stats.get_block_size(r);
     }
 
@@ -948,24 +1016,49 @@ void add_vertex(size_t v, size_t r, Eprop& mrs, Vprop& mrp, Vprop& mrm,
 
 // move a vertex from its current block to block nr
 template <class Graph, class BGraph, class Eprop, class Vprop, class EWprop,
-          class VWprop, class EMat, class OStats, class PStats,
+          class VWprop, class EMat, class OStats, class PStats, class Vec,
           class NPolicy = standard_neighbours_policy>
-void move_vertex(size_t v, size_t nr, Eprop& mrs, Vprop& mrp, Vprop& mrm,
+void move_vertex(const Vec& vs, size_t nr, Eprop& mrs, Vprop& mrp, Vprop& mrm,
                  Vprop& wr, Vprop& b, bool deg_corr, const EWprop& eweight,
                  const VWprop& vweight, Graph& g, BGraph& bg, EMat& emat,
                  OStats& overlap_stats,  PStats& partition_stats,
                  const NPolicy& npolicy = NPolicy())
 {
-    if (b[v] == int(nr))
+    if (b[vs[0]] == int(nr))
         return;
 
-    if (partition_stats.is_enabled())
-        partition_stats.move_vertex(v, b[v], nr, deg_corr, overlap_stats, g);
+    size_t kin = 0, kout = 0;
+    for (auto v : vs)
+    {
+        kin += in_degreeS()(v, g);
+        kout += out_degreeS()(v, g);
+    }
 
-    remove_vertex(v, mrs, mrp, mrm, wr, b, eweight, vweight, g, bg, emat,
-                  overlap_stats, npolicy);
-    add_vertex(v, nr, mrs, mrp, mrm, wr, b, eweight, vweight, g, bg, emat,
-               overlap_stats, npolicy);
+    if (partition_stats.is_enabled())
+        partition_stats.move_vertex(vs[0], b[vs[0]], nr, deg_corr, overlap_stats,
+                                    g, kin, kout);
+
+    for (auto v : vs)
+    {
+        remove_vertex(v, mrs, mrp, mrm, wr, b, eweight, vweight, g, bg, emat,
+                      overlap_stats, npolicy);
+        add_vertex(v, nr, mrs, mrp, mrm, wr, b, eweight, vweight, g, bg, emat,
+                   overlap_stats, npolicy);
+    }
+}
+
+template <class Graph, class BGraph, class Eprop, class Vprop, class EWprop,
+          class VWprop, class EMat, class OStats, class PStats,
+          class NPolicy = standard_neighbours_policy>
+void move_vertex(size_t v, size_t nr, Eprop& mrs, Vprop& mrp, Vprop& mrm,
+                 Vprop& wr, Vprop& b, bool deg_corr, const EWprop& eweight,
+                 const VWprop& vweight, Graph& g, BGraph& bg, EMat& emat,
+                 OStats& overlap_stats, PStats& partition_stats,
+                 const NPolicy& npolicy = NPolicy())
+{
+    std::array<size_t, 1> vs = {v};
+    move_vertex(vs, nr, mrs, mrp, mrm, wr, b, deg_corr, eweight, vweight, g, bg,
+                emat, overlap_stats, partition_stats, npolicy);
 }
 
 
@@ -987,6 +1080,7 @@ template <class Graph>
 class EntrySet
 {
 public:
+    EntrySet() {}
     EntrySet(size_t B)
     {
         _null = numeric_limits<size_t>::max();
@@ -998,34 +1092,41 @@ public:
             _r_field_s.resize(B, _null);
             _nr_field_s.resize(B, _null);
         }
+        _entries.reserve(B);
+        _delta.reserve(B);
     }
 
-    void SetMove(size_t r, size_t nr)
+    __attribute__((always_inline))
+    void set_move(size_t r, size_t nr)
     {
         _rnr = make_pair(r, nr);
     }
 
-    void InsertDeltaTarget(size_t r, size_t s, int delta)
+    __attribute__((always_inline))
+    void insert_delta(size_t r, size_t s, int delta, bool source)
     {
-        if (!is_directed::apply<Graph>::type::value &&
-            (s == _rnr.first || s == _rnr.second) && s < r)
+        if (s == _rnr.first || s == _rnr.second)
         {
-            InsertDeltaTarget(s, r, delta);
-            return;
+            if ((!is_directed::apply<Graph>::type::value && s < r) || source)
+                std::swap(r, s);
+            if (source)
+                source = false;
         }
 
-        if (is_directed::apply<Graph>::type::value &&
-            (s == _rnr.first || s == _rnr.second) && s < r)
-        {
-            InsertDeltaSource(r, s, delta);
-            return;
-        }
+        if (source && (s == r))
+            source = false;
 
-        vector<size_t>& field = (_rnr.first == r) ? _r_field_t : _nr_field_t;
+        auto& r_field = (source) ? _r_field_s : _r_field_t;
+        auto& nr_field = (source) ? _nr_field_s : _nr_field_t;
+
+        vector<size_t>& field = (_rnr.first == r) ? r_field : nr_field;
         if (field[s] == _null)
         {
             field[s] = _entries.size();
-            _entries.push_back(make_pair(r, s));
+            if ((!is_directed::apply<Graph>::type::value && s < r) || source)
+                _entries.emplace_back(s, r);
+            else
+                _entries.emplace_back(r, s);
             _delta.push_back(delta);
         }
         else
@@ -1034,84 +1135,53 @@ public:
         }
     }
 
-    void InsertDeltaSource(size_t s, size_t r, int delta)
-    {
-        if (s == r)
-        {
-            InsertDeltaTarget(r, s, delta);
-            return;
-        }
-
-        if ((s == _rnr.first || s == _rnr.second) && s < r)
-        {
-            InsertDeltaTarget(s, r, delta);
-            return;
-        }
-
-        vector<size_t>& field = (_rnr.first == r) ? _r_field_s : _nr_field_s;
-        if (field[s] == _null)
-        {
-            field[s] = _entries.size();
-            _entries.push_back(make_pair(s, r));
-            _delta.push_back(delta);
-        }
-        else
-        {
-            _delta[field[s]] += delta;
-        }
-    }
-
-    int GetDelta(size_t t, size_t s)
+    __attribute__((always_inline))
+    int get_delta(size_t t, size_t s)
     {
         if (is_directed::apply<Graph>::type::value)
         {
             if (t == _rnr.first || t == _rnr.second)
-                return GetDeltaTarget(t, s);
+                return get_delta_target(t, s);
             if (s == _rnr.first || s == _rnr.second)
-                return GetDeltaSource(t, s);
+                return get_delta_source(t, s);
         }
         else
         {
             if (t == _rnr.first || t == _rnr.second)
-                return GetDeltaTarget(t, s);
+                return get_delta_target(t, s);
             if (s == _rnr.first || s == _rnr.second)
-                return GetDeltaTarget(s, t);
+                return get_delta_target(s, t);
         }
         return 0;
     }
 
-    int GetDeltaTarget(size_t r, size_t s)
+    __attribute__((always_inline))
+    int get_delta_target(size_t r, size_t s)
     {
         vector<size_t>& field = (_rnr.first == r) ? _r_field_t : _nr_field_t;
         if (field[s] == _null)
-        {
             return 0;
-        }
         else
-        {
             return _delta[field[s]];
-        }
     }
 
-    int GetDeltaSource(size_t s, size_t r)
+    __attribute__((always_inline))
+    int get_delta_source(size_t s, size_t r)
     {
         vector<size_t>& field = (_rnr.first == r) ? _r_field_s : _nr_field_s;
         if (field[s] == _null)
-        {
             return 0;
-        }
         else
-        {
             return _delta[field[s]];
-        }
     }
 
-    void Clear()
+    __attribute__((always_inline))
+    void clear()
     {
-        size_t r, s;
         for (size_t i = 0; i < _entries.size(); ++i)
         {
-            tie(r, s) = _entries[i];
+            size_t r = _entries[i].first;
+            size_t s = _entries[i].second;
             _r_field_t[r] = _nr_field_t[r] = _null;
             _r_field_t[s] = _nr_field_t[s] = _null;
             if (is_directed::apply<Graph>::type::value)
@@ -1124,8 +1194,8 @@ public:
         _delta.clear();
     }
 
-    vector<pair<size_t, size_t> >& GetEntries() { return _entries; }
-    vector<int>& GetDelta() { return _delta; }
+    vector<pair<size_t, size_t> >& get_entries() { return _entries; }
+    vector<int>& get_delta() { return _delta; }
 
 private:
     pair<size_t, size_t> _rnr;
@@ -1138,39 +1208,50 @@ private:
     vector<int> _delta;
 };
 
+struct is_loop_nop
+{
+    bool operator()(size_t u) const { return false; }
+};
+
+
 // obtain the necessary entries in the e_rs matrix which need to be modified
 // after the move
 template <class Graph, class BGraph, class Vertex, class Vprop, class Eprop,
-          class NPolicy = standard_neighbours_policy>
+          class MEntries,  class NPolicy = standard_neighbours_policy,
+          class IL = is_loop_nop>
 void move_entries(Vertex v, Vertex nr, Vprop& b, Eprop& eweights, Graph& g,
-                  BGraph& bg, EntrySet<Graph>& m_entries,
-                  const NPolicy& npolicy = NPolicy())
+                  BGraph& bg, MEntries& m_entries,
+                  const NPolicy& npolicy = NPolicy(), IL is_loop = IL())
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
     vertex_t r = b[v];
 
-    m_entries.SetMove(r, nr);
+    m_entries.set_move(r, nr);
 
-    int self_count = 0;
+    int self_weight = 0;
     for (auto e : npolicy.get_out_edges(v, g))
     {
         vertex_t u = target(e, g);
-        if (u == v && !is_directed::apply<Graph>::type::value)
-        {
-            ++self_count;
-            if (self_count % 2 == 0)
-                continue;
-        }
         vertex_t s = b[u];
         int ew = eweights[e];
         //assert(ew > 0);
 
-        m_entries.InsertDeltaTarget(r, s, -ew);
+        m_entries.insert_delta(r, s, -ew, false);
 
-        if (u == v)
+        if (u == v || is_loop(v))
+        {
             s = nr;
+            if (!is_directed::apply<Graph>::type::value)
+                self_weight += ew;
+        }
 
-        m_entries.InsertDeltaTarget(nr, s, +ew);
+        m_entries.insert_delta(nr, s, +ew, false);
+    }
+
+    if (self_weight > 0 && self_weight % 2 == 0)
+    {
+        m_entries.insert_delta(r,   r,  self_weight / 2, false);
+        m_entries.insert_delta(nr, nr, -self_weight / 2, false);
     }
 
     for (auto e : npolicy.get_in_edges(v, g))
@@ -1181,18 +1262,18 @@ void move_entries(Vertex v, Vertex nr, Vprop& b, Eprop& eweights, Graph& g,
         vertex_t s = b[u];
         int ew = eweights[e];
 
-        m_entries.InsertDeltaSource(s,  r, -ew);
-        m_entries.InsertDeltaSource(s, nr, +ew);
+        m_entries.insert_delta(r,  s, -ew, true);
+        m_entries.insert_delta(nr, s, +ew, true);
     }
 }
 
 // obtain the entropy difference given a set of entries in the e_rs matrix
-template <class Graph, class Eprop, class BGraph, class EMat>
-double entries_dS(EntrySet<Graph>& m_entries, Eprop& mrs, BGraph& bg, EMat& emat)
+template <class MEntries, class Eprop, class BGraph, class EMat>
+double entries_dS(MEntries& m_entries, Eprop& mrs, BGraph& bg, EMat& emat)
 {
     typedef typename graph_traits<BGraph>::vertex_descriptor vertex_t;
-    vector<pair<size_t, size_t> >& entries = m_entries.GetEntries();
-    vector<int>& delta = m_entries.GetDelta();
+    auto& entries = m_entries.get_entries();
+    auto& delta = m_entries.get_delta();
 
     double dS = 0;
     for (size_t i = 0; i < entries.size(); ++i)
@@ -1208,52 +1289,71 @@ double entries_dS(EntrySet<Graph>& m_entries, Eprop& mrs, BGraph& bg, EMat& emat
     return dS;
 }
 
-// compute the entropy difference of a virtual move of vertex r to block nr
+// compute the entropy difference of a virtual move of vertex from block r to nr
 template <class Graph, class BGraph, class Eprop, class Vprop, class EWprop,
-          class VWprop, class EMat, class OStats,
-          class NPolicy = standard_neighbours_policy>
-double virtual_move_sparse(size_t v, size_t nr, Eprop& mrs, Vprop& mrp,
+          class VWprop, class EMat, class MEntries, class OStats, class Vec,
+          class NPolicy = standard_neighbours_policy, class IL = is_loop_nop>
+double virtual_move_sparse(const Vec& vs, size_t nr, Eprop& mrs, Vprop& mrp,
                            Vprop& mrm, Vprop& wr, Vprop& b, bool deg_corr,
                            const EWprop& eweight, const VWprop& vweight,
                            Graph& g, BGraph& bg, EMat& emat,
-                           EntrySet<Graph>& m_entries, OStats& overlap_stats,
+                           MEntries& m_entries, OStats& overlap_stats,
                            bool parallel_edges,
-                           const NPolicy& npolicy = NPolicy())
+                           const NPolicy& npolicy = NPolicy(),
+                           IL is_loop = IL())
 
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-    vertex_t r = b[v];
+    vertex_t r = b[vs[0]];
 
     if (r == nr)
         return 0.;
 
-    m_entries.Clear();
-    move_entries(v, nr, b, eweight, g, bg, m_entries, npolicy);
-    double dS = entries_dS(m_entries, mrs, bg, emat);
-    int kout = npolicy.get_out_degree(v, g, eweight);
-    int kin = kout;
-    if (is_directed::apply<Graph>::type::value)
-        kin = npolicy.get_in_degree(v, g, eweight);
-    //assert(mrm[r]  - kin >= 0);
-    //assert(mrp[r]  - kout >= 0);
+    m_entries.clear();
+    int kin = 0, kout = 0;
+    int self_weight = 0;
+    for (auto v : vs)
+    {
+        move_entries(v, nr, b, eweight, g, bg, m_entries, npolicy, is_loop);
+        kout += npolicy.get_out_degree(v, g, eweight);
+        if (is_directed::apply<Graph>::type::value)
+        {
+            kin += npolicy.get_in_degree(v, g, eweight);
+        }
+        else
+        {
+            if (is_loop(v))
+                self_weight++;
+        }
+    }
 
-    int dwr, dwnr;
-    set<int> bv, nbv;
+    if (self_weight > 0 && self_weight % 2 == 0)
+    {
+        m_entries.insert_delta(r,   r,  self_weight / 2, false);
+        m_entries.insert_delta(nr, nr, -self_weight / 2, false);
+    }
+
+    double dS = entries_dS(m_entries, mrs, bg, emat);
+
+    int dwr = 0, dwnr = 0;
     if (!overlap_stats.is_enabled())
     {
-        dwr = dwnr = vweight[v];
+        for (auto v : vs)
+            dwr += vweight[v];
+        dwnr = dwr;
     }
     else
     {
-        dwr = wr[r] - overlap_stats.virtual_remove_size(v, r, g);
-        dwnr = overlap_stats.virtual_add_size(v, nr, g) - wr[nr];
-
+        dwr = wr[r] - overlap_stats.virtual_remove_size(vs[0], r, kin, kout);
+        dwnr = overlap_stats.virtual_add_size(vs[0], nr) - wr[nr];
         if (deg_corr)
-            dS += overlap_stats.virtual_move_dS(v, r, nr, g);
-
+            dS += overlap_stats.virtual_move_dS(vs[0], r, nr, g, kin, kout);
         if (parallel_edges)
-            dS += overlap_stats.virtual_move_parallel_dS(v, r, nr, b, g);
+            dS += overlap_stats.virtual_move_parallel_dS(vs[0], r, nr, b, g);
     }
+
+    if (!is_directed::apply<Graph>::type::value)
+        kin = kout;
 
     dS += vterm(r,  mrp[r]  - kout, mrm[r]  - kin, wr[r]  - dwr , deg_corr, bg);
     dS += vterm(nr, mrp[nr] + kout, mrm[nr] + kin, wr[nr] + dwnr, deg_corr, bg);
@@ -1263,69 +1363,121 @@ double virtual_move_sparse(size_t v, size_t nr, Eprop& mrs, Vprop& mrp,
     return dS;
 }
 
+template <class Graph, class BGraph, class Eprop, class Vprop, class EWprop,
+          class VWprop, class EMat, class MEntries, class OStats,
+          class NPolicy = standard_neighbours_policy, class IL = is_loop_nop>
+double virtual_move_sparse(size_t v, size_t nr, Eprop& mrs, Vprop& mrp,
+                           Vprop& mrm, Vprop& wr, Vprop& b, bool deg_corr,
+                           const EWprop& eweight, const VWprop& vweight,
+                           Graph& g, BGraph& bg, EMat& emat,
+                           MEntries& m_entries, OStats& overlap_stats,
+                           bool parallel_edges,
+                           const NPolicy& npolicy = NPolicy(),
+                           IL is_loop = IL())
+
+{
+    std::array<size_t, 1> vs = {v};
+    return virtual_move_sparse(vs, nr, mrs, mrp, mrm, wr, b, deg_corr, eweight,
+                               vweight, g, bg, emat, m_entries, overlap_stats,
+                               parallel_edges, npolicy, is_loop);
+}
+
 
 // compute the entropy difference of a virtual move of vertex r to block nr
 template <class Graph, class BGraph, class Eprop, class Vprop, class EWprop,
-          class VWprop, class EMat, class OStats,
-          class NPolicy = standard_neighbours_policy>
-double virtual_move_dense(size_t v, size_t nr, Eprop& mrs, Vprop& mrp,
+          class VWprop, class EMat, class MEntries, class OStats, class Vec,
+          class NPolicy = standard_neighbours_policy, class IL = is_loop_nop>
+double virtual_move_dense(const Vec& vs, size_t nr, Eprop& mrs, Vprop& mrp,
                           Vprop& mrm, Vprop& wr, Vprop& b, bool deg_corr,
                           const EWprop& eweight, const VWprop& vweight,
-                          Graph& g, BGraph& bg, EMat& emat, bool multigraph,
-                          OStats& overlap_stats, const NPolicy& npolicy = NPolicy())
+                          Graph& g, BGraph& bg, EMat& emat, MEntries& m_entries,
+                          OStats& overlap_stats, bool multigraph,
+                          const NPolicy& npolicy = NPolicy(), IL is_loop = IL())
 {
     if (deg_corr)
         throw GraphException("Dense entropy for degree corrected model not implemented!");
 
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-    vertex_t r = b[v];
+    vertex_t r = b[vs[0]];
 
     if (r == nr)
         return 0;
 
-    vector<int> deltap(num_vertices(bg), 0);
-    int deltal = 0;
-    int self_count = 0;
-    for (auto e : npolicy.get_out_edges(v, g))
+    // m_entries is not used in the computation below, but it is expected afterwards
+    m_entries.clear();
+    int kin = 0, kout = 0;
+    int self_weight = 0;
+    for (auto v : vs)
     {
-        vertex_t u = target(e, g);
-        vertex_t s = b[u];
-        if (u == v)
+        move_entries(v, nr, b, eweight, g, bg, m_entries, npolicy, is_loop);
+        kout += npolicy.get_out_degree(v, g, eweight);
+        if (is_directed::apply<Graph>::type::value)
         {
-            ++self_count;
-            if (self_count % 2 == 0)
-                continue;
-            deltal += eweight[e];
+            kin += npolicy.get_in_degree(v, g, eweight);
         }
         else
         {
-            deltap[s] += eweight[e];
+            if (is_loop(v))
+                self_weight++;
         }
     }
 
-    vector<int> deltam(num_vertices(bg), 0);
-    for (auto e : npolicy.get_in_edges(v, g))
+    if (self_weight > 0 && self_weight % 2 == 0)
     {
-        vertex_t u = source(e, g);
-        if (u == v)
-            continue;
-        vertex_t s = b[u];
-        deltam[s] += eweight[e];
+        m_entries.insert_delta(r,   r,  self_weight / 2, false);
+        m_entries.insert_delta(nr, nr, -self_weight / 2, false);
+    }
+
+    vector<int> deltap(num_vertices(bg), 0);
+    int deltal = 0;
+    for (auto v : vs)
+    {
+        for (auto e : npolicy.get_out_edges(v, g))
+        {
+            vertex_t u = target(e, g);
+            vertex_t s = b[u];
+            if (u == v)
+            {
+                deltal += eweight[e];
+            }
+            else
+            {
+                deltap[s] += eweight[e];
+            }
+        }
+    }
+    if (!is_directed::apply<Graph>::type::value)
+        deltal /= 2;
+
+    vector<int> deltam(num_vertices(bg), 0);
+    for (auto v : vs)
+    {
+        for (auto e : npolicy.get_in_edges(v, g))
+        {
+            vertex_t u = source(e, g);
+            if (u == v)
+                continue;
+            vertex_t s = b[u];
+            deltam[s] += eweight[e];
+        }
     }
 
     double dS = 0;
-    int dwr, dwnr;
+    int dwr = 0, dwnr = 0;
     if (!overlap_stats.is_enabled())
     {
-        dwr = dwnr = vweight[v];
+        for (auto v : vs)
+            dwr += vweight[v];
+        dwnr = dwr;
     }
     else
     {
-        dwr = wr[r] - overlap_stats.virtual_remove_size(v, r, g);
-        dwnr = overlap_stats.virtual_add_size(v, nr, g) - wr[nr];
-
+        dwr = wr[r] - overlap_stats.virtual_remove_size(vs[0], r, kin, kout);
+        dwnr = overlap_stats.virtual_add_size(vs[0], nr) - wr[nr];
         if (deg_corr)
-            dS += overlap_stats.virtual_move_dS(v, r, nr, g);
+            dS += overlap_stats.virtual_move_dS(vs[0], r, nr, g, kin, kout);
+        if (multigraph)
+            dS += overlap_stats.virtual_move_parallel_dS(vs[0], r, nr, b, g);
     }
 
     double Si = 0, Sf = 0;
@@ -1400,35 +1552,46 @@ double virtual_move_dense(size_t v, size_t nr, Eprop& mrs, Vprop& mrp,
     return Sf - Si + dS;
 }
 
+// compute the entropy difference of a virtual move of vertex r to block nr
 template <class Graph, class BGraph, class Eprop, class Vprop, class EWprop,
-          class VWprop, class EMat, class OStats, class PStats,
-          class NPolicy = standard_neighbours_policy>
-double virtual_move(size_t v, size_t nr, bool dense, Eprop& mrs, Vprop& mrp,
-                    Vprop& mrm, Vprop& wr, Vprop& b, bool deg_corr,
+          class VWprop, class EMat, class MEntries, class OStats,
+          class NPolicy = standard_neighbours_policy, class IL = is_loop_nop>
+double virtual_move_dense(size_t v, size_t nr, Eprop& mrs, Vprop& mrp,
+                          Vprop& mrm, Vprop& wr, Vprop& b, bool deg_corr,
+                          const EWprop& eweight, const VWprop& vweight,
+                          Graph& g, BGraph& bg, EMat& emat, MEntries& m_entries,
+                          OStats& overlap_stats, bool multigraph,
+                          const NPolicy& npolicy = NPolicy(), IL is_loop = IL())
+{
+    std::array<size_t, 1> vs = {v};
+    return virtual_move_dense(vs, nr, mrs, mrp, mrm, wr, b, deg_corr, eweight,
+                              vweight, g, bg, emat, m_entries, overlap_stats,
+                              multigraph, npolicy, is_loop);
+}
+
+template <class Graph, class BGraph, class Eprop, class Vprop, class EWprop,
+          class VWprop, class EMat, class MEntries, class OStats, class Vec,
+          class NPolicy = standard_neighbours_policy, class IL = is_loop_nop>
+double virtual_move(const Vec& vs, size_t nr, bool dense, Eprop& mrs,
+                    Vprop& mrp, Vprop& mrm, Vprop& wr, Vprop& b, bool deg_corr,
                     const EWprop& eweight, const VWprop& vweight, Graph& g,
-                    BGraph& bg, EMat& emat, EntrySet<Graph>& m_entries,
+                    BGraph& bg, EMat& emat, MEntries& m_entries,
                     OStats& overlap_stats, bool parallel_edges,
-                    PStats& partition_stats, const NPolicy& npolicy = NPolicy())
+                    const NPolicy& npolicy = NPolicy(), IL is_loop = IL())
 {
     double S = 0;
     if (dense)
     {
-        m_entries.Clear();
-        move_entries(v, nr, b, eweight, g, bg, m_entries, npolicy); // expected!
-        S = virtual_move_dense(v, nr, mrs, mrp, mrm, wr, b, deg_corr,
-                               eweight, vweight, g, bg, emat,
-                               parallel_edges, overlap_stats, npolicy);
+        S = virtual_move_dense(vs, nr, mrs, mrp, mrm, wr, b, deg_corr, eweight,
+                               vweight, g, bg, emat, m_entries, overlap_stats,
+                               parallel_edges, npolicy, is_loop);
     }
     else
     {
-        S = virtual_move_sparse(v, nr, mrs, mrp, mrm, wr, b, deg_corr,
-                                eweight, vweight, g, bg, emat, m_entries,
-                                overlap_stats, parallel_edges,
-                                npolicy);
+        S = virtual_move_sparse(vs, nr, mrs, mrp, mrm, wr, b, deg_corr, eweight,
+                                vweight, g, bg, emat, m_entries, overlap_stats,
+                                parallel_edges, npolicy, is_loop);
     }
-
-    if (partition_stats.is_enabled())
-        S += partition_stats.get_delta_dl(v, b[v], nr, deg_corr,  overlap_stats, g);
 
     return S;
 }
@@ -1539,6 +1702,11 @@ struct egroups_manage
     static void remove_edge(size_t pos, Epos& esrcpos, Epos& etgtpos,
                             DynamicSampler<Edge>& elist)
     {
+        typedef typename property_traits<Epos>::value_type val_t;
+        if (get<1>(elist[pos]))
+            esrcpos[get<0>(elist[pos])] = numeric_limits<val_t>::max();
+        else
+            etgtpos[get<0>(elist[pos])] = numeric_limits<val_t>::max();
         elist.remove(pos);
     }
 
@@ -1546,10 +1714,15 @@ struct egroups_manage
     static void remove_edge(size_t pos, Epos& esrcpos, Epos& etgtpos,
                             vector<Edge>& elist)
     {
+        typedef typename property_traits<Epos>::value_type val_t;
         if (get<1>(elist.back()))
             esrcpos[get<0>(elist.back())] = pos;
         else
             etgtpos[get<0>(elist.back())] = pos;
+        if (get<1>(elist[pos]))
+            esrcpos[get<0>(elist[pos])] = numeric_limits<val_t>::max();
+        else
+            etgtpos[get<0>(elist[pos])] = numeric_limits<val_t>::max();
         elist[pos] = elist.back();
         elist.pop_back();
     }
@@ -1560,7 +1733,8 @@ struct egroups_manage
                                Graph& g)
     {
         typedef Vertex vertex_t;
-        int self_count = 0;
+
+        auto& elist = egroups[r];
 
         //update the half-edge lists
         for (auto e : all_edges_range(v, g))
@@ -1570,15 +1744,16 @@ struct egroups_manage
 
             bool is_src = (src == v);
 
-            // self-loops will appear twice
+            // self-loops will appear twice; we must disambiguate
             if (src == tgt)
             {
-                is_src = self_count % 2 == 0;
-                ++self_count;
+                size_t pos = esrcpos[e];
+                is_src = (pos < elist.size() && get<0>(elist[pos]) == e);
             }
 
-            auto& elist = egroups[r];
             size_t pos = (is_src) ? esrcpos[e] : etgtpos[e];
+            assert(pos < elist.size());
+            assert(get<0>(elist[pos]) == e);
             remove_edge(pos, esrcpos, etgtpos, elist);
         }
     }
@@ -1588,7 +1763,8 @@ struct egroups_manage
                             VEprop& esrcpos, VEprop& etgtpos, Graph& g)
     {
         typedef Vertex vertex_t;
-        int self_count = 0;
+
+        auto& elist = egroups[s];
 
         //update the half-edge lists
         for (auto e : all_edges_range(v, g))
@@ -1598,14 +1774,13 @@ struct egroups_manage
 
             bool is_src = (src == v);
 
-            // self-loops will appear twice
+            // self-loops will appear twice; we must disambiguate
             if (src == tgt)
             {
-                is_src = self_count % 2 == 0;
-                ++self_count;
+                size_t pos = esrcpos[e];
+                is_src = !(pos < elist.size() && get<0>(elist[pos]) == e);
             }
 
-            auto& elist = egroups[s];
             typedef typename tuple_element<0, typename property_traits<EVprop>::value_type::value_type>::type e_type;
             size_t pos = insert_edge(std::make_tuple(e_type(e), is_src),
                                      elist, size_t(eweight[e]));
@@ -1621,6 +1796,8 @@ struct egroups_manage
                                EVprop& egroups, VEprop& esrcpos, VEprop& etgtpos,
                                Graph& g)
     {
+        if (r == s)
+            return;
         remove_egroups(v, r, eweight, egroups, esrcpos, etgtpos, g);
         add_egroups(v, s, eweight, egroups, esrcpos, etgtpos, g);
     }
@@ -1647,21 +1824,20 @@ struct egroups_manage
 //============
 
 //computes the move proposal probability
-template <class Vertex, class Graph, class Vprop, class Eprop, class Emat,
-          class BGraph, class OStats>
+template <class Vertex, class Graph, class Vprop, class Eprop, class MEprop,
+          class Emat, class BGraph, class MEntries, class OStats>
 inline double
-get_move_prob(Vertex v, Vertex r, Vertex s, double c, Vprop& b, Eprop& mrs,
+get_move_prob(Vertex v, Vertex r, Vertex s, double c, Vprop& b, MEprop& mrs,
               Vprop& mrp, Vprop& mrm, Emat& emat, Eprop& eweight, Graph& g,
-              BGraph& bg, EntrySet<Graph>& m_entries, bool reverse,
-              OStats& overlap_stats)
+              BGraph& bg, MEntries& m_entries, bool reverse,
+              OStats& overlap_stats, size_t kin = 0, size_t kout = 0)
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
     size_t B = num_vertices(bg);
     double p = 0;
     size_t w = 0;
 
-    int kout = 0, kin = 0;
-    if (reverse)
+    if (reverse && (kin + kout) == 0)
     {
         kout = out_degreeS()(v, g, eweight);
         kin = kout;
@@ -1707,10 +1883,10 @@ get_move_prob(Vertex v, Vertex r, Vertex s, double c, Vprop& b, Eprop& mrs,
 
             if (reverse)
             {
-                int dts = m_entries.GetDelta(t, s);
+                int dts = m_entries.get_delta(t, s);
                 int dst = dts;
                 if (is_directed::apply<Graph>::type::value)
-                    dst = m_entries.GetDelta(s, t);
+                    dst = m_entries.get_delta(s, t);
 
                 mts += dts;
                 mst += dst;
@@ -1746,111 +1922,531 @@ get_move_prob(Vertex v, Vertex r, Vertex s, double c, Vprop& b, Eprop& mrs,
 
 // merge vertex u into v
 template <class Graph, class Eprop, class Vprop>
-void merge_vertices(size_t u, size_t v, Eprop& eweight_u, Vprop& vweight,
-                    Vprop& merge_map, Graph& g)
+void merge_vertices(size_t u, size_t v, Eprop& eweight_u, Vprop& vweight, Graph& g)
 {
     auto eweight = eweight_u.get_checked();
 
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-    int self_count = 0;
+    typedef typename graph_traits<Graph>::edge_descriptor edge_t;
+
+    unordered_map<vertex_t, vector<edge_t>> ns_u, ns_v;
     for(auto e : out_edges_range(u, g))
+        ns_u[target(e, g)].push_back(e);
+    for(auto e : out_edges_range(v, g))
+        ns_v[target(e, g)].push_back(e);
+
+    for(auto& kv : ns_u)
     {
-        vertex_t t = target(e, g);
-        if (t == u && !is_directed::apply<Graph>::type::value)
-        {
-            ++self_count;
-            if (self_count % 2 == 0)
-                continue;
-        }
+        vertex_t t = kv.first;
+        auto& es = kv.second;
+
+        size_t w = 0;
+        for (auto& e : es)
+            w += eweight_u[e];
 
         if (t == u)
-            t = v;
-
-        auto ne = edge(v, t, g);
-        if (!ne.second)
         {
-            ne = add_edge(v, t, g);
-            eweight[ne.first] = 0;
+            t = v;
+            if (!is_directed::apply<Graph>::type::value)
+            {
+                assert(w % 2 == 0);
+                w /= 2;
+            }
         }
-        eweight[ne.first] += eweight[e];
+
+        auto iter = ns_v.find(t);
+        if (iter != ns_v.end())
+        {
+            auto& e = iter->second.front();
+            eweight_u[e] += w;
+        }
+        else
+        {
+            auto e = add_edge(v, t, g).first;
+            ns_v[t].push_back(e);
+            eweight[e] = w;
+        }
     }
 
-    for (auto e : in_edges_range(u, g))
+    if (is_directed::apply<Graph>::type::value)
     {
-        vertex_t t = source(e, g);
-        if (t == u)
-            continue;
+        ns_u.clear();
+        ns_v.clear();
 
-        auto ne = edge(t, v, g);
-        if (!ne.second)
+        for(auto e : in_edges_range(v, g))
+            ns_v[source(e, g)].push_back(e);
+        for(auto e : in_edges_range(u, g))
+            ns_u[source(e, g)].push_back(e);
+
+        for(auto& kv : ns_u)
         {
-            ne = add_edge(t, v, g);
-            eweight[ne.first] = 0;
+            size_t s = kv.first;
+            auto& es = kv.second;
+
+            if (s == u)
+                continue;
+
+            size_t w = 0;
+            for (auto& e : es)
+                w += eweight_u[e];
+
+            auto iter = ns_v.find(s);
+            if (iter != ns_v.end())
+            {
+                auto& e = iter->second.front();
+                eweight_u[e] += w;
+            }
+            else
+            {
+                auto e = add_edge(s, v, g).first;
+                ns_v[s].push_back(e);
+                eweight[e] = w;
+            }
         }
-        eweight[ne.first] += eweight[e];
     }
 
     vweight[v] += vweight[u];
     vweight[u] = 0;
-    merge_map[u] = v;
     clear_vertex(u, g);
 }
 
-struct merge_cmp_less
+template <class Graph, class BGraph, class EMprop, class Eprop, class Vprop,
+          class EMat, class EVprop, class VEprop, class SamplerMap,
+          class PartitionStats, class OStats, class BMap, class BRMap>
+class BlockState
 {
-    template<class Vertex>
-    double operator()(const std::tuple<Vertex, Vertex, double>& a,
-                      const std::tuple<Vertex, Vertex, double>& b)
-    {
-        return get<2>(a) < get<2>(b);
-    }
+public:
+    Graph& g;
+    Eprop eweight;
+    Vprop vweight;
+    Vprop b;
+    BGraph& bg;
+    EMat& emat;
+    EMprop mrs;
+    Vprop mrp;
+    Vprop mrm;
+    Vprop wr;
+    EVprop egroups;
+    VEprop esrcpos;
+    VEprop etgtpos;
+    SamplerMap& neighbour_sampler;
+    SamplerMap& cavity_neighbour_sampler;
+    PartitionStats& partition_stats;
+    OStats& overlap_stats;
+    BMap& block_map;
+    BRMap block_rmap;
+    vector<size_t>& free_blocks;
+    bool master;
+    bool slave;
+    bool single;
 };
 
-//A single Monte Carlo Markov chain sweep
 template <class Graph, class BGraph, class EMprop, class Eprop, class Vprop,
-          class EMat, class EVprop, class VEprop, class SamplerMap, class OStats,
-          class RNG>
-void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
+          class EMat, class EVprop, class VEprop, class SamplerMap,
+          class PartitionStats, class OStats, class BMap, class BRMap>
+BlockState<Graph, BGraph, EMprop, Eprop, Vprop, EMat, EVprop, VEprop,
+           SamplerMap, PartitionStats, OStats, BMap, BRMap>
+make_block_state(Graph& g, Eprop eweight, Vprop vweight, Vprop b, BGraph& bg,
+                 EMat& emat, EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr,
+                 EVprop egroups, VEprop esrcpos, VEprop etgtpos,
+                 SamplerMap& neighbour_sampler,
+                 SamplerMap& cavity_neighbour_sampler,
+                 PartitionStats& partition_stats, OStats& ostats,
+                 BMap& block_map, BRMap block_rmap, vector<size_t>& free_blocks,
+                 bool master, bool slave, bool single)
+{
+    BlockState<Graph, BGraph, EMprop, Eprop, Vprop, EMat, EVprop, VEprop,
+               SamplerMap, PartitionStats, OStats, BMap, BRMap>
+        state = {g, eweight, vweight, b, bg, emat, mrs, mrp, mrm, wr, egroups,
+                 esrcpos, etgtpos, neighbour_sampler, cavity_neighbour_sampler,
+                 partition_stats, ostats, block_map, block_rmap, free_blocks,
+                 master, slave, single};
+    return state;
+}
+
+
+template <class BGraph, class Eprop, class EMat, class ES>
+double virtual_move_covariate(Eprop& mrs, BGraph& bg, EMat& emat,
+                              ES& m_entries)
+{
+    typedef typename graph_traits<BGraph>::vertex_descriptor vertex_t;
+
+    auto& entries = m_entries.get_entries();
+    auto& delta = m_entries.get_delta();
+
+    double dS = 0;
+    for (size_t i = 0; i < entries.size(); ++i)
+    {
+        vertex_t er = entries[i].first;
+        vertex_t es = entries[i].second;
+        int d = delta[i];
+
+        int ers = get_mrs(er, es, mrs, emat, bg);
+        assert(ers + d >= 0);
+        dS -= -lgamma_fast(ers + 1);
+        dS += -lgamma_fast(ers + d + 1);
+    }
+    return dS;
+}
+
+template <class VLprop, class VVprop, class Vprop, class BlockState,
+          class MEntries, class NPolicy = standard_neighbours_policy>
+double virtual_move(size_t v, size_t s, Vprop& b, VLprop& cv, VVprop& vmap,
+                    vector<BlockState>& states, vector<MEntries>& m_entries,
+                    bool dense, bool deg_corr, double multigraph,
+                    const NPolicy& npolicy = NPolicy())
+{
+    if (s == size_t(b[v]))
+        return 0;
+
+    double dS = 0;
+    auto& ls = cv[v];
+    auto& vs = vmap[v];
+    for (size_t j = 0; j < ls.size(); ++j)
+    {
+        size_t l = ls[j] + 1;
+        size_t u = vs[j];
+
+        auto& state = states[l];
+
+        size_t r_u = state.b[u];
+
+        assert(r_u < num_vertices(state.bg));
+
+        size_t s_u = (l == 0) ? s : get_block_map(state, state.block_map, s);
+
+        if ((!state.slave && l > 0) || state.master || state.single)
+        {
+                dS += virtual_move(u, s_u, dense, state.mrs, state.mrp, state.mrm,
+                                   state.wr, state.b, deg_corr, state.eweight,
+                                   state.vweight, state.g, state.bg, state.emat,
+                                   m_entries[l], state.overlap_stats, multigraph,
+                                   npolicy);
+        }
+
+        if (state.partition_stats.is_enabled())
+        {
+            if (l == 0)
+                dS += state.partition_stats.get_delta_dl(u, r_u, s_u,
+                                                         state.overlap_stats,
+                                                         state.g);
+            if (deg_corr && ((!state.slave && l > 0) || state.master || state.single))
+                dS += state.partition_stats.get_delta_deg_dl(u, r_u, s_u,
+                                                             state.eweight,
+                                                             state.overlap_stats,
+                                                             state.g);
+        }
+
+        if (state.master || state.slave)
+        {
+            if (state.slave)
+            {
+                m_entries[l].clear();
+                move_entries(u, s_u, state.b, state.eweight, state.g,
+                             state.bg, m_entries[l], npolicy);
+            }
+
+            double ddS = virtual_move_covariate(state.mrs, state.bg, state.emat,
+                                                m_entries[l]);
+            if (state.master)
+                dS -= ddS;
+            else
+                dS += ddS;
+        }
+
+        if (l > 0 && state.wr[s_u] == 0)
+            remove_block_map(state, state.block_map, s);
+    }
+    return dS;
+}
+
+// The following function will only be called for overlapping moves, where
+// several half-edges are moved at once
+template <class VLprop, class VVprop, class Vprop, class BlockState,
+          class MEntries, class Vec, class NPolicy = standard_neighbours_policy>
+double virtual_move(const Vec& vs, size_t s, Vprop& b, VLprop& cv, VVprop& vmap,
+                    vector<BlockState>& states, vector<MEntries>& m_entries,
+                    bool dense, bool deg_corr, double multigraph,
+                    const NPolicy& npolicy = NPolicy())
+{
+    if (s == size_t(b[vs[0]]))
+        return 0;
+
+    unordered_map<int, vector<size_t>> us;
+    for (size_t i = 0; i < vs.size(); ++i)
+    {
+        size_t v = vs[i];
+        auto& ls = cv[v];
+        auto& ws = vmap[v];
+        for (size_t j = 0; j < ls.size(); ++j)
+        {
+            int l = ls[j];
+            size_t u = ws[j];
+            us[l].push_back(u);
+        }
+    }
+
+    double dS = 0;
+    for (auto& iter : us)
+    {
+        int l = iter.first + 1;
+        auto& state = states[l];
+        size_t u = iter.second[0];
+        size_t r_u = state.b[u];
+        size_t s_u = (l == 0) ? s : get_block_map(state, state.block_map, s);
+
+        if ((!state.slave && l > 0) || state.master || state.single)
+        {
+
+            auto is_loop = [&] (size_t w) -> bool
+                {
+                    int t = state.overlap_stats.get_out_neighbour(w);
+                    if (t == -1)
+                    t = state.overlap_stats.get_in_neighbour(w);
+                    return ((state.overlap_stats.get_node(w) ==
+                             state.overlap_stats.get_node(t)) &&
+                            (size_t(state.b[t]) == r_u) &&
+                            (size_t(state.b[w]) == r_u));
+                };
+
+            dS += virtual_move(iter.second, s_u, dense, state.mrs, state.mrp,
+                               state.mrm, state.wr, state.b, deg_corr,
+                               state.eweight, state.vweight, state.g, state.bg,
+                               state.emat, m_entries[l], state.overlap_stats,
+                               multigraph && (dense || !state.overlap_stats.is_enabled()),
+                               npolicy, is_loop);
+
+            if (multigraph && !dense && state.overlap_stats.is_enabled())
+            {
+                std::unordered_map<int, size_t> bundles;
+                auto& mi = state.overlap_stats.get_mi();
+                for (auto w : iter.second)
+                {
+                    if (mi[w] != -1)
+                        bundles[mi[w]] = w;
+                }
+
+                for (auto& kv : bundles)
+                {
+                    dS += state.overlap_stats.virtual_move_parallel_dS(kv.second,
+                                                                       r_u, s_u,
+                                                                       state.b,
+                                                                       state.g,
+                                                                       true);
+                }
+            }
+        }
+
+        size_t kin = 0, kout = 0;
+        for (auto w : iter.second)
+        {
+            kin += in_degreeS()(w, state.g, state.eweight);
+            kout += out_degreeS()(w, state.g, state.eweight);
+        }
+
+        if (state.partition_stats.is_enabled())
+        {
+            assert(r_u < num_vertices(state.bg));
+
+            if (l == 0)
+                dS += state.partition_stats.get_delta_dl(u, r_u, s_u,
+                                                         state.overlap_stats,
+                                                         state.g, kin, kout);
+            if (deg_corr && ((!state.slave && l > 0) || state.master || state.single))
+                dS += state.partition_stats.get_delta_deg_dl(u, r_u, s_u,
+                                                             state.eweight,
+                                                             state.overlap_stats,
+                                                             state.g, kin, kout);
+        }
+
+        if (state.master || state.slave)
+        {
+            if (state.slave)
+            {
+                m_entries[l].clear();
+                for (auto w : iter.second)
+                    move_entries(w, s_u, state.b, state.eweight, state.g,
+                                 state.bg, m_entries[l], npolicy);
+            }
+
+            double ddS = virtual_move_covariate(state.mrs, state.bg, state.emat,
+                                                m_entries[l]);
+            if (state.master)
+                dS -= ddS;
+            else
+                dS += ddS;
+        }
+
+        if (l > 0 && state.wr[s_u] == 0)
+            remove_block_map(state, state.block_map, s);
+    }
+    return dS;
+}
+
+template <class BlockState, class BlockMap>
+size_t get_block_map(const BlockState& state, const BlockMap& bmap, size_t r)
+{
+    return r;
+}
+
+template <class BlockState, class BlockMap>
+void remove_block_map(const BlockState& state, const BlockMap& bmap, size_t r)
+{
+}
+
+
+template <class BlockState, class VLprop, class VVprop, class Vprop,
+          class OStats, class NPolicy = standard_neighbours_policy>
+void move_vertex(size_t v, size_t s, Vprop& b, VLprop& cv, VVprop& vmap,
+                 Vprop& wr, Vprop& vweight, bool deg_corr,
+                 vector<BlockState>& states, bool update_egroups,
+                 OStats& overlap_stats, const NPolicy& npolicy = NPolicy())
+{
+    size_t r = b[v];
+
+    if (r == s)
+        return;
+
+    auto& ls = cv[v];
+    auto& vs = vmap[v];
+    for (size_t j = 0; j < ls.size(); ++j)
+    {
+        int l = ls[j] + 1;
+        size_t u = vs[j];
+
+        auto& state = states[l];
+        size_t r_u = state.b[u];
+
+        assert(r_u < num_vertices(state.bg));
+
+        size_t s_u = (l == 0) ? s : get_block_map(state, state.block_map, s);
+
+        move_vertex(u, s_u, state.mrs, state.mrp, state.mrm, state.wr, state.b,
+                    deg_corr, state.eweight, state.vweight, state.g, state.bg,
+                    state.emat, state.overlap_stats, state.partition_stats,
+                    npolicy);
+
+        if (l == 0 && update_egroups)
+        {
+            egroups_manage::update_egroups(u, r_u, s_u,
+                                           state.eweight,
+                                           state.egroups,
+                                           state.esrcpos,
+                                           state.etgtpos,
+                                           state.g);
+        }
+
+        if (l > 0 && state.wr[r_u] == 0)
+            remove_block_map(state, state.block_map, r);
+    }
+}
+
+
+template <class BlockState, class VLprop, class VVprop, class Vprop,
+          class OStats, class Vec, class NPolicy = standard_neighbours_policy>
+void move_vertex(const Vec& vs, size_t s, Vprop& b, VLprop& cv, VVprop& vmap,
+                 Vprop& wr, Vprop& vweight, bool deg_corr,
+                 vector<BlockState>& states, bool update_egroups,
+                 OStats& overlap_stats, const NPolicy& npolicy = NPolicy())
+{
+    size_t r = b[vs[0]];
+    if (s == r)
+        return;
+
+    unordered_map<int, vector<size_t>> us;
+    for (size_t i = 0; i < vs.size(); ++i)
+    {
+        auto& ls = cv[vs[i]];
+        auto& ws = vmap[vs[i]];
+        for (size_t j = 0; j < ls.size(); ++j)
+        {
+            int l = ls[j];
+            size_t u = ws[j];
+            us[l].push_back(u);
+        }
+    }
+
+    for (auto iter : us)
+    {
+        int l = iter.first + 1;
+        size_t u = iter.second[0];
+
+        auto& state = states[l];
+        size_t r_u = state.b[u];
+
+        assert(r_u < num_vertices(state.bg));
+
+        size_t s_u = (l == 0) ? s : get_block_map(state, state.block_map, s);
+
+        move_vertex(iter.second, s_u, state.mrs, state.mrp, state.mrm, state.wr,
+                    state.b, deg_corr, state.eweight, state.vweight, state.g,
+                    state.bg, state.emat, state.overlap_stats,
+                    state.partition_stats, npolicy);
+
+        if (l == 0 && update_egroups)
+        {
+            for (auto w : iter.second)
+                egroups_manage::update_egroups(w, r_u, s_u,
+                                               state.eweight,
+                                               state.egroups,
+                                               state.esrcpos,
+                                               state.etgtpos,
+                                               state.g);
+        }
+
+        if (l > 0 && state.wr[r_u] == 0)
+            remove_block_map(state, state.block_map, r);
+    }
+}
+
+
+template <class Type>
+void insert_vec(vector<Type>& v, size_t i, const Type& x)
+{
+    v.insert(v.begin() + i, x);
+}
+
+template <class Type>
+void insert_vec(const std::array<Type, 1>& v, size_t i, const Type& x)
+{
+}
+
+template <class Type>
+void clear_vec(vector<Type>& v)
+{
+    v.clear();
+}
+
+template <class Type>
+void clear_vec(const std::array<Type, 1>& v)
+{
+}
+
+
+//A single Monte Carlo Markov chain sweep
+template <class Graph, class Vprop, class VVprop, class VLprop, class EVprop,
+          class Eprop, class RNG, class BlockState, class MEntries, class OStats>
+void move_sweep(vector<BlockState>& states, vector<MEntries>& m_entries_r,
+                Vprop wr, Vprop b, EVprop ce, VLprop cv, VVprop vmap,
                 Vprop clabel, vector<int>& vlist, bool deg_corr, bool dense,
                 bool multigraph, double beta, Eprop eweight, Vprop vweight,
-                EVprop egroups, VEprop esrcpos, VEprop etgtpos, Graph& g,
-                BGraph& bg, EMat& emat, SamplerMap neighbour_sampler,
-                SamplerMap cavity_neighbour_sampler, bool sequential,
-                bool parallel, bool random_move, double c, size_t nmerges,
-                size_t ntries, Vprop merge_map,
-                partition_stats_t& partition_stats, bool verbose, RNG& rng,
-                double& S, size_t& nmoves, OStats overlap_stats)
+                Graph& g, bool sequential, bool parallel, bool random_move,
+                double c, size_t nmerges, Vprop merge_map, size_t niter,
+                size_t B, bool verbose, RNG& rng, double& S, size_t& nmoves,
+                OStats ostats)
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-
-    size_t B = num_vertices(bg);
 
     if (vlist.size() < 100)
         parallel = false;
 
-    // used only if merging
-    std::unordered_set<vertex_t> past_moves;
-    vector<pair<vertex_t, double> > best_move;
-    if (nmerges > 0 || parallel)
-    {
-        best_move.resize(num_vertices(g), make_pair(vertex_t(0), numeric_limits<double>::max()));
-    }
-    else
-    {
-        std::shuffle(vlist.begin(), vlist.end(), rng);
-    }
-
-    std::uniform_int_distribution<size_t> s_rand(0, B - 1);
-
     nmoves = 0;
     S = 0;
 
-    EntrySet<Graph> m_entries(B);
-
     vector<rng_t*> rngs;
+    size_t num_threads = 1;
     if (parallel)
     {
-        size_t num_threads = 1;
 #ifdef USING_OPENMP
         num_threads = omp_get_max_threads();
 #endif
@@ -1867,86 +2463,99 @@ void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
         rngs.push_back(&rng);
     }
 
-    int i = 0, N = vlist.size();
-    #pragma omp parallel for default(shared) private(i) \
-        firstprivate(m_entries, past_moves) schedule(runtime) if (parallel)
-    for (i = 0; i < N; ++i)
+    // used only if merging
+    std::unordered_set<vertex_t> past_moves;
+    vector<pair<vertex_t, double> > best_move;
+    if (nmerges > 0 || parallel)
+        best_move.resize(num_vertices(g), make_pair(vertex_t(0), numeric_limits<double>::max()));
+
+    std::uniform_int_distribution<size_t> s_rand(0, B - 1);
+
+    vector<MEntries> m_entries = m_entries_r;
+
+    for (size_t iter = 0; iter < niter; ++iter)
     {
-        size_t tid = 0;
-        if (parallel)
+        if (nmerges == 0 && !parallel)
+            std::shuffle(vlist.begin(), vlist.end(), rng);
+
+        int i = 0, N = vlist.size();
+        #pragma omp parallel for default(shared) private(i) \
+            firstprivate(past_moves, m_entries) \
+            schedule(runtime) if (parallel)
+        for (i = 0; i < N; ++i)
         {
-#ifdef USING_OPENMP
-            tid = omp_get_thread_num();
-#endif
-        }
+            size_t tid = 0;
+            if (parallel)
+            {
+    #ifdef USING_OPENMP
+                tid = omp_get_thread_num();
+    #endif
+            }
 
-        typedef std::uniform_real_distribution<> rdist_t;
-        auto rand_real = std::bind(rdist_t(), std::ref(*rngs[tid]));
+            typedef std::uniform_real_distribution<> rdist_t;
+            auto rand_real = std::bind(rdist_t(), std::ref(*rngs[tid]));
 
-        vertex_t v;
-        if (sequential)
-        {
-            v = vertex(vlist[i], g);
-        }
-        else
-        {
-            std::uniform_int_distribution<size_t> v_rand(0, N - 1);
-            v = vertex(vlist[v_rand(*rngs[tid])], g);
-        }
+            vertex_t v;
+            if (sequential)
+            {
+                v = vertex(vlist[i], g);
+            }
+            else
+            {
+                std::uniform_int_distribution<size_t> v_rand(0, N - 1);
+                v = vertex(vlist[v_rand(*rngs[tid])], g);
+            }
 
-        vertex_t r = b[v];
+            vertex_t r = b[v];
 
-        // blocks can't become empty (if not merging)
-        if (nmerges == 0 && wr[r] == vweight[v] && std::isinf(beta))
-            continue;
+            // blocks can't become empty (if not merging)
+            if (nmerges == 0 && wr[r] == vweight[v] && std::isinf(beta))
+                continue;
 
-        if (vweight[v] == 0)
-            continue;
+            if (vweight[v] == 0)
+                continue;
 
-        if (nmerges > 0)
-            past_moves.clear();
-
-        size_t j = 0;
-        while (j < ntries)
-        {
-            ++j;
+            if (nmerges > 0)
+                past_moves.clear();
 
             // attempt random block
             vertex_t s = s_rand(*rngs[tid]);
 
             if (!random_move && total_degreeS()(v, g) > 0)
             {
+                auto& state = states[0];
+
                 if (nmerges == 0)
                 {
-                    vertex_t u = neighbour_sampler[v].sample(*rngs[tid]);
+                    vertex_t u = state.neighbour_sampler[v].sample(*rngs[tid]);
 
-                    vertex_t t = b[u];
+                    vertex_t t = state.b[u];
 
                     double p_rand = 0;
                     if (c > 0)
                     {
                         if (is_directed::apply<Graph>::type::value)
-                            p_rand = c * B / double(mrp[t] + mrm[t] + c * B);
+                            p_rand = c * B / double(state.mrp[t] + state.mrm[t] + c * B);
                         else
-                            p_rand = c * B / double(mrp[t] + c * B);
+                            p_rand = c * B / double(state.mrp[t] + c * B);
                     }
 
                     if (c == 0 || rand_real() >= p_rand)
                     {
-                        const auto& e = egroups_manage::sample_edge(egroups[t], *rngs[tid]);
-                        s = b[target(e, g)];
+                        const auto& e = egroups_manage::sample_edge(state.egroups[t], *rngs[tid]);
+                        s = state.b[target(e, state.g)];
                         if (s == t)
-                            s = b[source(e, g)];
+                            s = state.b[source(e, state.g)];
                     }
                 }
                 else
                 {
                     // neighbour sampler points to the *block graph*
-                    s = neighbour_sampler[r].sample(*rngs[tid]);
+                    s = state.neighbour_sampler[r].sample(*rngs[tid]);
                     if (s == r)
-                        s = cavity_neighbour_sampler[s].sample(*rngs[tid]);
+                        s = state.cavity_neighbour_sampler[s].sample(*rngs[tid]);
                     else
-                        s = neighbour_sampler[s].sample(*rngs[tid]);
+                        s = state.neighbour_sampler[s].sample(*rngs[tid]);
                 }
             }
 
@@ -1968,10 +2577,8 @@ void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
                 past_moves.insert(s);
             }
 
-            double dS = virtual_move(v, s, dense, mrs, mrp, mrm, wr, b,
-                                     deg_corr, eweight, vweight, g, bg, emat,
-                                     m_entries, overlap_stats, multigraph,
-                                     partition_stats);
+            double dS = virtual_move(v, s, b, cv, vmap, states, m_entries,
+                                     dense, deg_corr, multigraph);
 
             if (nmerges > 0)
             {
@@ -1979,7 +2586,6 @@ void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
                 {
                     best_move[v].first = s;
                     best_move[v].second = dS;
-                    j = 0; // reset try counter
                 }
             }
             else
@@ -1991,15 +2597,31 @@ void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
                 }
                 else
                 {
-                    double pf = random_move ? 1 :
-                        get_move_prob(v, r, s, c, b, mrs, mrp, mrm, emat,
-                                      eweight, g, bg, m_entries, false,
-                                      overlap_stats);
+                    double pf = 0, pb = 0;
+                    if (random_move)
+                    {
+                        pf = pb = 1;
+                    }
+                    else
+                    {
+                        auto& state = states[0];
+                        double p = get_move_prob(v, r, s, c, state.b,
+                                                 state.mrs, state.mrp,
+                                                 state.mrm, state.emat,
+                                                 state.eweight, state.g,
+                                                 state.bg, m_entries[0],
+                                                 false,
+                                                 state.overlap_stats);
+                        pf += p;
 
-                    double pb = random_move ? 1 :
-                        get_move_prob(v, s, r, c, b, mrs, mrp, mrm, emat,
-                                      eweight, g, bg, m_entries, true,
-                                      overlap_stats);
+                        p = get_move_prob(v, s, r, c, state.b,
+                                          state.mrs, state.mrp, state.mrm,
+                                          state.emat, state.eweight,
+                                          state.g, state.bg,
+                                          m_entries[0], true,
+                                          state.overlap_stats);
+                        pb += p;
+                    }
 
                     double a = -beta * dS + log(pb) - log(pf);
 
@@ -2019,12 +2641,9 @@ void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
                     if (!parallel)
                     {
                         assert(b[v] == int(r));
-                        move_vertex(v, s, mrs, mrp, mrm, wr, b, deg_corr,
-                                    eweight, vweight, g, bg, emat,
-                                    overlap_stats, partition_stats);
-                        if (!random_move)
-                            egroups_manage::update_egroups(v, r, s, eweight, egroups,
-                                                           esrcpos, etgtpos, g);
+                        move_vertex(v, s, b, cv, vmap, wr, vweight, deg_corr,
+                                    states, not random_move, ostats);
+
                         S += dS;
                         ++nmoves;
                         assert(b[v] == int(s));
@@ -2040,6 +2659,31 @@ void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
                 }
             }
         }
+
+        if (parallel && (nmerges == 0))
+        {
+            for (vertex_t v : vlist)
+            {
+                vertex_t r = b[v];
+                vertex_t s = best_move[v].first;
+                double dS = best_move[v].second;
+                if (s != r && dS != numeric_limits<double>::max())
+                {
+                    dS = virtual_move(v, s, b, cv, vmap, states,
+                                      m_entries, dense, deg_corr,
+                                      multigraph);
+
+                    if (dS > 0 && std::isinf(beta))
+                        continue;
+
+                    move_vertex(v, s, b, cv, vmap, wr, vweight, deg_corr, states,
+                                not random_move, ostats);
+
+                    S += dS;
+                    ++nmoves;
+                }
+            }
+        }
     }
 
     if (parallel && (nmerges == 0))
@@ -2047,38 +2691,21 @@ void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
         for (auto r : rngs)
             delete r;
         rngs.clear();
-
-        for (vertex_t v : vlist)
-        {
-            vertex_t r = b[v];
-            vertex_t s = best_move[v].first;
-            double dS = best_move[v].second;
-            if (s != r && dS != numeric_limits<double>::max())
-            {
-                double dS = virtual_move(v, s, dense, mrs, mrp, mrm, wr, b,
-                                         deg_corr, eweight, vweight, g, bg,
-                                         emat, m_entries, overlap_stats,
-                                         multigraph, partition_stats);
-                if (dS > 0 && std::isinf(beta))
-                    continue;
-                move_vertex(v, s, mrs, mrp, mrm, wr, b, deg_corr, eweight,
-                            vweight, g, bg, emat, overlap_stats,
-                            partition_stats);
-                if (!random_move)
-                    egroups_manage::update_egroups(v, r, s, eweight, egroups,
-                                                   esrcpos, etgtpos, g);
-                S += dS;
-                ++nmoves;
-            }
-        }
     }
 
     if (nmerges > 0)
     {
+        auto merge_cmp_less =
+            [] (const std::tuple<vertex_t, vertex_t, double>& a,
+                const std::tuple<vertex_t, vertex_t, double>& b) -> bool
+            {
+                return get<2>(a) < get<2>(b);
+            };
+
         // top is the merge with _largest_ dS
         priority_queue<std::tuple<vertex_t, vertex_t, double>,
                        vector<std::tuple<vertex_t, vertex_t, double> >,
-                       merge_cmp_less> move_heap;
+                       decltype(merge_cmp_less)> move_heap(merge_cmp_less);
 
         for (size_t i = 0; i < num_vertices(g); ++i)
         {
@@ -2088,10 +2715,10 @@ void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
             double dS = best_move[v].second;
 
             if (r != s && dS < numeric_limits<double>::max() &&
-                (move_heap.size() < nmerges || dS < get<2>(move_heap.top())))
+                (move_heap.size() < nmerges * 2 || dS < get<2>(move_heap.top())))
             {
-                move_heap.push(std::make_tuple(v, s, dS));
-                if (move_heap.size() > nmerges)
+                move_heap.emplace(v, s, dS);
+                if (move_heap.size() > nmerges * 2)
                     move_heap.pop();
             }
 
@@ -2108,8 +2735,8 @@ void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
 
         while (!move_heap.empty())
         {
-            std::tuple<vertex_t, vertex_t, double> v = move_heap.top();
-            best_moves.push_back(make_pair(get<0>(v), get<1>(v)));
+            auto& v = move_heap.top();
+            best_moves.emplace_back(get<0>(v), get<1>(v));
             move_heap.pop();
         }
 
@@ -2126,15 +2753,56 @@ void move_sweep(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
             if (touched[r] || touched[s] || vweight[v] == 0 || wr[s] == 0)
                 continue;
 
-            double dS = virtual_move(v, s, dense, mrs, mrp, mrm, wr, b,
-                                     deg_corr, eweight, vweight, g, bg, emat,
-                                     m_entries, overlap_stats, multigraph,
-                                     partition_stats);
+            double dS = virtual_move(v, s, b, cv, vmap, states, m_entries,
+                                     dense, deg_corr, multigraph);
+            move_vertex(v, s, b, cv, vmap, wr, vweight, deg_corr, states, false,
+                        ostats);
 
-            move_vertex(v, s, mrs, mrp, mrm, wr, b, deg_corr, eweight, vweight,
-                        g, bg, emat, overlap_stats, partition_stats);
+            size_t i = 0, j = 0;
+            auto l_v = cv[v][0];
+            auto l_s = cv[s][0];
+            while (i <  cv[v].size() && j < cv[s].size())
+            {
+                for (; i < cv[v].size(); ++i)
+                {
+                    l_v = cv[v][i];
+                    if (l_v >= l_s)
+                        break;
+                    insert_vec(cv[s], j, l_v);
+                    insert_vec(vmap[s], j, vmap[v][i]);
+                    ++j;
+                }
 
-            merge_vertices(v, s, eweight, vweight, merge_map, g);
+                for (; j < cv[s].size(); ++j)
+                {
+                    l_s = cv[s][j];
+                    if (l_s >= l_v)
+                        break;
+                }
+
+                if (l_s != l_v)
+                    continue;
+
+                if (i < cv[v].size() && j < cv[s].size())
+                {
+                    assert(l_s == l_v);
+                    size_t u = vmap[v][i];
+                    size_t w = vmap[s][j];
+                    int l = l_v + 1;
+                    auto& state = states[l];
+                    assert(u < num_vertices(state.g));
+                    assert(w < num_vertices(state.g));
+                    merge_vertices(u, w, state.eweight, state.vweight, state.g);
+                    i++;
+                    j++;
+                }
+            }
+            merge_vertices(v, s, eweight, vweight, g);
+
+            clear_vec(cv[v]);
+            clear_vec(vmap[v]);
+
+            merge_map[v] = s;
 
             touched[r] = touched[s] = true;
             ++nmoves;

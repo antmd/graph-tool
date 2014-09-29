@@ -31,8 +31,7 @@ try:
     import cairo
 except ImportError:
     msg = "Error importing cairo. Graph drawing will not work."
-    warnings.filterwarnings("always", msg, ImportWarning)
-    warnings.warn(msg, ImportWarning)
+    warnings.warn(msg, RuntimeWarning)
     raise
 
 default_cm = None
@@ -59,8 +58,7 @@ try:
     is_draw_inline = 'inline' in matplotlib.get_backend()
 except ImportError:
     msg = "Error importing matplotlib module. Graph drawing will not work."
-    warnings.filterwarnings("always", msg, ImportWarning)
-    warnings.warn(msg, ImportWarning)
+    warnings.warn(msg, RuntimeWarning)
     raise
 
 try:
@@ -76,7 +74,7 @@ import copy
 import io
 from collections import defaultdict
 
-from .. import GraphView, PropertyMap, ungroup_vector_property,\
+from .. import Graph, GraphView, PropertyMap, ungroup_vector_property,\
      group_vector_property, _prop, _check_prop_vector
 
 from .. stats import label_parallel_edges, label_self_loops
@@ -89,11 +87,18 @@ try:
 except ImportError:
     msg = "Error importing cairo-based drawing library. " + \
         "Was graph-tool compiled with cairomm support?"
-    warnings.filterwarnings("always", msg, ImportWarning)
-    warnings.warn(msg, ImportWarning)
+    warnings.warn(msg, RuntimeWarning)
 
 from .. draw import sfdp_layout, random_layout, _avg_edge_distance, \
-    coarse_graphs
+    coarse_graphs, radial_tree_layout, prop_to_size
+
+try:
+    from matplotlib.colors import colorConverter
+except ImportError:
+    pass
+
+from .. generation import graph_union
+from .. topology import shortest_path
 
 _vdefaults = {
     "shape": "circle",
@@ -1248,12 +1253,11 @@ def get_hierarchy_control_points(g, t, tpos, beta=0.8, cts=None):
        >>> g = gt.GraphView(g, vfilt=gt.label_largest_component(g))
        >>> g.purge_vertices()
        >>> state = gt.minimize_nested_blockmodel_dl(g, deg_corr=True)
-       >>> bstack = state.get_bstack()
-       >>> t = gt.get_hierarchy_tree(bstack)[0]
+       >>> t = gt.get_hierarchy_tree(state)[0]
        >>> tpos = pos = gt.radial_tree_layout(t, t.vertex(t.num_vertices() - 1), weighted=True)
        >>> cts = gt.get_hierarchy_control_points(g, t, tpos)
        >>> pos = g.own_property(tpos)
-       >>> b = bstack[0].vp["b"]
+       >>> b = state.levels[0].b
        >>> gt.graph_draw(g, pos=pos, vertex_fill_color=b, vertex_shape=b, edge_control_points=cts,
        ...               edge_color=[0, 0, 0, 0.3], vertex_anchor=0, output="netscience_nested_mdl.pdf")
        <...>
@@ -1309,8 +1313,7 @@ try:
     from .gtk_draw import *
 except (ImportError, RuntimeError) as e:
     msg = "Error importing Gtk module: %s; GTK+ drawing will not work." % str(e)
-    warnings.filterwarnings("always", msg, ImportWarning)
-    warnings.warn(msg, ImportWarning)
+    warnings.warn(msg, RuntimeWarning)
 
 def gen_surface(name):
     fobj, fmt = open_file(name)
@@ -1325,9 +1328,10 @@ def gen_surface(name):
         Gdk.cairo_set_source_pixbuf(cr, pixbuf, 0, 0)
         cr.paint()
         return surface
-
+#
 # matplotlib
 # ==========
+#
 
 class GraphArtist(matplotlib.artist.Artist):
     """:class:`matplotlib.artist.Artist` specialization that draws
@@ -1374,3 +1378,478 @@ class GraphArtist(matplotlib.artist.Artist):
                    self.vorder, self.eorder, self.nodesfirst, self.kwargs)
 
         ctx.restore()
+
+
+#
+# Drawing hierarchies
+# ===================
+#
+
+def draw_hierarchy(state, pos=None, layout="radial", beta=0.8, ealpha=0.4,
+                   halpha=0.6, subsample_edges=None, deg_order=True,
+                   deg_size=True, vsize_scale=1, hsize_scale=1,
+                   empty_branches=True, verbose=False, **kwargs):
+    r"""Draw a nested block model state in a circular hierarchy layout with edge
+    bundling.
+
+    Parameters
+    ----------
+    state : :class:`~graph_tool.community.NestedBlockState`
+        Nested block state to be drawn.
+    pos : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        If supplied, this specifies a vertex property map with the positions of
+        the vertices in the layout.
+    layout : ``str`` or :class:`~graph_tool.PropertyMap` (optional, default: ``"radial"``)
+        If ``layout == "radial"`` :func:`~graph_tool.draw.radial_tree_layout`
+        will be used. If ``layout == "sfdp"``, the hierarchy tree will be
+        positioned using :func:`~graph_tool.draw.sfdp_layout`. If a
+        :class:`~graph_tool.PropertyMap` is provided, it must correspond to the
+        position of the hierarchy tree.
+    beta : ``float`` (optional, default: ``.8``)
+        Edge bundling strength.
+    ealpha : ``float`` (optional, default: ``.8``)
+        Alpha value of the edge colors.
+    halpha : ``float`` (optional, default: ``.8``)
+        Alpha value of hierarchy nodes and edges.
+    subsample_edges : ``int`` or list of :class:`~graph_tool.Edge` instances (optional, default: ``None``)
+        If provided, only this number of random edges will be drawn. If the
+        value is a list, it should include the edges that are to be drawn.
+    deg_order : ``bool`` (optional, default: ``True``)
+        If ``True``, the vertices will be ordered according to degree inside
+        each group.
+    vsize_scale : ``float`` (optional, default: ``1.``)
+        Multiplicative factor of the vertex sizes.
+    hsize_scale : ``float`` (optional, default: ``1.``)
+        Multiplicative factor of the sizes of the hierarchy nodes.
+    empty_branches : ``bool`` (optional, default: ``False``)
+       If ``empty_branches == False``, dangling branches at the upper layers
+       will be pruned.
+    verbose : ``bool`` (optional, default: ``False``)
+       If ``verbose == True``, verbose information will be displayed.
+    **kwargs :
+       All remaining keyword arguments will be passed to the
+       :func:`~graph_tool.draw.graph_draw` function.
+
+    Returns
+    -------
+
+    pos : :class:`~graph_tool.PropertyMap`
+        This is a vertex property map with the positions of
+        the vertices in the layout.
+    t : :class:`~graph_tool.Graph`
+        This is a the hierarchy tree used in the layout.
+    tpos : :class:`~graph_tool.PropertyMap`
+        This is a vertex property map with the positions of
+        the hierarchy tree in the layout.
+
+    Examples
+    --------
+    .. testsetup:: draw_hierarchy
+
+       gt.seed_rng(42)
+       np.random.seed(42)
+
+    .. doctest:: draw_hierarchy
+
+       >>> g = gt.collection.data["celegansneural"]
+       >>> state = gt.minimize_nested_blockmodel_dl(g, deg_corr=True)
+       >>> gt.draw_hierarchy(state, output="celegansneural_nested_mdl.pdf")
+       (...)
+
+    .. testcleanup:: draw_hierarchy
+
+       gt.draw_hierarchy(state, output="celegansneural_nested_mdl.png")
+
+    .. figure:: celegansneural_nested_mdl.*
+       :align: center
+
+       Hierarchical block partition of the C. elegans neural network, which
+       minimizes the description length of the network according to the nested
+       (degree-corrected) stochastic blockmodel.
+
+
+    References
+    ----------
+    .. [holten-hierarchical-2006] Holten, D. "Hierarchical Edge Bundles:
+       Visualization of Adjacency Relations in Hierarchical Data.", IEEE
+       Transactions on Visualization and Computer Graphics 12, no. 5, 741–748
+       (2006). :doi:`10.1109/TVCG.2006.147`
+    """
+
+    g = state.g
+
+    if state.overlap:
+        ostate = state.levels[0]
+        bv, bcin, bcout, bc = ostate.get_overlap_blocks()
+        be = ostate.get_edge_blocks()
+        orig_state = state
+        state = state.copy()
+        b = ostate.get_majority_blocks()
+        state.levels[0] = BlockState(g, b=b)
+    else:
+        b = state.levels[0].b
+
+    if subsample_edges is not None:
+        if verbose:
+            print("subsampling edges...")
+        emask = g.new_edge_property("bool", False)
+        if isinstance(subsample_edges, int):
+            eidx = g.edge_index.copy("int").fa.copy()
+            numpy.random.shuffle(eidx)
+            emask = g.new_edge_property("bool")
+            emask.a[eidx[:subsample_edges]] = True
+        else:
+            for e in subsample_edges:
+                emask[e] = True
+        g = GraphView(g, efilt=emask)
+
+        if verbose:
+            print("done.")
+
+    t, tb, vorder = get_hierarchy_tree(state, empty_branches=empty_branches)
+
+    edge_labels = t.new_edge_property("string")
+
+    if layout == "radial":
+        if not deg_order:
+            vorder = None
+        if pos is not None:
+            x, y = ungroup_vector_property(pos, [0, 1])
+            x.a -= x.a.mean()
+            y.a -= y.a.mean()
+            angle = g.new_vertex_property("double")
+            angle.a = (numpy.arctan2(y.a, x.a) + 2 * numpy.pi) % (2 * numpy.pi)
+            vorder = angle
+        tpos = radial_tree_layout(t, root=t.vertex(t.num_vertices() - 1),
+                                  rel_order=vorder)
+    elif layout == "sfdp":
+        if pos is None:
+            tpos = sfdp_layout(t)
+        else:
+            x, y = ungroup_vector_property(pos, [0, 1])
+            x.a -= x.a.mean()
+            y.a -= y.a.mean()
+            K = numpy.sqrt(x.a.std() + y.a.std()) / 10
+            tpos = t.new_vertex_property("vector<double>")
+            for v in t.vertices():
+                if int(v) < g.num_vertices():
+                    tpos[v] = [x[v], y[v]]
+                else:
+                    tpos[v] = [0, 0]
+            pin = t.new_vertex_property("bool")
+            pin.a[:g.num_vertices()] = True
+            tpos = sfdp_layout(t, K=K, pos=tpos, pin=pin, multilevel=False)
+    else:
+        tpos = t.own_property(layout)
+
+    pos = g.own_property(tpos.copy())
+
+    if verbose:
+        print("getting cts...")
+
+    cts = get_hierarchy_control_points(g, t, tpos, beta)
+
+    if verbose:
+        print("done.")
+
+    if verbose:
+        print("putting gradient...")
+
+    args = kwargs
+    vcmap = args.get("vcmap", default_cm)
+    ecmap = args.get("ecmap", vcmap)
+
+    B = state.levels[0].B
+
+    gradient = args.get("edge_gradient", None)
+    if gradient is None:
+        gradient = g.new_edge_property("double")
+        gradient = group_vector_property([gradient])
+        if state.overlap:
+            for e in g.edges():
+                r, s = be[e]
+                if e.source() > e.target():
+                    r, s = s, r
+                gradient[e] = [0] + list(vcmap(r / (B - 1))) + \
+                              [1] + list(vcmap(s / (B - 1)))
+                gradient[e][4] = gradient[e][9] = ealpha
+
+    if verbose:
+        print("done")
+
+    if verbose:
+        print("putting color...")
+    if args.get("edge_color", None) is not None:
+        edge_color = args.get("edge_color")
+        edge_color = _convert(edge_attrs.color, edge_color,
+                              args.get("ecmap", default_cm))
+        if not isinstance(edge_color, PropertyMap):
+            val = edge_color
+            clrs = [g.new_edge_property("double") for i in range(4)]
+            for i in range(4):
+                clrs[i].a = val[i]
+            edge_color = group_vector_property(clrs)
+    else:
+        z = g.new_edge_property("double", 0)
+        a = g.new_edge_property("double", ealpha)
+        edge_color = group_vector_property([z, z, z, a])
+
+    if verbose:
+        print("done")
+
+    if verbose:
+        print("putting tcolor...")
+    tedge_color = t.new_edge_property("vector<double>")
+    r = t.new_edge_property("double",  int("a4", 16) / 256)
+    a = t.new_edge_property("double", halpha)
+    z = t.new_edge_property("double")
+    tedge_color = group_vector_property([r, z, z, a])
+    if verbose:
+        print("done")
+
+    em = g.new_edge_property("int", g.is_directed())
+    tem = t.new_edge_property("int", 1)
+
+    epw = args.get("edge_pen_width",
+                   g.new_edge_property("double", 1))
+    tepw = t.new_edge_property("double", 1)
+
+    vlabels = args.get("vertex_text", g.new_vertex_property("string"))
+    tlabels = t.new_vertex_property("string")
+
+    t_orig = t
+    t = GraphView(t, vfilt=lambda v: int(v) >= g.num_vertices())
+    if verbose:
+        print("joining graphs")
+    props = [(pos, tpos),
+             (cts, None),
+             (gradient, None),
+             (edge_color, tedge_color),
+             (em, tem),
+             (epw, tepw),
+             (args.get("edge_text", g.new_edge_property("string")).copy("string"),
+              edge_labels),
+             (g.vertex_index, tb),
+             (vlabels, tlabels)]
+
+    # propagate all other properties in args
+    arg_pos = {}
+    for a, v in args.items():
+        if isinstance(v, PropertyMap):
+            props.append((v, None))
+            arg_pos[a] = len(props) - 1
+
+    u, props = graph_union(g, t, props=props)
+    if verbose:
+        print("done")
+
+    pos = props[0]
+    cts = props[1]
+    egradient = props[2]
+    ecolor = props[3]
+    em = props[4]
+    epw = props[5]
+    elabels = props[6]
+    tb = props[7]
+    vertex_text = props[8]
+    b = u.own_property(b)
+
+    for a, v in arg_pos.items():
+        args[a] = props[v]
+
+    vshape = u.new_vertex_property("int")
+    vshape.a[:g.num_vertices()] = 0
+    vshape.a[g.num_vertices():] = 2
+    if "vertex_shape" in args:
+        vshape.a[:g.num_vertices()] = args["vertex_shape"].a[:g.num_vertices()]
+        del args["vertex_shape"]
+
+    vsize = None
+
+    if deg_size:
+        vsize = prop_to_size(u.degree_property_map("total"), 5, 20)
+
+    if "vertex_size" in args:
+        vsize.a[:g.num_vertices()] = args["vertex_size"].a[:g.num_vertices()]
+        del args["vertex_size"]
+
+    if vsize is not None:
+        vsize.a[g.num_vertices():] = vsize.a[g.num_vertices():].mean() * hsize_scale * 1.5
+
+        ems = epw.copy()
+        ems.a *= 2.75
+        ems.a[g.num_edges():] = numpy.sqrt(vsize.a[g.num_vertices():].mean() * hsize_scale * 1.5) * 2
+
+        vsize.a[:g.num_vertices()] *= vsize_scale
+
+    vorder = vsize.copy()
+    vorder.a[g.num_vertices():] = vorder.a.max() + 1
+
+    vfcolor = args.get("vertex_fill_color", None)
+    vcolor = args.get("vertex_color", None)
+    vertex_color = u.new_vertex_property("vector<double>")
+    vertex_border_color = u.new_vertex_property("vector<double>")
+    for v in u.vertices():
+        if isinstance(vfcolor, PropertyMap):
+            vertex_color[v] = vfcolor[v]
+        elif vcolor is not None:
+            vertex_color[v] = vfcolor
+        else:
+            vertex_color[v] = vcmap(b[v] / (B - 1) if B > 1 else 0)
+        if isinstance(vcolor, PropertyMap):
+            vertex_border_color[v] = vcolor[v]
+        elif vcolor is not None:
+            vertex_border_color[v] = vcolor
+        else:
+            vertex_border_color[v] = colorConverter.to_rgba("#babdb6", 1)
+
+        if int(v) >= g.num_vertices():
+            vertex_color[v] =  colorConverter.to_rgba("#a40000", halpha)
+            vertex_border_color[v] = colorConverter.to_rgba("#babdb6", halpha)
+
+
+    if state.overlap:
+        vshape.a[:g.num_vertices()] = 14
+        vertex_pie_frac = u.new_vertex_property("vector<int>")
+        vertex_pie_colors = u.new_vertex_property("vector<double>")
+        nodes = defaultdict(list)
+        for v in u.vertices():
+            if int(v) >= g.num_vertices():
+                break
+            vertex_pie_frac[v] = bc[v]
+            clrs = [vcmap(r / (B - 1) if B > 1 else 0) for r in bv[v]]
+            vertex_pie_colors[v] = [item for l in clrs for item in l]
+    else:
+        vertex_pie_frac = [1]
+        vertex_pie_colors = [0,0,0,1]
+
+
+    tangle = u.new_vertex_property("double")
+    for v in u.vertices():
+        if int(v) >= g.num_vertices():
+            break
+        tangle[v] = numpy.arctan2(pos[v][1], pos[v][0])
+
+    if verbose:
+        print("drawing...")
+
+    def update_cts(widget, gg, picked, pos, vprops, eprops):
+        vmask = gg.vertex_index.copy("int")
+        u = GraphView(gg, directed=False, vfilt=vmask.fa < g.num_vertices())
+        cts = eprops["control_points"]
+        get_hierarchy_control_points(u, t_orig, pos, beta, cts=cts)
+
+    def draw_branch(widget, gg, key_id, picked, pos, vprops, eprops):
+        if key_id == ord('b'):
+            if picked is not None and not isinstance(picked, PropertyMap) and int(picked) > g.num_vertices():
+                p = shortest_path(t_orig, source=t_orig.vertex(t_orig.num_vertices() - 1),
+                                  target=picked)[0]
+                l = len(state.levels) - max(len(p), 1)
+
+                bstack = state.get_bstack()
+                bs = [s.vp["b"].a for s in bstack[:l+1]]
+                bs[-1][:] = 0
+
+                if not state.overlap:
+                    b = state.project_level(l).b
+                    u = GraphView(g, vfilt=b.a == tb[picked])
+                    u.vp["b"] = state.levels[0].b
+                    u = Graph(u, prune=True)
+                    b = u.vp["b"]
+                    bs[0] = b.a
+                else:
+                    be = orig_state.project_level(l).get_edge_blocks()
+                    emask = g.new_edge_property("bool")
+                    for e in g.edges():
+                        rs = be[e]
+                        if rs[0] == tb[picked] and rs[1] == tb[picked]:
+                            emask[e] = True
+                    u = GraphView(GraphView(g, efilt=emask),
+                                  vfilt=lambda v: v.in_degree() + v.out_degree() > 0)
+                    u.ep["be"] = orig_state.levels[0].get_edge_blocks()
+                    u = Graph(u, prune=True)
+                    be = u.ep["be"]
+                    s = OverlapBlockState(u, b=be)
+                    bs[0] = s.b.a.copy()
+
+                nstate = NestedBlockState(u, bs=bs,
+                                          overlap=state.overlap,
+                                          deg_corr=state.deg_corr)
+
+                draw_hierarchy(nstate, beta=beta, ealpha=ealpha, halpha=halpha,
+                               subsample_edges=subsample_edges,
+                               deg_order=deg_order, deg_size=deg_size,
+                               vsize_scale=vsize_scale, hsize_scale=hsize_scale,
+                               verbose=verbose, empty_branches=False,
+                               no_main=True)
+        if key_id == ord('r'):
+            x, y = ungroup_vector_property(pos, [0, 1])
+            x.a -= x.a.mean()
+            y.a -= y.a.mean()
+            angle = gg.new_vertex_property("double")
+            angle.a = (numpy.arctan2(y.a, x.a) + 2 * numpy.pi) % (2 * numpy.pi)
+            tpos = radial_tree_layout(t_orig,
+                                      root=t_orig.vertex(t_orig.num_vertices() - 1),
+                                      rel_order=angle)
+            gg.copy_property(tpos, pos)
+            update_cts(widget, gg, picked, pos, vprops, eprops)
+
+            if widget.vertex_matrix is not None:
+                widget.vertex_matrix.update()
+            widget.picked = None
+            widget.selected.fa = False
+            widget.queue_draw()
+
+    if args.get("edge_color", None) is not None:
+        egradient = None
+        del args["edge_color"]
+    if args.get("edge_gradient", None) is not None:
+        del args["edge_gradient"]
+    if args.get("edge_pen_width", None) is not None:
+        del args["edge_pen_width"]
+    if args.get("edge_text", None) is not None:
+        del args["edge_text"]
+    if args.get("vertex_color", None) is not None:
+        del args["vertex_color"]
+    if args.get("vertex_fill_color", None) is not None:
+        del args["vertex_fill_color"]
+    if args.get("vertex_text", None) is not None:
+        del args["vertex_text"]
+
+
+    kwargs = dict(pos=pos,
+                  vorder=vorder,
+                  vertex_size=vsize,
+                  vertex_fill_color=vertex_color,
+                  vertex_color=vertex_border_color,
+                  #vertex_pen_width = 2,
+                  #vertex_text_rotation=tangle,
+                  edge_control_points=cts,
+                  edge_gradient=egradient,
+                  edge_pen_width=epw,
+                  vertex_shape=vshape,
+                  vertex_text=vertex_text,
+                  vertex_pie_fractions=vertex_pie_frac,
+                  vertex_pie_colors=vertex_pie_colors,
+                  edge_color=ecolor,
+                  edge_end_marker=em,
+                  edge_marker_size=ems,
+                  edge_text=elabels,
+                  layout_callback=update_cts,
+                  key_press_callback=draw_branch,
+                  display_props=[tb])
+
+    kwargs = dict(((k,v) for k,v in kwargs.items() if v is not None))
+
+    kwargs.update(args)
+
+    pos = graph_draw(u, **kwargs)
+    if isinstance(pos, PropertyMap):
+        pos = g.own_property(pos)
+    else:
+        pos = (g.own_property(pos[0]),
+               g.own_property(pos[1]))
+    return pos, t, tpos
+
+# Bottom imports to avoid circular dependency issues
+from .. community import get_hierarchy_tree, NestedBlockState, BlockState, OverlapBlockState

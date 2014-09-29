@@ -23,8 +23,11 @@ import sys
 if sys.version_info < (3,):
     range = xrange
 
-from .. import _degree, _prop, Graph, GraphView, libcore, _get_rng, PropertyMap
+from .. import _degree, _prop, Graph, GraphView, libcore, _get_rng, PropertyMap, \
+    infect_vertex_property
 from .. stats import label_self_loops
+from .. generation import graph_union
+from .. topology import shortest_path
 import random
 from numpy import *
 import numpy
@@ -32,10 +35,9 @@ from scipy.optimize import fsolve, fminbound
 import scipy.special
 from collections import defaultdict
 import copy
-import heapq
 
 from . blockmodel import *
-from . blockmodel import __test__
+from . blockmodel import _bm_test
 
 class NestedBlockState(object):
     r"""This class encapsulates the nested block state of a given graph.
@@ -74,13 +76,15 @@ class NestedBlockState(object):
         memory,
     """
 
-    def __init__(self, g, eweight=None, vweight=None, bs=None,
-                 Bs=None, deg_corr=True, overlap=False, clabel=None,
+    def __init__(self, g, eweight=None, vweight=None, ec=None, bs=None, Bs=None,
+                 deg_corr=True, overlap=False, layers=False, clabel=None,
                  max_BE=1000):
         L = len(Bs) if Bs is not None else len(bs)
         self.g = cg = g
         self.vweight = vcount = vweight
         self.eweight = ecount = eweight
+        self.ec = ec
+        self.layers = layers
 
         self.levels = []
         self.overlap = overlap
@@ -97,27 +101,43 @@ class NestedBlockState(object):
                     bl = bs[l]
 
             if l == 0:
-                if overlap:
-                    state = OverlapBlockState(g, B=Bl, b=bl,
-                                              eweight=ecount,
-                                              vweight=vcount,
-                                              deg_corr=deg_corr != False,
-                                              clabel=self.clabel,
-                                              max_BE=max_BE)
-                    self.clabel = state.clabel.copy()
-                    state.clabel.a = 0
+                if ec is None:
+                    if overlap:
+                        state = OverlapBlockState(g, B=Bl, b=bl,
+                                                  eweight=ecount,
+                                                  vweight=vcount,
+                                                  deg_corr=deg_corr != False,
+                                                  clabel=self.clabel,
+                                                  max_BE=max_BE)
+                        self.clabel = state.clabel.copy()
+                        state.clabel.a = 0
+                    else:
+                        state = BlockState(g, B=Bl, b=bl,
+                                           eweight=ecount,
+                                           vweight=vcount,
+                                           deg_corr=deg_corr != False,
+                                           #clabel=self.clabel,
+                                           max_BE=max_BE)
                 else:
-                    state = BlockState(g, B=Bl, b=bl,
-                                       eweight=ecount,
-                                       vweight=vcount,
-                                       deg_corr=deg_corr != False,
-                                       #clabel=self.clabel,
-                                       max_BE=max_BE)
+                    state = CovariateBlockState(g, B=Bl, b=bl,
+                                                ec=ec,
+                                                layers=layers,
+                                                eweight=ecount,
+                                                vweight=vcount,
+                                                deg_corr=deg_corr != False,
+                                                clabel=self.clabel,
+                                                overlap=overlap,
+                                                max_BE=max_BE)
+                    if overlap:
+                        self.clabel = state.clabel.copy()
+                        state.clabel.a = 0
+
+
             else:
                 state = self.levels[-1].get_block_state(b=bl,
                                                         overlap=self.overlap == "full",
                                                         deg_corr=self.deg_corr == "full")[0]
-                if __test__:
+                if _bm_test():
                     assert not state.deg_corr, "upper levels must be non-deg-corr"
 
             self.levels.append(state)
@@ -126,8 +146,17 @@ class NestedBlockState(object):
         #     clabel = self.__project_partition(l, l+1)
         #     self.levels[l].clabel = clabel
 
+        if ec is not None:
+            self.ec = self.levels[0].ec
 
-    def copy(self, deg_corr=None, overlap=None, clabel=None):
+    def __repr__(self):
+        return "<NestedBlockState object with %d %sblocks,%s%s for graph %s, with %d levels of sizes %s at 0x%x>" % \
+            (self.levels[0].B, "overlapping " if self.overlap else "",
+             " with %d %s," % (self.levels[0].C, "layers" if self.layers else "covariates") if self.ec is not None else "",
+             " degree corrected," if self.deg_corr else "",
+             str(self.g), len(self.levels), str([(s.N, s.B) for s in self.levels]), id(self))
+
+    def copy(self, ec=None, layers=None, deg_corr=None, overlap=None, clabel=None):
         r"""Copies the block state. The parameters override the state properties, and
          have the same meaning as in the constructor.."""
 
@@ -137,16 +166,21 @@ class NestedBlockState(object):
         elif self.overlap and not overlap:
             raise ValueError("Cannot automatically convert overlapping nested state to nonoverlapping")
         elif not self.overlap and overlap:
-            s = self.level[0].copy(overlap=True)
+            s = self.levels[0].copy(overlap=True)
             bs[0] = s.b.a
         if deg_corr is None:
             deg_corr = self.deg_corr
+        if layers is None:
+            layers = self.layers
         return NestedBlockState(self.g, self.eweight, self.vweight,
-                                bs, deg_corr=deg_corr, overlap=overlap,
-                                clabel=clabel, max_BE=self.levels[0].max_BE)
+                                self.ec if ec is None else ec, bs,
+                                layers=layers, deg_corr=deg_corr,
+                                overlap=overlap, clabel=clabel,
+                                max_BE=self.levels[0].max_BE)
 
     def __getstate__(self):
         state = dict(g=self.g,
+                     ec=self.ec,
                      eweight=self.eweight,
                      vweight=self.vweight,
                      overlap=self.overlap,
@@ -174,7 +208,8 @@ class NestedBlockState(object):
     def __propagate_clabel(self, l):
         clabel = self.clabel.copy()
         for j in range(l):
-            bclabel = self.levels[j].bg.new_vertex_property("int")
+            bg = self.levels[j].bg
+            bclabel = bg.new_vertex_property("int")
             reverse_map(self.levels[j].b, bclabel)
             pmap(bclabel, clabel)
             clabel = bclabel
@@ -254,7 +289,7 @@ class NestedBlockState(object):
         r"""Replace level ``l`` given the new partition ``b``, and the
         projected upper level partition clabel."""
 
-        if __test__:
+        if _bm_test():
             assert clabel is not None or l == len(self.levels) - 1, "clabel not given for intermediary level"
 
         if clabel is None:
@@ -264,6 +299,8 @@ class NestedBlockState(object):
 
         state = self.levels[l].copy(b=b, clabel=clabel.a)
         self.levels[l] = state
+        if l == 0:
+            self.clabel = state.g.own_property(self.clabel)  # for CovariateBlockState
 
         # upper level
         bclabel = state.get_bclabel()
@@ -286,7 +323,7 @@ class NestedBlockState(object):
                                                         overlap=self.overlap == "full",
                                                         deg_corr=self.deg_corr == "full")[0]
 
-            if __test__:
+            if _bm_test():
                 from graph_tool.topology import similarity
                 print("- similarity:", similarity(bstate.g, self.levels[l + 2].g))
                 # if similarity(bstate.g, self.levels[l + 2].g) < 1:
@@ -321,7 +358,7 @@ class NestedBlockState(object):
 
         B = self.levels[l].B
 
-        if __test__:
+        if _bm_test():
             self.__consistency_check("rebuild", l)
 
     def __delete_level(self, l):
@@ -337,7 +374,7 @@ class NestedBlockState(object):
 
         self.__rebuild_level(l - 1, b=b, clabel=clabel)
 
-        if __test__:
+        if _bm_test():
             self.__consistency_check("delete", l)
 
     def __duplicate_level(self, l):
@@ -348,7 +385,7 @@ class NestedBlockState(object):
             bstate = self.levels[l].copy(b=arange(self.levels[l].g.num_vertices()))
         self.levels.insert(l, bstate)
 
-        if __test__:
+        if _bm_test():
             self.__consistency_check("duplicate", l)
 
 
@@ -377,16 +414,14 @@ class NestedBlockState(object):
 
         bstate = self.levels[l]
 
-        S = bstate.entropy(dl=True, partition_dl=True,
+        S = bstate.entropy(dl=True, edges_dl=False,
                            dense=dense or (l > 0 and self.deg_corr != "full"),
                            multigraph=multigraph or l > 0,
                            complete=complete or (l > 0 and self.deg_corr == "full"),
-                           norm=norm,
-                           dl_ent=dl_ent)
-
+                           norm=norm, dl_ent=dl_ent)
         return S
 
-    def entropy(self, complete=True, dense=False, multigraph=True, norm=True,
+    def entropy(self, complete=True, dense=False, multigraph=True, norm=False,
                 dl_ent=False):
         r"""Compute the description length of the entire hierarchy.
 
@@ -432,7 +467,10 @@ class NestedBlockState(object):
             cg.vp["b"] = bstate.b.copy()
             cg.ep["count"] = bstate.eweight
             if bstate.overlap:
-                cg.vp["node_index"] = bstate.node_index.copy()
+                if self.ec is None:
+                    cg.vp["node_index"] = bstate.node_index.copy()
+                else:
+                    cg.vp["node_index"] = bstate.total_state.node_index.copy()
 
             bstack.append(cg)
             if bstate.N == 1:
@@ -465,12 +503,26 @@ class NestedBlockState(object):
         state = self.levels[0].copy(b=b.a)
         return state
 
+    def merge_layers(self, l_src, l_tgt, revert=False):
+        ctxs = []
+        for state in self.levels:
+            ctxs.append(state.merge_layers(l_src, l_tgt, revert))
+        if revert:
+            if hasattr(contextlib, "nested"):
+                return contextlib.nested(*ctxs)
+            else:
+                with contextlib.ExitStack() as stack:
+                    for ctx in ctxs:
+                        stack.enter_context(ctx)
+                    return stack.pop_all()
+
     def print_summary(self):
         for l, state in enumerate(self.levels):
             print("l: %d, N: %d, B: %d" % (l, state.N, state.B))
 
 
-def nested_mcmc_sweep(state, beta=1., c=1., dl=False, sequential=True, verbose=False):
+def nested_mcmc_sweep(state, beta=1., c=1., dl=False, sequential=True,
+                      parallel=False, verbose=False):
     r"""Performs a Markov chain Monte Carlo sweep on all levels of the hierarchy.
 
     Parameters
@@ -537,8 +589,9 @@ def nested_mcmc_sweep(state, beta=1., c=1., dl=False, sequential=True, verbose=F
     .. [peixoto-hierarchical-2014] Tiago P. Peixoto, "Hierarchical block structures and high-resolution
        model selection in large networks ", Phys. Rev. X 4, 011047 (2014), :doi:`10.1103/PhysRevX.4.011047`,
        :arxiv:`1310.4377`.
-    .. [peixoto-model-2014] Tiago P. Peixoto, "Model selection and hypothesis
+    .. [peixoto-model-2015] Tiago P. Peixoto, "Model selection and hypothesis
        testing for large-scale network models with overlapping groups",
+       Phys. Rev. X 5, 011033 (2015), :doi:`10.1103/PhysRevX.5.011033`,
        :arxiv:`1409.3059`.
     """
 
@@ -563,7 +616,8 @@ def nested_mcmc_sweep(state, beta=1., c=1., dl=False, sequential=True, verbose=F
         ret = mcmc_sweep(bstate, beta=beta, c=c, dl=dl,
                          dense = l > 0 and state.deg_corr != "full",
                          multigraph = l > 0,
-                         sequential=sequential, verbose=verbose)
+                         sequential=sequential, parallel=parallel,
+                         verbose=verbose)
 
         bstate.clabel.a = 0
 
@@ -571,22 +625,29 @@ def nested_mcmc_sweep(state, beta=1., c=1., dl=False, sequential=True, verbose=F
     return rets
 
 def replace_level(l, state, min_B=None, max_B=None, max_b=None, nsweeps=10,
-                  nmerge_sweeps=10, r=2, c=0, epsilon=0., sequential=True,
-                  dl=False, dense=False, multigraph=True, sparse_thresh=100,
-                  verbose=False, checkpoint=None, minimize_state=None,
-                  dl_ent=False):
+                  nmerge_sweeps=10, adaptive_sweeps=True, r=2, c=0, epsilon=0.,
+                  sequential=True, parallel=False, dl=False, dense=False,
+                  multigraph=True, sparse_thresh=100, verbose=False,
+                  checkpoint=None, minimize_state=None, dl_ent=False,
+                  confine_layers=False):
     r"""Replaces level l with another state with a possibly different number of
     groups. This may change not only the state at level l, but also the one at
     level l + 1, which needs to be 'rebuilt' because of the label changes at
     level l."""
 
-    if __test__:
+    if _bm_test():
         state._NestedBlockState__consistency_check("(before) replace level", l)
 
     bstate = state.levels[l]
     g = bstate.g
     base_g = g if not bstate.overlap else bstate.base_g
     eweight = bstate.eweight if not bstate.overlap else None
+    ec = None
+    if state.ec is not None:
+        if bstate.overlap:
+            ec = bstate.base_ec
+        else:
+            ec = bstate.ec
 
     if l > 0 or min_B is None:
         if l + 1 < len(state.levels):
@@ -604,7 +665,8 @@ def replace_level(l, state, min_B=None, max_B=None, max_b=None, nsweeps=10,
     else:
         clabel = bstate.g.new_vertex_property("int")
 
-    assert min_B <= max_B, (min_B, max_B, bstate.B, bstate.N, g.num_vertices(), state.clabel.a.max() + 1, clabel.a.max() + 1, l)
+    assert min_B <= max_B, (min_B, max_B, bstate.B, bstate.N, g.num_vertices(),
+                            state.clabel.a.max() + 1, clabel.a.max() + 1, l)
 
     # propagate externally imposed clabel at the bottom
     cclabel = state._NestedBlockState__propagate_clabel(l)
@@ -614,9 +676,10 @@ def replace_level(l, state, min_B=None, max_B=None, max_b=None, nsweeps=10,
 
     min_B = max(min_B, cclabel.a.max() + 1)
 
-    assert min_B <= max_B, (min_B, max_B, bstate.B, bstate.N, g.num_vertices(), cclabel.a.max() + 1, state.clabel.a.max() + 1, clabel.a.max() + 1, l)
+    assert min_B <= max_B, (min_B, max_B, bstate.B, bstate.N, g.num_vertices(),
+                            cclabel.a.max() + 1, state.clabel.a.max() + 1, clabel.a.max() + 1, l)
 
-    if __test__:
+    if _bm_test():
         assert bstate._BlockState__check_clabel(), "invalid clabel before minimize!"
 
     nested_dl = l < len(state.levels) - 1
@@ -628,31 +691,41 @@ def replace_level(l, state, min_B=None, max_B=None, max_b=None, nsweeps=10,
                   nested_overlap=state.overlap == "full",
                   dl_ent=dl_ent)
 
-    if __test__:
+    if _bm_test():
         assert clabel.a.max() + 1 <= min_B
 
     if l == 0 and max_b is not None:
         istate = state.levels[0].copy(b=max_b.copy(),
                                       clabel=cclabel.a if state.overlap else cclabel)
-        assert istate._BlockState__check_clabel(), "invalid clabel!"
+        if _bm_test():
+            assert istate._BlockState__check_clabel(), "invalid clabel!"
         if istate.B > max_B:
             istate = multilevel_minimize(istate, B=max_B, nsweeps=nsweeps,
-                                         nmerge_sweeps=nmerge_sweeps, c=c,
+                                         nmerge_sweeps=nmerge_sweeps,
+                                         adaptive_sweeps=adaptive_sweeps, c=c,
                                          r=r, dl=dl, sequential=sequential,
-                                         adaptive_sweeps=True,
-                                         greedy_cooling=True,
-                                         epsilon=epsilon,
+                                         parallel=parallel,
+                                         greedy_cooling=True, epsilon=epsilon,
+                                         confine_layers=confine_layers,
                                          verbose=verbose=="full")
+            if _bm_test():
+                assert istate._BlockState__check_clabel(), "invalid clabel!"
         init_states = [istate]
     else:
         init_states = None
 
-    res = minimize_blockmodel_dl(base_g, eweight=eweight,
+    res = minimize_blockmodel_dl(base_g,
+                                 ec=ec,
+                                 layers=state.layers,
+                                 confine_layers=confine_layers,
+                                 eweight=eweight,
                                  deg_corr=bstate.deg_corr,
                                  nsweeps=nsweeps,
                                  nmerge_sweeps=nmerge_sweeps,
+                                 adaptive_sweeps=adaptive_sweeps,
                                  c=c, r=r, sequential=sequential,
-                                 adaptive_sweeps=True, greedy_cooling=True,
+                                 parallel=parallel,
+                                 greedy_cooling=True,
                                  epsilon=epsilon,
                                  max_B=max_B,
                                  min_B=min_B,
@@ -674,11 +747,14 @@ def replace_level(l, state, min_B=None, max_B=None, max_b=None, nsweeps=10,
                                  checkpoint=checkpoint,
                                  dl_ent=dl_ent)
 
-    if __test__:
+    if _bm_test():
         assert (res.clabel.a == cclabel.a).all(), (res.clabel.a, cclabel.a)
         assert res._BlockState__check_clabel(), "invalid clabel after minimize!"
 
     res.clabel.a = 0
+    if state.ec is not None:
+        for s in res.states:
+            s.clabel.a = 0
     b = res.b
 
     Sf = get_b_dl(res,
@@ -693,6 +769,8 @@ def replace_level(l, state, min_B=None, max_B=None, max_b=None, nsweeps=10,
         kept = True
     if Sf - Sb == 0 and bstate.B != state.levels[l].B:
         kept = False
+    if res.B == res.N:
+        kept = True
 
     if kept:
         Sf_rej = Sf
@@ -708,7 +786,7 @@ def replace_level(l, state, min_B=None, max_B=None, max_b=None, nsweeps=10,
         else:
             print()
 
-    if __test__:
+    if _bm_test():
         state._NestedBlockState__consistency_check("replace level", l)
 
     dS = Sf - Sb
@@ -783,10 +861,11 @@ def get_checkpoint_wrap(checkpoint, state, minimize_state, dl_ent):
 
 
 def nested_tree_sweep(state, min_B=None, max_B=None, max_b=None, nsweeps=10,
-                      epsilon=0., r=2., nmerge_sweeps=10, c=0, dl=False,
-                      dense=False, multigraph=True, sequential=True,
-                      sparse_thresh=100, checkpoint=None, minimize_state=None,
-                      frozen_levels=None, verbose=False, **kwargs):
+                      epsilon=0., r=2., nmerge_sweeps=10, adaptive_sweeps=True,
+                      c=0, dl=False, dense=False, multigraph=True,
+                      sequential=True, parallel=False, sparse_thresh=100,
+                      checkpoint=None, minimize_state=None, frozen_levels=None,
+                      confine_layers=False, verbose=False, **kwargs):
     r"""Performs one greedy sweep in the entire hierarchy tree, attempting to
     decrease its description length.
 
@@ -889,8 +968,9 @@ def nested_tree_sweep(state, min_B=None, max_B=None, max_b=None, nsweeps=10,
     .. [peixoto-hierarchical-2014] Tiago P. Peixoto, "Hierarchical block structures and high-resolution
        model selection in large networks ", Phys. Rev. X 4, 011047 (2014), :doi:`10.1103/PhysRevX.4.011047`,
        :arxiv:`1310.4377`.
-    .. [peixoto-model-2014] Tiago P. Peixoto, "Model selection and hypothesis
+    .. [peixoto-model-2015] Tiago P. Peixoto, "Model selection and hypothesis
        testing for large-scale network models with overlapping groups",
+       Phys. Rev. X 5, 011033 (2015), :doi:`10.1103/PhysRevX.5.011033`,
        :arxiv:`1409.3059`.
     """
 
@@ -901,11 +981,13 @@ def nested_tree_sweep(state, min_B=None, max_B=None, max_b=None, nsweeps=10,
     mstate = minimize_state
     mstate.sync(state)
 
-    args = dict(state=state, nsweeps=nsweeps, nmerge_sweeps=nmerge_sweeps, r=r,
-                c=c, epsilon=epsilon, sequential=sequential, dl=dl, dense=dense,
-                multigraph=multigraph, sparse_thresh=sparse_thresh,
-                min_B=min_B, max_B=max_B, max_b=max_b, checkpoint=checkpoint,
-                minimize_state=minimize_state, dl_ent=dl_ent)
+    args = dict(state=state, nsweeps=nsweeps, nmerge_sweeps=nmerge_sweeps,
+                adaptive_sweeps=adaptive_sweeps, r=r, c=c, epsilon=epsilon,
+                sequential=sequential, parallel=parallel, dl=dl, dense=dense,
+                multigraph=multigraph, sparse_thresh=sparse_thresh, min_B=min_B,
+                max_B=max_B, max_b=max_b, checkpoint=checkpoint,
+                minimize_state=minimize_state, dl_ent=dl_ent,
+                confine_layers=confine_layers)
 
     #_Si = state.entropy(dense=dense, multigraph=dense)
     dS = 0
@@ -935,7 +1017,7 @@ def nested_tree_sweep(state, min_B=None, max_B=None, max_b=None, nsweeps=10,
             dS += ddS
             mstate.clear_mstate()
 
-        if __test__:
+        if _bm_test():
             if kept:
                 assert abs(state.entropy(dl_ent=dl_ent) - Si) < 1e-6, "inconsistent replace at level %d (%g, %g)" % (l, state.entropy(), Si)
             state._NestedBlockState__consistency_check("replace level", l)
@@ -966,7 +1048,7 @@ def nested_tree_sweep(state, min_B=None, max_B=None, max_b=None, nsweeps=10,
                 if verbose:
                     print("level", l, ": deleted", (bstates[1].N, bstates[1].B), ", dS:", Sf - Si, len(state.levels))
 
-            if __test__:
+            if _bm_test():
                 if kept:
                     assert abs(state.entropy(dl_ent=dl_ent) - Si) < 1e-6, "inconsistent delete at level %d (%g, %g)" % (l, state.entropy(), Si)
                 state._NestedBlockState__consistency_check("delete complete", l)
@@ -1005,7 +1087,7 @@ def nested_tree_sweep(state, min_B=None, max_B=None, max_b=None, nsweeps=10,
                 if verbose:
                     print("level", l, ": inserted", state.levels[l].B, ", dS:", Sf - Si)
 
-            if __test__:
+            if _bm_test():
                 state._NestedBlockState__consistency_check("delete", l)
                 if kept:
                     assert abs(state.entropy(dl_ent=dl_ent) - Si) < 1e-8, "inconsistent delete at level %d (%g, %g)" % (l, state.entropy(), Si)
@@ -1038,7 +1120,7 @@ def nested_tree_sweep(state, min_B=None, max_B=None, max_b=None, nsweeps=10,
         if checkpoint is not None:
             checkpoint(None, 0, 0, 0, mstate)
 
-        if __test__:
+        if _bm_test():
             state._NestedBlockState__consistency_check("tree sweep step", l)
 
     # _Sf = state.entropy(dense=dense, multigraph=dense, dl_ent=dl_ent)
@@ -1047,12 +1129,13 @@ def nested_tree_sweep(state, min_B=None, max_B=None, max_b=None, nsweeps=10,
 
 
 
-def init_nested_state(g, Bs, deg_corr=True, overlap=False, dl=False, dense=False,
-                      multigraph=True, eweight=None, vweight=None,
-                      clabel=None, nsweeps=10, epsilon=0., r=2, nmerge_sweeps=10,
-                      c=0, sequential=True, sparse_thresh=100,
-                      checkpoint=None, minimize_state=None, max_BE=1000,
-                      verbose=False, **kwargs):
+def init_nested_state(g, Bs, ec=None, deg_corr=True, overlap=False,
+                      layers=False, confine_layers=False, dl=False, dense=False,
+                      multigraph=True, eweight=None, vweight=None, clabel=None,
+                      nsweeps=10, epsilon=0., r=2, nmerge_sweeps=10,
+                      adaptive_sweeps=True, c=0, sequential=True,
+                      parallel=False, sparse_thresh=100, checkpoint=None,
+                      minimize_state=None, max_BE=1000, verbose=False, **kwargs):
     r"""Initializes a nested block hierarchy with sizes given by ``Bs``.
 
     Parameters
@@ -1153,8 +1236,9 @@ def init_nested_state(g, Bs, deg_corr=True, overlap=False, dl=False, dense=False
     .. [peixoto-hierarchical-2014] Tiago P. Peixoto, "Hierarchical block structures and high-resolution
        model selection in large networks ", Phys. Rev. X 4, 011047 (2014), :doi:`10.1103/PhysRevX.4.011047`,
        :arxiv:`1310.4377`.
-    .. [peixoto-model-2014] Tiago P. Peixoto, "Model selection and hypothesis
+    .. [peixoto-model-2015] Tiago P. Peixoto, "Model selection and hypothesis
        testing for large-scale network models with overlapping groups",
+       Phys. Rev. X 5, 011033 (2015), :doi:`10.1103/PhysRevX.5.011033`,
        :arxiv:`1409.3059`.
     """
 
@@ -1164,8 +1248,9 @@ def init_nested_state(g, Bs, deg_corr=True, overlap=False, dl=False, dense=False
         minimize_state = NestedMinimizeState()
     mstate = minimize_state
 
-    state = NestedBlockState(g, eweight=eweight, vweight=vweight, Bs=[1],
-                             deg_corr=deg_corr, overlap=overlap, clabel=clabel)
+    state = NestedBlockState(g, ec=ec, layers=layers, eweight=eweight,
+                             vweight=vweight, Bs=[1], deg_corr=deg_corr,
+                             overlap=overlap, clabel=clabel)
 
     chkp = get_checkpoint_wrap(checkpoint, state, minimize_state, dl_ent)
 
@@ -1178,20 +1263,44 @@ def init_nested_state(g, Bs, deg_corr=True, overlap=False, dl=False, dense=False
             ba = mstate.bs[l]
         else:
             if l == 0:
-                if state.overlap:
-                    bstate = OverlapBlockState(bg, B=bg.num_vertices(), #b=bg.vertex_index.copy("int"),
-                                               vweight=vweight,
-                                               eweight=ecount,
-                                               deg_corr=deg_corr != False,
-                                               #clabel=clabel,
-                                               max_BE=max_BE)
+                if ec is None:
+                    if state.overlap:
+                        bstate = OverlapBlockState(bg, B=bg.num_vertices(), #b=bg.vertex_index.copy("int"),
+                                                   vweight=vweight,
+                                                   eweight=ecount,
+                                                   deg_corr=deg_corr != False,
+                                                   #clabel=clabel,
+                                                   max_BE=max_BE)
+                    else:
+                        bstate = BlockState(bg, B=bg.num_vertices(), #b=bg.vertex_index.copy("int"),
+                                            vweight=vweight,
+                                            eweight=ecount,
+                                            deg_corr=deg_corr != False,
+                                            #clabel=clabel,
+                                            max_BE=max_BE)
                 else:
-                    bstate = BlockState(bg, B=bg.num_vertices(), #b=bg.vertex_index.copy("int"),
-                                        vweight=vweight,
-                                        eweight=ecount,
-                                        deg_corr=deg_corr != False,
-                                        #clabel=clabel,
-                                        max_BE=max_BE)
+                    if overlap:
+                        if confine_layers:
+                            be = init_layer_confined(bg, ec)
+                            B_init = None
+                        else:
+                            be = None
+                            B_init = 2 * g.num_edges()
+                    else:
+                        be = None
+                        B_init = g.num_vertices()
+
+                    bstate = CovariateBlockState(bg, ec=ec,
+                                                 lasers=layers,
+                                                 B=B_init, #b=bg.vertex_index.copy("int"),
+                                                 b=be,
+                                                 vweight=vweight,
+                                                 eweight=ecount,
+                                                 deg_corr=deg_corr != False,
+                                                 overlap=overlap,
+                                                 #clabel=clabel,
+                                                 max_BE=max_BE)
+
             else:
                 bstate = state.levels[l-1].get_block_state(b=ba,
                                                            overlap=overlap == "full",
@@ -1200,12 +1309,16 @@ def init_nested_state(g, Bs, deg_corr=True, overlap=False, dl=False, dense=False
             if B == 1:
                 bstate.copy(b=bstate.g.new_vertex_property("int").a)
             else:
-                bstate = multilevel_minimize(bstate, B, nsweeps=nsweeps, epsilon=epsilon,
+                bstate = multilevel_minimize(bstate, B, nsweeps=nsweeps,
+                                             epsilon=epsilon,
                                              r=r, nmerge_sweeps=nmerge_sweeps,
+                                             adaptive_sweeps=adaptive_sweeps,
                                              greedy=True, c=c, dl=dl,
                                              dense=(l > 0 and g.num_vertices() < sparse_thresh) or dense,
                                              multigraph=(l > 0 and g.num_vertices() < sparse_thresh) or multigraph,
-                                             sequential=sequential, verbose=verbose,
+                                             sequential=sequential,
+                                             parallel=parallel,
+                                             verbose=verbose,
                                              checkpoint=chkp,
                                              minimize_state=minimize_state.minimize_state)
             ba = array(bstate.b.fa)
@@ -1213,13 +1326,16 @@ def init_nested_state(g, Bs, deg_corr=True, overlap=False, dl=False, dense=False
             minimize_state.clear_mstate()
 
         state._NestedBlockState__rebuild_level(len(state.levels) - 1, b=ba)
-        bg = state.levels[l].bg
-        ecount = state.levels[l].mrs
+        if ec is None:
+            bg = state.levels[l].bg
+            ecount = state.levels[l].mrs
+        else:
+            bg, ecount, ec = state.levels[l].get_bg()
 
 
     for l, B in enumerate(Bs):
         if l + 1 < len(state.levels):
-            assert state.levels[l].B == state.levels[l + 1].N
+            assert state.levels[l].B == state.levels[l + 1].N, (state.levels[l].B, state.levels[l + 1].N)
 
     minimize_state.clear()
     mstate.sync(state)
@@ -1228,16 +1344,18 @@ def init_nested_state(g, Bs, deg_corr=True, overlap=False, dl=False, dense=False
 
     return state
 
-def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, min_B=None, max_B=None,
-                                  max_b=None, deg_corr=True, overlap=False,
-                                  nonoverlap_init=True, dl=True,
-                                  multigraph=True, dense=False, eweight=None,
-                                  vweight=None, clabel=None, frozen_levels=None,
-                                  nsweeps=10, epsilon=1e-3, c=0,
+def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, min_B=None,
+                                  max_B=None, max_b=None, deg_corr=True,
+                                  overlap=False, ec=None, layers=False,
+                                  confine_layers=False, nonoverlap_init=True,
+                                  dl=True, multigraph=True, dense=False,
+                                  eweight=None, vweight=None, clabel=None,
+                                  frozen_levels=None, nsweeps=10,
+                                  adaptive_sweeps=True, epsilon=1e-3, c=0,
                                   nmerge_sweeps=10, r=2, sparse_thresh=100,
-                                  sequential=True, verbose=False,
-                                  checkpoint=None, minimize_state=None,
-                                  **kwargs):
+                                  sequential=True, parallel=False,
+                                  verbose=False, checkpoint=None,
+                                  minimize_state=None, **kwargs):
     r"""Find the block hierarchy of an unspecified size which minimizes the description
     length of the network, according to the nested stochastic blockmodel ensemble which
     best describes it.
@@ -1263,6 +1381,17 @@ def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, min_B=None, max_B=None,
         be used.
     overlap : ``bool`` (optional, default: ``False``)
         If ``True``, the mixed-membership version of the blockmodel will be used.
+    ec : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        If provided, this should be an edge :class:`~graph_tool.PropertyMap`
+        containing edge covariates that will split the network in discrete
+        layers.
+    layers : ``bool`` (optional, default: ``False``)
+        If ``True``, and `´ec`` is not ``None``, the "independent layers"
+        version of the model is used, instead of the "edge covariates" version.
+    confine_layers : ``bool`` (optional, default: ``False``)
+        If ``True``, and `´ec`` is not ``None`` and ``overlap == True``, the
+        half edges will only be moved in such a way that inside each layer the
+        group membership remains non-overlapping.
     nonoverlap_init : ``bool`` (optional, default: ``True``)
         If ``True``, and `´overlap == True``, the minimization starts by first
         fitting the non-overlapping model, and using that as a starting state.
@@ -1390,73 +1519,39 @@ def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, min_B=None, max_B=None,
 
        >>> g = gt.collection.data["power"]
        >>> state = gt.minimize_nested_blockmodel_dl(g, deg_corr=True)
-       >>>
-       >>> # route edges according to the hierarchy
-       >>> bstack = state.get_bstack()
-       >>> t = gt.get_hierarchy_tree(bstack)[0]
-       >>> tpos = pos = gt.radial_tree_layout(t, t.vertex(t.num_vertices() - 1), weighted=True)
-       >>> cts = gt.get_hierarchy_control_points(g, t, tpos)
-       >>> pos = g.own_property(tpos)
-       >>>
-       >>> b = bstack[0].vp["b"]
-       >>> gt.graph_draw(g, pos=pos, vertex_fill_color=b, vertex_shape=b, edge_control_points=cts,
-       ...               edge_color=[0, 0, 0, 0.3], vertex_anchor=0, output="power_nested_mdl.pdf")
-       <...>
+       >>> gt.draw_hierarchy(state, output="power_nested_mdl.pdf")
+       (...)
 
     .. testcleanup:: nested_mdl
 
-       gt.graph_draw(g, pos=pos, vertex_fill_color=b, vertex_shape=b, edge_control_points=cts, edge_color=[0, 0, 0, 0.3], vertex_anchor=0, output="power_nested_mdl.png")
+       gt.draw_hierarchy(state, output="power_nested_mdl.png")
 
     .. figure:: power_nested_mdl.*
        :align: center
 
-       Block partition of a power-grid network, which minimizes the description
-       length of the network according to the nested (degree-corrected) stochastic blockmodel.
+       Hierarchical Block partition of a power-grid network, which minimizes
+       the description length of the network according to the nested
+       (degree-corrected) stochastic blockmodel.
 
 
     .. doctest:: nested_mdl_overlap
 
-       >>> g = gt.collection.data["power"]
-       >>> state = gt.minimize_nested_blockmodel_dl(g, deg_corr=True, overlap=True, dl=False)
-       >>> bv, *rest, bc = state.levels[0].get_overlap_blocks()
-       >>>
-       >>> # get the dominant group for each node for the layout
-       >>> n_r = np.zeros(state.levels[0].B)
-       >>> b = g.new_vertex_property("int")
-       >>> d = g.new_vertex_property("int")
-       >>> for v in g.vertices():
-       ...     i = bc[v].a.argmax()
-       ...     b[v] = bv[v][i]
-       ...     n_r[b[v]] += 1
-       ...     d[v] = len(bv[v])
-       >>> g.vp["b"] = b
-       >>> bstack = state.get_bstack()
-       >>> bstack[0] = g
-       >>>
-       >>> # route edges according to the hierarchy
-       >>> t = gt.get_hierarchy_tree(bstack)[0]
-       >>> tpos = pos = gt.radial_tree_layout(t, t.vertex(t.num_vertices() - 1), weighted=True)
-       >>> cts = gt.get_hierarchy_control_points(g, t, tpos)
-       >>> pos = g.own_property(tpos)
-       >>>
-       >>> eg = gt.get_block_edge_gradient(g, state.levels[0].get_edge_blocks())
-       >>> gt.graph_draw(g, pos=pos, vertex_pie_fractions=bc,
-       ...               vertex_pie_colors=bv, vertex_shape="pie",
-       ...               vertex_size=10, vertex_anchor=0, vorder=d,
-       ...               edge_gradient=eg, edge_control_points=cts,
-       ...               output="power_nested_mdl_overlap.pdf")
-       <...>
+       >>> g = gt.collection.data["celegansneural"]
+       >>> state = gt.minimize_nested_blockmodel_dl(g, deg_corr=True, overlap=True,
+       ...                                          nonoverlap_init=False, dl=True)
+       >>> gt.draw_hierarchy(state, output="celegans_nested_mdl_overlap.pdf")
+       (...)
 
     .. testcleanup:: nested_mdl_overlap
 
-       gt.graph_draw(g, pos=pos, vertex_pie_fractions=bc, vertex_pie_colors=bv, vertex_shape="pie", edge_gradient=eg, edge_control_points=cts, vertex_size=10, vertex_anchor=0, vorder=d, output="power_nested_mdl_overlap.png")
+       gt.draw_hierarchy(state, output="celegans_nested_mdl_overlap.png")
 
-    .. figure:: power_nested_mdl_overlap.*
+    .. figure:: celegans_nested_mdl_overlap.*
        :align: center
 
-       Overlapping block partition of a power-grid network, which minimizes the
-       description length of the network according to the nested
-       (degree-corrected, overlapping) stochastic blockmodel.
+       Overlapping block partition of the C. elegans neural network, which
+       minimizes the description length of the network according to the nested
+       overlapping stochastic blockmodel.
 
 
 
@@ -1468,9 +1563,13 @@ def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, min_B=None, max_B=None,
     .. [peixoto-efficient-2014] Tiago P. Peixoto, "Efficient Monte Carlo and greedy
        heuristic for the inference of stochastic block models", Phys. Rev. E 89, 012804 (2014),
        :doi:`10.1103/PhysRevE.89.012804`, :arxiv:`1310.4378`.
-    .. [peixoto-model-2014] Tiago P. Peixoto, "Model selection and hypothesis
+    .. [peixoto-model-2015] Tiago P. Peixoto, "Model selection and hypothesis
        testing for large-scale network models with overlapping groups",
+       Phys. Rev. X 5, 011033 (2015), :doi:`10.1103/PhysRevX.5.011033`,
        :arxiv:`1409.3059`.
+    .. [peixoto-inferring-2015] Tiago P. Peixoto, "Inferring the mesoscale
+       structure of layered, edge-valued and time-varying networks",
+       :arXiv:`1504.02381`
     """
 
     dl_ent = kwargs.get("dl_ent", False)
@@ -1484,6 +1583,7 @@ def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, min_B=None, max_B=None,
         state = minimize_nested_blockmodel_dl(g, Bs=Bs, bs=bs,
                                               min_B=min_B,
                                               max_B=max_B,
+                                              ec=ec, layers=layers,
                                               deg_corr=deg_corr, overlap=False,
                                               dl=dl, dense=dense,
                                               multigraph=multigraph,
@@ -1491,10 +1591,12 @@ def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, min_B=None, max_B=None,
                                               vweight=vweight,
                                               clabel=clabel if isinstance(clabel, PropertyMap) else None,
                                               nsweeps=nsweeps,
+                                              adaptive_sweeps=adaptive_sweeps,
                                               epsilon=epsilon, c=c,
                                               nmerge_sweeps=nmerge_sweeps, r=r,
                                               sparse_thresh=sparse_thresh,
                                               sequential=sequential,
+                                              parallel=parallel,
                                               verbose=verbose,
                                               checkpoint=checkpoint,
                                               minimize_state=minimize_state,
@@ -1505,17 +1607,18 @@ def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, min_B=None, max_B=None,
             else:
                 bstate = state.levels[0].copy(overlap=True,
                                               clabel=g.new_vertex_property("int"))
-            unilevel_minimize(bstate, nsweeps=nsweeps,
-                              epsilon=epsilon, c=c,
-                              nmerge_sweeps=nmerge_sweeps,
-                              dl=dl,
-                              sequential=sequential)
-            bs = [s.b.a for s in state.levels]
-            bs[0] = bstate.b.a
-
+            unilevel_minimize(bstate, nsweeps=nsweeps, epsilon=epsilon, c=c,
+                              nmerge_sweeps=nmerge_sweeps, dl=dl,
+                              sequential=sequential, parallel=parallel,
+                              confine_layers=confine_layers)
+            bs = [array(s.b.a) for s in state.levels]
+            bs[0] = array(bstate.b.a)
+            del bstate
         else:
             bstates = [bstate.copy(overlap=True) for bstate in state.levels]
-            bs = [s.b.a for s in bstates]
+            bs = [array(s.b.a) for s in bstates]
+            del bstates
+
         if nonoverlap_init != "full":
             bs = [bs[0], zeros(bs[0].max() + 1, dtype=bs[0].dtype)]
 
@@ -1529,6 +1632,8 @@ def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, min_B=None, max_B=None,
         if verbose:
             print("Overlapping minimization starting from:")
             state.print_summary()
+
+        del state
 
     if Bs is None:
         if minimize_state is not None:
@@ -1545,19 +1650,24 @@ def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, min_B=None, max_B=None,
         Bs += [1]
 
     if bs is None:
-        state = init_nested_state(g, Bs=Bs, deg_corr=deg_corr,
-                                  overlap=overlap, eweight=eweight,
-                                  vweight=vweight, clabel=clabel,
-                                  verbose=verbose,
+        state = init_nested_state(g, Bs=Bs, ec=ec, layers=layers,
+                                  confine_layers=confine_layers,
+                                  deg_corr=deg_corr, overlap=overlap,
+                                  eweight=eweight, vweight=vweight,
+                                  clabel=clabel, verbose=verbose,
                                   nsweeps=nsweeps, nmerge_sweeps=nmerge_sweeps,
+                                  adaptive_sweeps=adaptive_sweeps,
                                   dl=dl, dense=dense, multigraph=multigraph,
                                   epsilon=epsilon, sparse_thresh=sparse_thresh,
+                                  sequential=sequential,
+                                  parallel=parallel,
                                   checkpoint=checkpoint,
-                                  minimize_state=minimize_state,
-                                  dl_ent=dl_ent)
+                                  minimize_state=minimize_state, dl_ent=dl_ent)
     else:
-        state = NestedBlockState(g, bs=bs, deg_corr=deg_corr, overlap=overlap,
-                                 eweight=eweight, vweight=vweight, clabel=clabel)
+        state = NestedBlockState(g, ec=ec, layers=layers, bs=bs,
+                                 deg_corr=deg_corr, overlap=overlap,
+                                 eweight=eweight, vweight=vweight,
+                                 clabel=clabel)
 
     minimize_state.sync(state)
 
@@ -1570,27 +1680,26 @@ def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, min_B=None, max_B=None,
                            verbose=verbose,
                            nsweeps=nsweeps,
                            nmerge_sweeps=nmerge_sweeps,
+                           adaptive_sweeps=adaptive_sweeps,
                            r=r, epsilon=epsilon,
                            dense=dense, dl=dl,
                            multigraph=multigraph,
+                           sequential=sequential,
+                           parallel=parallel,
                            sparse_thresh=sparse_thresh,
                            checkpoint=chkp,
                            minimize_state=minimize_state,
                            frozen_levels=frozen_levels,
-                           dl_ent=dl_ent)
+                           dl_ent=dl_ent,
+                           confine_layers=confine_layers)
 
     return state
 
-def get_hierarchy_tree(bstack):
+def get_hierarchy_tree(state, empty_branches=True):
     r"""Obtain the nested hierarchical levels as a tree.
 
-    This transforms a list of :class:`~graph_tool.Graph` instances, given by the
-    ``bstack`` parameter, representing the inferred hierarchy at each level, into
-    a single :class:`~graph_tool.Graph` containing the hierarchy tree.
-
-    It is expected for each graph in ``bstack`` to contain an internal vertex
-    property map named "b" which contains the node partition at the
-    corresponding level.
+    This transforms a :class:`~graph_tool.NestedBlockState` instance into a
+    single :class:`~graph_tool.Graph` instance containing the hierarchy tree.
 
     Returns
     -------
@@ -1600,7 +1709,15 @@ def get_hierarchy_tree(bstack):
        to an upper to a lower level in the hierarchy.
     label : :class:`~graph_tool.PropertyMap`
        A vertex property map containing the block label for each node.
+    order : :class:`~graph_tool.PropertyMap`
+       A vertex property map containing the relative ordering of each layer
+       according to the total degree of the groups at the specific levels.
+    empty_branches : ``bool`` (optional, default: ``True``)
+       If ``empty_branches == False``, dangling branches at the upper layers
+       will be pruned.
     """
+
+    bstack = state.get_bstack()
 
     g = bstack[0]
     b = g.vp["b"]
@@ -1611,14 +1728,27 @@ def get_hierarchy_tree(bstack):
     t.add_vertex(g.num_vertices())
     label = t.vertex_index.copy("int")
 
+    order = t.own_property(g.degree_property_map("total").copy())
+
     last_pos = 0
     for l, s in enumerate(bstack):
         pos = t.num_vertices()
         t.add_vertex(s.num_vertices())
         label.a[-s.num_vertices():] = arange(s.num_vertices())
 
-        for v in g.vertices():
-            w = t.vertex(int(v) + last_pos)
+        # relative ordering based on total degree
+        count = s.ep["count"].copy("double")
+        for e in s.edges():
+            if e.source() == e.target():
+                count[e] /= 2
+        vs = [t.vertex(vi) for vi in range(pos, t.num_vertices())]
+        vs = sorted(vs, key=lambda v: (s.vertex(int(v) - pos).out_degree(count) + 
+                                       s.vertex(int(v) - pos).in_degree(count)))
+        for vi, v in enumerate(vs):
+            order[v] = vi
+
+        for vi, v in enumerate(g.vertices()):
+            w = t.vertex(vi + last_pos)
             u = t.vertex(b[v] + pos)
             t.add_edge(u, w)
 
@@ -1627,4 +1757,22 @@ def get_hierarchy_tree(bstack):
         if g.num_vertices() == 1:
             break
         b = g.vp["b"]
-    return t, label
+
+    if not empty_branches:
+        vmask = t.new_vertex_property("bool")
+        vmask.a = True
+        for vi in range(state.g.num_vertices(), t.num_vertices()):
+            v = t.vertex(vi)
+            if v.out_degree() == 0:
+                vmask[v] = False
+                while v.in_degree() > 0:
+                    v = list(v.in_neighbours())[0]
+                    vmask[v] = False
+                vmask[v] = True
+        t = GraphView(t, vfilt=vmask)
+        t.vp["label"] = label
+        t = Graph(t, prune=True)
+        label = t.vp["label"]
+        del t.vp["label"]
+
+    return t, label, order

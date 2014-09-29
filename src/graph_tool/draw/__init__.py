@@ -45,6 +45,7 @@ Graph drawing
    :nosignatures:
 
    graph_draw
+   draw_hierarchy
    graphviz_draw
    prop_to_size
 
@@ -70,7 +71,6 @@ from .. import GraphView, _check_prop_vector, group_vector_property, \
      ungroup_vector_property, infect_vertex_property, _prop, _get_rng
 from .. topology import max_cardinality_matching, max_independent_vertex_set, \
     label_components, pseudo_diameter, shortest_distance
-from .. community import condensation_graph
 from .. stats import label_parallel_edges
 from .. generation import predecessor_tree
 import numpy.random
@@ -84,7 +84,7 @@ dl_import("from . import libgraph_tool_layout")
 __all__ = ["graph_draw", "graphviz_draw", "fruchterman_reingold_layout",
            "arf_layout", "sfdp_layout", "random_layout", "radial_tree_layout",
            "cairo_draw", "prop_to_size", "get_hierarchy_control_points",
-           "default_cm"]
+           "default_cm", "draw_hierarchy"]
 
 
 def random_layout(g, shape=None, pos=None, dim=2):
@@ -713,7 +713,7 @@ def radial_tree_layout(g, root, rel_order=None, weighted=False, r=1.):
     root : :class:`~graph_tool.Vertex` or ``int``
         The root of the radial tree.
     rel_order : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
-        Relative order of the nodes at the lowest branch.
+        Relative order of the nodes at each respective branch.
     weighted : ``bool`` (optional, default: ``False``)
         If true, the angle between the child branches will be computed according
         to weight of the entire sub-branches.
@@ -770,23 +770,6 @@ def radial_tree_layout(g, root, rel_order=None, weighted=False, r=1.):
                                     int(root), weighted, r)
     return g.own_property(pos)
 
-try:
-    from .cairo_draw import graph_draw, cairo_draw, get_hierarchy_control_points, default_cm
-except ImportError:
-    pass
-
-try:
-    from .cairo_draw import GraphWidget, GraphWindow, \
-        interactive_window
-    __all__ += ["interactive_window", "GraphWidget", "GraphWindow"]
-except ImportError:
-    pass
-
-try:
-   from .graphviz_draw import graphviz_draw
-except ImportError:
-   pass
-
 def prop_to_size(prop, mi=0, ma=5, log=False, power=0.5):
     r"""Convert property map values to be more useful as a vertex size, or edge
     width. The new values are taken to be
@@ -809,3 +792,23 @@ def prop_to_size(prop, mi=0, ma=5, log=False, power=0.5):
         delta = 1
     prop.fa = mi + (ma - mi) * ((vals - vals.min()) / delta) ** power
     return prop
+
+try:
+    from .cairo_draw import graph_draw, cairo_draw, get_hierarchy_control_points, default_cm
+except ImportError:
+    pass
+
+try:
+    from .cairo_draw import GraphWidget, GraphWindow, \
+        interactive_window, draw_hierarchy
+    __all__ += ["interactive_window", "GraphWidget", "GraphWindow", "draw_hierarchy"]
+except ImportError:
+    pass
+
+try:
+   from .graphviz_draw import graphviz_draw
+except ImportError:
+   pass
+
+# Bottom imports to avoid circular dependency issues
+from .. community import condensation_graph

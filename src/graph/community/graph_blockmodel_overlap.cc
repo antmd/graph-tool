@@ -56,7 +56,7 @@ struct move_sweep_overlap_dispatch
                                 bool sequential, bool parallel,
                                 bool random_move, double c, bool node_coherent,
                                 bool verbose, size_t max_edge_index,
-                                size_t nmerges, size_t ntries, Vprop merge_map,
+                                size_t nmerges, size_t niter, Vprop merge_map,
                                 overlap_stats_t& overlap_stats,
                                 overlap_partition_stats_t& partition_stats,
                                 rng_t& rng, double& S, size_t& nmoves,
@@ -68,8 +68,8 @@ struct move_sweep_overlap_dispatch
           parallel_edges(parallel_edges), beta(beta), sequential(sequential),
           parallel(parallel), random_move(random_move), c(c),
           node_coherent(node_coherent), verbose(verbose),
-          max_edge_index(max_edge_index), nmerges(nmerges), ntries(ntries),
-          merge_map(merge_map), overlap_stats(overlap_stats),
+          max_edge_index(max_edge_index), nmerges(nmerges),
+          niter(niter), merge_map(merge_map), overlap_stats(overlap_stats),
           partition_stats(partition_stats), rng(rng), S(S), nmoves(nmoves), bgi(bgi)
     {}
 
@@ -94,7 +94,7 @@ struct move_sweep_overlap_dispatch
     bool verbose;
     size_t max_edge_index;
     size_t nmerges;
-    size_t ntries;
+    size_t niter;
     Vprop merge_map;
     overlap_stats_t& overlap_stats;
     overlap_partition_stats_t& partition_stats;
@@ -122,9 +122,9 @@ struct move_sweep_overlap_dispatch
     }
 
     template <class Graph, class BGraph>
-    void dispatch(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b, Graph& g,
-                  boost::any& aemat, boost::any asampler,
-                  boost::any cavity_sampler, BGraph& bg, bool weighted) const
+    void dispatch(Eprop& mrs, Vprop& mrp, Vprop& mrm, Vprop& wr, Vprop& b,
+                  Graph& g, boost::any& aemat, boost::any asampler,
+                  boost::any& cavity_sampler, BGraph& bg, bool weighted) const
     {
         if (weighted)
         {
@@ -145,16 +145,35 @@ struct move_sweep_overlap_dispatch
     }
 
     template <class Graph, class BGraph, class Egroups>
-    void dispatch(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b, Graph& g,
-                  boost::any& aemat, boost::any asampler, boost::any acavity_sampler,
-                  BGraph& bg, Egroups egroups) const
+    void dispatch(Eprop& mrs, Vprop& mrp, Vprop& mrm, Vprop& wr, Vprop& b,
+                  Graph& g, boost::any& aemat, boost::any& asampler,
+                  boost::any& acavity_sampler, BGraph& bg, Egroups& egroups) const
+    {
+        try
+        {
+            typedef typename get_emat_t::apply<BGraph>::type emat_t;
+            emat_t& emat = any_cast<emat_t&>(aemat);
+            size_t B = num_vertices(bg);
+            size_t max_BE = is_directed::apply<Graph>::type::value ?
+                B * B : (B * (B + 1)) / 2;
+            dispatch(mrs.get_unchecked(max_BE), mrp, mrm, wr, b, g,
+                     asampler, acavity_sampler, bg, egroups, emat);
+        }
+        catch (bad_any_cast&)
+        {
+            typedef typename get_ehash_t::apply<BGraph>::type emat_t;
+            emat_t& emat = any_cast<emat_t&>(aemat);
+            dispatch(mrs, mrp, mrm, wr, b, g, asampler, acavity_sampler,
+                     bg, egroups, emat);
+        }
+    }
+
+    template <class Graph, class BGraph, class Egroups, class Emat, class MEprop>
+    void dispatch(MEprop mrs, Vprop& mrp, Vprop& mrm, Vprop& wr, Vprop& b,
+                  Graph& g, boost::any& asampler, boost::any& acavity_sampler,
+                  BGraph& bg, Egroups& egroups, Emat& emat) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-
-        size_t B = num_vertices(bg);
-        size_t max_BE = is_directed::apply<Graph>::type::value ?
-            B * B : (B * (B + 1)) / 2;
-
 
         size_t eidx = random_move ? 1 : max_edge_index;
 
@@ -165,122 +184,73 @@ struct move_sweep_overlap_dispatch
         sampler_map_t sampler = any_cast<sampler_map_t>(asampler);
         sampler_map_t cavity_sampler = any_cast<sampler_map_t>(acavity_sampler);
 
-        try
+        ConstantPropertyMap<int, typename graph_traits<Graph>::edge_descriptor> ce(0);
+        ConstantPropertyMap<std::array<int, 1>, typename graph_traits<Graph>::vertex_descriptor> cv({-1});
+        IdentityArrayPropertyMap<typename graph_traits<Graph>::vertex_descriptor> vmap;
+        boost::typed_identity_property_map<int> identity;
+
+        vector<size_t> free_blocks;
+        auto state = make_block_state(g,
+                                      eweight.get_unchecked(max_edge_index),
+                                      vweight.get_unchecked(num_vertices(g)),
+                                      b.get_unchecked(num_vertices(g)),
+                                      bg, emat, mrs,
+                                      mrp.get_unchecked(num_vertices(bg)),
+                                      mrm.get_unchecked(num_vertices(bg)),
+                                      wr.get_unchecked(num_vertices(bg)),
+                                      egroups.get_unchecked(num_vertices(bg)),
+                                      esrcpos.get_unchecked(eidx),
+                                      etgtpos.get_unchecked(eidx),
+                                      sampler, cavity_sampler,
+                                      partition_stats, overlap_stats,
+                                      identity, identity, free_blocks,
+                                      false, false, true);
+
+        vector<decltype(state)> states = {state};
+        vector<SingleEntrySet<Graph>> m_entries(1);
+
+        if (nmerges == 0)
         {
-            typedef typename get_emat_t::apply<BGraph>::type emat_t;
-            emat_t& emat = any_cast<emat_t&>(aemat);
-
-            // make sure the properties are _unchecked_, since otherwise it
-            // affects performance
-
-            if (nmerges == 0)
+            if (!node_coherent)
             {
-                if (!node_coherent)
-                {
-                    move_sweep_overlap(mrs.get_unchecked(max_BE),
-                                       mrp.get_unchecked(num_vertices(bg)),
-                                       mrm.get_unchecked(num_vertices(bg)),
-                                       wr.get_unchecked(num_vertices(bg)),
-                                       b.get_unchecked(num_vertices(g)),
-                                       label.get_unchecked(num_vertices(bg)),
-                                       vlist, deg_corr, dense, multigraph,
-                                       parallel_edges, beta,
-                                       eweight.get_unchecked(max_edge_index),
-                                       vweight.get_unchecked(num_vertices(g)),
-                                       egroups.get_unchecked(num_vertices(bg)),
-                                       esrcpos.get_unchecked(eidx),
-                                       etgtpos.get_unchecked(eidx), g, bg, emat,
-                                       sequential, parallel, random_move, c,
-                                       overlap_stats, partition_stats, verbose,
-                                       rng, S, nmoves);
-                }
-                else
-                {
-                    coherent_move_sweep_overlap(mrs.get_unchecked(max_BE),
-                                                mrp.get_unchecked(num_vertices(bg)),
-                                                mrm.get_unchecked(num_vertices(bg)),
-                                                wr.get_unchecked(num_vertices(bg)),
-                                                b.get_unchecked(num_vertices(g)),
-                                                label.get_unchecked(num_vertices(bg)), 
-                                                vlist, deg_corr, dense, multigraph,
-                                                parallel_edges,
-                                                eweight.get_unchecked(max_edge_index),
-                                                vweight.get_unchecked(num_vertices(g)),
-                                                egroups.get_unchecked(num_vertices(bg)),
-                                                esrcpos.get_unchecked(eidx),
-                                                etgtpos.get_unchecked(eidx), g, bg, emat,
-                                                sequential, parallel, random_move, c,
-                                                overlap_stats, partition_stats,
-                                                verbose, rng, S, nmoves);
-                }
+                move_sweep_overlap(states, m_entries, overlap_stats,
+                                   wr.get_unchecked(num_vertices(bg)),
+                                   b.get_unchecked(num_vertices(g)), ce, cv,
+                                   vmap, label.get_unchecked(num_vertices(bg)),
+                                   vlist, deg_corr, dense, multigraph, beta,
+                                   eweight.get_unchecked(max_edge_index),
+                                   vweight.get_unchecked(num_vertices(g)), g,
+                                   sequential, parallel, random_move, c, niter,
+                                   num_vertices(bg), verbose, rng, S, nmoves);
             }
             else
             {
-                merge_sweep_overlap(mrs.get_unchecked(max_BE),
-                                    mrp.get_unchecked(num_vertices(bg)),
-                                    mrm.get_unchecked(num_vertices(bg)),
-                                    wr.get_unchecked(num_vertices(bg)),
-                                    b.get_unchecked(num_vertices(g)),
-                                    label.get_unchecked(num_vertices(bg)),
-                                    vlist, deg_corr, dense, multigraph,
-                                    parallel_edges,
-                                    eweight.get_unchecked(max_edge_index),
-                                    vweight.get_unchecked(num_vertices(g)),
-                                    egroups.get_unchecked(num_vertices(bg)),
-                                    esrcpos.get_unchecked(eidx),
-                                    etgtpos.get_unchecked(eidx), g, bg, emat,
-                                    sampler, cavity_sampler, node_coherent,
-                                    sequential, parallel, random_move, c,
-                                    nmerges, ntries,
-                                    merge_map.get_unchecked(num_vertices(g)),
-                                    overlap_stats, partition_stats, verbose,
-                                    rng, S, nmoves);
+                vector<EntrySet<Graph>> m_entries(1, EntrySet<Graph>(num_vertices(bg)));
+                coherent_move_sweep_overlap(states, m_entries, overlap_stats,
+                                            wr.get_unchecked(num_vertices(bg)),
+                                            b.get_unchecked(num_vertices(g)), ce, cv,
+                                            vmap, label.get_unchecked(num_vertices(bg)),
+                                            vlist, deg_corr, dense, multigraph, beta,
+                                            eweight.get_unchecked(max_edge_index),
+                                            vweight.get_unchecked(num_vertices(g)), g,
+                                            sequential, parallel, random_move, c,
+                                            false, niter,
+                                            num_vertices(bg), verbose, rng, S, nmoves);
             }
         }
-        catch (bad_any_cast&)
+        else
         {
-            typedef typename get_ehash_t::apply<BGraph>::type emat_t;
-            emat_t& emat = any_cast<emat_t&>(aemat);
-            if (nmerges == 0)
-            {
-                move_sweep_overlap(mrs.get_unchecked(num_edges(g)),
-                                   mrp.get_unchecked(num_vertices(bg)),
-                                   mrm.get_unchecked(num_vertices(bg)),
-                                   wr.get_unchecked(num_vertices(bg)),
-                                   b.get_unchecked(num_vertices(g)),
-                                   label.get_unchecked(num_vertices(bg)), vlist,
-                                   deg_corr, dense, multigraph, parallel_edges,
-                                   beta, eweight.get_unchecked(max_edge_index),
-                                   vweight.get_unchecked(num_vertices(g)),
-                                   egroups.get_unchecked(num_vertices(bg)),
-                                   esrcpos.get_unchecked(eidx),
-                                   etgtpos.get_unchecked(eidx), g, bg, emat,
-                                   sequential, parallel, random_move, c,
-                                   overlap_stats, partition_stats, verbose, rng,
-                                   S, nmoves);
-            }
-            else
-            {
-                merge_sweep_overlap(mrs.get_unchecked(num_edges(g)),
-                                    mrp.get_unchecked(num_vertices(bg)),
-                                    mrm.get_unchecked(num_vertices(bg)),
-                                    wr.get_unchecked(num_vertices(bg)),
-                                    b.get_unchecked(num_vertices(g)),
-                                    label.get_unchecked(num_vertices(bg)),
-                                    vlist, deg_corr, dense, multigraph,
-                                    parallel_edges,
-                                    eweight.get_unchecked(max_edge_index),
-                                    vweight.get_unchecked(num_vertices(g)),
-                                    egroups.get_unchecked(num_vertices(bg)),
-                                    esrcpos.get_unchecked(eidx),
-                                    etgtpos.get_unchecked(eidx), g, bg, emat,
-                                    sampler, cavity_sampler, node_coherent,
-                                    sequential, parallel, random_move, c,
-                                    nmerges, ntries,
-                                    merge_map.get_unchecked(num_vertices(g)),
-                                    overlap_stats, partition_stats, verbose,
-                                    rng, S, nmoves);
-            }
+            merge_sweep_overlap(states, m_entries, overlap_stats,
+                                wr.get_unchecked(num_vertices(bg)),
+                                b.get_unchecked(num_vertices(g)), ce, cv,
+                                vmap, label.get_unchecked(num_vertices(bg)),
+                                vlist, deg_corr, dense, multigraph, beta,
+                                eweight.get_unchecked(max_edge_index),
+                                vweight.get_unchecked(num_vertices(g)), g,
+                                sequential, parallel, random_move, c, false,
+                                nmerges, niter,
+                                merge_map.get_unchecked(num_vertices(g)),
+                                num_vertices(bg), verbose, rng, S, nmoves);
         }
     }
 };
@@ -297,7 +267,7 @@ do_move_sweep_overlap(GraphInterface& gi, GraphInterface& bgi, boost::any& emat,
                       boost::any oesrcpos, boost::any oetgtpos, double beta,
                       bool sequential, bool parallel, bool random_move,
                       double c, bool node_coherent, bool weighted,
-                      size_t nmerges, size_t ntries, boost::any omerge_map,
+                      size_t nmerges, boost::any omerge_map, size_t niter,
                       overlap_stats_t& overlap_stats,
                       overlap_partition_stats_t& partition_stats, bool verbose,
                       rng_t& rng)
@@ -333,8 +303,9 @@ do_move_sweep_overlap(GraphInterface& gi, GraphInterface& bgi, boost::any& emat,
                        (eweight, vweight, oegroups, esrcpos, etgtpos,
                         label, vlist, deg_corr, dense, multigraph, parallel_edges,
                         beta, sequential, parallel, random_move, c, node_coherent,
-                        verbose, gi.GetMaxEdgeIndex(), nmerges, ntries, merge_map,
-                        overlap_stats, partition_stats, rng, S, nmoves, bgi),
+                        verbose, gi.GetMaxEdgeIndex(), nmerges,
+                        niter, merge_map, overlap_stats, partition_stats, rng, S,
+                        nmoves, bgi),
                        mrs, mrp, mrm, wr, b, placeholders::_1,
                        std::ref(emat), sampler, cavity_sampler, weighted))();
     return boost::python::make_tuple(S, nmoves);
@@ -342,37 +313,39 @@ do_move_sweep_overlap(GraphInterface& gi, GraphInterface& bgi, boost::any& emat,
 
 struct get_overlap_stats
 {
-    template <class Graph, class Vprop, class VVprop>
-    void operator()(Graph& g, Vprop b, VVprop half_edges, Vprop node_index,
+    template <class Graph, class Vprop, class VIprop, class VVprop>
+    void operator()(Graph& g, Vprop b, VVprop half_edges, VIprop node_index,
                     size_t B, overlap_stats_t& overlap_stats) const
     {
-        overlap_stats =  overlap_stats_t(g, b, half_edges, node_index, B);
+        overlap_stats = overlap_stats_t(g, b.get_unchecked(num_vertices(g)),
+                                        half_edges,
+                                        node_index.get_unchecked(num_vertices(g)), B);
     }
 };
 
 overlap_stats_t
 do_get_overlap_stats(GraphInterface& gi, boost::any ob,
                      boost::any ohalf_edges, boost::any onode_index,
-                     size_t B)
+                     size_t NN, size_t B)
 {
     typedef property_map_type::apply<int32_t,
                                      GraphInterface::vertex_index_map_t>::type
         vmap_t;
-    typedef property_map_type::apply<vector<int32_t>,
+    typedef property_map_type::apply<int64_t,
+                                     GraphInterface::vertex_index_map_t>::type
+        vimap_t;
+    typedef property_map_type::apply<vector<int64_t>,
                                      GraphInterface::vertex_index_map_t>::type
         vvmap_t;
-    typedef property_map_type::apply<int32_t,
-                                     GraphInterface::edge_index_map_t>::type
-        emap_t;
 
     overlap_stats_t overlap_stats;
 
     vmap_t b = any_cast<vmap_t>(ob);
     vvmap_t half_edges = any_cast<vvmap_t>(ohalf_edges);
-    vmap_t node_index = any_cast<vmap_t>(onode_index);
+    vimap_t node_index = any_cast<vimap_t>(onode_index);
 
     run_action<>()(gi, std::bind(get_overlap_stats(), placeholders::_1, b,
-                                 half_edges, node_index, B,
+                                 half_edges.get_unchecked(NN), node_index, B,
                                  std::ref(overlap_stats)))();
     return overlap_stats;
 }
@@ -381,18 +354,18 @@ struct get_overlap_partition_stats
 {
     template <class Graph, class Vprop, class Eprop>
     void operator()(Graph& g, Vprop b, Eprop eweight, size_t N, size_t B,
-                    overlap_stats_t& overlap_stats,
+                    bool edges_dl, overlap_stats_t& overlap_stats,
                     overlap_partition_stats_t& partition_stats) const
     {
         partition_stats = overlap_partition_stats_t(g, b, overlap_stats,
-                                                    eweight, N, B);
+                                                    eweight, N, B, edges_dl);
     }
 };
 
 overlap_partition_stats_t
 do_get_overlap_partition_stats(GraphInterface& gi, boost::any ob,
                                boost::any aeweight, size_t N, size_t B,
-                               overlap_stats_t& overlap_stats)
+                               bool edges_dl, overlap_stats_t& overlap_stats)
 {
     typedef property_map_type::apply<int32_t,
                                      GraphInterface::vertex_index_map_t>::type
@@ -407,7 +380,7 @@ do_get_overlap_partition_stats(GraphInterface& gi, boost::any ob,
     emap_t eweight = any_cast<emap_t>(aeweight);
 
     run_action<>()(gi, std::bind(get_overlap_partition_stats(),
-                                 placeholders::_1, b, eweight, N, B,
+                                 placeholders::_1, b, eweight, N, B, edges_dl,
                                  std::ref(overlap_stats),
                                  std::ref(partition_stats)))();
 
@@ -435,10 +408,11 @@ double do_get_overlap_parallel_entropy(GraphInterface& gi, boost::any ob,
 struct get_eg_overlap
 {
     template <class Graph, class EGraph, class EVprop, class VProp,
-              class VVProp>
-    void operator()(Graph& g, EGraph& eg, EVprop be, VProp b, VProp node_index,
-                    VVProp half_edges) const
+              class VIProp, class VVProp, class EProp>
+    void operator()(Graph& g, EGraph& eg, EVprop be, VProp b, VIProp node_index,
+                    VVProp half_edges, EProp egindex) const
     {
+        auto eindex = get(edge_index, g);
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         for (auto e : edges_range(g))
         {
@@ -446,7 +420,8 @@ struct get_eg_overlap
             vertex_t t = get_target(e, g);
             vertex_t u = add_vertex(eg);
             vertex_t v = add_vertex(eg);
-            add_edge(u, v, eg);
+            auto ne = add_edge(u, v, eg).first;
+            egindex[ne] = eindex[e];
             if (be[e].size() != 2)
                 throw GraphException("Edge block property map must have two values per edge");
             b[u] = be[e][0];
@@ -461,32 +436,39 @@ struct get_eg_overlap
 
 void do_get_eg_overlap(GraphInterface& gi, GraphInterface& egi, boost::any obe,
                        boost::any ob, boost::any onode_index,
-                       boost::any ohalf_edges)
+                       boost::any ohalf_edges, boost::any oeindex)
 {
     typedef property_map_type::apply<int32_t,
                                      GraphInterface::vertex_index_map_t>::type
         vmap_t;
-    typedef property_map_type::apply<vector<int32_t>,
+    typedef property_map_type::apply<int64_t,
+                                     GraphInterface::vertex_index_map_t>::type
+        vimap_t;
+    typedef property_map_type::apply<vector<int64_t>,
                                      GraphInterface::vertex_index_map_t>::type
         vvmap_t;
     typedef property_map_type::apply<vector<int32_t>,
                                      GraphInterface::edge_index_map_t>::type
         evmap_t;
+    typedef property_map_type::apply<int64_t,
+                                     GraphInterface::edge_index_map_t>::type
+        emap_t;
 
     vmap_t b = any_cast<vmap_t>(ob);
     evmap_t be = any_cast<evmap_t>(obe);
-    vmap_t node_index = any_cast<vmap_t>(onode_index);
+    vimap_t node_index = any_cast<vimap_t>(onode_index);
     vvmap_t half_edges = any_cast<vvmap_t>(ohalf_edges);
+    emap_t eindex = any_cast<emap_t>(oeindex);
 
     run_action<>()(gi, std::bind(get_eg_overlap(), placeholders::_1,
                                  std::ref(egi.GetGraph()), be, b, node_index,
-                                 half_edges))();
+                                 half_edges, eindex))();
 }
 
 struct get_be_overlap
 {
-    template <class Graph, class EGraph, class EVprop, class VProp>
-    void operator()(Graph& g, EGraph& eg, EVprop be, VProp b, VProp node_index)
+    template <class Graph, class EGraph, class EVprop, class VProp, class VIProp>
+    void operator()(Graph& g, EGraph& eg, EVprop be, VProp b, VIProp node_index)
         const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
@@ -524,6 +506,9 @@ void do_get_be_overlap(GraphInterface& gi, GraphInterface& egi, boost::any obe,
     typedef property_map_type::apply<int32_t,
                                      GraphInterface::vertex_index_map_t>::type
         vmap_t;
+    typedef property_map_type::apply<int64_t,
+                                     GraphInterface::vertex_index_map_t>::type
+        vimap_t;
     typedef property_map_type::apply<vector<int32_t>,
                                      GraphInterface::edge_index_map_t>::type
         evmap_t;
@@ -533,70 +518,13 @@ void do_get_be_overlap(GraphInterface& gi, GraphInterface& egi, boost::any obe,
 
     vmap_t b = any_cast<vmap_t>(ob);
     evmap_t be = any_cast<evmap_t>(obe);
-    vmap_t node_index = any_cast<vmap_t>(onode_index);
+    vimap_t node_index = any_cast<vimap_t>(onode_index);
 
     run_action<>()(gi, std::bind(get_be_overlap(), placeholders::_1,
                                  std::ref(egi.GetGraph()), be, b,
                                  node_index))();
 }
 
-
-// struct get_overlap_proj
-// {
-//     template <class Graph, class BGraph, class Eprop, class VProp>
-//     void operator()(Graph& g, BGraph& bg, Eprop mrs, VProp b) const
-//     {
-//         unordered_map<pair<size_t,size_t>, pair<size_t,size_t>,
-//                       boost::hash<pair<size_t,size_t> > > edges;
-
-//         size_t pos = 0;
-//         typename graph_traits<BGraph>::edge_iterator ei, ei_end;
-//         for (tie(ei, ei_end) = boost::edges(bg); ei != ei_end; ++ei)
-//         {
-//             if (mrs[*ei] == 0)
-//                 continue;
-//             size_t r = source(*ei, bg);
-//             size_t s = target(*ei, bg);
-//             if (!is_directed::apply<Graph>::type::value && r > s)
-//                 std::swap(r, s);
-//             edges[make_pair(r, s)] = make_pair(pos, pos + 1);
-//             pos += 2;
-//         }
-
-//         typename graph_traits<Graph>::edge_iterator e, e_end;
-//         for (tie(e, e_end) = boost::edges(g); e != e_end; ++e)
-//         {
-//             size_t u = get_source(*e, g);
-//             size_t v = get_target(*e, g);
-//             size_t r = b[u];
-//             size_t s = b[v];
-//             if (!is_directed::apply<Graph>::type::value && r > s)
-//                 std::swap(r, s);
-//             tie(r, s) = edges[make_pair(r, s)];
-//             if (!is_directed::apply<Graph>::type::value && b[u] > b[v])
-//                 std::swap(r, s);
-//             b[u] = r;
-//             b[v] = s;
-//         }
-//     }
-// };
-
-// void do_get_overlap_proj(GraphInterface& gi, GraphInterface& bgi,
-//                          boost::any omrs, boost::any ob)
-// {
-//     typedef property_map_type::apply<int32_t,
-//                                      GraphInterface::vertex_index_map_t>::type
-//         vmap_t;
-//     typedef property_map_type::apply<int32_t,
-//                                      GraphInterface::edge_index_map_t>::type
-//         emap_t;
-
-//     emap_t mrs = any_cast<emap_t>(omrs);
-//     vmap_t b = any_cast<vmap_t>(ob);
-
-//     run_action<>()(gi, std::bind(get_overlap_proj(), placeholders::_1,
-//                                  std::ref(bgi.GetGraph()), mrs, b))();
-// }
 
 struct get_be_from_b_overlap
 {
@@ -634,9 +562,9 @@ void do_get_be_from_b_overlap(GraphInterface& gi, boost::any obe, boost::any ob)
 
 struct get_bv_overlap
 {
-    template <class Graph, class VProp, class VVProp>
-    void operator()(Graph& g, VProp b, VProp node_index, VVProp bv, VVProp bc_in,
-                    VVProp bc_out, VVProp bc_total) const
+    template <class Graph, class VProp, class VIProp, class VVProp>
+    void operator()(Graph& g, VProp b, VIProp node_index, VVProp bv,
+                    VVProp bc_in, VVProp bc_out, VVProp bc_total) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
@@ -704,6 +632,9 @@ void do_get_bv_overlap(GraphInterface& gi, boost::any ob,  boost::any onode_inde
                        boost::any obv, boost::any obc_in, boost::any obc_out,
                        boost::any obc_total)
 {
+    typedef property_map_type::apply<int64_t,
+                                     GraphInterface::vertex_index_map_t>::type
+        vimap_t;
     typedef property_map_type::apply<int32_t,
                                      GraphInterface::vertex_index_map_t>::type
         vmap_t;
@@ -715,7 +646,7 @@ void do_get_bv_overlap(GraphInterface& gi, boost::any ob,  boost::any onode_inde
         evmap_t;
 
     vmap_t b = any_cast<vmap_t>(ob);
-    vmap_t node_index = any_cast<vmap_t>(onode_index);
+    vimap_t node_index = any_cast<vimap_t>(onode_index);
     vvmap_t bv = any_cast<vvmap_t>(obv);
     vvmap_t bc_in = any_cast<vvmap_t>(obc_in);
     vvmap_t bc_out = any_cast<vvmap_t>(obc_out);
@@ -776,10 +707,10 @@ struct get_nodeset_overlap
 void do_get_nodeset_overlap(GraphInterface& gi, boost::any onode_index,
                             boost::any ohalf_edges)
 {
-    typedef property_map_type::apply<int32_t,
+    typedef property_map_type::apply<int64_t,
                                      GraphInterface::vertex_index_map_t>::type
         vmap_t;
-    typedef property_map_type::apply<vector<int32_t>,
+    typedef property_map_type::apply<vector<int64_t>,
                                      GraphInterface::vertex_index_map_t>::type
         vvmap_t;
 
@@ -792,8 +723,8 @@ void do_get_nodeset_overlap(GraphInterface& gi, boost::any onode_index,
 
 struct get_augmented_overlap
 {
-    template <class Graph, class VProp>
-    void operator()(Graph& g, VProp b, VProp node_index, VProp br_map,
+    template <class Graph, class VProp, class VIProp>
+    void operator()(Graph& g, VProp b, VIProp node_index, VProp br_map,
                     vector<int32_t>& br_b, vector<int32_t>& br_ni) const
     {
 
@@ -838,9 +769,12 @@ void do_get_augmented_overlap(GraphInterface& gi, boost::any ob,
     typedef property_map_type::apply<int32_t,
                                      GraphInterface::vertex_index_map_t>::type
         vmap_t;
+    typedef property_map_type::apply<int64_t,
+                                     GraphInterface::vertex_index_map_t>::type
+        vimap_t;
 
     vmap_t b = any_cast<vmap_t>(ob);
-    vmap_t node_index = any_cast<vmap_t>(onode_index);
+    vimap_t node_index = any_cast<vimap_t>(onode_index);
     vmap_t br_map = any_cast<vmap_t>(obr_map);
 
     run_action<>()(gi, std::bind(get_augmented_overlap(), placeholders::_1,
@@ -883,6 +817,49 @@ void do_get_overlap_split(GraphInterface& gi, boost::any obv, boost::any ob)
                                  placeholders::_1, bv, b))();
 }
 
+
+struct get_maj_overlap
+{
+    template <class Graph, class VProp, class VVProp>
+    void operator()(Graph& g, VVProp bv, VVProp bc_total, VProp b) const
+    {
+        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
+
+        for (auto v : vertices_range(g))
+        {
+            if (bv[v].empty())
+            {
+                b[v] = numeric_limits<int32_t>::max();
+                continue;
+            }
+
+            auto& c = bc_total[v];
+            auto pos = std::max_element(c.begin(), c.end());
+            auto r = *(bv[v].begin() + (pos - c.begin()));
+            b[v] = r;
+        }
+    }
+};
+
+void do_get_maj_overlap(GraphInterface& gi, boost::any obv,
+                        boost::any obc_total, boost::any ob)
+{
+    typedef property_map_type::apply<int32_t,
+                                     GraphInterface::vertex_index_map_t>::type
+        vmap_t;
+    typedef property_map_type::apply<vector<int32_t>,
+                                     GraphInterface::vertex_index_map_t>::type
+        vvmap_t;
+
+    vmap_t b = any_cast<vmap_t>(ob);
+    vvmap_t bv = any_cast<vvmap_t>(obv);
+    vvmap_t bc_total = any_cast<vvmap_t>(obc_total);
+
+    run_action<>()(gi, std::bind(get_maj_overlap(), placeholders::_1, bv,
+                                 bc_total, b))();
+}
+
+
 } // namespace graph_tool
 
 
@@ -913,4 +890,5 @@ void export_blockmodel_overlap()
     def("get_nodeset_overlap", do_get_nodeset_overlap);
     def("get_augmented_overlap", do_get_augmented_overlap);
     def("get_overlap_split", do_get_overlap_split);
+    def("get_maj_overlap", do_get_maj_overlap);
 }

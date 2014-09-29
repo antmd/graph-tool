@@ -100,9 +100,9 @@ using namespace boost::python;
 extern void community_network(GraphInterface& gi, GraphInterface& cgi,
                               boost::any community_property,
                               boost::any condensed_community_property,
-                              boost::any vertex_count,
-                              boost::any edge_count, boost::any vweight,
-                              boost::any eweight, bool self_loops);
+                              boost::any vertex_count, boost::any edge_count,
+                              boost::any vweight, boost::any eweight,
+                              bool self_loops, bool parallel_edges);
 
 void community_network_vavg(GraphInterface& gi, GraphInterface& cgi,
                             boost::any community_property,
@@ -122,6 +122,7 @@ void community_network_eavg(GraphInterface& gi, GraphInterface& cgi,
 
 extern void export_blockmodel();
 extern void export_blockmodel_overlap();
+extern void export_blockmodel_covariate();
 
 BOOST_PYTHON_MODULE(libgraph_tool_community)
 {
@@ -133,4 +134,5 @@ BOOST_PYTHON_MODULE(libgraph_tool_community)
 
     export_blockmodel();
     export_blockmodel_overlap();
+    export_blockmodel_covariate();
 }

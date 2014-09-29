@@ -51,17 +51,21 @@ public:
     typedef property_map_type::apply<int32_t,
                                      GraphInterface::vertex_index_map_t>::type::unchecked_t
         vmap_t;
-    typedef property_map_type::apply<vector<int32_t>,
+    typedef property_map_type::apply<int64_t,
+                                     GraphInterface::vertex_index_map_t>::type::unchecked_t
+        vimap_t;
+    typedef property_map_type::apply<vector<int64_t>,
                                      GraphInterface::vertex_index_map_t>::type::unchecked_t
         vvmap_t;
 
     overlap_stats_t(): _enabled(false) {}
 
     template <class Graph>
-    overlap_stats_t(Graph& g, vmap_t b, vvmap_t half_edges, vmap_t node_index,
+    overlap_stats_t(Graph& g, vmap_t b, vvmap_t half_edges, vimap_t node_index,
                     size_t B)
         : _half_edges(half_edges), _node_index(node_index),
-          _out_neighbours(num_vertices(g), -1), _in_neighbours(num_vertices(g), -1)
+          _out_neighbours(num_vertices(g), -1),
+          _in_neighbours(num_vertices(g), -1)
     {
         _enabled = true;
         _block_nodes.resize(B);
@@ -74,9 +78,11 @@ public:
         }
 #endif
 
+        size_t N = 0;
         for (auto v : vertices_range(g))
         {
             size_t vi = node_index[v];
+            N = std::max(N, vi + 1);
             size_t kin = in_degreeS()(v, g);
             size_t kout = out_degreeS()(v, g);
 
@@ -94,13 +100,9 @@ public:
 
         // parallel edges
         _mi.resize(num_vertices(g), -1);
-        vector<bool> visited(num_vertices(g), false);
-        for (auto v : vertices_range(g))
-        {
-            if (visited[v])
-                continue;
 
-            size_t i = node_index[v];
+        for (size_t i = 0; i < N; ++i)
+        {
             auto& he = half_edges[i];
 
             unordered_map<size_t, vector<size_t>> out_us;
@@ -109,94 +111,156 @@ public:
                 auto w = _out_neighbours[u];
                 if (w == -1)
                     continue;
+                if (!is_directed::apply<Graph>::type::value && size_t(node_index[w]) < i)
+                    continue;
                 out_us[node_index[w]].push_back(u);
-                visited[u] = true;
             }
 
             for (auto& uc : out_us)
             {
                 if (uc.second.size() > 1)
                 {
+                    _parallel_bundles.resize(_parallel_bundles.size() + 1);
+                    auto& h = _parallel_bundles.back();
+#ifdef HAVE_SPARSEHASH
+                    h.set_empty_key(make_pair(numeric_limits<size_t>::max(),
+                                              numeric_limits<size_t>::max()));
+                    h.set_deleted_key(make_pair(numeric_limits<size_t>::max() - 1,
+                                                numeric_limits<size_t>::max() - 1));
+#endif
                     for (auto u : uc.second)
-                        _mi[u] = _parallel_bundles.size();
-                    _parallel_bundles.push_back(uc.second);
+                    {
+                        auto w = _out_neighbours[u];
+                        assert(w != -1);
+                        _mi[u] = _mi[w] = _parallel_bundles.size() - 1;
+                        size_t r = b[u];
+                        size_t s = b[w];
+                        if (!is_directed::apply<Graph>::type::value && r > s)
+                            std::swap(r, s);
+                        h[make_pair(r, s)]++;
+                    }
                 }
             }
         }
     }
 
-    template <class Graph>
-    void add_half_edge(size_t v, size_t r, Graph& g)
+    template <class Graph, class VProp>
+    void add_half_edge(size_t v, size_t v_r, VProp& b, Graph& g)
     {
         size_t u = _node_index[v];
-        size_t kin = in_degreeS()(v, g);
-        size_t kout = out_degreeS()(v, g);
-        auto& k = _block_nodes[r][u];
+        size_t kin = (_in_neighbours[v] == -1) ? 0 : 1;
+        size_t kout = (_out_neighbours[v] == -1) ? 0 : 1;
+        assert(kin + kout == 1);
+        auto& k = _block_nodes[v_r][u];
         k.first += kin;
         k.second += kout;
+
+        int m = _mi[v];
+        if (m != -1)
+        {
+            size_t r, s;
+            int u = _out_neighbours[v];
+            if (u == -1)
+            {
+                u = _in_neighbours[v];
+                r = b[u];
+                s = v_r;
+            }
+            else
+            {
+                r = v_r;
+                s = b[u];
+            }
+            auto& h = _parallel_bundles[m];
+            if (!is_directed::apply<Graph>::type::value && r > s)
+                std::swap(r, s);
+            h[make_pair(r, s)]++;
+        }
     }
 
-    template <class Graph>
-    void remove_half_edge(size_t v, size_t r, Graph& g)
+    template <class Graph, class VProp>
+    void remove_half_edge(size_t v, size_t v_r, VProp& b, Graph& g)
     {
         size_t u = _node_index[v];
-        size_t kin = in_degreeS()(v, g);
-        size_t kout = out_degreeS()(v, g);
-
-        auto& k = _block_nodes[r][u];
+        size_t kin = (_in_neighbours[v] == -1) ? 0 : 1;
+        size_t kout = (_out_neighbours[v] == -1) ? 0 : 1;
+        assert(kin + kout == 1);
+        auto& k = _block_nodes[v_r][u];
         k.first -= kin;
         k.second -= kout;
 
         if (k.first + k.second == 0)
-            _block_nodes[r].erase(u);
+            _block_nodes[v_r].erase(u);
+
+        int m = _mi[v];
+        if (m != -1)
+        {
+            size_t r, s;
+            int u = _out_neighbours[v];
+            if (u == -1)
+            {
+                u = _in_neighbours[v];
+                r = b[u];
+                s = v_r;
+            }
+            else
+            {
+                r = v_r;
+                s = b[u];
+            }
+            auto& h = _parallel_bundles[m];
+            if (!is_directed::apply<Graph>::type::value && r > s)
+                std::swap(r, s);
+            auto iter = h.find(make_pair(r, s));
+            assert(iter->second > 0);
+            iter->second--;
+            if (iter->second == 0)
+                h.erase(iter);
+        }
     }
 
-    template <class Graph>
-    void move_half_edge(size_t v, size_t r, size_t nr, Graph& g)
-    {
-        remove_half_edge(v, r, g);
-        add_half_edge(v, nr, g);
-    }
-
-    size_t get_block_size(size_t r)
+    size_t get_block_size(size_t r) const
     {
         return _block_nodes[r].size();
     }
 
-    template <class Graph>
-    size_t virtual_remove_size(size_t v, size_t r, Graph& g)
+    size_t virtual_remove_size(size_t v, size_t r, size_t in_deg = 0,
+                               size_t out_deg = 0) const
     {
         size_t nr = _block_nodes[r].size();
         size_t u = _node_index[v];
-        size_t kin = in_degreeS()(v, g);
-        size_t kout = out_degreeS()(v, g);
-        auto& deg = _block_nodes[r][u];
+        size_t kin = (in_deg + out_deg) > 0 ?
+            in_deg : ((_in_neighbours[v] == -1) ? 0 : 1);
+        size_t kout = (in_deg + out_deg) > 0 ?
+            out_deg : ((_out_neighbours[v] == -1) ? 0 : 1);
+        const auto iter = _block_nodes[r].find(u);
+        const auto& deg = iter->second;
         if (deg.first == kin && deg.second == kout)
             nr--;
         return nr;
     }
 
-    template <class Graph>
-    size_t virtual_add_size(size_t v, size_t r, Graph& g)
+    size_t virtual_add_size(size_t v, size_t r) const
     {
         size_t nr = _block_nodes[r].size();
         size_t u = _node_index[v];
-        auto& bnodes = _block_nodes[r];
+        const auto& bnodes = _block_nodes[r];
         if (bnodes.find(u) == bnodes.end())
             nr++;
         return nr;
     }
 
     template <class Graph>
-    double virtual_move_dS(size_t v, size_t r, size_t nr, Graph& g)
+    double virtual_move_dS(size_t v, size_t r, size_t nr, Graph& g,
+                           size_t in_deg = 0, size_t out_deg = 0) const
     {
         double dS = 0;
 
         size_t u = _node_index[v];
-        size_t u_kin = in_degreeS()(v, g);
-        size_t u_kout = out_degreeS()(v, g);
+        size_t u_kin = ((in_deg + out_deg) > 0) ? in_deg : in_degreeS()(v, g);
+        size_t u_kout = ((in_deg + out_deg) > 0) ? out_deg : out_degreeS()(v, g);
 
-        auto deg = _block_nodes[r][u];
+        auto deg =  _block_nodes[r].find(u)->second;
         auto ndeg = deg;
         ndeg.first -= u_kin;
         ndeg.second -= u_kout;
@@ -204,7 +268,7 @@ public:
         dS -= lgamma_fast(ndeg.first + 1) + lgamma_fast(ndeg.second + 1);
         dS += lgamma_fast(deg.first + 1) + lgamma_fast(deg.second + 1);
 
-        auto iter = _block_nodes[nr].find(u);
+        const auto iter = _block_nodes[nr].find(u);
         if (iter != _block_nodes[nr].end())
             deg = iter->second;
         else
@@ -220,112 +284,110 @@ public:
     }
 
     template <class Graph, class VProp>
-    double virtual_move_parallel_dS(size_t v, size_t r, size_t nr, VProp& b, Graph& g)
+    double virtual_move_parallel_dS(size_t v, size_t v_r, size_t v_nr, VProp& b,
+                                    Graph& g, bool coherent=false) const
     {
         int m = _mi[v];
-        if (_out_neighbours[v] == -1)
-            m = _mi[_in_neighbours[v]];
         if (m == -1)
             return 0;
 
+        size_t r, s, nr, ns;
+        int u = _out_neighbours[v];
+        if (u == -1)
+        {
+            u = _in_neighbours[v];
+            r = b[u];
+            s = v_r;
+            nr = r;
+            ns = v_nr;
+        }
+        else
+        {
+            r = v_r;
+            s = b[u];
+            nr = v_nr;
+            ns = s;
+        }
+        if (!is_directed::apply<Graph>::type::value && r > s)
+            std::swap(r, s);
+        if (!is_directed::apply<Graph>::type::value && nr > ns)
+            std::swap(nr, ns);
+
+        auto& h = _parallel_bundles[m];
+
+        auto get_h = [&](const pair<size_t, size_t>& k) -> int
+            {
+                const auto iter = h.find(k);
+                if (iter == h.end())
+                    return 0;
+                return iter->second;
+            };
+
+        int c  = get_h(make_pair(r,  s));
+        int nc = get_h(make_pair(nr, ns));
+
+        assert(c > 0);
+        assert(nc >= 0);
+        assert(v_r != v_nr);
+        assert(make_pair(r, s) != make_pair(nr, ns));
+
         double S = 0;
-        typedef std::tuple<size_t, size_t, size_t> key_t; // u, r, s
-
-#ifdef HAVE_SPARSEHASH
-        dense_hash_map<key_t, int, std::hash<key_t>> out_us;
-        out_us.set_empty_key(key_t(numeric_limits<size_t>::max(),
-                                   numeric_limits<size_t>::max(),
-                                   numeric_limits<size_t>::max()));
-#else
-        unordered_map<key_t, int> out_us;
-#endif
-
-        for (auto u : _parallel_bundles[m])
-        {
-            size_t r_u = b[u];
-
-            auto w = _out_neighbours[u];
-            assert(w != -1);
-
-            size_t s = b[w];
-            size_t ni_w = _node_index[w];
-            size_t ni_u = _node_index[u];
-
-            if (ni_w == ni_u && !is_directed::apply<Graph>::type::value && s < r_u)
-                out_us[key_t(ni_w, s, r_u)]++;
-            else
-                out_us[key_t(ni_w, r_u, s)]++;
-        }
-
-        size_t vi = _node_index[v];
-
-        auto get_node = [](const key_t& k) -> size_t {return get<0>(k);};
-        S -= get_parallel_neighbours_entropy(vi, out_us, g, get_node);
-
-        out_us.clear();
-        for (auto u : _parallel_bundles[m])
-        {
-            size_t r_u = b[u];
-            if (u == v)
-                r_u = nr;
-
-            auto w = _out_neighbours[u];
-            assert(w != -1);
-
-            size_t s = b[w];
-
-            if (w == int(v))
-                s = nr;
-
-            size_t ni_w = _node_index[w];
-            size_t ni_u = _node_index[u];
-            if (ni_w == ni_u && !is_directed::apply<Graph>::type::value && s < r_u)
-                out_us[key_t(ni_w, s, r_u)]++;
-            else
-                out_us[key_t(ni_w, r_u, s)]++;
-        }
-
-        S += get_parallel_neighbours_entropy(vi, out_us, g, get_node);
+        S -= lgamma_fast(c + 1) + lgamma_fast(nc + 1);
+        if (!coherent)
+            S += lgamma_fast(c) + lgamma_fast(nc + 2);
+        else
+            S += lgamma_fast(c + nc + 1);
 
         return S;
     }
 
-    // sample another half-edge adjacent to the same node of half-edge w
+    // sample another half-edge adjacent to the node w
     template <class RNG>
-    size_t sample_half_edge(size_t w, RNG& rng)
+    size_t sample_half_edge(size_t w, RNG& rng) const
     {
-        size_t wi = _node_index[w];
-        auto& half_edges = _half_edges[wi];
+        auto& half_edges = _half_edges[w];
         return uniform_sample(half_edges, rng);
     }
 
-    size_t get_node(size_t v) { return _node_index[v]; }
-    vector<int>& get_half_edges(size_t v) { return _half_edges[v]; }
+    size_t get_node(size_t v) const { return _node_index[v]; }
+    const vector<int64_t>& get_half_edges(size_t v) const { return _half_edges[v]; }
 
-    int get_out_neighbour(size_t v) { return _out_neighbours[v]; }
-    int get_in_neighbour(size_t v) { return _in_neighbours[v]; }
+    int64_t get_out_neighbour(size_t v) const { return _out_neighbours[v]; }
+    int64_t get_in_neighbour(size_t v) const { return _in_neighbours[v]; }
 
 
-    bool is_enabled() { return _enabled; }
+    bool is_enabled() const { return _enabled; }
+
+
+#ifdef HAVE_SPARSEHASH
+    typedef dense_hash_map<pair<size_t, size_t>, int,
+                           std::hash<pair<size_t, size_t>>> phist_t;
+#else
+    typedef unordered_map<pair<size_t, size_t>, int> phist_t;
+#endif
+
+    const vector<phist_t>& get_parallel_bundles() { return _parallel_bundles; }
+    const vector<int>& get_mi() { return _mi; }
 
 private:
     bool _enabled;
     vvmap_t _half_edges;     // half-edges to each node
-    vmap_t  _node_index;      // node to each half edges
+    vimap_t _node_index;     // node to each half edges
 
 #ifdef HAVE_SPARSEHASH
-        typedef dense_hash_map<size_t, deg_t> node_map_t;
+    typedef dense_hash_map<size_t, deg_t, std::hash<size_t>> node_map_t;
 #else
-        typedef unordered_map<size_t, deg_t> node_map_t;
+    typedef unordered_map<size_t, deg_t> node_map_t;
 #endif
 
     vector<node_map_t> _block_nodes; // nodes (and degrees) in each block
 
-    vector<int> _out_neighbours;
-    vector<int> _in_neighbours;
+    vector<int64_t> _out_neighbours;
+    vector<int64_t> _in_neighbours;
+
 
     vector<int> _mi;
-    vector<vector<size_t>> _parallel_bundles; // parallel edge bundles
+    vector<phist_t> _parallel_bundles; // parallel edge bundles
 };
 
 
@@ -365,16 +427,23 @@ struct overlap_partition_stats_t
 
     template <class Graph, class Vprop, class Eprop>
     overlap_partition_stats_t(Graph& g, Vprop b, overlap_stats_t& overlap_stats,
-                              Eprop eweight, size_t N, size_t B)
+                              Eprop eweight, size_t N, size_t B, bool edges_dl)
         : _enabled(true), _N(N), _B(B), _D(0),
           _dhist(B + 1), _r_count(B), _bhist(N), _emhist(B), _ephist(B),
-          _embhist(N), _epbhist(N), _deg_hist(N), _bvs(N), _nbvs(N), _degs(N), _ndegs(N)
+          _embhist(N), _epbhist(N), _deg_hist(N), _bvs(N), _nbvs(N), _degs(N),
+          _ndegs(N), _deg_delta(B), _edges_dl(edges_dl)
     {
 #ifdef HAVE_SPARSEHASH
-        _bhist.set_empty_key(bv_t());
-        _deg_hist.set_empty_key(bv_t());
-        _embhist.set_empty_key(bv_t());
-        _epbhist.set_empty_key(bv_t());
+        bv_t empty = {numeric_limits<int>::max()};
+        bv_t deleted = {numeric_limits<int>::max() - 1};
+        _bhist.set_empty_key(empty);
+        _bhist.set_deleted_key(deleted);
+        _deg_hist.set_empty_key(empty);
+        _deg_hist.set_deleted_key(deleted);
+        _embhist.set_empty_key(empty);
+        _embhist.set_deleted_key(deleted);
+        _epbhist.set_empty_key(empty);
+        _epbhist.set_deleted_key(deleted);
 #endif
 
         dmap_t in_hist, out_hist;
@@ -406,7 +475,15 @@ struct overlap_partition_stats_t
             auto & cdh = _deg_hist[bv];
 #ifdef HAVE_SPARSEHASH
             if (cdh.empty())
-                cdh.set_empty_key(cdeg_t());
+            {
+                cdeg_t empty = {deg_t(numeric_limits<int>::max(),
+                                      numeric_limits<int>::max())};
+                cdeg_t deleted = {deg_t(numeric_limits<int>::max() - 1,
+                                        numeric_limits<int>::max() - 1)};
+                cdh.set_empty_key(empty);
+                cdh.set_deleted_key(deleted);
+            }
+
 #endif
             cdh[cdeg]++;
 
@@ -435,15 +512,21 @@ struct overlap_partition_stats_t
         {
             assert(bv_c.second > 0);
             for (auto r : bv_c.first)
-                _r_count[r]++;
+                _r_count[r] += 1;
         }
 
+        _actual_B = 0;
+        for (size_t r = 0; r < _B; ++r)
+        {
+            if (overlap_stats.get_block_size(r) > 0)
+                _actual_B++;
+        }
     }
 
     template <class Graph, class Vprop, class Eprop>
     void get_bv_deg(size_t v, Vprop& b, Eprop& eweight,
                     overlap_stats_t& overlap_stats, Graph& g, set<size_t>& rs,
-                    dmap_t& in_hist, dmap_t& out_hist)
+                    dmap_t& in_hist, dmap_t& out_hist) const
     {
         if (!overlap_stats.is_enabled())
         {
@@ -468,7 +551,7 @@ struct overlap_partition_stats_t
     }
 
 
-    double get_partition_dl()
+    double get_partition_dl() const
     {
         double S = 0;
         for (size_t d = 1; d < _dhist.size(); ++d)
@@ -476,8 +559,8 @@ struct overlap_partition_stats_t
             size_t nd = _dhist[d];
             if (nd == 0)
                 continue;
-            double x = lbinom_fast(_B, d);
-            double ss = lbinom((exp(x) + nd) - 1, nd); // no fast
+            double x = lbinom_fast(_actual_B, d);
+            double ss = lbinom((exp(x) + nd) - 1, nd); // not fast
             if (std::isinf(ss) || std::isnan(ss))
                 ss = nd * x - lgamma_fast(nd + 1);
             assert(!std::isinf(ss));
@@ -485,34 +568,15 @@ struct overlap_partition_stats_t
             S += ss;
         }
 
-        S += lbinom(_D + _N - 1, _N) + lgamma(_N + 1);
+        S += lbinom_fast(_D + _N - 1, _N) + lgamma_fast(_N + 1);
 
         for (auto& bh : _bhist)
-            S -= lgamma(bh.second + 1);
-
-        // double S1 = S;
-        // S = 0;
-        // vector<int> rhist(_B, 0);
-        // for (auto& bh : _bhist)
-        //     for (auto r : bh.first)
-        //         rhist[r] += bh.second;
-
-        // for (size_t r = 0; r < _B; ++r)
-        // {
-        //     S += lbinom(2 + _N - 1, _N);
-        //     S += lgamma(_N + 1) - lgamma(rhist[r] + 1) - lgamma(_N - rhist[r] + 1);
-        // }
-
-        // double S2 = S;
-
-        // // cout << "P:" << S1 << " " << S2 << " " << S1 - S2 << endl;
-
-        // S = min(S1, S2);
+            S -= lgamma_fast(bh.second + 1);
 
         return S;
     }
 
-    double get_deg_dl(bool ent, bool deg_alt, bool xi_fast)
+    double get_deg_dl(bool ent, bool deg_alt, bool xi_fast) const
     {
         double S = 0;
         if (ent)
@@ -522,49 +586,12 @@ struct overlap_partition_stats_t
                 auto& bv = ch.first;
                 auto& cdeg_hist = ch.second;
 
-                size_t n_bv = _bhist[bv];
+                size_t n_bv = _bhist.find(bv)->second;
 
                 S += xlogx(n_bv);
                 for (auto& dh : cdeg_hist)
                     S -= xlogx(dh.second);
             }
-
-            // unordered_map<size_t,
-            //               unordered_map<deg_t, size_t>> bdeg_hist;
-
-            // for (auto& bv_h : _deg_hist)
-            // {
-            //     auto& bv = bv_h.first;
-            //     auto& cdeg_hist = bv_h.second;
-            //     size_t total = 0;
-            //     for (auto& d_c : cdeg_hist)
-            //     {
-            //         assert(d_c.first.size() == bv.size());
-            //         for (size_t i = 0; i < bv.size(); ++i)
-            //         {
-            //             size_t r = bv[i];
-            //             bdeg_hist[r][d_c.first[i]] += d_c.second;
-            //         }
-            //         total += d_c.second;
-            //     }
-            // }
-
-            // for (auto& r_h : bdeg_hist)
-            // {
-            //     //auto r = r_h.first;
-            //     auto& hist = r_h.second;
-
-            //     size_t total = 0;
-            //     for (auto& d_c : hist)
-            //         total += d_c.second;
-
-            //     for (auto& d_c : hist)
-            //     {
-            //         double c = d_c.second;
-            //         S -= c * log(c / total);
-            //     }
-            // }
-
         }
         else
         {
@@ -575,13 +602,13 @@ struct overlap_partition_stats_t
                 auto& bv = ch.first;
                 auto& cdeg_hist = ch.second;
 
-                size_t n_bv = _bhist[bv];
+                size_t n_bv = _bhist.find(bv)->second;
 
                 if (n_bv == 0)
                     continue;
 
-                auto& bmh = _embhist[bv];
-                auto& bph = _epbhist[bv];
+                const auto& bmh = _embhist.find(bv)->second;
+                const auto& bph = _epbhist.find(bv)->second;
 
                 double S1 = 0;
                 for (size_t i = 0; i < bv.size(); ++i)
@@ -598,7 +625,7 @@ struct overlap_partition_stats_t
                     }
                 }
 
-                S1 += lgamma(n_bv + 1);
+                S1 += lgamma_fast(n_bv + 1);
 
                 for (auto& dh : cdeg_hist)
                     S1 -= lgamma_fast(dh.second + 1);
@@ -626,112 +653,47 @@ struct overlap_partition_stats_t
                 S += lbinom(_r_count[r] + _emhist[r] - 1,  _emhist[r]);
                 S += lbinom(_r_count[r] + _ephist[r] - 1,  _ephist[r]);
             }
-
-            //const double z2 = boost::math::zeta(2);
-
-            // unordered_map<size_t,
-            //               unordered_map<deg_t, size_t>>> bdeg_hist;
-
-            // for (auto& bv_h : _deg_hist)
-            // {
-            //     auto& bv = bv_h.first;
-            //     auto& cdeg_hist = bv_h.second;
-            //     size_t total = 0;
-            //     for (auto& d_c : cdeg_hist)
-            //     {
-            //         assert(d_c.first.size() == bv.size());
-            //         for (size_t i = 0; i < bv.size(); ++i)
-            //         {
-            //             size_t r = bv[i];
-            //             bdeg_hist[r][d_c.first[i]] += d_c.second;
-            //         }
-            //         total += d_c.second;
-            //     }
-            // }
-
-            // for (auto& r_h : bdeg_hist)
-            // {
-            //     auto r = r_h.first;
-            //     auto& hist = r_h.second;
-
-            //     // S += 2 * sqrt(z2 * _emhist[r]);
-            //     // S += 2 * sqrt(z2 * _ephist[r]);
-
-            //     size_t total = 0;
-            //     for (auto& d_c : hist)
-            //     {
-            //         total += d_c.second;
-            //         S -= lgamma(d_c.second + 1);
-            //     }
-            //     S += lgamma(total + 1);
-
-            //     S += get_xi(total, _emhist[r]);
-            //     S += get_xi(total, _ephist[r]);
-
-            //     // cout << total << " " <<  _ephist[r] << " " << 2 * sqrt(z2 * _ephist[r]) << " " << get_xi(total,_ephist[r]) << endl;
-            //     // cout << total << " " <<  _emhist[r] << " " << 2 * sqrt(z2 * _emhist[r]) << " " << get_xi(total,_emhist[r]) << endl;
-
-            // }
-
-            // double S1 = S;
-
-            // double S2 = S;
-
-            // // cout << S1 << " " << S2 << " " << S1 - S2 << endl;
-            // S = min(S1, S2);
-
         }
         return S;
     }
 
 
     template <class Graph>
-    bool get_n_bv(const vector<size_t>& vs, const vector<size_t>& rs,
-                  const vector<size_t>& nrs, const bv_t& bv, const cdeg_t& deg,
-                  bv_t& n_bv, cdeg_t& n_deg, Graph& g)
+    bool get_n_bv(size_t v, size_t r, size_t nr, const bv_t& bv,
+                  const cdeg_t& deg, bv_t& n_bv, cdeg_t& n_deg, Graph& g,
+                  size_t in_deg = 0, size_t out_deg = 0)
     {
-#ifdef HAVE_SPARSEHASH
-        dense_hash_map<size_t, pair<int, int>> deg_delta(deg.size());
-        deg_delta.set_empty_key(numeric_limits<size_t>::max());
-        deg_delta.set_deleted_key(numeric_limits<size_t>::max() - 1);
-#else
-        unordered_map<size_t, pair<int, int>> deg_delta(deg.size());
-#endif
+        size_t kin = (in_deg + out_deg == 0) ? in_degreeS()(v, g) : in_deg;
+        size_t kout = (in_deg + out_deg == 0) ? out_degreeS()(v, g) : out_deg;
 
-        for (size_t i = 0; i < vs.size(); ++i)
-        {
-            auto v = vs[i];
-            auto r = rs[i];
-            auto nr = nrs[i];
-            if (r == nr)
-                continue;
-            size_t kin = in_degreeS()(v, g);
-            size_t kout = out_degreeS()(v, g);
+        auto& d_r = _deg_delta[r];
+        d_r.first -= kin;
+        d_r.second -= kout;
 
-            auto& d_r = deg_delta[r];
-            d_r.first -= kin;
-            d_r.second -= kout;
-
-            auto& d_nr = deg_delta[nr];
-            d_nr.first += kin;
-            d_nr.second += kout;
-        }
+        auto& d_nr = _deg_delta[nr];
+        d_nr.first += kin;
+        d_nr.second += kout;
 
         n_deg.clear();
         n_bv.clear();
         bool is_same_bv = true;
+        bool has_r = false, has_nr = false;
         for (size_t i = 0; i < bv.size(); ++i)
         {
             size_t s = bv[i];
             auto k_s = deg[i];
 
-            auto iter = deg_delta.find(s);
-            if (iter != deg_delta.end())
-            {
-                get<0>(k_s) += iter->second.first;
-                get<1>(k_s) += iter->second.second;
-                deg_delta.erase(iter);
-            }
+            auto& d_s = _deg_delta[s];
+            get<0>(k_s) += d_s.first;
+            get<1>(k_s) += d_s.second;
+
+            d_s.first = d_s.second = 0;
+
+            if (s == r)
+                has_r = true;
+
+            if (s == nr)
+                has_nr = true;
 
             if ((get<0>(k_s) + get<1>(k_s)) > 0)
             {
@@ -744,27 +706,30 @@ struct overlap_partition_stats_t
             }
         }
 
-        if (!deg_delta.empty())
+        if (!has_r || !has_nr)
         {
             is_same_bv = false;
-            for (auto& dd : deg_delta)
+            std::array<size_t, 2> ss = {r, nr};
+            for (auto s : ss)
             {
-                auto nr = dd.first;
-                assert(dd.second.first + dd.second.second > 0);
-                size_t kin = dd.second.first;
-                size_t kout = dd.second.second;
-                auto pos = std::lower_bound(n_bv.begin(), n_bv.end(), nr);
+                auto& d_s = _deg_delta[s];
+                if (d_s.first + d_s.second == 0)
+                    continue;
+                size_t kin = d_s.first;
+                size_t kout = d_s.second;
+                auto pos = std::lower_bound(n_bv.begin(), n_bv.end(), s);
                 auto dpos = n_deg.begin();
                 std::advance(dpos, pos - n_bv.begin());
-                n_bv.insert(pos, nr);
+                n_bv.insert(pos, s);
                 n_deg.insert(dpos, make_pair(kin, kout));
+                d_s.first = d_s.second = 0;
             }
         }
         return is_same_bv;
     }
 
     // get deg counts without increasing the container
-    size_t get_deg_count(bv_t& bv, cdeg_t& deg)
+    size_t get_deg_count(const bv_t& bv, const cdeg_t& deg) const
     {
         auto iter = _deg_hist.find(bv);
         if (iter == _deg_hist.end())
@@ -779,7 +744,7 @@ struct overlap_partition_stats_t
     }
 
     // get bv counts without increasing the container
-    size_t get_bv_count(bv_t& bv)
+    size_t get_bv_count(const bv_t& bv) const
     {
         auto iter = _bhist.find(bv);
         if (iter == _bhist.end())
@@ -788,30 +753,22 @@ struct overlap_partition_stats_t
     }
 
     template <class Graph>
-    double get_delta_dl(size_t v, size_t r, size_t nr, bool deg_corr,
-                        overlap_stats_t& overlap_stats, Graph& g)
+    double get_delta_dl(size_t v, size_t r, size_t nr,
+                        overlap_stats_t& overlap_stats, Graph& g,
+                        size_t in_deg = 0, size_t out_deg = 0)
     {
-        const vector<size_t> vs = {v}, rs = {r}, nrs = {nr};
-        return get_delta_dl(vs, rs, nrs, deg_corr, overlap_stats, g);
-    }
-
-    template <class Graph>
-    double get_delta_dl(const vector<size_t>& vs, const vector<size_t>& rs,
-                        const vector<size_t>& nrs, bool deg_corr,
-                        overlap_stats_t& overlap_stats, Graph& g)
-    {
-        if (rs == nrs)
+        if (r == nr)
             return 0;
 
-        size_t u = overlap_stats.get_node(vs[0]);
+        size_t u = overlap_stats.get_node(v);
         auto& bv = _bvs[u];
         auto& n_bv = _nbvs[u];
         size_t d = bv.size();
         cdeg_t& deg = _degs[u];
         cdeg_t& n_deg = _ndegs[u];
 
-
-        bool is_same_bv = get_n_bv(vs, rs, nrs, bv, deg, n_bv, n_deg, g);
+        bool is_same_bv = get_n_bv(v, r, nr, bv, deg, n_bv, n_deg, g, in_deg,
+                                   out_deg);
 
         size_t n_d = n_bv.size();
         size_t n_D = _D;
@@ -829,31 +786,80 @@ struct overlap_partition_stats_t
 
         n_D = max(n_D, n_d);
 
-        double S = 0;
-        if (n_D != _D)
-        {
-            S -= lbinom(_D + _N - 1, _N);
-            S += lbinom(n_D + _N - 1, _N);
-        }
-
         double S_a = 0, S_b = 0;
 
-        auto get_S_d = [&] (size_t d_i, int delta) -> double
+        if (n_D != _D)
+        {
+            S_b += lbinom(_D  + _N - 1, _N);
+            S_a += lbinom(n_D + _N - 1, _N);
+        }
+
+        int dB = 0;
+        if (overlap_stats.virtual_remove_size(v, r, in_deg, out_deg) == 0)
+            dB--;
+        if (overlap_stats.get_block_size(nr) == 0)
+            dB++;
+
+        auto get_S_d = [&] (size_t d_i, int delta, int dB) -> double
             {
                 int nd = int(_dhist[d_i]) + delta;
                 if (nd == 0)
                     return 0.;
-                double x = lbinom_fast(_B, d_i);
-                double S = lbinom(exp(x) + nd - 1, nd); // no fast
+                double x = lbinom_fast(_actual_B + dB, d_i);
+                double S = lbinom(exp(x) + nd - 1, nd); // not fast
                 if (std::isinf(S) || std::isnan(S))
                     S = nd * x - lgamma_fast(nd + 1);
                 return S;
             };
 
-        if (n_d != d)
+        if (dB == 0)
         {
-            S_b += get_S_d(d,  0) + get_S_d(n_d, 0);
-            S_a += get_S_d(d, -1) + get_S_d(n_d, 1);
+            if (n_d != d)
+            {
+                S_b += get_S_d(d,  0, 0) + get_S_d(n_d, 0, 0);
+                S_a += get_S_d(d, -1, 0) + get_S_d(n_d, 1, 0);
+            }
+        }
+        else
+        {
+            for (size_t di = 0; di < min(_actual_B + abs(dB) + 1, _dhist.size()); ++di)
+            {
+                if (d != n_d)
+                {
+                    if (di == d)
+                    {
+                        S_b += get_S_d(d,  0, 0);
+                        S_a += get_S_d(d, -1, dB);
+                        continue;
+                    }
+                    if (di == n_d)
+                    {
+                        S_b += get_S_d(n_d, 0, 0);
+                        S_a += get_S_d(n_d, 1, dB);
+                        continue;
+                    }
+                }
+                if (_dhist[di] == 0)
+                    continue;
+                S_b += get_S_d(di, 0, 0);
+                S_a += get_S_d(di, 0, dB);
+            }
+
+            if (_edges_dl)
+            {
+                auto get_x = [](size_t B) -> size_t
+                {
+                    if (is_directed::apply<Graph>::type::value)
+                        return B * B;
+                    else
+                        return (B * (B + 1)) / 2;
+                };
+
+                size_t E = num_vertices(g) / 2;
+                S_b += lbinom(get_x(_actual_B) + E - 1, E);
+                S_a += lbinom(get_x(_actual_B + dB) + E - 1, E);
+            }
+
         }
 
         size_t bv_count = get_bv_count(bv);
@@ -872,214 +878,223 @@ struct overlap_partition_stats_t
             S_a += get_S_b(true, -1) + get_S_b(false, 1);
         }
 
-        S += S_a - S_b;
+        return S_a - S_b;
+    }
 
-        if (deg_corr)
+
+    template <class Graph, class EWeight>
+    double get_delta_deg_dl(size_t v, size_t r, size_t nr, EWeight&,
+                            overlap_stats_t& overlap_stats, Graph& g,
+                            size_t in_deg = 0, size_t out_deg = 0)
+    {
+        if (r == nr)
+            return 0;
+
+        double S_b = 0, S_a = 0;
+
+        size_t u = overlap_stats.get_node(v);
+        auto& bv = _bvs[u];
+        auto& n_bv = _nbvs[u];
+
+        cdeg_t& deg = _degs[u];
+        cdeg_t& n_deg = _ndegs[u];
+
+        bool is_same_bv = get_n_bv(v, r, nr, bv, deg, n_bv, n_deg, g, in_deg,
+                                   out_deg);
+
+        size_t bv_count = get_bv_count(bv);
+        size_t n_bv_count = get_bv_count(n_bv);
+
+        auto get_S_bv = [&] (bool is_bv, int delta) -> double
+            {
+                if (is_bv)
+                    return lgamma_fast(bv_count + delta + 1);
+                return lgamma_fast(n_bv_count + delta + 1);
+            };
+
+        auto get_S_e = [&] (bool is_bv, int bdelta, int deg_delta) -> double
+            {
+                size_t bv_c = ((is_bv) ? bv_count : n_bv_count) + bdelta;
+                if (bv_c == 0)
+                    return 0.;
+
+                const cdeg_t& deg_i = (is_bv) ? deg : n_deg;
+                const auto& bv_i = (is_bv) ? bv : n_bv;
+
+                double S = 0;
+                if (((is_bv) ? bv_count : n_bv_count) > 0)
+                {
+                    const auto& bmh = _embhist.find(bv_i)->second;
+                    const auto& bph = _epbhist.find(bv_i)->second;
+
+                    assert(bmh.size() == bv_i.size());
+                    assert(bph.size() == bv_i.size());
+
+                    for (size_t i = 0; i < bv_i.size(); ++i)
+                    {
+                        S += get_xi_fast(bv_c, bmh[i] + deg_delta * int(get<0>(deg_i[i])));
+                        S += get_xi_fast(bv_c, bph[i] + deg_delta * int(get<1>(deg_i[i])));
+                    }
+                }
+                else
+                {
+                    for (size_t i = 0; i < bv_i.size(); ++i)
+                    {
+                        S += get_xi_fast(bv_c, deg_delta * int(get<0>(deg_i[i])));
+                        S += get_xi_fast(bv_c, deg_delta * int(get<1>(deg_i[i])));
+                    }
+                }
+
+                return S;
+            };
+
+        auto get_S_e2 = [&] (int deg_delta, int ndeg_delta) -> double
+            {
+                double S = 0;
+                const auto& bmh = _embhist.find(bv)->second;
+                const auto& bph = _epbhist.find(bv)->second;
+
+                for (size_t i = 0; i < bv.size(); ++i)
+                {
+                    S += get_xi_fast(bv_count, bmh[i] +
+                                     deg_delta * int(get<0>(deg[i])) +
+                                     ndeg_delta * int(get<0>(n_deg[i])));
+                    S += get_xi_fast(bv_count, bph[i] +
+                                     deg_delta * int(get<1>(deg[i])) +
+                                     ndeg_delta * int(get<1>(n_deg[i])));
+                }
+                return S;
+            };
+
+        if (!is_same_bv)
         {
-            double S_b = 0, S_a = 0;
+            S_b += get_S_bv(true,  0) + get_S_bv(false, 0);
+            S_a += get_S_bv(true, -1) + get_S_bv(false, 1);
 
-            auto get_S_bv = [&] (bool is_bv, int delta) -> double
-                {
-                    if (is_bv)
-                        return lgamma_fast(bv_count + delta + 1);
-                    return lgamma_fast(n_bv_count + delta + 1);
-                };
-
-            auto get_S_e = [&] (bool is_bv, int bdelta, int deg_delta) -> double
-                {
-                    size_t bv_c = ((is_bv) ? bv_count : n_bv_count) + bdelta;
-                    if (bv_c == 0)
-                        return 0.;
-
-                    cdeg_t& deg_i = (is_bv) ? deg : n_deg;
-                    auto& bv_i = (is_bv) ? bv : n_bv;
-
-                    double S = 0;
-                    if (((is_bv) ? bv_count : n_bv_count) > 0)
-                    {
-                        auto& bmh = _embhist[bv_i];
-                        auto& bph = _epbhist[bv_i];
-
-                        assert(bmh.size() == bv_i.size());
-                        assert(bph.size() == bv_i.size());
-
-                        for (size_t i = 0; i < bv_i.size(); ++i)
-                        {
-                            S += get_xi_fast(bv_c, bmh[i] + deg_delta * int(get<0>(deg_i[i])));
-                            S += get_xi_fast(bv_c, bph[i] + deg_delta * int(get<1>(deg_i[i])));
-                        }
-                    }
-                    else
-                    {
-                        for (size_t i = 0; i < bv_i.size(); ++i)
-                        {
-                            S += get_xi_fast(bv_c, deg_delta * int(get<0>(deg_i[i])));
-                            S += get_xi_fast(bv_c, deg_delta * int(get<1>(deg_i[i])));
-                        }
-                    }
-
-                    return S;
-                };
-
-            auto get_S_e2 = [&] (int deg_delta, int ndeg_delta) -> double
-                {
-                    double S = 0;
-                    auto& bmh = _embhist[bv];
-                    auto& bph = _epbhist[bv];
-
-                    for (size_t i = 0; i < bv.size(); ++i)
-                    {
-                        S += get_xi_fast(bv_count, bmh[i] +
-                                         deg_delta * int(get<0>(deg[i])) +
-                                         ndeg_delta * int(get<0>(n_deg[i])));
-                        S += get_xi_fast(bv_count, bph[i] +
-                                         deg_delta * int(get<1>(deg[i])) +
-                                         ndeg_delta * int(get<1>(n_deg[i])));
-                    }
-                    return S;
-                };
-
-            if (!is_same_bv)
-            {
-                S_b += get_S_bv(true,  0) + get_S_bv(false, 0);
-                S_a += get_S_bv(true, -1) + get_S_bv(false, 1);
-
-                S_b += get_S_e(true,  0,  0) + get_S_e(false, 0, 0);
-                S_a += get_S_e(true, -1, -1) + get_S_e(false, 1, 1);
-            }
-            else
-            {
-                S_b += get_S_e2( 0, 0);
-                S_a += get_S_e2(-1, 1);
-            }
-
-            size_t deg_count = get_deg_count(bv, deg);
-            size_t n_deg_count = get_deg_count(n_bv, n_deg);
-
-            auto get_S_deg = [&] (bool is_deg, int delta) -> double
-                {
-                    if (is_deg)
-                        return -lgamma_fast(deg_count + delta + 1);
-                    return -lgamma_fast(n_deg_count + delta + 1);
-                };
-
-            S_b += get_S_deg(true,  0) + get_S_deg(false, 0);
-            S_a += get_S_deg(true, -1) + get_S_deg(false, 1);
-
-            auto is_in = [&] (bv_t& bv, size_t r) -> bool
-                {
-                    auto iter = lower_bound(bv.begin(), bv.end(), r);
-                    if (iter == bv.end())
-                        return false;
-                    if (size_t(*iter) != r)
-                        return false;
-                    return true;
-                };
-
-            for (size_t s : bv)
-            {
-                S_b += lbinom_fast(_r_count[s] + _emhist[s] - 1, _emhist[s]);
-                S_b += lbinom_fast(_r_count[s] + _ephist[s] - 1, _ephist[s]);
-            }
-
-            for (size_t s : n_bv)
-            {
-                if (is_in(bv, s))
-                    continue;
-                S_b += lbinom_fast(_r_count[s] + _emhist[s] - 1, _emhist[s]);
-                S_b += lbinom_fast(_r_count[s] + _ephist[s] - 1, _ephist[s]);
-            }
-
-#ifdef HAVE_SPARSEHASH
-            dense_hash_map<size_t, pair<int, int>> deg_delta;
-            dense_hash_map<size_t, int> r_count_delta;
-            deg_delta.set_empty_key(numeric_limits<size_t>::max());
-            r_count_delta.set_empty_key(numeric_limits<size_t>::max());
-#else
-            unordered_map<size_t, pair<int, int>> deg_delta;
-            unordered_map<size_t, int> r_count_delta;
-#endif
-
-            if (bv != n_bv)
-            {
-                if (n_bv_count == 0)
-                {
-                    for (auto s : n_bv)
-                        r_count_delta[s] += 1;
-                }
-
-                if (bv_count == 1)
-                {
-                    for (auto s : bv)
-                       r_count_delta[s] -= 1;
-                }
-            }
-
-            for (size_t i = 0; i < vs.size(); ++i)
-            {
-                auto v = vs[i];
-                auto r = rs[i];
-                auto nr = nrs[i];
-                if (r == nr)
-                    continue;
-                size_t kin = in_degreeS()(v, g);
-                size_t kout = out_degreeS()(v, g);
-
-                auto& d_r = deg_delta[r];
-                d_r.first -= kin;
-                d_r.second -= kout;
-
-                auto& d_nr = deg_delta[nr];
-                d_nr.first += kin;
-                d_nr.second += kout;
-            }
-
-            for (size_t s : bv)
-            {
-                S_a += lbinom_fast(_r_count[s] + r_count_delta[s] + _emhist[s] + deg_delta[s].first - 1, _emhist[s] + deg_delta[s].first);
-                S_a += lbinom_fast(_r_count[s] + r_count_delta[s] + _ephist[s] + deg_delta[s].second - 1, _ephist[s] + deg_delta[s].second);
-            }
-
-            for (size_t s : n_bv)
-            {
-                if (!is_in(bv, s))
-                {
-                    S_a += lbinom_fast(_r_count[s] + r_count_delta[s] + _emhist[s] + deg_delta[s].first - 1, _emhist[s] + deg_delta[s].first);
-                    S_a += lbinom_fast(_r_count[s] + r_count_delta[s] + _ephist[s] + deg_delta[s].second - 1, _ephist[s] + deg_delta[s].second);
-                }
-            }
-
-            S += S_a - S_b;
+            S_b += get_S_e(true,  0,  0) + get_S_e(false, 0, 0);
+            S_a += get_S_e(true, -1, -1) + get_S_e(false, 1, 1);
+        }
+        else
+        {
+            S_b += get_S_e2( 0, 0);
+            S_a += get_S_e2(-1, 1);
         }
 
-        return S;
+        size_t deg_count = get_deg_count(bv, deg);
+        size_t n_deg_count = get_deg_count(n_bv, n_deg);
+
+        auto get_S_deg = [&] (bool is_deg, int delta) -> double
+            {
+                if (is_deg)
+                    return -lgamma_fast(deg_count + delta + 1);
+                return -lgamma_fast(n_deg_count + delta + 1);
+            };
+
+        S_b += get_S_deg(true,  0) + get_S_deg(false, 0);
+        S_a += get_S_deg(true, -1) + get_S_deg(false, 1);
+
+        auto is_in = [&] (const bv_t& bv, size_t r) -> bool
+            {
+                auto iter = lower_bound(bv.begin(), bv.end(), r);
+                if (iter == bv.end())
+                    return false;
+                if (size_t(*iter) != r)
+                    return false;
+                return true;
+            };
+
+        for (size_t s : bv)
+        {
+            S_b += lbinom_fast(_r_count[s] + _emhist[s] - 1, _emhist[s]);
+            S_b += lbinom_fast(_r_count[s] + _ephist[s] - 1, _ephist[s]);
+        }
+
+        for (size_t s : n_bv)
+        {
+            if (is_in(bv, s))
+                continue;
+            S_b += lbinom_fast(_r_count[s] + _emhist[s] - 1, _emhist[s]);
+            S_b += lbinom_fast(_r_count[s] + _ephist[s] - 1, _ephist[s]);
+        }
+
+#ifdef HAVE_SPARSEHASH
+        dense_hash_map<size_t, pair<int, int>, std::hash<size_t>> deg_delta;
+        dense_hash_map<size_t, int, std::hash<size_t>> r_count_delta;
+        deg_delta.set_empty_key(numeric_limits<size_t>::max());
+        r_count_delta.set_empty_key(numeric_limits<size_t>::max());
+#else
+        unordered_map<size_t, pair<int, int>> deg_delta;
+        unordered_map<size_t, int> r_count_delta;
+#endif
+
+        if (bv != n_bv)
+        {
+            if (n_bv_count == 0)
+            {
+                for (auto s : n_bv)
+                    r_count_delta[s] += 1;
+            }
+
+            if (bv_count == 1)
+            {
+                for (auto s : bv)
+                   r_count_delta[s] -= 1;
+            }
+        }
+
+        if (r != nr)
+        {
+            size_t kin = (in_deg + out_deg == 0) ? in_degreeS()(v, g) : in_deg;
+            size_t kout = (in_deg + out_deg == 0) ? out_degreeS()(v, g) : out_deg;
+
+            auto& d_r = deg_delta[r];
+            d_r.first -= kin;
+            d_r.second -= kout;
+
+            auto& d_nr = deg_delta[nr];
+            d_nr.first += kin;
+            d_nr.second += kout;
+        }
+
+        for (size_t s : bv)
+        {
+            S_a += lbinom_fast(_r_count[s] + r_count_delta[s] + _emhist[s] + deg_delta[s].first - 1,
+                               _emhist[s] + deg_delta[s].first);
+            S_a += lbinom_fast(_r_count[s] + r_count_delta[s] + _ephist[s] + deg_delta[s].second - 1,
+                               _ephist[s] + deg_delta[s].second);
+        }
+
+        for (size_t s : n_bv)
+        {
+            if (!is_in(bv, s))
+            {
+                S_a += lbinom_fast(_r_count[s] + r_count_delta[s] + _emhist[s] + deg_delta[s].first - 1,
+                                   _emhist[s] + deg_delta[s].first);
+                S_a += lbinom_fast(_r_count[s] + r_count_delta[s] + _ephist[s] + deg_delta[s].second - 1,
+                                   _ephist[s] + deg_delta[s].second);
+            }
+        }
+
+        return S_a - S_b;
     }
 
     template <class Graph>
     void move_vertex(size_t v, size_t r, size_t nr, bool deg_corr,
-                     overlap_stats_t& overlap_stats, Graph& g)
+                     overlap_stats_t& overlap_stats, Graph& g,
+                     size_t in_deg = 0, size_t out_deg = 0)
     {
-        const vector<size_t> vs = {v}, rs = {r}, nrs = {nr};
-        move_vertex(vs, rs, nrs, deg_corr, overlap_stats, g);
-
-    }
-
-    template <class Graph>
-    void move_vertex(const vector<size_t>& vs, const vector<size_t>& rs,
-                     const vector<size_t>& nrs, bool deg_corr,
-                     overlap_stats_t& overlap_stats, Graph& g)
-    {
-        if (rs == nrs)
+        if (r == nr)
             return;
 
-        size_t u = overlap_stats.get_node(vs[0]);
+        size_t u = overlap_stats.get_node(v);
         auto& bv = _bvs[u];
         auto& n_bv = _nbvs[u];
         cdeg_t& deg = _degs[u];
         cdeg_t& n_deg = _ndegs[u];
         size_t d = bv.size();
 
-        bool is_same_bv = get_n_bv(vs, rs, nrs, bv, deg, n_bv, n_deg, g);
+        bool is_same_bv = get_n_bv(v, r, nr, bv, deg, n_bv, n_deg, g, in_deg,
+                                   out_deg);
         size_t n_d = n_bv.size();
 
         if (!is_same_bv)
@@ -1090,8 +1105,13 @@ struct overlap_partition_stats_t
 
             if (bv_count == 0)
             {
+                _bhist.erase(bv);
                 for (auto s : bv)
+                {
                     _r_count[s]--;
+                    if (_r_count[s] == 0)
+                        _actual_B--;
+                }
             }
 
             if (d == _D && _dhist[d] == 0)
@@ -1112,14 +1132,22 @@ struct overlap_partition_stats_t
             if (n_bv_count == 1)
             {
                 for (auto s : n_bv)
+                {
+                    if (_r_count[s] == 0)
+                        _actual_B++;
                     _r_count[s]++;
+                }
             }
 
             if (n_d > _D)
                 _D = n_d;
         }
 
-        _deg_hist[bv][deg] -= 1;
+        auto& deg_h = _deg_hist[bv];
+        auto& deg_count = deg_h[deg];
+        deg_count -= 1;
+        if (deg_count == 0)
+            deg_h.erase(deg);
         auto& bmh = _embhist[bv];
         auto& bph = _epbhist[bv];
         assert(bmh.size() == bv.size());
@@ -1130,20 +1158,29 @@ struct overlap_partition_stats_t
             bph[i] -= get<1>(deg[i]);
         }
 
-        for (size_t i = 0; i < vs.size(); ++i)
+        if (deg_h.empty())
         {
-            auto v = vs[i];
-            auto r = rs[i];
-            size_t kin = in_degreeS()(v, g);
-            size_t kout = out_degreeS()(v, g);
-            _emhist[r] -= kin;
-            _ephist[r] -= kout;
+            _deg_hist.erase(bv);
+            _embhist.erase(bv);
+            _epbhist.erase(bv);
         }
+
+        size_t kin = (in_deg + out_deg == 0) ? in_degreeS()(v, g) : in_deg;
+        size_t kout = (in_deg + out_deg == 0) ? out_degreeS()(v, g) : out_deg;
+        _emhist[r] -= kin;
+        _ephist[r] -= kout;
 
         auto& hist = _deg_hist[n_bv];
 #ifdef HAVE_SPARSEHASH
         if (hist.empty())
-            hist.set_empty_key(cdeg_t());
+        {
+            cdeg_t empty = {deg_t(numeric_limits<int>::max(),
+                                  numeric_limits<int>::max())};
+            cdeg_t deleted = {deg_t(numeric_limits<int>::max() - 1,
+                                    numeric_limits<int>::max() - 1)};
+            hist.set_empty_key(empty);
+            hist.set_deleted_key(deleted);
+        }
 #endif
         hist[n_deg] += 1;
         auto& n_bmh = _embhist[n_bv];
@@ -1156,21 +1193,14 @@ struct overlap_partition_stats_t
             n_bph[i] += get<1>(n_deg[i]);
         }
 
-        for (size_t i = 0; i < vs.size(); ++i)
-        {
-            auto v = vs[i];
-            auto nr = nrs[i];
-            size_t kin = in_degreeS()(v, g);
-            size_t kout = out_degreeS()(v, g);
-            _emhist[nr] += kin;
-            _ephist[nr] += kout;
-        }
+        _emhist[nr] += kin;
+        _ephist[nr] += kout;
 
         _bvs[u].swap(n_bv);
         _degs[u].swap(n_deg);
     }
 
-    bool is_enabled() { return _enabled; }
+    bool is_enabled() const { return _enabled; }
 
 private:
     bool _enabled;
@@ -1178,20 +1208,23 @@ public:
     size_t _N;
 private:
     size_t _B;
+    size_t _actual_B;
     size_t _D;
-    vector<int> _dhist; // d-histogram
-    vector<int> _r_count; // m_r
-    bhist_t _bhist;     // b-histogram
+    vector<int> _dhist;        // d-histogram
+    vector<int> _r_count;      // m_r
+    bhist_t _bhist;            // b-histogram
     vector<size_t> _emhist;    // e-_r histogram
     vector<size_t> _ephist;    // e+_r histogram
-    ebhist_t _embhist;  // e+^r_b histogram
-    ebhist_t _epbhist;  // e+^r_b histogram
-    deg_hist_t _deg_hist; // n_k^b histogram
-    vector<bv_t> _bvs;    // bv node map
+    ebhist_t _embhist;         // e+^r_b histogram
+    ebhist_t _epbhist;         // e+^r_b histogram
+    deg_hist_t _deg_hist;      // n_k^b histogram
+    vector<bv_t> _bvs;         // bv node map
     vector<bv_t> _nbvs;
-    vector<cdeg_t> _degs;  // deg node map
+    vector<cdeg_t> _degs;      // deg node map
     vector<cdeg_t> _ndegs;
 
+    vector<pair<int, int>> _deg_delta;
+    bool _edges_dl;
 };
 
 struct entropy_parallel_edges_overlap
@@ -1200,49 +1233,13 @@ struct entropy_parallel_edges_overlap
     void operator()(Graph& g, VProp b, overlap_stats_t& overlap_stats, double& S) const
     {
         S = 0;
-        vector<bool> visited(num_vertices(g), false);
-        for (auto v : vertices_range(g))
+        for(auto& h : overlap_stats.get_parallel_bundles())
         {
-            if (visited[v])
-                continue;
-
-            size_t i = overlap_stats.get_node(v);
-            auto& he = overlap_stats.get_half_edges(i);
-
-            typedef std::tuple<size_t, size_t, size_t> key_t; // u, r, s
-            unordered_map<key_t, int> out_us;
-            for (auto u : he)
-            {
-                if (visited[u])
-                    continue;
-                visited[u] = true;
-
-                size_t r = b[u];
-                int w = overlap_stats.get_out_neighbour(u);
-                if (w == -1)
-                    continue;
-
-                if (!is_directed::apply<Graph>::type::value)
-                    visited[w] = true;
-
-                size_t ni_w = overlap_stats.get_node(w);
-                size_t ni_u = overlap_stats.get_node(u);
-
-                size_t s = b[w];
-
-                if (ni_w == ni_u && !is_directed::apply<Graph>::type::value && s < r)
-                    out_us[key_t(ni_w, s, r)]++;
-                else
-                    out_us[key_t(ni_w, r, s)]++;
-            }
-
-            auto get_node = [](const key_t& k) -> size_t {return get<0>(k);};
-            S += get_parallel_neighbours_entropy(i, out_us, g, get_node);
+            for (auto& kc : h)
+                S += lgamma_fast(kc.second + 1);
         }
     }
 };
-
-
 
 template <class Graph>
 struct half_edge_neighbour_policy
@@ -1315,34 +1312,77 @@ struct half_edge_neighbour_policy
 
 };
 
+template <class Graph>
+class SingleEntrySet
+{
+public:
+    SingleEntrySet() : _pos(0) {}
+
+    void set_move(size_t r, size_t nr) {}
+
+    __attribute__((always_inline))
+    void insert_delta(size_t r, size_t s, int delta, bool source)
+    {
+        if (source)
+            _entries[_pos] = make_pair(s, r);
+        else
+            _entries[_pos] = make_pair(r, s);
+        if (!is_directed::apply<Graph>::type::value &&
+            _entries[_pos].second < _entries[_pos].first)
+            std::swap(_entries[_pos].first, _entries[_pos].second);
+        _delta[_pos] = delta;
+        ++_pos;
+    }
+
+    __attribute__((always_inline))
+    int get_delta(size_t t, size_t s)
+    {
+        if (make_pair(t, s) == _entries[0])
+            return _delta[0];
+        return 0;
+    }
+
+    void clear() { _pos = 0; }
+
+    std::array<pair<size_t, size_t>,2>& get_entries() { return _entries; }
+    std::array<int, 2>& get_delta() { return _delta; }
+
+private:
+    size_t _pos;
+    std::array<pair<size_t, size_t>, 2> _entries;
+    std::array<int, 2> _delta;
+};
+
+template <class RNG>
+size_t get_lateral_half_edge(size_t v,
+                             overlap_stats_t& overlap_stats,
+                             RNG& rng)
+{
+    size_t vv = overlap_stats.get_node(v);
+    size_t w = overlap_stats.sample_half_edge(vv, rng);
+    return w;
+}
 
 //A single Monte Carlo Markov chain sweep
-template <class Graph, class BGraph, class EMprop, class Eprop, class Vprop,
-          class EMat, class EVprop, class VEprop, class RNG>
-void move_sweep_overlap(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
-                        Vprop clabel, vector<int>& vlist, bool deg_corr,
-                        bool dense, bool multigraph, bool parallel_edges,
-                        double beta, Eprop eweight, Vprop vweight,
-                        EVprop egroups, VEprop esrcpos, VEprop etgtpos,
-                        Graph& g, BGraph& bg, EMat& emat, bool sequential,
-                        bool parallel, bool random_move, double c,
-                        overlap_stats_t& overlap_stats,
-                        overlap_partition_stats_t& partition_stats,
+template <class Graph, class Vprop, class VVprop, class VLprop, class EVprop,
+          class Eprop, class RNG, class BlockState, class MEntries>
+void move_sweep_overlap(vector<BlockState>& states,
+                        vector<MEntries>& m_entries_r,
+                        overlap_stats_t& overlap_stats, Vprop wr, Vprop b,
+                        EVprop ce, VLprop cv, VVprop vmap, Vprop clabel,
+                        vector<int>& vlist, bool deg_corr, bool dense,
+                        bool multigraph, double beta, Eprop eweight,
+                        Vprop vweight, Graph& g, bool sequential, bool parallel,
+                        bool random_move, double c, size_t niter, size_t B,
                         bool verbose, RNG& rng, double& S, size_t& nmoves)
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-
-    size_t B = num_vertices(bg);
-
-    std::shuffle(vlist.begin(), vlist.end(), rng);
 
     nmoves = 0;
     S = 0;
 
     if (vlist.size() < 100)
         parallel = false;
-
-    EntrySet<Graph> m_entries(B);
 
     vector<pair<vertex_t, double> > best_move;
     vector<rng_t*> rngs;
@@ -1369,145 +1409,191 @@ void move_sweep_overlap(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
 
     half_edge_neighbour_policy<Graph> npolicy(g);
 
-    int i = 0, N = vlist.size();
-    #pragma omp parallel for default(shared) private(i) \
-        firstprivate(m_entries) schedule(runtime) if (parallel)
-    for (i = 0; i < N; ++i)
+    vector<MEntries> m_entries = m_entries_r;
+
+    for (size_t iter = 0; iter < niter; ++iter)
     {
-        size_t tid = 0;
+        std::shuffle(vlist.begin(), vlist.end(), rng);
+
+        int i = 0, N = vlist.size();
+        #pragma omp parallel for default(shared) private(i) \
+            firstprivate(m_entries) schedule(runtime) if (parallel)
+        for (i = 0; i < N; ++i)
+        {
+            size_t tid = 0;
+            if (parallel)
+            {
+    #ifdef USING_OPENMP
+                tid = omp_get_thread_num();
+    #endif
+            }
+
+            typedef std::uniform_real_distribution<> rdist_t;
+            auto rand_real = std::bind(rdist_t(), std::ref(*rngs[tid]));
+            std::uniform_int_distribution<size_t> s_rand(0, B - 1);
+
+            vertex_t v;
+            if (sequential)
+            {
+                v = vertex(vlist[i], g);
+            }
+            else
+            {
+                v = vertex(uniform_sample(vlist, *rngs[tid]), g);
+            }
+
+            vertex_t r = b[v];
+
+            if (vweight[v] == 0)
+                continue;
+
+            // attempt random block
+            vertex_t s = s_rand(*rngs[tid]);
+
+            if (!random_move && total_degreeS()(v, g) > 0)
+            {
+                auto& state = states[0];
+                size_t w = get_lateral_half_edge(v, overlap_stats, *rngs[tid]);
+
+                int u = overlap_stats.get_out_neighbour(w);
+                if (u == -1)
+                    u = overlap_stats.get_in_neighbour(w);
+
+                vertex_t t = b[u];
+
+                double p_rand = 0;
+
+                if (c > 0)
+                {
+                    if (is_directed::apply<Graph>::type::value)
+                        p_rand = c * B / double(state.mrp[t] + state.mrm[t] + c * B);
+                    else
+                        p_rand = c * B / double(state.mrp[t] + c * B);
+                }
+
+                if (c == 0 || rand_real() >= p_rand)
+                {
+                    const auto& e = egroups_manage::sample_edge(state.egroups[t], *rngs[tid]);
+                    s = state.b[target(e, state.g)];
+                    if (s == t)
+                        s = state.b[source(e, state.g)];
+                }
+            }
+
+            if (s == r)
+                continue;
+
+            if (wr[s] == 0 && std::isinf(beta)) // don't populate empty blocks
+                continue;
+
+            if (clabel[s] != clabel[r])
+                continue;
+
+            if (overlap_stats.virtual_remove_size(v, r) == 0) // no empty groups
+                continue;
+
+            double dS = virtual_move(v, s, b, cv, vmap, states, m_entries,
+                                     dense, deg_corr, multigraph, npolicy);
+
+            assert (!std::isinf(dS) && !std::isnan(dS));
+
+            bool accept = false;
+            if (std::isinf(beta))
+            {
+                accept = dS < 0;
+            }
+            else
+            {
+                double pf = 0, pb = 0;
+                if (random_move)
+                {
+                    pf = pb = 1;
+                }
+                else
+                {
+                    auto& state = states[0];
+                    double p = get_move_prob(v, r, s, c, state.b,
+                                             state.mrs, state.mrp,
+                                             state.mrm, state.emat,
+                                             state.eweight, state.g,
+                                             state.bg, m_entries[0],
+                                             false,
+                                             state.overlap_stats);
+                    pf += p;
+
+                    p = get_move_prob(v, s, r, c, state.b,
+                                      state.mrs, state.mrp, state.mrm,
+                                      state.emat, state.eweight,
+                                      state.g, state.bg,
+                                      m_entries[0], true,
+                                      state.overlap_stats);
+                    pb += p;
+                }
+
+                double a = -beta * dS + log(pb) - log(pf);
+
+                if (a > 0)
+                {
+                    accept = true;
+                }
+                else
+                {
+                    double sample = rand_real();
+                    accept = sample < exp(a);
+                }
+            }
+
+            if (overlap_stats.virtual_remove_size(v, r) == 0)
+                accept = false;
+
+            if (accept)
+            {
+                if (!parallel)
+                {
+
+                    assert(b[v] == int(r));
+                    move_vertex(v, s, b, cv, vmap, wr, vweight, deg_corr,
+                                states, not random_move, overlap_stats,
+                                npolicy);
+                    S += dS;
+                    ++nmoves;
+
+                    assert(b[v] == int(s));
+                    assert(wr[r] > 0);
+                    if (verbose)
+                        cout << v << ": " << r << " -> " << s << " " << S << " "
+                             << vlist.size() << " " << wr[r] << " " << wr[s]
+                             << " " << overlap_stats.is_enabled() << endl;
+                }
+                else
+                {
+                    best_move[v].first = s;
+                    best_move[v].second = dS;
+                }
+            }
+        }
+
         if (parallel)
         {
-#ifdef USING_OPENMP
-            tid = omp_get_thread_num();
-#endif
-        }
-
-        typedef std::uniform_real_distribution<> rdist_t;
-        auto rand_real = std::bind(rdist_t(), std::ref(*rngs[tid]));
-        std::uniform_int_distribution<size_t> s_rand(0, B - 1);
-
-        vertex_t v;
-        if (sequential)
-        {
-            v = vertex(vlist[i], g);
-        }
-        else
-        {
-            v = vertex(uniform_sample(vlist, *rngs[tid]), g);
-        }
-
-        vertex_t r = b[v];
-
-        if (vweight[v] == 0)
-            continue;
-
-        // attempt random block
-        vertex_t s = s_rand(*rngs[tid]);
-
-        if (!random_move && total_degreeS()(v, g) > 0)
-        {
-            // attempt "lateral" moves across overlaps
-            vertex_t w = overlap_stats.sample_half_edge(v, *rngs[tid]);
-
-            int u = overlap_stats.get_out_neighbour(w);
-            if (u == -1)
-                u = overlap_stats.get_in_neighbour(w);
-
-            vertex_t t = b[u];
-
-            double p_rand = 0;
-            if (c > 0)
+            for (vertex_t v : vlist)
             {
-                if (is_directed::apply<Graph>::type::value)
-                    p_rand = c * B / double(mrp[t] + mrm[t] + c * B);
-                else
-                    p_rand = c * B / double(mrp[t] + c * B);
-            }
-
-            if (c == 0 || rand_real() >= p_rand)
-            {
-                const auto& e = egroups_manage::sample_edge(egroups[t], *rngs[tid]);
-                s = b[target(e, g)];
-                if (s == t)
-                    s = b[source(e, g)];
-            }
-        }
-
-        if (s == r)
-            continue;
-
-        if (wr[s] == 0 && std::isinf(beta)) // don't populate empty blocks
-            continue;
-
-        if (clabel[s] != clabel[r])
-            continue;
-
-        double dS = virtual_move(v, s, dense, mrs, mrp, mrm, wr, b, deg_corr,
-                                 eweight, vweight, g, bg, emat, m_entries,
-                                 overlap_stats, multigraph, partition_stats,
-                                 npolicy);
-
-        bool accept = false;
-        if (std::isinf(beta))
-        {
-            accept = dS < 0;
-        }
-        else
-        {
-            double pf = random_move ? 1 :
-                get_move_prob(v, r, s, c, b, mrs, mrp, mrm, emat, eweight, g,
-                              bg, m_entries, false, overlap_stats);
-
-            double pb = random_move ? 1 :
-                get_move_prob(v, s, r, c, b, mrs, mrp, mrm, emat, eweight, g,
-                              bg, m_entries, true, overlap_stats);
-
-            double a = -beta * dS + log(pb) - log(pf);
-
-            if (a > 0)
-            {
-                accept = true;
-            }
-            else
-            {
-                double sample = rand_real();
-                accept = sample < exp(a);
-            }
-        }
-
-        if (overlap_stats.virtual_remove_size(v, r, g) == 0)
-            accept = false;
-
-        if (accept)
-        {
-            if (!parallel)
-            {
-
-                assert(b[v] == int(r));
-                move_vertex(v, s, mrs, mrp, mrm, wr, b, deg_corr, eweight,
-                            vweight, g, bg, emat, overlap_stats,
-                            partition_stats, npolicy);
-
-                //partition_stats = overlap_partition_stats_t(g, b, overlap_stats, eweight, partition_stats._N, B);
-
-                if (!random_move)
-                    egroups_manage::update_egroups(v, r, s, eweight, egroups,
-                                                   esrcpos, etgtpos, g);
-
-                S += dS;
-                ++nmoves;
-
-                assert(b[v] == int(s));
-                assert(wr[r] > 0);
-                if (verbose)
-                    cout << v << ": " << r << " -> " << s << " " << S << " "
-                         << vlist.size() << " " << wr[r] << " " << wr[s]
-                         << " " << overlap_stats.is_enabled() << endl;
-            }
-            else
-            {
-                best_move[v].first = s;
-                best_move[v].second = dS;
+                vertex_t r = b[v];
+                vertex_t s = best_move[v].first;
+                double dS = best_move[v].second;
+                if (s != r && dS != numeric_limits<double>::max())
+                {
+                    double dS = virtual_move(v, s, b, cv, vmap, states,
+                                             m_entries, dense, deg_corr,
+                                             multigraph, npolicy);
+                    assert (!std::isinf(dS) && !std::isnan(dS));
+                    if (dS > 0 && std::isinf(beta))
+                        continue;
+                    move_vertex(v, s, b, cv, vmap, wr, vweight, deg_corr,
+                                states, not random_move, overlap_stats,
+                                npolicy);
+                    S += dS;
+                    ++nmoves;
+                }
             }
         }
     }
@@ -1517,209 +1603,215 @@ void move_sweep_overlap(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
         for (auto r : rngs)
             delete r;
         rngs.clear();
-
-        for (vertex_t v : vlist)
-        {
-            vertex_t r = b[v];
-            vertex_t s = best_move[v].first;
-            double dS = best_move[v].second;
-            if (s != r && dS != numeric_limits<double>::max())
-            {
-                double dS = virtual_move(v, s, dense, mrs, mrp, mrm, wr, b,
-                                         deg_corr, eweight, vweight, g, bg,
-                                         emat, m_entries, overlap_stats,
-                                         multigraph, partition_stats, npolicy);
-                if (dS > 0 && std::isinf(beta))
-                    continue;
-                move_vertex(v, s, mrs, mrp, mrm, wr, b, deg_corr, eweight,
-                            vweight, g, bg, emat, overlap_stats,
-                            partition_stats, npolicy);
-                //partition_stats = overlap_partition_stats_t(g, b, overlap_stats, eweight, partition_stats._N, B);
-
-                if (!random_move)
-                    egroups_manage::update_egroups(v, r, s, eweight, egroups,
-                                                   esrcpos, etgtpos, g);
-                S += dS;
-                ++nmoves;
-            }
-        }
     }
-
 }
 
+template <class Graph, class CEMap>
+size_t get_ce(size_t v, CEMap& ce, Graph& g)
+{
+    for (auto e : all_edges_range(v, g))
+        return ce[e];
+    return 0;
+}
 
-template <class Graph, class BGraph, class EMprop, class Eprop, class Vprop,
-          class EMat, class EVprop, class VEprop, class RNG>
-void coherent_move_sweep_overlap(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr,
-                                 Vprop b, Vprop clabel, vector<int>& vlist,
+template <class Graph, class Vprop, class VVprop, class VLprop, class EVprop,
+          class Eprop, class RNG, class BlockState, class MEntries>
+void coherent_move_sweep_overlap(vector<BlockState>& states,
+                                 vector<MEntries>& m_entries,
+                                 overlap_stats_t& overlap_stats, Vprop wr,
+                                 Vprop b, EVprop ce, VLprop cv, VVprop vmap,
+                                 Vprop clabel, vector<int>& vlist,
                                  bool deg_corr, bool dense, bool multigraph,
-                                 bool parallel_edges, Eprop eweight,
-                                 Vprop vweight, EVprop egroups, VEprop esrcpos,
-                                 VEprop etgtpos, Graph& g, BGraph& bg,
-                                 EMat& emat, bool sequential, bool parallel,
+                                 double beta, Eprop eweight, Vprop vweight,
+                                 Graph& g, bool sequential, bool parallel,
                                  bool random_move, double c,
-                                 overlap_stats_t& overlap_stats,
-                                 overlap_partition_stats_t& partition_stats,
+                                 bool confine_layers, size_t niter, size_t B,
                                  bool verbose, RNG& rng, double& S,
                                  size_t& nmoves)
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
-    size_t B = num_vertices(bg);
-
     typedef std::uniform_real_distribution<> rdist_t;
     auto rand_real = std::bind(rdist_t(), std::ref(rng));
 
-    std::shuffle(vlist.begin(), vlist.end(), rng);
     std::uniform_int_distribution<size_t> s_rand(0, B - 1);
 
     nmoves = 0;
     S = 0;
 
-    EntrySet<Graph> m_entries(B);
-
     half_edge_neighbour_policy<Graph> npolicy(g);
-    overlap_partition_stats_t dummy_pstats;
 
-    vector<bool> visited(num_vertices(g), false);
+    vector<uint8_t> visited(num_vertices(g), false);
 
-    Vprop last_b = b.copy();
+    vector<size_t> vs;
 
-    int i = 0, N = vlist.size();
-    for (i = 0; i < N; ++i)
+    for (size_t iter = 0; iter < niter; ++iter)
     {
-        vertex_t v;
-        if (sequential)
+        std::shuffle(vlist.begin(), vlist.end(), rng);
+        std::fill(visited.begin(), visited.end(), false);
+
+        int i = 0, N = vlist.size();
+        for (i = 0; i < N; ++i)
         {
-            v = vertex(vlist[i], g);
-        }
-        else
-        {
-            v = vertex(uniform_sample(vlist, rng), g);
-        }
-
-        if (visited[v])
-            continue;
-
-        vertex_t r = b[v];
-
-        assert(last_b[v] == int(r));
-
-        if (vweight[v] == 0)
-            continue;
-
-        // attempt random block
-        vertex_t s = s_rand(rng);
-
-        if (!random_move && total_degreeS()(v, g) > 0)
-        {
-            // attempt "lateral" moves across overlaps
-            vertex_t w = overlap_stats.sample_half_edge(v, rng);
-
-            int u = overlap_stats.get_out_neighbour(w);
-            if (u == -1)
-                u = overlap_stats.get_in_neighbour(w);
-
-            vertex_t t = b[u];
-
-            double p_rand = 0;
-            if (c > 0)
+            vertex_t v;
+            if (sequential)
             {
-                if (is_directed::apply<Graph>::type::value)
-                    p_rand = c * B / double(mrp[t] + mrm[t] + c * B);
-                else
-                    p_rand = c * B / double(mrp[t] + c * B);
+                v = vertex(vlist[i], g);
+            }
+            else
+            {
+                v = vertex(uniform_sample(vlist, rng), g);
             }
 
-            if (c == 0 || rand_real() >= p_rand)
-            {
-                const auto& e = egroups_manage::sample_edge(egroups[t], rng);
-                s = b[target(e, g)];
-                if (s == t)
-                    s = b[source(e, g)];
-            }
-        }
-
-        if (s == r)
-            continue;
-
-        if (wr[s] == 0) // don't populate empty blocks
-            continue;
-
-        if (clabel[s] != clabel[r])
-            continue;
-
-        // move all half-edges of the same node with the same color
-
-        double dS = 0;
-        size_t w = overlap_stats.get_node(v);
-        size_t nm = 0;
-        vector<size_t> vs, rs, nrs;
-
-        if (partition_stats.is_enabled())
-        {
-            for (vertex_t u : overlap_stats.get_half_edges(w))
-            {
-                if (last_b[u] != int(r))
-                    continue;
-                vs.push_back(u);
-                rs.push_back(r);
-                nrs.push_back(s);
-            }
-
-            dS += partition_stats.get_delta_dl(vs, rs, nrs, deg_corr,
-                                               overlap_stats, g);
-            partition_stats.move_vertex(vs, rs, nrs, deg_corr, overlap_stats, g);
-        }
-
-        for (vertex_t u : overlap_stats.get_half_edges(w))
-        {
-            if (last_b[u] != int(r))
+            if (visited[v])
                 continue;
-            assert(last_b[u] == int(r));
-            assert(!visited[u]);
-            visited[u] = true;
 
-            dS += virtual_move(u, s, dense, mrs, mrp, mrm, wr, b,
-                               deg_corr, eweight, vweight, g, bg, emat,
-                               m_entries, overlap_stats, multigraph,
-                               dummy_pstats, npolicy);
+            vertex_t r = b[v];
 
-            move_vertex(u, s, mrs, mrp, mrm, wr, b, deg_corr, eweight, vweight,
-                        g, bg, emat, overlap_stats, dummy_pstats, npolicy);
-            //partition_stats = overlap_partition_stats_t(g, b, overlap_stats, eweight, partition_stats._N, B);
+            if (vweight[v] == 0)
+                continue;
 
-            if (!random_move)
-                egroups_manage::update_egroups(u, r, s, eweight, egroups,
-                                               esrcpos, etgtpos, g);
-            nm++;
+            // attempt random block
+            vertex_t s = s_rand(rng);
 
-        }
-
-
-        if (dS < 0 && overlap_stats.get_block_size(r) > 0)
-        {
-            S += dS;
-            nmoves += nm;
-        }
-        else
-        {
-            if (partition_stats.is_enabled())
+            if (!random_move && total_degreeS()(v, g) > 0)
             {
-                dS += partition_stats.get_delta_dl(vs, nrs, rs, deg_corr, overlap_stats, g);
-                partition_stats.move_vertex(vs, nrs, rs, deg_corr, overlap_stats, g);
+                auto& state = states[0];
+                size_t w = get_lateral_half_edge(v, overlap_stats, rng);
+
+                int u = state.overlap_stats.get_out_neighbour(w);
+                if (u == -1)
+                    u = state.overlap_stats.get_in_neighbour(w);
+
+                vertex_t t = state.b[u];
+
+                double p_rand = 0;
+
+                if (c > 0)
+                {
+                    if (is_directed::apply<Graph>::type::value)
+                        p_rand = c * B / double(state.mrp[t] + state.mrm[t] + c * B);
+                    else
+                        p_rand = c * B / double(state.mrp[t] + c * B);
+                }
+
+                if (c == 0 || rand_real() >= p_rand)
+                {
+                    const auto& e = egroups_manage::sample_edge(state.egroups[t], rng);
+                    s = state.b[target(e, state.g)];
+                    if (s == t)
+                        s = state.b[source(e, state.g)];
+                }
             }
 
+            if (s == r)
+                continue;
+
+            if (wr[s] == 0) // don't populate empty blocks
+                continue;
+
+            if (clabel[s] != clabel[r])
+                continue;
+
+
+            // move all half-edges of the same node that have the same color
+            size_t w = overlap_stats.get_node(v);
+            int l_v = *cv[v].rbegin();
+            size_t kin = 0, kout = 0;
+            vs.clear();
             for (vertex_t u : overlap_stats.get_half_edges(w))
             {
-                if (last_b[u] != int(r))
+                // if (visited[u])
+                //     continue;
+
+                if (b[u] != int(r))                    // skip half-edges of
+                    continue;                          // different colors
+
+                int l_u = *cv[u].rbegin();
+
+                if (confine_layers && l_u != l_v)      // skip half-edges of
+                    continue;                          // different layers
+
+                kin += in_degreeS()(u, g);
+                kout += out_degreeS()(u, g);
+
+                vs.push_back(u);
+                visited[u] = true;
+            }
+
+            if (!std::isinf(beta))
+            {
+                // preserve reversibility by avoiding local merges
+                bool merge = false;
+                for (vertex_t u : overlap_stats.get_half_edges(w))
+                {
+                    int l_u = *cv[u].rbegin();
+                    if (size_t(b[u]) == s && (!confine_layers || l_u == l_v))
+                    {
+                        merge = true;
+                        break;
+                    }
+                }
+                if (merge)
                     continue;
-                move_vertex(u, r, mrs, mrp, mrm, wr, b, deg_corr, eweight, vweight,
-                            g, bg, emat, overlap_stats, dummy_pstats, npolicy);
-                //partition_stats = overlap_partition_stats_t(g, b, overlap_stats, eweight, partition_stats._N, B);
-                if (!random_move)
-                    egroups_manage::update_egroups(u, s, r, eweight, egroups,
-                                                   esrcpos, etgtpos, g);
+            }
+
+            if (overlap_stats.virtual_remove_size(v, r, kin, kout) == 0) // no empty groups
+                continue;
+
+            double dS = virtual_move(vs, s, b, cv, vmap, states, m_entries,
+                                     dense, deg_corr, multigraph, npolicy);
+
+            assert (!std::isinf(dS) && !std::isnan(dS));
+
+            bool accept = false;
+            if (std::isinf(beta))
+            {
+                accept = dS < 0;
+            }
+            else
+            {
+                double pf = 0, pb = 0;
+                if (random_move)
+                {
+                    pf = pb = 1;
+                }
+                else
+                {
+                    auto& state = states[0];
+                    double p = get_move_prob(v, r, s, c, state.b, state.mrs,
+                                             state.mrp, state.mrm, state.emat,
+                                             state.eweight, state.g, state.bg,
+                                             m_entries[0], false,
+                                             state.overlap_stats);
+                    pf += p;
+
+                    p = get_move_prob(v, s, r, c, state.b, state.mrs, state.mrp,
+                                      state.mrm, state.emat, state.eweight,
+                                      state.g, state.bg, m_entries[0], true,
+                                      state.overlap_stats, kin, kout);
+                    pb += p;
+                }
+
+                double a = -beta * dS + log(pb) - log(pf);
+
+                if (a > 0)
+                {
+                    accept = true;
+                }
+                else
+                {
+                    double sample = rand_real();
+                    accept = sample < exp(a);
+                }
+            }
+
+            if (accept && overlap_stats.get_block_size(r) > 0)
+            {
+                S += dS;
+                nmoves += vs.size();
+                move_vertex(vs, s, b, cv, vmap, wr, vweight, deg_corr, states,
+                            not random_move, overlap_stats, npolicy);
             }
         }
     }
@@ -1727,25 +1819,21 @@ void coherent_move_sweep_overlap(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr,
 
 
 //A single Monte Carlo Markov chain sweep
-template <class Graph, class BGraph, class EMprop, class Eprop, class Vprop,
-          class EMat, class EVprop, class VEprop, class SamplerMap, class RNG>
-void merge_sweep_overlap(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
-                         Vprop clabel, vector<int>& vlist, bool deg_corr,
-                         bool dense, bool multigraph, bool parallel_edges,
-                         Eprop eweight, Vprop vweight, EVprop egroups,
-                         VEprop esrcpos, VEprop etgtpos, Graph& g, BGraph& bg,
-                         EMat& emat, SamplerMap neighbour_sampler,
-                         SamplerMap cavity_neighbour_sampler,
-                         bool uniform_moves, bool sequential, bool parallel,
-                         bool random_move, double c, size_t nmerges,
-                         size_t ntries, Vprop merge_map,
-                         overlap_stats_t& overlap_stats,
-                         overlap_partition_stats_t& partition_stats,
-                         bool verbose, RNG& rng, double& S, size_t& nmoves)
+template <class Graph, class Vprop, class VVprop, class VLprop, class EVprop,
+          class Eprop, class RNG, class BlockState, class MEntries>
+void merge_sweep_overlap(vector<BlockState>& states,
+                         vector<MEntries>& m_entries,
+                         overlap_stats_t& overlap_stats, Vprop wr, Vprop b,
+                         EVprop ce, VLprop cv, VVprop vmap, Vprop clabel,
+                         vector<int>& vlist, bool deg_corr, bool dense,
+                         bool multigraph, double beta, Eprop eweight,
+                         Vprop vweight, Graph& g, bool sequential,
+                         bool parallel, bool random_move, double c,
+                         size_t confine_layers, size_t nmerges, size_t ntries,
+                         Vprop merge_map, size_t B, bool verbose, RNG& rng,
+                         double& S, size_t& nmoves)
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-
-    size_t B = num_vertices(bg);
 
     Vprop last_b = b.copy();
     Vprop best_move = b.copy();
@@ -1772,11 +1860,19 @@ void merge_sweep_overlap(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
     {
         groups[b[v]].push_back(v);
 
-        //separate into subgroups according to opposing sides
-        int u = overlap_stats.get_out_neighbour(v);
-        if (u == -1)
-            u = overlap_stats.get_in_neighbour(v);
-        bundles[b[v]][b[u]].push_back(v);
+        if (!confine_layers)
+        {
+            //separate into subgroups according to opposing sides
+            int u = overlap_stats.get_out_neighbour(v);
+            if (u == -1)
+                u = overlap_stats.get_in_neighbour(v);
+            bundles[b[v]][b[u]].push_back(v);
+        }
+        else
+        {
+            //separate into subgroups according to edge layer
+            bundles[b[v]][get_ce(v, ce, g)].push_back(v);
+        }
     }
 
     std::uniform_int_distribution<size_t> s_rand(0, B - 1);
@@ -1784,17 +1880,13 @@ void merge_sweep_overlap(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
     nmoves = 0;
     S = 0;
 
-    EntrySet<Graph> m_entries(B);
-
     half_edge_neighbour_policy<Graph> npolicy(g);
-    overlap_partition_stats_t dummy_pstats;
 
     for (size_t r = 0; r < B; ++r)
     {
         if (groups[r].empty())
             continue;
 
-        // "explode"
         double dS = 0;
 
         for (size_t j = 0; j < ntries; ++j)
@@ -1808,17 +1900,16 @@ void merge_sweep_overlap(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
                 if (!random_move)
                 {
                     vertex_t v = uniform_sample(bundle, rng);
-
-                    assert(last_b[v] == int(r));
+                    size_t w  = get_lateral_half_edge(v, overlap_stats, rng);
+                    auto& state = states[0];
 
                     // neighbour sampler points to the *block graph*
-                    vertex_t w = overlap_stats.sample_half_edge(v, rng);
                     vertex_t t = last_b[w];
-                    s = neighbour_sampler[t].sample(rng);
+                    s = state.neighbour_sampler[t].sample(rng);
                     if (s == r)
-                        s = cavity_neighbour_sampler[s].sample(rng);
+                        s = state.cavity_neighbour_sampler[s].sample(rng);
                     else
-                        s = neighbour_sampler[s].sample(rng);
+                        s = state.neighbour_sampler[s].sample(rng);
                 }
                 else
                 {
@@ -1834,55 +1925,14 @@ void merge_sweep_overlap(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
 
                 if (clabel[s] != clabel[r])
                     continue;
-#ifdef HAVE_SPARSEHASH
-                dense_hash_map<size_t, vector<size_t>> vs;
-                dense_hash_map<size_t, vector<size_t>> rs;
-                dense_hash_map<size_t, vector<size_t>> nrs;
-                vs.set_empty_key(numeric_limits<size_t>::max());
-                rs.set_empty_key(numeric_limits<size_t>::max());
-                nrs.set_empty_key(numeric_limits<size_t>::max());
-#else
-                unordered_map<size_t, vector<size_t>> vs;
-                unordered_map<size_t, vector<size_t>> rs;
-                unordered_map<size_t, vector<size_t>> nrs;
-#endif
 
                 double ddS = 0;
-                if (partition_stats.is_enabled())
-                {
-                    for (auto u : bundle)
-                    {
-                        size_t vi = overlap_stats.get_node(u);
-                        vs[vi].push_back(u);
-                        rs[vi].push_back(best_move[u]);
-                        nrs[vi].push_back(s);
-                    }
-
-                    for (auto& vi : vs)
-                    {
-                        ddS += partition_stats.get_delta_dl(vi.second,
-                                                            rs[vi.first],
-                                                            nrs[vi.first],
-                                                            deg_corr,
-                                                            overlap_stats, g);
-                        partition_stats.move_vertex(vi.second,
-                                                    rs[vi.first],
-                                                    nrs[vi.first],
-                                                    deg_corr,
-                                                    overlap_stats, g);
-                    }
-                }
-
                 for (auto u : bundle)
                 {
-                    ddS += virtual_move(u, s, dense, mrs, mrp, mrm, wr, b,
-                                        deg_corr, eweight, vweight, g, bg, emat,
-                                        m_entries, overlap_stats, multigraph,
-                                        dummy_pstats, npolicy);
-
-                    move_vertex(u, s, mrs, mrp, mrm, wr, b, deg_corr, eweight,
-                                vweight, g, bg, emat, overlap_stats,
-                                dummy_pstats, npolicy);
+                    ddS += virtual_move(u, s, b, cv, vmap, states, m_entries,
+                                        dense, deg_corr, multigraph, npolicy);
+                    move_vertex(u, s, b, cv, vmap, wr, vweight, deg_corr,
+                                states, false, overlap_stats, npolicy);
                 }
 
 
@@ -1894,110 +1944,25 @@ void merge_sweep_overlap(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
                 }
                 else
                 {
-                    if (partition_stats.is_enabled())
-                    {
-                        for (auto& vi : vs)
-                        {
-                            partition_stats.move_vertex(vi.second,
-                                                        nrs[vi.first],
-                                                        rs[vi.first],
-                                                        deg_corr,
-                                                        overlap_stats, g);
-                        }
-                    }
-
                     for (auto u : bundle)
                     {
-                        move_vertex(u, best_move[u], mrs, mrp, mrm, wr, b,
-                                    deg_corr, eweight, vweight, g, bg, emat,
-                                    overlap_stats, dummy_pstats, npolicy);
+                        move_vertex(u, best_move[u], b, cv, vmap, wr, vweight,
+                                    deg_corr, states, false, overlap_stats,
+                                    npolicy);
                     }
                 }
 
             }
         }
 
+        // reset
         for (auto v : groups[r])
         {
-            move_vertex(v, r, mrs, mrp, mrm, wr, b, deg_corr, eweight, vweight,
-                        g, bg, emat, overlap_stats, partition_stats, npolicy);
+            move_vertex(v, r, b, cv, vmap, wr, vweight, deg_corr, states, false,
+                        overlap_stats, npolicy);
         }
 
         best_move_dS[r] = dS;
-
-        // uniform move
-        if (uniform_moves)
-        {
-            double best_dS = numeric_limits<double>::max();
-            for (size_t j = 0; j < ntries; ++j)
-            {
-                vertex_t s;
-
-                if (!random_move)
-                {
-                    vertex_t v = uniform_sample(groups[r], rng);
-
-                    // neighbour sampler points to the *block graph*
-                    vertex_t w = overlap_stats.sample_half_edge(v, rng);
-                    vertex_t t = b[w];
-                    s = neighbour_sampler[t].sample(rng);
-                    if (s == r)
-                        s = cavity_neighbour_sampler[s].sample(rng);
-                    else
-                        s = neighbour_sampler[s].sample(rng);
-                }
-                else
-                {
-                    // attempt random block
-                    s = uniform_sample(blocks[clabel[r]], rng);
-                }
-
-                if (s == r)
-                    continue;
-
-                if (wr[s] == 0) // don't populate empty blocks
-                    continue;
-
-                if (clabel[s] != clabel[r])
-                    continue;
-
-                if (s == r || wr[s] == 0)
-                    continue;
-
-                dS = 0;
-                for (auto v: groups[r])
-                {
-                    if (vweight[v] == 0)
-                        continue;
-
-                    dS += virtual_move(v, s, dense, mrs, mrp, mrm, wr, b,
-                                       deg_corr, eweight, vweight, g, bg, emat,
-                                       m_entries, overlap_stats, multigraph,
-                                       partition_stats, npolicy);
-
-                    move_vertex(v, s, mrs, mrp, mrm, wr, b, deg_corr, eweight,
-                                vweight, g, bg, emat, overlap_stats,
-                                partition_stats, npolicy);
-                }
-
-                if (dS < best_move_dS[r])
-                {
-                    best_move_dS[r] = dS;
-                    for (auto v: groups[r])
-                        best_move[v] = s;
-
-                }
-            }
-
-            for (auto v: groups[r])
-            {
-                move_vertex(v, r, mrs, mrp, mrm, wr, b, deg_corr, eweight,
-                            vweight, g, bg, emat, overlap_stats,
-                            partition_stats, npolicy);
-            }
-
-            best_dS = min(best_dS, dS);
-        }
     }
 
     auto cmp = [&](vertex_t r, vertex_t s) -> bool {return best_move_dS[r] > best_move_dS[s];};
@@ -2043,14 +2008,10 @@ void merge_sweep_overlap(EMprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b,
             touched[s] = true;
 
             //assert(s != r);
-
-            double dS = virtual_move(v, s, dense, mrs, mrp, mrm, wr, b,
-                                     deg_corr, eweight, vweight, g, bg, emat,
-                                     m_entries, overlap_stats, multigraph,
-                                     partition_stats, npolicy);
-
-            move_vertex(v, s, mrs, mrp, mrm, wr, b, deg_corr, eweight, vweight,
-                        g, bg, emat, overlap_stats, partition_stats, npolicy);
+            double dS = virtual_move(v, s, b, cv, vmap, states, m_entries,
+                                     dense, deg_corr, multigraph, npolicy);
+            move_vertex(v, s, b, cv, vmap, wr, vweight, deg_corr,
+                        states, false, overlap_stats, npolicy);
             S += dS;
         }
 

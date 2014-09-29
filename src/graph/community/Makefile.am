@@ -17,6 +17,7 @@ libgraph_tool_community_la_LDFLAGS = $(MOD_LDFLAGS)
 libgraph_tool_community_la_SOURCES = \
     graph_blockmodel.cc \
     graph_blockmodel_overlap.cc \
+    graph_blockmodel_covariates.cc \
     graph_community.cc \
     graph_community_network.cc \
     graph_community_network_edges.cc \

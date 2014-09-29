@@ -761,6 +761,8 @@ class GraphWidget(Gtk.DrawingArea):
 
             if self.picked is not False:
                 p = self.pos_from_device(self.pointer)
+                if self.vertex_matrix is None:
+                    self.vertex_matrix = VertexMatrix(self.g, self.pos)
                 v = self.vertex_matrix.get_closest(p)
                 if v is not None and not isinstance(self.picked, PropertyMap):
                     if self.picked is not None:

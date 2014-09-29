@@ -107,7 +107,6 @@ struct do_propagate_pos
 
             if (delta > 0)
             {
-                pos[v].resize(2, 0);
                 for (size_t j = 0; j < pos[v].size(); ++j)
                     pos[v][j] += noise(rng);
             }
@@ -159,16 +158,13 @@ struct do_propagate_pos_mivs
         {
             if (mivs[v])
                 continue;
-            pos[v].resize(2);
-            pos[v][0] = pos[v][1] = 0;
             size_t count = 0;
-
             for (auto a : adjacent_vertices_range(v, g))
             {
                 if (!mivs[a])
                     continue;
-                pos[a].resize(2, 0);
-                for (size_t j = 0; j < pos[v].size(); ++j)
+                pos[v].resize(pos[a].size(), 0);
+                for (size_t j = 0; j < pos[a].size(); ++j)
                     pos[v][j] += pos[a][j];
                 ++count;
             }

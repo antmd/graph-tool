@@ -148,6 +148,16 @@ public:
             insert(items[i], probs[i]);
     }
 
+    const Value& operator[](size_t i) const
+    {
+        return _items[i];
+    }
+
+    size_t size() const
+    {
+        return _items.size();
+    }
+
 private:
 
     void check_size(size_t i)
@@ -184,7 +194,7 @@ private:
     }
 
 
-    vector<Value> _items;
+    vector<Value>  _items;
     vector<size_t> _ipos;   // position of the item in the tree
 
     vector<double> _tree;  // tree nodes with weight sums
@@ -192,6 +202,7 @@ private:
     int _back;             // last item in tree
 
     vector<size_t> _free; // empty leafs
+    size_t _n_items;
 };
 
 

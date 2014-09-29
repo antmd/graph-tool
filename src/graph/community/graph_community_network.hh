@@ -111,7 +111,7 @@ struct get_community_network_edges
     void operator()(const Graph& g, CommunityGraph& cg, EdgeIndex,
                     CommunityMap s_map, CCommunityMap cs_map,
                     EdgeWeightMap eweight, EdgeProperty edge_count,
-                    bool self_loops) const
+                    bool self_loops, bool parallel_edges) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
@@ -126,7 +126,7 @@ struct get_community_network_edges
         typedef google::dense_hash_map<s_type, vertex_t, std::hash<s_type> > comms_t;
         comms_t comms(num_vertices(cg));
         comms.set_empty_key(numeric_limits<s_type>::max());
-        typedef google::dense_hash_map<cvertex_t, cedge_t> ecomms_t;
+        typedef google::dense_hash_map<cvertex_t, cedge_t, std::hash<cvertex_t>> ecomms_t;
 #else
         typedef std::unordered_map<s_type, vertex_t, std::hash<s_type> > comms_t;
         comms_t comms(num_vertices(cg));
@@ -157,30 +157,37 @@ struct get_community_network_edges
                 continue;
             cedge_t ce;
 
-            typeof(comm_edges[cs].begin()) iter = comm_edges[cs].find(ct);
-            if (iter != comm_edges[cs].end())
+            if (parallel_edges)
             {
-                ce = iter->second;
+                ce = add_edge(cs, ct, cg).first;
             }
             else
             {
-                if (!is_directed::apply<Graph>::type::value)
+                typeof(comm_edges[cs].begin()) iter = comm_edges[cs].find(ct);
+                if (iter != comm_edges[cs].end())
                 {
-                    iter = comm_edges[ct].find(cs);
-                    if (iter != comm_edges[ct].end())
+                    ce = iter->second;
+                }
+                else
+                {
+                    if (!is_directed::apply<Graph>::type::value)
                     {
-                        ce = iter->second;
+                        iter = comm_edges[ct].find(cs);
+                        if (iter != comm_edges[ct].end())
+                        {
+                            ce = iter->second;
+                        }
+                        else
+                        {
+                            ce = add_edge(cs, ct, cg).first;
+                            comm_edges[cs][ct] = ce;
+                        }
                     }
                     else
                     {
                         ce = add_edge(cs, ct, cg).first;
                         comm_edges[cs][ct] = ce;
                     }
-                }
-                else
-                {
-                    ce = add_edge(cs, ct, cg).first;
-                    comm_edges[cs][ct] = ce;
                 }
             }
             put(edge_count, ce, get(edge_count, ce) + get(eweight, *e));
@@ -321,13 +328,12 @@ struct get_edge_community_property_sum
 
 #ifdef HAVE_SPARSEHASH
         google::dense_hash_map<pair<size_t, size_t>, cedge_t,
-                               boost::hash<pair<size_t, size_t> > >
+                               std::hash<pair<size_t, size_t> > >
              comm_edges(num_vertices(cg));
         comm_edges.set_empty_key(make_pair(numeric_limits<size_t>::max(),
                                            numeric_limits<size_t>::max()));
 #else
-        std::unordered_map<pair<size_t, size_t>, cedge_t,
-                           boost::hash<pair<size_t, size_t> > >
+        std::unordered_map<pair<size_t, size_t>, cedge_t>
             comm_edges(num_vertices(cg));
 #endif
 

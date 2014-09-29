@@ -16,6 +16,7 @@
 
 
     .. autofunction:: graph_draw
+    .. autofunction:: draw_hierarchy
     .. autofunction:: graphviz_draw
     .. autofunction:: prop_to_size
     .. autofunction:: get_hierarchy_control_points

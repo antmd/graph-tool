@@ -38,8 +38,10 @@ typedef property_map_type::apply<int32_t,GraphInterface::edge_index_map_t>::type
 
 struct get_community_network_edges_dispatch
 {
-    get_community_network_edges_dispatch(bool self_loops): _self_loops(self_loops) {}
+    get_community_network_edges_dispatch(bool self_loops, bool parallel_edges)
+        : _self_loops(self_loops), _parallel_edges(parallel_edges) {}
     bool _self_loops;
+    bool _parallel_edges;
 
     template <class Graph, class CommunityGraph, class CommunityMap,
               class EdgeWeightMap, class EdgeIndex>
@@ -55,7 +57,7 @@ struct get_community_network_edges_dispatch
         typename eweight_t::checked_t edge_count = boost::any_cast<typename eweight_t::checked_t>(ecount);
         get_community_network_edges()(g, cg, cedge_index, s_map,
                                       cs_map, eweight, edge_count,
-                                      _self_loops);
+                                      _self_loops, _parallel_edges);
     }
 };
 
@@ -64,7 +66,7 @@ void community_network_edges(GraphInterface& gi, GraphInterface& cgi,
                              boost::any community_property,
                              boost::any condensed_community_property,
                              boost::any edge_count, boost::any eweight,
-                             bool self_loops)
+                             bool self_loops, bool parallel_edges)
 {
     typedef boost::mpl::push_back<writable_edge_scalar_properties, no_eweight_map_t>::type
         eweight_properties;
@@ -73,7 +75,7 @@ void community_network_edges(GraphInterface& gi, GraphInterface& cgi,
         eweight = no_eweight_map_t(1);
 
     run_action<>()
-        (gi, std::bind(get_community_network_edges_dispatch(self_loops),
+        (gi, std::bind(get_community_network_edges_dispatch(self_loops, parallel_edges),
                        placeholders::_1, std::ref(cgi.GetGraph()), cgi.GetEdgeIndex(),
                        placeholders::_2, condensed_community_property,
                        placeholders::_3, edge_count),

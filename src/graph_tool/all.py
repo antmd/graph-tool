@@ -23,6 +23,7 @@ Utility module which includes all the sub-modules in graph_tool
 """
 
 from __future__ import division, absolute_import, print_function
+import warnings
 
 from graph_tool import *
 import graph_tool
@@ -33,8 +34,10 @@ import graph_tool.centrality
 try:
     from graph_tool.draw import *
     import graph_tool.draw
-except ImportError:
+except ImportError as e:
     # Proceed despite errors with cairo, matplotlib, etc.
+    msg = "Error importing draw module, proceeding nevertheless: " + str(e)
+    warnings.warn(msg, RuntimeWarning)
     pass
 from graph_tool.stats import *
 import graph_tool.stats

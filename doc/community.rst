@@ -5,6 +5,7 @@
     .. autofunction:: minimize_blockmodel_dl
     .. autoclass:: BlockState
     .. autoclass:: OverlapBlockState
+    .. autoclass:: CovariateBlockState
     .. autofunction:: mcmc_sweep
     .. autoclass:: MinimizeState
     .. autofunction:: multilevel_minimize

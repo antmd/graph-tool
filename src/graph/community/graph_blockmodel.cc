@@ -199,7 +199,7 @@ struct move_sweep_dispatch
                         vector<int>& vlist, bool deg_corr, bool dense,
                         bool multigraph, double beta, bool sequential,
                         bool parallel, bool random_move, double c, bool verbose,
-                        size_t max_edge_index, size_t nmerges, size_t ntries,
+                        size_t max_edge_index, size_t nmerges, size_t niter,
                         Vprop merge_map, partition_stats_t& partition_stats,
                         rng_t& rng, double& S, size_t& nmoves,
                         GraphInterface& bgi)
@@ -209,7 +209,7 @@ struct move_sweep_dispatch
           deg_corr(deg_corr), dense(dense), multigraph(multigraph), beta(beta),
           sequential(sequential), parallel(parallel), random_move(random_move),
           c(c), verbose(verbose), max_edge_index(max_edge_index),
-          nmerges(nmerges), ntries(ntries), merge_map(merge_map),
+          nmerges(nmerges), niter(niter), merge_map(merge_map),
           partition_stats(partition_stats), rng(rng), S(S),
           nmoves(nmoves), bgi(bgi)
     {}
@@ -233,7 +233,7 @@ struct move_sweep_dispatch
     bool verbose;
     size_t max_edge_index;
     size_t nmerges;
-    size_t ntries;
+    size_t niter;
     Vprop merge_map;
     partition_stats_t& partition_stats;
     rng_t& rng;
@@ -269,27 +269,59 @@ struct move_sweep_dispatch
             typedef typename property_map_type::apply<DynamicSampler<std::tuple<typename graph_traits<Graph>::edge_descriptor, bool> >,
                                                       GraphInterface::vertex_index_map_t>::type vemap_t;
             vemap_t egroups = any_cast<vemap_t>(oegroups);
-            dispatch(mrs, mrp, mrm, wr, b, g, aemat, asampler, acavity_sampler, bg, egroups);
+
+            try
+            {
+                typedef typename get_emat_t::apply<BGraph>::type emat_t;
+                emat_t& emat = any_cast<emat_t&>(aemat);
+                size_t B = num_vertices(bg);
+                size_t max_BE = is_directed::apply<Graph>::type::value ?
+                    B * B : (B * (B + 1)) / 2;
+                dispatch(mrs.get_unchecked(max_BE), mrp, mrm, wr, b, g,
+                         asampler, acavity_sampler, bg, egroups, emat);
+            }
+            catch (bad_any_cast&)
+            {
+                typedef typename get_ehash_t::apply<BGraph>::type emat_t;
+                emat_t& emat = any_cast<emat_t&>(aemat);
+
+                dispatch(mrs, mrp, mrm, wr, b, g, asampler, acavity_sampler, bg,
+                         egroups, emat);
+            }
         }
         else
         {
             typedef typename property_map_type::apply<vector<std::tuple<typename graph_traits<Graph>::edge_descriptor, bool> >,
                                                       GraphInterface::vertex_index_map_t>::type vemap_t;
             vemap_t egroups = any_cast<vemap_t>(oegroups);
-            dispatch(mrs, mrp, mrm, wr, b, g, aemat, asampler, acavity_sampler, bg, egroups);
+
+            try
+            {
+                typedef typename get_emat_t::apply<BGraph>::type emat_t;
+                emat_t& emat = any_cast<emat_t&>(aemat);
+                size_t B = num_vertices(bg);
+                size_t max_BE = is_directed::apply<Graph>::type::value ?
+                    B * B : (B * (B + 1)) / 2;
+                dispatch(mrs.get_unchecked(max_BE), mrp, mrm, wr, b, g,
+                         asampler, acavity_sampler, bg, egroups, emat);
+            }
+            catch (bad_any_cast&)
+            {
+                typedef typename get_ehash_t::apply<BGraph>::type emat_t;
+                emat_t& emat = any_cast<emat_t&>(aemat);
+
+                dispatch(mrs, mrp, mrm, wr, b, g, asampler, acavity_sampler, bg,
+                         egroups, emat);
+            }
         }
     }
 
-    template <class Graph, class BGraph, class Egroups>
-    void dispatch(Eprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b, Graph& g,
-                  boost::any& aemat, boost::any asampler,
-                  boost::any acavity_sampler, BGraph& bg, Egroups egroups) const
+    template <class Graph, class BGraph, class Egroups, class Emat, class MEprop>
+    void dispatch(MEprop mrs, Vprop mrp, Vprop mrm, Vprop wr, Vprop b, Graph& g,
+                  boost::any asampler, boost::any acavity_sampler, BGraph& bg,
+                  Egroups egroups, Emat& emat) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-
-        size_t B = num_vertices(bg);
-        size_t max_BE = is_directed::apply<Graph>::type::value ?
-            B * B : (B * (B + 1)) / 2;
 
         size_t eidx = random_move ? 1 : max_edge_index;
 
@@ -300,54 +332,46 @@ struct move_sweep_dispatch
         sampler_map_t sampler = any_cast<sampler_map_t>(asampler);
         sampler_map_t cavity_sampler = any_cast<sampler_map_t>(acavity_sampler);
 
-        try
-        {
-            typedef typename get_emat_t::apply<BGraph>::type emat_t;
-            emat_t& emat = any_cast<emat_t&>(aemat);
+        ConstantPropertyMap<int, typename graph_traits<Graph>::edge_descriptor> ce(0);
+        ConstantPropertyMap<std::array<int, 1>, typename graph_traits<Graph>::vertex_descriptor> cv({-1});
+        IdentityArrayPropertyMap<typename graph_traits<Graph>::vertex_descriptor> vmap;
+        boost::typed_identity_property_map<int> identity;
 
-            // make sure the properties are _unchecked_, since otherwise it
-            // affects performance
+        // make sure the properties are _unchecked_, since otherwise it
+        // affects performance
 
-            move_sweep(mrs.get_unchecked(max_BE),
-                       mrp.get_unchecked(num_vertices(bg)),
-                       mrm.get_unchecked(num_vertices(bg)),
-                       wr.get_unchecked(num_vertices(bg)),
-                       b.get_unchecked(num_vertices(g)),
-                       label.get_unchecked(num_vertices(bg)), vlist, deg_corr,
-                       dense, multigraph, beta,
-                       eweight.get_unchecked(max_edge_index),
-                       vweight.get_unchecked(num_vertices(g)),
-                       egroups.get_unchecked(num_vertices(bg)),
-                       esrcpos.get_unchecked(eidx),
-                       etgtpos.get_unchecked(eidx), g, bg, emat, sampler,
-                       cavity_sampler, sequential, parallel, random_move, c,
-                       nmerges, ntries,
-                       merge_map.get_unchecked(num_vertices(g)),
-                       partition_stats, verbose, rng, S, nmoves,
-                       overlap_stats_t());
-        }
-        catch (bad_any_cast&)
-        {
-            typedef typename get_ehash_t::apply<BGraph>::type emat_t;
-            emat_t& emat = any_cast<emat_t&>(aemat);
-            move_sweep(mrs.get_unchecked(num_edges(g)),
-                       mrp.get_unchecked(num_vertices(bg)),
-                       mrm.get_unchecked(num_vertices(bg)),
-                       wr.get_unchecked(num_vertices(bg)),
-                       b.get_unchecked(num_vertices(g)),
-                       label.get_unchecked(num_vertices(bg)), vlist, deg_corr,
-                       dense, multigraph, beta,
-                       eweight.get_unchecked(max_edge_index),
-                       vweight.get_unchecked(num_vertices(g)),
-                       egroups.get_unchecked(num_vertices(bg)),
-                       esrcpos.get_unchecked(eidx),
-                       etgtpos.get_unchecked(eidx), g, bg, emat, sampler,
-                       cavity_sampler, sequential, parallel, random_move, c,
-                       nmerges, ntries,
-                       merge_map.get_unchecked(num_vertices(g)),
-                       partition_stats, verbose, rng, S, nmoves,
-                       overlap_stats_t());
-        }
+        overlap_stats_t ostats;
+        vector<size_t> free_blocks;
+        auto state = make_block_state(g, eweight.get_unchecked(max_edge_index),
+                                      vweight.get_unchecked(num_vertices(g)),
+                                      b.get_unchecked(num_vertices(g)), bg,
+                                      emat, mrs,
+                                      mrp.get_unchecked(num_vertices(bg)),
+                                      mrm.get_unchecked(num_vertices(bg)),
+                                      wr.get_unchecked(num_vertices(bg)),
+                                      egroups.get_unchecked(num_vertices(bg)),
+                                      esrcpos.get_unchecked(eidx),
+                                      etgtpos.get_unchecked(eidx), sampler,
+                                      cavity_sampler, partition_stats, ostats,
+                                      identity, identity, free_blocks,
+                                      false, false, true);
+
+        vector<decltype(state)> states = {state};
+        vector<EntrySet<Graph>> m_entries = {EntrySet<Graph>(num_vertices(bg))};
+
+        move_sweep(states, m_entries,
+                   wr.get_unchecked(num_vertices(bg)),
+                   b.get_unchecked(num_vertices(g)),
+                   ce, cv, vmap,
+                   label.get_unchecked(num_vertices(bg)), vlist, deg_corr,
+                   dense, multigraph, beta,
+                   eweight.get_unchecked(max_edge_index),
+                   vweight.get_unchecked(num_vertices(g)),
+                   g, sequential, parallel, random_move, c,
+                   nmerges,
+                   merge_map.get_unchecked(num_vertices(g)),
+                   niter, num_vertices(bg),
+                   verbose, rng, S, nmoves, ostats);
     }
 };
 
@@ -364,8 +388,8 @@ boost::python::object do_move_sweep(GraphInterface& gi, GraphInterface& bgi,
                                     boost::any oetgtpos, double beta,
                                     bool sequential, bool parallel,
                                     bool random_move, double c, bool weighted,
-                                    size_t nmerges, size_t ntries,
-                                    boost::any omerge_map,
+                                    size_t nmerges, boost::any omerge_map,
+                                    size_t niter,
                                     partition_stats_t& partition_stats,
                                     bool verbose, rng_t& rng)
 {
@@ -400,7 +424,7 @@ boost::python::object do_move_sweep(GraphInterface& gi, GraphInterface& bgi,
                        (eweight, vweight, oegroups, esrcpos, etgtpos,
                         label, vlist, deg_corr, dense, multigraph, beta,
                         sequential, parallel, random_move, c, verbose,
-                        gi.GetMaxEdgeIndex(), nmerges, ntries, merge_map,
+                        gi.GetMaxEdgeIndex(), nmerges, niter, merge_map,
                         partition_stats, rng, S, nmoves, bgi),
                        mrs, mrp, mrm, wr, b, placeholders::_1,
                        std::ref(emat), sampler, cavity_sampler, weighted))();
@@ -562,7 +586,7 @@ struct get_deg_entropy_term_overlap
                     double& S) const
     {
 #ifdef HAVE_SPARSEHASH
-        typedef dense_hash_map<int, int> map_t;
+        typedef dense_hash_map<int, int, std::hash<int>> map_t;
 #else
         typedef unordered_map<int, int> map_t;
 #endif
@@ -627,31 +651,33 @@ vector<int32_t> get_vector(size_t n)
     return vector<int32_t>(n);
 }
 
+template <class Value>
 void vector_map(boost::python::object ovals, boost::python::object omap)
 {
 
-    multi_array_ref<int32_t,1> vals = get_array<int32_t,1>(ovals);
-    multi_array_ref<int32_t,1> map = get_array<int32_t,1>(omap);
+    multi_array_ref<Value,1> vals = get_array<Value,1>(ovals);
+    multi_array_ref<Value,1> map = get_array<Value,1>(omap);
 
     size_t pos = 0;
     for (size_t i = 0; i < vals.size(); ++i)
     {
-        int32_t v = vals[i];
+        Value v = vals[i];
         if (map[v] == -1)
             map[v] = pos++;
         vals[i] = map[v];
     }
 }
 
+template <class Value>
 void vector_continuous_map(boost::python::object ovals)
 {
 
-    multi_array_ref<int32_t,1> vals = get_array<int32_t,1>(ovals);
-    unordered_map<int32_t, size_t> map;
+    multi_array_ref<Value,1> vals = get_array<Value,1>(ovals);
+    unordered_map<Value, size_t> map;
 
     for (size_t i = 0; i < vals.size(); ++i)
     {
-        int32_t v = vals[i];
+        Value v = vals[i];
         auto iter = map.find(v);
         if (iter == map.end())
             iter = map.insert(make_pair(v, map.size())).first;
@@ -659,11 +685,12 @@ void vector_continuous_map(boost::python::object ovals)
     }
 }
 
+template <class Value>
 void vector_rmap(boost::python::object ovals, boost::python::object omap)
 {
 
-    multi_array_ref<int32_t,1> vals = get_array<int32_t,1>(ovals);
-    multi_array_ref<int32_t,1> map = get_array<int32_t,1>(omap);
+    multi_array_ref<Value,1> vals = get_array<Value,1>(ovals);
+    multi_array_ref<Value,1> map = get_array<Value,1>(omap);
 
     for (size_t i = 0; i < vals.size(); ++i)
     {
@@ -682,15 +709,15 @@ struct get_partition_stats
 {
     template <class Graph, class Vprop, class Eprop>
     void operator()(Graph& g, Vprop b, Eprop eweight, size_t N, size_t B,
-                    partition_stats_t& partition_stats) const
+                    bool edges_dl, partition_stats_t& partition_stats) const
     {
-        partition_stats = partition_stats_t(g, b, eweight, N, B);
+        partition_stats = partition_stats_t(g, b, eweight, N, B, edges_dl);
     }
 };
 
 partition_stats_t
 do_get_partition_stats(GraphInterface& gi, boost::any ob, boost::any aeweight,
-                       size_t N, size_t B)
+                       size_t N, size_t B, bool edges_dl)
 {
     typedef property_map_type::apply<int32_t,
                                      GraphInterface::vertex_index_map_t>::type
@@ -705,7 +732,7 @@ do_get_partition_stats(GraphInterface& gi, boost::any ob, boost::any aeweight,
     emap_t eweight = any_cast<emap_t>(aeweight);
 
     run_action<>()(gi, std::bind(get_partition_stats(),
-                                 placeholders::_1, b, eweight, N, B,
+                                 placeholders::_1, b, eweight, N, B, edges_dl,
                                  std::ref(partition_stats)))();
     return partition_stats;
 }
@@ -732,14 +759,13 @@ void export_blockmodel()
     def("get_mu_l", python_get_mu_l);
     def("polylog", polylog<double>);
 
-    def("poisson_entropy", poisson_entropy<double>);
-    def("lpoisson", lpoisson<double>);
-    def("poisson", poisson<double>);
-
     def("get_vector", get_vector);
-    def("vector_map", vector_map);
-    def("vector_rmap", vector_rmap);
-    def("vector_continuous_map", vector_continuous_map);
+    def("vector_map", vector_map<int32_t>);
+    def("vector_map64", vector_map<int64_t>);
+    def("vector_rmap", vector_rmap<int32_t>);
+    def("vector_rmap64", vector_rmap<int64_t>);
+    def("vector_continuous_map", vector_continuous_map<int32_t>);
+    def("vector_continuous_map64", vector_continuous_map<int64_t>);
 
     def("create_emat", do_create_emat);
     def("create_ehash", do_create_ehash);
