@@ -447,6 +447,8 @@ struct get_eg_overlap
             vertex_t u = add_vertex(eg);
             vertex_t v = add_vertex(eg);
             add_edge(u, v, eg);
+            if (be[e].size() != 2)
+                throw GraphException("Edge block property map must have two values per edge");
             b[u] = be[e][0];
             b[v] = be[e][1];
             node_index[u] = s;
