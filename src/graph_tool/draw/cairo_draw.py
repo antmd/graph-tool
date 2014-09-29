@@ -1149,7 +1149,7 @@ def transform_scale(M, scale):
                              scale / np.sqrt(2))
     return np.sqrt(p[0] ** 2 + p[1] ** 2)
 
-def get_hierarchy_control_points(g, t, tpos, beta=0.8):
+def get_hierarchy_control_points(g, t, tpos, beta=0.8, cts=None):
     r"""Return the Bézier spline control points for the edges in ``g``, given the hierarchical structure encoded in graph `t`.
 
     Parameters
@@ -1168,11 +1168,15 @@ def get_hierarchy_control_points(g, t, tpos, beta=0.8):
     beta : ``float`` (optional, default: ``0.8``)
         Edge bundling strength. For ``beta == 0`` the edges are straight lines,
         and for ``beta == 1`` they strictly follow the hierarchy.
+    cts : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        Edge property map of type ``vector<double>`` where the control points
+        will be stored.
+
 
     Returns
     -------
 
-    ctp : :class:`~graph_tool.PropertyMap`
+    cts : :class:`~graph_tool.PropertyMap`
         Vector-valued edge property map containing the Bézier spline control
         points for the edges in ``g``.
 
@@ -1226,7 +1230,10 @@ def get_hierarchy_control_points(g, t, tpos, beta=0.8):
        (2006). :doi:`10.1109/TVCG.2006.147`
     """
 
-    cts = g.new_edge_property("vector<double>")
+    if cts is None:
+        cts = g.new_edge_property("vector<double>")
+    if cts.value_type() != "vector<double>":
+        raise ValueError("cts property map must be of type 'vector<double>' not '%s' " % cts.value_type())
 
     u = GraphView(g, directed=True)
     tu = GraphView(t, directed=True)
