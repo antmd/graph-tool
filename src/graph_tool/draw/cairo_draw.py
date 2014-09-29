@@ -151,14 +151,17 @@ def shape_from_prop(shape, enum):
             descs = shape.get_graph().edges()
             prop = shape.get_graph().new_edge_property("int")
         offset = min(enum.values.keys())
-        vals = dict([(k - offset, v) for k, v in list(enum.values.items())])
+        vals = dict([(int(k - offset), v) for k, v in enum.values.items()])
         for v in descs:
             if shape.value_type() == "string":
                 prop[v] = int(enum.__dict__[shape[v]])
-            elif shape[v] in vals:
-                prop[v] = int(vals[shape[v]])
+            elif int(shape[v]) in vals:
+                prop[v] = int(vals[int(shape[v])])
+            elif int(shape[v]) - offset in vals:
+                prop[v] = int(vals[int(shape[v]) - offset])
             else:
-                prop[v] = int(vals[hash(shape[v]) % len(vals)])
+                raise ValueError("Invalid value for attribute %s: %s" %
+                                 (repr(enum), repr(shape[v])))
         return prop
 
     if isinstance(shape, str):
