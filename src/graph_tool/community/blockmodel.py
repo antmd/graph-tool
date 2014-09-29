@@ -204,7 +204,7 @@ class BlockState(object):
                 libcommunity.clear_safelog()
                 libcommunity.clear_xlogx()
                 libcommunity.clear_lgamma()
-        except (ValueError, AttributeError):
+        except (ValueError, AttributeError, TypeError):
             pass
 
     def __repr__(self):
