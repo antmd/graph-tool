@@ -940,9 +940,11 @@ class GraphWindow(Gtk.Window):
         self.graph.cleanup()
 
 
+_window_list = []
+
 def interactive_window(g, pos=None, vprops=None, eprops=None, vorder=None,
                        eorder=None, nodesfirst=False, geometry=(500, 400),
-                       update_layout=True, async=False, **kwargs):
+                       update_layout=True, async=False, no_main=False, **kwargs):
     r"""
     Display an interactive GTK+ window containing the given graph.
 
@@ -973,6 +975,8 @@ def interactive_window(g, pos=None, vprops=None, eprops=None, vorder=None,
         If ``True``, the layout will be updated dynamically.
     async : bool (optional, default: ``False``)
         If ``True``, run asynchronously. (Requires :mod:`IPython`)
+    no_main : bool (optional, default: ``False``)
+        If ``True``, the GTK+ main loop will not be called.
     **kwargs
         Any extra parameters are passed to :class:`~graph_tool.draw.GraphWindow`,
         :class:`~graph_tool.draw.GraphWidget` and :func:`~graph_tool.draw.cairo_draw`.
@@ -1000,13 +1004,20 @@ def interactive_window(g, pos=None, vprops=None, eprops=None, vorder=None,
     win = GraphWindow(g, pos, geometry, vprops, eprops, vorder, eorder,
                       nodesfirst, update_layout, **kwargs)
     win.show_all()
-    if async:
-        # just a placeholder for a proper main loop integration with gtk3 when
-        # ipython implements it
-        import IPython.lib.inputhook
-        f = lambda: Gtk.main_iteration_do(False)
-        IPython.lib.inputhook.set_inputhook(f)
-    else:
-        win.connect("delete_event", Gtk.main_quit)
-        Gtk.main()
+    _window_list.append(win)
+    if not no_main:
+        if async:
+            # just a placeholder for a proper main loop integration with gtk3 when
+            # ipython implements it
+            import IPython.lib.inputhook
+            f = lambda: Gtk.main_iteration_do(False)
+            IPython.lib.inputhook.set_inputhook(f)
+        else:
+            def destroy_callback(*args, **kwargs):
+                global _window_list
+                for w in _window_list:
+                    w.destroy()
+                Gtk.main_quit()
+            win.connect("delete_event", destroy_callback)
+            Gtk.main()
     return pos, win.graph.selected.copy()
