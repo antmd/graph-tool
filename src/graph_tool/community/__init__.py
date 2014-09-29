@@ -146,12 +146,12 @@ def community_structure(g, n_iter, n_spins, gamma=1.0, corr="erdos",
        **The use of this function is discouraged.** Although community detection
        based on modularity maximization is very common, it is very
        problematic. It will find high-scoring partitions where there is none
-       [guimera-modularity-2004]_, and at the same will not find actual
+       [guimera-modularity-2004]_, and at the same time will not find actual
        structure in large graphs [fortunato-resolution-2007]_. Furthermore, in
        many empirical networks, the partitions found in this way are largely
        meaningless [good-performance-2010]_.
 
-       Instead, use the methods based on statistical inference
+       One should use instead methods based on statistical inference
        (i.e. :func:`~graph_tool.community.minimize_blockmodel_dl` and
        :func:`~graph_tool.community.minimize_nested_blockmodel_dl`).
 
