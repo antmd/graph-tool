@@ -721,7 +721,7 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         |                | the default units of the output format (normally  |                        |                                  |
         |                | either pixels or points).                         |                        |                                  |
         +----------------+---------------------------------------------------+------------------------+----------------------------------+
-        | start_marker,  | Edge markers. Can be one of "none", "arrow",      | ``str`` or ``int``     | ``-1``                           |
+        | start_marker,  | Edge markers. Can be one of "none", "arrow",      | ``str`` or ``int``     | ``none``                         |
         | mid_marker,    | "circle", "square", "diamond", or "bar".          |                        |                                  |
         | end_marker     | Optionally, this might take a numeric value       |                        |                                  |
         |                | corresponding to position in the list above.      |                        |                                  |
@@ -808,7 +808,7 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
 
         SFDP force-directed layout of a Price network with 1500 nodes. The
         vertex size and color indicate the degree, and the edge color and width
-        the edge betweeness centrality.
+        the edge betweenness centrality.
 
     """
 
