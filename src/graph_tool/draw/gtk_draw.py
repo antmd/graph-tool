@@ -162,6 +162,34 @@ class GraphWidget(Gtk.DrawingArea):
         Font size used to display the vertex properties.
     bg_color : str or sequence (optional, default: ``None``)
         Background color. The default is white.
+    layout_callback : function (optional, default: ``Node``)
+        User-supplied callback to be called whenever the positions of the layout
+        have changed. It needs to have the following signature:
+
+        .. code::
+
+           def callback(g, picked, pos, vprops, eprops):
+               ...
+
+        where ``g`` is the graph being drawn, ``picked`` is either a single
+        vertex or a boolean vertex property map representing the vertices
+        currently selected, and ``vprops`` and ``eprops`` are dictionaries with
+        the vertex and edge properties currently being used by the layout.
+    key_press_callback : function (optional, default: ``Node``)
+
+        User-supplied callback to be called whenever a key-press event has
+        happened. It needs to have the following signature:
+
+        .. code::
+
+           def callback(g, keyval, picked, pos, vprops, eprops):
+               ...
+
+        where ``g`` is the graph being drawn, ``keyval`` is the key id,
+        ``picked`` is either a single vertex or a boolean vertex property map
+        representing the vertices currently selected, and ``vprops`` and
+        ``eprops`` are dictionaries with the vertex and edge properties
+        currently being used by the layout.
     vertex_* : :class:`~graph_tool.PropertyMap` or arbitrary types (optional, default: ``None``)
         Parameters following the pattern ``vertex_<prop-name>`` specify the
         vertex property with name ``<prop-name>``, as an alternative to the
@@ -203,7 +231,8 @@ class GraphWidget(Gtk.DrawingArea):
     def __init__(self, g, pos, vprops=None, eprops=None, vorder=None,
                  eorder=None, nodesfirst=False, update_layout=False,
                  layout_K=1., multilevel=False, display_props=None,
-                 display_props_size=11, bg_color=None, **kwargs):
+                 display_props_size=11, bg_color=None, layout_callback=None,
+                 key_press_callback=None, **kwargs):
         Gtk.DrawingArea.__init__(self)
 
         vprops = {} if vprops is None else vprops
@@ -250,6 +279,9 @@ class GraphWidget(Gtk.DrawingArea):
         self.layout_init_step = self.layout_K
         self.epsilon = 0.01 * self.layout_K
         self.multilevel_layout = multilevel
+
+        self.layout_user_callback = layout_callback
+        self.key_press_user_callback = key_press_callback
 
         if multilevel:
             self.cgs = coarse_graphs(g)
@@ -327,6 +359,11 @@ class GraphWidget(Gtk.DrawingArea):
         ps = ungroup_vector_property(self.pos, [0, 1])
         delta = np.sqrt((pos_temp[0].fa - ps[0].fa) ** 2 +
                         (pos_temp[1].fa - ps[1].fa) ** 2).mean()
+
+        if self.layout_user_callback is not None:
+            self.layout_user_callback(self.g, self.picked, self.pos, self.vprops,
+                                      self.eprops)
+
         if delta > self.epsilon:
             return True
         else:
@@ -667,6 +704,9 @@ class GraphWidget(Gtk.DrawingArea):
             self.drag_begin = None
 
             if self.moved_picked:
+                if self.layout_user_callback is not None:
+                    self.layout_user_callback(self.g, self.picked, self.pos,
+                                              self.vprops, self.eprops)
                 self.moved_picked = False
                 self.regenerate_surface(timeout=100)
                 self.queue_draw()
@@ -838,6 +878,11 @@ class GraphWidget(Gtk.DrawingArea):
     def key_release_event(self, widget, event):
         r"""Handle release event."""
         #print event.keyval
+
+        if self.key_press_user_callback is not None:
+            self.key_press_user_callback(self.g, event.keyval, self.picked,
+                                         self.pos, self.vprops, self.eprops)
+
         if event.keyval == 65507:
             if self.moved_picked:
                 self.moved_picked = False
