@@ -31,9 +31,9 @@ using namespace graph_tool;
 
 struct do_get_radial
 {
-    template <class Graph, class PosProp, class LevelMap>
-    void operator()(Graph& g, PosProp tpos, LevelMap level, size_t root,
-                    bool weighted, double r) const
+    template <class Graph, class PosProp, class LevelMap, class OrderMap>
+    void operator()(Graph& g, PosProp tpos, LevelMap level, OrderMap order,
+                    size_t root, bool weighted, double r) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         typedef property_map_type::apply<int, GraphInterface::vertex_index_map_t>::type
@@ -102,9 +102,14 @@ struct do_get_radial
                     if (int(layers.size()) - 1 == int(level[w]))
                         last = false;
                 }
+
+                std::sort(new_layer.end() - out_degree(v, g), new_layer.end(),
+                          [&] (vertex_t u, vertex_t v) -> bool { return order[u] < order[v]; });
+
                 if (out_degree(v, g) == 0)
                     new_layer.push_back(v);
             }
+
             if (last)
                 layers.pop_back();
         }
@@ -149,13 +154,19 @@ struct do_get_radial
 };
 
 void get_radial(GraphInterface& gi, boost::any otpos, boost::any olevels,
-                size_t root, bool weighted, double r)
+                boost::any oorder, size_t root, bool weighted, double r)
 {
+    typedef property_map_type::apply<int32_t,
+                                     GraphInterface::vertex_index_map_t>::type
+        vmap_t;
+
+    vmap_t levels = boost::any_cast<vmap_t>(olevels);
+
     run_action<graph_tool::detail::always_directed>()
         (gi, std::bind(do_get_radial(), placeholders::_1, placeholders::_2,
-                       placeholders::_3, root, weighted, r),
+                       levels, placeholders::_3, root, weighted,  r),
          vertex_scalar_vector_properties(),
-         vertex_scalar_properties())(otpos, olevels);
+         vertex_properties())(otpos, oorder);
 }
 
 #include <boost/python.hpp>

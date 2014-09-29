@@ -702,7 +702,7 @@ def sfdp_layout(g, vweight=None, eweight=None, pin=None, groups=None, C=0.2,
                                      verbose, _get_rng())
     return pos
 
-def radial_tree_layout(g, root, weighted=False, r=1.):
+def radial_tree_layout(g, root, rel_order=None, weighted=False, r=1.):
     r"""Computes a radial layout of the graph according to the minimum spanning
     tree centered at the ``root`` vertex.
 
@@ -712,6 +712,8 @@ def radial_tree_layout(g, root, weighted=False, r=1.):
         Graph to be used.
     root : :class:`~graph_tool.Vertex` or ``int``
         The root of the radial tree.
+    rel_order : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+        Relative order of the nodes at the lowest branch.
     weighted : ``bool`` (optional, default: ``False``)
         If true, the angle between the child branches will be computed according
         to weight of the entire sub-branches.
@@ -758,10 +760,13 @@ def radial_tree_layout(g, root, weighted=False, r=1.):
     t = predecessor_tree(g, pred_map)
     pos = t.new_vertex_property("vector<double>")
     levels = t.own_property(levels)
+    if rel_order is None:
+        rel_order = g.vertex_index.copy("int")
 
     libgraph_tool_layout.get_radial(t._Graph__graph,
                                     _prop("v", g, pos),
                                     _prop("v", g, levels),
+                                    _prop("v", g, rel_order),
                                     int(root), weighted, r)
     return g.own_property(pos)
 
