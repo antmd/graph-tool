@@ -441,14 +441,18 @@ void export_python_interface()
 
     class_<PythonVertex>
         ("Vertex", no_init)
-        .def("in_degree", &PythonVertex::GetInDegree,
+        .def("__in_degree", &PythonVertex::GetInDegree,
              "Return the in-degree.")
-        .def("out_degree", &PythonVertex::GetOutDegree,
+        .def("__weighted_in_degree", &PythonVertex::GetWeightedOutDegree,
+             "Return the weighted in-degree.")
+        .def("__out_degree", &PythonVertex::GetOutDegree,
              "Return the out-degree.")
-        .def("out_edges", &PythonVertex::OutEdges,
-             "Return an iterator over the out-edges.")
+        .def("__weighted_out_degree", &PythonVertex::GetWeightedOutDegree,
+             "Return the weighted out-degree.")
         .def("in_edges", &PythonVertex::InEdges,
              "Return an iterator over the in-edges.")
+        .def("out_edges", &PythonVertex::OutEdges,
+             "Return an iterator over the out-edges.")
         .def("is_valid", &PythonVertex::IsValid,
              "Return whether the vertex is valid.")
         .def("get_graph", &PythonVertex::GetGraph,

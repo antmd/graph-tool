@@ -139,6 +139,15 @@ public:
         {
             deg = DegSelector()(v, g);
         }
+
+        template<class Graph, class PMap>
+        void operator()(const Graph& g,
+                        typename boost::graph_traits<Graph>::vertex_descriptor v,
+                        const PMap& weight,
+                        boost::python::object& deg) const
+        {
+            deg = boost::python::object(DegSelector()(v, g, weight));
+        }
     };
 
     size_t GetInDegree() const
@@ -152,6 +161,21 @@ public:
         return in_deg;
     }
 
+    boost::python::object GetWeightedInDegree(boost::any pmap) const
+    {
+        if (!belongs<edge_scalar_properties>()(pmap))
+            throw ValueException("edge weight property must be of scalar type");
+        CheckValid();
+        GraphInterface& gi = boost::python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
+        boost::python::object in_deg;
+        run_action<>()(gi, std::bind(get_degree<in_degreeS>(),
+                                     std::placeholders::_1, _v,
+                                     std::placeholders::_2,
+                                     std::ref(in_deg)),
+                       edge_scalar_properties())(pmap);
+        return in_deg;
+    }
+
     size_t GetOutDegree() const
     {
         CheckValid();
@@ -160,6 +184,22 @@ public:
         run_action<>()(gi, std::bind(get_degree<out_degreeS>(),
                                      std::placeholders::_1, _v,
                                      std::ref(out_deg)))();
+        return out_deg;
+    }
+
+
+    boost::python::object GetWeightedOutDegree(boost::any pmap) const
+    {
+        if (!belongs<edge_scalar_properties>()(pmap))
+            throw ValueException("edge weight property must be of scalar type");
+        CheckValid();
+        GraphInterface& gi = boost::python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
+        boost::python::object out_deg;
+        run_action<>()(gi, std::bind(get_degree<out_degreeS>(),
+                                     std::placeholders::_1, _v,
+                                     std::placeholders::_2,
+                                     std::ref(out_deg)),
+                       edge_scalar_properties())(pmap);
         return out_deg;
     }
 

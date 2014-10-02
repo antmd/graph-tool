@@ -2346,6 +2346,32 @@ def _all_neighbours(self):
         yield v
 Vertex.all_neighbours = _all_neighbours
 
+def _in_degree(self, weight=None):
+    """Return the in-degree of the vertex. If provided, ``weight`` should be a
+    scalar edge property map, and the in-degree will correspond to the sum of
+    the weights of the in-edges.
+    """
+
+    if weight is None:
+        return self.__in_degree()
+    else:
+        return self.__weighted_in_degree(_prop("e", self.get_graph(), weight))
+
+Vertex.in_degree = _in_degree
+
+def _out_degree(self, weight=None):
+    """Return the out-degree of the vertex. If provided, ``weight`` should be a
+    scalar edge property map, and the out-degree will correspond to the sum of
+    the weights of the out-edges.
+    """
+
+    if weight is None:
+        return self.__out_degree()
+    else:
+        return self.__weighted_out_degree(_prop("e", self.get_graph(), weight))
+
+Vertex.out_degree = _out_degree
+
 
 def _vertex_repr(self):
     if not self.is_valid():
