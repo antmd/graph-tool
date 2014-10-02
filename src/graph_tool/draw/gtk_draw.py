@@ -127,112 +127,112 @@ def apply_transforms(g, pos, m):
 
 
 class GraphWidget(Gtk.DrawingArea):
-    r"""Interactive GTK+ widget displaying a given graph.
-
-    Parameters
-    ----------
-    g : :class:`~graph_tool.Graph`
-        Graph to be drawn.
-    pos : :class:`~graph_tool.PropertyMap`
-        Vector-valued vertex property map containing the x and y coordinates of
-        the vertices.
-    vprops : dict (optional, default: ``None``)
-        Dictionary with the vertex properties. Individual properties may also be
-        given via the ``vertex_<prop-name>`` parameters, where ``<prop-name>`` is
-        the name of the property.
-    eprops : dict (optional, default: ``None``)
-        Dictionary with the vertex properties. Individual properties may also be
-        given via the ``edge_<prop-name>`` parameters, where ``<prop-name>`` is
-        the name of the property.
-    vorder : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
-        If provided, defines the relative order in which the vertices are drawn.
-    eorder : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
-        If provided, defines the relative order in which the edges are drawn.
-    nodesfirst : bool (optional, default: ``False``)
-        If ``True``, the vertices are drawn first, otherwise the edges are.
-    update_layout : bool (optional, default: ``True``)
-        If ``True``, the layout will be updated dynamically.
-    layout_K : float (optional, default: ``1.0``)
-        Parameter ``K`` passed to :func:`~graph_tool.draw.sfdp_layout`.
-    multilevel : bool (optional, default: ``False``)
-        Parameter ``multilevel`` passed to :func:`~graph_tool.draw.sfdp_layout`.
-    display_props : list of :class:`~graph_tool.PropertyMap` instances (optional, default: ``None``)
-        List of properties to be displayed when the mouse passes over a vertex.
-    display_props_size : float (optional, default: ``11``)
-        Font size used to display the vertex properties.
-    bg_color : str or sequence (optional, default: ``None``)
-        Background color. The default is white.
-    layout_callback : function (optional, default: ``Node``)
-        User-supplied callback to be called whenever the positions of the layout
-        have changed. It needs to have the following signature:
-
-        .. code::
-
-           def callback(g, picked, pos, vprops, eprops):
-               ...
-
-        where ``g`` is the graph being drawn, ``picked`` is either a single
-        vertex or a boolean vertex property map representing the vertices
-        currently selected, and ``vprops`` and ``eprops`` are dictionaries with
-        the vertex and edge properties currently being used by the layout.
-    key_press_callback : function (optional, default: ``Node``)
-
-        User-supplied callback to be called whenever a key-press event has
-        happened. It needs to have the following signature:
-
-        .. code::
-
-           def callback(g, keyval, picked, pos, vprops, eprops):
-               ...
-
-        where ``g`` is the graph being drawn, ``keyval`` is the key id,
-        ``picked`` is either a single vertex or a boolean vertex property map
-        representing the vertices currently selected, and ``vprops`` and
-        ``eprops`` are dictionaries with the vertex and edge properties
-        currently being used by the layout.
-    vertex_* : :class:`~graph_tool.PropertyMap` or arbitrary types (optional, default: ``None``)
-        Parameters following the pattern ``vertex_<prop-name>`` specify the
-        vertex property with name ``<prop-name>``, as an alternative to the
-        ``vprops`` parameter.
-    edge_* : :class:`~graph_tool.PropertyMap` or arbitrary types (optional, default: ``None``)
-        Parameters following the pattern ``edge_<prop-name>`` specify the edge
-        property with name ``<prop-name>``, as an alternative to the ``eprops``
-        parameter.
-    **kwargs
-        Any extra parameters are passed to :func:`~graph_tool.draw.cairo_draw`.
-
-    Notes
-    -----
-
-    The graph drawing can be panned by dragging with the middle mouse button
-    pressed. The graph may be zoomed by scrolling with the mouse wheel, or
-    equivalent (if the "shift" key is held, the vertex/edge sizes are scaled
-    accordingly). The layout may be rotated by dragging while holding the
-    "control" key. Pressing the "r" key centers and zooms the layout around the
-    graph.  By pressing the "a" key, the current translation, scaling and
-    rotation transformations are applied to the vertex positions themselves, and
-    the transformation matrix is reset (if this is never done, the given
-    position properties are never modified).
-
-    Individual vertices may be selected by pressing the left mouse button. The
-    currently selected vertex follows the mouse pointer. To stop the selection,
-    the right mouse button must be pressed. Alternatively, a group of vertices
-    may be selected by holding the "shift" button while the pointer is dragged
-    while pressing the left button. The selected vertices may be moved by
-    dragging the pointer with the left button pressed. They may be rotated by
-    holding the "control" key and scrolling with the mouse. If the key "z" is
-    pressed, the layout is zoomed to fit the selected vertices only.
-
-    If the key "s" is pressed, the dynamic spring-block layout is
-    activated. Vertices which are currently selected are not updated.
-
-    """
-
     def __init__(self, g, pos, vprops=None, eprops=None, vorder=None,
                  eorder=None, nodesfirst=False, update_layout=False,
                  layout_K=1., multilevel=False, display_props=None,
                  display_props_size=11, bg_color=None, layout_callback=None,
                  key_press_callback=None, **kwargs):
+        r"""Interactive GTK+ widget displaying a given graph.
+
+        Parameters
+        ----------
+        g : :class:`~graph_tool.Graph`
+            Graph to be drawn.
+        pos : :class:`~graph_tool.PropertyMap`
+            Vector-valued vertex property map containing the x and y coordinates of
+            the vertices.
+        vprops : dict (optional, default: ``None``)
+            Dictionary with the vertex properties. Individual properties may also be
+            given via the ``vertex_<prop-name>`` parameters, where ``<prop-name>`` is
+            the name of the property.
+        eprops : dict (optional, default: ``None``)
+            Dictionary with the vertex properties. Individual properties may also be
+            given via the ``edge_<prop-name>`` parameters, where ``<prop-name>`` is
+            the name of the property.
+        vorder : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+            If provided, defines the relative order in which the vertices are drawn.
+        eorder : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+            If provided, defines the relative order in which the edges are drawn.
+        nodesfirst : bool (optional, default: ``False``)
+            If ``True``, the vertices are drawn first, otherwise the edges are.
+        update_layout : bool (optional, default: ``True``)
+            If ``True``, the layout will be updated dynamically.
+        layout_K : float (optional, default: ``1.0``)
+            Parameter ``K`` passed to :func:`~graph_tool.draw.sfdp_layout`.
+        multilevel : bool (optional, default: ``False``)
+            Parameter ``multilevel`` passed to :func:`~graph_tool.draw.sfdp_layout`.
+        display_props : list of :class:`~graph_tool.PropertyMap` instances (optional, default: ``None``)
+            List of properties to be displayed when the mouse passes over a vertex.
+        display_props_size : float (optional, default: ``11``)
+            Font size used to display the vertex properties.
+        bg_color : str or sequence (optional, default: ``None``)
+            Background color. The default is white.
+        layout_callback : function (optional, default: ``Node``)
+            User-supplied callback to be called whenever the positions of the layout
+            have changed. It needs to have the following signature:
+
+            .. code-block::
+
+               def callback(g, picked, pos, vprops, eprops):
+                   ...
+
+            where ``g`` is the graph being drawn, ``picked`` is either a single
+            vertex or a boolean vertex property map representing the vertices
+            currently selected, and ``vprops`` and ``eprops`` are dictionaries with
+            the vertex and edge properties currently being used by the layout.
+        key_press_callback : function (optional, default: ``Node``)
+
+            User-supplied callback to be called whenever a key-press event has
+            happened. It needs to have the following signature:
+
+            .. code-block::
+
+               def callback(g, keyval, picked, pos, vprops, eprops):
+                   ...
+
+            where ``g`` is the graph being drawn, ``keyval`` is the key id,
+            ``picked`` is either a single vertex or a boolean vertex property map
+            representing the vertices currently selected, and ``vprops`` and
+            ``eprops`` are dictionaries with the vertex and edge properties
+            currently being used by the layout.
+        vertex_* : :class:`~graph_tool.PropertyMap` or arbitrary types (optional, default: ``None``)
+            Parameters following the pattern ``vertex_<prop-name>`` specify the
+            vertex property with name ``<prop-name>``, as an alternative to the
+            ``vprops`` parameter.
+        edge_* : :class:`~graph_tool.PropertyMap` or arbitrary types (optional, default: ``None``)
+            Parameters following the pattern ``edge_<prop-name>`` specify the edge
+            property with name ``<prop-name>``, as an alternative to the ``eprops``
+            parameter.
+        **kwargs
+            Any extra parameters are passed to :func:`~graph_tool.draw.cairo_draw`.
+
+        Notes
+        -----
+
+        The graph drawing can be panned by dragging with the middle mouse button
+        pressed. The graph may be zoomed by scrolling with the mouse wheel, or
+        equivalent (if the "shift" key is held, the vertex/edge sizes are scaled
+        accordingly). The layout may be rotated by dragging while holding the
+        "control" key. Pressing the "r" key centers and zooms the layout around the
+        graph.  By pressing the "a" key, the current translation, scaling and
+        rotation transformations are applied to the vertex positions themselves, and
+        the transformation matrix is reset (if this is never done, the given
+        position properties are never modified).
+
+        Individual vertices may be selected by pressing the left mouse button. The
+        currently selected vertex follows the mouse pointer. To stop the selection,
+        the right mouse button must be pressed. Alternatively, a group of vertices
+        may be selected by holding the "shift" button while the pointer is dragged
+        while pressing the left button. The selected vertices may be moved by
+        dragging the pointer with the left button pressed. They may be rotated by
+        holding the "control" key and scrolling with the mouse. If the key "z" is
+        pressed, the layout is zoomed to fit the selected vertices only.
+
+        If the key "s" is pressed, the dynamic spring-block layout is
+        activated. Vertices which are currently selected are not updated.
+
+        """
+
         Gtk.DrawingArea.__init__(self)
 
         vprops = {} if vprops is None else vprops
@@ -892,40 +892,40 @@ class GraphWidget(Gtk.DrawingArea):
 
 
 class GraphWindow(Gtk.Window):
-    r"""Interactive GTK+ window containing a :class:`~graph_tool.draw.GraphWidget`.
-
-    Parameters
-    ----------
-    g : :class:`~graph_tool.Graph`
-        Graph to be drawn.
-    pos : :class:`~graph_tool.PropertyMap`
-        Vector-valued vertex property map containing the x and y coordinates of
-        the vertices.
-    geometry : tuple
-        Widget geometry.
-    vprops : dict (optional, default: ``None``)
-        Dictionary with the vertex properties. Individual properties may also be
-        given via the ``vertex_<prop-name>`` parameters, where ``<prop-name>`` is
-        the name of the property.
-    eprops : dict (optional, default: ``None``)
-        Dictionary with the vertex properties. Individual properties may also be
-        given via the ``edge_<prop-name>`` parameters, where ``<prop-name>`` is
-        the name of the property.
-    vorder : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
-        If provided, defines the relative order in which the vertices are drawn.
-    eorder : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
-        If provided, defines the relative order in which the edges are drawn.
-    nodesfirst : bool (optional, default: ``False``)
-        If ``True``, the vertices are drawn first, otherwise the edges are.
-    update_layout : bool (optional, default: ``True``)
-        If ``True``, the layout will be updated dynamically.
-    **kwargs
-        Any extra parameters are passed to :class:`~graph_tool.draw.GraphWidget` and
-        :func:`~graph_tool.draw.cairo_draw`.
-    """
-
     def __init__(self, g, pos, geometry, vprops=None, eprops=None, vorder=None,
                  eorder=None, nodesfirst=False, update_layout=False, **kwargs):
+        r"""Interactive GTK+ window containing a :class:`~graph_tool.draw.GraphWidget`.
+
+        Parameters
+        ----------
+        g : :class:`~graph_tool.Graph`
+            Graph to be drawn.
+        pos : :class:`~graph_tool.PropertyMap`
+            Vector-valued vertex property map containing the x and y coordinates of
+            the vertices.
+        geometry : tuple
+            Widget geometry.
+        vprops : dict (optional, default: ``None``)
+            Dictionary with the vertex properties. Individual properties may also be
+            given via the ``vertex_<prop-name>`` parameters, where ``<prop-name>`` is
+            the name of the property.
+        eprops : dict (optional, default: ``None``)
+            Dictionary with the vertex properties. Individual properties may also be
+            given via the ``edge_<prop-name>`` parameters, where ``<prop-name>`` is
+            the name of the property.
+        vorder : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+            If provided, defines the relative order in which the vertices are drawn.
+        eorder : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+            If provided, defines the relative order in which the edges are drawn.
+        nodesfirst : bool (optional, default: ``False``)
+            If ``True``, the vertices are drawn first, otherwise the edges are.
+        update_layout : bool (optional, default: ``True``)
+            If ``True``, the layout will be updated dynamically.
+        **kwargs
+            Any extra parameters are passed to :class:`~graph_tool.draw.GraphWidget` and
+            :func:`~graph_tool.draw.cairo_draw`.
+        """
+
         Gtk.Window.__init__(self, title="graph-tool's interactive window™")
         icon = GdkPixbuf.Pixbuf.new_from_file('%s/graph-tool-logo.svg' %
                                               os.path.dirname(__file__))
