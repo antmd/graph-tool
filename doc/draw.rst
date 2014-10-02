@@ -27,8 +27,10 @@
     .. autofunction:: cairo_draw
     .. autofunction:: interactive_window
     .. autoclass::  GraphWidget
+       :show-inheritance:
        :members:
        :undoc-members:
     .. autoclass::  GraphWindow
+       :show-inheritance:
        :members:
        :undoc-members:

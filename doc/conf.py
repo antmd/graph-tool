@@ -28,6 +28,7 @@ extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest',
               'sphinx.ext.intersphinx', 'mathjax', 'sphinx.ext.autosummary',
               'sphinxext.numpydoc',
               'sphinx.ext.extlinks',
+              'sphinx.ext.linkcode'
               #'matplotlib.sphinxext.plot_directive'
               ]
 
@@ -226,3 +227,12 @@ autodoc_default_flags = ['members', 'undoc-members']
 numpydoc_show_class_members = False
 autodoc_docstring_signature = False
 autodoc_member_order = 'bysource'
+autoclass_content = 'both'
+
+def linkcode_resolve(domain, info):
+    if domain != 'py':
+        return None
+    if not info['module']:
+        return None
+    modname = info['module'].replace('.', '/')
+    return "https://git.skewed.de/count0/graph-tool/tree/master/src/%s/__init__.py" % modname
