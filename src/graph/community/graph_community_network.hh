@@ -280,19 +280,6 @@ struct get_vertex_community_property_sum
     }
 };
 
-struct get_vertex_community_property_norm
-{
-    template <class CommunityGraph, class VertexCountMap, class Vprop>
-    void operator()(const CommunityGraph& cg, VertexCountMap vertex_count,
-                    Vprop cvprop) const
-    {
-        typename graph_traits<CommunityGraph>::vertex_iterator v, v_end;
-        for (tie(v, v_end) = vertices(cg); v != v_end; ++v)
-            cvprop[*v] /= vertex_count[*v];
-    }
-};
-
-
 struct get_weighted_edge_property
 {
     template <class Graph, class EdgeWeightMap, class Eprop>
@@ -361,19 +348,6 @@ struct get_edge_community_property_sum
                 continue;
             ceprop[comm_edges[make_pair(cs, ct)]] += eprop[*ei];
         }
-    }
-};
-
-struct get_edge_community_property_norm
-{
-    template <class CommunityGraph, class EdgeCountMap,
-              class Eprop>
-    void operator()(const CommunityGraph& cg, EdgeCountMap edge_count,
-                    Eprop ceprop) const
-    {
-        typename graph_traits<CommunityGraph>::edge_iterator e, e_end;
-        for (tie(e, e_end) = edges(cg); e != e_end; ++e)
-            ceprop[*e] /= edge_count[*e];
     }
 };
 

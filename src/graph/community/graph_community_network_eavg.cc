@@ -109,12 +109,5 @@ void community_network_eavg(GraphInterface& gi, GraphInterface& cgi,
                        ceprop, eprop, self_loops);
         }
 
-        // norm summed values
-        run_action<graph_tool::detail::never_filtered>()
-            (cgi, std::bind(get_edge_community_property_norm(),
-                            placeholders::_1, placeholders::_2,
-                            placeholders::_3),
-             eweight_properties(), eprops_t())
-            (edge_count, ceprop);
     }
 }

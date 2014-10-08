@@ -2453,10 +2453,10 @@ def condensation_graph(g, prop, vweight=None, eweight=None, avprops=None,
     eweight : :class:`~graph_tool.PropertyMap` (optional, default: None)
         Edge property map with the optional edge weights.
     avprops : list of :class:`~graph_tool.PropertyMap` (optional, default: None)
-        If provided, the average value of each property map in this list for
+        If provided, the sum of each property map in this list for
         each vertex in the condensed graph will be computed and returned.
     aeprops : list of :class:`~graph_tool.PropertyMap` (optional, default: None)
-        If provided, the average value of each property map in this list for
+        If provided, the sum of each property map in this list for
         each edge in the condensed graph will be computed and returned.
     self_loops : ``bool`` (optional, default: ``False``)
         If ``True``, self-loops due to intra-block edges are also included in
@@ -2473,10 +2473,10 @@ def condensation_graph(g, prop, vweight=None, eweight=None, avprops=None,
     ecount : :class:`~graph_tool.PropertyMap`
         An edge property map with the inter-community edge count for each edge.
     va : list of :class:`~graph_tool.PropertyMap`
-        A list of vertex property maps with average values of the properties
+        A list of vertex property maps with summed values of the properties
         passed via the ``avprops`` parameter.
     ea : list of :class:`~graph_tool.PropertyMap`
-        A list of edge property maps with average values of the properties
+        A list of edge property maps with summed values of the properties
         passed via the ``avprops`` parameter.
 
     See Also
@@ -2566,7 +2566,7 @@ def condensation_graph(g, prop, vweight=None, eweight=None, avprops=None,
         if p is g.vertex_index:
             p = p.copy(value_type="int")
         if "string" in p.value_type():
-            raise ValueError("Cannot compute average of string properties!")
+            raise ValueError("Cannot compute sum of string properties!")
         temp = g.new_vertex_property(p.value_type())
         cp = gp.new_vertex_property(p.value_type())
         avp.append((_prop("v", g, p), _prop("v", g, temp), _prop("v", g, cp)))
@@ -2580,7 +2580,7 @@ def condensation_graph(g, prop, vweight=None, eweight=None, avprops=None,
         if p is g.edge_index:
             p = p.copy(value_type="int")
         if "string" in p.value_type():
-            raise ValueError("Cannot compute average of string properties!")
+            raise ValueError("Cannot compute sum of string properties!")
         temp = g.new_edge_property(p.value_type())
         cp = gp.new_edge_property(p.value_type())
         aep.append((_prop("e", g, p), _prop("e", g, temp), _prop("e", g, cp)))

@@ -127,12 +127,5 @@ void community_network_vavg(GraphInterface& gi, GraphInterface& cgi,
                  writable_vertex_properties(), vprops_t())
                 (community_property, vprop);
         }
-
-        // norm summed values
-        run_action<graph_tool::detail::never_filtered>()
-            (cgi, std::bind(get_vertex_community_property_norm(),
-                            placeholders::_1, placeholders::_2, placeholders::_3),
-             vweight_properties(), vprops_t())
-            (vertex_count, cvprop);
     }
 }
