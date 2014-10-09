@@ -2144,7 +2144,10 @@ class Graph(object):
 
     def __getstate__(self):
         state = dict()
-        sio = BytesIO()
+        if sys.version_info < (3,):
+            sio = StringIO()
+        else:
+            sio = BytesIO()
         stream = gzip.open(sio, mode="wb")
         self.save(stream, "gt")
         stream.close()
@@ -2156,11 +2159,17 @@ class Graph(object):
         blob = state["blob"]
         if blob != "":
             try:
-                sio = BytesIO(blob)
+                if sys.version_info < (3,):
+                    sio = StringIO(blob)
+                else:
+                    sio = BytesIO(blob)
                 stream = gzip.open(sio, mode="rb")
                 self.load(stream, "gt")
             except OSError:
-                sio = BytesIO(blob)
+                if sys.version_info < (3,):
+                    sio = StringIO(blob)
+                else:
+                    sio = BytesIO(blob)
                 stream = gzip.open(sio, mode="rb")
                 self.load(stream, "xml")
 
