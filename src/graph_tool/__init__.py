@@ -109,6 +109,7 @@ import re
 import gzip
 import weakref
 import copy
+import textwrap
 
 from io import BytesIO, StringIO
 from .decorators import _wraps, _require, _attrs, _limit_args
@@ -251,6 +252,13 @@ def show_config():
     print("graph filtering:", libcore.graph_filtering_enabled())
     print("openmp:", libcore.openmp_enabled())
     print("uname:", " ".join(os.uname()))
+
+def terminal_size():
+    import fcntl, termios, struct
+    h, w, hp, wp = struct.unpack('HHHH',
+        fcntl.ioctl(0, termios.TIOCGWINSZ,
+        struct.pack('HHHH', 0, 0, 0, 0)))
+    return w, h
 
 ################################################################################
 # Property Maps
@@ -443,8 +451,13 @@ class PropertyMap(object):
             g = "a non-existent graph"
         else:
             g = "Graph 0x%x" % id(g)
+        try:
+            vals = ", with values:\n%s" % str(self.fa)
+        except ValueError:
+            vals = ""
         return ("<PropertyMap object with key type '%s' and value type '%s',"
-                + " for %s, at 0x%x>") % (k, self.value_type(), g, id(self))
+                + " for %s, at 0x%x%s>") % (k, self.value_type(), g, id(self),
+                                            vals)
 
     def copy(self, value_type=None):
         """Return a copy of the property map. If ``value_type`` is specified,
@@ -1628,8 +1641,17 @@ class Graph(object):
 
         for k, v in self.__properties.items():
             if k[0] == "g":
-                print("%%-%ds (graph)   (type: %%s, val: %%s)" % w % \
-                      (k[1], v.value_type(), str(v[self])))
+                pref="%%-%ds (graph)   (type: %%s, val: " % w % \
+                      (k[1], v.value_type())
+                val = str(v[self])
+                if len(val) > 1000:
+                    val = val[:1000] + "..."
+                tw = terminal_size()[0]
+                val = textwrap.indent(textwrap.fill(val,
+                                                    width=max(tw - len(pref), 1)),
+                                      " " * len(pref))
+                val = val[len(pref):]
+                print("%s%s)" % (pref, val))
         for k, v in self.__properties.items():
             if k[0] == "v":
                 print("%%-%ds (vertex)  (type: %%s)" % w % (k[1],
