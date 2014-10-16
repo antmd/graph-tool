@@ -2116,6 +2116,11 @@ class Graph(object):
                 pmap._PropertyMap__map = new_pmap._PropertyMap__map
                 del self.properties[(pmap.key_type(), pname)]
 
+            # update edge filter if set
+            efilt = self.get_edge_filter()
+            if efilt[0] is not None:
+                self.set_edge_filter(efilt[0], efilt[1])
+
     def purge_edges(self):
         """Remove all edges of the graph which are currently being filtered out,
         and return it to the unfiltered state. This operation is not reversible."""
