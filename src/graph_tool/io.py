@@ -23,6 +23,7 @@ from __future__ import division, absolute_import, print_function
 import pickle
 import base64
 import atexit
+import sys
 from io import BytesIO
 from . import libgraph_tool_core
 
@@ -70,7 +71,9 @@ def pickler(stream, obj):
 def unpickler(stream):
     data = stream.read()
     sstream = BytesIO(data)
-    return pickle.load(sstream)
+    if sys.version_info < (3,):
+        return pickle.load(sstream)
+    return pickle.load(sstream, encoding="bytes")
 
 libgraph_tool_core.set_pickler(pickler)
 libgraph_tool_core.set_unpickler(unpickler)
