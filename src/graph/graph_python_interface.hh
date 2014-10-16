@@ -272,16 +272,6 @@ public:
         return _v;
     }
 
-    bool operator==(const PythonVertex& other) const
-    {
-        return other._v == _v;
-    }
-
-    bool operator!=(const PythonVertex& other) const
-    {
-        return other._v != _v;
-    }
-
 private:
     boost::python::object _g;
     GraphInterface::vertex_t _v;
@@ -401,16 +391,6 @@ public:
         CheckValid();
         GraphInterface& gi = boost::python::extract<GraphInterface&>(_g().attr("_Graph__graph"));
         return std::hash<size_t>()(gi._edge_index[_e]);
-    }
-
-    bool operator==(const PythonEdge& other) const
-    {
-        return other._e == _e;
-    }
-
-    bool operator!=(const PythonEdge& other) const
-    {
-        return other._e != _e;
     }
 
 private:

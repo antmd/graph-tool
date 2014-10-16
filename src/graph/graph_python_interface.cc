@@ -306,8 +306,6 @@ struct export_python_interface
                  "Return whether the edge is valid.")
             .def("get_graph", &PythonEdge<Graph>::GetGraph,
                  "Return the graph to which the edge belongs.")
-            .def(python::self == python::self)
-            .def(python::self != python::self)
             .def("__str__", &PythonEdge<Graph>::GetString)
             .def("__hash__", &PythonEdge<Graph>::GetHash);
 
@@ -457,8 +455,6 @@ void export_python_interface()
              "Return whether the vertex is valid.")
         .def("get_graph", &PythonVertex::GetGraph,
              "Return the graph to which the vertex belongs.")
-        .def(boost::python::self == boost::python::self)
-        .def(boost::python::self != boost::python::self)
         .def("__str__", &PythonVertex::GetString)
         .def("__int__", &PythonVertex::GetIndex)
         .def("__hash__", &PythonVertex::GetHash);

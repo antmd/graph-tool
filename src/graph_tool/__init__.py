@@ -2388,6 +2388,13 @@ def _vertex_repr(self):
     return "<Vertex object with index '%d' at 0x%x>" % (int(self), id(self))
 Vertex.__repr__ = _vertex_repr
 
+Vertex.__eq__ = lambda v1, v2 : int(v1) == int(v2)
+Vertex.__ne__ = lambda v1, v2 : int(v1) != int(v2)
+Vertex.__lt__ = lambda v1, v2 : int(v1) < int(v2)
+Vertex.__gt__ = lambda v1, v2 : int(v1) > int(v2)
+Vertex.__le__ = lambda v1, v2 : int(v1) <= int(v2)
+Vertex.__ge__ = lambda v1, v2 : int(v1) >= int(v2)
+
 _edge_doc = """Edge descriptor.
 
 This class represents an edge in a :class:`~graph_tool.Graph`.
@@ -2396,6 +2403,21 @@ This class represents an edge in a :class:`~graph_tool.Graph`.
 tuple, which contains the source and target vertices.
 """
 
+def _edge_cmp(e1, e2):
+    te1, te2 = tuple(e1), tuple(e2)
+    g1 = e1.get_graph()
+    g2 = e2.get_graph()
+    if not g1.is_directed():
+        te1 = sorted(te1)
+    if not g2.is_directed():
+        te2 = sorted(te2)
+    te1 = (te1, g1.edge_index[e1])
+    te2 = (te2, g2.edge_index[e2])
+    if te1 < te2:
+        return -1
+    if te1 > te2:
+        return 1
+    return 0
 
 def _edge_iter(self):
     """Iterate over the source and target"""
@@ -2435,6 +2457,13 @@ def init_edge_classes():
                     e.__class__.__repr__ = _edge_repr
                     e.__class__.__iter__ = _edge_iter
                     e.__class__.__doc__ = _edge_doc
+
+                    e.__class__.__eq__ = lambda e1, e2 : _edge_cmp(e1, e2) == 0
+                    e.__class__.__ne__ = lambda e1, e2 : _edge_cmp(e1, e2) != 0
+                    e.__class__.__lt__ = lambda e1, e2 : _edge_cmp(e1, e2) < 0
+                    e.__class__.__gt__ = lambda e1, e2 : _edge_cmp(e1, e2) > 0
+                    e.__class__.__le__ = lambda e1, e2 : _edge_cmp(e1, e2) <= 0
+                    e.__class__.__ge__ = lambda e1, e2 : _edge_cmp(e1, e2) >= 0
 
 init_edge_classes()
 
