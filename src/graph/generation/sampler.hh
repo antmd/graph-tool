@@ -109,7 +109,7 @@ private:
 // uniform sampling from containers
 
 template <class Container, class RNG>
-typename Container::value_type& uniform_sample(Container& v, RNG& rng)
+const typename Container::value_type& uniform_sample(const Container& v, RNG& rng)
 {
     std::uniform_int_distribution<size_t> i_rand(0, v.size() - 1);
     return v[i_rand(rng)];
