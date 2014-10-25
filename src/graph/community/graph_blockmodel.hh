@@ -297,17 +297,6 @@ struct entropy_parallel_edges
             }
 
             S += get_parallel_neighbours_entropy(v, us, g, get_node);
-
-            if (is_directed::apply<Graph>::type::value)
-            {
-                us.clear();
-                for (auto e : in_edges_range(v, g))
-                {
-                    auto u = source(e, g);
-                    us[u] += weight[e];
-                }
-                S += get_parallel_neighbours_entropy(v, us, g, get_node);
-            }
         }
     }
 };
