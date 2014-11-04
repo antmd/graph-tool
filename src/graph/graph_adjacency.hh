@@ -917,16 +917,6 @@ get(vertex_index_t, const adj_list<Vertex>&)
     return identity_property_map();
 }
 
-struct get_edge_index
-{
-    typedef size_t result_type;
-    template <class Vertex>
-    size_t operator()(const typename adj_list<Vertex>::edge_descriptor& e) const
-    {
-        return e.idx;
-    }
-};
-
 template<class Vertex>
 class adj_edge_index_property_map:
     public put_get_helper<Vertex, adj_edge_index_property_map<Vertex> >
