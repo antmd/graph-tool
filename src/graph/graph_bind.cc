@@ -128,9 +128,12 @@ struct export_vector_types
     template <class ValueType>
     void operator()(ValueType) const
     {
-        string type_name = get_type_name<>()(typeid(ValueType));
-        if (type_name == "long double")
-            type_name = "long_double";
+        string type_name;
+        if (std::is_same<ValueType, size_t>::value)
+            type_name = "size_t";
+        else
+            type_name = get_type_name<>()(typeid(ValueType));
+        std::replace(type_name.begin(), type_name.end(), ' ', '_');
         string name = "Vector_" + type_name;
         class_<vector<ValueType> > vc(name.c_str());
         vc.def(vector_indexing_suite<vector<ValueType> >())
@@ -424,12 +427,19 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
     def("raise_error", &raise_error);
     def("get_property_types", &get_property_types);
     class_<boost::any>("any")
-        .def("empty", &boost::any::empty);
+        .def("empty", &boost::any::empty)
+        .def("type",  &boost::any::type,
+             return_value_policy<reference_existing_object>());
+    class_<std::type_info, boost::noncopyable>("type_info", no_init)
+        .def("name", &std::type_info::name)
+        .def("hash_code", &std::type_info::hash_code);
+    def("gcc_demangle", &python::detail::gcc_demangle);
 
     def("graph_filtering_enabled", &graph_filtering_enabled);
     export_openmp();
 
     boost::mpl::for_each<boost::mpl::push_back<scalar_types,string>::type>(export_vector_types());
+    boost::mpl::for_each<boost::mpl::vector<uint64_t>>(export_vector_types());
 
     class_<GraphInterface>("GraphInterface", init<>())
         .def(init<GraphInterface,bool,boost::python::object,

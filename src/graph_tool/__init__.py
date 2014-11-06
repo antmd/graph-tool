@@ -123,11 +123,11 @@ __all__ = ["Graph", "GraphView", "Vertex", "Edge", "Vector_bool",
            "Vector_double", "Vector_long_double", "Vector_string",
            "Vector_size_t", "value_types", "load_graph", "PropertyMap",
            "group_vector_property", "ungroup_vector_property",
-           "infect_vertex_property", "edge_endpoint_property", "perfect_prop_hash",
-           "seed_rng", "show_config", "PropertyArray", "openmp_enabled",
-           "openmp_get_num_threads", "openmp_set_num_threads", "openmp_get_schedule",
-           "openmp_set_schedule", "__author__", "__copyright__", "__URL__",
-           "__version__"]
+           "infect_vertex_property", "edge_endpoint_property",
+           "perfect_prop_hash", "seed_rng", "show_config", "PropertyArray",
+           "openmp_enabled", "openmp_get_num_threads", "openmp_set_num_threads",
+           "openmp_get_schedule", "openmp_set_schedule", "__author__",
+           "__copyright__", "__URL__", "__version__"]
 
 # this is rather pointless, but it works around a sphinx bug
 graph_tool = sys.modules[__name__]
@@ -1124,7 +1124,8 @@ class PropertyDict(dict):
 
 from .libgraph_tool_core import Vertex, EdgeBase, Vector_bool, Vector_int16_t, \
     Vector_int32_t, Vector_int64_t, Vector_double, Vector_long_double, \
-    Vector_string, new_vertex_property, new_edge_property, new_graph_property
+    Vector_string, Vector_size_t, new_vertex_property, new_edge_property, \
+    new_graph_property
 
 
 class Graph(object):
