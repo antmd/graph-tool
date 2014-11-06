@@ -322,6 +322,8 @@ class GraphWidget(Gtk.DrawingArea):
 
     def cleanup(self):
         """Cleanup callbacks."""
+        if gobject is None:
+            return
         if self.layout_callback_id is not None:
             ret = gobject.source_remove(self.layout_callback_id)
             if not ret:

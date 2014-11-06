@@ -195,6 +195,15 @@ istream& operator>>(istream& in, edge_marker_t& c)
     return in;
 }
 
+namespace boost
+{
+template <>
+string lexical_cast<string,python::object>(const python::object& val)
+{
+    return python::extract<string>(val);
+}
+}
+
 template <class T1, class T2>
 struct specific_convert;
 
@@ -213,7 +222,26 @@ struct Converter
 
     Type1 do_convert(const Type2& v, std::false_type) const
     {
-        return specific_convert<Type1,Type2>()(v);
+        try
+        {
+            return specific_convert<Type1,Type2>()(v);
+        }
+        catch (bad_lexical_cast&)
+        {
+            string name1 = python::detail::gcc_demangle(typeid(Type1).name());
+            string name2 = python::detail::gcc_demangle(typeid(Type2).name());
+            string val_name;
+            try
+            {
+                val_name = lexical_cast<string>(v);
+            }
+            catch (bad_lexical_cast)
+            {
+                val_name = "<no lexical cast available>";
+            }
+            throw GraphException("error converting from type '" + name2 +
+                                 "' to type '" + name1 + "', val: " + val_name);
+        }
     }
 
     template <class T1, class T2, class Enable = void>
