@@ -1720,34 +1720,51 @@ class Graph(object):
 
     # Property map creation
 
-    def new_property(self, key_type, value_type):
+    def new_property(self, key_type, value_type, vals=None):
         """Create a new (uninitialized) vertex property map of key type
         ``key_type`` (``v``, ``e`` or ``g``), value type ``value_type``, and
-        return it.
+        return it. If provided, the values will be initialized by ``vals``,
+        which should be a sequence.
         """
         if key_type == "v" or key_type == "vertex":
-            return self.new_vertex_property(value_type)
+            return self.new_vertex_property(value_type, vals)
         if key_type == "e" or key_type == "edge":
-            return self.new_edge_property(value_type)
+            return self.new_edge_property(value_type, vals)
         if key_type == "g" or key_type == "graph":
-            return self.new_graph_property(value_type)
+            return self.new_graph_property(value_type, vals)
         raise ValueError("unknown key type: " + key_type)
 
-    def new_vertex_property(self, value_type):
-        """Create a new (uninitialized) vertex property map of type
-        ``value_type``, and return it."""
-        return PropertyMap(new_vertex_property(_type_alias(value_type),
+    def new_vertex_property(self, value_type, vals=None):
+        """Create a new (uninitialized) vertex property map of type ``value_type``,
+        and return it. If provided, the values will be initialized by ``vals``,
+        which should be a sequence."""
+        prop = PropertyMap(new_vertex_property(_type_alias(value_type),
                                                self.__graph.GetVertexIndex(),
                                                libcore.any()),
                            self, "v")
+        if vals is not None:
+            try:
+                prop.a = vals
+            except ValueError:
+                for v, x in zip(self.vertices(), vals):
+                    prop[v] = x
+        return prop
 
-    def new_edge_property(self, value_type):
+    def new_edge_property(self, value_type, vals=None):
         """Create a new (uninitialized) edge property map of type
-        ``value_type``, and return it."""
-        return PropertyMap(new_edge_property(_type_alias(value_type),
+        ``value_type``, and return it. If provided, the values will be
+        initialized by ``vals``, which should be a sequence."""
+        prop = PropertyMap(new_edge_property(_type_alias(value_type),
                                              self.__graph.GetEdgeIndex(),
                                              libcore.any()),
                            self, "e")
+        if vals is not None:
+            try:
+                prop.a = vals
+            except ValueError:
+                for e, x in zip(self.edges(), vals):
+                    prop[e] = x
+        return prop
 
     def new_graph_property(self, value_type, val=None):
         """Create a new graph property map of type ``value_type``, and return
