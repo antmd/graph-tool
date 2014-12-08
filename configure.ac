@@ -254,12 +254,11 @@ dnl Checks for header files.
 dnl numpy
 AX_PYTHON_MODULE(numpy, fatal)
 dnl [NUMPY_DIR="${PYTHON_SITE_PKG}/numpy"]
-[NUMPY_DIR=`$PYTHON -c "import os, numpy; print(os.path.dirname(numpy.__file__))"`]
+[NUMPY_DIR=`$PYTHON -c "import numpy; print(numpy.get_include())"`]
 AC_ARG_WITH([numpy], [AS_HELP_STRING([--with-numpy=DIR],[directory where numpy is installed
                       [default=auto-detected] ])],
-        NUMPY_DIR=$withval)
-[NUMPY_DIR="${NUMPY_DIR}/core/include/numpy"]
-AC_CHECK_HEADER([${NUMPY_DIR}/arrayobject.h],
+            NUMPY_DIR=$withval)
+AC_CHECK_HEADER([${NUMPY_DIR}/numpy/arrayobject.h],
                 [CPPFLAGS="${CPPFLAGS} -I${NUMPY_DIR}"],
                 [AC_MSG_ERROR([Numpy extension header not found])],
                 [#include "Python.h"])
