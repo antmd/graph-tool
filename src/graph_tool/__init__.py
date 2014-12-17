@@ -110,8 +110,11 @@ import gzip
 import weakref
 import copy
 import textwrap
+import io
 
-from io import BytesIO, StringIO
+if sys.version_info < (3,):
+    import StringIO
+
 from .decorators import _wraps, _require, _attrs, _limit_args
 from inspect import ismethod
 
@@ -2189,10 +2192,10 @@ class Graph(object):
     def __getstate__(self):
         state = dict()
         if sys.version_info < (3,):
-            sio = StringIO()
+            sio = StringIO.StringIO()
         else:
-            sio = BytesIO()
-        stream = gzip.open(sio, mode="wb")
+            sio = io.BytesIO()
+        stream = gzip.GzipFile(fileobj=sio, mode="wb")
         self.save(stream, "gt")
         stream.close()
         state["blob"] = sio.getvalue()
@@ -2204,17 +2207,17 @@ class Graph(object):
         if blob != "":
             try:
                 if sys.version_info < (3,):
-                    sio = StringIO(blob)
+                    sio = StringIO.StringIO(blob)
                 else:
-                    sio = BytesIO(blob)
-                stream = gzip.open(sio, mode="rb")
+                    sio = io.BytesIO(blob)
+                stream = gzip.GzipFile(fileobj=sio, mode="rb")
                 self.load(stream, "gt")
             except OSError:
                 if sys.version_info < (3,):
-                    sio = StringIO(blob)
+                    sio = StringIO.StringIO(blob)
                 else:
-                    sio = BytesIO(blob)
-                stream = gzip.open(sio, mode="rb")
+                    sio = io.BytesIO(blob)
+                stream = gzip.GzipFile(fileobj=sio, mode="rb")
                 self.load(stream, "xml")
 
 
