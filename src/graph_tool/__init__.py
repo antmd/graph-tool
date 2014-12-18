@@ -1740,7 +1740,7 @@ class Graph(object):
     def new_vertex_property(self, value_type, vals=None):
         """Create a new (uninitialized) vertex property map of type ``value_type``,
         and return it. If provided, the values will be initialized by ``vals``,
-        which should be a sequence."""
+        which should be either a sequence or a single value."""
         prop = PropertyMap(new_vertex_property(_type_alias(value_type),
                                                self.__graph.GetVertexIndex(),
                                                libcore.any()),
@@ -1756,7 +1756,7 @@ class Graph(object):
     def new_edge_property(self, value_type, vals=None):
         """Create a new (uninitialized) edge property map of type
         ``value_type``, and return it. If provided, the values will be
-        initialized by ``vals``, which should be a sequence."""
+        initialized by ``vals``, which should be a sequence or a single value."""
         prop = PropertyMap(new_edge_property(_type_alias(value_type),
                                              self.__graph.GetEdgeIndex(),
                                              libcore.any()),
