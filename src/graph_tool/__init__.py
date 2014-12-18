@@ -1859,8 +1859,9 @@ class Graph(object):
 
         """
 
-        if type(file_name) == str:
+        if isinstance(file_name, str):
             file_name = os.path.expanduser(file_name)
+            f = open(file_name) # throw the appropriate exception, if not found
         if fmt == 'auto' and isinstance(file_name, str):
             fmt = self.__get_file_format(file_name)
         elif fmt == "auto":
@@ -1957,6 +1958,9 @@ class Graph(object):
                  self.__properties.items()]
 
         if isinstance(file_name, str):
+            f = open(file_name, "w") # throw the appropriate exception, if
+                                     # unable to open
+            f.close()
             u.__graph.WriteToFile(file_name, None, fmt, props)
         else:
             u.__graph.WriteToFile("", file_name, fmt, props)
