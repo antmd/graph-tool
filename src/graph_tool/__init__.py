@@ -1360,12 +1360,15 @@ class Graph(object):
         ``i``-th vertex is returned (which can differ from the vertex with index
         ``i`` in case of filtered graphs). """
         vfilt = self.get_vertex_filter()
+        if vfilt[0] is None or not use_index:
+            return libcore.get_vertex(weakref.ref(self), int(i))
         try:
-            if use_index:
-                self.set_vertex_filter(None)
+            self.set_vertex_filter(None)
             v = libcore.get_vertex(weakref.ref(self), int(i))
         finally:
             self.set_vertex_filter(vfilt[0], vfilt[1])
+        if not v.is_valid():
+            return v
         if vfilt[0] is not None and vfilt[0][v] == vfilt[1]:
             return None
         return v
