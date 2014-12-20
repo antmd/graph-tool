@@ -44,13 +44,15 @@ AC_MSG_CHECKING(whether to enable debug info...)
 AC_ARG_ENABLE([debug], [AS_HELP_STRING([--enable-debug],[compile debug information [default=disabled] ])],
         if test $enableval = yes; then
            [AC_DEFINE([DEBUG], 1, [compile debug info])]
-           [CXXFLAGS=" ${CXXFLAGS} -ggdb3"]
+           [CXXFLAGS="${CXXFLAGS} -ggdb3"]
            [AC_MSG_RESULT(yes)] 
         else
+           [CXXFLAGS="${CXXFLAGS} -DNDEBUG"]
            [AC_MSG_RESULT(no)]
         fi
-	,
-	[AC_MSG_RESULT(no)]
+        ,
+        [CXXFLAGS="${CXXFLAGS} -DNDEBUG"]
+        [AC_MSG_RESULT(no)]
         )
 
 dnl enable c++11
