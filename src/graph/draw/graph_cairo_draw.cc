@@ -338,8 +338,10 @@ struct Converter
         specific_convert<double, T2> c;
         color_t operator()(const vector<T2>& cv) const
         {
+            if (cv.size() < 3)
+                return std::make_tuple(0., 0., 0., 0.);
             if (cv.size() < 4)
-                throw bad_lexical_cast();
+                return std::make_tuple(c(cv[0]), c(cv[1]), c(cv[2]), 1.);
             return std::make_tuple(c(cv[0]), c(cv[1]), c(cv[2]), c(cv[3]));
         }
     };
@@ -865,6 +867,23 @@ public:
             _attrs.template get<vector<double> >(EDGE_CONTROL_POINTS);
         vector<double> gradient =
             _attrs.template get<vector<double> >(EDGE_GRADIENT);
+        if (gradient.size() == 1)
+        {
+            auto e_color = _attrs.template get<color_t>(EDGE_COLOR);
+            auto s_color = _s._attrs.template get<color_t>(VERTEX_FILL_COLOR);
+            auto t_color = _t._attrs.template get<color_t>(VERTEX_FILL_COLOR);
+            gradient.resize(10);
+            gradient[0] = 0;
+            gradient[1] = get<0>(s_color);
+            gradient[2] = get<1>(s_color);
+            gradient[3] = get<2>(s_color);
+            gradient[4] = get<3>(e_color);
+            gradient[5] = 1;
+            gradient[6] = get<0>(t_color);
+            gradient[7] = get<1>(t_color);
+            gradient[8] = get<2>(t_color);
+            gradient[9] = get<3>(e_color);
+        }
         bool has_gradient = gradient.size() >= 2;
 
         edge_marker_t start_marker = _attrs.template get<edge_marker_t>(EDGE_START_MARKER);
