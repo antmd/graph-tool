@@ -25,6 +25,7 @@ if sys.version_info < (3,):
 
 import os
 import warnings
+import numpy
 
 try:
     import cairo
@@ -235,6 +236,23 @@ def surface_from_prop(surface):
 
     raise ValueError("Invalid value for attribute surface: " + repr(surface))
 
+def centered_rotation(g, pos, text_pos=True):
+    x, y = ungroup_vector_property(pos, [0, 1])
+    cm = (x.fa.mean(), y.fa.mean())
+    dx = x.fa - cm[0]
+    dy = y.fa - cm[0]
+    angle = g.new_vertex_property("double")
+    angle.fa = numpy.arctan2(dy, dx)
+    pi = numpy.pi
+    angle.fa += 2 * pi
+    angle.fa %= 2 * pi
+    if text_pos:
+        idx = (angle.a > pi / 2 ) * (angle.a < 3 * pi / 2)
+        tpos = g.new_vertex_property("double")
+        angle.a[idx] += pi
+        tpos.a[idx] = pi
+        return angle, tpos
+    return angle
 
 def _convert(attr, val, cmap):
     if attr == vertex_attrs.shape:
@@ -502,6 +520,11 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
     if g.is_directed() and "end_marker" not in eprops:
         eprops["end_marker"] = "arrow"
 
+    if vprops.get("text_position", None) == "centered":
+        angle, tpos = centered_rotation(g, pos, text_pos=True)
+        vprops["text_position"] = tpos
+        vprops["text_rotation"] = angle
+
     vattrs, vdefaults = _attrs(vprops, "v", g, vcmap)
     eattrs, edefaults = _attrs(eprops, "e", g, ecmap)
     vdefs = _attrs(_vdefaults, "v", g, vcmap)[1]
@@ -514,7 +537,6 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
             parallel_distance = _defaults
         eprops["control_points"] = position_parallel_edges(g, pos, loop_angle,
                                                            parallel_distance)
-
     g = GraphView(g, directed=True)
     libgraph_tool_draw.cairo_draw(g._Graph__graph, _prop("v", g, pos),
                                   _prop("v", g, vorder), _prop("e", g, eorder),
@@ -544,7 +566,10 @@ def auto_colors(g, bg, pos, back):
         if isinstance(pos, PropertyMap):
             p = pos[v]
         else:
-            p = pos
+            if pos == "centered":
+                p = 0
+            else:
+                p = pos
         if p < 0:
             c[v] = color_contrast(bgc)
         else:
@@ -675,13 +700,15 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         |               | fill_color to maximize contrast.                  |                        |                                  |
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
         | text_position | Position of the text relative to the vertex.      | ``float`` or ``int``   | ``-1``                           |
-        |               | If the passed value is positive, it will          |                        |                                  |
+        |               | If the passed value is positive, it will          |  or ``"centered"``     |                                  |
         |               | correspond to an angle in radians, which will     |                        |                                  |
         |               | determine where the text will be placed outside   |                        |                                  |
         |               | the vertex. If the value is negative, the text    |                        |                                  |
         |               | will be placed inside the vertex. If the value is |                        |                                  |
         |               | ``-1``, the vertex size will be automatically     |                        |                                  |
-        |               | increased to accommodate the text.                |                        |                                  |
+        |               | increased to accommodate the text. The special    |                        |                                  |
+        |               | value ``"centered"`` positions the texts rotated  |                        |                                  |
+        |               | radially around the center of mass.               |                        |                                  |
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
         | text_offset   | Text position offset.                             | list of ``float``      | ``[0.0, 0.0]``                   |
         +---------------+---------------------------------------------------+------------------------+----------------------------------+
