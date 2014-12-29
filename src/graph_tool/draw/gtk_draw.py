@@ -363,8 +363,8 @@ class GraphWidget(Gtk.DrawingArea):
                         (pos_temp[1].fa - ps[1].fa) ** 2).mean()
 
         if self.layout_user_callback is not None:
-            self.layout_user_callback(self.g, self.picked, self.pos, self.vprops,
-                                      self.eprops)
+            self.layout_user_callback(self, self.g, self.picked, self.pos,
+                                      self.vprops, self.eprops)
 
         if delta > self.epsilon:
             return True
@@ -702,8 +702,9 @@ class GraphWidget(Gtk.DrawingArea):
 
             if self.moved_picked:
                 if self.layout_user_callback is not None:
-                    self.layout_user_callback(self.g, self.picked, self.pos,
-                                              self.vprops, self.eprops)
+                    self.layout_user_callback(self, self.g, self.picked,
+                                              self.pos, self.vprops,
+                                              self.eprops)
                 self.moved_picked = False
                 self.regenerate_surface(timeout=100)
                 self.queue_draw()
@@ -870,8 +871,9 @@ class GraphWidget(Gtk.DrawingArea):
         #print event.keyval
 
         if self.key_press_user_callback is not None:
-            self.key_press_user_callback(self.g, event.keyval, self.picked,
-                                         self.pos, self.vprops, self.eprops)
+            self.key_press_user_callback(self, self.g, event.keyval,
+                                         self.picked, self.pos, self.vprops,
+                                         self.eprops)
 
         if event.keyval == 65507: # Control_L
             if self.moved_picked:
