@@ -1454,9 +1454,7 @@ class Graph(object):
         self.__check_perms("del_vertex")
         vertex = self.vertex(int(vertex))
         index = self.vertex_index[vertex]
-
-        u = GraphView(self, skip_properties=True, skip_vfilt=True)
-        back = u.num_vertices() - 1
+        back = self.__graph.GetNumberOfVertices(False) - 1
 
         # move / shift all known property maps
         if index != back:
@@ -2114,7 +2112,7 @@ class Graph(object):
 
         """
         if in_place:
-            old_indexes = self.vertex_index.copy("int32_t")
+            old_indexes = self.vertex_index.copy("int64_t")
             self.__graph.PurgeVertices(_prop("v", self, old_indexes))
             self.set_vertex_filter(None)
             for pmap in self.__known_properties.values():
