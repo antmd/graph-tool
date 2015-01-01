@@ -654,7 +654,7 @@ def topological_sort(g):
     Notes
     -----
     The topological sort algorithm creates a linear ordering of the vertices
-    such that if edge (u,v) appears in the graph, then v comes before u in the
+    such that if edge (u,v) appears in the graph, then u comes before v in the
     ordering. The graph must be a directed acyclic graph (DAG).
 
     The time complexity is :math:`O(V + E)`.
@@ -673,8 +673,8 @@ def topological_sort(g):
     >>> g.set_edge_filter(tree)
     >>> sort = gt.topological_sort(g)
     >>> print(sort)
-    [ 8  7  0  1 25  2  3 13 12 19  4  5  6  9 10 11 14 15 16 17 18 20 21 22 24
-     23 26 27 28 29]
+    [29, 28, 27, 26, 23, 24, 22, 21, 20, 18, 17, 16, 15, 14, 11, 10,  9,
+     6,  5,  4, 19, 12, 13,  3,  2, 25,  1,  0,  7,  8]
 
     References
     ----------
@@ -688,7 +688,7 @@ def topological_sort(g):
         topological_sort(g._Graph__graph, topological_order)
     if not is_DAG:
         raise ValueError("Graph is not a directed acylic graph (DAG).");
-    return topological_order.a.copy()
+    return topological_order.a[::-1].copy()
 
 
 def transitive_closure(g):
