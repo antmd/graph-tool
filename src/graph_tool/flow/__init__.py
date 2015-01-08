@@ -140,7 +140,7 @@ def edmonds_karp_max_flow(g, source, target, capacity, residual=None):
     >>> res.a = cap.a - res.a  # the actual flow
     >>> max_flow = sum(res[e] for e in tgt.in_edges())
     >>> print(max_flow)
-    45.59770256530269
+    44.89059578411614
     >>> pos = g.vertex_properties["pos"]
     >>> gt.graph_draw(g, pos=pos, edge_pen_width=gt.prop_to_size(res, mi=0, ma=5, power=1), output="example-edmonds-karp.pdf")
     <...>
@@ -221,7 +221,7 @@ def push_relabel_max_flow(g, source, target, capacity, residual=None):
     >>> res.a = cap.a - res.a  # the actual flow
     >>> max_flow = sum(res[e] for e in tgt.in_edges())
     >>> print(max_flow)
-    45.59770256530269
+    44.89059578411614
     >>> pos = g.vertex_properties["pos"]
     >>> gt.graph_draw(g, pos=pos, edge_pen_width=gt.prop_to_size(res, mi=0, ma=5, power=1), output="example-push-relabel.pdf")
     <...>
@@ -303,7 +303,7 @@ def boykov_kolmogorov_max_flow(g, source, target, capacity, residual=None):
     >>> res.a = cap.a - res.a  # the actual flow
     >>> max_flow = sum(res[e] for e in tgt.in_edges())
     >>> print(max_flow)
-    45.59770256530269
+    44.89059578411614
     >>> pos = g.vertex_properties["pos"]
     >>> gt.graph_draw(g, pos=pos, edge_pen_width=gt.prop_to_size(res, mi=0, ma=3, power=1), output="example-kolmogorov.pdf")
     <...>

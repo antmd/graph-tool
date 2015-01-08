@@ -744,7 +744,7 @@ def dijkstra_search(g, source, weight, visitor=DijkstraVisitor(), dist_map=None,
 
     >>> time = g.new_vertex_property("int")
     >>> dist, pred = gt.dijkstra_search(g, g.vertex(0), weight, VisitorExample(name, time))
---> Bob has been discovered!
+    --> Bob has been discovered!
     edge (Bob, Eve) has been examined...
     edge (Bob, Eve) has been relaxed...
     --> Eve has been discovered!
@@ -1381,7 +1381,7 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
     >>> ewidth = g.new_edge_property("double")
     >>> ewidth.a = 1
     >>> for e in g.edges():
-    ...    ecolor[e] = "blue" if touch_e[e] else "black"
+    ...    ecolor[e] = "#3465a4" if touch_e[e] else "#d3d7cf"
     >>> v = target
     >>> while v != g.vertex(0):
     ...     p = g.vertex(pred[v])
