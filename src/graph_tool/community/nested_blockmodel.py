@@ -565,7 +565,7 @@ def nested_mcmc_sweep(state, beta=1., c=1., dl=False, sequential=True, verbose=F
                          multigraph = l > 0,
                          sequential=sequential, verbose=verbose)
 
-        bstate.clable.a = 0
+        bstate.clabel.a = 0
 
         rets.append(ret)
     return rets
