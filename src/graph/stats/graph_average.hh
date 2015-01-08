@@ -1,4 +1,6 @@
-// Copyright (C) 2006-2014 Tiago de Paula Peixoto <tiago@skewed.de>
+// graph-tool -- a general graph modification and manipulation thingy
+//
+// Copyright (C) 2006-2015 Tiago de Paula Peixoto <tiago@skewed.de>
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
