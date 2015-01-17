@@ -38,7 +38,7 @@ Summary
    group_vector_property
    ungroup_vector_property
    infect_vertex_property
-   edge_difference
+   edge_endpoint_property
    perfect_prop_hash
    value_types
    show_config
@@ -119,10 +119,11 @@ from .decorators import _wraps, _require, _attrs, _limit_args
 from inspect import ismethod
 
 __all__ = ["Graph", "GraphView", "Vertex", "Edge", "Vector_bool",
-           "Vector_int16_t", "Vector_int32_t", "Vector_int64_t", "Vector_double",
-           "Vector_long_double", "Vector_string", "value_types", "load_graph",
-           "PropertyMap", "group_vector_property", "ungroup_vector_property",
-           "infect_vertex_property", "edge_difference", "perfect_prop_hash",
+           "Vector_int16_t", "Vector_int32_t", "Vector_int64_t",
+           "Vector_double", "Vector_long_double", "Vector_string",
+           "Vector_size_t", "value_types", "load_graph", "PropertyMap",
+           "group_vector_property", "ungroup_vector_property",
+           "infect_vertex_property", "edge_endpoint_property", "perfect_prop_hash",
            "seed_rng", "show_config", "PropertyArray", "openmp_enabled",
            "openmp_get_num_threads", "openmp_set_num_threads", "openmp_get_schedule",
            "openmp_set_schedule", "__author__", "__copyright__", "__URL__",
@@ -983,59 +984,57 @@ def infect_vertex_property(g, prop, vals=None):
                                    vals)
 
 
-def edge_difference(g, prop, ediff=None):
-    """Return an edge property map corresponding to the difference between the
-    values of `prop` of target and source vertices of each edge.
+@_limit_args({"endpoint": ["source", "target"]})
+def edge_endpoint_property(g, prop, endpoint, eprop=None):
+    """Return an edge property map corresponding to the vertex property `prop` of
+    either the target and source of the edge, according to `endpoint`.
 
     Parameters
     ----------
     prop : :class:`~graph_tool.PropertyMap`
-        Vertex property map to be used to compute the difference..
-    ediff : :class:`~graph_tool.PropertyMap` (optional, default: `None`)
-        If provided, the difference values will be stored in this property map.
+        Vertex property map to be used to propagated to the edge.
+    endpoint : `"source"` or `"target"`
+        Edge endpoint considered. If the graph is undirected, the source is
+        always the vertex with the lowest index.
+    eprop : :class:`~graph_tool.PropertyMap` (optional, default: `None`)
+        If provided, the resulting edge properties will be stored here.
 
     Returns
     -------
-    ediff : :class:`~graph_tool.PropertyMap`
-        Edge differences.
+    eprop : :class:`~graph_tool.PropertyMap`
+        Propagated edge property.
 
     Examples
     --------
     >>> gt.seed_rng(42)
     >>> g = gt.random_graph(100, lambda: (3, 3))
-    >>> ediff = gt.edge_difference(g, g.vertex_index)
-    >>> print(ediff.a)
-    [ 47  66  10  -1 -65 -56 -91 -62 -38  -1 -86   3 -46 -62 -23 -17 -75 -74
-      23 -22   9   2 -35   8 -24 -16 -59 -60  32 -13 -43  30  26 -33  32  -8
-      17 -29  -3 -38 -45  41  50  11 -37  58  13 -23  20  48 -17  64  38  22
-      63  32  17   7 -10  34  71  20  43  -3  22  13  70  15  63  16  64  86
-      37  43  32  -4 -34 -19  36  67  63  65  74  39  17  43  10  29  28  37
-      67  93  61  81  27  -2  20  68  50  45  30  71  -1  39  48 -11  25  50
-     -25  32  -2  22  -3  40 -29  -7   7  33   8  29 -40  47 -31  -6 -48  -1
-     -13   4 -27 -57   9   2  22 -35  23  -2  21  25 -67 -39 -14 -82 -42  -7
-     -74 -27 -43 -10 -22 -36  28  21   1 -15 -71 -63 -72 -14 -40 -78 -43 -23
-     -83 -12 -43 -26 -48 -52 -58 -82 -14 -44 -62   1 -31 -51 -84 -42 -37 -59
-       4 -21 -63 -60 -22 -77 -64 -11   4  18 -56  19   4 -12   3  23 -29 -14
-     -15 -38 -20 -34 -62 -49 -47  29  32  -1 -53 -21  19  13  15 -21  12 -30
-      -4 -33  66  39 -17   2  50  16  28 -59 -50 -58  69  53  68  -3  60  35
-      68 -13  -6  48  71  58  14  58  -4  51  52  13  32  -8  -2  63  56  19
-      47  -1  53  39  45 -18 -13  56  52 -16  44  49 -16  35 -11  49  14 -17
-      33  11  -8 -31  38 -46  48 -34  47  33 -45 -29  16   3 -48 -44 -58  -9
-     -12 -57 -21 -47  34  10 -23 -44 -37 -44   1  11]
+    >>> esource = gt.edge_endpoint_property(g, g.vertex_index, "source")
+    >>> print(esource.a)
+    [ 0  0  0 96 96 96 92 92 92 88 88 88 84 84 84 80 80 80 76 76 76 72 72 72 68
+     68 68 64 64 64 60 60 60 56 56 56 52 52 52 48 48 48 44 44 44 40 40 40 36 36
+     36 32 32 32 28 28 28 24 24 24 20 20 20 16 16 16 12 12 12  8  8  8  4  4  4
+     99 99 99  1  1  1  2  2  2  3  3  3  5  5  5  6  6  6  7  7  7  9  9  9 10
+     10 10 14 14 14 19 19 19 25 25 25 30 30 30 35 35 35 41 41 41 46 46 46 51 51
+     51 57 57 57 62 62 62 67 67 67 73 73 73 78 78 78 83 83 83 89 89 89 94 94 94
+     11 11 11 98 98 98 97 97 97 95 95 95 93 93 93 91 91 91 90 90 90 87 87 87 86
+     86 86 85 85 85 82 82 82 81 81 81 79 79 79 77 77 77 75 75 75 74 74 74 71 71
+     71 69 69 69 61 61 61 54 54 54 47 47 47 39 39 39 33 33 33 26 26 26 18 18 18
+     70 70 70 13 13 13 15 15 15 17 17 17 21 21 21 22 22 22 23 23 23 27 27 27 29
+     29 29 31 31 31 34 34 34 37 37 37 38 38 38 42 42 42 43 43 43 45 45 45 49 49
+     49 50 50 50 53 53 53 55 55 55 58 58 58 59 59 59 63 63 63 65 65 65 66 66 66]
     """
+
     val_t = prop.value_type()
     if val_t == "unsigned long":
-        val_t = "int32_t"
-    if ediff is None:
-        ediff = g.new_edge_property(val_t)
-    if ediff.value_type() != val_t:
-        raise ValueError("'ediff' must be of the same value type as 'prop': " +
+        val_t = "int64_t"
+    if eprop is None:
+        eprop = g.new_edge_property(val_t)
+    if eprop.value_type() != val_t:
+        raise ValueError("'eprop' must be of the same value type as 'prop': " +
                          val_t)
-    if not g.is_directed():
-        g = GraphView(g, directed=True, skip_properties=True)
-    libcore.edge_difference(g._Graph__graph, _prop("v", g, prop),
-                            _prop("e", g, ediff))
-    return ediff
+    libcore.edge_endpoint(g._Graph__graph, _prop("v", g, prop),
+                          _prop("e", g, eprop), endpoint)
+    return eprop
 
 @_limit_args({"htype": ["int8_t", "int32_t", "int64_t"]})
 def perfect_prop_hash(props, htype="int32_t"):

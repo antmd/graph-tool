@@ -387,8 +387,8 @@ void group_vector_property(GraphInterface& g, boost::any vector_prop,
                            boost::any prop, size_t pos, bool edge);
 void infect_vertex_property(GraphInterface& gi, boost::any prop,
                             boost::python::object val);
-void edge_difference(GraphInterface& gi, boost::any prop,
-                     boost::any eprop);
+void edge_endpoint(GraphInterface& gi, boost::any prop,
+                   boost::any eprop, std::string endpoint);
 void mark_edges(GraphInterface& gi, boost::any prop);
 
 void perfect_ehash(GraphInterface& gi, boost::any prop, boost::any hprop,
@@ -510,7 +510,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
     def("group_vector_property", &group_vector_property);
     def("ungroup_vector_property", &ungroup_vector_property);
     def("infect_vertex_property", &infect_vertex_property);
-    def("edge_difference", &edge_difference);
+    def("edge_endpoint", &edge_endpoint);
     def("mark_edges", &mark_edges);
     def("perfect_ehash", &perfect_ehash);
     def("perfect_vhash", &perfect_vhash);
