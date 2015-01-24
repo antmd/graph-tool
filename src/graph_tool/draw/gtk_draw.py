@@ -656,14 +656,10 @@ class GraphWidget(Gtk.DrawingArea):
                 self.queue_draw()
             if self.drag_begin is None:
                 self.drag_begin = [x, y]
-            return True
-
-        if (event.button == 2 or
+        elif (event.button == 2 or
             (event.button == 1 and state & Gdk.ModifierType.CONTROL_MASK)):
             self.panning = (event.x, event.y)
-            return True
-
-        if event.button == 3:
+        elif event.button == 3:
             if isinstance(self.picked, PropertyMap):
                 self.picked = None
                 self.selected.fa = False
@@ -672,7 +668,6 @@ class GraphWidget(Gtk.DrawingArea):
                 self.picked = False
                 self.selected.fa = False
                 self.queue_draw()
-            return True
 
     def button_release_event(self, widget, event):
         r"""Handle button release."""
@@ -710,13 +705,9 @@ class GraphWidget(Gtk.DrawingArea):
                 self.moved_picked = False
                 self.regenerate_surface(timeout=100)
                 self.queue_draw()
-
-            return True
-
-        if event.button == 2:
+        elif event.button == 2:
             self.panning = None
             self.queue_draw()
-            return True
 
     def motion_notify_event(self, widget, event):
         r"""Handle pointer motion."""
@@ -775,7 +766,6 @@ class GraphWidget(Gtk.DrawingArea):
                             self.queue_draw()
                     self.picked = v
                     self.selected[v] = True
-        return True
 
     def scroll_event(self, widget, event):
         r"""Handle scrolling."""
@@ -845,21 +835,20 @@ class GraphWidget(Gtk.DrawingArea):
                 self.moved_picked = True
 
         self.queue_draw()
-        return True
 
     def key_press_event(self, widget, event):
         r"""Handle key press."""
 
         #print event.keyval
-        if event.keyval == 114:
+        if event.keyval == ord('r'):
             self.fit_to_window()
             self.regenerate_surface(timeout=50)
             self.queue_draw()
-        elif event.keyval == 115:
+        elif event.keyval == ord('s'):
             self.reset_layout()
-        elif event.keyval == 97:
+        elif event.keyval == ord('a'):
             self.apply_transform()
-        elif event.keyval == 112:
+        elif event.keyval == ord('p'):
             if self.picked == False:
                 self.init_picked()
             else:
@@ -867,13 +856,12 @@ class GraphWidget(Gtk.DrawingArea):
                 self.selected.fa = False
                 self.vertex_matrix = None
                 self.queue_draw()
-        elif event.keyval == 0x7a:
+        elif event.keyval == ord('z'):
             if isinstance(self.picked, PropertyMap):
                 u = GraphView(self.g, vfilt=self.picked)
                 self.fit_to_window(g=u)
                 self.regenerate_surface(timeout=50)
                 self.queue_draw()
-        return True
 
     def key_release_event(self, widget, event):
         r"""Handle release event."""
@@ -883,12 +871,11 @@ class GraphWidget(Gtk.DrawingArea):
             self.key_press_user_callback(self.g, event.keyval, self.picked,
                                          self.pos, self.vprops, self.eprops)
 
-        if event.keyval == 65507:
+        if event.keyval == 65507: # Control_L
             if self.moved_picked:
                 self.moved_picked = False
                 self.regenerate_surface(timeout=100)
                 self.queue_draw()
-        return True
 
 
 class GraphWindow(Gtk.Window):

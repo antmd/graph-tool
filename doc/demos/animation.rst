@@ -155,7 +155,7 @@ format <http://www.webmproject.org>`_:
 .. code-block:: bash
 
    $ mencoder mf://frames/dancing*.png -mf w=500:h=400:type=png -ovc raw -of rawvideo -vf format=i420 -nosound -o dancing.yuy
-   $ vpxenc sirs.yuy -o dancing.webm -w 500 -h 400 --fps=100/1 --target-bitrate=5000 --good --threads=4
+   $ vpxenc dancing.yuy -o dancing.webm -w 500 -h 400 --fps=100/1 --target-bitrate=5000 --good --threads=4
 
 
 .. doctest::
@@ -175,4 +175,58 @@ The resulting animation can be downloaded :download:`here
 
    <div style="text-align:center">
        <video id="sirs" src="../_downloads/dancing.webm" controls></video>
+   </div>
+
+Interactive visualizations
+--------------------------
+
+Here we show an example of interactive visualization where the BFS tree
+of the currently selected vertex is highlighted with a different color.
+
+The script which performs the visualization is called
+:download:`interactive_bst.py <interactive_bst.py>` and is shown
+below. When called, it will open an interactive window.
+
+.. literalinclude:: interactive_bst.py
+   :linenos:
+
+.. code-block:: bash
+
+   $ ./interactive_bst.py offscreen
+
+.. doctest::
+   :hide:
+
+   >>> import subprocess
+   >>> subprocess.call(["demos/interactive_bst.py", "offscreen"])
+   0
+
+The above script is interactive, i.e. it expects a reaction from the
+user. But for the purpose of this demo, it also saves the frames to a
+file, so we can encode the animation with the `WebM format
+<http://www.webmproject.org>`_:
+
+.. code-block:: bash
+
+   $ mencoder mf://frames/bfs*.png -mf w=500:h=400:type=png -ovc raw -of rawvideo -vf format=i420 -nosound -o bfs.yuy
+   $ vpxenc bfs.yuy -o bfs.webm -w 500 -h 400 --fps=5/1 --target-bitrate=5000 --good --threads=4
+
+
+.. doctest::
+   :hide:
+
+   >>> import subprocess
+   >>> subprocess.call("mencoder mf://frames/bfs*.png -mf w=500:h=400:type=png -ovc raw -of rawvideo -vf format=i420 -nosound -o demos/bfs.yuy".split())
+   0
+   >>> subprocess.call("vpxenc demos/bfs.yuy -o demos/bfs.webm -w 500 -h 400 --fps=5/1 --target-bitrate=2000 --good --threads=4".split())
+   0
+
+
+The resulting animation can be downloaded :download:`here
+<bfs.webm>`, or played below if your browser supports WebM.
+
+.. raw:: html
+
+   <div style="text-align:center">
+       <video id="sirs" src="../_downloads/bfs.webm" controls></video>
    </div>
