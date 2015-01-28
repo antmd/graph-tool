@@ -121,8 +121,7 @@ struct get_geometric
         }
 
         std::unordered_multimap<vector<int>,
-                                typename graph_traits<Graph>::vertex_descriptor,
-                                boost::hash<vector<int> > > boxes;
+                                typename graph_traits<Graph>::vertex_descriptor> boxes;
 
         for (int i = 0; i < N; ++i)
         {

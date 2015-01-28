@@ -527,9 +527,9 @@ protected:
     rng_t& _rng;
 
 #ifdef HAVE_SPARSEHASH
-        typedef google::dense_hash_map<size_t, size_t> nmapv_t;
+    typedef google::dense_hash_map<size_t, size_t, std::hash<size_t>> nmapv_t;
 #else
-        typedef unordered_map<size_t, size_t> nmapv_t;
+    typedef unordered_map<size_t, size_t> nmapv_t;
 #endif
     typedef typename property_map_type::apply<nmapv_t,
                                               typename property_map<Graph, vertex_index_t>::type>
@@ -668,12 +668,11 @@ private:
 #ifdef HAVE_SPARSEHASH
     typedef google::dense_hash_map<deg_t,
                                    vector<pair<size_t, bool>>,
-                                   boost::hash<deg_t>>
+                                   std::hash<deg_t>>
         edges_by_end_deg_t;
 #else
     typedef std::unordered_map<deg_t,
-                               vector<pair<size_t, bool>>,
-                               boost::hash<deg_t>>
+                               vector<pair<size_t, bool>>>
         edges_by_end_deg_t;
 #endif
 
@@ -724,7 +723,7 @@ public:
 
             if (_probs.empty())
             {
-                std::unordered_set<deg_t, boost::hash<deg_t> > deg_set;
+                std::unordered_set<deg_t> deg_set;
                 for (size_t ei = 0; ei < base_t::_edges.size(); ++ei)
                 {
                     edge_t& e = base_t::_edges[ei];
@@ -826,10 +825,9 @@ private:
 
 #ifdef HAVE_SPARSEHASH
     typedef google::dense_hash_map<pair<deg_t, deg_t>, double,
-                                   boost::hash<pair<deg_t, deg_t>>> prob_map_t;
+                                   std::hash<pair<deg_t, deg_t>>> prob_map_t;
 #else
-    typedef std::unordered_map<pair<deg_t, deg_t>, double,
-                               boost::hash<pair<deg_t, deg_t>>> prob_map_t;
+    typedef std::unordered_map<pair<deg_t, deg_t>, double> prob_map_t;
 #endif
 
     prob_map_t _probs;
@@ -1185,7 +1183,8 @@ private:
     BlockDeg _blockdeg;
 
 #ifdef HAVE_SPARSEHASH
-    typedef google::dense_hash_map<deg_t, Sampler<deg_t, boost::mpl::false_>*> sampler_map_t;
+    typedef google::dense_hash_map<deg_t, Sampler<deg_t, boost::mpl::false_>*,
+                                   std::hash<deg_t>> sampler_map_t;
 #else
     typedef std::unordered_map<deg_t, Sampler<deg_t, boost::mpl::false_>*> sampler_map_t;
 #endif
@@ -1193,7 +1192,10 @@ private:
     sampler_map_t _sampler;
 
 #ifdef HAVE_SPARSEHASH
-    typedef google::dense_hash_map<deg_t, google::dense_hash_map<deg_t, double>> sprob_map_t;
+    typedef google::dense_hash_map<deg_t,
+                                   google::dense_hash_map<deg_t, double,
+                                                          std::hash<deg_t>>,
+                                   std::hash<deg_t>> sprob_map_t;
 #else
     typedef std::unordered_map<deg_t, std::unordered_map<deg_t, double>> sprob_map_t;
 #endif
@@ -1202,15 +1204,17 @@ private:
 
 
 #ifdef HAVE_SPARSEHASH
-    typedef google::dense_hash_map<pair<deg_t, deg_t>, double, boost::hash<pair<deg_t, deg_t>>> prob_map_t;
+    typedef google::dense_hash_map<pair<deg_t, deg_t>, double,
+                                   std::hash<pair<deg_t, deg_t>>> prob_map_t;
 #else
-    typedef std::unordered_map<pair<deg_t, deg_t>, double, boost::hash<pair<deg_t, deg_t>>> prob_map_t;
+    typedef std::unordered_map<pair<deg_t, deg_t>, double> prob_map_t;
 #endif
 
     prob_map_t _probs;
 
 #ifdef HAVE_SPARSEHASH
-    typedef google::dense_hash_map<deg_t, vector<size_t>> edge_map_t;
+    typedef google::dense_hash_map<deg_t, vector<size_t>,
+                                   std::hash<deg_t>> edge_map_t;
 #else
     typedef std::unordered_map<deg_t, vector<size_t>> edge_map_t;
 #endif
@@ -1253,8 +1257,7 @@ public:
             _vertices[d].push_back(*v);
         }
 
-        std::unordered_map<pair<deg_t, deg_t>, double, boost::hash<pair<deg_t, deg_t> > >
-            probs;
+        std::unordered_map<pair<deg_t, deg_t>, double> probs;
         _corr_prob.get_probs(probs);
 
         vector<double> dprobs;
@@ -1347,7 +1350,8 @@ private:
     rng_t& _rng;
 
 #ifdef HAVE_SPARSEHASH
-    google::dense_hash_map<deg_t, vector<vertex_t>> _vertices;
+    google::dense_hash_map<deg_t, vector<vertex_t>,
+                           std::hash<deg_t>> _vertices;
 #else
     std::unordered_map<deg_t, vector<vertex_t>> _vertices;
 #endif

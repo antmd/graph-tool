@@ -96,9 +96,7 @@ struct do_propagate_pos
         typedef typename pos_t::value_type val_t;
 
         uniform_real_distribution<val_t> noise(-delta, delta);
-        unordered_map<c_t, pos_t, boost::hash<c_t> >
-            cmap(num_vertices(*cg));
-
+        unordered_map<c_t, pos_t> cmap(num_vertices(*cg));
 
         for (auto v : vertices_range(*cg))
             cmap[cvmap[v]] = cpos[v];

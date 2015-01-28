@@ -56,7 +56,7 @@ get_triangles(typename graph_traits<Graph>::vertex_descriptor v, const Graph &g)
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
 #ifdef HAVE_SPARSEHASH
-    typedef dense_hash_set<vertex_t> set_t;
+    typedef dense_hash_set<vertex_t, std::hash<vertex_t>> set_t;
 #else
     typedef unordered_set<vertex_t> set_t;
 #endif

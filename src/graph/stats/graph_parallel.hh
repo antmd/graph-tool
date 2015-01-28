@@ -51,9 +51,9 @@ struct label_parallel_edges
                 continue;
 
 #ifdef HAVE_SPARSEHASH
-            google::dense_hash_map<vertex_t, edge_t> vset;
+            google::dense_hash_map<vertex_t, edge_t, std::hash<vertex_t>> vset;
             vset.set_empty_key(graph_traits<Graph>::null_vertex());
-            google::dense_hash_map<size_t, bool> self_loops;
+            google::dense_hash_map<size_t, bool, std::hash<size_t>> self_loops;
             self_loops.set_empty_key(numeric_limits<size_t>::max());
 #else
             unordered_map<vertex_t, edge_t> vset;

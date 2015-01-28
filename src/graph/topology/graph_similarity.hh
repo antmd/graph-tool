@@ -53,11 +53,9 @@ struct get_similarity
 
         typedef typename property_traits<LabelMap>::value_type label_t;
 
-        std::unordered_map<label_t, typename graph_traits<Graph1>::vertex_descriptor,
-                           boost::hash<label_t>>
+        std::unordered_map<label_t, typename graph_traits<Graph1>::vertex_descriptor>
             lmap1;
-        std::unordered_map<label_t, typename graph_traits<Graph2>::vertex_descriptor,
-                           boost::hash<label_t>>
+        std::unordered_map<label_t, typename graph_traits<Graph2>::vertex_descriptor>
             lmap2;
 
         for (auto v : vertices_range(g1))
@@ -75,9 +73,9 @@ struct get_similarity
                 continue;
             auto v2 = li2->second;
 
-            std::unordered_set<label_t, boost::hash<label_t>> keys;
-            std::unordered_multiset<label_t, boost::hash<label_t>> adj1;
-            std::unordered_multiset<label_t, boost::hash<label_t>> adj2;
+            std::unordered_set<label_t> keys;
+            std::unordered_multiset<label_t> adj1;
+            std::unordered_multiset<label_t> adj2;
 
             for (auto a1 : adjacent_vertices_range(v1, g1))
             {
