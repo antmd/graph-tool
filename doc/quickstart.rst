@@ -143,42 +143,12 @@ descriptors:
    >>> print(len(list(vlist)))
    10
 
-Edges and vertices can also be removed at any time with the
-:meth:`~graph_tool.Graph.remove_vertex` and :meth:`~graph_tool.Graph.remove_edge` methods,
-
-.. doctest::
-
-   >>> g.remove_edge(e)                               # e no longer exists
-   >>> g.remove_vertex(v2)                # the second vertex is also gone
-
-.. note::
-
-   Removing a vertex is an :math:`O(N)` operation. The vertices are
-   internally stored in a `STL vector <http://en.wikipedia.org/wiki/Vector_%28STL%29>`_,
-   so removing an element somewhere in the middle of the list requires
-   the shifting of the rest of the list. Thus, fast :math:`O(1)`
-   removals are only possible either if one can guarantee that only
-   vertices in the end of the list are removed (the ones last added to
-   the graph), or if the relative vertex ordering is invalidated. This
-   last behavior can be achieved by passing the option ``fast == True``,
-   to :meth:`~graph_tool.Graph.remove_vertex`, which causes vertex
-   being deleted to be 'swapped' with the last vertex (i.e. with the
-   largest index), which will in turn inherit the index of the vertex
-   being deleted.
-
-
-   Removing an edge is an :math:`O(k_{s} + k_{t})` operation, where
-   :math:`k_{s}` is the out-degree of the source vertex, and
-   :math:`k_{t}` is the in-degree of the target vertex. This can be made
-   faster by setting :meth:`~graph_tool.Graph.set_fast_edge_removal` to
-   `True`, in which case it becomes :math:`O(1)`, at the expense of
-   additional data of size :math:`O(E)`.
-
-Each vertex in a graph has an unique index, which is numbered from 0 to
-N-1, where N is the number of vertices. This index can be obtained by
-using the :attr:`~graph_tool.Graph.vertex_index` attribute of the graph
-(which is a *property map*, see :ref:`sec_property_maps`), or by
-converting the vertex descriptor to an ``int``.
+Each vertex in a graph has an unique index, which is *always* between
+:math:``0`` and :math:``N-1``, where :math:``N`` is the number of
+vertices. This index can be obtained by using the
+:attr:`~graph_tool.Graph.vertex_index` attribute of the graph (which is
+a *property map*, see :ref:`sec_property_maps`), or by converting the
+vertex descriptor to an ``int``.
 
 .. doctest::
 
@@ -188,12 +158,66 @@ converting the vertex descriptor to an ``int``.
    >>> print(int(v))
    11
 
+   
+Edges and vertices can also be removed at any time with the
+:meth:`~graph_tool.Graph.remove_vertex` and :meth:`~graph_tool.Graph.remove_edge` methods,
+
+.. doctest::
+
+   >>> g.remove_edge(e)                               # e no longer exists
+   >>> g.remove_vertex(v2)                # the second vertex is also gone
+
+   
 .. note::
 
-   Removing a vertex will cause the index of any vertex with a larger
-   index to be changed, so that the indexes *always* conform to the
-   :math:`[0, N-1]` range. However, property map values (see
-   :ref:`sec_property_maps`) are unaffected.
+   Removing a vertex is typically an :math:`O(N)` operation. The
+   vertices are internally stored in a `STL vector
+   <http://en.wikipedia.org/wiki/Vector_%28STL%29>`_, so removing an
+   element somewhere in the middle of the list requires the shifting of
+   the rest of the list. Thus, fast :math:`O(1)` removals are only
+   possible either if one can guarantee that only vertices in the end of
+   the list are removed (the ones last added to the graph), or if the
+   relative vertex ordering is invalidated. This last behavior can be
+   achieved by passing the option ``fast == True``, to
+   :meth:`~graph_tool.Graph.remove_vertex`, which causes the vertex
+   being deleted to be 'swapped' with the last vertex (i.e. with the
+   largest index), which will in turn inherit the index of the vertex
+   being deleted.
+
+.. warning::
+
+   Because of the above, removing a vertex with an index smaller than
+   :math:`N-1` will **invalidate either the last** (``fast = True``)
+   **or all** (``fast = False``) **descriptors pointing to vertices with
+   higher index**.
+
+   As a consequence, if more than one vertex is to be removed at a given
+   time, they should **always** be removed in decreasing index order:
+   
+   .. code::
+
+       # 'del_list' is a list of vertex descriptors
+       for v in reversed(sorted(del_list)):
+           g.remove_vertex(v)
+
+   Alternatively (and preferably), a list (or any iterable) may be
+   passed directly as the ``vertex`` parameter of the
+   :meth:`~graph_tool.Graph.remove_vertex` function, and the above is
+   performed internally (in C++).
+
+   Note that property map values (see :ref:`sec_property_maps`) are
+   unaffected by the index changes due to vertex removal.
+
+.. note::
+
+   Removing an edge is an :math:`O(k_{s} + k_{t})` operation, where
+   :math:`k_{s}` is the out-degree of the source vertex, and
+   :math:`k_{t}` is the in-degree of the target vertex. This can be made
+   faster by setting :meth:`~graph_tool.Graph.set_fast_edge_removal` to
+   `True`, in which case it becomes :math:`O(1)`, at the expense of
+   additional data of size :math:`O(E)`.
+
+   No edge descriptors are ever invalidated after edge removal.
 
 Since vertices are uniquely identifiable by their indexes, there is no
 need to keep the vertex descriptor lying around to access them at a
@@ -237,6 +261,7 @@ edges added earlier have lower indexes. However if an edge is removed,
 its index will be "vacant", and the remaining indexes will be left
 unmodified, and thus will not lie in the range :math:`[0, E-1]`.  If a
 new edge is added, it will reuse old indexes, in an increasing order.
+
 
 .. _sec_iteration:
 
@@ -306,7 +331,7 @@ vertices in the graph.
    somewhere (such as in a list) and remove them only after no iterator
    is being used. Removal during iteration will cause bad things to
    happen.
-
+   
 
 .. _sec_property_maps:
 

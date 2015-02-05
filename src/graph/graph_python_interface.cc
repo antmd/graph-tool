@@ -142,33 +142,21 @@ python::object add_vertex(python::object g, size_t n)
     return python::object(PythonVertex(g, add_vertex(gi.GetGraph())));
 }
 
-struct shift_vertex_property
-{
-    template <class Graph, class PropertyMap>
-    void operator()(const Graph& g, size_t vi, PropertyMap pmap)
-        const
-    {
-        size_t N = num_vertices(g);
-        if (N <= 1 || vi >= N - 1)
-            return;
-        for (size_t i = vi; i < N-1; ++i)
-        {
-            pmap[vertex(i, g)] = pmap[vertex(i+1, g)];
-        }
-    }
-};
 
-void remove_vertex(GraphInterface& gi, const python::object& v, bool fast)
+void remove_vertex(GraphInterface& gi, const python::object& oindex, bool fast)
 {
-    PythonVertex& pv = python::extract<PythonVertex&>(v);
-    pv.CheckValid();
-    GraphInterface::vertex_t dv = pv.GetDescriptor();
-    pv.SetValid(false);
-
+    boost::multi_array_ref<int64_t,1> index = get_array<int64_t,1>(oindex);
+    auto& g = gi.GetGraph();
     if (fast)
-        remove_vertex_fast(dv, gi.GetGraph());
+    {
+        for (auto v : index)
+            remove_vertex_fast(vertex(v, g), g);
+    }
     else
-        remove_vertex(dv, gi.GetGraph());
+    {
+        for (auto v : index)
+            remove_vertex(vertex(v, g), g);
+    }
 }
 
 struct add_new_edge

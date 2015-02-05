@@ -101,8 +101,8 @@ public:
     void PurgeEdges();    // removes filtered edges
     void Clear();
     void ClearEdges();
-    void ShiftVertexProperty(boost::any map, size_t index) const;
-    void MoveVertexProperty(boost::any map, size_t index) const;
+    void ShiftVertexProperty(boost::any map, boost::python::object oindex) const;
+    void MoveVertexProperty(boost::any map, boost::python::object oindex) const;
     void ReIndexVertexProperty(boost::any map, boost::any old_index) const;
     void CopyVertexProperty(const GraphInterface& src, boost::any prop_src,
                             boost::any prop_tgt);

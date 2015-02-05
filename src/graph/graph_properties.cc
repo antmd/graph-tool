@@ -45,15 +45,20 @@ const char* type_names[] =
 
 struct shift_vertex_property
 {
-    template <class PropertyMap>
+    template <class PropertyMap, class Vec>
     void operator()(PropertyMap, const GraphInterface::multigraph_t& g,
-                    boost::any map, size_t vi, bool& found) const
+                    boost::any map, const Vec& vi, bool& found) const
     {
         try
         {
             PropertyMap pmap = any_cast<PropertyMap>(map);
-            for (size_t i = vi; i < num_vertices(g)-1; ++i)
-                pmap[vertex(i,g)] = pmap[vertex(i+1,g)];
+            size_t back = num_vertices(g) - 1;
+            for (auto v : vi)
+            {
+                for (size_t i = v; i < back; ++i)
+                    pmap[vertex(i, g)] = pmap[vertex(i + 1, g)];
+                back--;
+            }
             found = true;
         }
         catch (bad_any_cast&) {}
@@ -61,8 +66,9 @@ struct shift_vertex_property
 };
 
 // this function will shift all the properties when a vertex is to be deleted
-void GraphInterface::ShiftVertexProperty(boost::any prop, size_t index) const
+void GraphInterface::ShiftVertexProperty(boost::any prop, python::object oindex) const
 {
+    boost::multi_array_ref<int64_t,1> index = get_array<int64_t,1>(oindex);
     bool found = false;
     mpl::for_each<writable_vertex_properties>
         (std::bind(shift_vertex_property(), std::placeholders::_1, std::ref(*_mg),
@@ -73,14 +79,19 @@ void GraphInterface::ShiftVertexProperty(boost::any prop, size_t index) const
 
 struct move_vertex_property
 {
-    template <class PropertyMap>
+    template <class PropertyMap, class Vec>
     void operator()(PropertyMap, const GraphInterface::multigraph_t& g,
-                    boost::any map, size_t vi, size_t back, bool& found) const
+                    boost::any map, const Vec& vi, size_t back,
+                    bool& found) const
     {
         try
         {
             PropertyMap pmap = any_cast<PropertyMap>(map);
-            pmap[vertex(vi,g)] = pmap[vertex(back,g)];
+            for (auto v : vi)
+            {
+                pmap[vertex(v, g)] = pmap[vertex(back, g)];
+                back--;
+            }
             found = true;
         }
         catch (bad_any_cast&) {}
@@ -88,8 +99,9 @@ struct move_vertex_property
 };
 
 // this function will move the back of the property map when a vertex in the middle is to be deleted
-void GraphInterface::MoveVertexProperty(boost::any prop, size_t index) const
+void GraphInterface::MoveVertexProperty(boost::any prop, python::object oindex) const
 {
+    boost::multi_array_ref<int64_t,1> index = get_array<int64_t,1>(oindex);
     size_t back = num_vertices(*_mg) - 1;
     bool found = false;
     mpl::for_each<writable_vertex_properties>

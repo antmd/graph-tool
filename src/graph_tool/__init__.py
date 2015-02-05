@@ -1039,7 +1039,7 @@ def edge_endpoint_property(g, prop, endpoint, eprop=None):
 @_limit_args({"htype": ["int8_t", "int32_t", "int64_t"]})
 def perfect_prop_hash(props, htype="int32_t"):
     """Given a list of property maps `props` of the same type, a derived list of
-    property maps with integral type `htype` is retured, where each value is
+    property maps with integral type `htype` is returned, where each value is
     replaced by a perfect (i.e. unique) hash value.
 
     .. note::
@@ -1431,7 +1431,8 @@ class Graph(object):
             return (self.vertex(i) for i in range(pos, pos + n))
 
     def remove_vertex(self, vertex, fast=False):
-        r"""Remove a vertex from the graph.
+        r"""Remove a vertex from the graph. If ``vertex`` is an iterable, it
+        should correspond to a sequence of vertices to be removed.
 
         .. note::
 
@@ -1443,6 +1444,27 @@ class Graph(object):
 
         .. warning::
 
+           This operation may invalidate vertex descriptors. Vertices are always
+           indexed contiguously in the range :math:`[0, N-1]`, hence vertex
+           descriptors with an index higher than ``vertex`` will be invalidated
+           after removal (if ``fast == False``, otherwise only descriptors
+           pointing to vertices with the largest index will be invalidated).
+
+           Because of this, the only safe way to remove more than one vertex at
+           once is to sort them in decreasing index order:
+
+           .. code::
+
+               # 'del_list' is a list of vertex descriptors
+               for v in reversed(sorted(del_list)):
+                   g.remove_vertex(v)
+
+           Alternatively (and preferably), a list (or iterable) may be passed
+           directly as the ``vertex`` parameter, and the above is performed
+           internally (in C++).
+
+        .. warning::
+
            If ``fast == True``, the vertex being deleted is 'swapped' with the
            last vertex (i.e. with the largest index), which will in turn inherit
            the index of the vertex being deleted. All property maps associated
@@ -1451,20 +1473,35 @@ class Graph(object):
 
         """
         self.__check_perms("del_vertex")
-        vertex = self.vertex(int(vertex))
-        index = self.vertex_index[vertex]
+
+        try:
+            vs = numpy.array([int(vertex)], dtype="int64")
+        except TypeError:
+            try:
+                vs = numpy.asarray(vertex, dtype="int64")
+            except TypeError:
+                vs = numpy.asarray([int(v) for v in vertex], dtype="int64")
+
+            if len(vs) == 0:
+                return
+
+            vs = numpy.sort(vs)[::-1]
+
         back = self.__graph.GetNumberOfVertices(False) - 1
 
+        if vs.max() > back:
+            raise ValueError("Vertex index %d is invalid" % vs.max())
+
         # move / shift all known property maps
-        if index != back:
+        if len(vs) > 0 or vs[0] != back:
             for pmap in self.__known_properties.values():
                 if pmap() is not None and pmap().key_type() == "v" and pmap().is_writable():
                     if fast:
-                        self.__graph.MoveVertexProperty(pmap()._PropertyMap__map.get_map(), index)
+                        self.__graph.MoveVertexProperty(pmap()._PropertyMap__map.get_map(), vs)
                     else:
-                        self.__graph.ShiftVertexProperty(pmap()._PropertyMap__map.get_map(), index)
+                        self.__graph.ShiftVertexProperty(pmap()._PropertyMap__map.get_map(), vs)
 
-        libcore.remove_vertex(self.__graph, vertex, fast)
+        libcore.remove_vertex(self.__graph, vs, fast)
 
     def clear_vertex(self, vertex):
         """Remove all in and out-edges from the given vertex."""
