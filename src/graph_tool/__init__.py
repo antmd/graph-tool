@@ -39,7 +39,7 @@ Summary
    ungroup_vector_property
    infect_vertex_property
    edge_endpoint_property
-   incident_edges_sum
+   incident_edges_op
    perfect_prop_hash
    value_types
    show_config
@@ -125,7 +125,7 @@ __all__ = ["Graph", "GraphView", "Vertex", "Edge", "Vector_bool",
            "Vector_size_t", "value_types", "load_graph", "PropertyMap",
            "group_vector_property", "ungroup_vector_property",
            "infect_vertex_property", "edge_endpoint_property",
-           "incident_edges_sum", "perfect_prop_hash", "seed_rng", "show_config",
+           "incident_edges_op", "perfect_prop_hash", "seed_rng", "show_config",
            "PropertyArray", "openmp_enabled", "openmp_get_num_threads",
            "openmp_set_num_threads", "openmp_get_schedule",
            "openmp_set_schedule", "__author__", "__copyright__", "__URL__",
@@ -1038,16 +1038,18 @@ def edge_endpoint_property(g, prop, endpoint, eprop=None):
                           _prop("e", g, eprop), endpoint)
     return eprop
 
-@_limit_args({"direction": ["in", "out"]})
-def incident_edges_sum(g, direction, eprop, vprop=None):
-    """Return a vertex property map corresponding to the sum of the edge property
-    `eprop` of incident edges on each vertex, following the direction given by
-    `direction`.
+@_limit_args({"direction": ["in", "out"], "op": ["sum", "prod", "min", "max"]})
+def incident_edges_op(g, direction, op, eprop, vprop=None):
+    """Return a vertex property map corresponding to a specific operation (sum,
+    product, min or max) on the edge property `eprop` of incident edges on each
+    vertex, following the direction given by `direction`.
 
     Parameters
     ----------
     direction : `"in"` or `"out"`
         Direction of the incident edges.
+    op : `"sum"`, `"prod"`, `"min"` or `"max"`
+        Operation performed on incident edges.
     eprop : :class:`~graph_tool.PropertyMap`
         Edge property map to be summed.
     vprop : :class:`~graph_tool.PropertyMap` (optional, default: `None`)
@@ -1062,7 +1064,7 @@ def incident_edges_sum(g, direction, eprop, vprop=None):
     --------
     >>> gt.seed_rng(42)
     >>> g = gt.random_graph(100, lambda: (3, 3))
-    >>> vsum = gt.incident_edges_sum(g, "out", g.edge_index)
+    >>> vsum = gt.incident_edges_op(g, "out", "sum", g.edge_index)
     >>> print(vsum.a)
     [  3 237 246 255 219 264 273 282 210 291 300 453 201 687 309 696 192 705
      669 318 183 714 723 732 174 327 660 741 165 750 336 759 156 651 768 345
@@ -1070,6 +1072,7 @@ def incident_edges_sum(g, direction, eprop, vprop=None):
      624 849 102 381 858 867  93 615 390 876  84 885 894 399  75 606 678 597
       66 408 588 579  57 570 417 561  48 552 543 426  39 534 525 516  30 435
      507 498  21 489 444 480  12 471 462 228]
+
     """
 
     val_t = eprop.value_type()
@@ -1077,13 +1080,18 @@ def incident_edges_sum(g, direction, eprop, vprop=None):
         val_t = "int64_t"
     if vprop is None:
         vprop = g.new_vertex_property(val_t)
+    orig_vprop = vprop
+    if vprop.value_type != val_t:
+        vprop = g.new_vertex_property(val_t)
     if direction == "in" and not g.is_directed():
-        return vprop
+        return orig_vprop
     if direction == "in":
         g = GraphView(g, reversed=True, skip_properties=True)
-    libcore.out_edges_sum(g._Graph__graph, _prop("e", g, eprop),
-                          _prop("v", g, vprop))
-    return vprop
+    libcore.out_edges_op(g._Graph__graph, _prop("e", g, eprop),
+                          _prop("v", g, vprop), op)
+    if vprop is not orig_vprop:
+        g.copy_property(vprop, orig_vprop)
+    return orig_vprop
 
 @_limit_args({"htype": ["int8_t", "int32_t", "int64_t"]})
 def perfect_prop_hash(props, htype="int32_t"):
