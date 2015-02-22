@@ -27,6 +27,7 @@ libgraph_tool_core_la_SOURCES = \
     graph_openmp.cc \
     graph_properties.cc \
     graph_properties_imp1.cc \
+    graph_properties_imp2.cc \
     graph_properties_copy.cc \
     graph_properties_group.cc \
     graph_properties_ungroup.cc \

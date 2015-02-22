@@ -42,13 +42,13 @@ struct do_edge_endpoint
         eprop.reserve(num_edges(g));
 
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i)
+        #pragma omp parallel for default(shared) private(i)     \
+            schedule(runtime) if (N > 100)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
             if (v == graph_traits<Graph>::null_vertex())
                 continue;
-            typename graph_traits<Graph>::out_edge_iterator e, e_end;
             for (auto e : out_edges_range(v, g))
             {
                 auto s = v;
@@ -68,11 +68,11 @@ void edge_endpoint(GraphInterface& gi, boost::any prop,
                    boost::any eprop, std::string endpoint)
 {
     if (endpoint == "source")
-        run_action<>()(gi, bind<void>(do_edge_endpoint<true>(), _1,
-                                      gi.GetEdgeIndex(), _2, eprop),
+        run_action<>()(gi, std::bind(do_edge_endpoint<true>(), placeholders::_1,
+                                     gi.GetEdgeIndex(), placeholders::_2, eprop),
                        vertex_properties())(prop);
     else
-        run_action<>()(gi, bind<void>(do_edge_endpoint<false>(), _1,
-                                      gi.GetEdgeIndex(), _2, eprop),
+        run_action<>()(gi, std::bind(do_edge_endpoint<false>(), placeholders::_1,
+                                     gi.GetEdgeIndex(), placeholders::_2, eprop),
                        vertex_properties())(prop);
 }
