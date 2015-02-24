@@ -347,9 +347,19 @@ struct convert<string,boost::python::object>::specific_convert<string,boost::pyt
     {
         boost::python::extract<string> x(v);
         if (x.check())
-                return x();
+            return x();
         else
             throw boost::bad_lexical_cast();
+    }
+};
+
+// No op
+template <class Type1>
+struct convert<Type1, Type1>
+{
+    const Type1& operator()(const Type1& v) const
+    {
+        return v;
     }
 };
 
