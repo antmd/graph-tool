@@ -1430,13 +1430,17 @@ class Graph(object):
             return None
         return v
 
-    def edge(self, s, t, all_edges=False):
+    def edge(self, s, t, all_edges=False, new=False):
         """Return the edge from vertex ``s`` to ``t``, if it exists. If
         ``all_edges=True`` then a list is returned with all the parallel edges
         from ``s`` to ``t``, otherwise only one edge is returned.
 
+        If ``new == True``, a new edge is created and returned, if none
+        currently exists.
+
         This operation will take :math:`O(k(s))` time, where :math:`k(s)` is the
         out-degree of vertex :math:`s`.
+
         """
         s = self.vertex(int(s))
         t = self.vertex(int(t))
@@ -1451,6 +1455,8 @@ class Graph(object):
                 if not all_edges:
                     return e
                 edges.append(e)
+        if new and len(edges) == 0:
+            edges.append(self.add_edge(s, t))
         if all_edges:
             return edges
         return None
