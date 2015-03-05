@@ -40,6 +40,11 @@ point_t interpolate(const point_t& p1, const point_t& p2, double r = 0.5)
     return ret;
 }
 
+double dist(point_t& p1, point_t& p2)
+{
+    return sqrt(pow(p1.first - p2.first, 2) + pow(p1.second - p2.second, 2));
+}
+
 void to_bezier(const vector<point_t> &x, vector<point_t>& ncp)
 {
     vector<point_t> cp(x.size() + 6);
@@ -99,6 +104,9 @@ void transform(vector<point_t>& cp)
 
     for (size_t i = 0; i < cp.size(); ++i)
         cp[i].first /= r;
+
+    d.first = d.second = 0;
+    cp.insert(cp.begin(), d);
 }
 
 template <class PosProp>
@@ -165,29 +173,28 @@ void pack(vector<point_t>& cp, vector<T>& ncp)
 
 struct do_get_cts
 {
-    template <class Graph, class Tree, class PosProp, class CMap>
-    void operator()(Graph& g, Tree* t, PosProp tpos, double beta, CMap cts) const
+    template <class Graph, class Tree, class PosProp, class BProp, class CMap>
+    void operator()(Graph& g, Tree* t, PosProp tpos, BProp beta, CMap cts) const
     {
         vector<size_t> path;
         vector<point_t> cp;
         vector<point_t> ncp;
 
-        typename graph_traits<Graph>::edge_iterator e, e_end;
-        for(tie(e, e_end) = edges(g); e != e_end; ++e)
+        for (auto e : edges_range(g))
         {
-            typename graph_traits<Graph>::vertex_descriptor u, v;
-            u = source(*e, g);
-            v = target(*e, g);
+            auto u = source(e, g);
+            auto v = target(e, g);
             if (u == v)
                 continue;
+
             path.clear();
             tree_path(*t, u, v, path);
             cp.clear();
-            get_control_points(path, tpos, beta, cp);
+            get_control_points(path, tpos, beta[e], cp);
             ncp.clear();
             to_bezier(cp, ncp);
             transform(ncp);
-            pack(ncp, cts[*e]);
+            pack(ncp, cts[e]);
         }
     }
 };
@@ -203,14 +210,17 @@ struct get_pointers
 };
 
 void get_cts(GraphInterface& gi, GraphInterface& tgi,
-             boost::any otpos, double beta, boost::any octs)
+             boost::any otpos, boost::any obeta, boost::any octs)
 {
     typedef property_map_type::apply<vector<double>,
                                      GraphInterface::edge_index_map_t>::type
         eprop_t;
+    typedef property_map_type::apply<double,
+                                     GraphInterface::edge_index_map_t>::type
+        beprop_t;
 
     eprop_t cts = boost::any_cast<eprop_t>(octs);
-
+    beprop_t beta = boost::any_cast<beprop_t>(obeta);
 
     run_action<graph_tool::detail::always_directed, boost::mpl::true_>()
         (gi, std::bind(do_get_cts(), placeholders::_1, placeholders::_2,

@@ -1192,9 +1192,11 @@ def get_hierarchy_control_points(g, t, tpos, beta=0.8, cts=None):
     tpos : :class:`~graph_tool.PropertyMap`
         Vector-valued vertex property map containing the x and y coordinates of
         the vertices in graph ``t``.
-    beta : ``float`` (optional, default: ``0.8``)
+    beta : ``float`` (optional, default: ``0.8`` or :class:`~graph_tool.PropertyMap`)
         Edge bundling strength. For ``beta == 0`` the edges are straight lines,
-        and for ``beta == 1`` they strictly follow the hierarchy.
+        and for ``beta == 1`` they strictly follow the hierarchy. This can be
+        optionally an edge property map, which specified a different bundling
+        strength for each edge.
     cts : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         Edge property map of type ``vector<double>`` where the control points
         will be stored.
@@ -1265,8 +1267,14 @@ def get_hierarchy_control_points(g, t, tpos, beta=0.8, cts=None):
     u = GraphView(g, directed=True)
     tu = GraphView(t, directed=True)
 
+    if not isinstance(beta, PropertyMap):
+        beta = u.new_edge_property("double", beta)
+    else:
+        beta = beta.copy("double")
+
     libgraph_tool_draw.get_cts(u._Graph__graph, tu._Graph__graph,
-                               _prop("v", tu, tpos), beta,
+                               _prop("v", tu, tpos),
+                               _prop("e", u, beta),
                                _prop("e", u, cts))
     return cts
 

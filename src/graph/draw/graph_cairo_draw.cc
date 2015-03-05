@@ -527,7 +527,84 @@ void get_surface_size(Cairo::RefPtr<Cairo::Surface> sfc,
     height = y2 - y1;
 }
 
+double dist(const pos_t& p1, const pos_t& p2)
+{
+    return sqrt(pow(p1.first - p2.first, 2) + pow(p1.second - p2.second, 2));
+};
 
+double get_spline_len(const vector<double>& cts)
+{
+    double len = 0;
+    for (size_t i = 0; i + 7 < cts.size(); i += 6)
+    {
+        double dx = cts[i + 6] - cts[i];
+        double dy = cts[i + 6 + 1] - cts[i + 1];
+        len += sqrt(dx * dx + dy * dy);
+    }
+    return len;
+}
+
+pos_t get_spline_point(const vector<double>& cts, double d)
+{
+    pos_t p;
+    double pos = 0;
+    for (size_t i = 0; i + 7 < cts.size(); i += 6)
+    {
+        double dx = cts[i + 6] - cts[i];
+        double dy = cts[i + 6 + 1] - cts[i + 1];
+        double l = sqrt(dx * dx + dy * dy);
+        if (l < 1e-8)
+            continue;
+        if (pos + l >= d || i + 13 >= cts.size())
+        {
+            double t = 1 - (pos + l - d) / l;
+
+            p.first = pow(1 - t, 3) * cts[i] +
+                3 * t * pow(1 - t, 2) * cts[i + 2] +
+                3 * t * t * (1 - t) * cts[i + 4] +
+                t * t * t * cts[i + 6];
+
+            p.second = pow(1 - t, 3) * cts[i + 1] +
+                3 * t * pow(1 - t, 2) * cts[i + 3] +
+                3 * t * t * (1 - t) * cts[i + 5] +
+                t * t * t * cts[i + 7];
+            break;
+        }
+        pos += l;
+    }
+    return p;
+}
+
+pos_t get_spline_diff(const vector<double>& cts, double d)
+{
+    pos_t diff;
+    double pos = 0;
+    for (size_t i = 0; i + 7 < cts.size(); i += 6)
+    {
+        double dx = cts[i + 6] - cts[i];
+        double dy = cts[i + 6 + 1] - cts[i + 1];
+        double l = sqrt(dx * dx + dy * dy);
+        if (l < 1e-8)
+            continue;
+        if (pos + l >= d || i + 13 >= cts.size())
+        {
+            double t = 1 - (pos + l - d) / l;
+
+            diff.first = -3 * pow(1 - t, 2) * cts[i] +
+                (3 * pow(1 - t, 2) - 6 * t * (1-t)) * cts[i + 2] +
+                (-3 * t * t + 6 * t * (1 - t)) * cts[i + 4] +
+                3 * t * t * cts[i + 6];
+
+            diff.second= -3 * pow(1 - t, 2) * cts[i + 1] +
+                (3 * pow(1 - t, 2) - 6 * t * (1-t)) * cts[i + 3] +
+                (-3 * t * t + 6 * t * (1 - t)) * cts[i + 5] +
+                3 * t * t * cts[i + 7];
+            break;
+        }
+        pos += l;
+    }
+    return diff;
+}
 
 template <class Descriptor>
 class VertexShape
@@ -627,6 +704,68 @@ public:
         anchor.second -= dr * sin(angle);
 
         return anchor;
+    }
+
+    std::pair<pos_t, double> get_anchor_spline(const vector<double>& cts,
+                                               Cairo::Context& cr,
+                                               bool loop = false,
+                                               bool src = false)
+    {
+        double len = get_spline_len(cts);
+        double x, one;
+        pos_t p0 = get_spline_point(cts, 0);
+        pos_t p1 = get_spline_point(cts, len);
+        if (dist(p0, _pos) < dist(p1, _pos) || (loop && src))
+        {
+            x = 1;
+            one = 1;
+        }
+        else
+        {
+            x = 0;
+            one = -1;
+        }
+
+        int anchor_type =_attrs.template get<int32_t>(VERTEX_ANCHOR);
+        if (anchor_type == 0)
+            return make_pair(_pos, x);
+
+        if (loop)
+            x = 0.5;
+
+        double dl = 0.5;
+        pos_t pos, anchor;
+        pos = get_spline_point(cts, len * x);
+        anchor = get_anchor(pos, cr);
+        if (dist(anchor, _pos) == 0 || dist(pos, _pos) < dist(anchor, _pos))
+            return make_pair(_pos, x * len);
+
+        double r = min((get_size(cr) / 10) / len, .5);
+        size_t i = 0;
+        while (abs(dist(pos, anchor)) > 1e-6)
+        {
+            double nx = min(max(x - dl * one, r), 1. - r);;
+            pos = get_spline_point(cts, len * nx);
+            anchor = get_anchor(pos, cr);
+            double j = 0;
+            while (dist(pos, _pos) < dist(anchor, _pos)) // x is inside
+            {
+                dl /= 2;
+                nx = min(max(x - dl * one, r), 1. - r);
+                pos = get_spline_point(cts, len * nx);
+                anchor = get_anchor(pos, cr);
+                j++;
+                if (j > 10000)
+                    break;
+            }
+            x = nx;
+            dl = dist(pos, anchor) / len;
+            assert(dist(pos, _pos) > dist(anchor, _pos));
+            i++;
+            if (i > 1000)
+                break;
+        }
+        return make_pair(pos, x * len);
     }
 
     pos_t get_pos()
@@ -892,12 +1031,12 @@ public:
         marker_size = get_user_dist(cr, marker_size);
         bool sloppy = _attrs.template get<uint8_t>(EDGE_SLOPPY);
 
-        pos_begin = _s.get_anchor(_t.get_pos(), cr);
-        pos_end = _t.get_anchor(_s.get_pos(), cr);
+        pos_begin = _s.get_pos();
+        pos_end = _t.get_pos();
 
         cr.save();
 
-        if (controls.size() >= 4)
+        if (controls.size() >= 8)
         {
             double angle = 0;
             double len = 0;
@@ -912,67 +1051,26 @@ public:
                 cr.translate(pos_begin.first, pos_begin.second);
                 cr.rotate(angle);
                 cr.scale(len, 1.);
-
-                for (size_t i = 0; i < controls.size() / 2; ++i)
-                    cr.user_to_device(controls[2 * i], controls[2 * i + 1]);
-                cr.restore();
-
-                for (size_t i = 0; i < controls.size() / 2; ++i)
-                    cr.device_to_user(controls[2 * i], controls[2 * i + 1]);
             }
             else
             {
                 pos_begin = _s.get_pos();
-                len = M_PI * _s.get_size(cr);
+                if (start_marker == MARKER_SHAPE_NONE &&
+                    end_marker == MARKER_SHAPE_NONE)
+                    len = M_PI * _s.get_size(cr);
+                else
+                    len = max(M_PI * _s.get_size(cr), 6 * marker_size);
                 cr.save();
                 cr.translate(pos_begin.first, pos_begin.second);
                 cr.scale(len / sqrt(2), len / sqrt(2));
-                for (size_t i = 0; i < controls.size() / 2; ++i)
-                    cr.user_to_device(controls[2 * i], controls[2 * i + 1]);
-                cr.restore();
-
-                for (size_t i = 0; i < controls.size() / 2; ++i)
-                    cr.device_to_user(controls[2 * i], controls[2 * i + 1]);
             }
 
-            size_t N = controls.size();
-            pos_begin = _s.get_anchor(make_pair(controls[0],
-                                                controls[1]), cr);
-            pos_end = _t.get_anchor(make_pair(controls[N - 2],
-                                              controls[N - 1]), cr);
+            for (size_t i = 0; i < controls.size() / 2; ++i)
+                cr.user_to_device(controls[2 * i], controls[2 * i + 1]);
+            cr.restore();
 
-            if (_s.get_pos() == _t.get_pos())
-            {
-                double ox = pos_begin.first - _s.get_pos().first +
-                    pos_end.first - _t.get_pos().first;
-                double oy = pos_begin.second - _s.get_pos().second +
-                    pos_end.second - _t.get_pos().second;
-
-                for (size_t i = 0; i < controls.size() / 2; ++i)
-                {
-                    controls[2 * i] += ox / 2;
-                    controls[2 * i + 1] += oy / 2;
-                }
-
-                if ((start_marker != MARKER_SHAPE_NONE && start_marker != MARKER_SHAPE_BAR) ||
-                    (end_marker != MARKER_SHAPE_NONE && end_marker != MARKER_SHAPE_BAR))
-                {
-                    for (size_t i = 0; i < controls.size() / 2; ++i)
-                    {
-                        pos_t cpos;
-                        cpos.first = controls[2 * i];
-                        cpos.second = controls[2 * i + 1];
-                        move_radially(cpos, _s.get_pos(), marker_size / 2);
-                        controls[2 * i] = cpos.first;
-                        controls[2 * i + 1] = cpos.second;
-                    }
-                }
-
-                pos_begin = _s.get_anchor(make_pair(controls[0],
-                                                    controls[1]), cr);
-                pos_end = _t.get_anchor(make_pair(controls[N - 2],
-                                                  controls[N - 1]), cr);
-            }
+            for (size_t i = 0; i < controls.size() / 2; ++i)
+                cr.device_to_user(controls[2 * i], controls[2 * i + 1]);
         }
 
 
@@ -982,15 +1080,26 @@ public:
         pw = get_user_dist(cr, pw);
         cr.set_line_width(pw);
 
-        pos_t pos_begin_c = pos_begin;
-        pos_t pos_end_c = pos_end;
+        pos_t pos_begin_marker = pos_begin;
+        pos_t pos_end_marker = pos_end;
+        double pos_begin_d = 0, pos_end_d = 0;
 
-        if ((start_marker != MARKER_SHAPE_NONE && start_marker != MARKER_SHAPE_BAR))
-            move_radially(pos_begin_c, _s.get_pos(), marker_size / 2);
-        if ((end_marker != MARKER_SHAPE_NONE && end_marker != MARKER_SHAPE_BAR))
-            move_radially(pos_end_c, _t.get_pos(), marker_size / 2);
-
-
+        if (controls.size() >= 8)
+        {
+            if (start_marker != MARKER_SHAPE_NONE)
+                tie(pos_begin_marker, pos_begin_d) =
+                    _s.get_anchor_spline(controls, cr, pos_begin == pos_end, true);
+            if (end_marker != MARKER_SHAPE_NONE)
+                tie(pos_end_marker, pos_end_d) =
+                    _t.get_anchor_spline(controls, cr, pos_begin == pos_end, false);
+        }
+        else
+        {
+            if (start_marker != MARKER_SHAPE_NONE)
+                pos_begin_marker = _s.get_anchor(pos_end, cr);
+            if (end_marker != MARKER_SHAPE_NONE)
+                pos_end_marker = _t.get_anchor(pos_begin, cr);
+        }
 
         double a = get<3>(color);
         a *= get<3>(_s._attrs.template get<color_t>(VERTEX_COLOR));
@@ -998,47 +1107,35 @@ public:
         a *= get<3>(_t._attrs.template get<color_t>(VERTEX_COLOR));
         a *= get<3>(_t._attrs.template get<color_t>(VERTEX_FILL_COLOR));
 
-        if (!sloppy && a < 1 && !has_gradient)
+        if (!sloppy && a < 1)
         {
             // set the clip region to the correct size for better push/pop_group
             // performance
-            draw_edge_markers(pos_begin, pos_end, controls, marker_size, cr);
-            draw_edge_line(pos_begin_c, pos_end_c, controls, cr);
+            draw_edge_markers(pos_begin_marker, pos_begin_d, pos_end_marker,
+                              pos_end_d, controls, marker_size, cr);
+            draw_edge_line(pos_begin, pos_end, controls, cr);
             double sx1, sy1, sx2, sy2;
             cr.get_stroke_extents(sx1, sy1, sx2, sy2);
             cr.begin_new_path();
             cr.rectangle(sx1, sy1, sx2 - sx1, sy2 - sy1);
             _s.draw(cr, true);
-            _t.draw(cr, true);
+            if (pos_begin != pos_end)
+                _t.draw(cr, true);
             cr.set_fill_rule(Cairo::FILL_RULE_EVEN_ODD);
             cr.clip();
 
             // seamlessly blend in separate surface
             cr.push_group();
-            draw_edge_markers(pos_begin, pos_end, controls, marker_size, cr);
-            cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color), 1);
-            cr.fill();
-            draw_edge_line(pos_begin_c, pos_end_c, controls, cr);
-            cr.set_line_width(pw);
-            cr.stroke();
-            vector<double> empty;
-            cr.set_dash(empty, 0);
-            cr.pop_group_to_source();
-            cr.reset_clip();
-            cr.paint_with_alpha(get<3>(color));
-        }
-        else
-        {
-            Cairo::RefPtr<Cairo::LinearGradient> gd =
-                Cairo::LinearGradient::create(pos_begin.first, pos_begin.second,
-                                              pos_end.first, pos_end.second);
+            cr.set_operator(Cairo::OPERATOR_SOURCE);
+            draw_edge_markers(pos_begin_marker, pos_begin_d, pos_end_marker,
+                              pos_end_d, controls, marker_size, cr);
+            if (has_gradient)
+            {
+                auto gd = Cairo::LinearGradient::create(pos_begin.first,
+                                                        pos_begin.second,
+                                                        pos_end.first,
+                                                        pos_end.second);
 
-            if (!has_gradient)
-            {
-                cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color), get<3>(color));
-            }
-            else
-            {
                 for (size_t i = 0; i < gradient.size() / 5; ++i)
                 {
                     size_t pos = i * 5;
@@ -1050,9 +1147,63 @@ public:
                 }
                 cr.set_source(gd);
             }
-            draw_edge_markers(pos_begin, pos_end, controls, marker_size, cr);
+            else
+            {
+                cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color), 1);
+            }
             cr.fill();
-            draw_edge_line(pos_begin_c, pos_end_c, controls, cr);
+            cr.rectangle(sx1, sy1, sx2 - sx1, sy2 - sy1);
+            if (start_marker != MARKER_SHAPE_NONE && start_marker != MARKER_SHAPE_BAR)
+            {
+                cr.arc(pos_begin_marker.first, pos_begin_marker.second,
+                       marker_size / 2, 0, 2 * M_PI);
+            }
+            if (end_marker != MARKER_SHAPE_NONE && end_marker != MARKER_SHAPE_BAR)
+            {
+                cr.arc(pos_end_marker.first, pos_end_marker.second,
+                       marker_size / 2, 0, 2 * M_PI);
+            }
+            cr.clip();
+            draw_edge_line(pos_begin, pos_end, controls, cr);
+            cr.set_line_width(pw);
+            cr.stroke();
+            vector<double> empty;
+            cr.set_dash(empty, 0);
+            cr.pop_group_to_source();
+            cr.set_operator(Cairo::OPERATOR_OVER);
+            cr.reset_clip();
+            if (!has_gradient)
+                cr.paint_with_alpha(get<3>(color));
+            else
+                cr.paint();
+        }
+        else
+        {
+            if (!has_gradient)
+            {
+                cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color), get<3>(color));
+            }
+            else
+            {
+                auto gd = Cairo::LinearGradient::create(pos_begin.first,
+                                                        pos_begin.second,
+                                                        pos_end.first,
+                                                        pos_end.second);
+                for (size_t i = 0; i < gradient.size() / 5; ++i)
+                {
+                    size_t pos = i * 5;
+                    gd->add_color_stop_rgba(gradient[pos],
+                                            gradient[pos + 1],
+                                            gradient[pos + 2],
+                                            gradient[pos + 3],
+                                            gradient[pos + 4]);
+                }
+                cr.set_source(gd);
+            }
+            draw_edge_markers(pos_begin_marker, pos_begin_d, pos_end_marker,
+                              pos_end_d, controls, marker_size, cr);
+            cr.fill();
+            draw_edge_line(pos_begin, pos_end, controls, cr);
             cr.stroke();
         }
 
@@ -1073,13 +1224,33 @@ public:
             cr.get_text_extents(text, extents);
 
             pos_t origin;
-            origin.first = (pos_begin.first + pos_end.first) / 2;
-            origin.second = (pos_begin.second + pos_end.second) / 2;
+            if (controls.size() < 8)
+            {
+                origin.first = (pos_begin.first + pos_end.first) / 2;
+                origin.second = (pos_begin.second + pos_end.second) / 2;
+            }
+            else
+            {
+                double len = get_spline_len(controls);
+                origin = get_spline_point(controls, len / 2);
+            }
+
             cr.translate(origin.first, origin.second);
+
             if (text_parallel)
             {
-                double angle = atan2(pos_end.second - pos_begin.second,
-                                     pos_end.first - pos_begin.first);
+                double angle;
+                if (controls.size() < 8)
+                {
+                    angle = atan2(pos_end.second - pos_begin.second,
+                                  pos_end.first - pos_begin.first);
+                }
+                else
+                {
+                    double len = get_spline_len(controls);
+                    pos_t diff = get_spline_diff(controls, len / 2);
+                    angle = atan2(diff.second, diff.first);
+                }
                 if (angle > M_PI / 2)
                     angle -= M_PI;
                 if (angle < -M_PI / 2)
@@ -1104,21 +1275,19 @@ public:
         cr.restore();
     }
 
-    void draw_edge_markers(pos_t& pos_begin, pos_t& pos_end,
-                           vector<double>& controls,
-                           double marker_size,
-                           Cairo::Context& cr)
+    void draw_edge_markers(pos_t& pos_begin, double pos_begin_d, pos_t& pos_end,
+                           double pos_end_d, vector<double>& controls,
+                           double marker_size, Cairo::Context& cr)
     {
-        double len = sqrt(pow(pos_end.first - pos_begin.first, 2) +
-                          pow(pos_end.second - pos_begin.second, 2));
+        double len = dist(pos_end, pos_begin);
         double angle_b, angle_e;
-        if (controls.size() >= 4)
+        if (controls.size() >= 8)
         {
-            size_t N = controls.size();
-            angle_b = atan2(controls[1] - pos_begin.second,
-                            controls[0] - pos_begin.first);
-            angle_e = atan2(pos_end.second - controls[N - 1],
-                            pos_end.first - controls[N - 2]);
+            pos_t diff = get_spline_diff(controls, pos_begin_d + marker_size / 4);
+            angle_b = atan2(diff.second, diff.first);
+
+            diff = get_spline_diff(controls, pos_end_d - marker_size / 4);
+            angle_e = atan2(diff.second, diff.first);
         }
         else
         {
@@ -1126,89 +1295,59 @@ public:
                                       pos_end.first - pos_begin.first);
         }
 
-        cr.save();
-        cr.translate(pos_end.first, pos_end.second);
-        cr.rotate(angle_e);
-        draw_marker(EDGE_END_MARKER, marker_size, cr);
-        cr.restore();
-
-        cr.save();
-        cr.translate(pos_begin.first, pos_begin.second);
-        cr.rotate(angle_b);
-        cr.translate(marker_size, 0);
-        draw_marker(EDGE_START_MARKER, marker_size, cr);
-        cr.restore();
-
-        double mid_point = _attrs.template get<double>(EDGE_MID_MARKER_POSITION);
-
-        cr.save();
-        edge_marker_t marker = _attrs.template get<edge_marker_t>(EDGE_MID_MARKER);
-        if (controls.size() < 4)
+        auto shape = _attrs.template get<edge_marker_t>(EDGE_END_MARKER);
+        if (shape != MARKER_SHAPE_NONE)
         {
+            cr.save();
             cr.translate(pos_end.first, pos_end.second);
-            cr.rotate(angle_b);
-            if (marker == MARKER_SHAPE_BAR)
-                cr.translate(-len/2., 0);
-            else
-                cr.translate(-len/2. + marker_size / 2, 0);
+            cr.rotate(angle_e);
+            draw_marker(EDGE_END_MARKER, marker_size, cr);
+            cr.restore();
         }
-        else
+
+        shape = _attrs.template get<edge_marker_t>(EDGE_START_MARKER);
+        if (shape != MARKER_SHAPE_NONE)
         {
-            vector<double> cts = controls;
-            cts.insert(cts.begin(), pos_begin.second);
-            cts.insert(cts.begin(), pos_begin.first);
-            cts.push_back(pos_end.first);
-            cts.push_back(pos_end.second);
-
-            double len = 0;
-            for (size_t i = 0; i + 7 < cts.size(); i += 6)
-            {
-                double dx = cts[i + 6] - cts[i];
-                double dy = cts[i + 6 + 1] - cts[i + 1];
-                len += sqrt(dx * dx + dy * dy);
-            }
-
-            pos_t mid_pos;
-            double pos = 0;
-            for (size_t i = 0; i + 7 < cts.size(); i += 6)
-            {
-                double dx = cts[i + 6] - cts[i];
-                double dy = cts[i + 6 + 1] - cts[i + 1];
-                double l = sqrt(dx * dx + dy * dy);
-                if (pos + l >= len * mid_point)
-                {
-                    double t = 1 - (pos + l - len * mid_point) / l;
-
-                    mid_pos.first = pow(1 - t, 3) * cts[i] +
-                        3 * t * pow(1 - t, 2) * cts[i + 2] +
-                        3 * t * t * (1 - t) * cts[i + 4] +
-                        t * t * t * cts[i + 6];
-                    mid_pos.second = pow(1 - t, 3) * cts[i + 1] +
-                        3 * t * pow(1 - t, 2) * cts[i + 3] +
-                        3 * t * t * (1 - t) * cts[i + 5] +
-                        t * t * t * cts[i + 7];
-
-                    dx = -3 * pow(1 - t, 2) * cts[i] +
-                        (3 * pow(1 - t, 2) - 6 * t * (1-t)) * cts[i + 2] +
-                        (-3 * t * t + 6 * t * (1 - t)) * cts[i + 4] +
-                        3 * t * t * cts[i + 6];
-                    dy = -3 * pow(1 - t, 2) * cts[i + 1] +
-                        (3 * pow(1 - t, 2) - 6 * t * (1-t)) * cts[i + 3] +
-                        (-3 * t * t + 6 * t * (1 - t)) * cts[i + 5] +
-                        3 * t * t * cts[i + 7];
-
-                    double angle_t = atan2(dy, dx);
-                    cr.translate(mid_pos.first, mid_pos.second);
-                    cr.rotate(angle_t);
-                    if (marker != MARKER_SHAPE_BAR)
-                        cr.translate(marker_size / 2, 0);
-                    break;
-                }
-                pos += l;
-            }
+            cr.save();
+            cr.translate(pos_begin.first, pos_begin.second);
+            cr.rotate(angle_b);
+            cr.translate(marker_size, 0);
+            draw_marker(EDGE_START_MARKER, marker_size, cr);
+            cr.restore();
         }
-        draw_marker(EDGE_MID_MARKER, marker_size, cr);
-        cr.restore();
+
+        shape = _attrs.template get<edge_marker_t>(EDGE_MID_MARKER);
+
+        if (shape != MARKER_SHAPE_NONE)
+        {
+            double mid_point = _attrs.template get<double>(EDGE_MID_MARKER_POSITION);
+
+            cr.save();
+            edge_marker_t marker = _attrs.template get<edge_marker_t>(EDGE_MID_MARKER);
+            if (controls.size() < 8)
+            {
+                cr.translate(pos_end.first, pos_end.second);
+                cr.rotate(angle_b);
+                if (marker == MARKER_SHAPE_BAR)
+                    cr.translate(-len/2., 0);
+                else
+                    cr.translate(-len/2. + marker_size / 2, 0);
+            }
+            else
+            {
+                 double len = get_spline_len(controls);
+                 pos_t mid_pos, diff;
+                 mid_pos = get_spline_point(controls, len * mid_point);
+                 diff = get_spline_diff(controls, len * mid_point);
+                 double angle_t = atan2(diff.second, diff.first);
+                 cr.translate(mid_pos.first, mid_pos.second);
+                 cr.rotate(angle_t);
+                 if (marker != MARKER_SHAPE_BAR)
+                     cr.translate(marker_size / 2, 0);
+            }
+            draw_marker(EDGE_MID_MARKER, marker_size, cr);
+            cr.restore();
+        }
     }
 
     void draw_edge_line(pos_t& pos_begin_c, pos_t& pos_end_c,
@@ -1224,18 +1363,14 @@ public:
             cr.set_dash(dashes, offset);
         }
 
-        if (controls.size() >= 4)
+        if (controls.size() >= 8)
         {
-            size_t step = (controls.size() > 4) ? 6 : 4;
-            for (size_t i = 0; i < controls.size(); i += step)
-                if (i + 5 >= controls.size())
-                    cr.curve_to(controls[i], controls[i + 1],
-                                controls[i + 2], controls[i + 3],
-                                pos_end_c.first, pos_end_c.second);
-                else
-                    cr.curve_to(controls[i], controls[i + 1],
-                                controls[i + 2], controls[i + 3],
-                                controls[i + 4], controls[i + 5]);
+            for (size_t i = 2; i + 5 < controls.size(); i += 6)
+            {
+                cr.curve_to(controls[i], controls[i + 1],
+                            controls[i + 2], controls[i + 3],
+                            controls[i + 4], controls[i + 5]);
+            }
         }
         else
         {
@@ -1245,7 +1380,8 @@ public:
 
     void draw_marker(edge_attr_t attr, double size, Cairo::Context& cr)
     {
-        edge_marker_t marker = _attrs.template get<edge_marker_t>(attr);
+        auto marker = _attrs.template get<edge_marker_t>(attr);
+
         switch (marker)
         {
         case MARKER_SHAPE_ARROW:
@@ -1349,6 +1485,10 @@ void draw_edges(Graph& g, pair<EdgeIterator, EdgeIterator> e_range,
             tpos.first = pos_map[t][0];
             tpos.second = pos_map[t][1];
         }
+
+        if (spos == tpos && t != s)
+            continue;
+
         VertexShape<vertex_t> ss(spos, AttrDict<vertex_t>(s, vattrs, vdefaults));
         VertexShape<vertex_t> ts(tpos, AttrDict<vertex_t>(t, vattrs, vdefaults));
 
@@ -1555,12 +1695,14 @@ void cairo_draw(GraphInterface& gi,
                            std::ref(edefaults), std::ref(cr)),
              vertex_scalar_vector_properties(),
              vorder_t())(pos, vorder);
+
     run_action<graph_tool::detail::always_directed>()
         (gi, std::bind(do_cairo_draw_edges(), placeholders::_1, placeholders::_2,
                        placeholders::_3, std::ref(vattrs), std::ref(eattrs),
                        std::ref(vdefaults), std::ref(edefaults), std::ref(cr)),
          vertex_scalar_vector_properties(),
          eorder_t())(pos, eorder);
+
     if (!nodesfirst)
         run_action<graph_tool::detail::always_directed>()
             (gi, std::bind(do_cairo_draw_vertices(), placeholders::_1,
@@ -1642,7 +1784,7 @@ struct do_put_parallel_splines
                 double theta = get(loop_angle, s);
                 if (std::isnan(theta))
                     theta = atan2(dist.second, dist.first) - M_PI / 2;
-                typename property_traits<SplinesMap>::value_type sp(22), sp2(22);
+                typename property_traits<SplinesMap>::value_type sp(22), sp2(26);
                 for (size_t j = 0; j < pes.size(); ++j)
                 {
                     double d = 4 * (sqrt(2) - 1) / 3;
@@ -1684,10 +1826,9 @@ struct do_put_parallel_splines
 
                     for (size_t i = 0; i < 11; ++i)
                     {
-                        sp2[i * 2 + 0] = sp[i * 2 + 0] * cos(theta) - sp[i * 2 + 1] * sin(theta);
-                        sp2[i * 2 + 1] = sp[i * 2 + 0] * sin(theta) + sp[i * 2 + 1] * cos(theta);
+                        sp2[i * 2 + 2] = sp[i * 2 + 0] * cos(theta) - sp[i * 2 + 1] * sin(theta);
+                        sp2[i * 2 + 3] = sp[i * 2 + 0] * sin(theta) + sp[i * 2 + 1] * cos(theta);
                     }
-
                     put(spline, skey_t(pes[j]), sp2);
                 }
             }
@@ -1709,16 +1850,18 @@ struct do_put_parallel_splines
                         pes.push_back(make_pair(*ei, false));
                 }
 
-                typename property_traits<SplinesMap>::value_type sp(4, 0);
+                typename property_traits<SplinesMap>::value_type sp(8, 0);
                 double n = (pes.size() - 1.) / 2.;
                 for (size_t j = 0; j < pes.size(); ++j)
                 {
                     typedef typename property_traits<SplinesMap>::value_type::value_type val_t;
                     double one = pes[j].second ? 1 : -1;
-                    sp[0] = val_t(0.3);
-                    sp[1] = val_t(one * (j - n) * parallel_distance / n);
-                    sp[2] = val_t(0.7);
+                    sp[2] = val_t(0.3);
                     sp[3] = val_t(one * (j - n) * parallel_distance / n);
+                    sp[4] = val_t(0.7);
+                    sp[5] = val_t(one * (j - n) * parallel_distance / n);
+                    sp[6] = 1;
+                    sp[7] = 0;
                     put(spline, skey_t(pes[j].first), sp);
                 }
             }
@@ -1863,8 +2006,8 @@ struct enum_from_int
     }
 };
 
-void get_cts(GraphInterface& gi, GraphInterface& tgi,
-             boost::any otpos, double beta, boost::any octs);
+void get_cts(GraphInterface& gi, GraphInterface& tgi, boost::any otpos,
+             boost::any obeta, boost::any octs);
 
 BOOST_PYTHON_MODULE(libgraph_tool_draw)
 {
