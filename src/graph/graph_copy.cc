@@ -117,20 +117,17 @@ struct copy_vertex_property_dispatch
             return;
         found = true;
 
-        typename PropertyMap::unchecked_t p_src =
-            psrc->get_unchecked(num_vertices(src));
-        typename PropertyMap::unchecked_t p_tgt =
-            ptgt->get_unchecked(num_vertices(tgt));
+        auto p_src = psrc->get_unchecked(num_vertices(src));
+        auto p_tgt = ptgt->get_unchecked(num_vertices(tgt));
 
         int i, N = num_vertices(src);
         #pragma omp parallel for default(shared) private(i) schedule(runtime) if (N > 100)
         for (i = 0; i < N; ++i)
         {
-            typename graph_traits<GraphSrc>::vertex_descriptor v = vertex(i, src);
+            auto v = vertex(i, src);
             if (v == graph_traits<GraphSrc>::null_vertex())
                 continue;
-            typename graph_traits<GraphTgt>::vertex_descriptor new_v =
-                vertex(index_map[i], tgt);
+            auto new_v = vertex(index_map[i], tgt);
             p_tgt[new_v] = p_src[v];
         }
     }
@@ -191,29 +188,26 @@ struct copy_edge_property_dispatch
             return;
         found = true;
 
-        typename PropertyMap::unchecked_t p_src =
-            psrc->get_unchecked(max_src_edge_index + 1);
-        typename PropertyMap::unchecked_t p_tgt =
-            ptgt->get_unchecked(num_edges(tgt));
+        auto p_src = psrc->get_unchecked(max_src_edge_index + 1);
+        auto p_tgt = ptgt->get_unchecked(num_edges(tgt));
 
         int i, N = num_vertices(src);
         #pragma omp parallel for default(shared) private(i) schedule(runtime) if (N > 100)
         for (i = 0; i < N; ++i)
         {
-            typename graph_traits<GraphSrc>::vertex_descriptor v = vertex(i, src);
+            auto v = vertex(i, src);
             if (v == graph_traits<GraphSrc>::null_vertex())
                 continue;
 
-            typename graph_traits<GraphSrc>::out_edge_iterator e, e_end;
-            for (tie(e, e_end) = out_edges(v, src); e != e_end; ++e)
+            for (auto e : out_edges_range(v, src))
             {
-                typename graph_traits<GraphSrc>::vertex_descriptor s = source(*e, src);
-                typename graph_traits<GraphSrc>::vertex_descriptor t = target(*e, src);
+                auto s = source(e, src);
+                auto t = target(e, src);
                 if (!is_directed::apply<GraphSrc>::type::value && s > t)
                     continue;
-                size_t ei = src_edge_index[*e];
-                typename graph_traits<GraphTgt>::edge_descriptor new_e = index_map[ei];
-                p_tgt[new_e] = p_src[*e];
+                size_t ei = src_edge_index[e];
+                auto new_e = index_map[ei];
+                p_tgt[new_e] = p_src[e];
             }
         }
     }
@@ -255,16 +249,14 @@ struct do_graph_copy
                     vector<pair<std::reference_wrapper<boost::any>,std::reference_wrapper<boost::any>>>& eprops) const
     {
         vector<size_t> index_map(num_vertices(src));
-        typename graph_traits<GraphSrc>::vertex_iterator v, v_end;
-        for (tie(v, v_end) = vertices(src); v != v_end; ++v)
+        for (auto v : vertices_range(src))
         {
-            if (src_vertex_index[*v] >= index_map.size())
-                index_map.resize(src_vertex_index[*v]+1);
-            typename graph_traits<GraphTgt>::vertex_descriptor new_v =
-                get(vertex_order, *v);
-            while (new_v >= num_vertices(tgt))
+            if (src_vertex_index[v] >= index_map.size())
+                index_map.resize(src_vertex_index[v] + 1);
+            auto new_v = get(vertex_order, v);
+            while (size_t(new_v) >= num_vertices(tgt))
                 add_vertex(tgt);
-            index_map[src_vertex_index[*v]] = tgt_vertex_index[new_v];
+            index_map[src_vertex_index[v]] = tgt_vertex_index[new_v];
         }
 
         for (size_t i = 0; i < vprops.size(); ++i)
@@ -274,15 +266,13 @@ struct do_graph_copy
 
 
         vector<typename graph_traits<GraphTgt>::edge_descriptor> edge_map(num_edges(src));
-        typename graph_traits<GraphSrc>::edge_iterator e, e_end;
-        for (tie(e, e_end) = edges(src); e != e_end; ++e)
+        for (auto e : edges_range(src))
         {
-            size_t s = index_map[src_vertex_index[source(*e, src)]];
-            size_t t = index_map[src_vertex_index[target(*e, src)]];
-            typedef typename graph_traits<GraphTgt>::edge_descriptor edge_t;
-            edge_t new_e = add_edge(vertex(s,tgt), vertex(t,tgt), tgt).first;
+            size_t s = index_map[src_vertex_index[source(e, src)]];
+            size_t t = index_map[src_vertex_index[target(e, src)]];
+            auto new_e = add_edge(vertex(s,tgt), vertex(t,tgt), tgt).first;
 
-            size_t ei = src_edge_index[*e];
+            size_t ei = src_edge_index[e];
             if (ei >= edge_map.size())
                 edge_map.resize(ei + 1);
 
