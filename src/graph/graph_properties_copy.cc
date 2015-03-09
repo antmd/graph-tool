@@ -39,10 +39,28 @@ struct copy_property
     {
         try
         {
+            auto src_map = boost::any_cast<typename PropertyTgt::checked_t>(prop_src);
+            dispatch(tgt, src, dst_map, src_map);
+        }
+        catch (bad_any_cast)
+        {
             typedef typename property_traits<PropertyTgt>::value_type val_tgt;
             typedef typename IteratorSel::template get_descriptor<GraphSrc>::type src_d;
 
             DynamicPropertyMapWrap<val_tgt, src_d> src_map(prop_src, PropertyMaps());
+
+            dispatch(tgt, src, dst_map, src_map);
+        }
+    }
+
+    template <class GraphTgt, class GraphSrc, class PropertyTgt, class PropertySrc>
+    void dispatch(const GraphTgt& tgt, const GraphSrc* src,
+                  PropertyTgt dst_map, PropertySrc src_map) const
+    {
+        try
+        {
+            typedef typename property_traits<PropertyTgt>::value_type val_tgt;
+            typedef typename IteratorSel::template get_descriptor<GraphSrc>::type src_d;
 
             typename IteratorSel::template apply<GraphSrc>::type vs, vs_end;
             typename IteratorSel::template apply<GraphTgt>::type vt, vt_end;
@@ -61,6 +79,7 @@ struct copy_property
             throw ValueException("property values are not convertible");
         }
     }
+
 };
 
 struct edge_selector
