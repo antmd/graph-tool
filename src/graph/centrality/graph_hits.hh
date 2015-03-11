@@ -65,15 +65,15 @@ struct get_hits
             y[v] = 1.0 / V;
         }
 
-        t_type x_norm = 0;
+        t_type x_norm = 0, y_norm = 0;
 
         t_type delta = epsilon + 1;
         size_t iter = 0;
         while (delta >= epsilon)
         {
-            x_norm = 0;
+            x_norm = 0, y_norm=0;
             #pragma omp parallel for default(shared) private(i) \
-                schedule(runtime) if (N > 100) reduction(+:x_norm)
+                schedule(runtime) if (N > 100) reduction(+:x_norm, y_norm)
             for (i = 0; i < N; ++i)
             {
                 typename graph_traits<Graph>::vertex_descriptor v =
@@ -103,8 +103,10 @@ struct get_hits
                     typename graph_traits<Graph>::vertex_descriptor s = target(*e, g);
                     y_temp[v] += get(w, *e) * x[s];
                 }
+                y_norm += power(y_temp[v], 2);
             }
             x_norm = sqrt(x_norm);
+            y_norm = sqrt(y_norm);
 
             delta = 0;
             #pragma omp parallel for default(shared) private(i) \
@@ -116,6 +118,7 @@ struct get_hits
                 if (v == graph_traits<Graph>::null_vertex())
                     continue;
                 x_temp[v] /= x_norm;
+                y_temp[v] /= y_norm;
                 delta += abs(x_temp[v] - x[v]);
                 delta += abs(y_temp[v] - y[v]);
             }
