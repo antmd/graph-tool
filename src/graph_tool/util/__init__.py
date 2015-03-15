@@ -70,7 +70,7 @@ def find_vertex_range(g, prop, range):
 
 
 def find_edge(g, prop, match):
-    """Find all vertices `e` for which `prop[e] = match`. The parameter prop
+    """Find all edges `e` for which `prop[e] = match`. The parameter prop
     must be a :class:`~graph_tool.PropertyMap`."""
     val = _convert(prop, match)
     ret = libgraph_tool_util.\
@@ -80,7 +80,7 @@ def find_edge(g, prop, match):
 
 
 def find_edge_range(g, prop, range):
-    """Find all vertices `e` for which `range[0] <= prop[e] <= range[1]`. The
+    """Find all edges `e` for which `range[0] <= prop[e] <= range[1]`. The
     parameter prop can be either a :class:`~graph_tool.PropertyMap`."""
     ret = libgraph_tool_util.\
           find_edge_range(weakref.ref(g), _prop("e", g, prop),
