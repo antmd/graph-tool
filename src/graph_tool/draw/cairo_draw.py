@@ -461,10 +461,12 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
     parallel_distance : float (optional, default: ``None``)
         Distance used between parallel edges. If not provided, it will be
         determined automatically.
-    fit_view : bool or float (optional, default: ``True``)
+    fit_view : bool or float or tuple (optional, default: ``True``)
         If ``True``, the layout will be scaled to fit the entire clip region.
         If a float value is given, it will be interpreted as ``True``, and in
-        addition the viewport will be scaled out by that factor.
+        addition the viewport will be scaled out by that factor. If a tuple
+        value is given, it should have four values ``(x, y, w, h)`` that
+        specify the view in user coordinates.
     bg_color : str or sequence (optional, default: ``None``)
         Background color. The default is transparent.
     vertex_* : :class:`~graph_tool.PropertyMap` or arbitrary types (optional, default: ``None``)
@@ -492,19 +494,24 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
     if fit_view != False:
         extents = cr.clip_extents()
         output_size = (extents[2] - extents[0], extents[3] - extents[1])
-        offset, zoom = fit_to_view(g, pos, output_size,
-                                   vprops.get("size", _vdefaults["size"]),
-                                   vprops.get("pen_width", _vdefaults["pen_width"]),
-                                   None, vprops.get("text", None),
-                                   vprops.get("font_family",
-                                              _vdefaults["font_family"]),
-                                   vprops.get("font_size",
-                                              _vdefaults["font_size"]),
-                                   cr)
-        cr.translate(offset[0], offset[1])
-        if not isinstance(fit_view, bool):
-            zoom /= fit_view
-        cr.scale(zoom, zoom)
+        try:
+            x, y, w, h = fit_view
+            cr.scale(output_size[0] / w, output_size[1] / h)
+            cr.translate(-x, -y)
+        except TypeError:
+            offset, zoom = fit_to_view(g, pos, output_size,
+                                       vprops.get("size", _vdefaults["size"]),
+                                       vprops.get("pen_width", _vdefaults["pen_width"]),
+                                       None, vprops.get("text", None),
+                                       vprops.get("font_family",
+                                                  _vdefaults["font_family"]),
+                                       vprops.get("font_size",
+                                                  _vdefaults["font_size"]),
+                                       cr)
+            cr.translate(offset[0], offset[1])
+            if not isinstance(fit_view, bool):
+                zoom /= fit_view
+            cr.scale(zoom, zoom)
 
     if "control_points" not in eprops:
         if parallel_distance is None:
@@ -605,8 +612,12 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
     output_size : tuple of scalars (optional, default: ``(600,600)``)
         Size of the drawing canvas. The units will depend on the output format
         (pixels for the screen, points for PDF, etc).
-    fit_view : bool (optional, default: ``True``)
-        If ``True``, the layout will be scaled to fit the entire display area.
+    fit_view : bool, float or tuple (optional, default: ``True``)
+        If ``True``, the layout will be scaled to fit the entire clip region.
+        If a float value is given, it will be interpreted as ``True``, and in
+        addition the viewport will be scaled out by that factor. If a tuple
+        value is given, it should have four values ``(x, y, w, h)`` that
+        specify the view in user coordinates.
     inline : bool (optional, default: ``False``)
         If ``True`` and an `IPython notebook <http://ipython.org/notebook>`_  is
         being used, an inline version of the drawing will be returned.
@@ -910,12 +921,15 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                              ax, **kwargs)
         ctr.artists.append(artist)
 
-        if fit_view and ax is not None:
-            x, y = ungroup_vector_property(pos, [0, 1])
-            l, r = x.a.min(), x.a.max()
-            b, t = y.a.min(), y.a.max()
-            w = r - l
-            h = t - b
+        if fit_view != False and ax is not None:
+            try:
+                x, y, w, h = fit_view
+            except TypeError:
+                x, y = ungroup_vector_property(pos, [0, 1])
+                l, r = x.a.min(), x.a.max()
+                b, t = y.a.min(), y.a.max()
+                w = r - l
+                h = t - b
             ax.set_xlim(l - w * .1, r + w * .1)
             ax.set_ylim(b - h * .1, t + h * .1)
 
@@ -969,15 +983,20 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         cr = cairo.Context(srf)
 
         adjust_default_sizes(g, output_size, vprops, eprops)
-        if fit_view:
-            offset, zoom = fit_to_view(g, pos, output_size, vprops["size"],
-                                       vprops["pen_width"], None,
-                                       vprops.get("text", None),
-                                       vprops.get("font_family",
-                                                  _vdefaults["font_family"]),
-                                       vprops.get("font_size",
-                                                  _vdefaults["font_size"]),
-                                       cr)
+        if fit_view != False:
+            try:
+                x, y, w, h = fit_view
+                offset, zoom = [0, 0], 1
+            except TypeError:
+                offset, zoom = fit_to_view(g, pos, output_size, vprops["size"],
+                                           vprops["pen_width"], None,
+                                           vprops.get("text", None),
+                                           vprops.get("font_family",
+                                                      _vdefaults["font_family"]),
+                                           vprops.get("font_size",
+                                                      _vdefaults["font_size"]),
+                                           cr)
+                fit_view = False
         else:
             offset, zoom = [0, 0], 1
 
@@ -992,7 +1011,7 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         cr.scale(zoom, zoom)
 
         cairo_draw(g, pos, cr, vprops, eprops, vorder, eorder,
-                   nodesfirst, **kwargs)
+                   nodesfirst, fit_view=fit_view, **kwargs)
 
         if fmt == "png":
             srf.write_to_png(out)
@@ -1033,7 +1052,8 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
 def adjust_default_sizes(g, geometry, vprops, eprops, force=False):
     if "size" not in vprops or force:
         A = geometry[0] * geometry[1]
-        vprops["size"] = np.sqrt(A / g.num_vertices()) / 3.5
+        if g.num_vertices() > 0:
+            vprops["size"] = np.sqrt(A / g.num_vertices()) / 3.5
 
     if "pen_width" not in vprops or force:
         size = vprops["size"]
