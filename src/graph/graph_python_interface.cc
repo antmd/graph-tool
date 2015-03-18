@@ -429,7 +429,7 @@ void export_python_interface()
         ("Vertex", no_init)
         .def("__in_degree", &PythonVertex::GetInDegree,
              "Return the in-degree.")
-        .def("__weighted_in_degree", &PythonVertex::GetWeightedOutDegree,
+        .def("__weighted_in_degree", &PythonVertex::GetWeightedInDegree,
              "Return the weighted in-degree.")
         .def("__out_degree", &PythonVertex::GetOutDegree,
              "Return the out-degree.")
