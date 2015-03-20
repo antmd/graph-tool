@@ -35,6 +35,11 @@ void operator+=(std::vector<Val1>& v1, const std::vector<Val2>& v2)
         v1[i] += v2[i];
 }
 
+void operator*=(std::string& v1, const std::string& v2)
+{
+    throw GraphException("Cannot multiply strings.");
+}
+
 template <class Val1, class Val2>
 void operator*=(std::vector<Val1>& v1, const std::vector<Val2>& v2)
 {
@@ -42,11 +47,6 @@ void operator*=(std::vector<Val1>& v1, const std::vector<Val2>& v2)
         v1.resize(v2.size());
     for (size_t i = 0; i < v2.size(); ++i)
         v1[i] *= v2[i];
-}
-
-void operator*=(std::string& v1, const string& v2)
-{
-    throw GraphException("Cannot multiply strings.");
 }
 
 template <class Val1, class Val2>
