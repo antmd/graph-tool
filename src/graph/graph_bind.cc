@@ -126,12 +126,9 @@ bool vector_nequal_compare(const vector<ValueType>& v1,
 struct export_vector_types
 {
     template <class ValueType>
-    void operator()(ValueType) const
+    void operator()(ValueType, std::string type_name = "") const
     {
-        string type_name;
-        if (std::is_same<ValueType, size_t>::value)
-            type_name = "size_t";
-        else
+        if (type_name.empty())
             type_name = get_type_name<>()(typeid(ValueType));
         std::replace(type_name.begin(), type_name.end(), ' ', '_');
         string name = "Vector_" + type_name;
@@ -440,7 +437,7 @@ BOOST_PYTHON_MODULE(libgraph_tool_core)
     export_openmp();
 
     boost::mpl::for_each<boost::mpl::push_back<scalar_types,string>::type>(export_vector_types());
-    boost::mpl::for_each<boost::mpl::vector<uint64_t>>(export_vector_types());
+    export_vector_types()(size_t(), "size_t");
 
     class_<GraphInterface>("GraphInterface", init<>())
         .def(init<GraphInterface,bool,boost::python::object,
