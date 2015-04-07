@@ -127,7 +127,7 @@ struct get_similarity_fast
 
         size_t ss = 0;
 
-        int i, N = lmap1.size();
+        int64_t i, N = std::min(lmap1.size(), lmap2.size());
         #pragma omp parallel for default(shared) private(i) schedule(runtime) \
             reduction(+:ss) if (N > 100)
         for (i = 0; i < N; ++i)
