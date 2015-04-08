@@ -29,7 +29,7 @@ using namespace graph_tool;
 using namespace boost;
 
 
-typedef property_map_type::apply<int32_t,
+typedef property_map_type::apply<int64_t,
                                  GraphInterface::vertex_index_map_t>::type
     vprop_t;
 

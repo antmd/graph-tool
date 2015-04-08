@@ -897,8 +897,9 @@ def line_graph(g):
 
 def graph_union(g1, g2, intersection=None, props=None, include=False,
                 internal_props=False):
-    """Return the union of graphs g1 and g2, composed of all edges and vertices
-    of g1 and g2, without overlap.
+    """Return the union of graphs ``g1`` and ``g2``, composed of all edges and
+    vertices of ``g1`` and ``g2``, without overlap (if ``intersection ==
+    None``).
 
     Parameters
     ----------
@@ -907,8 +908,8 @@ def graph_union(g1, g2, intersection=None, props=None, include=False,
     g2 : :class:`~graph_tool.Graph`
        Second graph in the union.
     intersection : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
-       Vertex property map owned by `g1` which maps each of its vertices
-       to vertex indexes belonging to `g2`. Negative values mean no mapping
+       Vertex property map owned by `g2` which maps each of its vertices
+       to vertex indexes belonging to `g1`. Negative values mean no mapping
        exists, and thus both vertices in `g1` and `g2` will be present in the
        union graph.
     props : list of tuples of :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
@@ -1034,12 +1035,9 @@ def graph_union(g1, g2, intersection=None, props=None, include=False,
             vmask_flipped = True
 
     if intersection is None:
-        intersection = g1.new_vertex_property("int32_t")
-        intersection.a = 0
+        intersection = g2.new_vertex_property("int64_t", -1)
     else:
-        intersection = intersection.copy("int32_t")
-        intersection.a[intersection.a >= 0] += 1
-        intersection.a[intersection.a < 0] = 0
+        intersection = intersection.copy("int64_t")
 
     u1 = GraphView(g1, directed=True, skip_properties=True)
     u2 = GraphView(g2, directed=True, skip_properties=True)
