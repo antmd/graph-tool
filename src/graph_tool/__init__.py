@@ -1459,7 +1459,10 @@ class Graph(object):
             edges.append(self.add_edge(s, t))
         if all_edges:
             return edges
-        return None
+        elif len(edges) > 0:
+            return edges[0]
+        else:
+            return None
 
     def edges(self):
         """Return an :meth:`iterator <iterator.__iter__>` over the edges.
