@@ -740,27 +740,26 @@ public:
         if (dist(anchor, _pos) == 0 || dist(pos, _pos) < dist(anchor, _pos))
             return make_pair(_pos, x * len);
 
-        double r = min((get_size(cr) / 10) / len, .5);
         size_t i = 0;
         while (abs(dist(pos, anchor)) > 1e-6)
         {
-            double nx = min(max(x - dl * one, r), 1. - r);;
+            double nx = min(max(x - dl * one, 0.), 1.);
             pos = get_spline_point(cts, len * nx);
             anchor = get_anchor(pos, cr);
-            double j = 0;
+            size_t j = 0;
             while (dist(pos, _pos) < dist(anchor, _pos)) // x is inside
             {
                 dl /= 2;
-                nx = min(max(x - dl * one, r), 1. - r);
+                nx = min(max(x - dl * one, 0.), 1.);
                 pos = get_spline_point(cts, len * nx);
                 anchor = get_anchor(pos, cr);
                 j++;
-                if (j > 10000)
+                if (nx == 0. || nx == 1. || j > 100)
                     break;
             }
+
             x = nx;
-            dl = dist(pos, anchor) / len;
-            assert(dist(pos, _pos) > dist(anchor, _pos));
+            dl = min(dist(pos, anchor) / len, 0.5);
             i++;
             if (i > 1000)
                 break;
