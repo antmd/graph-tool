@@ -28,7 +28,8 @@ extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest',
               'sphinx.ext.intersphinx', 'mathjax', 'sphinx.ext.autosummary',
               'sphinxext.numpydoc',
               'sphinx.ext.extlinks',
-              'sphinx.ext.linkcode'
+              'sphinx.ext.viewcode'
+              #'sphinx.ext.linkcode'
               #'matplotlib.sphinxext.plot_directive'
               ]
 
