@@ -139,6 +139,7 @@ descriptors:
 
 .. doctest::
 
+   >>> g = Graph()
    >>> vlist = g.add_vertex(10)
    >>> print(len(list(vlist)))
    10

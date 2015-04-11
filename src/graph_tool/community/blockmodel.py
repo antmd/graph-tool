@@ -2729,6 +2729,9 @@ def condensation_graph(g, prop, vweight=None, eweight=None, avprops=None,
     .. doctest:: condensation_graph
 
        >>> bg, bb, vcount, ecount, avp, aep = gt.condensation_graph(g, b, avprops=[g.vp["pos"]], self_loops=True)
+       >>> pos = avp[0]
+       >>> for v in bg.vertices():
+       ...     pos[v].a /= vcount[v]
        >>> gt.graph_draw(bg, pos=avp[0], vertex_fill_color=bb, vertex_shape=bb,
        ...               vertex_size=gt.prop_to_size(vcount, mi=40, ma=100),
        ...               edge_pen_width=gt.prop_to_size(ecount, mi=2, ma=10),
