@@ -1057,8 +1057,8 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
 def adjust_default_sizes(g, geometry, vprops, eprops, force=False):
     if "size" not in vprops or force:
         A = geometry[0] * geometry[1]
-        if g.num_vertices() > 0:
-            vprops["size"] = np.sqrt(A / g.num_vertices()) / 3.5
+        N = max(g.num_vertices(), 1)
+        vprops["size"] = np.sqrt(A / N) / 3.5
 
     if "pen_width" not in vprops or force:
         size = vprops["size"]
