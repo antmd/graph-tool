@@ -50,10 +50,6 @@ struct get_line_graph
             vertex_map[v] = edge_index[e];
         }
 
-        typedef typename property_map<LineGraph,edge_index_t>::type
-            line_edge_index_map_t;
-        line_edge_index_map_t line_edge_index(get(edge_index_t(), line_graph));
-
         if (boost::is_directed(g))
         {
             for (auto v : vertices_range(g))
@@ -82,7 +78,7 @@ struct get_line_graph
                         {
                             add_edge(edge_to_vertex_map[*e1],
                                      edge_to_vertex_map[*e2],
-                                     line_graph).first;
+                                     line_graph);
                         }
                     }
                 }
