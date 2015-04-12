@@ -266,12 +266,12 @@ class CovariateBlockState(BlockState):
 
     def __merge_decorator(func):
         @contextlib.contextmanager
-        def context_wrapper(*args, revert=False):
-            return func(*args, revert=revert)
+        def context_wrapper(self, l_src, l_tgt, revert=False):
+            return func(self, l_src, l_tgt, revert=revert)
 
         @_wraps(func)
-        def wrapper(*args, revert=False):
-            gen = context_wrapper(*args, revert=revert)
+        def wrapper(self, l_src, l_tgt, revert=False):
+            gen = context_wrapper(self, l_src, l_tgt, revert=revert)
             if revert:
                 return gen
             else:
