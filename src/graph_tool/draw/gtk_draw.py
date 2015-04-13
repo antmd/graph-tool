@@ -645,6 +645,10 @@ class GraphWidget(Gtk.DrawingArea):
 
     def button_press_event(self, widget, event):
         r"""Handle button press."""
+
+        if self.g.num_vertices() == 0:
+            return
+
         x = event.x
         y = event.y
         state = event.state
@@ -673,6 +677,10 @@ class GraphWidget(Gtk.DrawingArea):
 
     def button_release_event(self, widget, event):
         r"""Handle button release."""
+
+        if self.g.num_vertices() == 0:
+            return
+
         state = event.state
         if event.button == 1:
             if self.srect is not None:
