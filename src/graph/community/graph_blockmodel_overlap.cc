@@ -471,14 +471,13 @@ struct get_be_overlap
     void operator()(Graph& g, EGraph& eg, EVprop be, VProp b, VIProp node_index)
         const
     {
-        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         for (auto ei : edges_range(eg))
         {
-            vertex_t u = source(ei, eg);
-            vertex_t v = target(ei, eg);
+            auto u = source(ei, eg);
+            auto v = target(ei, eg);
 
-            size_t s = node_index[u];
-            size_t t = node_index[v];
+            auto s = vertex(node_index[u], g);
+            auto t = vertex(node_index[v], g);
 
             for (auto e : out_edges_range(s, g))
             {
@@ -488,6 +487,7 @@ struct get_be_overlap
                     be[e] = {b[u], b[v]};
                 else
                     be[e] = {b[v], b[u]};
+                break;
             }
 
             for (auto e : in_edges_range(t, g))
@@ -495,6 +495,7 @@ struct get_be_overlap
                 if (!be[e].empty() || source(e, g) != s)
                     continue;
                 be[e] = {b[u], b[v]};
+                break;
             }
         }
     }
