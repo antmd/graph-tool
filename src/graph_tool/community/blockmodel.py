@@ -2496,7 +2496,7 @@ def collect_vertex_marginals(state, p=None):
 
     Returns
     -------
-    p : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
+    p : :class:`~graph_tool.PropertyMap`
         Vertex property map with vector-type values, storing the accumulated
         block membership counts.
 
