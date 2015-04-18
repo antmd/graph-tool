@@ -84,7 +84,7 @@ dl_import("from . import libgraph_tool_layout")
 __all__ = ["graph_draw", "graphviz_draw", "fruchterman_reingold_layout",
            "arf_layout", "sfdp_layout", "random_layout", "radial_tree_layout",
            "cairo_draw", "prop_to_size", "get_hierarchy_control_points",
-           "default_cm", "draw_hierarchy"]
+           "default_cm"]
 
 
 def random_layout(g, shape=None, pos=None, dim=2):
