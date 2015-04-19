@@ -692,7 +692,6 @@ bmap_t bmap_copy(const bmap_t& bmap)
 }
 
 
-typedef vector<dense_hash_map<size_t, size_t, std::hash<size_t>>> bmap_t;
 void export_blockmodel_covariate()
 {
     boost::python::class_<bmap_t>("bmap_t")
