@@ -326,10 +326,6 @@ class NestedBlockState(object):
             if _bm_test():
                 from graph_tool.topology import similarity
                 print("- similarity:", similarity(bstate.g, self.levels[l + 2].g))
-                # if similarity(bstate.g, self.levels[l + 2].g) < 1:
-                #     from graph_tool.draw import graph_draw
-                #     graph_draw(bstate.g)
-                #     graph_draw(self.levels[l + 2].g)
 
 
                 if abs(bstate.entropy() - self.levels[l + 2].entropy()) > 1e-6:
@@ -344,9 +340,6 @@ class NestedBlockState(object):
                     print(bstate.eweight.a)
                     print(self.levels[l + 2].eweight.a)
 
-                    # from graph_tool.draw import graph_draw, prop_to_size
-                    # graph_draw(bstate.g, vertex_fill_color=bstate.b)
-                    # graph_draw(self.levels[l + 2].g, vertex_fill_color=self.levels[l + 2].b)
                     nclabel = self.__project_partition(l, l + 1)
                     print(nclabel.a)
                     print(clabel.a)
