@@ -677,12 +677,16 @@ def replace_level(l, state, min_B=None, max_B=None, max_b=None, nsweeps=10,
 
     nested_dl = l < len(state.levels) - 1
 
+    state.levels[l].clabel.a = cclabel.a
+
     Sb = get_b_dl(state.levels[l],
                   dense=(l > 0 and state.deg_corr != "full") or dense,
                   multigraph=l > 0 or multigraph,
                   nested_dl=nested_dl,
                   nested_overlap=state.overlap == "full",
                   dl_ent=dl_ent)
+
+    state.levels[l].clabel.a = 0
 
     if _bm_test():
         assert clabel.a.max() + 1 <= min_B
@@ -744,18 +748,18 @@ def replace_level(l, state, min_B=None, max_B=None, max_b=None, nsweeps=10,
         assert (res.clabel.a == cclabel.a).all(), (res.clabel.a, cclabel.a)
         assert res._BlockState__check_clabel(), "invalid clabel after minimize!"
 
-    res.clabel.a = 0
-    if state.ec is not None:
-        for s in res.states:
-            s.clabel.a = 0
-    b = res.b
-
     Sf = get_b_dl(res,
                   dense=(l > 0 and state.deg_corr != "full") or dense,
                   multigraph=l > 0 or multigraph,
                   nested_dl=nested_dl,
                   nested_overlap=state.overlap == "full",
                   dl_ent=dl_ent)
+
+    res.clabel.a = 0
+    if state.ec is not None:
+        for s in res.states:
+            s.clabel.a = 0
+    b = res.b
 
     kept = False
     if Sf - Sb >= -1e-10:
