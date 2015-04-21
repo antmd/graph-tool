@@ -1258,13 +1258,15 @@ def get_hierarchy_control_points(g, t, tpos, beta=0.8, cts=None):
        >>> cts = gt.get_hierarchy_control_points(g, t, tpos)
        >>> pos = g.own_property(tpos)
        >>> b = state.levels[0].b
-       >>> gt.graph_draw(g, pos=pos, vertex_fill_color=b, vertex_shape=b, edge_control_points=cts,
+       >>> shape = b.copy()
+       >>> shape.a %= 14
+       >>> gt.graph_draw(g, pos=pos, vertex_fill_color=b, vertex_shape=shape, edge_control_points=cts,
        ...               edge_color=[0, 0, 0, 0.3], vertex_anchor=0, output="netscience_nested_mdl.pdf")
        <...>
 
     .. testcleanup:: nested_cts
 
-       gt.graph_draw(g, pos=pos, vertex_fill_color=b, vertex_shape=b, edge_control_points=cts, edge_color=[0, 0, 0, 0.3], vertex_anchor=0, output="netscience_nested_mdl.png")
+       gt.graph_draw(g, pos=pos, vertex_fill_color=b, vertex_shape=shape, edge_control_points=cts, edge_color=[0, 0, 0, 0.3], vertex_anchor=0, output="netscience_nested_mdl.png")
 
     .. figure:: netscience_nested_mdl.*
        :align: center

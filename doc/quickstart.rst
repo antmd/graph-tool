@@ -139,7 +139,6 @@ descriptors:
 
 .. doctest::
 
-   >>> g = Graph()
    >>> vlist = g.add_vertex(10)
    >>> print(len(list(vlist)))
    10
@@ -155,9 +154,9 @@ vertex descriptor to an ``int``.
 
    >>> v = g.add_vertex()
    >>> print(g.vertex_index[v])
-   11
+   12
    >>> print(int(v))
-   11
+   12
 
    
 Edges and vertices can also be removed at any time with the
