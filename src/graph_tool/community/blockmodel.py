@@ -1223,7 +1223,7 @@ def reverse_map(prop, value_map):
     if isinstance(value_map, PropertyMap):
         value_map = value_map.a
     if prop.max() >= len(value_map):
-        raise ValueError("value map is not large enough!")
+        raise ValueError("value map is not large enough! (%d, %d)" % (prop.max(), len(value_map)))
     if prop.dtype != value_map.dtype:
         prop = array(prop, dtype=value_map.dtype)
     if value_map.dtype == "int64":

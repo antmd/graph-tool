@@ -229,7 +229,7 @@ class CovariateBlockState(BlockState):
             condensation_graph(u, node_index,
                                self_loops=True,
                                parallel_edges=True)[:4]
-        rindex = u.new_vertex_property("int64_t")
+        rindex = zeros(nindex.a.max() + 1, dtype="int64")
         reverse_map(nindex, rindex)
         pmap(node_index, rindex)
         base_u.vp["vmap"] = nindex
