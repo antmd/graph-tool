@@ -249,8 +249,10 @@ class CovariateBlockState(BlockState):
                                max_BE=self.max_BE)
         else:
             base_u, node_index = self.__get_base_u(u)
-            state = OverlapBlockState(u, b=u.vp["b"],
-                                      B=u.num_vertices() + 2 * nt,
+            B = u.num_vertices() + 2 * nt
+            B = max(B, u.vp["b"].a.max() + 1 + 2 * nt)
+            state = OverlapBlockState(u, b=u.vp["b"].a,
+                                      B=B,
                                       vweight=u.vp["weight"],
                                       node_index=node_index,
                                       base_g=base_u,
