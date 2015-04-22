@@ -2809,20 +2809,20 @@ def condensation_graph(g, prop, vweight=None, eweight=None, avprops=None,
                                    _prop("e", g, eweight),
                                    self_loops,
                                    parallel_edges)
+
     u = GraphView(g, directed=True, reversed=False)
     libcommunity.community_network_vavg(u._Graph__graph,
                                         gp._Graph__graph,
                                         _prop("v", g, prop),
                                         _prop("v", gp, cprop),
-                                        _prop("v", gp, vcount),
                                         _prop("v", g, vweight),
                                         avp)
+
     u = GraphView(g, directed=True)
     libcommunity.community_network_eavg(u._Graph__graph,
                                         gp._Graph__graph,
                                         _prop("v", g, prop),
                                         _prop("v", gp, cprop),
-                                        _prop("e", gp, ecount),
                                         _prop("e", g, eweight),
                                         aep,
                                         self_loops)

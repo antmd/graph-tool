@@ -147,7 +147,7 @@ struct export_vector_types
     }
 
     template <class ValueType>
-    void wrap_array(class_<vector<ValueType> >& vc, boost::mpl::false_) const
+    void wrap_array(class_<vector<ValueType> >&, boost::mpl::false_) const
     {
     }
 };
@@ -359,7 +359,7 @@ struct graph_type_name
 {
     typedef void result_type;
     template <class Graph>
-    void operator()(const Graph& g, string& name) const
+    void operator()(const Graph&, string& name) const
     {
         using boost::python::detail::gcc_demangle;
         name = string(gcc_demangle(typeid(Graph).name()));

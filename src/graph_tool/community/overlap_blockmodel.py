@@ -576,7 +576,6 @@ class OverlapBlockState(BlockState):
 
             if multigraph:
                 S += libcommunity.overlap_parallel_entropy(self.g._Graph__graph,
-                                                           _prop("v", self.g, self.b),
                                                            self.overlap_stats)
 
             if self.deg_corr:

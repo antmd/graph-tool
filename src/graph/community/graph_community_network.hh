@@ -45,15 +45,10 @@ struct get_community_network_vertices
                     VertexProperty vertex_count) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
         typedef typename graph_traits<CommunityGraph>::vertex_descriptor
             cvertex_t;
-        typedef typename graph_traits<CommunityGraph>::edge_descriptor
-            cedge_t;
         typedef typename boost::property_traits<CommunityMap>::value_type
             s_type;
-        typedef typename boost::property_traits<VertexProperty>::value_type
-            vprop_type;
 
 #ifdef HAVE_SPARSEHASH
         google::dense_hash_map<s_type, vertex_t, std::hash<s_type> > comms;
@@ -114,7 +109,6 @@ struct get_community_network_edges
                     bool self_loops, bool parallel_edges) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
         typedef typename graph_traits<CommunityGraph>::vertex_descriptor
             cvertex_t;
         typedef typename graph_traits<CommunityGraph>::edge_descriptor
@@ -262,9 +256,6 @@ struct get_vertex_community_property_sum
                     CCommunityMap cs_map, Vprop vprop, Vprop cvprop) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
-        typedef typename graph_traits<CommunityGraph>::vertex_descriptor
-            cvertex_t;
         typedef typename boost::property_traits<CommunityMap>::value_type
             s_type;
 
@@ -308,7 +299,6 @@ struct get_edge_community_property_sum
                     bool self_loops) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
         typedef typename graph_traits<CommunityGraph>::vertex_descriptor
             cvertex_t;
         typedef typename graph_traits<CommunityGraph>::edge_descriptor

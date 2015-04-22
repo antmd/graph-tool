@@ -332,7 +332,6 @@ struct move_sweep_dispatch
         sampler_map_t sampler = any_cast<sampler_map_t>(asampler);
         sampler_map_t cavity_sampler = any_cast<sampler_map_t>(acavity_sampler);
 
-        ConstantPropertyMap<int, typename graph_traits<Graph>::edge_descriptor> ce(0);
         ConstantPropertyMap<std::array<int, 1>, typename graph_traits<Graph>::vertex_descriptor> cv({-1});
         IdentityArrayPropertyMap<typename graph_traits<Graph>::vertex_descriptor> vmap;
         boost::typed_identity_property_map<int> identity;
@@ -362,7 +361,7 @@ struct move_sweep_dispatch
         move_sweep(states, m_entries,
                    wr.get_unchecked(num_vertices(bg)),
                    b.get_unchecked(num_vertices(g)),
-                   ce, cv, vmap,
+                   cv, vmap,
                    label.get_unchecked(num_vertices(bg)), vlist, deg_corr,
                    dense, multigraph, beta,
                    eweight.get_unchecked(max_edge_index),
@@ -371,7 +370,7 @@ struct move_sweep_dispatch
                    nmerges,
                    merge_map.get_unchecked(num_vertices(g)),
                    niter, num_vertices(bg),
-                   verbose, rng, S, nmoves, ostats);
+                   verbose, rng, S, nmoves);
     }
 };
 

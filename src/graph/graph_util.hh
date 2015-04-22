@@ -534,7 +534,7 @@ struct tuple_combine
 template <class... T>
 struct tuple_combine<0, T...>
 {
-    void operator()(size_t& seed, const std::tuple<T...>& v) const {}
+    void operator()(size_t&, const std::tuple<T...>&) const {}
 };
 
 template <class... T>

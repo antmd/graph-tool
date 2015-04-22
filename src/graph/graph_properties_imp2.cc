@@ -35,7 +35,7 @@ void operator+=(std::vector<Val1>& v1, const std::vector<Val2>& v2)
         v1[i] += v2[i];
 }
 
-void operator*=(std::string& v1, const std::string& v2)
+void operator*=(std::string&, const std::string&)
 {
     throw GraphException("Cannot multiply strings.");
 }
@@ -157,7 +157,6 @@ struct do_out_edges_op
             typename mpl::if_<std::is_same<eval_t, size_t>,
                               int64_t, eval_t>::type,
             GraphInterface::vertex_index_map_t>::type VProp;
-        typedef typename property_traits<VProp>::value_type vval_t;
 
         auto vprop = boost::any_cast<VProp>(avprop).get_unchecked(num_vertices(g));
 

@@ -463,7 +463,7 @@ public:
     }
 
     template <class PythonDescriptor>
-    void set_value(const PythonDescriptor& key, const value_type& val,
+    void set_value(const PythonDescriptor&, const value_type&,
                    std::false_type)
     {
         throw ValueException("property is read-only");
@@ -508,16 +508,16 @@ public:
             typename boost::mpl::not_<
                 typename boost::mpl::has_key<numpy_types, value_type>::type >
             ::type>::type isnt_vector_map;
-        return get_array(_pmap, size, isnt_vector_map());
+        return get_array(size, isnt_vector_map());
     }
 
-    boost::python::object get_array(PropertyMap pmap, size_t size, boost::mpl::bool_<false>)
+    boost::python::object get_array(size_t size, boost::mpl::bool_<false>)
     {
         _pmap.reserve(size);
         return wrap_vector_not_owned(_pmap.get_storage());
     }
 
-    boost::python::object get_array(PropertyMap pmap, size_t size, boost::mpl::bool_<true>)
+    boost::python::object get_array(size_t, boost::mpl::bool_<true>)
     {
         return boost::python::object();
     }

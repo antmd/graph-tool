@@ -201,11 +201,11 @@ struct get_sfdp_layout
     size_t max_level, max_iter;
     bool simple;
 
-    template <class Graph, class VertexIndex, class PosMap, class VertexWeightMap,
+    template <class Graph, class PosMap, class VertexWeightMap,
               class EdgeWeightMap, class PinMap, class GroupMap, class RNG>
-    void operator()(Graph& g, VertexIndex vertex_index, PosMap pos,
-                    VertexWeightMap vweight, EdgeWeightMap eweight, PinMap pin,
-                    GroupMap group, bool verbose, RNG& rng) const
+    void operator()(Graph& g, PosMap pos, VertexWeightMap vweight,
+                    EdgeWeightMap eweight, PinMap pin, GroupMap group,
+                    bool verbose, RNG& rng) const
     {
         typedef typename property_traits<PosMap>::value_type pos_t;
         typedef typename property_traits<PosMap>::value_type::value_type val_t;

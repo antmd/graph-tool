@@ -67,7 +67,6 @@ struct get_vertex_sum_dispatch
 void community_network_vavg(GraphInterface& gi, GraphInterface& cgi,
                             boost::any community_property,
                             boost::any condensed_community_property,
-                            boost::any vertex_count,
                             boost::any vweight,
                             boost::python::list avprops)
 {

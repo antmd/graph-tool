@@ -169,14 +169,14 @@ struct selected_types
     }
 
     template <class... Args>
-    void dispatch(unsigned int i, std::tuple<>, Args&&... args) const
+    void dispatch(unsigned int, std::tuple<>, Args&&... args) const
     {
         _a(std::forward<Args>(args)...);
         _found = true;
     }
 
     template <class... Ts>
-    void operator()(Ts&&... ts) const
+    void operator()(Ts&&...) const
     {
         dispatch(0, std::tuple<Ts...>());
     }

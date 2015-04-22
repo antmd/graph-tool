@@ -121,7 +121,7 @@ struct get_closeness
             : _comp_size(comp_size) { }
 
         template <class Vertex, class Graph>
-        void discover_vertex(Vertex u, const Graph&)
+        void discover_vertex(Vertex, const Graph&)
         {
             ++_comp_size;
         }

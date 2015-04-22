@@ -67,7 +67,7 @@ target(const pair<size_t, bool>& e,
 
 
 template <class Nmap, class Graph>
-void add_count(size_t s, size_t t, Nmap& nvmap, Graph& g)
+void add_count(size_t s, size_t t, Nmap& nvmap, Graph&)
 {
     if (!is_directed::apply<Graph>::type::value && s > t)
         std::swap(s, t);
@@ -76,7 +76,7 @@ void add_count(size_t s, size_t t, Nmap& nvmap, Graph& g)
 }
 
 template <class Nmap, class Graph>
-void remove_count(size_t s, size_t t, Nmap& nvmap, Graph& g)
+void remove_count(size_t s, size_t t, Nmap& nvmap, Graph&)
 {
     if (!is_directed::apply<Graph>::type::value && s > t)
         std::swap(s, t);
@@ -88,7 +88,7 @@ void remove_count(size_t s, size_t t, Nmap& nvmap, Graph& g)
 }
 
 template <class Nmap, class Graph>
-size_t get_count(size_t s, size_t t, Nmap& nvmap, Graph& g)
+size_t get_count(size_t s, size_t t, Nmap& nvmap, Graph&)
 {
     if (!is_directed::apply<Graph>::type::value && s > t)
         std::swap(s, t);
@@ -384,7 +384,7 @@ public:
 
     ErdosRewireStrategy(Graph& g, EdgeIndexMap edge_index,
                         vector<edge_t>& edges, CorrProb, BlockDeg,
-                        bool, rng_t& rng, bool parallel_edges)
+                        bool, rng_t& rng, bool)
         : _g(g), _edge_index(edge_index), _edges(edges),
           _vertices(HardNumVertices()(g)), _rng(rng)
     {
@@ -566,7 +566,7 @@ public:
                          bool, rng_t& rng, bool parallel_edges)
         : base_t(g, edge_index, edges, rng, parallel_edges), _g(g) {}
 
-    pair<size_t,bool> get_target_edge(pair<size_t,bool>& e, bool parallel_edges)
+    pair<size_t,bool> get_target_edge(pair<size_t,bool>& e, bool)
     {
         std::uniform_int_distribution<> sample(0, base_t::_edges.size() - 1);
         pair<size_t, bool> et = make_pair(sample(base_t::_rng), false);
@@ -637,7 +637,7 @@ public:
         }
     }
 
-    pair<size_t,bool> get_target_edge(pair<size_t, bool>& e, bool parallel_edge)
+    pair<size_t,bool> get_target_edge(pair<size_t, bool>& e, bool)
     {
         if (!is_directed::apply<Graph>::type::value)
         {
@@ -769,8 +769,7 @@ public:
         return _blockdeg.get_block(v, g);
     }
 
-    pair<size_t, bool> get_target_edge(pair<size_t, bool>& e,
-                                       bool parallel_edges)
+    pair<size_t, bool> get_target_edge(pair<size_t, bool>& e, bool)
     {
         if (!is_directed::apply<Graph>::type::value)
         {
@@ -1017,8 +1016,7 @@ public:
         return _blockdeg.get_block(v, g);
     }
 
-    pair<size_t, bool> get_target_edge(pair<size_t, bool>& e,
-                                       bool parallel_edges)
+    pair<size_t, bool> get_target_edge(pair<size_t, bool>& e, bool)
     {
         if (!is_directed::apply<Graph>::type::value)
         {
@@ -1240,7 +1238,7 @@ public:
     TradBlockRewireStrategy(Graph& g, EdgeIndexMap edge_index,
                             vector<edge_t>& edges, CorrProb corr_prob,
                             BlockDeg blockdeg, bool, rng_t& rng,
-                            bool parallel_edges)
+                            bool)
 
         : _g(g), _edge_index(edge_index), _edges(edges), _corr_prob(corr_prob),
           _blockdeg(blockdeg), _rng(rng), _sampler(nullptr)

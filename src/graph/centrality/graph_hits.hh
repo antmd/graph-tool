@@ -46,7 +46,6 @@ struct get_hits
                     CentralityMap x, CentralityMap y, double epsilon,
                     size_t max_iter, long double& eig) const
     {
-        typedef typename property_traits<WeightMap>::value_type c_type;
         typedef typename property_traits<CentralityMap>::value_type t_type;
 
         CentralityMap x_temp(vertex_index, num_vertices(g));

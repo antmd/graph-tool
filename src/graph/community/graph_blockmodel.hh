@@ -166,7 +166,7 @@ double get_xi(NType N, EType E, double epsilon=1e-8)
         return 0;
 
     double mu = 0, l = 0;
-    get_mu_l(N, E, mu, l);
+    get_mu_l(N, E, mu, l, epsilon);
     double S = double(N) * l + 2 * double(E) * mu;
     return S;
 }
@@ -186,7 +186,7 @@ double get_xi_fast(NType N, EType E)
 // "edge" term of the entropy
 template <class Graph>
 __attribute__((always_inline))
-inline double eterm(size_t r, size_t s, size_t mrs, const Graph& g)
+inline double eterm(size_t r, size_t s, size_t mrs, const Graph&)
 {
     if (!is_directed::apply<Graph>::type::value && r == s)
         mrs *= 2;
@@ -200,8 +200,8 @@ inline double eterm(size_t r, size_t s, size_t mrs, const Graph& g)
 }
 
 // "vertex" term of the entropy
-template <class Graph, class Vertex>
-inline double vterm(Vertex v, size_t mrp, size_t mrm, size_t wr, bool deg_corr,
+template <class Graph>
+inline double vterm(size_t mrp, size_t mrm, size_t wr, bool deg_corr,
                     Graph&)
 {
     double one = 0.5;
@@ -225,7 +225,7 @@ struct entropy
         for (auto e : edges_range(g))
             S += eterm(source(e, g), target(e, g), mrs[e], g);
         for (auto v : vertices_range(g))
-            S += vterm(v, mrp[v], mrm[v], wr[v], deg_corr, g);
+            S += vterm(mrp[v], mrm[v], wr[v], deg_corr, g);
     }
 };
 
@@ -233,7 +233,7 @@ struct entropy
 // ==============
 
 template <class Vertex, class List, class Graph, class GetNode>
-double get_parallel_neighbours_entropy(Vertex v, List& us, Graph& g,
+double get_parallel_neighbours_entropy(Vertex v, List& us, Graph&,
                                        const GetNode& get_node)
 {
     double S = 0;
@@ -305,7 +305,7 @@ inline double lbinom_fast(int N, int k)
 template <class Graph>
 __attribute__((always_inline))
 inline double eterm_dense(size_t r, size_t s, int ers, double wr_r,
-                          double wr_s, bool multigraph, const Graph& g)
+                          double wr_s, bool multigraph, const Graph&)
 {
     // we should not use integers here, since they may overflow
     double nrns;
@@ -461,7 +461,7 @@ public:
     }
 
     template <class Graph, class OStats>
-    double get_delta_dl(size_t v, size_t r, size_t nr, OStats& os, Graph&)
+    double get_delta_dl(size_t, size_t r, size_t nr, OStats&, Graph&)
     {
         if (r == nr)
             return 0;
@@ -549,9 +549,8 @@ public:
     }
 
     template <class Graph, class OStats>
-    void move_vertex(size_t v, size_t r, size_t nr, bool deg_corr,
-                     OStats& overlap_stats, Graph& g, size_t kin = 0,
-                     size_t kout = 0)
+    void move_vertex(size_t v, size_t r, size_t nr, bool deg_corr, OStats&,
+                     Graph& g, size_t kin = 0, size_t kout = 0)
     {
         if (r == nr)
             return;
@@ -647,7 +646,7 @@ inline __attribute__((always_inline))
 pair<typename graph_traits<Graph>::edge_descriptor, bool>
 get_me(typename graph_traits<Graph>::vertex_descriptor r,
        typename graph_traits<Graph>::vertex_descriptor s,
-       const typename get_emat_t::apply<Graph>::type& emat, const Graph& g)
+       const typename get_emat_t::apply<Graph>::type& emat, const Graph&)
 {
     return emat[r][s];
 }
@@ -658,7 +657,7 @@ void
 put_me(typename graph_traits<Graph>::vertex_descriptor r,
        typename graph_traits<Graph>::vertex_descriptor s,
        const typename graph_traits<Graph>::edge_descriptor& e,
-       typename get_emat_t::apply<Graph>::type& emat, const Graph& g)
+       typename get_emat_t::apply<Graph>::type& emat, const Graph&)
 {
     emat[r][s] = make_pair(e, true);
     if (!is_directed::apply<Graph>::type::value && r != s)
@@ -670,8 +669,8 @@ inline __attribute__((always_inline))
 void
 remove_me(typename graph_traits<Graph>::vertex_descriptor r,
           typename graph_traits<Graph>::vertex_descriptor s,
-          const typename graph_traits<Graph>::edge_descriptor& e,
-          typename get_emat_t::apply<Graph>::type& emat, Graph& g,
+          const typename graph_traits<Graph>::edge_descriptor&,
+          typename get_emat_t::apply<Graph>::type& emat, Graph&,
           bool delete_edge=true)
 {
     if (!delete_edge)
@@ -708,7 +707,7 @@ inline __attribute__((always_inline))
 pair<typename graph_traits<Graph>::edge_descriptor, bool>
 get_me(typename graph_traits<Graph>::vertex_descriptor r,
        typename graph_traits<Graph>::vertex_descriptor s,
-       const typename get_ehash_t::apply<Graph>::type& ehash, const Graph& bg)
+       const typename get_ehash_t::apply<Graph>::type& ehash, const Graph&)
 {
     assert(r < ehash.size());
     const auto& map = ehash[r];
@@ -725,9 +724,8 @@ put_me(typename graph_traits<Graph>::vertex_descriptor r,
        typename graph_traits<Graph>::vertex_descriptor s,
        const typename graph_traits<Graph>::edge_descriptor& e,
        typename get_ehash_t::apply<Graph>::type& ehash,
-       const Graph& bg)
+       const Graph&)
 {
-    typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
     assert(r < ehash.size());
     ehash[r][s] = e;
     if (!is_directed::apply<Graph>::type::value)
@@ -757,7 +755,6 @@ struct create_ehash
     void operator()(Graph& g, boost::any& oemap) const
     {
         typedef typename get_ehash_t::apply<Graph>::type emat_t;
-        typedef typename get_ehash_t::apply<Graph>::map_t map_t;
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
         emat_t emat(num_vertices(g));
@@ -1210,7 +1207,7 @@ private:
 
 struct is_loop_nop
 {
-    bool operator()(size_t u) const { return false; }
+    bool operator()(size_t) const { return false; }
 };
 
 
@@ -1220,7 +1217,7 @@ template <class Graph, class BGraph, class Vertex, class Vprop, class Eprop,
           class MEntries,  class NPolicy = standard_neighbours_policy,
           class IL = is_loop_nop>
 void move_entries(Vertex v, Vertex nr, Vprop& b, Eprop& eweights, Graph& g,
-                  BGraph& bg, MEntries& m_entries,
+                  BGraph&, MEntries& m_entries,
                   const NPolicy& npolicy = NPolicy(), IL is_loop = IL())
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
@@ -1355,10 +1352,10 @@ double virtual_move_sparse(const Vec& vs, size_t nr, Eprop& mrs, Vprop& mrp,
     if (!is_directed::apply<Graph>::type::value)
         kin = kout;
 
-    dS += vterm(r,  mrp[r]  - kout, mrm[r]  - kin, wr[r]  - dwr , deg_corr, bg);
-    dS += vterm(nr, mrp[nr] + kout, mrm[nr] + kin, wr[nr] + dwnr, deg_corr, bg);
-    dS -= vterm(r,  mrp[r]        , mrm[r]       , wr[r]        , deg_corr, bg);
-    dS -= vterm(nr, mrp[nr]       , mrm[nr]      , wr[nr]       , deg_corr, bg);
+    dS += vterm(mrp[r]  - kout, mrm[r]  - kin, wr[r]  - dwr , deg_corr, bg);
+    dS += vterm(mrp[nr] + kout, mrm[nr] + kin, wr[nr] + dwnr, deg_corr, bg);
+    dS -= vterm(mrp[r]        , mrm[r]       , wr[r]        , deg_corr, bg);
+    dS -= vterm(mrp[nr]       , mrm[nr]      , wr[nr]       , deg_corr, bg);
 
     return dS;
 }
@@ -1387,8 +1384,8 @@ double virtual_move_sparse(size_t v, size_t nr, Eprop& mrs, Vprop& mrp,
 template <class Graph, class BGraph, class Eprop, class Vprop, class EWprop,
           class VWprop, class EMat, class MEntries, class OStats, class Vec,
           class NPolicy = standard_neighbours_policy, class IL = is_loop_nop>
-double virtual_move_dense(const Vec& vs, size_t nr, Eprop& mrs, Vprop& mrp,
-                          Vprop& mrm, Vprop& wr, Vprop& b, bool deg_corr,
+double virtual_move_dense(const Vec& vs, size_t nr, Eprop& mrs, Vprop&,
+                          Vprop&, Vprop& wr, Vprop& b, bool deg_corr,
                           const EWprop& eweight, const VWprop& vweight,
                           Graph& g, BGraph& bg, EMat& emat, MEntries& m_entries,
                           OStats& overlap_stats, bool multigraph,
@@ -1667,7 +1664,7 @@ struct egroups_manage
     template <class Eprop, class Vprop, class VEprop, class Graph, class VertexIndex, class Egroups>
     static void build_dispatch(Vprop b, Egroups egroups, VEprop esrcpos,
                                VEprop etgtpos, Eprop eweight, Graph& g,
-                               VertexIndex vertex_index, size_t B, mpl::true_)
+                               VertexIndex, size_t, mpl::true_)
     {
         for (auto e : edges_range(g))
         {
@@ -1684,7 +1681,7 @@ struct egroups_manage
     }
 
     template <class Edge, class EV>
-    static size_t insert_edge(const Edge& e, EV& elist, size_t weight)
+    static size_t insert_edge(const Edge& e, EV& elist, size_t)
     {
         elist.push_back(e);
         return elist.size() - 1;
@@ -1728,7 +1725,7 @@ struct egroups_manage
     }
 
     template <class Vertex, class Graph, class EVprop, class Eprop, class VEprop>
-    static void remove_egroups(Vertex v, Vertex r, Eprop& eweight,
+    static void remove_egroups(Vertex v, Vertex r, Eprop&,
                                EVprop& egroups, VEprop& esrcpos, VEprop& etgtpos,
                                Graph& g)
     {
@@ -2284,23 +2281,22 @@ double virtual_move(const Vec& vs, size_t s, Vprop& b, VLprop& cv, VVprop& vmap,
 }
 
 template <class BlockState, class BlockMap>
-size_t get_block_map(const BlockState& state, const BlockMap& bmap, size_t r)
+size_t get_block_map(const BlockState&, const BlockMap&, size_t r)
 {
     return r;
 }
 
 template <class BlockState, class BlockMap>
-void remove_block_map(const BlockState& state, const BlockMap& bmap, size_t r)
+void remove_block_map(const BlockState&, const BlockMap&, size_t)
 {
 }
 
 
 template <class BlockState, class VLprop, class VVprop, class Vprop,
-          class OStats, class NPolicy = standard_neighbours_policy>
+          class NPolicy = standard_neighbours_policy>
 void move_vertex(size_t v, size_t s, Vprop& b, VLprop& cv, VVprop& vmap,
-                 Vprop& wr, Vprop& vweight, bool deg_corr,
-                 vector<BlockState>& states, bool update_egroups,
-                 OStats& overlap_stats, const NPolicy& npolicy = NPolicy())
+                 bool deg_corr, vector<BlockState>& states, bool update_egroups,
+                 const NPolicy& npolicy = NPolicy())
 {
     size_t r = b[v];
 
@@ -2343,11 +2339,10 @@ void move_vertex(size_t v, size_t s, Vprop& b, VLprop& cv, VVprop& vmap,
 
 
 template <class BlockState, class VLprop, class VVprop, class Vprop,
-          class OStats, class Vec, class NPolicy = standard_neighbours_policy>
+          class Vec, class NPolicy = standard_neighbours_policy>
 void move_vertex(const Vec& vs, size_t s, Vprop& b, VLprop& cv, VVprop& vmap,
-                 Vprop& wr, Vprop& vweight, bool deg_corr,
-                 vector<BlockState>& states, bool update_egroups,
-                 OStats& overlap_stats, const NPolicy& npolicy = NPolicy())
+                 bool deg_corr, vector<BlockState>& states, bool update_egroups,
+                 const NPolicy& npolicy = NPolicy())
 {
     size_t r = b[vs[0]];
     if (s == r)
@@ -2407,7 +2402,7 @@ void insert_vec(vector<Type>& v, size_t i, const Type& x)
 }
 
 template <class Type>
-void insert_vec(const std::array<Type, 1>& v, size_t i, const Type& x)
+void insert_vec(const std::array<Type, 1>&, size_t, const Type&)
 {
 }
 
@@ -2418,22 +2413,21 @@ void clear_vec(vector<Type>& v)
 }
 
 template <class Type>
-void clear_vec(const std::array<Type, 1>& v)
+void clear_vec(const std::array<Type, 1>&)
 {
 }
 
 
 //A single Monte Carlo Markov chain sweep
-template <class Graph, class Vprop, class VVprop, class VLprop, class EVprop,
-          class Eprop, class RNG, class BlockState, class MEntries, class OStats>
+template <class Graph, class Vprop, class VVprop, class VLprop,
+          class Eprop, class RNG, class BlockState, class MEntries>
 void move_sweep(vector<BlockState>& states, vector<MEntries>& m_entries_r,
-                Vprop wr, Vprop b, EVprop ce, VLprop cv, VVprop vmap,
-                Vprop clabel, vector<int>& vlist, bool deg_corr, bool dense,
-                bool multigraph, double beta, Eprop eweight, Vprop vweight,
-                Graph& g, bool sequential, bool parallel, bool random_move,
-                double c, size_t nmerges, Vprop merge_map, size_t niter,
-                size_t B, bool verbose, RNG& rng, double& S, size_t& nmoves,
-                OStats ostats)
+                Vprop wr, Vprop b, VLprop cv, VVprop vmap, Vprop clabel,
+                vector<int>& vlist, bool deg_corr, bool dense, bool multigraph,
+                double beta, Eprop eweight, Vprop vweight, Graph& g,
+                bool sequential, bool parallel, bool random_move, double c,
+                size_t nmerges, Vprop merge_map, size_t niter, size_t B,
+                bool verbose, RNG& rng, double& S, size_t& nmoves)
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
@@ -2641,8 +2635,8 @@ void move_sweep(vector<BlockState>& states, vector<MEntries>& m_entries_r,
                     if (!parallel)
                     {
                         assert(b[v] == int(r));
-                        move_vertex(v, s, b, cv, vmap, wr, vweight, deg_corr,
-                                    states, not random_move, ostats);
+                        move_vertex(v, s, b, cv, vmap, deg_corr, states,
+                                    not random_move);
 
                         S += dS;
                         ++nmoves;
@@ -2676,8 +2670,8 @@ void move_sweep(vector<BlockState>& states, vector<MEntries>& m_entries_r,
                     if (dS > 0 && std::isinf(beta))
                         continue;
 
-                    move_vertex(v, s, b, cv, vmap, wr, vweight, deg_corr, states,
-                                not random_move, ostats);
+                    move_vertex(v, s, b, cv, vmap, deg_corr, states,
+                                not random_move);
 
                     S += dS;
                     ++nmoves;
@@ -2755,8 +2749,7 @@ void move_sweep(vector<BlockState>& states, vector<MEntries>& m_entries_r,
 
             double dS = virtual_move(v, s, b, cv, vmap, states, m_entries,
                                      dense, deg_corr, multigraph);
-            move_vertex(v, s, b, cv, vmap, wr, vweight, deg_corr, states, false,
-                        ostats);
+            move_vertex(v, s, b, cv, vmap, deg_corr, states, false);
 
             size_t i = 0, j = 0;
             auto l_v = cv[v][0];

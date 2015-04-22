@@ -54,7 +54,6 @@ struct get_communities
                     pair<bool, string> verbose) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
         typedef typename property_traits<WeightMap>::key_type weight_key_t;
 
 
@@ -490,10 +489,6 @@ struct get_modularity
     template <class Graph, class WeightMap, class CommunityMap>
     void operator()(const Graph& g, WeightMap weights, CommunityMap b, double& Q) const
     {
-        typedef typename property_traits<WeightMap>::key_type weight_key_t;
-        typedef typename property_traits<WeightMap>::value_type weight_val_t;
-        typedef typename property_traits<CommunityMap>::value_type s_val_t;
-
         vector<double> er, err;
         double W = 0;
 

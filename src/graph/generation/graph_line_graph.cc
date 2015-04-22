@@ -33,9 +33,6 @@ struct get_line_graph
                     LineGraph& line_graph, EdgeIndexMap edge_index,
                     LGVertexIndex vmap) const
     {
-        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-        typedef boost::property<edge_index_t, size_t> EdgeProperty;
-
         typedef typename graph_traits<LineGraph>::vertex_descriptor lg_vertex_t;
         typedef HashedDescriptorMap<EdgeIndexMap,lg_vertex_t>
             edge_to_vertex_map_t;

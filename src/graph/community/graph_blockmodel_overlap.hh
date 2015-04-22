@@ -145,7 +145,7 @@ public:
     }
 
     template <class Graph, class VProp>
-    void add_half_edge(size_t v, size_t v_r, VProp& b, Graph& g)
+    void add_half_edge(size_t v, size_t v_r, VProp& b, Graph&)
     {
         size_t u = _node_index[v];
         size_t kin = (_in_neighbours[v] == -1) ? 0 : 1;
@@ -179,7 +179,7 @@ public:
     }
 
     template <class Graph, class VProp>
-    void remove_half_edge(size_t v, size_t v_r, VProp& b, Graph& g)
+    void remove_half_edge(size_t v, size_t v_r, VProp& b, Graph&)
     {
         size_t u = _node_index[v];
         size_t kin = (_in_neighbours[v] == -1) ? 0 : 1;
@@ -285,7 +285,7 @@ public:
 
     template <class Graph, class VProp>
     double virtual_move_parallel_dS(size_t v, size_t v_r, size_t v_nr, VProp& b,
-                                    Graph& g, bool coherent=false) const
+                                    Graph&, bool coherent=false) const
     {
         int m = _mi[v];
         if (m == -1)
@@ -1079,7 +1079,7 @@ struct overlap_partition_stats_t
     }
 
     template <class Graph>
-    void move_vertex(size_t v, size_t r, size_t nr, bool deg_corr,
+    void move_vertex(size_t v, size_t r, size_t nr, bool,
                      overlap_stats_t& overlap_stats, Graph& g,
                      size_t in_deg = 0, size_t out_deg = 0)
     {
@@ -1229,8 +1229,8 @@ private:
 
 struct entropy_parallel_edges_overlap
 {
-    template <class Graph, class VProp>
-    void operator()(Graph& g, VProp b, overlap_stats_t& overlap_stats, double& S) const
+    template <class Graph>
+    void operator()(Graph&, overlap_stats_t& overlap_stats, double& S) const
     {
         S = 0;
         for(auto& h : overlap_stats.get_parallel_bundles())
@@ -1278,7 +1278,7 @@ struct half_edge_neighbour_policy
 
     template <class Vertex>
     iter_range_t
-    get_out_edges(Vertex v, Graph& g) const
+    get_out_edges(Vertex v, Graph&) const
     {
         const auto& e = _out_edges[v];
         if (e != edge_t())
@@ -1289,7 +1289,7 @@ struct half_edge_neighbour_policy
 
     template <class Vertex>
     iter_range_t
-    get_in_edges(Vertex v, Graph& g) const
+    get_in_edges(Vertex v, Graph&) const
     {
         const auto& e = _in_edges[v];
         if (e != edge_t())
@@ -1299,13 +1299,13 @@ struct half_edge_neighbour_policy
     }
 
     template <class Vertex, class Weight>
-    int get_out_degree(Vertex& v, Graph& g, Weight& eweight) const
+    int get_out_degree(Vertex& v, Graph& g, Weight&) const
     {
         return out_degreeS()(v, g);
     }
 
     template <class Vertex, class Weight>
-    int get_in_degree(Vertex& v, Graph& g, Weight& eweight) const
+    int get_in_degree(Vertex& v, Graph& g, Weight&) const
     {
         return in_degreeS()(v, g);
     }
@@ -1318,7 +1318,7 @@ class SingleEntrySet
 public:
     SingleEntrySet() : _pos(0) {}
 
-    void set_move(size_t r, size_t nr) {}
+    void set_move(size_t, size_t) {}
 
     __attribute__((always_inline))
     void insert_delta(size_t r, size_t s, int delta, bool source)
@@ -1364,17 +1364,17 @@ size_t get_lateral_half_edge(size_t v,
 }
 
 //A single Monte Carlo Markov chain sweep
-template <class Graph, class Vprop, class VVprop, class VLprop, class EVprop,
-          class Eprop, class RNG, class BlockState, class MEntries>
+template <class Graph, class Vprop, class VVprop, class VLprop,
+          class RNG, class BlockState, class MEntries>
 void move_sweep_overlap(vector<BlockState>& states,
                         vector<MEntries>& m_entries_r,
                         overlap_stats_t& overlap_stats, Vprop wr, Vprop b,
-                        EVprop ce, VLprop cv, VVprop vmap, Vprop clabel,
+                        VLprop cv, VVprop vmap, Vprop clabel,
                         vector<int>& vlist, bool deg_corr, bool dense,
-                        bool multigraph, double beta, Eprop eweight,
-                        Vprop vweight, Graph& g, bool sequential, bool parallel,
-                        bool random_move, double c, size_t niter, size_t B,
-                        bool verbose, RNG& rng, double& S, size_t& nmoves)
+                        bool multigraph, double beta, Vprop vweight, Graph& g,
+                        bool sequential, bool parallel, bool random_move,
+                        double c, size_t niter, size_t B, bool verbose,
+                        RNG& rng, double& S, size_t& nmoves)
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
@@ -1552,9 +1552,8 @@ void move_sweep_overlap(vector<BlockState>& states,
                 {
 
                     assert(b[v] == int(r));
-                    move_vertex(v, s, b, cv, vmap, wr, vweight, deg_corr,
-                                states, not random_move, overlap_stats,
-                                npolicy);
+                    move_vertex(v, s, b, cv, vmap, deg_corr, states,
+                                not random_move, npolicy);
                     S += dS;
                     ++nmoves;
 
@@ -1588,9 +1587,8 @@ void move_sweep_overlap(vector<BlockState>& states,
                     assert (!std::isinf(dS) && !std::isnan(dS));
                     if (dS > 0 && std::isinf(beta))
                         continue;
-                    move_vertex(v, s, b, cv, vmap, wr, vweight, deg_corr,
-                                states, not random_move, overlap_stats,
-                                npolicy);
+                    move_vertex(v, s, b, cv, vmap, deg_corr, states,
+                                not random_move, npolicy);
                     S += dS;
                     ++nmoves;
                 }
@@ -1614,20 +1612,17 @@ size_t get_ce(size_t v, CEMap& ce, Graph& g)
     return 0;
 }
 
-template <class Graph, class Vprop, class VVprop, class VLprop, class EVprop,
-          class Eprop, class RNG, class BlockState, class MEntries>
+template <class Graph, class Vprop, class VVprop, class VLprop,
+          class RNG, class BlockState, class MEntries>
 void coherent_move_sweep_overlap(vector<BlockState>& states,
                                  vector<MEntries>& m_entries,
                                  overlap_stats_t& overlap_stats, Vprop wr,
-                                 Vprop b, EVprop ce, VLprop cv, VVprop vmap,
-                                 Vprop clabel, vector<int>& vlist,
-                                 bool deg_corr, bool dense, bool multigraph,
-                                 double beta, Eprop eweight, Vprop vweight,
-                                 Graph& g, bool sequential, bool parallel,
-                                 bool random_move, double c,
-                                 bool confine_layers, size_t niter, size_t B,
-                                 bool verbose, RNG& rng, double& S,
-                                 size_t& nmoves)
+                                 Vprop b, VLprop cv, VVprop vmap, Vprop clabel,
+                                 vector<int>& vlist, bool deg_corr, bool dense,
+                                 bool multigraph, double beta, Vprop vweight,
+                                 Graph& g, bool sequential, bool random_move,
+                                 double c, bool confine_layers, size_t niter,
+                                 size_t B, RNG& rng, double& S, size_t& nmoves)
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
@@ -1810,8 +1805,8 @@ void coherent_move_sweep_overlap(vector<BlockState>& states,
             {
                 S += dS;
                 nmoves += vs.size();
-                move_vertex(vs, s, b, cv, vmap, wr, vweight, deg_corr, states,
-                            not random_move, overlap_stats, npolicy);
+                move_vertex(vs, s, b, cv, vmap, deg_corr, states,
+                            not random_move, npolicy);
             }
         }
     }
@@ -1820,18 +1815,15 @@ void coherent_move_sweep_overlap(vector<BlockState>& states,
 
 //A single Monte Carlo Markov chain sweep
 template <class Graph, class Vprop, class VVprop, class VLprop, class EVprop,
-          class Eprop, class RNG, class BlockState, class MEntries>
+          class RNG, class BlockState, class MEntries>
 void merge_sweep_overlap(vector<BlockState>& states,
                          vector<MEntries>& m_entries,
                          overlap_stats_t& overlap_stats, Vprop wr, Vprop b,
                          EVprop ce, VLprop cv, VVprop vmap, Vprop clabel,
                          vector<int>& vlist, bool deg_corr, bool dense,
-                         bool multigraph, double beta, Eprop eweight,
-                         Vprop vweight, Graph& g, bool sequential,
-                         bool parallel, bool random_move, double c,
+                         bool multigraph, Graph& g, bool random_move,
                          size_t confine_layers, size_t nmerges, size_t ntries,
-                         Vprop merge_map, size_t B, bool verbose, RNG& rng,
-                         double& S, size_t& nmoves)
+                         size_t B, RNG& rng, double& S, size_t& nmoves)
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
 
@@ -1931,8 +1923,8 @@ void merge_sweep_overlap(vector<BlockState>& states,
                 {
                     ddS += virtual_move(u, s, b, cv, vmap, states, m_entries,
                                         dense, deg_corr, multigraph, npolicy);
-                    move_vertex(u, s, b, cv, vmap, wr, vweight, deg_corr,
-                                states, false, overlap_stats, npolicy);
+                    move_vertex(u, s, b, cv, vmap, deg_corr, states, false,
+                                npolicy);
                 }
 
 
@@ -1946,9 +1938,8 @@ void merge_sweep_overlap(vector<BlockState>& states,
                 {
                     for (auto u : bundle)
                     {
-                        move_vertex(u, best_move[u], b, cv, vmap, wr, vweight,
-                                    deg_corr, states, false, overlap_stats,
-                                    npolicy);
+                        move_vertex(u, best_move[u], b, cv, vmap, deg_corr,
+                                    states, false, npolicy);
                     }
                 }
 
@@ -1958,8 +1949,7 @@ void merge_sweep_overlap(vector<BlockState>& states,
         // reset
         for (auto v : groups[r])
         {
-            move_vertex(v, r, b, cv, vmap, wr, vweight, deg_corr, states, false,
-                        overlap_stats, npolicy);
+            move_vertex(v, r, b, cv, vmap, deg_corr, states, false, npolicy);
         }
 
         best_move_dS[r] = dS;
@@ -2010,8 +2000,7 @@ void merge_sweep_overlap(vector<BlockState>& states,
             //assert(s != r);
             double dS = virtual_move(v, s, b, cv, vmap, states, m_entries,
                                      dense, deg_corr, multigraph, npolicy);
-            move_vertex(v, s, b, cv, vmap, wr, vweight, deg_corr,
-                        states, false, overlap_stats, npolicy);
+            move_vertex(v, s, b, cv, vmap, deg_corr, states, false, npolicy);
             S += dS;
         }
 

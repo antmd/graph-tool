@@ -72,7 +72,6 @@ struct get_average
     template <class Graph, class DegreeSelector>
     void operator()(Graph& g, DegreeSelector deg) const
     {
-        typedef typename DegreeSelector::value_type value_type;
         long double a = 0, aa = 0;
         size_t count = 0;
 

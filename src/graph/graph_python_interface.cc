@@ -190,11 +190,10 @@ python::object add_edge(python::object g, const python::object& s,
 struct get_edge_descriptor
 {
     template <class Graph>
-    void operator()(const Graph& g, const python::object& e,
+    void operator()(const Graph&, const python::object& e,
                     typename GraphInterface::edge_t& edge,
                     bool& found)  const
     {
-        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
         PythonEdge<Graph>& pe = python::extract<PythonEdge<Graph>&>(e);
         pe.CheckValid();
         pe.SetValid(false);

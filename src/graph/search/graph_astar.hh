@@ -70,7 +70,7 @@ public:
     }
 
     template <class Edge, class Graph>
-    void edge_not_relaxed(Edge e, const Graph& g)
+    void edge_not_relaxed(Edge e, const Graph&)
     {
         _vis.attr("edge_not_relaxed")
             (PythonEdge<Graph>(_gi, e));

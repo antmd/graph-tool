@@ -37,8 +37,6 @@ struct do_maximal_vertex_set
                     bool high_deg, RNG& rng) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
-        typedef typename property_traits<VertexSet>::value_type wval_t;
 
         uniform_real_distribution<> sample(0, 1);
 

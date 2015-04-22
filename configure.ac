@@ -34,7 +34,7 @@ AC_PROG_INSTALL
 AC_CANONICAL_TARGET
 
 dnl turn on warnings
-[CXXFLAGS="-Wall -Wextra -Wno-unused-local-typedefs -Wno-unused-parameter ${CXXFLAGS}"]
+[CXXFLAGS="-Wall -Wextra -ftemplate-backtrace-limit=0 ${CXXFLAGS}"]
 
 dnl Checks for options
 

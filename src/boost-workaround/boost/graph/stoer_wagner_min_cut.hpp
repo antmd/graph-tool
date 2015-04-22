@@ -212,7 +212,6 @@ namespace boost {
   inline typename boost::property_traits<WeightMap>::value_type
   stoer_wagner_min_cut(const UndirectedGraph& g, WeightMap weights, const boost::bgl_named_params<P, T, R>& params) {
     typedef typename boost::graph_traits<UndirectedGraph>::vertex_descriptor vertex_descriptor;
-    typedef typename std::vector<vertex_descriptor>::size_type heap_container_size_type;
     typedef typename boost::property_traits<WeightMap>::value_type weight_type;
     
     typedef boost::bgl_named_params<P, T, R> params_type;

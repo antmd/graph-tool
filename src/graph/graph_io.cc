@@ -453,8 +453,6 @@ struct write_to_file
     void operator()(ostream& stream, Graph& g, IndexMap index_map,
                     dynamic_properties& dp, const string& format) const
     {
-        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-
         if (format == "dot")
         {
             string name = graphviz_insert_index(dp, index_map, false);

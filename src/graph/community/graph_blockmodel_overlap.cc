@@ -215,10 +215,9 @@ struct move_sweep_overlap_dispatch
             {
                 move_sweep_overlap(states, m_entries, overlap_stats,
                                    wr.get_unchecked(num_vertices(bg)),
-                                   b.get_unchecked(num_vertices(g)), ce, cv,
+                                   b.get_unchecked(num_vertices(g)), cv,
                                    vmap, label.get_unchecked(num_vertices(bg)),
                                    vlist, deg_corr, dense, multigraph, beta,
-                                   eweight.get_unchecked(max_edge_index),
                                    vweight.get_unchecked(num_vertices(g)), g,
                                    sequential, parallel, random_move, c, niter,
                                    num_vertices(bg), verbose, rng, S, nmoves);
@@ -228,29 +227,24 @@ struct move_sweep_overlap_dispatch
                 vector<EntrySet<Graph>> m_entries(1, EntrySet<Graph>(num_vertices(bg)));
                 coherent_move_sweep_overlap(states, m_entries, overlap_stats,
                                             wr.get_unchecked(num_vertices(bg)),
-                                            b.get_unchecked(num_vertices(g)), ce, cv,
+                                            b.get_unchecked(num_vertices(g)), cv,
                                             vmap, label.get_unchecked(num_vertices(bg)),
                                             vlist, deg_corr, dense, multigraph, beta,
-                                            eweight.get_unchecked(max_edge_index),
                                             vweight.get_unchecked(num_vertices(g)), g,
-                                            sequential, parallel, random_move, c,
+                                            sequential,  random_move, c,
                                             false, niter,
-                                            num_vertices(bg), verbose, rng, S, nmoves);
+                                            num_vertices(bg), rng, S, nmoves);
             }
         }
         else
         {
             merge_sweep_overlap(states, m_entries, overlap_stats,
                                 wr.get_unchecked(num_vertices(bg)),
-                                b.get_unchecked(num_vertices(g)), ce, cv,
-                                vmap, label.get_unchecked(num_vertices(bg)),
-                                vlist, deg_corr, dense, multigraph, beta,
-                                eweight.get_unchecked(max_edge_index),
-                                vweight.get_unchecked(num_vertices(g)), g,
-                                sequential, parallel, random_move, c, false,
-                                nmerges, niter,
-                                merge_map.get_unchecked(num_vertices(g)),
-                                num_vertices(bg), verbose, rng, S, nmoves);
+                                b.get_unchecked(num_vertices(g)), ce, cv, vmap,
+                                label.get_unchecked(num_vertices(bg)), vlist,
+                                deg_corr, dense, multigraph, g, random_move,
+                                false, nmerges, niter,
+                                num_vertices(bg), rng, S, nmoves);
         }
     }
 };
@@ -387,19 +381,13 @@ do_get_overlap_partition_stats(GraphInterface& gi, boost::any ob,
     return partition_stats;
 }
 
-double do_get_overlap_parallel_entropy(GraphInterface& gi, boost::any ob,
+double do_get_overlap_parallel_entropy(GraphInterface& gi,
                                        overlap_stats_t& overlap_stats)
 {
-    typedef property_map_type::apply<int32_t,
-                                     GraphInterface::vertex_index_map_t>::type
-        vmap_t;
-
-    vmap_t b = any_cast<vmap_t>(ob);
-
     double S = 0;
     run_action<>()
         (gi, std::bind(entropy_parallel_edges_overlap(),
-                       placeholders::_1, b, std::ref(overlap_stats),
+                       placeholders::_1, std::ref(overlap_stats),
                        std::ref(S)))();
     return S;
 }
@@ -513,9 +501,6 @@ void do_get_be_overlap(GraphInterface& gi, GraphInterface& egi, boost::any obe,
     typedef property_map_type::apply<vector<int32_t>,
                                      GraphInterface::edge_index_map_t>::type
         evmap_t;
-    typedef property_map_type::apply<int32_t,
-                                     GraphInterface::edge_index_map_t>::type
-        emap_t;
 
     vmap_t b = any_cast<vmap_t>(ob);
     evmap_t be = any_cast<evmap_t>(obe);
@@ -642,9 +627,6 @@ void do_get_bv_overlap(GraphInterface& gi, boost::any ob,  boost::any onode_inde
     typedef property_map_type::apply<vector<int32_t>,
                                      GraphInterface::vertex_index_map_t>::type
         vvmap_t;
-    typedef property_map_type::apply<vector<int32_t>,
-                                     GraphInterface::edge_index_map_t>::type
-        evmap_t;
 
     vmap_t b = any_cast<vmap_t>(ob);
     vimap_t node_index = any_cast<vimap_t>(onode_index);
@@ -662,8 +644,6 @@ struct get_wr_overlap
     template <class Graph, class VProp, class VVProp>
     void operator()(Graph& g, VVProp bv, VProp wr) const
     {
-        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-
         for (auto v : vertices_range(g))
         {
             for (size_t i = 0; i < bv[v].size(); ++i)
@@ -728,9 +708,6 @@ struct get_augmented_overlap
     void operator()(Graph& g, VProp b, VIProp node_index, VProp br_map,
                     vector<int32_t>& br_b, vector<int32_t>& br_ni) const
     {
-
-        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-
         unordered_map<std::tuple<int, int>, size_t> idx_map;
         vector<std::tuple<int, int>> idx_rmap;
         size_t pos = 0;
@@ -824,8 +801,6 @@ struct get_maj_overlap
     template <class Graph, class VProp, class VVProp>
     void operator()(Graph& g, VVProp bv, VVProp bc_total, VProp b) const
     {
-        typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-
         for (auto v : vertices_range(g))
         {
             if (bv[v].empty())

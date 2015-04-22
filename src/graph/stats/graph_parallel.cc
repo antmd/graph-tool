@@ -30,10 +30,10 @@ using namespace boost;
 using namespace graph_tool;
 
 void do_label_parallel_edges(GraphInterface& gi, boost::any property,
-                             bool mark_only, bool count_all)
+                             bool mark_only)
 {
     run_action<>()(gi, std::bind(label_parallel_edges(), placeholders::_1,
-                                 placeholders::_2, mark_only, count_all),
+                                 placeholders::_2, mark_only),
                    writable_edge_scalar_properties())(property);
 }
 

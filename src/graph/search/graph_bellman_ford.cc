@@ -37,35 +37,35 @@ public:
         : _gi(gi), _vis(vis) {}
 
     template <class Edge, class Graph>
-    void examine_edge(Edge e, const Graph& g)
+    void examine_edge(Edge e, const Graph&)
     {
         _vis.attr("examine_edge")
             (PythonEdge<Graph>(_gi, e));
     }
 
     template <class Edge, class Graph>
-    void edge_relaxed(Edge e, const Graph& g)
+    void edge_relaxed(Edge e, const Graph&)
     {
         _vis.attr("edge_relaxed")
             (PythonEdge<Graph>(_gi, e));
     }
 
     template <class Edge, class Graph>
-    void edge_not_relaxed(Edge e, const Graph& g)
+    void edge_not_relaxed(Edge e, const Graph&)
     {
         _vis.attr("edge_not_relaxed")
             (PythonEdge<Graph>(_gi, e));
     }
 
     template <class Edge, class Graph>
-    void edge_minimized(Edge e, const Graph& g)
+    void edge_minimized(Edge e, const Graph&)
     {
         _vis.attr("edge_minimized")
             (PythonEdge<Graph>(_gi, e));
     }
 
     template <class Edge, class Graph>
-    void edge_not_minimized(Edge e, const Graph& g)
+    void edge_not_minimized(Edge e, const Graph&)
     {
         _vis.attr("edge_not_minimized")
             (PythonEdge<Graph>(_gi, e));

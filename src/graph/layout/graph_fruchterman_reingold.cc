@@ -121,8 +121,7 @@ struct get_layout
         Value _r;
 
         template <class Graph, class Vertex, class KVal, class DVal>
-        Value operator()(Vertex v1, Vertex v2, KVal k, DVal dist,
-                         const Graph&) const
+        Value operator()(Vertex, Vertex, KVal k, DVal dist, const Graph&) const
         {
             return _r * power(k, 2) / dist;
         }

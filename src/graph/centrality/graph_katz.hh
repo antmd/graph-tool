@@ -46,7 +46,6 @@ struct get_katz
                     CentralityMap c, PersonalizationMap beta, long double alpha,
                     long double epsilon, size_t max_iter) const
     {
-        typedef typename property_traits<WeightMap>::value_type c_type;
         typedef typename property_traits<CentralityMap>::value_type t_type;
 
         CentralityMap c_temp(vertex_index, num_vertices(g));

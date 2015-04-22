@@ -35,15 +35,15 @@ using namespace boost;
 struct label_parallel_edges
 {
     template <class Graph, class ParallelMap>
-    void operator()(const Graph& g, ParallelMap parallel, bool mark_only,
-                    bool count_all) const
+    void operator()(const Graph& g, ParallelMap parallel, bool mark_only) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
         typedef typename graph_traits<Graph>::edge_descriptor edge_t;
         typename property_map<Graph, edge_index_t>::type eidx = get(edge_index, g);
 
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(runtime) if (N > 100)
+        #pragma omp parallel for default(shared) private(i) schedule(runtime) \
+            if (N > 100)
         for (i = 0; i < N; ++i)
         {
             typename graph_traits<Graph>::vertex_descriptor v = vertex(i, g);
@@ -76,7 +76,7 @@ struct label_parallel_edges
                     self_loops[eidx[*e]] = true;
                 }
 
-                typeof(vset.begin()) iter = vset.find(u);
+                auto iter = vset.find(u);
                 if (iter == vset.end())
                 {
                     vset[u] = *e;
@@ -104,8 +104,6 @@ struct label_self_loops
     template <class Graph, class SelfMap>
     void operator()(const Graph& g, SelfMap self, bool mark_only) const
     {
-        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
-
         int i, N = num_vertices(g);
         #pragma omp parallel for default(shared) private(i) schedule(runtime) if (N > 100)
         for (i = 0; i < N; ++i)

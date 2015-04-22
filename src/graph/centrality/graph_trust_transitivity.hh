@@ -100,8 +100,6 @@ struct get_trust_transitivity
                     int64_t target, TrustMap c, InferredTrustMap t) const
     {
         typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
-        typedef typename graph_traits<Graph>::edge_descriptor edge_t;
-        typedef typename property_traits<TrustMap>::value_type c_type;
         typedef typename
             property_traits<InferredTrustMap>::value_type::value_type t_type;
 

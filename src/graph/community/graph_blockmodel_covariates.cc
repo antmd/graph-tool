@@ -324,7 +324,6 @@ struct cov_move_sweep_dispatch
             move_sweep(states, m_entries,
                        wr[0].get().get_unchecked(B),
                        b.get_unchecked(num_vertices(g)),
-                       ce.get_unchecked(meindex),
                        cv.get_unchecked(num_vertices(g)),
                        vmap.get_unchecked(num_vertices(g)),
                        label.get_unchecked(B),
@@ -336,7 +335,7 @@ struct cov_move_sweep_dispatch
                        nmerges,
                        merge_map.get_unchecked(num_vertices(g)),
                        niter, B,
-                       verbose, rng, S, nmoves, ostats);
+                       verbose, rng, S, nmoves);
         }
         else
         {
@@ -387,10 +386,9 @@ struct cov_move_sweep_dispatch
                 {
                     move_sweep_overlap(states, m_entries, overlap_stats[0].get(),
                                        wr[0].get().get_unchecked(B),
-                                       b.get_unchecked(num_vertices(g)), ce, cv,
+                                       b.get_unchecked(num_vertices(g)), cv,
                                        vmap, label.get_unchecked(B),
                                        vlist, deg_corr, dense, multigraph, beta,
-                                       eweight[0].get().get_unchecked(max_edge_index[0]),
                                        vweight[0].get().get_unchecked(num_vertices(g)), g,
                                        sequential, parallel, random_move, c, niter,
                                        B, verbose, rng, S, nmoves);
@@ -402,14 +400,13 @@ struct cov_move_sweep_dispatch
                         m_entries.emplace_back(num_vertices(state.bg));
                     coherent_move_sweep_overlap(states, m_entries, overlap_stats[0].get(),
                                                 wr[0].get().get_unchecked(B),
-                                                b.get_unchecked(num_vertices(g)), ce, cv,
+                                                b.get_unchecked(num_vertices(g)), cv,
                                                 vmap, label.get_unchecked(B),
                                                 vlist, deg_corr, dense, multigraph, beta,
-                                                eweight[0].get().get_unchecked(max_edge_index[0]),
                                                 vweight[0].get().get_unchecked(num_vertices(g)), g,
-                                                sequential, parallel, random_move, c,
+                                                sequential, random_move, c,
                                                 confine_layers, niter,
-                                                B, verbose, rng, S, nmoves);
+                                                B, rng, S, nmoves);
                 }
             }
             else
@@ -417,14 +414,10 @@ struct cov_move_sweep_dispatch
                 merge_sweep_overlap(states, m_entries, overlap_stats[0].get(),
                                     wr[0].get().get_unchecked(B),
                                     b.get_unchecked(num_vertices(g)), ce, cv,
-                                    vmap, label.get_unchecked(B),
-                                    vlist, deg_corr, dense, multigraph, beta,
-                                    eweight[0].get().get_unchecked(max_edge_index[0]),
-                                    vweight[0].get().get_unchecked(num_vertices(g)), g,
-                                    sequential, parallel, random_move, c, confine_layers,
-                                    nmerges, niter,
-                                    merge_map.get_unchecked(num_vertices(g)),
-                                    B, verbose, rng, S, nmoves);
+                                    vmap, label.get_unchecked(B), vlist,
+                                    deg_corr, dense, multigraph, g,
+                                    random_move, confine_layers, nmerges, niter,
+                                    B, rng, S, nmoves);
             }
         }
     }
