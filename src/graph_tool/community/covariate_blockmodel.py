@@ -239,9 +239,11 @@ class CovariateBlockState(BlockState):
         nt = 1
         if openmp_enabled():
             nt = openmp_get_num_threads()
+        B = u.num_vertices() + 2 * nt
+        B = max(B, u.vp["b"].a.max() + 1 + 2 * nt)
         if not self.overlap:
             state = BlockState(u, b=u.vp["b"],
-                               B=u.num_vertices() + 2 * nt,
+                               B=B,
                                eweight=u.ep["weight"],
                                vweight=u.vp["weight"],
                                deg_corr=self.deg_corr,
@@ -249,8 +251,6 @@ class CovariateBlockState(BlockState):
                                max_BE=self.max_BE)
         else:
             base_u, node_index = self.__get_base_u(u)
-            B = u.num_vertices() + 2 * nt
-            B = max(B, u.vp["b"].a.max() + 1 + 2 * nt)
             state = OverlapBlockState(u, b=u.vp["b"].a,
                                       B=B,
                                       vweight=u.vp["weight"],
