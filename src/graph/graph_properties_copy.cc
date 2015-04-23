@@ -59,9 +59,6 @@ struct copy_property
     {
         try
         {
-            typedef typename property_traits<PropertyTgt>::value_type val_tgt;
-            typedef typename IteratorSel::template get_descriptor<GraphSrc>::type src_d;
-
             typename IteratorSel::template apply<GraphSrc>::type vs, vs_end;
             typename IteratorSel::template apply<GraphTgt>::type vt, vt_end;
             tie(vt, vt_end) = IteratorSel::range(tgt);
