@@ -107,14 +107,12 @@ extern void community_network(GraphInterface& gi, GraphInterface& cgi,
 void community_network_vavg(GraphInterface& gi, GraphInterface& cgi,
                             boost::any community_property,
                             boost::any condensed_community_property,
-                            boost::any vertex_count,
                             boost::any vweight,
                             boost::python::list avprops);
 
 void community_network_eavg(GraphInterface& gi, GraphInterface& cgi,
                             boost::any community_property,
                             boost::any condensed_community_property,
-                            boost::any edge_count,
                             boost::any eweight,
                             boost::python::list aeprops,
                             bool self_loops);
