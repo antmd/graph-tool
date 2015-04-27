@@ -654,6 +654,16 @@ void do_split_graph(GraphInterface& gi, boost::any& aec, boost::any& ab,
                                        std::ref(uvmap)))();
 }
 
+bool bmap_has(const bmap_t& bmap, size_t c, size_t r)
+{
+    if (c > bmap.size())
+        throw GraphException("invalid covariate value:" + lexical_cast<string>(c));
+    auto iter = bmap[c].find(r);
+    if (iter == bmap[c].end())
+        return false;
+    return true;
+}
+
 size_t bmap_get(const bmap_t& bmap, size_t c, size_t r)
 {
     if (c > bmap.size())
@@ -688,6 +698,7 @@ bmap_t bmap_copy(const bmap_t& bmap)
 void export_blockmodel_covariate()
 {
     boost::python::class_<bmap_t>("bmap_t")
+        .def("has", bmap_has)
         .def("get", bmap_get)
         .def("set", bmap_set)
         .def("del_c", bmap_del_c)
