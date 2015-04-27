@@ -49,7 +49,7 @@ from __future__ import division, absolute_import, print_function
 from .. dl_import import dl_import
 dl_import("from . import libgraph_tool_stats")
 
-from .. import _degree, _prop, _get_rng, GraphView
+from .. import _degree, _prop, _get_rng, GraphView, PropertyMap
 from numpy import *
 import numpy
 import sys
@@ -234,9 +234,18 @@ def vertex_average(g, deg):
     (4.975, 0.0686758691244603)
     """
 
-    ret = libgraph_tool_stats.\
+    if isinstance(deg, PropertyMap) and "string" in deg.value_type():
+        raise ValueError("Cannot calculate average of property type: " + deg.value_type())
+    a, aa, count  = libgraph_tool_stats.\
           get_vertex_average(g._Graph__graph, _degree(g, deg))
-    return ret
+    try:
+        a = array(a.a)
+        aa = array(aa.a)
+    except AttributeError:
+        pass
+    a /= count
+    aa = sqrt((aa / count - a ** 2) / count)
+    return a, aa
 
 
 def edge_average(g, eprop):
@@ -287,9 +296,19 @@ def edge_average(g, eprop):
     (0.4989741369720412, 0.004101065927783255)
     """
 
-    ret = libgraph_tool_stats.\
+    if "string" in eprop.value_type():
+        raise ValueError("Cannot calculate average of property type: " + eprop.value_type())
+    g = GraphView(g, directed=True)
+    a, aa, count = libgraph_tool_stats.\
           get_edge_average(g._Graph__graph, _prop("e", g, eprop))
-    return ret
+    try:
+        a = array(a.a)
+        aa = array(aa.a)
+    except AttributeError:
+        pass
+    a /= count
+    aa = sqrt((aa / count - a ** 2) / count)
+    return a, aa
 
 
 def remove_labeled_edges(g, label):

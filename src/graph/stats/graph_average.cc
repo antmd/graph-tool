@@ -23,6 +23,8 @@
 
 #include <boost/python.hpp>
 
+#include <boost/mpl/joint_view.hpp>
+
 using namespace std;
 using namespace boost;
 using namespace graph_tool;
@@ -31,25 +33,53 @@ using namespace graph_tool;
 python::object
 get_vertex_average(GraphInterface& gi, GraphInterface::deg_t deg)
 {
-    long double a, dev;
-    run_action<>()(gi, get_average<VertexAverageTraverse>(a,dev),
-                   scalar_selectors())(degree_selector(deg));
-    return python::make_tuple(a,dev);
+    python::object a, dev;
+    size_t count;
+
+    typedef mpl::joint_view<vertex_scalar_properties,
+                            vertex_scalar_vector_properties>
+        vertex_numeric_properties_c;
+
+    typedef property_map_types::apply<mpl::vector<python::object>,
+                                      GraphInterface::vertex_index_map_t>::type
+        python_properties;
+
+    typedef mpl::joint_view<vertex_numeric_properties_c,
+                            python_properties>
+        vertex_numeric_properties;
+
+    typedef mpl::transform<vertex_numeric_properties,
+                           scalar_selector_type,
+                           mpl::back_inserter<degree_selectors> >::type
+        numeric_selectors;
+
+    run_action<>()(gi, get_average<VertexAverageTraverse>(a,dev,count),
+                   numeric_selectors())(degree_selector(deg));
+    return python::make_tuple(a, dev, count);
 }
 
 // this will return the edge average of scalar properties
 python::object
 get_edge_average(GraphInterface& gi, boost::any prop)
 {
-    long double a, dev;
-    bool directed = gi.GetDirected();
-    gi.SetDirected(true);
-    run_action<graph_tool::detail::always_directed>()
-        (gi, get_average<EdgeAverageTraverse>(a, dev),
-         edge_scalar_properties())(prop);
-    gi.SetDirected(directed);
+    typedef mpl::joint_view<edge_scalar_properties,
+                            edge_scalar_vector_properties>
+        edge_numeric_properties_c;
 
-    return python::make_tuple(a, dev);
+    typedef property_map_types::apply<mpl::vector<python::object>,
+                                      GraphInterface::edge_index_map_t>::type
+        python_properties;
+
+    typedef mpl::joint_view<edge_numeric_properties_c,
+                            python_properties>
+        edge_numeric_properties;
+
+    python::object a, dev;
+    size_t count;
+    run_action<graph_tool::detail::always_directed>()
+        (gi, get_average<EdgeAverageTraverse>(a, dev, count),
+         edge_numeric_properties())(prop);
+    return python::make_tuple(a, dev, count);
 }
 
 using namespace boost::python;
