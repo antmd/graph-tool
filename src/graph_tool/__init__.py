@@ -2198,9 +2198,8 @@ class Graph(object):
         self.__filter_state["edge_filter"] = (None, False)
 
     def purge_vertices(self, in_place=False):
-        """Remove all vertices of the graph which are currently being filtered
-        out, and return it to the unfiltered state. This operation is not
-        reversible.
+        """Remove all vertices of the graph which are currently being filtered out. This
+        operation is not reversible.
 
         If the option ``in_place == True`` is given, the algorithm will remove
         the filtered vertices and re-index all property maps which are tied with
@@ -2212,6 +2211,12 @@ class Graph(object):
         replace the contents of the original graph. This is a fast operation
         with an :math:`O(N + E)` complexity. This is the default behaviour if no
         option is given.
+
+        .. note :
+
+           The graph will remain in a filtered state after this operation, since
+           there might be edge filters present. To return the graph to an
+           unfiltered state, use :meth:`~graph_tool.Graph.clear_filters`.
 
         """
         if in_place:
@@ -2250,8 +2255,16 @@ class Graph(object):
                 self.set_edge_filter(efilt[0], efilt[1])
 
     def purge_edges(self):
-        """Remove all edges of the graph which are currently being filtered out,
-        and return it to the unfiltered state. This operation is not reversible."""
+        """Remove all edges of the graph which are currently being filtered out. This
+        operation is not reversible.
+
+        .. note :
+
+           The graph will remain in a filtered state after this operation, since
+           there might be vertex filters present. To return the graph to an
+           unfiltered state, use :meth:`~graph_tool.Graph.clear_filters`.
+
+        """
         self.__graph.PurgeEdges()
         self.set_edge_filter(None)
 

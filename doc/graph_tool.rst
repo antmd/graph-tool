@@ -151,10 +151,9 @@
     .. warning::
 
       The purge functions below irreversibly remove the filtered
-      vertices or edges from the graph, and return it to an
-      unfiltered state. Note that, contrary to the functions above,
-      these are :math:`O(V)` and :math:`O(E)` operations,
-      respectively.
+      vertices or edges from the graph. Note that, contrary to the
+      functions above, these are :math:`O(V)` and :math:`O(E)`
+      operations, respectively.
 
     .. automethod:: purge_vertices
     .. automethod:: purge_edges
