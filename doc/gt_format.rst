@@ -147,8 +147,10 @@ The adjacency is followed by a list of property maps. The list begins
 with a total number of property maps (8 bytes, ``uint64_t``), and then
 the individual records. Each property map begins with a key type (1
 byte, ``uint8_t``) specifying whether it is a graph (``0x00``), a vertex
-(``0x01``) or an edge (``0x02``) property map, and another byte
-(``uint8_t``) specifying the value type index, from the following table:
+(``0x01``) or an edge (``0x02``) property map, followed by a string (8
+byte length + length bytes) containing the name of the property
+map. This is then followed by a byte (``uint8_t``) specifying the value
+type index, from the following table:
 
 .. tabularcolumns:: |l|l|
 
@@ -174,17 +176,15 @@ byte, ``uint8_t``) specifying whether it is a graph (``0x00``), a vertex
     ``python::object``           ``8 + length``       ``0x0e``
     ========================     ===================  ========
 
-The value type is followed by a string (8 byte length + length bytes)
-containing the name of the property map. The values of the property map
-follow in the order of the vertex indexes (for vertex properties) or in
-the same order in which the edges appear in the preceding adjacency list
-(for edge properties). For graph properties only one value
-follows. Strings and vectors are encoded with a length prefix of 8 bytes
-(``uint64_t``) followed by a sequence of that size with the appropriate
-element size. The elements of ``vector<string>`` are encoded as pairs of
-(8 byte length, bytes) as usual. Values of type ``python::object`` are
-encoded just as strings, with the string content encoded or decoded via
-:mod:`pickle`.
+The values of the property map follow in the order of the vertex indexes
+(for vertex properties) or in the same order in which the edges appear
+in the preceding adjacency list (for edge properties). For graph
+properties only one value follows. Strings and vectors are encoded with
+a length prefix of 8 bytes (``uint64_t``) followed by a sequence of that
+size with the appropriate element size. The elements of
+``vector<string>`` are encoded as pairs of (8 byte length, bytes) as
+usual. Values of type ``python::object`` are encoded just as strings,
+with the string content encoded or decoded via :mod:`pickle`.
 
 
 .. code-block:: none
