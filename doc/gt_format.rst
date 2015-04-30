@@ -180,7 +180,7 @@ follow in the order of the vertex indexes (for vertex properties) or in
 the same order in which the edges appear in the preceding adjacency list
 (for edge properties). For graph properties only one value
 follows. Strings and vectors are encoded with a length prefix of 8 bytes
-(``uint8_t``) followed by a sequence of that size with the appropriate
+(``uint64_t``) followed by a sequence of that size with the appropriate
 element size. The elements of ``vector<string>`` are encoded as pairs of
 (8 byte length, bytes) as usual. Values of type ``python::object`` are
 encoded just as strings, with the string content encoded or decoded via
