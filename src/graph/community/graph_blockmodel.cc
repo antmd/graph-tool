@@ -757,6 +757,9 @@ void export_blockmodel()
     def("get_xi_fast", get_xi_fast<double,double>);
     def("get_mu_l", python_get_mu_l);
     def("polylog", polylog<double>);
+    def("lbinom_careful", lbinom_careful);
+    def("lbinom_fast", lbinom_fast);
+    def("lbinom", lbinom);
 
     def("get_vector", get_vector);
     def("vector_map", vector_map<int32_t>);

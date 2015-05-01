@@ -284,12 +284,15 @@ struct entropy_parallel_edges
 // Dense entropy
 // =============
 
+// Warning: lgamma(x) is not thread-safe! However, since in the context of this
+// program the outputs should _always_ be positive, this can be overlooked.
+
 __attribute__((always_inline))
 inline double lbinom(double N, double k)
 {
     if (N == 0 || k == 0 || k > N)
         return 0;
-    return lgamma(N + 1) - lgamma(N - k + 1) - lgamma(k + 1);
+    return (lgamma(N + 1) - lgamma(k + 1)) - lgamma(N - k + 1);
 }
 
 __attribute__((always_inline))
@@ -298,6 +301,25 @@ inline double lbinom_fast(int N, int k)
     if (N == 0 || k == 0 || k > N)
         return 0;
     return lgamma_fast(N + 1) - lgamma_fast(N - k + 1) - lgamma_fast(k + 1);
+}
+
+__attribute__((always_inline))
+inline double lbinom_careful(double N, double k)
+{
+    if (N == 0 || k == 0 || k >= N)
+        return 0;
+    double lgN = lgamma(N + 1);
+    double lgk = lgamma(k + 1);
+    if (lgN - lgk > 1e8)
+    {
+        // We have N >> k. Use Stirling's approximation: ln N! ~ N ln N - N
+        // and reorder
+        return - N * log1p(-k / N) - k * log1p(-k / N) - k - lgk + k * log(N);
+    }
+    else
+    {
+        return lgN - lgamma(N - k + 1) - lgk;
+    }
 }
 
 

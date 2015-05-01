@@ -560,7 +560,7 @@ struct overlap_partition_stats_t
             if (nd == 0)
                 continue;
             double x = lbinom_fast(_actual_B, d);
-            double ss = lbinom((exp(x) + nd) - 1, nd); // not fast
+            double ss = lbinom_careful((exp(x) + nd) - 1, nd); // not fast
             if (std::isinf(ss) || std::isnan(ss))
                 ss = nd * x - lgamma_fast(nd + 1);
             assert(!std::isinf(ss));

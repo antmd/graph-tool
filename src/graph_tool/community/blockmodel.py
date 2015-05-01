@@ -717,6 +717,12 @@ def model_entropy(B, N, E, directed=False, nr=None):
 def lbinom(n, k):
     return scipy.special.gammaln(float(n + 1)) - scipy.special.gammaln(float(n - k + 1)) - scipy.special.gammaln(float(k + 1))
 
+def lbinom_careful(n, k):
+    return libcommunity.lbinom_careful(n, k)
+
+def lbinom_fast(n, k):
+    return libcommunity.lbinom_fast(n, k)
+
 def partition_entropy(B, N, nr=None):
     if nr is None:
         S = N * log(B) + log1p(-(1 - 1./B) ** N)
