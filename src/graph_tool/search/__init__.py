@@ -1215,7 +1215,7 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
     heuristic : unary function (optional, default: ``lambda v: 1``)
         The heuristic function that guides the search. It should take a single
         argument which is a :class:`~graph_tool.Vertex`, and output an estimated
-        distance from the source vertex.
+        distance from the supplied vertex to the target vertex.
     dist_map : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
         A vertex property map where the distances from the source will be
         stored.
@@ -1247,6 +1247,8 @@ def astar_search(g, source, weight, visitor=AStarVisitor(),
     -------
     dist_map : :class:`~graph_tool.PropertyMap`
         A vertex property map with the computed distances from the source.
+    pred_map : :class:`~graph_tool.PropertyMap`
+        A vertex property map with the predecessor tree.
 
     See Also
     --------
