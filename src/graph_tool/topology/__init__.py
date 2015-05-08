@@ -1098,8 +1098,7 @@ def kcore_decomposition(g, deg="out", vprop=None):
 def shortest_distance(g, source=None, target=None, weights=None, max_dist=None,
                       directed=None, dense=False, dist_map=None,
                       pred_map=False):
-    """
-    Calculate the distance from a source to a target vertex, or to of all
+    """Calculate the distance from a source to a target vertex, or to of all
     vertices from a given source, or the all pairs shortest paths, if the source
     is not specified.
 
@@ -1111,8 +1110,8 @@ def shortest_distance(g, source=None, target=None, weights=None, max_dist=None,
         Source vertex of the search. If unspecified, the all pairs shortest
         distances are computed.
     target : :class:`~graph_tool.Vertex` or iterable of such objects (optional, default: None)
-        Target vertex/vertices of the search. If unspecified, the distance to all
-        vertices from the source will be computed.
+        Target vertex (or vertices) of the search. If unspecified, the distance
+        to all vertices from the source will be computed.
     weights : :class:`~graph_tool.PropertyMap` (optional, default: None)
         The edge weights. If provided, the minimum spanning tree will minimize
         the edge weights.
@@ -1202,12 +1201,17 @@ def shortest_distance(g, source=None, target=None, weights=None, max_dist=None,
               5          3          6          3          4 2147483647
               4          6          4          4          4          4
               6          5          4          4]
+    >>> dist = gt.shortest_distance(g, source=g.vertex(0), target=g.vertex(2))
+    >>> print (dist)
+    5
+    >>> dist = gt.shortest_distance(g, source=g.vertex(0), target=[g.vertex(2), g.vertex(6)])
+    >>> print (dist)
+    [5 9]
 
     References
     ----------
     .. [bfs] Edward Moore, "The shortest path through a maze", International
-       Symposium on the Theory of Switching (1959), Harvard University
-       Press;
+       Symposium on the Theory of Switching (1959), Harvard University Press.
     .. [bfs-boost] http://www.boost.org/libs/graph/doc/breadth_first_search.html
     .. [dijkstra] E. Dijkstra, "A note on two problems in connexion with
        graphs." Numerische Mathematik, 1:269-271, 1959.
@@ -1216,11 +1220,12 @@ def shortest_distance(g, source=None, target=None, weights=None, max_dist=None,
     .. [floyd-warshall-apsp] http://www.boost.org/libs/graph/doc/floyd_warshall_shortest.html
     """
 
-    if not isinstance(target, list):
-        if isinstance(target, collections.Iterable):
-            target = list(target)
-        else:
-            target = [target]
+    if isinstance(target, collections.Iterable):
+        target = numpy.asarray(target, dtype="int64")
+    elif target is None:
+        target = numpy.array([], dtype="int64")
+    else:
+        target = numpy.asarray([int(target)], dtype="int64")
 
     if weights is None:
         dist_type = 'int32_t'
@@ -1251,7 +1256,7 @@ def shortest_distance(g, source=None, target=None, weights=None, max_dist=None,
         pmap = g.copy_property(u.vertex_index, value_type="int64_t")
         libgraph_tool_topology.get_dists(g._Graph__graph,
                                          int(source),
-                                         list(target),
+                                         target,
                                          _prop("v", g, dist_map),
                                          _prop("e", g, weights),
                                          _prop("v", g, pmap),
@@ -1261,18 +1266,16 @@ def shortest_distance(g, source=None, target=None, weights=None, max_dist=None,
                                              _prop("v", g, dist_map),
                                              _prop("e", g, weights), dense)
 
-    if source is not None:
-        if len(target) > 1:
-            dist_map = numpy.array([dist_map[target] for target in target])
+    if source is not None and len(target) > 0:
+        if len(target) == 1:
+            dist_map = dist_map.a[target[0]]
         else:
-            # Standard behaviour when there is one single target
-            dist_map = dist_map[target[0]]
+            dist_map = numpy.array(dist_map.a[target])
 
     if source is not None and pred_map:
         return dist_map, pmap
     else:
         return dist_map
-
 
 def shortest_path(g, source, target, weights=None, pred_map=None):
     """
@@ -1284,8 +1287,8 @@ def shortest_path(g, source, target, weights=None, pred_map=None):
         Graph to be used.
     source : :class:`~graph_tool.Vertex`
         Source vertex of the search.
-    target : :class:`~graph_tool.Vertex` or iterable of such objects
-        Target vertex or vertices of the search.
+    target : :class:`~graph_tool.Vertex`
+        Target vertex of the search.
     weights : :class:`~graph_tool.PropertyMap` (optional, default: None)
         The edge weights.
     pred_map :  :class:`~graph_tool.PropertyMap` (optional, default: None)
@@ -1336,67 +1339,43 @@ def shortest_path(g, source, target, weights=None, pred_map=None):
        graphs." Numerische Mathematik, 1:269-271, 1959.
     .. [dijkstra-boost] http://www.boost.org/libs/graph/doc/dijkstra_shortest_paths.html
     """
-    
-    if not isinstance(target, collections.Iterable):
-        target = [target]
-    
-    vlists, elists = {}, {}
-    targets = set(target)
 
     if pred_map is None:
-        _, pred_map = shortest_distance(g, source, target,
-                                        weights=weights,
-                                        pred_map=True)
+        pred_map = shortest_distance(g, source, target,
+                                     weights=weights,
+                                     pred_map=True)[1]
 
-    if any(pred_map[tgt] != int(tgt) for tgt in target):
-        # there is a path to at least one of the targets 
+    if pred_map[target] == int(target):  # no path to target
+        return [], []
 
-        if weights is not None:
-            max_w = weights.a.max() + 1
-        else:
-            max_w = None
+    vlist = [target]
+    elist = []
 
-        for tgt in target:
+    if weights is not None:
+        max_w = weights.a.max() + 1
+    else:
+        max_w = None
 
-            if tgt in vlists:
-                # the current target has already been found
-                continue
-
-            v = tgt
-            vlist, elist = [tgt], []
-            targets_indexes = {}
-
-            while v != source:
-                p = g.vertex(pred_map[v])
-                min_w = max_w
-                pe = None
-                s = None
-                for e in v.in_edges() if g.is_directed() else v.out_edges():
-                    s = e.source() if g.is_directed() else e.target()
-                    if s == p:
-                        if weights is not None:
-                            if weights[e] < min_w:
-                                min_w = weights[e]
-                                pe = e
-                        else:
-                            pe = e
-                            break
-                elist.insert(0, pe)
-                vlist.insert(0, p)
-
-                if v in targets:
-                    targets_indexes[v] = len(elist) - 1
-                
-                v = p
-
-            # the paths are updated for every encountered target
-            path_len = len(elist)
-            vlists.update({tgt: vlist[:path_len-idx+1] for tgt, idx in targets_indexes.iteritems()})
-            elists.update({tgt: elist[:path_len-idx] for tgt, idx in targets_indexes.iteritems()})
-
-    if len(target) == 1:
-        return elists[target[0]], vlists[target[0]]
-    return [elists[tgt] for tgt in target], [vlists[tgt] for tgt in target]
+    v = target
+    while v != source:
+        p = g.vertex(pred_map[v])
+        min_w = max_w
+        pe = None
+        s = None
+        for e in v.in_edges() if g.is_directed() else v.out_edges():
+            s = e.source() if g.is_directed() else e.target()
+            if s == p:
+                if weights is not None:
+                    if weights[e] < min_w:
+                        min_w = weights[e]
+                        pe = e
+                else:
+                    pe = e
+                    break
+        elist.insert(0, pe)
+        vlist.insert(0, p)
+        v = p
+    return vlist, elist
 
 
 def pseudo_diameter(g, source=None, weights=None):

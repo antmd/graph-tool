@@ -19,6 +19,7 @@
 #include "graph_filtering.hh"
 #include "graph_properties.hh"
 #include "graph_selectors.hh"
+#include "numpy_bind.hh"
 
 #include <boost/graph/breadth_first_search.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
@@ -80,7 +81,9 @@ class bfs_max_multiple_targets_visitor:
     public boost::bfs_visitor<null_visitor>
 {
 public:
-    bfs_max_multiple_targets_visitor(DistMap dist_map, PredMap pred, size_t max_dist, std::unordered_set<std::size_t> target)
+    bfs_max_multiple_targets_visitor(DistMap dist_map, PredMap pred,
+                                     size_t max_dist,
+                                     std::unordered_set<std::size_t> target)
         : _dist_map(dist_map), _pred(pred), _max_dist(max_dist), _target(target),
           _dist(0) {}
 
@@ -132,7 +135,8 @@ class djk_max_visitor:
 {
 public:
     djk_max_visitor(DistMap dist_map,
-                    typename property_traits<DistMap>::value_type max_dist, size_t target)
+                    typename property_traits<DistMap>::value_type max_dist,
+                    size_t target)
         : _dist_map(dist_map), _max_dist(max_dist), _target(target) {}
 
 
@@ -172,7 +176,7 @@ public:
     {
         if (_dist_map[u] > _max_dist)
             throw stop_search();
-        
+
         auto search = _target.find(u);
         if (search != _target.end())
         {
@@ -193,19 +197,23 @@ private:
 struct do_bfs_search
 {
     template <class Graph, class VertexIndexMap, class DistMap, class PredMap>
-    void operator()(const Graph& g, size_t source, boost::python::list target_list,
+    void operator()(const Graph& g, size_t source,
+                    boost::python::object otarget_list,
                     VertexIndexMap vertex_index, DistMap dist_map,
                     PredMap pred_map, long double max_dist) const
     {
         typedef typename property_traits<DistMap>::value_type dist_t;
 
-        boost::python::stl_input_iterator<size_t> begin(target_list), end;
-        std::unordered_set<std::size_t> tgt(begin, end);        
+        auto target_list = get_array<int64_t, 1>(otarget_list);
+        std::unordered_set<std::size_t> tgt(target_list.begin(),
+                                            target_list.end());
+
         dist_t max_d = (max_dist > 0) ?
             max_dist : numeric_limits<dist_t>::max();
 
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(runtime) if (N > 100)
+        #pragma omp parallel for default(shared) private(i) \
+            schedule(runtime) if (N > 100)
         for (i = 0; i < N; ++i)
             dist_map[i] = numeric_limits<dist_t>::max();
         dist_map[source] = 0;
@@ -215,10 +223,12 @@ struct do_bfs_search
         color_map(vertex_index, num_vertices(g));
 
         try
-        {   
+        {
             if (tgt.size() <= 1)
             {
-                size_t target = tgt.empty() ? graph_traits<GraphInterface::multigraph_t>::null_vertex() : *tgt.begin();
+                size_t target = tgt.empty() ?
+                    graph_traits<GraphInterface::multigraph_t>::null_vertex() :
+                    *tgt.begin();
                 breadth_first_search(g, vertex(source, g),
                                      visitor(bfs_max_visitor<DistMap, PredMap>
                                              (dist_map, pred_map, max_d, target)).
@@ -243,27 +253,33 @@ struct do_djk_search
 {
     template <class Graph, class VertexIndexMap, class DistMap, class PredMap,
               class WeightMap>
-    void operator()(const Graph& g, size_t source, boost::python::list target_list,
+    void operator()(const Graph& g, size_t source,
+                    boost::python::object otarget_list,
                     VertexIndexMap vertex_index, DistMap dist_map,
                     PredMap pred_map, WeightMap weight, long double max_dist) const
     {
+        auto target_list = get_array<int64_t, 1>(otarget_list);
         typedef typename property_traits<DistMap>::value_type dist_t;
         dist_t max_d = (max_dist > 0) ?
         max_dist : numeric_limits<dist_t>::max();
-        boost::python::stl_input_iterator<size_t> begin(target_list), end;
-        std::unordered_set<std::size_t> tgt(begin, end);
+
+        std::unordered_set<std::size_t> tgt(target_list.begin(),
+                                            target_list.end());
 
         int i, N = num_vertices(g);
-        #pragma omp parallel for default(shared) private(i) schedule(runtime) if (N > 100)
+        #pragma omp parallel for default(shared) private(i) \
+            schedule(runtime) if (N > 100)
         for (i = 0; i < N; ++i)
             dist_map[i] = numeric_limits<dist_t>::max();
         dist_map[source] = 0;
 
         try
-        {   
+        {
             if (tgt.size() <= 1)
             {
-                size_t target = tgt.empty() ? graph_traits<GraphInterface::multigraph_t>::null_vertex() : *tgt.begin();
+                size_t target = tgt.empty() ?
+                    graph_traits<GraphInterface::multigraph_t>::null_vertex() :
+                    *tgt.begin();
                 dijkstra_shortest_paths(g, vertex(source, g),
                                         weight_map(weight).
                                         distance_map(dist_map).
@@ -288,8 +304,9 @@ struct do_djk_search
     }
 };
 
-void get_dists(GraphInterface& gi, size_t source, boost::python::list tgt, 
-               boost::any dist_map, boost::any weight, boost::any pred_map, long double max_dist)
+void get_dists(GraphInterface& gi, size_t source, boost::python::object tgt,
+               boost::any dist_map, boost::any weight, boost::any pred_map,
+               long double max_dist)
 {
     typedef property_map_type
         ::apply<int64_t, GraphInterface::vertex_index_map_t>::type pred_map_t;
