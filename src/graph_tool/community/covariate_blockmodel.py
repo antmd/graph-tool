@@ -539,7 +539,7 @@ class CovariateBlockState(BlockState):
     bec = property(lambda self: self.get_bg()[2])
 
     def get_block_state(self, b=None, vweight=False, deg_corr=False,
-                        overlap=False, layers=None):
+                        overlap=False, layers=True):
         r"""Returns a :class:`~graph_tool.community.CovariateBlockState`` corresponding
         to the block graph. The parameters have the same meaning as the in the
         constructor."""
