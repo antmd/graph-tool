@@ -1135,6 +1135,8 @@ class PropertyDict(dict):
     """Wrapper for the dict of vertex, graph or edge properties, which sets the
     value on the property map when changed in the dict.
 
+    For convenience, the dictionary entries are also available via attributes.
+
     .. note::
 
         The class is only an one-way proxy to the internally-kept properties. If
@@ -1145,10 +1147,10 @@ class PropertyDict(dict):
     def __init__(self, g, old, get_func, set_func, del_func):
         dict.__init__(self)
         dict.update(self, old)
-        self.g = g
-        self.get_func = get_func
-        self.set_func = set_func
-        self.del_func = del_func
+        super(PropertyDict, self).__setattr__("g", g)
+        super(PropertyDict, self).__setattr__("get_func", get_func)
+        super(PropertyDict, self).__setattr__("set_func", set_func)
+        super(PropertyDict, self).__setattr__("del_func", del_func)
 
     def __getitem__(self, key):
         if self.get_func != None:
@@ -1173,6 +1175,12 @@ class PropertyDict(dict):
         for k in self.keys():
             self.del_func(self.g, k)
         dict.clear(self)
+
+    def __getattr__(self, attr):
+        return self.__getitem__(attr)
+
+    def __setattr__(self, attr, val):
+        return self.__setitem__(attr, val)
 
 ################################################################################
 # Graph class

@@ -449,6 +449,13 @@ dictionaries:
     42
     >>> del g.graph_properties["foo"]       # the property map entry is deleted from the dictionary
 
+For convenience, the internal property maps can also be accessed via
+attributes:
+
+.. doctest::
+
+    >>> vprop = g.new_vertex_properties("double")
+    >>> g.vp.foo = vprop                          # equivalent to g.vp["foo"] = vprop
 
 .. _sec_graph_io:
 
