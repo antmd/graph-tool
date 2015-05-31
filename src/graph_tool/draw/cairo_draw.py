@@ -1637,7 +1637,7 @@ def draw_hierarchy(state, pos=None, layout="radial", beta=0.8, ealpha=0.4,
     # propagate all other properties in args
     arg_pos = {}
     for a, v in args.items():
-        if isinstance(v, PropertyMap):
+        if isinstance(v, PropertyMap) and v.key_type() != "v":
             props.append((v, None))
             arg_pos[a] = len(props) - 1
 
