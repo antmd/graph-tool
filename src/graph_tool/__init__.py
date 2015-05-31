@@ -651,10 +651,18 @@ class PropertyMap(object):
             else:
                 p = [self]
             g = self.get_graph()
+            vfilt = g.get_vertex_filter()
+            efilt = g.get_edge_filter()
+            if vfilt[0] is not None:
+                g = GraphView(g, skip_vfilt=True, skip_efilt=True)
             if self.key_type() == "v":
                 N = g.num_vertices()
+                idx = g.vertex_index
+                filt = vfilt
             else:
-                N = g.num_edges()
+                N = g.max_edge_index + 1
+                idx = g.edge_index
+                filt = efilt
             a = [["" for j in range(N)] for i in range(len(p))]
             if self.key_type() == "v":
                 iters = g.vertices()
@@ -662,10 +670,13 @@ class PropertyMap(object):
                 iters = g.edges()
             for v in iters:
                 for i in range(len(p)):
-                    a[i][int(v)] = p[i][v]
+                    a[i][idx[v]] = p[i][v]
             if len(a) == 1:
                 a = a[0]
-            return numpy.array(a)
+            a = numpy.array(a)
+            if vfilt[0] is not None:
+                a = a[filt[0].a[:a.shape[0]] == (not filt[1])]
+            return a
 
         try:
             return numpy.array(self.fa)
@@ -692,9 +703,9 @@ class PropertyMap(object):
                 if self.key_type() == "v":
                     iters = g.vertices()
                 else:
-                    iters = g.edges()
-                for i, v in enumerate(iters):
-                    self[v] = a[i]
+                    iters = sorted(g.edges(), key=lambda e: g.edge_index[e])
+                for j, v in enumerate(iters):
+                    self[v] = a[j]
             return
 
         val = self.value_type()[7:-1]
