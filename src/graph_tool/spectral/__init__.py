@@ -40,7 +40,7 @@ Contents
 
 from __future__ import division, absolute_import, print_function
 
-from .. import _degree, _prop, Graph, _limit_args
+from .. import _degree, _prop, Graph, GraphView, _limit_args
 from .. stats import label_self_loops
 import numpy
 import scipy.sparse
@@ -78,16 +78,25 @@ def adjacency(g, weight=None, index=None):
 
         a_{i,j} =
         \begin{cases}
-            1 & \text{if } v_i \text{ is adjacent to } v_j, \\
-            2 & \text{if } i = j, \text{ the graph is undirected and there is a self-loop incident in } v_i, \\
-            0 & \text{otherwise}
+            1 & \text{if } (j, i) \in E, \\
+            2 & \text{if } i = j \text{ and } (i, i) \in E, \\
+            0 & \text{otherwise},
         \end{cases}
+
+    where :math:`E` is the edge set.
 
     In the case of weighted edges, the entry values are multiplied by the weight
     of the respective edge.
 
     In the case of networks with parallel edges, the entries in the matrix
-    become simply the edge multiplicities.
+    become simply the edge multiplicities (or twice them for the diagonal).
+
+    .. note::
+
+        For directed graphs the definition above means that the entry
+        :math:`a_{i,j}` corresponds to the directed edge :math:`j\to
+        i`. Although this is a typical definition in network and graph theory
+        literature, many also use the transpose of this matrix.
 
     Examples
     --------
@@ -184,7 +193,7 @@ def laplacian(g, deg="total", normalized=False, weight=None, index=None):
         \ell_{ij} =
         \begin{cases}
         \Gamma(v_i) & \text{if } i = j \\
-        -w_{ij}     & \text{if } i \neq j \text{ and } v_i \text{ is adjacent to } v_j \\
+        -w_{ij}     & \text{if } i \neq j \text{ and } (j, i) \in E \\
         0           & \text{otherwise}.
         \end{cases}
 
@@ -196,15 +205,22 @@ def laplacian(g, deg="total", normalized=False, weight=None, index=None):
         \ell_{ij} =
         \begin{cases}
         1         & \text{ if } i = j \text{ and } \Gamma(v_i) \neq 0 \\
-        -\frac{w_{ij}}{\sqrt{\Gamma(v_i)\Gamma(v_j)}} & \text{ if } i \neq j \text{ and } v_i \text{ is adjacent to } v_j \\
+        -\frac{w_{ij}}{\sqrt{\Gamma(v_i)\Gamma(v_j)}} & \text{ if } i \neq j \text{ and } (j, i) \in E \\
         0         & \text{otherwise}.
         \end{cases}
 
     In the case of unweighted edges, it is assumed :math:`w_{ij} = 1`.
 
     For directed graphs, it is assumed :math:`\Gamma(v_i)=\sum_j A_{ij}w_{ij} +
-    \sum_j A_{ji}w_{ji}` if ``deg=="total"``, :math:`\Gamma(v_i)=\sum_j A_{ij}w_{ij}`
-    if ``deg=="out"`` or :math:`\Gamma(v_i)=\sum_j A_{ji}w_{ji}` ``deg=="in"``.
+    \sum_j A_{ji}w_{ji}` if ``deg=="total"``, :math:`\Gamma(v_i)=\sum_j A_{ji}w_{ji}`
+    if ``deg=="out"`` or :math:`\Gamma(v_i)=\sum_j A_{ij}w_{ij}` ``deg=="in"``.
+
+    .. note::
+
+        For directed graphs the definition above means that the entry
+        :math:`\ell_{i,j}` corresponds to the directed edge :math:`j\to
+        i`. Although this is a typical definition in network and graph theory
+        literature, many also use the transpose of this matrix.
 
     Examples
     --------
@@ -419,13 +435,21 @@ def transition(g, weight=None, index=None):
 
     .. math::
 
-        T_{ij} = \frac{A_{ij}}{k_i}
+        T_{ij} = \frac{A_{ij}}{k_j}
 
-    where :math:`k_i = \sum_j A_{ij}`, and :math:`A_{ij}` is the adjacency
+    where :math:`k_i = \sum_j A_{ji}`, and :math:`A_{ij}` is the adjacency
     matrix.
 
     In the case of weighted edges, the values of the adjacency matrix are
     multiplied by the edge weights.
+
+    .. note::
+
+        For directed graphs the definition above means that the entry
+        :math:`T_{i,j}` corresponds to the directed edge :math:`j\to
+        i`. Although this is a typical definition in network and graph theory
+        literature, many also use the transpose of this matrix.
+
 
     Examples
     --------
@@ -476,6 +500,9 @@ def transition(g, weight=None, index=None):
     i = numpy.zeros(E, dtype="int32")
     j = numpy.zeros(E, dtype="int32")
 
+    if g.is_directed():
+        g = GraphView(g, reversed=True, skip_properties=True)
+
     libgraph_tool_spectral.transition(g._Graph__graph, _prop("v", g, index),
                                       _prop("e", g, weight), data, i, j)
 
@@ -516,7 +543,7 @@ def modularity_matrix(g, weight=None, index=None):
 
         B_{ij} =  A_{ij} - \frac{k^+_i k^-_j}{2E}
 
-    where :math:`k^+_i = \sum_j A_{ij}`, :math:`k^-_i = \sum_j A_{ji}`,
+    where :math:`k^+_i = \sum_j A_{ji}`, :math:`k^-_i = \sum_j A_{ij}`,
     :math:`2E=\sum_{ij}A_{ij}` and :math:`A_{ij}` is the adjacency matrix.
 
     In the case of weighted edges, the values of the adjacency matrix are
