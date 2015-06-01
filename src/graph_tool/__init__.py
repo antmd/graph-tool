@@ -1431,30 +1431,39 @@ class Graph(object):
         """
         return libcore.get_vertices(weakref.ref(self))
 
-    def vertex(self, i, use_index=True):
+    def vertex(self, i, use_index=True, add_missing=False):
         """Return the vertex with index ``i``. If ``use_index=False``, the
         ``i``-th vertex is returned (which can differ from the vertex with index
-        ``i`` in case of filtered graphs). """
+        ``i`` in case of filtered graphs).
+
+        If ``add_missing == True``, and the vertex does not exist in the graph,
+        the necessary number of missing vertices are inserted, and the new
+        vertex is returned.
+        """
         vfilt = self.get_vertex_filter()
         if vfilt[0] is None or not use_index:
-            return libcore.get_vertex(weakref.ref(self), int(i))
-        try:
-            self.set_vertex_filter(None)
             v = libcore.get_vertex(weakref.ref(self), int(i))
-        finally:
-            self.set_vertex_filter(vfilt[0], vfilt[1])
+        else:
+            try:
+                self.set_vertex_filter(None)
+                v = libcore.get_vertex(weakref.ref(self), int(i))
+                if v.is_valid() and vfilt[0][v] == vfilt[1]:
+                    raise ValueError("Invalid vertex index: %d (filtered out)" % int(i))
+            finally:
+                self.set_vertex_filter(vfilt[0], vfilt[1])
         if not v.is_valid():
-            return v
-        if vfilt[0] is not None and vfilt[0][v] == vfilt[1]:
-            return None
+            if add_missing:
+                self.add_vertex(int(i) - self.num_vertices(use_index) + 1)
+                return self.vertex(int(i), use_index)
+            raise ValueError("Invalid vertex index: %d" % int(i))
         return v
 
-    def edge(self, s, t, all_edges=False, new=False):
+    def edge(self, s, t, all_edges=False, add_missing=False):
         """Return the edge from vertex ``s`` to ``t``, if it exists. If
         ``all_edges=True`` then a list is returned with all the parallel edges
         from ``s`` to ``t``, otherwise only one edge is returned.
 
-        If ``new == True``, a new edge is created and returned, if none
+        If ``add_missing == True``, a new edge is created and returned, if none
         currently exists.
 
         This operation will take :math:`O(k(s))` time, where :math:`k(s)` is the
@@ -1474,7 +1483,7 @@ class Graph(object):
                 if not all_edges:
                     return e
                 edges.append(e)
-        if new and len(edges) == 0:
+        if add_missing and len(edges) == 0:
             edges.append(self.add_edge(s, t))
         if all_edges:
             return edges
@@ -1510,10 +1519,15 @@ class Graph(object):
         self.__check_perms("add_vertex")
         v = libcore.add_vertex(weakref.ref(self), n)
 
+        vfilt = self.get_vertex_filter()
+        if vfilt[0] is not None:
+            N = self.num_vertices(True)
+            vfilt[0].a[N - n: N] = not vfilt[1]
+
         if n <= 1:
             return v
         else:
-            pos = self.num_vertices() - n
+            pos = self.num_vertices(True) - n
             return (self.vertex(i) for i in range(pos, pos + n))
 
     def remove_vertex(self, vertex, fast=False):
@@ -1597,12 +1611,18 @@ class Graph(object):
         for e in del_es:
             self.remove_edge(e)
 
-    def add_edge(self, source, target):
+    def add_edge(self, source, target, add_missing=True):
         """Add a new edge from ``source`` to ``target`` to the graph, and return
-        it. This operation is :math:`O(1)`."""
+        it. This operation is :math:`O(1)`.
+
+        If ``add_missing == True``, the source and target vertices are included
+        in the graph if they don't yet exist.
+
+        """
         self.__check_perms("add_edge")
-        e = libcore.add_edge(weakref.ref(self), self.vertex(int(source)),
-                             self.vertex(int(target)))
+        e = libcore.add_edge(weakref.ref(self),
+                             self.vertex(int(source), add_missing=add_missing),
+                             self.vertex(int(target), add_missing=add_missing))
         efilt = self.get_edge_filter()
         if efilt[0] is not None:
             efilt[0][e] = not efilt[1]
@@ -2306,25 +2326,31 @@ class Graph(object):
     # Basic graph statistics
     # ======================
 
-    def num_vertices(self):
+    def num_vertices(self, ignore_filter=False):
         """Get the number of vertices.
 
+        If ``ignore_filter == True``, vertex filters are ignored.
+
         .. note::
 
-            If the vertices are being filtered, this operation is
-            :math:`O(N)`. Otherwise it is :math:`O(1)`.
-        """
-        return self.__graph.GetNumberOfVertices(True)
+            If the vertices are being filtered, and ``ignore_filter == False``,
+            this operation is :math:`O(N)`. Otherwise it is :math:`O(1)`.
 
-    def num_edges(self):
+        """
+        return self.__graph.GetNumberOfVertices(not ignore_filter)
+
+    def num_edges(self, ignore_filter=False):
         """Get the number of edges.
 
+        If ``ignore_filter == True``, edge filters are ignored.
+
         .. note::
 
-            If the edges are being filtered, this operation is
-            :math:`O(E)`. Otherwise it is :math:`O(1)`.
+            If the edges are being filtered, and ``ignore_filter == False``,
+            this operation is :math:`O(E)`. Otherwise it is :math:`O(1)`.
+
         """
-        return self.__graph.GetNumberOfEdges(True)
+        return self.__graph.GetNumberOfEdges(not ignore_filter)
 
     # Pickling support
     # ================
