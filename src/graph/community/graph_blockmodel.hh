@@ -570,9 +570,10 @@ public:
         return S_a - S_b;
     }
 
-    template <class Graph, class OStats>
+    template <class Graph, class OStats, class EWeight>
     void move_vertex(size_t v, size_t r, size_t nr, bool deg_corr, OStats&,
-                     Graph& g, size_t kin = 0, size_t kout = 0)
+                     Graph& g, EWeight& eweight, size_t kin = 0,
+                     size_t kout = 0)
     {
         if (r == nr)
             return;
@@ -589,8 +590,8 @@ public:
         {
             if (kin + kout == 0)
             {
-                kin = in_degreeS()(v, g);
-                kout = out_degreeS()(v, g);
+                kin = in_degreeS()(v, g, eweight);
+                kout = out_degreeS()(v, g, eweight);
             }
             auto deg = make_pair(kin, kout);
             auto iter = _hist[r].find(deg);
@@ -1049,13 +1050,13 @@ void move_vertex(const Vec& vs, size_t nr, Eprop& mrs, Vprop& mrp, Vprop& mrm,
     size_t kin = 0, kout = 0;
     for (auto v : vs)
     {
-        kin += in_degreeS()(v, g);
-        kout += out_degreeS()(v, g);
+        kin += in_degreeS()(v, g, eweight);
+        kout += out_degreeS()(v, g, eweight);
     }
 
     if (partition_stats.is_enabled())
         partition_stats.move_vertex(vs[0], b[vs[0]], nr, deg_corr, overlap_stats,
-                                    g, kin, kout);
+                                    g, eweight, kin, kout);
 
     for (auto v : vs)
     {

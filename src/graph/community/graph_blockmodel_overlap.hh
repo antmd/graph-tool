@@ -1078,9 +1078,9 @@ struct overlap_partition_stats_t
         return S_a - S_b;
     }
 
-    template <class Graph>
+    template <class Graph, class EWeight>
     void move_vertex(size_t v, size_t r, size_t nr, bool,
-                     overlap_stats_t& overlap_stats, Graph& g,
+                     overlap_stats_t& overlap_stats, Graph& g, EWeight&,
                      size_t in_deg = 0, size_t out_deg = 0)
     {
         if (r == nr)
