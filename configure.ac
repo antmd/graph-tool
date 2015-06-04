@@ -453,11 +453,3 @@ src/graph/util/Makefile
 src/graph_tool/Makefile
 ])
 AC_OUTPUT
-
-# ugly, dirty, smelly hack to force libtool to link to libstc++ before anything
-# else, to avoid strange exception-related segfaults in
-# __cxa_allocate_exception() see:
-# http://www.nabble.com/preventing-boost::python::throw_error_already_set-td20958723.html
-# http://wiki.fifengine.de/Segfault_in_cxa_allocate_exception
-AC_MSG_NOTICE([Modifying libtool to correctly link libstdc++ before anything else...])
-eval "sed -i -e 's/-nostdlib/-nostdlib -lstdc++/g' libtool"
