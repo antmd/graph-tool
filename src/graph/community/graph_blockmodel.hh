@@ -94,7 +94,12 @@ inline double safelog(Type x)
 __attribute__((always_inline))
 inline double safelog(size_t x)
 {
-    assert(x < __safelog_cache.size());
+    if (x >= __safelog_cache.size())
+    {
+        if (x == 0)
+            return 0;
+        return log(x);
+    }
     return __safelog_cache[x];
 }
 
@@ -102,8 +107,7 @@ __attribute__((always_inline))
 inline double xlogx(size_t x)
 {
     if (x >= __xlogx_cache.size())
-        cout << x << " " << __xlogx_cache.size() << endl;
-    assert(x < __xlogx_cache.size());
+        return x * safelog(x);
     return __xlogx_cache[x];
 }
 
@@ -1654,7 +1658,8 @@ struct egroups_manage
     template <class Eprop, class Vprop, class VEprop, class Graph, class VertexIndex>
     static void build(Vprop b, boost::any& oegroups, VEprop esrcpos,
                       VEprop etgtpos, Eprop eweight, Graph& g,
-                      VertexIndex vertex_index, size_t B, bool weighted, bool empty)
+                      VertexIndex vertex_index, size_t B, bool weighted,
+                      bool empty)
     {
         if (weighted)
         {
@@ -1666,8 +1671,7 @@ struct egroups_manage
             if (empty)
                 return;
             build_dispatch(b, egroups_checked.get_unchecked(B),
-                           esrcpos, etgtpos, eweight, g, vertex_index, B,
-                           mpl::true_());
+                           esrcpos, etgtpos, eweight, g, vertex_index, B);
         }
         else
         {
@@ -1679,27 +1683,29 @@ struct egroups_manage
             if (empty)
                 return;
             build_dispatch(b, egroups_checked.get_unchecked(B),
-                           esrcpos, etgtpos, eweight, g, vertex_index, B,
-                           mpl::true_());
+                           esrcpos, etgtpos, eweight, g, vertex_index, B);
         }
     }
 
-    template <class Eprop, class Vprop, class VEprop, class Graph, class VertexIndex, class Egroups>
+    template <class Eprop, class Vprop, class VEprop, class Graph,
+              class VertexIndex, class Egroups>
     static void build_dispatch(Vprop b, Egroups egroups, VEprop esrcpos,
                                VEprop etgtpos, Eprop eweight, Graph& g,
-                               VertexIndex, size_t, mpl::true_)
+                               VertexIndex, size_t)
     {
         for (auto e : edges_range(g))
         {
             size_t r = b[get_source(e, g)];
             assert (r < B);
             auto& r_elist = egroups[r];
-            esrcpos[e] = insert_edge(std::make_tuple(e, true), r_elist, eweight[e]);
+            esrcpos[e] = insert_edge(std::make_tuple(e, true), r_elist,
+                                     eweight[e]);
 
             size_t s = b[get_target(e, g)];
             assert (s < B);
             auto& s_elist = egroups[s];
-            etgtpos[e] = insert_edge(std::make_tuple(e, false), s_elist, eweight[e]);
+            etgtpos[e] = insert_edge(std::make_tuple(e, false), s_elist,
+                                     eweight[e]);
         }
     }
 
@@ -1720,18 +1726,6 @@ struct egroups_manage
 
     template <class Edge, class Epos>
     static void remove_edge(size_t pos, Epos& esrcpos, Epos& etgtpos,
-                            DynamicSampler<Edge>& elist)
-    {
-        typedef typename property_traits<Epos>::value_type val_t;
-        if (get<1>(elist[pos]))
-            esrcpos[get<0>(elist[pos])] = numeric_limits<val_t>::max();
-        else
-            etgtpos[get<0>(elist[pos])] = numeric_limits<val_t>::max();
-        elist.remove(pos);
-    }
-
-    template <class Edge, class Epos>
-    static void remove_edge(size_t pos, Epos& esrcpos, Epos& etgtpos,
                             vector<Edge>& elist)
     {
         typedef typename property_traits<Epos>::value_type val_t;
@@ -1745,6 +1739,18 @@ struct egroups_manage
             etgtpos[get<0>(elist[pos])] = numeric_limits<val_t>::max();
         elist[pos] = elist.back();
         elist.pop_back();
+    }
+
+    template <class Edge, class Epos>
+    static void remove_edge(size_t pos, Epos& esrcpos, Epos& etgtpos,
+                            DynamicSampler<Edge>& elist)
+    {
+        typedef typename property_traits<Epos>::value_type val_t;
+        if (get<1>(elist[pos]))
+            esrcpos[get<0>(elist[pos])] = numeric_limits<val_t>::max();
+        else
+            etgtpos[get<0>(elist[pos])] = numeric_limits<val_t>::max();
+        elist.remove(pos);
     }
 
     template <class Vertex, class Graph, class EVprop, class Eprop, class VEprop>

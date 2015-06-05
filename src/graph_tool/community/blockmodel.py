@@ -97,7 +97,6 @@ class BlockState(object):
     def __init__(self, g, eweight=None, vweight=None, b=None,
                  B=None, clabel=None, deg_corr=True,
                  max_BE=1000, **kwargs):
-
         BlockState._state_ref_count += 1
 
         # initialize weights to unity, if necessary
@@ -205,9 +204,11 @@ class BlockState(object):
         self.edges_dl = False
 
         # computation cache
-        libcommunity.init_safelog(int(5 * max(self.E, self.N)))
-        libcommunity.init_xlogx(int(5 * max(self.E, self.N)))
-        libcommunity.init_lgamma(int(3 * max(self.E, self.N)))
+        E = g.num_edges()
+        N = g.num_vertices()
+        libcommunity.init_safelog(int(5 * max(E, N)))
+        libcommunity.init_xlogx(int(5 * max(E, N)))
+        libcommunity.init_lgamma(int(3 * max(E, N)))
 
     def __del__(self):
         try:
