@@ -1475,14 +1475,7 @@ class Graph(object):
         if s is None or t is None:
             return None
         efilt = self.get_edge_filter()
-        edges = []
-        for e in s.out_edges():
-            if efilt[0] is not None and efilt[0][e] == efilt[1]:
-                continue
-            if e.target() == t:
-                if not all_edges:
-                    return e
-                edges.append(e)
+        edges = libcore.get_edge(weakref.ref(self), int(s), int(t), all_edges)
         if add_missing and len(edges) == 0:
             edges.append(self.add_edge(s, t))
         if all_edges:

@@ -213,6 +213,35 @@ void remove_edge(GraphInterface& gi, const python::object& e)
         throw ValueException("invalid edge descriptor");
 }
 
+struct get_edge_dispatch
+{
+    template <class Graph>
+    void operator()(Graph& g, const python::object& pg, size_t s, size_t t,
+                    bool all_edges, boost::python::list& es) const
+    {
+        for (auto e : out_edges_range(vertex(s, g), g))
+        {
+            if (target(e, g) == vertex(t, g))
+            {
+                es.append(PythonEdge<Graph>(pg, e));
+                if (!all_edges)
+                    break;
+            }
+        }
+    }
+};
+
+python::object get_edge(python::object g, size_t s, size_t t, bool all_edges)
+{
+    GraphInterface& gi = python::extract<GraphInterface&>(g().attr("_Graph__graph"));
+    python::list es;
+    run_action<>()(gi,
+                   std::bind(get_edge_dispatch(), placeholders::_1,
+                             std::ref(g), s, t, all_edges, std::ref(es)))();
+    return es;
+}
+
+
 struct get_degree_map
 {
     template <class Graph, class DegS, class Weight>
@@ -467,6 +496,7 @@ void export_python_interface()
     def("remove_vertex", graph_tool::remove_vertex);
     def("remove_edge", graph_tool::remove_edge);
     def("add_edge_list", graph_tool::do_add_edge_list);
+    def("get_edge", get_edge);
 
     def("get_vertex_index", get_vertex_index);
     def("get_edge_index", do_get_edge_index);
