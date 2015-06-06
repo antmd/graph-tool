@@ -454,8 +454,12 @@ attributes:
 
 .. doctest::
 
-    >>> vprop = g.new_vertex_properties("double")
-    >>> g.vp.foo = vprop                          # equivalent to g.vp["foo"] = vprop
+    >>> vprop = g.new_vertex_property("double")
+    >>> g.vp.foo = vprop                        # equivalent to g.vertex_properties["foo"] = vprop
+    >>> v = g.vertex(0)
+    >>> g.vp.foo[v] = 3.14
+    >>> print(g.vp.foo[v])
+    3.14
 
 .. _sec_graph_io:
 
