@@ -1344,7 +1344,7 @@ def init_nested_state(g, Bs, ec=None, deg_corr=True, overlap=False,
 def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, min_B=None,
                                   max_B=None, max_b=None, deg_corr=True,
                                   overlap=False, ec=None, layers=False,
-                                  confine_layers=False, nonoverlap_init=True,
+                                  confine_layers=False, nonoverlap_init=False,
                                   dl=True, multigraph=True, dense=False,
                                   eweight=None, vweight=None, clabel=None,
                                   frozen_levels=None, nsweeps=10,
@@ -1389,7 +1389,7 @@ def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, min_B=None,
         If ``True``, and `´ec`` is not ``None`` and ``overlap == True``, the
         half edges will only be moved in such a way that inside each layer the
         group membership remains non-overlapping.
-    nonoverlap_init : ``bool`` (optional, default: ``True``)
+    nonoverlap_init : ``bool`` (optional, default: ``False``)
         If ``True``, and `´overlap == True``, the minimization starts by first
         fitting the non-overlapping model, and using that as a starting state.
     dl : ``bool`` (optional, default: ``True``)
