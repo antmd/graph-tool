@@ -605,7 +605,7 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
         given via the ``vertex_<prop-name>`` parameters, where ``<prop-name>`` is
         the name of the property.
     eprops : dict (optional, default: ``None``)
-        Dictionary with the vertex properties. Individual properties may also be
+        Dictionary with the edge properties. Individual properties may also be
         given via the ``edge_<prop-name>`` parameters, where ``<prop-name>`` is
         the name of the property.
     vorder : :class:`~graph_tool.PropertyMap` (optional, default: ``None``)
