@@ -171,7 +171,7 @@ class GraphWidget(Gtk.DrawingArea):
             User-supplied callback to be called whenever the positions of the layout
             have changed. It needs to have the following signature:
 
-            .. code-block::
+            .. code-block:: python
 
                def callback(g, picked, pos, vprops, eprops):
                    ...
@@ -185,7 +185,7 @@ class GraphWidget(Gtk.DrawingArea):
             User-supplied callback to be called whenever a key-press event has
             happened. It needs to have the following signature:
 
-            .. code-block::
+            .. code-block:: python
 
                def callback(g, keyval, picked, pos, vprops, eprops):
                    ...

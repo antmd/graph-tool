@@ -182,7 +182,7 @@
    .. autofunction:: group_vector_property
    .. autofunction:: ungroup_vector_property
    .. autofunction:: infect_vertex_property
-   .. autofunction:: edge_difference
+   .. autofunction:: edge_endpoint_property
    .. autofunction:: value_types
    .. autofunction:: show_config
 

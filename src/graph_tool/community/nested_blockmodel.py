@@ -1434,7 +1434,7 @@ def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, min_B=None,
         entropy will be used to compare different partitions.
     sequential : ``bool`` (optional, default: ``True``)
         If ``True``, the move attempts on the vertices are done in sequential
-        random order. Otherwise a total of `N` moves attempts are made, where
+        random order. Otherwise a total of ``N`` moves attempts are made, where
         `N` is the number of vertices, where each vertex can be selected with
         equal probability.
     checkpoint : function (optional, default: ``None``)
@@ -1448,8 +1448,8 @@ def minimize_nested_blockmodel_dl(g, Bs=None, bs=None, min_B=None,
                 ...
 
         where `state` is either a :class:`~graph_tool.community.NestedBlockState`
-        instance or ``None``, `L` is the current description length, `delta` is
-        the entropy difference in the last MCMC sweep, and `nmoves` is the
+        instance or ``None``, `L` is the current description length, ``delta`` is
+        the entropy difference in the last MCMC sweep, and ``nmoves`` is the
         number of accepted block membership moves. The ``minimize_state``
         argument is a :class:`~graph_tool.community.NestedMinimizeState`
         instance which specifies the current state of the algorithm, which can

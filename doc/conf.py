@@ -26,7 +26,7 @@ sys.path.append(os.path.abspath('.'))
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest',
               'sphinx.ext.intersphinx', 'mathjax', 'sphinx.ext.autosummary',
-              'sphinxext.numpydoc',
+              'numpydoc',
               'sphinx.ext.extlinks',
               'sphinx.ext.viewcode'
               #'sphinx.ext.linkcode'
@@ -209,15 +209,15 @@ extlinks = {'ticket': ('http://graph-tool.skewed.de/tickets/ticket/%s',
             'arxiv': ('http://arxiv.org/abs/%s', 'arXiv: ')}
 
 
-def process_docstring(app, what, name, obj, options, lines):
-    for i, line in enumerate(lines):
-        if "arg1" in line and "->" in line:
-            lines[i] = ""
-        if "C++ signature :" in line or "graph_tool::Python" in line:
-            lines[i] = ""
+# def process_docstring(app, what, name, obj, options, lines):
+#     for i, line in enumerate(lines):
+#         if "arg1" in line and "->" in line:
+#             lines[i] = ""
+#         if "C++ signature :" in line or "graph_tool::Python" in line:
+#             lines[i] = ""
 
-def setup(app):
-    app.connect('autodoc-process-docstring', process_docstring)
+# def setup(app):
+#     app.connect('autodoc-process-docstring', process_docstring)
 
 # plot directive
 import pyenv
@@ -229,6 +229,7 @@ numpydoc_show_class_members = False
 autodoc_docstring_signature = False
 autodoc_member_order = 'bysource'
 autoclass_content = 'both'
+imported_members = True
 
 def linkcode_resolve(domain, info):
     if domain != 'py':

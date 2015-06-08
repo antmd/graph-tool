@@ -1,8 +1,9 @@
 .. automodule:: graph_tool.draw
    :no-members:
 
-    Layout algorithms
-    =================
+    .. container:: sec_title
+
+       Layout algorithms
 
     .. autofunction:: sfdp_layout
     .. autofunction:: fruchterman_reingold_layout
@@ -11,9 +12,9 @@
     .. autofunction:: random_layout
 
 
-    Graph drawing
-    =============
+    .. container:: sec_title
 
+       Graph drawing
 
     .. autofunction:: graph_draw
     .. autofunction:: draw_hierarchy
@@ -22,8 +23,9 @@
     .. autofunction:: get_hierarchy_control_points
 
 
-    Low-level graph drawing
-    ^^^^^^^^^^^^^^^^^^^^^^^
+    .. container:: sec_title
+
+       Low-level graph drawing
 
     .. autofunction:: cairo_draw
     .. autofunction:: interactive_window

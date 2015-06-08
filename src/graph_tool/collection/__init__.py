@@ -33,8 +33,8 @@ This module contains an assortment of useful networks.
     or alternatively in the ``"description"`` graph property which accompanies
     each graph object.
 
-    Examples
-    --------
+Examples
+========
 
     >>> g = gt.collection.data["karate"]
     >>> print(g)
