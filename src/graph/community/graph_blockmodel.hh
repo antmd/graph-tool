@@ -1295,15 +1295,14 @@ void move_entries(Vertex v, Vertex nr, Vprop& b, Eprop& eweights, Graph& g,
 template <class MEntries, class Eprop, class BGraph, class EMat>
 double entries_dS(MEntries& m_entries, Eprop& mrs, BGraph& bg, EMat& emat)
 {
-    typedef typename graph_traits<BGraph>::vertex_descriptor vertex_t;
     auto& entries = m_entries.get_entries();
     auto& delta = m_entries.get_delta();
 
     double dS = 0;
     for (size_t i = 0; i < entries.size(); ++i)
     {
-        vertex_t er = entries[i].first;
-        vertex_t es = entries[i].second;
+        auto er = entries[i].first;
+        auto es = entries[i].second;
         int d = delta[i];
 
         int ers = get_mrs(er, es, mrs, emat, bg);
