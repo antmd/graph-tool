@@ -304,6 +304,16 @@ struct graph_traits<FakeUndirGraph<Graph> >
     typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
     typedef FakeEdgeIterator<Graph> edge_iterator;
 };
+
+template <class Graph>
+std::pair<FakeEdgeIterator<Graph>,
+          FakeEdgeIterator<Graph>> edges(const FakeUndirGraph<Graph>& g)
+{
+    auto e = edges(UndirectedAdaptor<Graph>(g));
+    return std::make_pair(FakeEdgeIterator<Graph>(e.first),
+                          FakeEdgeIterator<Graph>(e.second));
+}
+
 }
 
 

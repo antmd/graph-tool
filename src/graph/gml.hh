@@ -64,6 +64,57 @@ private:
     std::string _what;
 };
 
+struct to_dict_visitor: public boost::static_visitor<>
+{
+    to_dict_visitor(const std::string& key, boost::python::dict& dict)
+        : key(key), dict(dict) {}
+
+    template <class Val>
+    void operator()(Val& val) const
+    {
+        const_cast<boost::python::dict&>(dict)[key] = val;
+    }
+
+    template <class Val>
+    void operator()(std::unordered_map<std::string, Val>& val) const
+    {
+        boost::python::dict n_dict;
+        for (auto& kv : val)
+            boost::apply_visitor(to_dict_visitor(kv.first, n_dict), kv.second);
+        const_cast<boost::python::dict&>(dict)[key] = n_dict;
+    }
+
+    const std::string& key;
+    const boost::python::dict& dict;
+};
+
+template <class Desc>
+struct prop_val_visitor: public boost::static_visitor<>
+{
+    prop_val_visitor(const std::string& name, dynamic_properties& dp, Desc v)
+        : name(name), dp(dp), v(v) {}
+
+    template <class Val>
+    void operator()(Val& val) const
+    {
+        put(name, const_cast<dynamic_properties&>(dp), v, val);
+    }
+
+    template <class Val>
+    void operator()(std::unordered_map<std::string, Val>& val) const
+    {
+        boost::python::dict dict;
+        for (auto& kv : val)
+            boost::apply_visitor(to_dict_visitor(kv.first, dict), kv.second);
+        put(name, const_cast<dynamic_properties&>(dp), v,
+            boost::python::object(dict));
+    }
+
+    const std::string& name;
+    const dynamic_properties& dp;
+    Desc v;
+};
+
 
 template <class Graph>
 class gml_state
@@ -76,7 +127,10 @@ public:
         : _g(g), _dp(dp), _directed(false), _ignore_vp(ignore_vp),
           _ignore_ep(ignore_ep), _ignore_gp(ignore_gp) {}
 
-    typedef boost::variant<std::string, int, double> val_t;
+    typedef boost::make_recursive_variant<std::string, int, double,
+                                          std::unordered_map<std::string,
+                                                             boost::recursive_variant_>>
+        ::type val_t;
 
     // key / value mechanics
     void push_key(const std::string& key)
@@ -115,24 +169,18 @@ public:
                 throw gml_parse_error("invalid node id");
             }
 
-            typename graph_traits<Graph>::vertex_descriptor v = get_vertex(id);
+            typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
+            vertex_t v = get_vertex(id);
 
             // put properties
-            for (typeof(_stack.back().second.begin()) iter = _stack.back().second.begin();
-                 iter != _stack.back().second.end(); ++iter)
+            for (auto& iter : _stack.back().second)
             {
-                if (iter->first == "id")
+                if (iter.first == "id")
                     continue;
-                if (_ignore_vp.find(iter->first) != _ignore_vp.end())
+                if (_ignore_vp.find(iter.first) != _ignore_vp.end())
                     continue;
-                try
-                {
-                    put(iter->first, _dp, v, boost::get<string>(iter->second));
-                }
-                catch (bad_get)
-                {
-                    put(iter->first, _dp, v, boost::get<double>(iter->second));
-                }
+                boost::apply_visitor(prop_val_visitor<vertex_t>(iter.first, _dp, v),
+                                     iter.second);
             }
         }
         else if (k == "edge")
@@ -157,48 +205,42 @@ public:
             s = get_vertex(source);
             t = get_vertex(target);
 
-            typename graph_traits<Graph>::edge_descriptor e =
-                add_edge(s, t, _g).first;
+            typedef typename graph_traits<Graph>::edge_descriptor edge_t;
+            edge_t e = add_edge(s, t, _g).first;
 
             // put properties
-            for (typeof(_stack.back().second.begin()) iter = _stack.back().second.begin();
-                 iter != _stack.back().second.end(); ++iter)
+            for (auto& iter : _stack.back().second)
             {
-                if (iter->first == "id" || iter->first == "source" || iter->first == "target")
+                if (iter.first == "id" || iter.first == "source" || iter.first == "target")
                     continue;
-                if (_ignore_ep.find(iter->first) != _ignore_ep.end())
+                if (_ignore_ep.find(iter.first) != _ignore_ep.end())
                     continue;
-                try
-                {
-                    put(iter->first, _dp, e, boost::get<string>(iter->second));
-                }
-                catch (bad_get)
-                {
-                    put(iter->first, _dp, e, boost::get<double>(iter->second));
-                }
+                boost::apply_visitor(prop_val_visitor<edge_t>(iter.first, _dp, e),
+                                     iter.second);
             }
 
         }
         else if (k == "graph")
         {
             // put properties
-            for (typeof(_stack.back().second.begin()) iter = _stack.back().second.begin();
-                 iter != _stack.back().second.end(); ++iter)
+            for (auto& iter : _stack.back().second)
             {
-                if (iter->first == "directed")
-                    _directed = boost::get<double>(iter->second);
-                if (_ignore_gp.find(iter->first) != _ignore_gp.end())
+                if (iter.first == "directed")
+                    _directed = boost::get<double>(iter.second);
+                if (_ignore_gp.find(iter.first) != _ignore_gp.end())
                     continue;
-                try
-                {
-                    put(iter->first, _dp, graph_property_tag(), boost::get<string>(iter->second));
-                }
-                catch (bad_get)
-                {
-                    put(iter->first, _dp, graph_property_tag(), boost::get<double>(iter->second));
-                }
+                boost::apply_visitor(prop_val_visitor<graph_property_tag>(iter.first, _dp,
+                                                                          graph_property_tag()),
+                                     iter.second);
             }
 
+        }
+        else
+        {
+            // Push nested lists down the stack
+            if (_stack.size() < 2)
+                throw gml_parse_error("invalid syntax: list '" + k + "' not within 'node', 'edge' or 'graph'");
+            _stack[_stack.size() - 2].second[k] = _stack.back().second;
         }
         _stack.pop_back();
     }
@@ -223,7 +265,7 @@ private:
     bool _directed;
     std::unordered_map<int, typename graph_traits<Graph>::vertex_descriptor> _vmap;
 
-    // the stack holds the keys, and its properties (but omits nested lists)
+    // the stack holds the keys, and its properties
     typedef std::unordered_map<std::string, val_t> prop_list_t;
     vector<pair<std::string,  prop_list_t> > _stack;
 
@@ -376,59 +418,52 @@ void write_gml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
     if (graph_is_directed)
         out << "   directed " << 1 << endl;
 
-    for (dynamic_properties::const_iterator i = dp.begin(); i != dp.end();
-         ++i)
+    for (auto& i : dp)
     {
-        if (i->second->key() == typeid(graph_property_tag))
+        if (i.second->key() == typeid(graph_property_tag))
         {
-            std::string val = print_val<value_types>(*i->second,
+            std::string val = print_val<value_types>(*i.second,
                                                      graph_property_tag());
             if (val.empty())
                 continue;
-            out << "   " << i->first << " " << val << endl;
+            out << "   " << i.first << " " << val << endl;
         }
     }
 
-    typedef typename graph_traits<Graph>::vertex_iterator vertex_iterator;
-    vertex_iterator v, v_end;
-    for (tie(v, v_end) = vertices(g); v != v_end; ++v)
+    for (auto v : vertices_range(g))
     {
         out << "   node [" << endl;
-        out << "      id " << get(vertex_index, *v) << endl;
+        out << "      id " << get(vertex_index, v) << endl;
 
-        for (dynamic_properties::const_iterator i = dp.begin(); i != dp.end();
-             ++i)
+        for (auto& i : dp)
         {
-            if (i->second->key() == typeid(vertex_descriptor))
+            if (i.second->key() == typeid(vertex_descriptor))
             {
-                std::string val = print_val<value_types>(*i->second, *v);
+                std::string val = print_val<value_types>(*i.second, v);
                 if (val.empty())
                     continue;
-                out << "      " << i->first << " " << val << endl;
+                out << "      " << i.first << " " << val << endl;
             }
         }
         out << "   ]" << endl;
     }
 
-    typedef typename graph_traits<Graph>::edge_iterator edge_iterator;
-    edge_iterator e, e_end;
     typename graph_traits<Graph>::edges_size_type edge_count = 0;
-    for (tie(e, e_end) = edges(g); e != e_end; ++e)
+    for (auto e : edges_range(g))
     {
         out << "   edge [" << endl;
         out << "      id " << edge_count++ << endl;
-        out << "      source " << get(vertex_index, source(*e, g)) << endl;
-        out << "      target " << get(vertex_index, target(*e, g)) << endl;
+        out << "      source " << get(vertex_index, source(e, g)) << endl;
+        out << "      target " << get(vertex_index, target(e, g)) << endl;
 
-        for (dynamic_properties::const_iterator i = dp.begin(); i != dp.end();
-             ++i)
+        for (auto& i : dp)
         {
-            if (i->second->key() == typeid(edge_descriptor))
+            if (i.second->key() == typeid(edge_descriptor))
             {
-                std::string val = print_val<value_types>(*i->second, *e);
+                std::string val = print_val<value_types>(*i.second, e);
                 if (val.empty())
                     continue;
-                out << "      " << i->first << " " << val << endl;
+                out << "      " << i.first << " " << val << endl;
             }
         }
         out << "   ]" << endl;
