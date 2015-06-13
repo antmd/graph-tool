@@ -48,6 +48,8 @@
 
 #include <unordered_map>
 
+#include "base64.hh"
+
 namespace graph_tool{
 
 using namespace std;
@@ -362,7 +364,7 @@ struct get_str
             ValueType v = any_cast<ValueType>(val);
             if (std::is_same<ValueType, python::object>::value)
             {
-                sval = lexical_cast<string>(v);
+                sval = base64_encode(lexical_cast<string>(v));
             }
             else
             {

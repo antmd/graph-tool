@@ -29,14 +29,12 @@
 #include <set>
 #include <unordered_set>
 
-namespace boost
-{
-
 // Base64 Encoding
 
-std::string base64_encode(const std::string& s);
-std::string base64_decode(const std::string& s);
+#include "base64.hh"
 
+namespace boost
+{
 
 /////////////////////////////////////////////////////////////////////////////
 // Graph reader exceptions

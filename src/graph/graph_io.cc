@@ -25,7 +25,6 @@
 #include <boost/iostreams/device/file_descriptor.hpp>
 #include <boost/iostreams/device/file.hpp>
 #include <boost/graph/graphml.hpp>
-#include <boost/graph/graphviz.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/xpressive/xpressive.hpp>
 
@@ -79,7 +78,18 @@ python::object lexical_cast<python::object,string>(const string& ps)
     o = object_unpickler(IStream(s));
     return o;
 }
+
+namespace python
+{
+std::ostringstream& operator<<(std::ostringstream& stream, const boost::python::object& o)
+{
+    stream << base64_encode(lexical_cast<string>(o));
+    return stream;
 }
+}
+}
+
+#include <boost/graph/graphviz.hpp>
 
 #include "graph_io_binary.hh"
 
