@@ -130,8 +130,8 @@ class GraphWidget(Gtk.DrawingArea):
     def __init__(self, g, pos, vprops=None, eprops=None, vorder=None,
                  eorder=None, nodesfirst=False, update_layout=False,
                  layout_K=1., multilevel=False, display_props=None,
-                 display_props_size=11, bg_color=None, layout_callback=None,
-                 key_press_callback=None, **kwargs):
+                 display_props_size=11, fit_area=0.95, bg_color=None,
+                 layout_callback=None, key_press_callback=None, **kwargs):
         r"""Interactive GTK+ widget displaying a given graph.
 
         Parameters
@@ -163,8 +163,10 @@ class GraphWidget(Gtk.DrawingArea):
             Parameter ``multilevel`` passed to :func:`~graph_tool.draw.sfdp_layout`.
         display_props : list of :class:`~graph_tool.PropertyMap` instances (optional, default: ``None``)
             List of properties to be displayed when the mouse passes over a vertex.
-        display_props_size : float (optional, default: ``11``)
+        display_props_size : float (optional, default: ``11.``)
             Font size used to display the vertex properties.
+        fit_area : float  (optional, default: ``.95``)
+            Fraction of the drawing area to fit the graph initially.
         bg_color : str or sequence (optional, default: ``None``)
             Background color. The default is white.
         layout_callback : function (optional, default: ``Node``)
@@ -262,6 +264,7 @@ class GraphWidget(Gtk.DrawingArea):
         self.drag_begin = None
         self.moved_picked = False
         self.vertex_matrix = None
+        self.pad = fit_area
 
         self.display_prop = g.vertex_index if display_props is None \
                             else display_props
@@ -620,6 +623,7 @@ class GraphWidget(Gtk.DrawingArea):
                                                    _vdefaults["font_family"]),
                                    self.vprops.get("font_size",
                                                    _vdefaults["font_size"]),
+                                   self.pad,
                                    cr)
         m = cairo.Matrix()
         m.translate(offset[0] + ox, offset[1] + oy)

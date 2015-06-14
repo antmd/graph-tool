@@ -504,6 +504,7 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
             cr.scale(output_size[0] / w, output_size[1] / h)
             cr.translate(-x, -y)
         except TypeError:
+            pad = fit_view if fit_view != True else 0.95
             offset, zoom = fit_to_view(g, pos, output_size,
                                        vprops.get("size", _vdefaults["size"]),
                                        vprops.get("pen_width", _vdefaults["pen_width"]),
@@ -512,7 +513,7 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
                                                   _vdefaults["font_family"]),
                                        vprops.get("font_size",
                                                   _vdefaults["font_size"]),
-                                       cr)
+                                       pad, cr)
             cr.translate(offset[0], offset[1])
             if not isinstance(fit_view, bool):
                 zoom /= fit_view
@@ -590,7 +591,8 @@ def auto_colors(g, bg, pos, back):
 
 def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                nodesfirst=False, output_size=(600, 600), fit_view=True,
-               inline=is_draw_inline, mplfig=None, output=None, fmt="auto", **kwargs):
+               inline=is_draw_inline, mplfig=None, output=None, fmt="auto",
+               **kwargs):
     r"""Draw a graph to screen or to a file using :mod:`cairo`.
 
     Parameters
@@ -935,6 +937,9 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                 b, t = y.a.min(), y.a.max()
                 w = r - l
                 h = t - b
+            if fit_view != True:
+                w *= float(fit_view)
+                h *= float(fit_view)
             ax.set_xlim(l - w * .1, r + w * .1)
             ax.set_ylim(b - h * .1, t + h * .1)
 
@@ -958,8 +963,9 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
             if isinstance(val, PropertyMap):
                 eprops[p] = _convert(edge_attrs.__dict__[p], val,
                                      kwargs.get("ecmap", default_cm))
+        fit_area = fit_view if fit_view != True else 0.95
         return interactive_window(g, pos, vprops, eprops, vorder, eorder,
-                                  nodesfirst, **kwargs)
+                                  nodesfirst, fit_area=fit_area, **kwargs)
     else:
         if isinstance(output, str):
             out, auto_fmt = open_file(output, mode="wb")
@@ -993,6 +999,7 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                 x, y, w, h = fit_view
                 offset, zoom = [0, 0], 1
             except TypeError:
+                pad = fit_view if fit_view != True else 0.95
                 offset, zoom = fit_to_view(g, pos, output_size, vprops["size"],
                                            vprops["pen_width"], None,
                                            vprops.get("text", None),
@@ -1000,7 +1007,7 @@ def graph_draw(g, pos=None, vprops=None, eprops=None, vorder=None, eorder=None,
                                                       _vdefaults["font_family"]),
                                            vprops.get("font_size",
                                                       _vdefaults["font_size"]),
-                                           cr)
+                                           pad, cr)
                 fit_view = False
         else:
             offset, zoom = [0, 0], 1
@@ -1155,7 +1162,7 @@ def get_bb(g, pos, size, pen_width, size_scale=1, text=None, font_family=None,
 
 
 def fit_to_view(g, pos, geometry, size, pen_width, M=None, text=None,
-                font_family=None, font_size=None, cr=None):
+                font_family=None, font_size=None, pad=0.95, cr=None):
     if g.num_vertices() == 0:
         return [0, 0], 1
     if M is not None:
@@ -1187,7 +1194,6 @@ def fit_to_view(g, pos, geometry, size, pen_width, M=None, text=None,
         zoom_x = 1
     if np.isnan(zoom_y) or np.isinf(zoom_y) or zoom_y == 0:
         zoom_y = 1
-    pad = 0.95
     zoom = min(zoom_x, zoom_y) * pad
     empty_x = (geometry[0] - sum(x_delta)) - dx * zoom
     empty_y = (geometry[1] - sum(y_delta)) - dy * zoom
