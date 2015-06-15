@@ -465,8 +465,11 @@ class GraphWidget(Gtk.DrawingArea):
             self.regenerate_surface(lazy=False)
             self.geometry = geometry
 
+        cr.save()
+        cr.set_matrix(self.smatrix)
         ul = self.pos_to_device((0, 0), surface=True, cr=cr)
         lr = self.pos_to_device(self.base_geometry, surface=True, cr=cr)
+        cr.restore()
 
         if (ul[0] > 0 or lr[0] < geometry[0] or
             ul[1] > 0 or lr[1] < geometry[1]):
