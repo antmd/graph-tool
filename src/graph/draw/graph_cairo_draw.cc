@@ -28,8 +28,13 @@
 #include "graph_properties.hh"
 
 #include <iostream>
+#include <array>
+#include <chrono>
 
 #include <unordered_map>
+#ifdef HAVE_SPARSEHASH
+#include SPARSEHASH_INCLUDE(dense_hash_map)
+#endif
 
 #include <cairommconfig.h>
 #include <cairomm/context.h>
@@ -41,6 +46,10 @@
 using namespace std;
 using namespace boost;
 using namespace graph_tool;
+
+#ifdef HAVE_SPARSEHASH
+using google::dense_hash_map;
+#endif
 
 enum vertex_attr_t {
     VERTEX_SHAPE = 100,
@@ -118,7 +127,11 @@ enum edge_marker_t {
 
 typedef pair<double, double> pos_t;
 typedef std::tuple<double, double, double, double> color_t;
-typedef std::unordered_map<int, boost::any> attrs_t;
+#ifdef HAVE_SPARSEHASH
+    typedef dense_hash_map<int, boost::any, std::hash<int>> attrs_t;
+#else
+    typedef std::unordered_map<int, boost::any> attrs_t;
+#endif
 
 typedef boost::mpl::map41<
     boost::mpl::pair<boost::mpl::int_<VERTEX_SHAPE>, vertex_shape_t>,
@@ -411,7 +424,7 @@ public:
     template <class Value>
     Value get(int k)
     {
-        typeof(_attrs.begin()) iter = _attrs.find(k);
+        auto iter = _attrs.find(k);
         if (iter != _attrs.end())
         {
             typedef DynamicPropertyMapWrap<Value, Descriptor, Converter> pmap_t;
@@ -777,6 +790,13 @@ public:
         color_t color, fillcolor;
         double size, pw, aspect;
         size = get_size(cr);
+
+        std::array<double, 4> clip;
+        cr.get_clip_extents(clip[0], clip[1], clip[2], clip[3]);
+        if ((_pos.first + 2 * size < clip[0] && _pos.second + 2 * size < clip[1]) ||
+            (_pos.first - 2 * size > clip[2] && _pos.second - 2 * size > clip[3]))
+            return;
+
         aspect = _attrs.template get<double>(VERTEX_ASPECT);
 
         if (!outline)
@@ -997,7 +1017,7 @@ public:
     EdgeShape(VertexShape& s, VertexShape& t, AttrDict<Descriptor> attrs)
         : _s(s), _t(t), _attrs(attrs) {}
 
-    void draw(Cairo::Context& cr)
+    void draw(Cairo::Context& cr, double res = 0.)
     {
         pos_t pos_begin, pos_end;
 
@@ -1029,6 +1049,11 @@ public:
         double marker_size = _attrs.template get<double>(EDGE_MARKER_SIZE);
         marker_size = get_user_dist(cr, marker_size);
         bool sloppy = _attrs.template get<uint8_t>(EDGE_SLOPPY);
+
+        if (marker_size < get_user_dist(cr, res))
+        {
+            sloppy = true;
+        }
 
         pos_begin = _s.get_pos();
         pos_end = _t.get_pos();
@@ -1441,14 +1466,21 @@ private:
     AttrDict<Descriptor> _attrs;
 };
 
-template <class Graph, class VertexIterator, class PosMap>
-void draw_vertices(Graph&, pair<VertexIterator,VertexIterator> v_range,
+template <class Graph, class VertexIterator, class PosMap, class Time>
+void draw_vertices(Graph&, pair<VertexIterator, VertexIterator> v_range,
                    PosMap pos_map, attrs_t& attrs, attrs_t& defaults,
+                   size_t offset, Time max_time, size_t& count,
                    Cairo::Context& cr)
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
     for(VertexIterator v = v_range.first; v != v_range.second; ++v)
     {
+        if (count < offset)
+        {
+            count++;
+            continue;
+        }
+
         pos_t pos;
         if (pos_map[*v].size() >= 2)
         {
@@ -1457,18 +1489,29 @@ void draw_vertices(Graph&, pair<VertexIterator,VertexIterator> v_range,
         }
         VertexShape<vertex_t> vs(pos, AttrDict<vertex_t>(*v, attrs, defaults));
         vs.draw(cr);
+        count++;
+
+        if (chrono::high_resolution_clock::now() > max_time)
+            break;
     }
 }
 
-template <class Graph, class EdgeIterator, class PosMap>
+template <class Graph, class EdgeIterator, class PosMap, class Time>
 void draw_edges(Graph& g, pair<EdgeIterator, EdgeIterator> e_range,
                 PosMap pos_map, attrs_t& eattrs, attrs_t& edefaults,
-                attrs_t& vattrs, attrs_t& vdefaults, Cairo::Context& cr)
+                attrs_t& vattrs, attrs_t& vdefaults, double res, size_t offset,
+                Time max_time, size_t& count, Cairo::Context& cr)
 {
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_t;
     typedef typename graph_traits<Graph>::edge_descriptor edge_t;
     for(EdgeIterator e = e_range.first; e != e_range.second; ++e)
     {
+        if (count < offset)
+        {
+            count++;
+            continue;
+        }
+
         vertex_t s, t;
         s = source(*e, g);
         t = target(*e, g);
@@ -1486,7 +1529,10 @@ void draw_edges(Graph& g, pair<EdgeIterator, EdgeIterator> e_range,
         }
 
         if (spos == tpos && t != s)
+        {
+            count++;
             continue;
+        }
 
         VertexShape<vertex_t> ss(spos, AttrDict<vertex_t>(s, vattrs, vdefaults));
         VertexShape<vertex_t> ts(tpos, AttrDict<vertex_t>(t, vattrs, vdefaults));
@@ -1494,7 +1540,11 @@ void draw_edges(Graph& g, pair<EdgeIterator, EdgeIterator> e_range,
         EdgeShape<edge_t,VertexShape<vertex_t> > es(ss, ts,
                                                     AttrDict<edge_t>(*e, eattrs,
                                                                      edefaults));
-        es.draw(cr);
+        es.draw(cr, res);
+        count++;
+
+        if (chrono::high_resolution_clock::now() > max_time)
+            break;
     }
 }
 
@@ -1546,29 +1596,31 @@ struct ordered_range
 
 struct do_cairo_draw_edges
 {
-    template <class Graph, class PosMap, class EdgeOrder>
-    void operator()(Graph& g, PosMap pos, EdgeOrder edge_order,
-                    attrs_t& vattrs, attrs_t& eattrs, attrs_t& vdefaults,
-                    attrs_t& edefaults, Cairo::Context& cr) const
+    template <class Graph, class PosMap, class EdgeOrder, class Time>
+    void operator()(Graph& g, PosMap pos, EdgeOrder edge_order, attrs_t& vattrs,
+                    attrs_t& eattrs, attrs_t& vdefaults, attrs_t& edefaults,
+                    double res, size_t offset, Time max_time, size_t& count,
+                    Cairo::Context& cr) const
     {
         ordered_range<typename graph_traits<Graph>::edge_iterator>
             edge_range(edges(g));
-        draw_edges(g, edge_range.get_range(edge_order), pos, eattrs,
-                   edefaults, vattrs, vdefaults, cr);
+        draw_edges(g, edge_range.get_range(edge_order), pos, eattrs, edefaults,
+                   vattrs, vdefaults, res, offset, max_time, count, cr);
     }
 };
 
 struct do_cairo_draw_vertices
 {
-    template <class Graph, class PosMap, class VertexOrder>
+    template <class Graph, class PosMap, class VertexOrder, class Time>
     void operator()(Graph& g, PosMap pos, VertexOrder vertex_order,
-                    attrs_t& vattrs, attrs_t&, attrs_t& vdefaults,
-                    attrs_t&, Cairo::Context& cr) const
+                    attrs_t& vattrs, attrs_t&, attrs_t& vdefaults, attrs_t&,
+                    size_t offset, Time max_time, size_t& count,
+                    Cairo::Context& cr) const
     {
         ordered_range<typename graph_traits<Graph>::vertex_iterator>
             vertex_range(vertices(g));
         draw_vertices(g, vertex_range.get_range(vertex_order), pos, vattrs,
-                      vdefaults, cr);
+                      vdefaults, offset, max_time, count, cr);
     }
 };
 
@@ -1655,18 +1707,28 @@ struct populate_edge_attrs
 };
 
 
-void cairo_draw(GraphInterface& gi,
-                boost::any pos,
-                boost::any vorder,
-                boost::any eorder,
-                bool nodesfirst,
-                boost::python::dict ovattrs,
-                boost::python::dict oeattrs,
-                boost::python::dict ovdefaults,
-                boost::python::dict oedefaults,
-                boost::python::object ocr)
+size_t cairo_draw(GraphInterface& gi,
+                  boost::any pos,
+                  boost::any vorder,
+                  boost::any eorder,
+                  bool nodesfirst,
+                  boost::python::dict ovattrs,
+                  boost::python::dict oeattrs,
+                  boost::python::dict ovdefaults,
+                  boost::python::dict oedefaults,
+                  double res,
+                  size_t offset,
+                  int64_t max_time,
+                  boost::python::object ocr)
 {
     attrs_t vattrs, eattrs, vdefaults, edefaults;
+#ifdef HAVE_SPARSEHASH
+    vattrs.set_empty_key(numeric_limits<int>::max());
+    eattrs.set_empty_key(numeric_limits<int>::max());
+    vdefaults.set_empty_key(numeric_limits<int>::max());
+    edefaults.set_empty_key(numeric_limits<int>::max());
+#endif
+
     typedef graph_traits<GraphInterface::multigraph_t>::vertex_descriptor vertex_t;
 
     populate_attrs<vertex_t, vertex_properties>(ovattrs, vattrs);
@@ -1685,31 +1747,55 @@ void cairo_draw(GraphInterface& gi,
     if (eorder.empty())
         eorder = no_order();
 
+
+    size_t count = 0;
+    auto mtime = chrono::high_resolution_clock::now();
+    if (max_time < 0)
+        mtime = chrono::high_resolution_clock::time_point::max();
+    else
+        mtime += chrono::milliseconds(max_time);
+
     Cairo::Context cr(PycairoContext_GET(ocr.ptr()));
     if (nodesfirst)
         run_action<graph_tool::detail::always_directed>()
             (gi, std::bind(do_cairo_draw_vertices(), placeholders::_1,
                            placeholders::_2, placeholders::_3,
                            std::ref(vattrs), std::ref(eattrs), std::ref(vdefaults),
-                           std::ref(edefaults), std::ref(cr)),
+                           std::ref(edefaults), offset, mtime, std::ref(count),
+                           std::ref(cr)),
              vertex_scalar_vector_properties(),
              vorder_t())(pos, vorder);
+
+    if (chrono::high_resolution_clock::now() > mtime)
+        return count;
 
     run_action<graph_tool::detail::always_directed>()
         (gi, std::bind(do_cairo_draw_edges(), placeholders::_1, placeholders::_2,
                        placeholders::_3, std::ref(vattrs), std::ref(eattrs),
-                       std::ref(vdefaults), std::ref(edefaults), std::ref(cr)),
+                       std::ref(vdefaults), std::ref(edefaults), res, offset,
+                       mtime, std::ref(count), std::ref(cr)),
          vertex_scalar_vector_properties(),
          eorder_t())(pos, eorder);
 
     if (!nodesfirst)
+    {
+        if (chrono::high_resolution_clock::now() > mtime)
+            return count;
+
         run_action<graph_tool::detail::always_directed>()
             (gi, std::bind(do_cairo_draw_vertices(), placeholders::_1,
                            placeholders::_2, placeholders::_3,
                            std::ref(vattrs), std::ref(eattrs), std::ref(vdefaults),
-                           std::ref(edefaults), std::ref(cr)),
+                           std::ref(edefaults), offset, mtime, std::ref(count),
+                           std::ref(cr)),
              vertex_scalar_vector_properties(),
              vorder_t())(pos, vorder);
+    }
+
+    if (chrono::high_resolution_clock::now() < mtime)
+        count = 0;
+
+    return count;
 }
 
 struct do_apply_transforms

@@ -131,7 +131,8 @@ class GraphWidget(Gtk.DrawingArea):
                  eorder=None, nodesfirst=False, update_layout=False,
                  layout_K=1., multilevel=False, display_props=None,
                  display_props_size=11, fit_area=0.95, bg_color=None,
-                 layout_callback=None, key_press_callback=None, **kwargs):
+                 max_render_time=300, layout_callback=None,
+                 key_press_callback=None, **kwargs):
         r"""Interactive GTK+ widget displaying a given graph.
 
         Parameters
@@ -169,6 +170,9 @@ class GraphWidget(Gtk.DrawingArea):
             Fraction of the drawing area to fit the graph initially.
         bg_color : str or sequence (optional, default: ``None``)
             Background color. The default is white.
+        max_render_time : int (optional, default: ``300``)
+            Maximum amount of time (in milliseconds) spent rendering portions of
+            the graph.
         layout_callback : function (optional, default: ``Node``)
             User-supplied callback to be called whenever the positions of the layout
             have changed. It needs to have the following signature:
@@ -260,6 +264,7 @@ class GraphWidget(Gtk.DrawingArea):
         self.pointer = [0, 0]
         self.picked = False
         self.selected = g.new_vertex_property("bool")
+        self.sel_edge_filt = g.new_edge_property("bool", False)
         self.srect = None
         self.drag_begin = None
         self.moved_picked = False
@@ -275,7 +280,9 @@ class GraphWidget(Gtk.DrawingArea):
         self.base_geometry = None
         self.background = None
         self.bg_color = bg_color if bg_color is not None else [1, 1, 1, 1]
-        self.surface_callback = None
+        self.regenerate_offset = 0
+        self.regenerate_max_time = max_render_time
+        self.max_render_time = max_render_time
 
         self.layout_callback_id = None
         self.layout_K = layout_K
@@ -359,7 +366,7 @@ class GraphWidget(Gtk.DrawingArea):
         self.layout_step *= 0.9
         if self.vertex_matrix is not None:
             self.vertex_matrix.update()
-        self.regenerate_surface(lazy=False)
+        self.regenerate_surface(reset=True, complete=True)
         self.queue_draw()
         ps = ungroup_vector_property(self.pos, [0, 1])
         delta = np.sqrt((pos_temp[0].fa - ps[0].fa) ** 2 +
@@ -390,7 +397,7 @@ class GraphWidget(Gtk.DrawingArea):
                     adjust_default_sizes(self.g, geometry, self.vprops,
                                          self.eprops, force=True)
                     self.fit_to_window(ink=False)
-                    self.regenerate_surface(lazy=False)
+                    self.regenerate_surface(reset=True, complete=True)
                 except StopIteration:
                     self.g = self.ag
                     self.pos = self.apos
@@ -410,48 +417,48 @@ class GraphWidget(Gtk.DrawingArea):
 
     # Actual drawing
 
-    def regenerate_surface(self, lazy=True, timeout=350):
-        r"""Redraw the graph surface. If lazy is True, the actual redrawing will
-        be performed after the specified timeout."""
-        if lazy:
-            if self.surface_callback is not None:
-                gobject.source_remove(self.surface_callback)
-            f = lambda: self.regenerate_surface(lazy=False)
-            self.surface_callback = gobject.timeout_add(timeout, f)
-        else:
-            geometry = [self.get_allocated_width() * 3,
-                        self.get_allocated_height() * 3]
+    def regenerate_surface(self, reset=False, complete=False):
+        r"""Redraw the graph surface."""
+
+        if reset:
+            self.regenerate_offset = 0
+
+        geometry = [self.get_allocated_width() * 3,
+                    self.get_allocated_height() * 3]
+
+        if (self.base is None or self.base_geometry[0] != geometry[0] or
+            self.base_geometry[1] != geometry[1] or reset):
+            # self.base = cairo.ImageSurface(cairo.FORMAT_ARGB32,
+            #                                *geometry)
+            w = self.get_window()
+            if w is None:
+                return False
+            self.base = w.create_similar_surface(cairo.CONTENT_COLOR_ALPHA,
+                                                 *geometry)
+            self.base_geometry = geometry
+            self.regenerate_offset = 0
 
             m = cairo.Matrix()
             m.translate(self.get_allocated_width(),
                         self.get_allocated_height())
             self.smatrix = self.smatrix * m
             self.tmatrix = self.tmatrix * self.smatrix
-            if (self.base is None or self.base_geometry[0] != geometry[0] or
-                self.base_geometry[1] != geometry[1]):
-                # self.base = cairo.ImageSurface(cairo.FORMAT_ARGB32,
-                #                                *geometry)
-                w = self.get_window()
-                if w is None:
-                    return False
-                self.base = w.create_similar_surface(cairo.CONTENT_COLOR_ALPHA,
-                                                     *geometry)
-                self.base_geometry = geometry
-
-            cr = cairo.Context(self.base)
-            cr.set_source_rgba(*self.bg_color)
-            cr.paint()
-            cr.set_matrix(self.tmatrix)
-            cairo_draw(self.g, self.pos, cr, self.vprops, self.eprops,
-                       self.vorder, self.eorder, self.nodesfirst, **self.kwargs)
             self.smatrix = cairo.Matrix()
             self.smatrix.translate(-self.get_allocated_width(),
                                    -self.get_allocated_height())
-            if self.surface_callback is not None:
-                gobject.source_remove(self.surface_callback)
-                self.surface_callback = None
-                self.queue_draw()
-            return False
+
+        cr = cairo.Context(self.base)
+        if self.regenerate_offset == 0:
+            cr.set_source_rgba(*self.bg_color)
+            cr.paint()
+        cr.set_matrix(self.tmatrix)
+        mtime = -1 if complete else self.regenerate_max_time
+        count = cairo_draw(self.g, self.pos, cr, self.vprops, self.eprops,
+                           self.vorder, self.eorder, self.nodesfirst, res=1,
+                           render_offset=self.regenerate_offset,
+                           max_render_time=mtime,
+                           **self.kwargs)
+        self.regenerate_offset = count
 
     def draw(self, da, cr):
         r"""Redraw the widget."""
@@ -462,17 +469,24 @@ class GraphWidget(Gtk.DrawingArea):
         if self.geometry is None:
             adjust_default_sizes(self.g, geometry, self.vprops, self.eprops)
             self.fit_to_window(ink=False)
-            self.regenerate_surface(lazy=False)
+            self.regenerate_surface()
             self.geometry = geometry
 
         cr.save()
         cr.set_matrix(self.smatrix)
-        ul = self.pos_to_device((0, 0), surface=True, cr=cr)
-        lr = self.pos_to_device(self.base_geometry, surface=True, cr=cr)
+        c1 = self.pos_to_device((0, 0), surface=True, cr=cr)
+        c2 = self.pos_to_device((0, self.base_geometry[1]), surface=True, cr=cr)
+        c3 = self.pos_to_device((self.base_geometry[0], 0), surface=True, cr=cr)
+        c4 = self.pos_to_device(self.base_geometry, surface=True, cr=cr)
+        c = [c1, c2, c3, c4]
+        ul = [min([x[0] for x in c]), min([x[1] for x in c])]
+        lr = [max([x[0] for x in c]), max([x[1] for x in c])]
         cr.restore()
 
         if (ul[0] > 0 or lr[0] < geometry[0] or
             ul[1] > 0 or lr[1] < geometry[1]):
+            self.regenerate_surface(reset=True)
+        elif self.regenerate_offset > 0:
             self.regenerate_surface()
 
         if self.background is None:
@@ -513,10 +527,9 @@ class GraphWidget(Gtk.DrawingArea):
             vprops["text_color"] = [1., 1., 1., 0.]
 
             eprops = {}
-            eprops.update(self.eprops)
-            eprops["color"] = [1., 1., 1., 0.]
 
-            u = GraphView(self.g, vfilt=self.selected)
+            u = GraphView(self.g, vfilt=self.selected,
+                          efilt=self.sel_edge_filt)
 
             cr.save()
             cr.set_matrix(self.tmatrix * self.smatrix)
@@ -534,7 +547,7 @@ class GraphWidget(Gtk.DrawingArea):
             cr.set_source_rgba(0, 0, 1, 0.3)
             cr.fill()
 
-        if self.surface_callback is not None:
+        if self.regenerate_offset > 0:
             icon = self.render_icon(Gtk.STOCK_EXECUTE, Gtk.IconSize.BUTTON)
             Gdk.cairo_set_source_pixbuf(cr, icon, 10, 10)
             cr.paint()
@@ -560,6 +573,8 @@ class GraphWidget(Gtk.DrawingArea):
             cr.set_source_rgba(0, 0, 0, 1.0)
             cr.show_text(txt)
 
+        if self.regenerate_offset > 0:
+            self.queue_draw()
         return False
 
     # Position and transforms
@@ -721,7 +736,7 @@ class GraphWidget(Gtk.DrawingArea):
                                               self.pos, self.vprops,
                                               self.eprops)
                 self.moved_picked = False
-                self.regenerate_surface(timeout=100)
+                self.regenerate_surface(complete=True)
                 self.queue_draw()
         elif event.button == 2:
             self.panning = None
@@ -789,6 +804,14 @@ class GraphWidget(Gtk.DrawingArea):
 
     def scroll_event(self, widget, event):
         r"""Handle scrolling."""
+
+        self.regenerate_max_time = 50
+
+        def restore_render_time():
+            self.regenerate_max_time = self.max_render_time
+            return False
+        self.surface_callback = gobject.timeout_add(2000, restore_render_time)
+
         state = event.state
 
         angle = 0
@@ -812,16 +835,16 @@ class GraphWidget(Gtk.DrawingArea):
         # keep centered
         if zoom != 1:
             center = self.pointer
-            cpos = self.pos_from_device(center, surface=True)
+            cpos = self.pos_from_device(center)
 
             m = cairo.Matrix()
             m.scale(zoom, zoom)
-            self.smatrix = self.smatrix.multiply(m)
+            self.tmatrix = self.tmatrix.multiply(m)
 
-            ncpos = self.pos_from_device(center, surface=True)
-            self.smatrix.translate(ncpos[0] - cpos[0],
+            ncpos = self.pos_from_device(center)
+            self.tmatrix.translate(ncpos[0] - cpos[0],
                                    ncpos[1] - cpos[1])
-            self.regenerate_surface()
+            self.regenerate_surface(reset=True)
         if angle != 0:
             if not isinstance(self.picked, PropertyMap):
                 center = (self.pointer[0], self.pointer[1])
@@ -830,7 +853,6 @@ class GraphWidget(Gtk.DrawingArea):
                 m.rotate(angle)
                 m.translate(-center[0], -center[1])
                 self.smatrix = self.smatrix.multiply(m)
-                self.regenerate_surface()
             else:
                 center = self.pos_from_device(self.pointer)
                 u = GraphView(self.g, vfilt=self.picked)
@@ -862,7 +884,7 @@ class GraphWidget(Gtk.DrawingArea):
         #print event.keyval
         if event.keyval == ord('r'):
             self.fit_to_window()
-            self.regenerate_surface(timeout=50)
+            self.regenerate_surface(reset=True)
             self.queue_draw()
         elif event.keyval == ord('s'):
             self.reset_layout()
@@ -880,7 +902,7 @@ class GraphWidget(Gtk.DrawingArea):
             if isinstance(self.picked, PropertyMap):
                 u = GraphView(self.g, vfilt=self.picked)
                 self.fit_to_window(g=u)
-                self.regenerate_surface(timeout=50)
+                self.regenerate_surface(reset=True)
                 self.queue_draw()
 
     def key_release_event(self, widget, event):
@@ -895,7 +917,7 @@ class GraphWidget(Gtk.DrawingArea):
         if event.keyval == 65507: # Control_L
             if self.moved_picked:
                 self.moved_picked = False
-                self.regenerate_surface(timeout=100)
+                self.regenerate_surface(reset=True, complete=True)
                 self.queue_draw()
 
 

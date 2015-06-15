@@ -427,9 +427,9 @@ def parse_props(prefix, args):
 
 
 def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
-               nodesfirst=False, vcmap=default_cm,
-               ecmap=default_cm, loop_angle=float("nan"),
-               parallel_distance=None, fit_view=False, **kwargs):
+               nodesfirst=False, vcmap=default_cm, ecmap=default_cm,
+               loop_angle=float("nan"), parallel_distance=None, fit_view=False,
+               res=0, render_offset=0, max_render_time=-1, **kwargs):
     r"""
     Draw a graph to a :mod:`cairo` context.
 
@@ -474,6 +474,15 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
         specify the view in user coordinates.
     bg_color : str or sequence (optional, default: ``None``)
         Background color. The default is transparent.
+    res : float (optional, default: ``0.``):
+        If shape sizes fall below this value, simplified drawing is used.
+    render_offset : int (optional, default: ``0``):
+        If supplied, the rendering will skip the specified initial amount of
+        vertices / edges.
+    max_render_time : int (optional, default: ``-1``):
+        Maximum allowed time (in milliseconds) for rendering. If exceeded, the
+        rendering will return unfinished. If negative values are given, the
+        rendering will always complete.
     vertex_* : :class:`~graph_tool.PropertyMap` or arbitrary types (optional, default: ``None``)
         Parameters following the pattern ``vertex_<prop-name>`` specify the
         vertex property with name ``<prop-name>``, as an alternative to the
@@ -483,6 +492,11 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
         property with name ``<prop-name>``, as an alternative to the ``eprops``
         parameter.
 
+    Returns
+    -------
+    offset : int
+        The offset into the completed rendering. If this value is zero, the
+        rendering was complete.
     """
 
     vprops = {} if vprops is None else copy.copy(vprops)
@@ -551,11 +565,12 @@ def cairo_draw(g, pos, cr, vprops=None, eprops=None, vorder=None, eorder=None,
         eprops["control_points"] = position_parallel_edges(g, pos, loop_angle,
                                                            parallel_distance)
     g = GraphView(g, directed=True)
-    libgraph_tool_draw.cairo_draw(g._Graph__graph, _prop("v", g, pos),
-                                  _prop("v", g, vorder), _prop("e", g, eorder),
-                                  nodesfirst, vattrs, eattrs, vdefs, edefs, cr)
+    count = libgraph_tool_draw.cairo_draw(g._Graph__graph, _prop("v", g, pos),
+                                          _prop("v", g, vorder), _prop("e", g, eorder),
+                                          nodesfirst, vattrs, eattrs, vdefs, edefs, res,
+                                          render_offset, max_render_time, cr)
     cr.restore()
-
+    return count
 
 def color_contrast(color):
     c = np.asarray(color)
