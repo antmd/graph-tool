@@ -1050,10 +1050,9 @@ public:
         marker_size = get_user_dist(cr, marker_size);
         bool sloppy = _attrs.template get<uint8_t>(EDGE_SLOPPY);
 
-        if (marker_size < get_user_dist(cr, res))
-        {
+        if (_s.get_size(cr) < get_user_dist(cr, res) &&
+            _t.get_size(cr) < get_user_dist(cr, res))
             sloppy = true;
-        }
 
         pos_begin = _s.get_pos();
         pos_end = _t.get_pos();
@@ -1224,9 +1223,12 @@ public:
                 }
                 cr.set_source(gd);
             }
-            draw_edge_markers(pos_begin_marker, pos_begin_d, pos_end_marker,
-                              pos_end_d, controls, marker_size, cr);
-            cr.fill();
+            if (marker_size > get_user_dist(cr, res))
+            {
+                draw_edge_markers(pos_begin_marker, pos_begin_d, pos_end_marker,
+                                  pos_end_d, controls, marker_size, cr);
+                cr.fill();
+            }
             draw_edge_line(pos_begin, pos_end, controls, cr);
             cr.stroke();
         }
