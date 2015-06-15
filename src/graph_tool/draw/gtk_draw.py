@@ -330,6 +330,30 @@ class GraphWidget(Gtk.DrawingArea):
         self.set_property("can-focus", True)
         self.connect("draw", self.draw)
 
+        try:
+            self.zoom_gesture = Gtk.GestureZoom.new(self)
+            self.zoom_gesture.connect("begin", self.zoom_begin)
+            self.zoom_gesture.connect("end", self.zoom_end)
+            self.zoom_gesture.connect("scale_changed", self.scale_changed)
+
+            self.rotate_gesture = Gtk.GestureRotate.new(self)
+            self.rotate_gesture.connect("begin", self.rotate_begin)
+            self.rotate_gesture.connect("end", self.rotate_end)
+            self.rotate_gesture.connect("angle_changed", self.angle_changed)
+
+            self.zoom_gesture.group(self.rotate_gesture)
+
+            self.drag_gesture = Gtk.GestureDrag.new(self)
+            self.drag_gesture.set_touch_only(True)
+            self.drag_gesture.connect("begin", self.drag_gesture_begin)
+            self.drag_gesture.connect("end", self.drag_gesture_end)
+            self.drag_gesture.connect("drag_update", self.drag_gesture_update)
+        except AttributeError:
+            pass
+        self.is_zooming = False
+        self.is_rotating = False
+        self.is_drag_gesture = False
+
     def cleanup(self):
         """Cleanup callbacks."""
         if gobject is None:
@@ -671,6 +695,9 @@ class GraphWidget(Gtk.DrawingArea):
         if self.g.num_vertices() == 0:
             return
 
+        if self.is_zooming or self.is_rotating or self.is_drag_gesture:
+            return
+
         x = event.x
         y = event.y
         state = event.state
@@ -701,6 +728,9 @@ class GraphWidget(Gtk.DrawingArea):
         r"""Handle button release."""
 
         if self.g.num_vertices() == 0:
+            return
+
+        if self.is_zooming or self.is_rotating or self.is_drag_gesture:
             return
 
         state = event.state
@@ -744,6 +774,10 @@ class GraphWidget(Gtk.DrawingArea):
 
     def motion_notify_event(self, widget, event):
         r"""Handle pointer motion."""
+
+        if self.is_zooming or self.is_rotating:
+            return
+
         if event.is_hint:
             x, y, state = event.window.get_pointer()[1:]
         else:
@@ -805,6 +839,9 @@ class GraphWidget(Gtk.DrawingArea):
     def scroll_event(self, widget, event):
         r"""Handle scrolling."""
 
+        if self.is_zooming or self.is_rotating:
+            return
+
         self.regenerate_max_time = 50
 
         def restore_render_time():
@@ -845,6 +882,7 @@ class GraphWidget(Gtk.DrawingArea):
             self.tmatrix.translate(ncpos[0] - cpos[0],
                                    ncpos[1] - cpos[1])
             self.regenerate_surface(reset=True)
+
         if angle != 0:
             if not isinstance(self.picked, PropertyMap):
                 center = (self.pointer[0], self.pointer[1])
@@ -881,6 +919,9 @@ class GraphWidget(Gtk.DrawingArea):
     def key_press_event(self, widget, event):
         r"""Handle key press."""
 
+        if self.is_zooming or self.is_rotating:
+            return
+
         #print event.keyval
         if event.keyval == ord('r'):
             self.fit_to_window()
@@ -907,7 +948,9 @@ class GraphWidget(Gtk.DrawingArea):
 
     def key_release_event(self, widget, event):
         r"""Handle release event."""
-        #print event.keyval
+
+        if self.is_zooming or self.is_rotating:
+            return
 
         if self.key_press_user_callback is not None:
             self.key_press_user_callback(self, self.g, event.keyval,
@@ -920,6 +963,65 @@ class GraphWidget(Gtk.DrawingArea):
                 self.regenerate_surface(reset=True, complete=True)
                 self.queue_draw()
 
+    # Touch gestures
+
+    def zoom_begin(self, gesture, seq):
+        self.is_zooming = True
+        self.zoom_scale = 1.
+
+    def zoom_end(self, gesture, seq):
+        self.is_zooming = False
+        self.regenerate_surface(reset=True)
+        self.queue_draw()
+
+    def scale_changed(self, gesture, scale):
+        zoom = scale / self.zoom_scale
+        self.zoom_scale = scale
+        center = gesture.get_bounding_box_center()[1:]
+        cpos = self.pos_from_device(center, surface=True)
+        self.smatrix.scale(zoom, zoom)
+        ncpos = self.pos_from_device(center, surface=True)
+        self.smatrix.translate(ncpos[0] - cpos[0],
+                               ncpos[1] - cpos[1])
+        scale_ink(zoom, self.vprops, self.eprops)
+        self.queue_draw()
+
+    def rotate_begin(self, gesture, seq):
+        self.is_rotating = True
+        self.angle = None
+
+    def rotate_end(self, gesture, seq):
+        self.is_rotating = False
+
+    def angle_changed(self, gesture, angle, angle_delta):
+        if self.angle is None:
+            self.angle = angle
+        delta = angle - self.angle
+        self.angle = angle
+        center = gesture.get_bounding_box_center()[1:]
+        m = cairo.Matrix()
+        m.translate(center[0], center[1])
+        m.rotate(delta)
+        m.translate(-center[0], -center[1])
+        self.smatrix = self.smatrix.multiply(m)
+        self.queue_draw()
+
+    def drag_gesture_begin(self, gesture, seq):
+        self.drag_last = (0, 0)
+        self.is_drag_gesture = True
+        self.picked = False
+        self.selected.fa = False
+
+    def drag_gesture_end(self, gesture, seq):
+        self.is_drag_gesture = False
+
+    def drag_gesture_update(self, gesture, dx, dy):
+        delta = (dx - self.drag_last[0], dy - self.drag_last[1])
+        self.drag_last = (dx, dy)
+        m = cairo.Matrix()
+        m.translate(delta[0], delta[1])
+        self.smatrix = self.smatrix.multiply(m)
+        self.queue_draw()
 
 class GraphWindow(Gtk.Window):
     def __init__(self, g, pos, geometry, vprops=None, eprops=None, vorder=None,
