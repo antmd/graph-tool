@@ -552,8 +552,10 @@ class PropertyMap(object):
         filt = [None]
         if self.__key_type == 'v':
             filt = g.get_vertex_filter()
+            N = g.num_vertices()
         elif self.__key_type == 'e':
             filt = g.get_edge_filter()
+            N = g._get_max_edge_index()
             if g.get_vertex_filter()[0] is not None:
                 filt = (g.new_edge_property("bool"), filt[1])
                 u = GraphView(g, directed=True, skip_properties=True)
@@ -569,7 +571,7 @@ class PropertyMap(object):
                 return a
             if filt[0] is None:
                 return a
-            return a[filt[0].a == (not filt[1])]
+            return a[filt[0].a == (not filt[1])][:N]
         else:
             if a is None:
                 return
@@ -580,6 +582,7 @@ class PropertyMap(object):
                     a[:] = v[:len(a)]
             else:
                 m = filt[0].a == (not filt[1])
+                m *= m.cumsum() <= N
                 try:
                     a[m] = v
                 except ValueError:

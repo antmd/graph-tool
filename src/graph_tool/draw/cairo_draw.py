@@ -1137,7 +1137,7 @@ def scale_ink(scale, vprops, eprops):
 
 def get_bb(g, pos, size, pen_width, size_scale=1, text=None, font_family=None,
            font_size=None, cr=None):
-    size = size.fa[:g.num_vertices()] if isinstance(size, PropertyMap) else size
+    size = size.fa if isinstance(size, PropertyMap) else size
     pen_width = pen_width.fa if isinstance(pen_width, PropertyMap) else pen_width
     pos_x, pos_y = ungroup_vector_property(pos, [0, 1])
     if text is not None and text != "":
