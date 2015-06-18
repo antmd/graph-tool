@@ -144,7 +144,8 @@ _edefaults = {
     "font_slant": cairo.FONT_SLANT_NORMAL,
     "font_weight": cairo.FONT_WEIGHT_NORMAL,
     "font_size": 12.,
-    "sloppy": False
+    "sloppy": False,
+    "seamless": False
     }
 
 

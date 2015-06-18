@@ -95,7 +95,8 @@ enum edge_attr_t {
     EDGE_FONT_SLANT,
     EDGE_FONT_WEIGHT,
     EDGE_FONT_SIZE,
-    EDGE_SLOPPY
+    EDGE_SLOPPY,
+    EDGE_SEAMLESS
 };
 
 enum vertex_shape_t {
@@ -133,7 +134,7 @@ typedef std::tuple<double, double, double, double> color_t;
     typedef std::unordered_map<int, boost::any> attrs_t;
 #endif
 
-typedef boost::mpl::map41<
+typedef boost::mpl::map42<
     boost::mpl::pair<boost::mpl::int_<VERTEX_SHAPE>, vertex_shape_t>,
     boost::mpl::pair<boost::mpl::int_<VERTEX_COLOR>, color_t>,
     boost::mpl::pair<boost::mpl::int_<VERTEX_FILL_COLOR>, color_t>,
@@ -174,7 +175,8 @@ typedef boost::mpl::map41<
     boost::mpl::pair<boost::mpl::int_<EDGE_FONT_SLANT>, int32_t>,
     boost::mpl::pair<boost::mpl::int_<EDGE_FONT_WEIGHT>, int32_t>,
     boost::mpl::pair<boost::mpl::int_<EDGE_FONT_SIZE>, double>,
-    boost::mpl::pair<boost::mpl::int_<EDGE_SLOPPY>, uint8_t> >
+    boost::mpl::pair<boost::mpl::int_<EDGE_SLOPPY>, uint8_t>,
+    boost::mpl::pair<boost::mpl::int_<EDGE_SEAMLESS>, uint8_t> >
         attr_types;
 
 namespace std
@@ -803,28 +805,35 @@ public:
             cr.save();
         cr.translate(_pos.first, _pos.second);
 
-        if (_attrs.template get<uint8_t>(VERTEX_HALO) && !outline)
+        if (!outline && _attrs.template get<uint8_t>(VERTEX_HALO))
         {
             color_t c = _attrs.template get<color_t>(VERTEX_HALO_COLOR);
             double hs = _attrs.template get<double>(VERTEX_HALO_SIZE);
             cr.set_source_rgba(get<0>(c), get<1>(c), get<2>(c), get<3>(c));
-            cr.save();
-            cr.scale(aspect, 1.0);
+            if (aspect != 1.)
+            {
+                cr.save();
+                cr.scale(aspect, 1.0);
+            }
             cr.arc(0, 0, size * hs / 2, 0, 2 * M_PI);
             cr.fill();
-            cr.restore();
+            if (aspect != 1.)
+                cr.restore();
         }
 
         boost::python::object osrc = _attrs.template get<boost::python::object>(VERTEX_SURFACE);
         if (osrc == boost::python::object())
         {
-            pw =_attrs.template get<double>(VERTEX_PENWIDTH);
-            pw = get_user_dist(cr, pw);
-            cr.set_line_width(pw);
+            if (!outline)
+            {
+                pw =_attrs.template get<double>(VERTEX_PENWIDTH);
+                pw = get_user_dist(cr, pw);
+                cr.set_line_width(pw);
 
-            color = _attrs.template get<color_t>(VERTEX_COLOR);
-            cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color),
-                               get<3>(color));
+                color = _attrs.template get<color_t>(VERTEX_COLOR);
+                cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color),
+                                   get<3>(color));
+            }
 
             size_t nsides = 0;
             vertex_shape_t shape = _attrs.template get<vertex_shape_t>(VERTEX_SHAPE);
@@ -832,20 +841,28 @@ public:
             {
             case SHAPE_CIRCLE:
             case SHAPE_DOUBLE_CIRCLE:
-                cr.save();
-                cr.scale(aspect, 1.0);
+                if (aspect != 1.)
+                {
+                    cr.save();
+                    cr.scale(aspect, 1.0);
+                }
                 cr.arc(0, 0, size / 2., 0, 2 * M_PI);
                 cr.close_path();
-                cr.restore();
+                if (aspect != 1.)
+                    cr.restore();
                 if (shape == SHAPE_DOUBLE_CIRCLE && !outline)
                 {
                     cr.stroke();
-                    cr.save();
-                    cr.scale(aspect, 1.0);
+                    if (aspect != 1.)
+                    {
+                        cr.save();
+                        cr.scale(aspect, 1.0);
+                    }
                     cr.arc(0, 0, min(size / 2 - 2 * pw,
                                      size * 0.8 / 2),
                            0, 2 * M_PI);
-                    cr.restore();
+                    if (aspect != 1.)
+                        cr.restore();
                 }
                 break;
             case SHAPE_PIE:
@@ -858,10 +875,8 @@ public:
                     }
                     else
                     {
-                        cr.save();
                         cr.arc(0, 0, size / 2., 0, 2 * M_PI);
                         cr.close_path();
-                        cr.restore();
                     }
                 }
                 break;
@@ -880,18 +895,26 @@ public:
                 nsides = shape - SHAPE_TRIANGLE + 3;
                 if (nsides > 8)
                     nsides -= 7;
-                cr.save();
-                cr.scale(aspect, 1.0);
+                if (aspect != 1.)
+                {
+                    cr.save();
+                    cr.scale(aspect, 1.0);
+                }
                 draw_polygon(nsides, size / 2, cr);
-                cr.restore();
+                if (aspect != 1.)
+                    cr.restore();
                 if (shape >= SHAPE_DOUBLE_TRIANGLE && !outline)
                 {
                     cr.stroke();
-                    cr.save();
-                    cr.scale(aspect, 1.0);
+                    if (aspect != 1.)
+                    {
+                        cr.save();
+                        cr.scale(aspect, 1.0);
+                    }
                     draw_polygon(nsides, min(size / 2 - 2 * pw,
                                              size * 0.8 / 2), cr);
-                    cr.restore();
+                    if (aspect != 1.)
+                        cr.restore();
                 }
                 break;
             default:
@@ -936,69 +959,72 @@ public:
             }
         }
 
-        string text = _attrs.template get<string>(VERTEX_TEXT);
-        if (text != "" && !outline)
+        if (!outline)
         {
-            cr.save();
-
-            double text_pos = 0;
-            double text_rotation = 0;
-            vector<double> text_offset;
-
-            cr.select_font_face(_attrs.template get<string>(VERTEX_FONT_FAMILY),
-                                static_cast<Cairo::FontSlant>(_attrs.template get<int32_t>(VERTEX_FONT_SLANT)),
-                                static_cast<Cairo::FontWeight>(_attrs.template get<int32_t>(VERTEX_FONT_WEIGHT)));
-            cr.set_font_size(get_user_dist(cr, _attrs.template get<double>(VERTEX_FONT_SIZE)));
-            text_pos = _attrs.template get<double>(VERTEX_TEXT_POSITION);
-            text_rotation = _attrs.template get<double>(VERTEX_TEXT_ROTATION);
-            text_offset = _attrs.template get<vector<double> >(VERTEX_TEXT_OFFSET);
-            text_offset.resize(2, 0.0);
-
-            cr.rotate(text_rotation);
-
-            Cairo::TextExtents extents;
-            cr.get_text_extents(text, extents);
-            Cairo::FontExtents fextents;
-            cr.get_font_extents(fextents);
-
-            if (text_pos < 0)
+            string text = _attrs.template get<string>(VERTEX_TEXT);
+            if (text != "")
             {
-                cr.translate(-extents.width / 2 - extents.x_bearing + text_offset[0],
-                             extents.height / 2 + text_offset[1]);
+                cr.save();
+
+                double text_pos = 0;
+                double text_rotation = 0;
+                vector<double> text_offset;
+
+                cr.select_font_face(_attrs.template get<string>(VERTEX_FONT_FAMILY),
+                                    static_cast<Cairo::FontSlant>(_attrs.template get<int32_t>(VERTEX_FONT_SLANT)),
+                                    static_cast<Cairo::FontWeight>(_attrs.template get<int32_t>(VERTEX_FONT_WEIGHT)));
+                cr.set_font_size(get_user_dist(cr, _attrs.template get<double>(VERTEX_FONT_SIZE)));
+                text_pos = _attrs.template get<double>(VERTEX_TEXT_POSITION);
+                text_rotation = _attrs.template get<double>(VERTEX_TEXT_ROTATION);
+                text_offset = _attrs.template get<vector<double> >(VERTEX_TEXT_OFFSET);
+                text_offset.resize(2, 0.0);
+
+                cr.rotate(text_rotation);
+
+                Cairo::TextExtents extents;
+                cr.get_text_extents(text, extents);
+                Cairo::FontExtents fextents;
+                cr.get_font_extents(fextents);
+
+                if (text_pos < 0)
+                {
+                    cr.translate(-extents.width / 2 - extents.x_bearing + text_offset[0],
+                                 extents.height / 2 + text_offset[1]);
+                }
+                else
+                {
+                    pos_t origin;
+                    origin.first = _pos.first + size * cos(text_pos);
+                    origin.second = _pos.second + size * sin(text_pos);
+
+                    pos_t anchor = get_anchor(origin, cr, true);
+                    double angle = atan2(_pos.second - anchor.second,
+                                         _pos.first - anchor.first) + M_PI;
+                    anchor.first = size * 1.2 * cos(angle);
+                    anchor.second = size * 1.2 * sin(angle);
+
+                    anchor.first += text_offset[0];
+                    anchor.second += text_offset[1] + extents.height / 2;
+
+                    if (anchor.first < 0)
+                        anchor.first -= extents.width;
+
+                    cr.translate(anchor.first, anchor.second);
+                }
+                color = _attrs.template get<color_t>(VERTEX_TEXT_COLOR);
+                cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color),
+                                   get<3>(color));
+                cr.show_text(text);
+                cr.begin_new_path();
+                cr.restore();
             }
-            else
-            {
-                pos_t origin;
-                origin.first = _pos.first + size * cos(text_pos);
-                origin.second = _pos.second + size * sin(text_pos);
 
-                pos_t anchor = get_anchor(origin, cr, true);
-                double angle = atan2(_pos.second - anchor.second,
-                                     _pos.first - anchor.first) + M_PI;
-                anchor.first = size * 1.2 * cos(angle);
-                anchor.second = size * 1.2 * sin(angle);
-
-                anchor.first += text_offset[0];
-                anchor.second += text_offset[1] + extents.height / 2;
-
-                if (anchor.first < 0)
-                    anchor.first -= extents.width;
-
-                cr.translate(anchor.first, anchor.second);
-            }
-            color = _attrs.template get<color_t>(VERTEX_TEXT_COLOR);
-            cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color),
-                               get<3>(color));
-            cr.show_text(text);
-            cr.begin_new_path();
             cr.restore();
         }
-
-        if (!outline)
-            cr.restore();
         else
+        {
             cr.translate(-_pos.first, -_pos.second);
-
+        }
     }
 
     template <class, class>
@@ -1045,14 +1071,10 @@ public:
         bool has_gradient = gradient.size() >= 2;
 
         edge_marker_t start_marker = _attrs.template get<edge_marker_t>(EDGE_START_MARKER);
+        edge_marker_t mid_marker = _attrs.template get<edge_marker_t>(EDGE_MID_MARKER);
         edge_marker_t end_marker = _attrs.template get<edge_marker_t>(EDGE_END_MARKER);
         double marker_size = _attrs.template get<double>(EDGE_MARKER_SIZE);
         marker_size = get_user_dist(cr, marker_size);
-        bool sloppy = _attrs.template get<uint8_t>(EDGE_SLOPPY);
-
-        if (_s.get_size(cr) < get_user_dist(cr, res) &&
-            _t.get_size(cr) < get_user_dist(cr, res))
-            sloppy = true;
 
         pos_begin = _s.get_pos();
         pos_end = _t.get_pos();
@@ -1124,20 +1146,27 @@ public:
                 pos_end_marker = _t.get_anchor(pos_begin, cr);
         }
 
-        double a = get<3>(color);
-        a *= get<3>(_s._attrs.template get<color_t>(VERTEX_COLOR));
-        a *= get<3>(_s._attrs.template get<color_t>(VERTEX_FILL_COLOR));
-        a *= get<3>(_t._attrs.template get<color_t>(VERTEX_COLOR));
-        a *= get<3>(_t._attrs.template get<color_t>(VERTEX_FILL_COLOR));
 
-        if (!sloppy && a < 1)
+        bool sloppy = _attrs.template get<uint8_t>(EDGE_SLOPPY);
+        if (_s.get_size(cr) < get_user_dist(cr, res) &&
+            _t.get_size(cr) < get_user_dist(cr, res))
+            sloppy = true;
+
+        bool seamless = _attrs.template get<uint8_t>(EDGE_SEAMLESS);
+        if (marker_size < get_user_dist(cr, res) ||
+            (start_marker == MARKER_SHAPE_NONE &&
+             mid_marker == MARKER_SHAPE_NONE &&
+             end_marker == MARKER_SHAPE_NONE))
+            seamless = false;
+
+        if (seamless)
         {
             // set the clip region to the correct size for better push/pop_group
             // performance
+            double sx1, sy1, sx2, sy2;
             draw_edge_markers(pos_begin_marker, pos_begin_d, pos_end_marker,
                               pos_end_d, controls, marker_size, cr);
             draw_edge_line(pos_begin, pos_end, controls, cr);
-            double sx1, sy1, sx2, sy2;
             cr.get_stroke_extents(sx1, sy1, sx2, sy2);
             cr.begin_new_path();
             cr.rectangle(sx1, sy1, sx2 - sx1, sy2 - sy1);
@@ -1202,9 +1231,48 @@ public:
         }
         else
         {
+            if (!sloppy)
+            {
+                // compose clip region
+                double sx1, sy1, sx2, sy2;
+                draw_edge_line(pos_begin, pos_end, controls, cr);
+                cr.get_stroke_extents(sx1, sy1, sx2, sy2);
+                cr.begin_new_path();
+                cr.rectangle(sx1, sy1, sx2 - sx1, sy2 - sy1);
+                draw_edge_markers(pos_begin_marker, pos_begin_d, pos_end_marker,
+                                  pos_end_d, controls, marker_size, cr);
+                cr.set_fill_rule(Cairo::FILL_RULE_EVEN_ODD);
+                cr.clip();
+
+                cr.rectangle(sx1, sy1, sx2 - sx1, sy2 - sy1);
+                _s.draw(cr, true);
+                cr.clip();
+
+                cr.rectangle(sx1, sy1, sx2 - sx1, sy2 - sy1);
+                _t.draw(cr, true);
+                cr.clip();
+
+                if (start_marker != MARKER_SHAPE_NONE && start_marker != MARKER_SHAPE_BAR)
+                {
+                    cr.rectangle(sx1, sy1, sx2 - sx1, sy2 - sy1);
+                    cr.arc(pos_begin_marker.first, pos_begin_marker.second,
+                           marker_size / 2, 0, 2 * M_PI);
+                    cr.clip();
+                }
+
+                if (end_marker != MARKER_SHAPE_NONE && end_marker != MARKER_SHAPE_BAR)
+                {
+                    cr.rectangle(sx1, sy1, sx2 - sx1, sy2 - sy1);
+                    cr.arc(pos_end_marker.first, pos_end_marker.second,
+                           marker_size / 2, 0, 2 * M_PI);
+                    cr.clip();
+                }
+            }
+
             if (!has_gradient)
             {
-                cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color), get<3>(color));
+                cr.set_source_rgba(get<0>(color), get<1>(color), get<2>(color),
+                                   get<3>(color));
             }
             else
             {
@@ -1223,14 +1291,13 @@ public:
                 }
                 cr.set_source(gd);
             }
-            if (marker_size > get_user_dist(cr, res))
-            {
-                draw_edge_markers(pos_begin_marker, pos_begin_d, pos_end_marker,
-                                  pos_end_d, controls, marker_size, cr);
-                cr.fill();
-            }
+
             draw_edge_line(pos_begin, pos_end, controls, cr);
             cr.stroke();
+            cr.reset_clip();
+            draw_edge_markers(pos_begin_marker, pos_begin_d, pos_end_marker,
+                              pos_end_d, controls, marker_size, cr);
+            cr.fill();
         }
 
         string text = _attrs.template get<string>(EDGE_TEXT);
@@ -2145,7 +2212,8 @@ BOOST_PYTHON_MODULE(libgraph_tool_draw)
         .value("font_slant", EDGE_FONT_SLANT)
         .value("font_weight", EDGE_FONT_WEIGHT)
         .value("font_size", EDGE_FONT_SIZE)
-        .value("sloppy", EDGE_SLOPPY);
+        .value("sloppy", EDGE_SLOPPY)
+        .value("seamless", EDGE_SEAMLESS);
 
     enum_<vertex_shape_t>("vertex_shape")
         .value("circle", SHAPE_CIRCLE)

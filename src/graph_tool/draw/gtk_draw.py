@@ -477,11 +477,11 @@ class GraphWidget(Gtk.DrawingArea):
             cr.paint()
         cr.set_matrix(self.tmatrix)
         mtime = -1 if complete else self.regenerate_max_time
+        res = 5 * self.get_scale_factor()
         count = cairo_draw(self.g, self.pos, cr, self.vprops, self.eprops,
-                           self.vorder, self.eorder, self.nodesfirst, res=1,
+                           self.vorder, self.eorder, self.nodesfirst, res=res,
                            render_offset=self.regenerate_offset,
-                           max_render_time=mtime,
-                           **self.kwargs)
+                           max_render_time=mtime, **self.kwargs)
         self.regenerate_offset = count
 
     def draw(self, da, cr):
