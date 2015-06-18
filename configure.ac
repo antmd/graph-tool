@@ -93,10 +93,10 @@ AC_MSG_CHECKING(whether to enable optimizations...)
 AC_ARG_ENABLE([optimization], [AS_HELP_STRING([--disable-optimization],[disable optimization [default=enabled] ])],
         if test $enableval = no; then
            [AC_MSG_RESULT(no)]
-    else
+        else
            [CXXFLAGS="${CXXFLAGS} -O3"]
-       [AC_MSG_RESULT(yes)]
-    fi
+           [AC_MSG_RESULT(yes)]
+        fi
         ,
         [CXXFLAGS="${CXXFLAGS} -O3"]
         [AC_MSG_RESULT(yes)]
@@ -107,10 +107,10 @@ AC_MSG_CHECKING(whether to enable symbol visibility manipulation...)
 AC_ARG_ENABLE([visibility], [AS_HELP_STRING([--disable-visibility],[disable symbol visibility manipulation [default=enabled] ])],
         if test $enableval = yes; then
            [CXXFLAGS="${CXXFLAGS} -fvisibility=default -fvisibility-inlines-hidden"]
-       [AC_MSG_RESULT(yes)]
-    else
+           [AC_MSG_RESULT(yes)]
+        else
            [AC_MSG_RESULT(no)]
-    fi
+        fi
         ,
         [CXXFLAGS="${CXXFLAGS} -fvisibility=default -fvisibility-inlines-hidden"]
         [AC_MSG_RESULT(yes)]
@@ -141,8 +141,8 @@ AC_ARG_ENABLE([openmp], [AS_HELP_STRING([--enable-openmp],[enable openmp [defaul
            [CXXFLAGS="${CXXFLAGS} -fopenmp"]
            [OPENMP_LDFLAGS=" -lgomp "]
         else
-       [USING_OPENMP=no]
-       [CXXFLAGS="${CXXFLAGS} -Wno-unknown-pragmas"]
+           [USING_OPENMP=no]
+           [CXXFLAGS="${CXXFLAGS} -Wno-unknown-pragmas"]
            [AC_MSG_RESULT(no)]    
         fi
         ,
