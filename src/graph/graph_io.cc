@@ -24,7 +24,6 @@
 #include <boost/iostreams/filter/bzip2.hpp>
 #include <boost/iostreams/device/file_descriptor.hpp>
 #include <boost/iostreams/device/file.hpp>
-#include <boost/graph/graphml.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/xpressive/xpressive.hpp>
 
@@ -35,6 +34,7 @@
 
 #include "graph_python_interface.hh"
 #include "str_repr.hh"
+#include <boost/graph/graphml.hpp>
 
 #include "gml.hh"
 

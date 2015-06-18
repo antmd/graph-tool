@@ -33,8 +33,10 @@
 
 #include "base64.hh"
 
+
 namespace boost
 {
+
 
 /////////////////////////////////////////////////////////////////////////////
 // Graph reader exceptions
@@ -242,7 +244,7 @@ public:
 
                 if (is_same<Value,uint8_t>::value) // chars are stored as ints
                 {
-                    int v = lexical_cast<int>(val);
+                    int v = graph_tool::external_lexical_cast<int>(val);
                     put(m_name, m_dp, m_key, uint8_t(v));
                 }
                 else
@@ -250,7 +252,7 @@ public:
                     if (is_same<Value, boost::python::object>::value)
                         val = base64_decode(m_value);
 
-                    put(m_name, m_dp, m_key, lexical_cast<Value>(val));
+                    put(m_name, m_dp, m_key, graph_tool::external_lexical_cast<Value>(val));
                 }
                 m_type_found = true;
             }
@@ -336,7 +338,7 @@ struct get_string
         const ValueType* v = any_cast<ValueType>(&val);
         if (v != 0)
         {
-            sval = lexical_cast<std::string>(*v);
+            sval = graph_tool::external_lexical_cast<std::string>(*v);
             if (is_same<ValueType, boost::python::object>::value)
                 sval = base64_encode(sval);
         }
@@ -412,7 +414,7 @@ write_graphml(std::ostream& out, const Graph& g, VertexIndexMap vertex_index,
             continue;
         }
 
-        std::string key_id = "key" + lexical_cast<std::string>(key_count++);
+        std::string key_id = "key" + graph_tool::external_lexical_cast<std::string>(key_count++);
         if (i->second->key() == typeid(graph_property_tag))
             graph_key_ids[i->first] = key_id;
         else if (i->second->key() == typeid(vertex_descriptor))

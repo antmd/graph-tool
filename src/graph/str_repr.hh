@@ -19,6 +19,7 @@
 #define STR_REPR_HH
 
 #include <iostream>
+#include <sstream>
 #include <clocale>
 #include <boost/lexical_cast.hpp>
 
@@ -230,5 +231,164 @@ istream& operator>>(istream& in, vector<string>& vec)
 }
 
 } // std namespace
+
+namespace graph_tool {
+    
+    // float, double and long double should be printed in hexadecimal format to
+    // preserve internal representation. (we also need to make sure the
+    // representation is locale-independent).
+
+    inline
+    int print_float_dispatch(char*& str, float val)
+    {
+        return asprintf(&str, "%f", val);
+    }
+
+    inline
+    int print_float_dispatch(char*& str, double val)
+    {
+        return asprintf(&str, "%lf", val);
+    }
+
+    inline
+    int print_float_dispatch(char*& str, long double val)
+    {
+        return asprintf(&str, "%Lf", val);
+    }
+
+    template <class Val>
+    inline
+    int print_float(char*& str, Val val)
+    {
+        char* locale = setlocale(LC_NUMERIC, NULL);
+        setlocale(LC_NUMERIC, "C");
+        int retval = print_float_dispatch(str, val);
+        setlocale(LC_NUMERIC, locale);
+        return retval;
+    }
+
+    inline
+    int scan_float_dispatch(const char* str, float& val)
+    {
+        return sscanf(str, "%f", &val);
+    }
+
+    inline
+    int scan_float_dispatch(const char* str, double& val)
+    {
+        return sscanf(str, "%lf", &val);
+    }
+
+    inline
+    int scan_float_dispatch(const char* str, long double& val)
+    {
+        return sscanf(str, "%Lf", &val);
+    }
+
+    template <class Val>
+    inline
+    int scan_float(const char* str, Val& val)
+    {
+        char* locale = setlocale(LC_NUMERIC, NULL);
+        setlocale(LC_NUMERIC, "C");
+        int retval = scan_float_dispatch(str, val);
+        setlocale(LC_NUMERIC, locale);
+        return retval;
+    }
+    
+    // external_lexical_cast
+    template <typename Target, typename Source>
+    inline
+    Target external_lexical_cast(const Source &arg)
+    {
+            Target result {boost::lexical_cast<Target, Source>(arg)};
+            return result;
+    }
+
+    template <>
+    inline
+    std::string external_lexical_cast<std::string,float>(const float& val)
+    {
+        char* str = 0;
+        int retval = print_float(str, val);
+        if (retval == -1)
+            throw boost::bad_lexical_cast();
+        std::string ret = str;
+        free(str);
+        return ret;
+    }
+
+    template <>
+    inline
+    float external_lexical_cast<float,std::string>(const std::string& val)
+    {
+        float ret;
+        int nc = scan_float(val.c_str(), ret);
+        if (nc != 1)
+            throw boost::bad_lexical_cast();
+        return ret;
+    }
+
+    template <>
+    inline
+    std::string external_lexical_cast<std::string,double>(const double& val)
+    {
+        char* str = 0;
+        int retval = print_float(str, val);
+        if (retval == -1)
+            throw boost::bad_lexical_cast();
+        std::string ret = str;
+        free(str);
+        return ret;
+    }
+    
+    template <>
+    inline
+    std::string external_lexical_cast<std::string,std::vector<double>>(const std::vector<double>& val)
+    {
+        std::ostringstream os;
+        bool first = true;
+        for (auto &v : val) {
+            if (first) { os << " "; first = false; }
+            os << external_lexical_cast<std::string>(v);
+        }
+        return os.str();
+    }
+
+    template <>
+    inline
+    double external_lexical_cast<double,std::string>(const std::string& val)
+    {
+        double ret;
+        int nc = scan_float(val.c_str(), ret);
+        if (nc != 1)
+            throw boost::bad_lexical_cast();
+        return ret;
+    }
+
+    template <>
+    inline
+    std::string external_lexical_cast<std::string,long double>(const long double& val)
+    {
+        char* str = 0;
+        int retval = print_float(str, val);
+        if (retval == -1)
+            throw boost::bad_lexical_cast();
+        std::string ret = str;
+        free(str);
+        return ret;
+    }
+
+    template <>
+    inline
+    long double external_lexical_cast<long double,std::string>(const std::string& val)
+    {
+        long double ret;
+        int nc = scan_float(val.c_str(), ret);
+        if (nc != 1)
+            throw boost::bad_lexical_cast();
+        return ret;
+    }
+}
 
 #endif // STR_REPR_HH
