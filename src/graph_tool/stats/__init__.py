@@ -250,7 +250,7 @@ def vertex_average(g, deg):
 
 def edge_average(g, eprop):
     """
-    Return the average of the given degree or vertex property.
+    Return the average of the given edge property.
 
     Parameters
     ----------
