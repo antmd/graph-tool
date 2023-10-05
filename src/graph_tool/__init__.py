@@ -1630,7 +1630,7 @@ class Graph(object):
         .. note::
 
            This operation is normally :math:`O(k_s + k_t)`, where :math:`k_s`
-           and :math:`k_s` are the total degrees of the source and target
+           and :math:`k_t` are the total degrees of the source and target
            vertices, respectively. However, if :meth:`~Graph.set_fast_edge_removal`
            is set to `True`, this operation becomes :math:`O(1)`.
 
